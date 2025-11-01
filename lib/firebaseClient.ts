@@ -3,11 +3,15 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  apiKey: "AIzaSyAH5t2K94zX8RSDvUXumB7rIN9-IcrM8_M",
+  authDomain: "la-creativo-erp.firebaseapp.com",
+  projectId: "la-creativo-erp",
+  storageBucket: "la-creativo-erp.firebasestorage.app",
+  messagingSenderId: "1091518426177",
+  appId: "1:1091518426177:web:bb2fc01c76a63507742ac0"
 };
 
-export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const authClient = getAuth(app);
-export const dbClient = getFirestore(app);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+
+export const auth = getAuth(app);
+export const db = getFirestore(app);
