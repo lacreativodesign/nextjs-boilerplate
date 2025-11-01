@@ -1,38 +1,35 @@
 {
-  "name": "nextjs-boilerplate",
-  "version": "0.1.0",
-    "private": true,
+  "name": "la-creativo-erp",
+  "version": "1.0.0",
+  "private": true,
+
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
-  "lockfileVersion": 3,
-  "requires": true,
-  "packages": {
-    "": {
-      "name": "nextjs",
-      "version": "0.1.0",
-      "dependencies": {
-        "next": "16.0.1",
-        "react": "19.2.0",
-        "react-dom": "19.2.0"
-        "@uploadcare/react-widget": "^4.4.1",
-        "firebase": "^11.0.0",
-        "firebase-admin": "^12.6.0",
-        "next": "14.2.12",
-        "react": "18.3.1",
-        "react-dom": "18.3.1",
-        "resend": "^3.5.0",
-        "zod": "^3.23.8"
   },
+
+  "dependencies": {
+    "@uploadcare/react-widget": "^4.4.1",
+    "@uploadcare/upload-client": "^6.9.0",
+    "firebase": "^11.0.0",
+    "firebase-admin": "^12.6.0",
+    "next": "14.2.12",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "resend": "^3.5.0",
+    "zod": "^3.23.8"
+  },
+
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.1"
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "14.2.12",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.4.0"
   }
 }
