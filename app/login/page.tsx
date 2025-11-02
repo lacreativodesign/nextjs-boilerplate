@@ -1,32 +1,52 @@
-// app/login/page.tsx
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 
 export default function Login() {
-  const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
-  const t = useMemo(()=>({ text:"#E9EEF5", mut:"#9AA6B2", card:"rgba(16,28,56,.72)", border:"rgba(255,255,255,.08)" }),[]);
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+
   return (
-    <div style={{display:"grid",placeItems:"center",minHeight:"calc(100vh - 24px)"}}>
-      <div style={{width:420, background:t.card, border:`1px solid ${t.border}`, borderRadius:18, padding:22}}>
-        <div style={{color:"#06B6D4",fontWeight:900,letterSpacing:"-.3px"}}>LA CREATIVO</div>
-        <h2 style={{margin:"8px 0 4px 0"}}>Welcome back</h2>
-        <p style={{margin:"0 0 12px 0", color:t.mut}}>Sign in to your workspace</p>
+    <div style={{display:"grid",placeItems:"center",minHeight:"100vh"}}>
+      <div style={{
+        width:420,
+        padding:24,
+        borderRadius:18,
+        background:"rgba(16,28,56,.7)",
+        backdropFilter:"blur(14px)",
+        border:"1px solid rgba(255,255,255,.08)",
+      }}>
+        <div style={{color:"#06B6D4",fontWeight:900,fontSize:20}}>LA CREATIVO</div>
+        <h2 style={{margin:"10px 0 4px 0"}}>Welcome back</h2>
+        <p style={{color:"#94A3B8"}}>Sign in to your workspace</p>
+
         <form onSubmit={(e)=>{e.preventDefault(); window.location.href="/admin";}}>
-          <div style={{marginBottom:10}}>
-            <label style={{fontSize:12, color:t.mut}}>Email</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)}
-              style={{width:"100%",padding:12,borderRadius:12,border:"1px solid rgba(255,255,255,.12)",background:"transparent", color:t.text}} />
-          </div>
-          <div style={{marginBottom:12}}>
-            <label style={{fontSize:12, color:t.mut}}>Password</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
-              style={{width:"100%",padding:12,borderRadius:12,border:"1px solid rgba(255,255,255,.12)",background:"transparent", color:t.text}} />
-          </div>
-          <button className="btn" style={{width:"100%"}} type="submit">Sign in</button>
+          <label style={{fontSize:12,color:"#9AA6B2"}}>Email</label>
+          <input
+            value={email}
+            onChange={e=>setEmail(e.target.value)}
+            style={{
+              width:"100%",padding:12,borderRadius:12,
+              border:"1px solid rgba(255,255,255,.12)",
+              background:"transparent",color:"#E9EEF5",marginBottom:12
+            }}
+          />
+
+          <label style={{fontSize:12,color:"#9AA6B2"}}>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={e=>setPassword(e.target.value)}
+            style={{
+              width:"100%",padding:12,borderRadius:12,
+              border:"1px solid rgba(255,255,255,.12)",
+              background:"transparent",color:"#E9EEF5",marginBottom:18
+            }}
+          />
+
+          <button className="btn" style={{width:"100%"}}>Sign In</button>
         </form>
-        <div style={{marginTop:10}}>
-          <a className="link" href="#">Forgot password?</a>
-        </div>
+
+        <a className="link" href="#" style={{marginTop:12,display:"block"}}>Forgot password?</a>
       </div>
     </div>
   );
