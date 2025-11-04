@@ -11,7 +11,6 @@
     "next": "14.2.12",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "@uploadcare/react-uploader": "^2.0.1",
     "firebase": "^11.0.0",
     "resend": "^3.5.0",
     "zod": "^3.23.8"
