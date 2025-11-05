@@ -1,103 +1,106 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [view, setView] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"light" | "dark">("light");
+  const [showForgot, setShowForgot] = useState(false);
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black p-6"
+      className={
+        mode === "light"
+          ? "min-h-screen bg-gray-100 text-black flex items-center justify-center p-6"
+          : "min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-6"
+      }
     >
-      <div
-        className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20 text-white"
+      {/* Toggle */}
+      <button
+        onClick={() => setMode(mode === "light" ? "dark" : "light")}
+        className="absolute top-5 right-5 text-sm opacity-70 hover:opacity-100"
       >
-        {/* Dark/Light Toggle Placeholder */}
-        <div className="flex justify-end mb-6">
-          <div className="flex items-center gap-2 text-gray-300 text-sm">
-            <span>Light</span>
-            <div className="w-12 h-6 bg-gray-700 rounded-full flex items-center px-1 cursor-pointer">
-              <div className="w-5 h-5 bg-white rounded-full shadow"></div>
-            </div>
-            <span>Dark</span>
-          </div>
-        </div>
+        {mode === "light" ? "Dark" : "Light"} Mode
+      </button>
+
+      {/* Card */}
+      <div
+        className={`w-full max-w-md rounded-2xl p-8 border
+        ${
+          mode === "light"
+            ? "bg-white/70 backdrop-blur-xl border-gray-300 shadow-xl"
+            : "bg-white/5 backdrop-blur-xl border-white/10"
+        }`}
+      >
+        <h1 className="text-3xl font-black tracking-tight">LA CREATIVO</h1>
+        <p className="mt-1 text-sm opacity-70">Unified Portal • 2025 Edition</p>
 
         {/* LOGIN VIEW */}
-        {view === "login" && (
-          <>
-            <h1 className="text-3xl font-bold mb-2 text-center">
-              LA CREATIVO
-            </h1>
-            <p className="text-center text-gray-300 mb-8">
-              Unified Portal • 2025 Edition
-            </p>
-
-            <label className="block mb-4">
-              <span className="text-sm text-gray-300">Email</span>
+        {!showForgot && (
+          <form className="mt-8 space-y-5">
+            <div>
+              <label className="text-sm font-medium">Email</label>
               <input
                 type="email"
                 placeholder="you@example.com"
-                className="w-full mt-1 p-3 rounded-lg bg-black/30 border border-white/20 text-white outline-none focus:border-teal-400"
+                className="w-full mt-1 p-3 rounded-lg border border-gray-300 bg-white/80
+                focus:outline-none focus:ring-2 focus:ring-black text-gray-800"
               />
-            </label>
+            </div>
 
-            <label className="block mb-6">
-              <span className="text-sm text-gray-300">Password</span>
+            <div>
+              <label className="text-sm font-medium">Password</label>
               <input
                 type="password"
-                placeholder="••••••••"
-                className="w-full mt-1 p-3 rounded-lg bg-black/30 border border-white/20 text-white outline-none focus:border-teal-400"
+                className="w-full mt-1 p-3 rounded-lg border border-gray-300 bg-white/80
+                focus:outline-none focus:ring-2 focus:ring-black text-gray-800"
               />
-            </label>
+            </div>
 
             <button
-              className="w-full p-3 rounded-lg bg-teal-500 hover:bg-teal-600 text-black font-semibold transition"
+              type="submit"
+              className="w-full py-3 rounded-lg bg-black text-white font-medium hover:bg-gray-700 transition"
             >
               Login
             </button>
 
-            <p
-              className="text-center text-sm text-gray-400 mt-4 cursor-pointer hover:text-teal-300"
-              onClick={() => setView("forgot")}
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="block text-sm mx-auto opacity-70 hover:opacity-100"
             >
               Forgot Password?
-            </p>
-          </>
+            </button>
+          </form>
         )}
 
         {/* FORGOT PASSWORD VIEW */}
-        {view === "forgot" && (
-          <>
-            <h2 className="text-2xl font-bold mb-2 text-center">
-              Reset Password
-            </h2>
-            <p className="text-center text-gray-300 mb-6">
-              Enter your email and we’ll send you reset instructions.
-            </p>
-
-            <label className="block mb-6">
-              <span className="text-sm text-gray-300">Email</span>
+        {showForgot && (
+          <form className="mt-8 space-y-5">
+            <div>
+              <label className="text-sm font-medium">Enter Your Email</label>
               <input
                 type="email"
                 placeholder="you@example.com"
-                className="w-full mt-1 p-3 rounded-lg bg-black/30 border border-white/20 text-white outline-none focus:border-teal-400"
+                className="w-full mt-1 p-3 rounded-lg border border-gray-300 bg-white/80
+                focus:outline-none focus:ring-2 focus:ring-black text-gray-800"
               />
-            </label>
+            </div>
 
             <button
-              className="w-full p-3 rounded-lg bg-teal-500 hover:bg-teal-600 text-black font-semibold transition"
+              type="submit"
+              className="w-full py-3 rounded-lg bg-black text-white font-medium hover:bg-gray-700 transition"
             >
               Send Reset Link
             </button>
 
-            <p
-              className="text-center text-sm text-gray-400 mt-4 cursor-pointer hover:text-teal-300"
-              onClick={() => setView("login")}
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="block text-sm mx-auto opacity-70 hover:opacity-100"
             >
               Back to Login
-            </p>
-          </>
+            </button>
+          </form>
         )}
       </div>
     </div>
