@@ -790,15 +790,22 @@ function Admin2025() {
     </div>
   );
 }
-
 // --------- CSV Export (client demo) ----------
-function exportCSV(data: any[], filename: string) {
-  if (!data || data.length === 0) {
+function exportCSV(rows: any[], filename: string) {
+  if (!rows || rows.length === 0) {
     alert("Nothing to export");
     return;
   }
-  const rows = [Object.keys(data[0]), ...data.map((d) => Object.values(d))];
-  const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+  const header = Object.keys(rows[0]);
+  const csvRows = [
+    header.join(","),
+    ...rows.map((row) =>
+      header.map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`).join(",")
+    ),
+  ];
+
+  const csv = csvRows.join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -808,15 +815,7 @@ function exportCSV(data: any[], filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-    }  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: t.bg,
-        color: t.text,
-        display: "flex",
-        fontFamily: "Inter, sans-serif",
-      }}
+}
     >
       {/* SIDEBAR */}
       <aside
