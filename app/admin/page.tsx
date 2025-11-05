@@ -1,104 +1,110 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
-import RequireAuth from "@/components/RequireAuth";
+import React, { useMemo, useState } from 'react';
+import RequireAuth from '@/components/RequireAuth';
 
-/** ===========================================================
- *  LAC-ADMIN-LOCKED-2025.10.24-v1.0
- *  Admin Dashboard — 2025 aesthetic, dark/light toggle (switch),
- *  left sidebar, mobile responsive, packed overview, delivered projects,
- *  team analytics, hierarchy, activity, projects, clients, finance, reports,
- *  settings, profile (with editable fields + password change stub).
- *  Pure React + SVG charts. No external UI libs. Build-safe.
- *  =========================================================== */
+/** ========= THEME HOOK (2025 aesthetic) ========= */
+function useTheme(defaultDark = true) {
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return defaultDark;
+    return (localStorage.getItem('lac_theme') ?? (defaultDark ? 'dark' : 'light')) === 'dark';
+  });
 
-type Role = "admin" | "sales" | "am" | "production" | "hr" | "finance" | "client";
+  const t = useMemo(
+    () => ({
+      dark,
+      setDark: (v: boolean) => {
+        setDark(v);
+        if (typeof window !== 'undefined') localStorage.setItem('lac_theme', v ? 'dark' : 'light');
+      },
+      bg: dark ? '#070F22' : '#F5F7FB',
+      card: dark ? 'rgba(16,28,56,.72)' : 'rgba(255,255,255,.92)',
+      text: dark ? '#E8EEF7' : '#0F172A',
+      mut: dark ? '#9AA6B2' : '#64748B',
+      border: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
+      glowA: 'radial-gradient(50% 40% at 15% 10%, rgba(99,102,241,.14), transparent)',
+      glowB: 'radial-gradient(55% 40% at 85% 90%, rgba(6,182,212,.16), transparent)',
+      brand: '#06B6D4',
+      accent: '#6366F1',
+      ok: '#10B981',
+      warn: '#F59E0B',
+      danger: '#EF4444',
+      shadow: dark ? '0 30px 80px rgba(2,6,23,.55)' : '0 30px 80px rgba(2,6,23,.12)',
+      radius: 18,
+    }),
+    [dark]
+  );
 
-type Project = {
-  id: string;
-  code: string; // "LC-0001"
-  title: string;
-  client: string;
-  service: "Website" | "Branding" | "Social/Ads" | "SEO" | "Custom";
-  status: "Inquiry" | "Deposit" | "Kickoff" | "Draft" | "Review" | "Revisions" | "Final" | "Delivered";
-  am: string; // account manager
-  budget: number;
-  paid: number;
-  due: string; // ISO date
+  return t;
+}
+
+/** ========= DUMMY DATA (replace with Firestore later) ========= */
+const KPI = {
+  revenueYTD: 482000,
+  margin: 0.41,
+  actives: 27,
+  overdue: 3,
 };
 
-type Activity = {
-  id: string;
-  at: string; // ISO date
-  who: string;
-  what: string;
-  projectCode?: string;
-};
-
-type KPI = {
-  label: string;
-  value: string;
-  sub: string;
-};
-
-const SAMPLE_PROJECTS: Project[] = [
-  { id: "p1", code: "LC-0001", title: "E-Com Redesign", client: "Acme Co", service: "Website", status: "Review", am: "Sana Khan", budget: 12000, paid: 8000, due: "2025-11-18" },
-  { id: "p2", code: "LC-0002", title: "Logo Suite", client: "Moda Labs", service: "Branding", status: "Revisions", am: "Ali Raza", budget: 4500, paid: 4500, due: "2025-10-29" },
-  { id: "p3", code: "LC-0003", title: "SEO Growth", client: "Fintech Inc", service: "SEO", status: "Kickoff", am: "Sana Khan", budget: 7000, paid: 3500, due: "2025-12-06" },
-  { id: "p4", code: "LC-0004", title: "Social Sprint Q4", client: "Glow Co", service: "Social/Ads", status: "Delivered", am: "Imran Ali", budget: 6000, paid: 6000, due: "2025-10-15" },
-  { id: "p5", code: "LC-0005", title: "Custom Portal", client: "Northbridge", service: "Custom", status: "Final", am: "Ali Raza", budget: 22000, paid: 10000, due: "2026-01-10" },
-];
-
-const SAMPLE_ACTIVITY: Activity[] = [
-  { id: "a1", at: "2025-11-04T13:22:00Z", who: "Admin", what: "Marked LC-0004 as Delivered", projectCode: "LC-0004" },
-  { id: "a2", at: "2025-11-03T18:10:00Z", who: "Sana Khan", what: "Requested client assets for LC-0003", projectCode: "LC-0003" },
-  { id: "a3", at: "2025-11-02T09:40:00Z", who: "Ali Raza", what: "Uploaded Draft v2 to LC-0002", projectCode: "LC-0002" },
-  { id: "a4", at: "2025-11-01T11:05:00Z", who: "Imran Ali", what: "Kicked off Ads Plan for LC-0004", projectCode: "LC-0004" },
+const PROJECTS = [
+  { id: 'LC-0007', title: 'E-Commerce Revamp', client: 'Acme Co', am: 'Nadia', status: 'Review', budget: 18000, progress: 72 },
+  { id: 'LC-0006', title: 'Logo + Brand Kit', client: 'Bistro Ltd', am: 'Farhan', status: 'Planning', budget: 4500, progress: 10 },
+  { id: 'LC-0005', title: 'SEO — Fintech', client: 'Fintech Inc', am: 'Nadia', status: 'In Dev', budget: 9000, progress: 55 },
+  { id: 'LC-0004', title: 'Landing Page', client: 'Moda', am: 'Sara', status: 'Delivered', budget: 3200, progress: 100 },
 ];
 
 const TEAM = [
-  { name: "Sana Khan", role: "am", kpi: { active: 7, onTime: "92%", csat: "4.7" } },
-  { name: "Ali Raza", role: "am", kpi: { active: 5, onTime: "87%", csat: "4.6" } },
-  { name: "Imran Ali", role: "production", kpi: { active: 9, onTime: "90%", csat: "4.5" } },
-  { name: "Sara Ahmed", role: "sales", kpi: { active: 18, onTime: "—", csat: "—" } },
+  { name: 'Zain (Sales)', kpi: { quota: 20000, closed: 15800, conv: 0.27 } },
+  { name: 'Nadia (AM)', kpi: { portfolio: 12, health: 0.86, csat: 4.7 } },
+  { name: 'Ali (Prod)', kpi: { tasks: 38, onTime: 0.91, bugs: 3 } },
 ];
 
-const SALES_SERIES = [4500, 5600, 4900, 6200, 5800, 7000]; // last 6 months
-const TASKS_DIST = { todo: 5, inProgress: 8, blocked: 2, done: 14 };
+const ACTIVITY = [
+  { t: '2025-11-03 10:41', who: 'Nadia', what: 'Moved LC-0007 → Review', ref: 'LC-0007' },
+  { t: '2025-11-03 09:05', who: 'Zain', what: 'Added new lead (paid) → LC-0008', ref: 'LC-0008' },
+  { t: '2025-11-02 17:20', who: 'Ali', what: 'Uploaded Draft v2 on LC-0005', ref: 'LC-0005' },
+];
 
-function currency(n: number) {
-  return "$" + (n || 0).toLocaleString();
-}
-
-// ---------- Simple SVG Charts (no external deps) ----------
-function LineChart({ data, width = 520, height = 140, stroke = "#2563eb" }: { data: number[]; width?: number; height?: number; stroke?: string }) {
-  if (!data || data.length === 0) data = [0];
-  const max = Math.max(...data, 1);
-  const step = width / Math.max(1, data.length - 1);
-  const points = data.map((v, i) => `${i * step},${height - (v / max) * (height - 10)}`).join(" ");
+/** ========= SMALL SVG CHARTS (no external deps) ========= */
+function LineChart({ data, w = 520, h = 120, stroke = '#6366F1' }: { data: number[]; w?: number; h?: number; stroke?: string }) {
+  const max = Math.max(1, ...data);
+  const step = data.length > 1 ? w / (data.length - 1) : w;
+  const pts = data.map((v, i) => `${i * step},${h - (v / max) * (h - 10)}`).join(' ');
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-      <polyline fill="none" stroke={stroke} strokeWidth="2.5" points={points} strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline fill="none" stroke={stroke} strokeWidth="2.5" points={pts} strokeLinecap="round" strokeLinejoin="round" />
       {data.map((v, i) => (
-        <circle key={i} cx={i * step} cy={height - (v / max) * (height - 10)} r="3.5" fill={stroke} />
+        <circle key={i} cx={i * step} cy={h - (v / max) * (h - 10)} r={3.3} fill={stroke} />
       ))}
     </svg>
   );
 }
 
-function BarChart({ labels, values, width = 340, height = 140, color = "#0f172a" }: { labels: string[]; values: number[]; width?: number; height?: number; color?: string }) {
-  if (!values || values.length === 0) values = [0];
-  const max = Math.max(...values, 1);
-  const bw = Math.max(14, width / values.length - 8);
+function BarChart({
+  labels,
+  values,
+  w = 360,
+  h = 120,
+  color = '#06B6D4',
+}: {
+  labels: string[];
+  values: number[];
+  w?: number;
+  h?: number;
+  color?: string;
+}) {
+  const max = Math.max(1, ...values);
+  const gap = 10;
+  const bw = Math.max(16, w / values.length - gap);
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
       {values.map((v, i) => {
-        const x = i * (bw + 8) + 10;
-        const h = (v / max) * (height - 24);
+        const x = i * (bw + gap) + 8;
+        const barH = (v / max) * (h - 26);
         return (
           <g key={i}>
-            <rect x={x} y={height - h - 20} width={bw} height={h} rx={4} fill={color} />
-            <text x={x + bw / 2} y={height - 6} fontSize="10" textAnchor="middle" fill="#6b7280">
+            <rect x={x} y={h - barH - 20} width={bw} height={barH} rx={6} fill={color} />
+            <text x={x + bw / 2} y={h - 6} fontSize="10" textAnchor="middle" fill="#94A3B8">
               {labels[i]}
             </text>
           </g>
@@ -108,707 +114,51 @@ function BarChart({ labels, values, width = 340, height = 140, color = "#0f172a"
   );
 }
 
-function Donut({ values = [1, 1, 1], colors = ["#0ea5e9", "#8b5cf6", "#f59e0b"], size = 140 }: { values?: number[]; colors?: string[]; size?: number }) {
+function Donut({
+  values,
+  colors,
+  size = 140,
+}: {
+  values: number[];
+  colors: string[];
+  size?: number;
+}) {
   const total = values.reduce((s, v) => s + v, 0) || 1;
-  let angle = -90;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 8;
+  let angle = -90;
+
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {values.map((v, i) => {
-        const portion = v / total;
+        const slice = (v / total) * 360;
         const a1 = (angle * Math.PI) / 180;
-        const a2 = ((angle + portion * 360) * Math.PI) / 180;
+        const a2 = ((angle + slice) * Math.PI) / 180;
         const x1 = cx + r * Math.cos(a1);
         const y1 = cy + r * Math.sin(a1);
         const x2 = cx + r * Math.cos(a2);
         const y2 = cy + r * Math.sin(a2);
-        const large = portion > 0.5 ? 1 : 0;
-        const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
-        angle += portion * 360;
-        return <path key={i} d={path} fill={colors[i % colors.length]} />;
+        const large = slice > 180 ? 1 : 0;
+        angle += slice;
+        return <path key={i} d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`} fill={colors[i % colors.length]} />;
       })}
-      <circle cx={cx} cy={cy} r={r * 0.55} fill="#fff" />
+      <circle cx={cx} cy={cy} r={r * 0.56} fill="#fff" />
     </svg>
   );
 }
 
-// ---------- Theme ----------
-function useTheme(defaultDark = true) {
-  const [dark, setDark] = useState<boolean>(defaultDark);
-  useEffect(() => {
-    const saved = localStorage.getItem("lac_theme");
-    if (saved) setDark(saved === "dark");
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("lac_theme", dark ? "dark" : "light");
-  }, [dark]);
-  const t = useMemo(
-    () => ({
-      dark,
-      bg: dark ? "#070F22" : "#F5F7FB",
-      text: dark ? "#E8EEF7" : "#0F172A",
-      mut: dark ? "#9AA6B2" : "#64748B",
-      card: dark ? "rgba(16,28,56,.72)" : "#ffffff",
-      border: dark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.08)",
-      accent: "#06B6D4",
-      accent2: "#8B5CF6",
-      ok: "#10B981",
-      danger: "#EF4444",
-      shadow: dark ? "0 30px 80px rgba(2,6,23,.55)" : "0 30px 80px rgba(2,6,23,.12)",
-      radius: 18,
-    }),
-    [dark]
-  );
-  return { dark, setDark, t };
-}
+/** ========= HELPERS ========= */
+const currency = (n: number) => '$' + (n || 0).toLocaleString();
 
-export default function AdminPage() {
-  return (
-    <RequireAuth allowed={["admin"]}>
-      <Admin2025 />
-    </RequireAuth>
-  );
-}
-
-function Admin2025() {
-  const { dark, setDark, t } = useTheme(true);
-  const [page, setPage] = useState<string>("Overview");
-  const [q, setQ] = useState<string>("");
-
-  const projects = useMemo(() => SAMPLE_PROJECTS, []);
-  const activity = useMemo(() => SAMPLE_ACTIVITY, []);
-
-  const delivered = projects.filter((p) => p.status === "Delivered");
-  const deliveredByService = useMemo(() => {
-    const map = new Map<string, number>();
-    delivered.forEach((p) => map.set(p.service, (map.get(p.service) || 0) + 1));
-    return Array.from(map.entries()).map(([service, count]) => ({ service, count }));
-  }, [delivered]);
-
-  const revenueByService = useMemo(() => {
-    const map = new Map<string, number>();
-    projects.forEach((p) => map.set(p.service, (map.get(p.service) || 0) + p.paid));
-    const rows = Array.from(map.entries()).map(([service, sum]) => ({ service, sum }));
-    const values = rows.map((r) => r.sum);
-    const labels = rows.map((r) => r.service);
-    return { rows, values, labels };
-  }, [projects]);
-
-  const kpis: KPI[] = useMemo(() => {
-    const totalRevenue = projects.reduce((s, p) => s + p.paid, 0);
-    const receivables = projects.reduce((s, p) => s + Math.max(p.budget - p.paid, 0), 0);
-    const active = projects.filter((p) => p.status !== "Delivered").length;
-    return [
-      { label: "Revenue (Paid)", value: currency(totalRevenue), sub: "YTD collected" },
-      { label: "Receivables", value: currency(receivables), sub: "Outstanding" },
-      { label: "Active Projects", value: String(active), sub: "In progress" },
-    ];
-  }, [projects]);
-
-  const filteredProjects = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return projects;
-    return projects.filter(
-      (p) =>
-        p.title.toLowerCase().includes(needle) ||
-        p.client.toLowerCase().includes(needle) ||
-        p.code.toLowerCase().includes(needle)
-    );
-  }, [q, projects]);
-
-  // ---- Profile editable state (client-side only preview) ----
-  const [profile, setProfile] = useState({
-    name: "Admin Alice",
-    email: "admin@lacreativo.com",
-    phone: "+92 300 0000000",
-    dob: "1985-10-04",
-    city: "Karachi",
-    state: "Sindh",
-    zip: "75500",
-    socials: { linkedin: "https://linkedin.com/company/lacreativo", twitter: "https://x.com/lacreativo" },
-    role: "admin" as Role,
-    designation: "Administrator",
-  });
-
-  // ---- UI ----
-  return (
-    <div className="wrap" style={{ background: t.bg, color: t.text }}>
-      <aside className="sidebar" style={{ background: dark ? "#081227" : "#ffffff", borderRight: `1px solid ${t.border}` }}>
-        <div className="brand">
-          <div className="logo">LA&nbsp;CREATIVO</div>
-          <div className="mode">
-            <span>{dark ? "Dark" : "Light"}</span>
-            <label className="switch">
-              <input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} />
-              <span className="slider" />
-            </label>
-          </div>
-        </div>
-
-        <nav className="nav">
-          {[
-            "Overview",
-            "Team Analytics",
-            "Hierarchy",
-            "Activity",
-            "Projects",
-            "Clients",
-            "Finance",
-            "Reports",
-            "Settings",
-            "Profile",
-          ].map((p) => (
-            <button
-              key={p}
-              className={`navbtn ${page === p ? "active" : ""}`}
-              onClick={() => setPage(p)}
-              style={{ borderColor: t.border }}
-            >
-              {p}
-            </button>
-          ))}
-        </nav>
-
-        <div className="asideFoot" style={{ color: t.mut }}>© {new Date().getFullYear()} LA CREATIVO</div>
-      </aside>
-
-      <main className="main">
-        {/* Topbar */}
-        <div className="topbar" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="search">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search: client, project, or LC-code"
-              aria-label="Search"
-            />
-            <button className="btn minor" onClick={() => setQ("")}>Clear</button>
-          </div>
-          <div className="who">
-            <div className="avatar">A</div>
-            <div className="meta">
-              <div className="nm">Admin Alice</div>
-              <div className="rl" style={{ color: t.mut }}>Administrator</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pages */}
-        {page === "Overview" && (
-          <section className="pad">
-            {/* KPIs */}
-            <div className="kpis">
-              {kpis.map((k) => (
-                <div key={k.label} className="kpi" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                  <div className="khead">{k.label}</div>
-                  <div className="kval">{k.value}</div>
-                  <div className="ksub" style={{ color: t.mut }}>{k.sub}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Charts + Donut */}
-            <div className="grid2">
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Sales (Last 6 months)</span></div>
-                <LineChart data={SALES_SERIES} width={640} height={160} stroke={t.accent2} />
-              </div>
-
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Tasks Distribution</span></div>
-                <BarChart
-                  labels={["Todo", "In Progress", "Blocked", "Done"]}
-                  values={[TASKS_DIST.todo, TASKS_DIST.inProgress, TASKS_DIST.blocked, TASKS_DIST.done]}
-                  width={360}
-                  height={160}
-                  color={dark ? "#e2e8f0" : "#0f172a"}
-                />
-              </div>
-            </div>
-
-            <div className="grid2">
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Revenue by Service</span></div>
-                <div className="donutRow">
-                  <Donut values={revenueByService.values} colors={[t.accent, t.accent2, "#f59e0b", "#22c55e", "#ef4444"]} size={160} />
-                  <div className="legend">
-                    {revenueByService.rows.map((r) => (
-                      <div key={r.service} className="legrow">
-                        <div className="lbl">{r.service}</div>
-                        <div className="val">{currency(r.sum)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Delivered Projects (service-wise)</span></div>
-                <div className="table">
-                  <div className="thead">
-                    <div>Service</div>
-                    <div>Delivered</div>
-                  </div>
-                  {deliveredByService.map((r) => (
-                    <div key={r.service} className="trow">
-                      <div>{r.service}</div>
-                      <div>{r.count}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Projects + Activity */}
-            <div className="grid2">
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Projects</span></div>
-                <div className="table">
-                  <div className="thead">
-                    <div>Project</div>
-                    <div>Client</div>
-                    <div>Service</div>
-                    <div>AM</div>
-                    <div>Status</div>
-                    <div>Budget</div>
-                    <div>Paid</div>
-                    <div>Code</div>
-                  </div>
-                  {filteredProjects.map((p) => (
-                    <div key={p.id} className="trow">
-                      <div>{p.title}</div>
-                      <div>{p.client}</div>
-                      <div>{p.service}</div>
-                      <div>{p.am}</div>
-                      <div>{p.status}</div>
-                      <div>{currency(p.budget)}</div>
-                      <div>{currency(p.paid)}</div>
-                      <div>{p.code}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Recent Activity</span></div>
-                <div className="feed">
-                  {activity.map((a) => (
-                    <div key={a.id} className="feedrow">
-                      <div className="dot" />
-                      <div>
-                        <div className="what">{a.what}{a.projectCode ? ` (${a.projectCode})` : ""}</div>
-                        <div className="mut" style={{ color: t.mut }}>
-                          {new Date(a.at).toLocaleString()} • {a.who}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {page === "Team Analytics" && (
-          <section className="pad">
-            <div className="ph" style={{ marginBottom: 12 }}><span>Team KPIs</span></div>
-            <div className="table cardlike" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="thead">
-                <div>Name</div>
-                <div>Role</div>
-                <div>Active</div>
-                <div>On-time</div>
-                <div>CSAT</div>
-              </div>
-              {TEAM.map((m) => (
-                <div key={m.name} className="trow">
-                  <div>{m.name}</div>
-                  <div style={{ textTransform: "uppercase", fontSize: 12 }}>{m.role}</div>
-                  <div>{m.kpi.active}</div>
-                  <div>{m.kpi.onTime}</div>
-                  <div>{m.kpi.csat}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {page === "Hierarchy" && (
-          <section className="pad">
-            <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="ph"><span>Company Hierarchy</span></div>
-              <div className="tree">
-                <div className="node">
-                  <div className="badge admin">Admin</div>
-                  <div className="children">
-                    <div className="node">
-                      <div className="badge am">AM Lead</div>
-                      <div className="children">
-                        <div className="badge am">AM — Sana</div>
-                        <div className="badge am">AM — Ali</div>
-                      </div>
-                    </div>
-                    <div className="node">
-                      <div className="badge sales">Sales Lead</div>
-                      <div className="children">
-                        <div className="badge sales">Sales — Sara</div>
-                      </div>
-                    </div>
-                    <div className="node">
-                      <div className="badge prod">Production Lead</div>
-                      <div className="children">
-                        <div className="badge prod">Designer — Imran</div>
-                        <div className="badge prod">Developer — Dario</div>
-                      </div>
-                    </div>
-                    <div className="node">
-                      <div className="badge hr">HR</div>
-                    </div>
-                    <div className="node">
-                      <div className="badge fin">Finance</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {page === "Activity" && (
-          <section className="pad">
-            <div className="ph" style={{ marginBottom: 12 }}><span>Activity Log</span></div>
-            <div className="feed cardlike" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              {activity.map((a) => (
-                <div key={a.id} className="feedrow">
-                  <div className="dot" />
-                  <div>
-                    <div className="what">{a.what}{a.projectCode ? ` (${a.projectCode})` : ""}</div>
-                    <div className="mut" style={{ color: t.mut }}>
-                      {new Date(a.at).toLocaleString()} • {a.who}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {page === "Projects" && (
-          <section className="pad">
-            <div className="ph" style={{ marginBottom: 12 }}><span>Projects</span></div>
-            <div className="table cardlike" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="thead">
-                <div>Code</div>
-                <div>Title</div>
-                <div>Client</div>
-                <div>Service</div>
-                <div>AM</div>
-                <div>Status</div>
-                <div>Budget</div>
-                <div>Paid</div>
-              </div>
-              {filteredProjects.map((p) => (
-                <div key={p.id} className="trow clickable" title="Opens details (demo)">
-                  <div>{p.code}</div>
-                  <div>{p.title}</div>
-                  <div>{p.client}</div>
-                  <div>{p.service}</div>
-                  <div>{p.am}</div>
-                  <div>{p.status}</div>
-                  <div>{currency(p.budget)}</div>
-                  <div>{currency(p.paid)}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {page === "Clients" && (
-          <section className="pad">
-            <div className="ph" style={{ marginBottom: 12 }}><span>Clients</span></div>
-            <div className="table cardlike" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="thead">
-                <div>Client</div>
-                <div>Active Projects</div>
-                <div>Total Paid</div>
-                <div>AM</div>
-              </div>
-              {Object.values(
-                filteredProjects.reduce((acc: any, p) => {
-                  if (!acc[p.client]) acc[p.client] = { client: p.client, count: 0, paid: 0, am: p.am };
-                  acc[p.client].count += 1;
-                  acc[p.client].paid += p.paid;
-                  acc[p.client].am = p.am;
-                  return acc;
-                }, {})
-              ).map((r: any) => (
-                <div key={r.client} className="trow">
-                  <div>{r.client}</div>
-                  <div>{r.count}</div>
-                  <div>{currency(r.paid)}</div>
-                  <div>{r.am}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {page === "Finance" && (
-          <section className="pad">
-            <div className="grid2">
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Receivables vs Paid</span></div>
-                <LineChart
-                  data={[
-                    projects.reduce((s, p) => s + p.paid, 0),
-                    projects.reduce((s, p) => s + Math.max(p.budget - p.paid, 0), 0),
-                  ]}
-                  width={640}
-                  height={160}
-                  stroke={t.accent}
-                />
-              </div>
-
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Collection Health</span></div>
-                <BarChart labels={["Paid", "Outstanding"]} values={[
-                  projects.reduce((s, p) => s + p.paid, 0),
-                  projects.reduce((s, p) => s + Math.max(p.budget - p.paid, 0), 0),
-                ]} width={360} height={160} color={dark ? "#e2e8f0" : "#0f172a"} />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {page === "Reports" && (
-          <section className="pad">
-            <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="ph"><span>Exports</span></div>
-              <p className="mut" style={{ color: t.mut, marginTop: 8 }}>Download CSV snapshots (demo data).</p>
-              <div className="rowgap">
-                <button className="btn" onClick={() => exportCSV(projects, "projects.csv")}>Export Projects CSV</button>
-                <button className="btn" onClick={() => exportCSV(delivered, "delivered.csv")}>Export Delivered CSV</button>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {page === "Settings" && (
-          <section className="pad">
-            <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-              <div className="ph"><span>System Settings</span></div>
-              <div className="rowgap">
-                <div className="mut" style={{ color: t.mut }}>Admin can manage roles, reset passwords, and reassign AM/Sales.</div>
-                <button className="btn minor">Manage Roles (demo)</button>
-                <button className="btn minor">Reassign Projects (demo)</button>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {page === "Profile" && (
-          <section className="pad">
-            <div className="grid2">
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Personal Profile</span></div>
-                <form className="form" onSubmit={(e) => e.preventDefault()}>
-                  <label>
-                    <span>Name</span>
-                    <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
-                  </label>
-                  <label>
-                    <span>Email</span>
-                    <input value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
-                  </label>
-                  <label>
-                    <span>Phone</span>
-                    <input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
-                  </label>
-                  <div className="row2">
-                    <label>
-                      <span>DOB</span>
-                      <input type="date" value={profile.dob} onChange={(e) => setProfile({ ...profile, dob: e.target.value })} />
-                    </label>
-                    <label>
-                      <span>Role</span>
-                      <input value={profile.role} readOnly />
-                    </label>
-                  </div>
-                  <div className="row2">
-                    <label>
-                      <span>City</span>
-                      <input value={profile.city} onChange={(e) => setProfile({ ...profile, city: e.target.value })} />
-                    </label>
-                    <label>
-                      <span>State</span>
-                      <input value={profile.state} onChange={(e) => setProfile({ ...profile, state: e.target.value })} />
-                    </label>
-                  </div>
-                  <div className="row2">
-                    <label>
-                      <span>Zip</span>
-                      <input value={profile.zip} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} />
-                    </label>
-                    <label>
-                      <span>Designation</span>
-                      <input value={profile.designation} onChange={(e) => setProfile({ ...profile, designation: e.target.value })} />
-                    </label>
-                  </div>
-                  <label>
-                    <span>LinkedIn</span>
-                    <input
-                      value={profile.socials.linkedin}
-                      onChange={(e) => setProfile({ ...profile, socials: { ...profile.socials, linkedin: e.target.value } })}
-                    />
-                  </label>
-                  <label>
-                    <span>X/Twitter</span>
-                    <input
-                      value={profile.socials.twitter}
-                      onChange={(e) => setProfile({ ...profile, socials: { ...profile.socials, twitter: e.target.value } })}
-                    />
-                  </label>
-
-                  <div className="rowgap">
-                    <button className="btn" onClick={() => alert("Saved (demo).")}>Save Profile</button>
-                  </div>
-                </form>
-              </div>
-
-              <div className="panel" style={{ background: t.card, border: `1px solid ${t.border}`, boxShadow: t.shadow }}>
-                <div className="ph"><span>Change Password</span></div>
-                <form className="form" onSubmit={(e) => e.preventDefault()}>
-                  <label>
-                    <span>Current Password</span>
-                    <input type="password" placeholder="••••••••" />
-                  </label>
-                  <label>
-                    <span>New Password</span>
-                    <input type="password" placeholder="••••••••" />
-                  </label>
-                  <label>
-                    <span>Confirm New Password</span>
-                    <input type="password" placeholder="••••••••" />
-                  </label>
-                  <button className="btn" onClick={() => alert("Password change simulated (demo).")}>Update Password</button>
-                </form>
-              </div>
-            </div>
-          </section>
-        )}
-      </main>
-
-      {/* Styles */}
-      <style>{`
-        * { box-sizing: border-box; }
-        .wrap { min-height: 100vh; display: grid; grid-template-columns: 280px 1fr; }
-        .sidebar { padding: 18px; display: flex; flex-direction: column; }
-        .brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .logo { font-weight: 900; letter-spacing: -0.4px; color: #06B6D4; }
-        .mode { display: flex; align-items: center; gap: 10px; }
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 999px; transition: .2s; }
-        .slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: .2s; }
-        .switch input:checked + .slider { background: #06B6D4; }
-        .switch input:checked + .slider:before { transform: translateX(20px); }
-
-        .nav { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-        .navbtn { text-align: left; background: transparent; color: inherit; border: 1px solid transparent; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
-        .navbtn:hover { border-color: rgba(255,255,255,.12); }
-        .navbtn.active { background: rgba(6,182,212,.12); border-color: rgba(6,182,212,.35); }
-
-        .asideFoot { margin-top: auto; font-size: 12px; }
-
-        .main { display: flex; flex-direction: column; min-width: 0; }
-        .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; }
-        .search { display: flex; gap: 8px; align-items: center; }
-        .search input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(15,23,42,.12); outline: none; min-width: 260px; }
-        .who { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #06B6D4; color: white; font-weight: 800; }
-        .meta .nm { font-weight: 700; }
-        .meta .rl { font-size: 12px; }
-
-        .pad { padding: 18px; display: grid; gap: 16px; }
-        .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-        .kpi { border-radius: 14px; padding: 14px; }
-        .khead { font-size: 12px; opacity: .9; }
-        .kval { font-size: 22px; font-weight: 800; margin-top: 6px; }
-        .ksub { font-size: 12px; margin-top: 2px; }
-
-        .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-        .panel { border-radius: 14px; padding: 14px; }
-        .ph { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 700; }
-
-        .donutRow { display: flex; gap: 12px; align-items: center; }
-        .legend { display: grid; gap: 6px; }
-        .legrow { display: flex; justify-content: space-between; gap: 16px; min-width: 220px; }
-
-        .table { display: grid; gap: 6px; }
-        .thead, .trow { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; padding: 10px 8px; border-bottom: 1px dashed rgba(15,23,42,.12); }
-        .thead { font-size: 12px; opacity: .8; font-weight: 700; }
-        .trow.clickable { cursor: pointer; }
-        .trow.clickable:hover { background: rgba(6,182,212,.08); border-radius: 10px; }
-
-        .feed { display: grid; gap: 10px; }
-        .feedrow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed rgba(15,23,42,.12); }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #06B6D4; margin-top: 8px; }
-        .what { font-weight: 700; }
-
-        .btn { background: #06B6D4; color: white; border: none; border-radius: 10px; padding: 10px 12px; cursor: pointer; font-weight: 700; }
-        .btn.minor { background: transparent; color: inherit; border: 1px solid rgba(15,23,42,.18); }
-
-        .rowgap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .form { display: grid; gap: 10px; }
-        .form label { display: grid; gap: 6px; }
-        .form input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(15,23,42,.18); background: transparent; color: inherit; }
-
-        .cardlike { border-radius: 14px; padding: 12px; }
-
-        .tree { padding: 10px; }
-        .node { margin-left: 10px; }
-        .children { margin-left: 16px; display: grid; gap: 6px; margin-top: 6px; }
-        .badge { display: inline-block; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-        .badge.admin { background: rgba(6,182,212,.15); }
-        .badge.am { background: rgba(99,102,241,.15); }
-        .badge.sales { background: rgba(234,179,8,.18); }
-        .badge.prod { background: rgba(34,197,94,.18); }
-        .badge.hr { background: rgba(244,63,94,.18); }
-        .badge.fin { background: rgba(14,165,233,.18); }
-
-        @media (max-width: 1024px) {
-          .wrap { grid-template-columns: 1fr; }
-          .sidebar { display: none; }
-          .grid2 { grid-template-columns: 1fr; }
-          .thead, .trow { grid-template-columns: repeat(2, 1fr); }
-          .kpis { grid-template-columns: 1fr; }
-        }
-      `}</style>
-    </div>
-  );
-}
-// --------- CSV Export (client demo) ----------
-function exportCSV(rows: any[], filename: string) {
-  if (!rows || rows.length === 0) {
-    alert("Nothing to export");
-    return;
-  }
-
-  const header = Object.keys(rows[0]);
-  const csvRows = [
-    header.join(","),
-    ...rows.map((row) =>
-      header.map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`).join(",")
-    ),
-  ];
-
-  const csv = csvRows.join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
+function exportCSV(rows: Record<string, any>[], filename = 'export.csv') {
+  if (!rows?.length) return;
+  const headers = Object.keys(rows[0]);
+  const data = [headers, ...rows.map((r) => headers.map((h) => String(r[h] ?? '')))];
+  const csv = data.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -816,131 +166,669 @@ function exportCSV(rows: any[], filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
-    >
-      {/* SIDEBAR */}
-      <aside
+
+/** ========= ADMIN PAGE (LOCKED 2025) ========= */
+export default function AdminPage() {
+  const t = useTheme(true);
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'overview' | 'team' | 'hierarchy' | 'activity' | 'projects' | 'clients' | 'finance' | 'reports' | 'settings' | 'profile'>(
+    'overview'
+  );
+
+  const lineSeries = [14, 18, 16, 22, 21, 26, 25, 29, 33, 31, 36, 40];
+  const barLabels = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'];
+  const barValues = [5, 7, 6, 9, 8, 10];
+  const donutVals = [48, 32, 20];
+
+  const filtered = useMemo(
+    () => PROJECTS.filter((p) => [p.id, p.title, p.client, p.am].join(' ').toLowerCase().includes(search.toLowerCase())),
+    [search]
+  );
+
+  return (
+    <RequireAuth allowed={['admin']}>
+      <div
         style={{
-          width: 240,
-          padding: "24px 20px",
-          background: dark ? "#0B1426" : "#FFFFFF",
-          borderRight: `1px solid ${t.border}`,
-          position: "sticky",
-          top: 0,
-          height: "100vh",
+          minHeight: '100vh',
+          background: `${t.bg}, ${t.glowA}, ${t.glowB}`,
+          color: t.text,
+          display: 'flex',
         }}
       >
-        <div style={{ fontWeight: 900, fontSize: 20, marginBottom: 30, color: "#06B6D4" }}>
-          LA CREATIVO
-        </div>
-
-        {[
-          "Overview",
-          "Team Analytics",
-          "Hierarchy",
-          "Activity",
-          "Projects",
-          "Clients",
-          "Team",
-          "Finance",
-          "Reports",
-          "Settings",
-          "Profile",
-        ].map((item) => (
-          <div
-            key={item}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              cursor: "pointer",
-              marginBottom: 6,
-              fontWeight: 600,
-              color: t.muted,
-            }}
-          >
-            {item}
-          </div>
-        ))}
-
-        <button
-          onClick={() => setDark((d) => !d)}
+        {/* SIDEBAR */}
+        <aside
           style={{
-            marginTop: 30,
-            padding: "10px 12px",
-            width: "100%",
-            borderRadius: 10,
-            border: `1px solid ${t.border}`,
-            background: "transparent",
-            color: t.text,
-            cursor: "pointer",
-          }}
-        >
-          {dark ? "Light Mode" : "Dark Mode"}
-        </button>
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <main style={{ flex: 1, padding: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Admin Overview</h1>
-
-        {/* KPIs */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
-            gap: 20,
-            marginBottom: 30,
-          }}
-        >
-          {kpi.map((k) => (
-            <div
-              key={k.label}
-              style={{
-                background: t.card,
-                padding: 20,
-                borderRadius: 16,
-                border: `1px solid ${t.border}`,
-              }}
-            >
-              <div style={{ fontSize: 14, color: t.muted }}>{k.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{k.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* PROJECTS TABLE */}
-        <div
-          style={{
-            background: t.card,
-            borderRadius: 16,
+            width: 280,
             padding: 20,
-            border: `1px solid ${t.border}`,
+            borderRight: `1px solid ${t.border}`,
+            background: t.dark ? 'linear-gradient(180deg,#071127,#071a2a)' : 'linear-gradient(180deg,#ffffff,#f1f5f9)',
           }}
         >
-          <h2 style={{ fontSize: 20, marginBottom: 16 }}>Recent Projects</h2>
+          <div style={{ fontWeight: 900, letterSpacing: -0.4, color: t.brand, fontSize: 18, marginBottom: 12 }}>LA CREATIVO — Admin</div>
 
-          {sampleProjects.map((p) => (
-            <div
-              key={p.id}
+          {/* Theme toggle (switch style, not a button) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: t.mut }}>Theme</div>
+            <label style={{ position: 'relative', width: 60, height: 30, display: 'inline-block' }}>
+              <input
+                type="checkbox"
+                checked={t.dark}
+                onChange={(e) => t.setDark(e.target.checked)}
+                style={{ display: 'none' }}
+                aria-label="Toggle theme"
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: t.dark ? '#0b1b2b' : '#e2e8f0',
+                  borderRadius: 999,
+                  boxShadow: t.shadow,
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: t.dark ? 32 : 3,
+                  width: 24,
+                  height: 24,
+                  background: t.dark ? t.accent : '#fff',
+                  borderRadius: '50%',
+                  transition: 'left .18s',
+                  border: `1px solid ${t.border}`,
+                }}
+              />
+            </label>
+          </div>
+
+          {/* Nav */}
+          <nav style={{ display: 'grid', gap: 6 }}>
+            {[
+              ['overview', 'Overview'],
+              ['team', 'Team Analytics'],
+              ['hierarchy', 'Hierarchy'],
+              ['activity', 'Activity'],
+              ['projects', 'Projects'],
+              ['clients', 'Clients'],
+              ['finance', 'Finance'],
+              ['reports', 'Reports'],
+              ['settings', 'Settings'],
+              ['profile', 'Profile'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key as any)}
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: 0,
+                  cursor: 'pointer',
+                  background: tab === key ? (t.dark ? '#0b1b2b' : '#eef2ff') : 'transparent',
+                  color: tab === key ? t.text : t.mut,
+                  fontWeight: 700,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Quick Actions */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12, color: t.mut, marginBottom: 8 }}>Quick actions</div>
+            <button
+              onClick={() => exportCSV(PROJECTS, 'projects.csv')}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "12px 0",
-                borderBottom: `1px solid ${t.border}`,
+                padding: '10px 12px',
+                borderRadius: 12,
+                border: 0,
+                cursor: 'pointer',
+                background: t.brand,
+                color: '#fff',
+                fontWeight: 800,
+                width: '100%',
               }}
             >
-              <div>
-                <b>{p.title}</b>
-                <div style={{ fontSize: 13, color: t.muted }}>{p.client}</div>
+              Export Projects CSV
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN */}
+        <main style={{ flex: 1, padding: 28 }}>
+          {/* Top bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: t.card,
+                  borderRadius: 12,
+                  border: `1px solid ${t.border}`,
+                  padding: '10px 12px',
+                }}
+              >
+                <span>🔎</span>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search projects, clients, AMs…"
+                  style={{
+                    border: 0,
+                    outline: 'none',
+                    background: 'transparent',
+                    color: t.text,
+                    width: 280,
+                  }}
+                />
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 700 }}>{p.amount}</div>
-                <div style={{ fontSize: 13, color: t.muted }}>{p.status}</div>
+              <div style={{ fontSize: 12, color: t.mut }}>ADMIN • LAC-ADMIN-LOCKED-2025.10.24-v1.0</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                title="Notifications"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: t.card,
+                  border: `1px solid ${t.border}`,
+                  cursor: 'pointer',
+                }}
+                onClick={() => alert('Demo notifications')}
+              >
+                🔔
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    background: t.card,
+                    border: `1px solid ${t.border}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  👤
+                </div>
+                <div style={{ lineHeight: 1 }}>
+                  <div style={{ fontWeight: 800 }}>Admin</div>
+                  <div style={{ fontSize: 12, color: t.mut }}>Full Access</div>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </main>
-    </div>
-  </RequireAuth>
+          </div>
+
+          {/* TABS */}
+          {tab === 'overview' && (
+            <section>
+              {/* KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 16 }}>
+                <Card t={t}>
+                  <Label>Revenue (YTD)</Label>
+                  <Big>{currency(KPI.revenueYTD)}</Big>
+                  <Small>Across all services</Small>
+                </Card>
+                <Card t={t}>
+                  <Label>Gross Margin</Label>
+                  <Big>{Math.round(KPI.margin * 100)}%</Big>
+                  <Small>After delivery costs</Small>
+                </Card>
+                <Card t={t}>
+                  <Label>Active Projects</Label>
+                  <Big>{KPI.actives}</Big>
+                  <Small>In delivery pipeline</Small>
+                </Card>
+                <Card t={t}>
+                  <Label>Overdue</Label>
+                  <Big style={{ color: t.warn }}>{KPI.overdue}</Big>
+                  <Small>Needs attention</Small>
+                </Card>
+              </div>
+
+              {/* Charts Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                <Card t={t}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0 }}>Sales Trend</h3>
+                    <Small>Last 12 months</Small>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <LineChart data={lineSeries} w={680} h={140} stroke={t.accent} />
+                  </div>
+                </Card>
+
+                <div style={{ display: 'grid', gap: 16 }}>
+                  <Card t={t}>
+                    <h4 style={{ margin: '0 0 6px 0' }}>Revenue Mix</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Donut values={donutVals} colors={[t.accent, t.brand, '#F43F5E']} size={140} />
+                      <div style={{ fontSize: 13, color: t.mut }}>
+                        <RowJustify a="Web/App" b="$230k" />
+                        <RowJustify a="Branding" b="$160k" />
+                        <RowJustify a="SEO/Social" b="$92k" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card t={t}>
+                    <h4 style={{ margin: '0 0 6px 0' }}>Weekly Throughput</h4>
+                    <BarChart labels={barLabels} values={barValues} w={320} h={120} color={t.brand} />
+                  </Card>
+                </div>
+              </div>
+
+              {/* Projects Table */}
+              <Card t={t} style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0 }}>Projects</h3>
+                  <button
+                    onClick={() => exportCSV(PROJECTS, 'projects.csv')}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+                <div style={{ marginTop: 10, overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: `1px dashed ${t.border}`, color: t.mut, fontSize: 12 }}>
+                        <th style={{ padding: '8px 6px' }}>Order ID</th>
+                        <th style={{ padding: '8px 6px' }}>Project</th>
+                        <th style={{ padding: '8px 6px' }}>Client</th>
+                        <th style={{ padding: '8px 6px' }}>AM</th>
+                        <th style={{ padding: '8px 6px' }}>Status</th>
+                        <th style={{ padding: '8px 6px' }}>Budget</th>
+                        <th style={{ padding: '8px 6px' }}>Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((p) => (
+                        <tr key={p.id} style={{ borderBottom: `1px dashed ${t.border}` }}>
+                          <td style={{ padding: '10px 6px', fontWeight: 800 }}>{p.id}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.title}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.client}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.am}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.status}</td>
+                          <td style={{ padding: '10px 6px' }}>{currency(p.budget)}</td>
+                          <td style={{ padding: '10px 6px' }}>
+                            <div
+                              style={{
+                                height: 8,
+                                width: 120,
+                                background: t.dark ? '#0b1b2b' : '#e2e8f0',
+                                borderRadius: 999,
+                                overflow: 'hidden',
+                                border: `1px solid ${t.border}`,
+                              }}
+                            >
+                              <div style={{ height: '100%', width: `${p.progress}%`, background: t.ok }} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'team' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Team Analytics</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+                {TEAM.map((m) => (
+                  <Card key={m.name} t={t}>
+                    <h4 style={{ margin: '0 0 4px 0' }}>{m.name}</h4>
+                    <Small>KPIs this month</Small>
+                    <div style={{ height: 8 }} />
+                    <div style={{ display: 'grid', gap: 6, fontSize: 13 }}>
+                      <RowJustify a="Quota / Closed" b={`${currency(m.kpi.quota)} / ${currency(m.kpi.closed)}`} />
+                      <RowJustify a="Conversion" b={`${Math.round(m.kpi.conv * 100)}%`} />
+                      {'portfolio' in m.kpi && <RowJustify a="Portfolio" b={`${(m.kpi as any).portfolio}`} />}
+                      {'health' in m.kpi && <RowJustify a="Health" b={`${Math.round((m.kpi as any).health * 100)}%`} />}
+                      {'csat' in m.kpi && <RowJustify a="CSAT" b={`${(m.kpi as any).csat}/5`} />}
+                      {'tasks' in m.kpi && <RowJustify a="Open Tasks" b={`${(m.kpi as any).tasks}`} />}
+                      {'onTime' in m.kpi && <RowJustify a="On-time" b={`${Math.round((m.kpi as any).onTime * 100)}%`} />}
+                      {'bugs' in m.kpi && <RowJustify a="Bugs" b={`${(m.kpi as any).bugs}`} />}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {tab === 'hierarchy' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Hierarchy & Roles</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>
+                  View and assign team leads. When a user is marked as Team Lead, all users under their org node will display that line
+                  manager on their profile. (Data wiring via Firestore comes next.)
+                </p>
+                <button
+                  onClick={() => alert('Demo: would open hierarchy editor')}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${t.border}`,
+                    background: t.card,
+                    color: t.text,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Open Hierarchy Editor
+                </button>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'activity' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Recent Activity</h2>
+              <Card t={t}>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {ACTIVITY.map((a, i) => (
+                    <li key={i} style={{ padding: '10px 0', borderBottom: `1px dashed ${t.border}` }}>
+                      <strong>{a.t}</strong> — <span style={{ color: t.accent }}>{a.who}</span> • {a.what} (<code>{a.ref}</code>)
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'projects' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Projects</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>Clickable rows will route to project detail (wire to /app/projects/[id]).</p>
+                <div style={{ marginTop: 10, overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: `1px dashed ${t.border}`, color: t.mut, fontSize: 12 }}>
+                        <th style={{ padding: '8px 6px' }}>Order ID</th>
+                        <th style={{ padding: '8px 6px' }}>Project</th>
+                        <th style={{ padding: '8px 6px' }}>Client</th>
+                        <th style={{ padding: '8px 6px' }}>AM</th>
+                        <th style={{ padding: '8px 6px' }}>Status</th>
+                        <th style={{ padding: '8px 6px' }}>Budget</th>
+                        <th style={{ padding: '8px 6px' }}>Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((p) => (
+                        <tr key={p.id} style={{ borderBottom: `1px dashed ${t.border}`, cursor: 'pointer' }} onClick={() => alert(`Open ${p.id}`)}>
+                          <td style={{ padding: '10px 6px', fontWeight: 800 }}>{p.id}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.title}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.client}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.am}</td>
+                          <td style={{ padding: '10px 6px' }}>{p.status}</td>
+                          <td style={{ padding: '10px 6px' }}>{currency(p.budget)}</td>
+                          <td style={{ padding: '10px 6px' }}>
+                            <div
+                              style={{
+                                height: 8,
+                                width: 120,
+                                background: t.dark ? '#0b1b2b' : '#e2e8f0',
+                                borderRadius: 999,
+                                overflow: 'hidden',
+                                border: `1px solid ${t.border}`,
+                              }}
+                            >
+                              <div style={{ height: '100%', width: `${p.progress}%`, background: t.ok }} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'clients' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Clients</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>Client directory with payments and services (wire to /app/clients/[id]).</p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {['Acme Co', 'Bistro Ltd', 'Fintech Inc', 'Moda'].map((c) => (
+                    <li key={c} style={{ padding: '10px 0', borderBottom: `1px dashed ${t.border}` }}>
+                      <strong>{c}</strong> — Last invoice: <code>Paid</code>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'finance' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Finance</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>Mark paid (Admin only), export AR aging, and view monthly revenue run-rate.</p>
+                <div style={{ marginTop: 10 }}>
+                  <BarChart labels={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']} values={[62, 71, 68, 88, 79, 95]} w={520} h={120} color={t.accent} />
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'reports' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Reports</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>Export operational and finance reports. (Hook to server actions later.)</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => exportCSV(PROJECTS, 'projects.csv')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export Projects
+                  </button>
+                  <button
+                    onClick={() =>
+                      exportCSV(
+                        [
+                          { id: 'INV-001', client: 'Acme Co', amount: 3000, status: 'Due' },
+                          { id: 'INV-002', client: 'Bistro Ltd', amount: 1200, status: 'Paid' },
+                        ],
+                        'invoices.csv'
+                      )
+                    }
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export Invoices
+                  </button>
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'settings' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Settings</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>
+                  Company config (branding, email provider, role mapping, pipelines). (Wire to Firestore & Resend after auth.)
+                </p>
+              </Card>
+            </section>
+          )}
+
+          {tab === 'profile' && (
+            <section>
+              <h2 style={{ marginTop: 0 }}>Profile</h2>
+              <Card t={t}>
+                <p style={{ marginTop: 0, color: t.mut }}>Admin profile with uploader + password change (connect later to Firebase Auth).</p>
+                <div style={{ display: 'grid', gap: 10, maxWidth: 560 }}>
+                  <Input t={t} label="Name" placeholder="Your name" />
+                  <Input t={t} label="Email" placeholder="you@company.com" />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <Input t={t} label="City" placeholder="Karachi" />
+                    <Input t={t} label="State" placeholder="Sindh" />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <Input t={t} label="Zip" placeholder="-" />
+                    <Input t={t} label="Role" placeholder="Admin" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, color: t.mut, marginBottom: 6 }}>Profile Image</label>
+                    <div
+                      style={{
+                        border: `1px dashed ${t.border}`,
+                        borderRadius: 12,
+                        padding: 14,
+                        textAlign: 'center',
+                        background: t.dark ? '#0b1b2b' : '#fff',
+                        color: t.mut,
+                      }}
+                    >
+                      Click to upload (wire Uploadcare later)
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => alert('Demo save')}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: 0,
+                        background: t.brand,
+                        color: '#fff',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Save Profile
+                    </button>
+                    <button
+                      onClick={() => alert('Demo password change')}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: `1px solid ${t.border}`,
+                        background: t.card,
+                        color: t.text,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            </section>
+          )}
+        </main>
+      </div>
+    </RequireAuth>
   );
 }
+
+/** ========= UI ATOMS ========= */
+function Card({
+  t,
+  children,
+  style,
+}: {
+  t: ReturnType<typeof useTheme>;
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        background: t.card,
+        border: `1px solid ${t.border}`,
+        borderRadius: 18,
+        boxShadow: t.shadow,
+        padding: 16,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12, color: '#94A3B8' }}>{children}</div>;
+}
+function Big({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ marginTop: 8, fontWeight: 900, fontSize: 22, letterSpacing: -0.2, ...style }}>
+      {children}
+    </div>
+  );
+}
+function Small({ children }: { children: React.ReactNode }) {
+  return <div style={{ marginTop: 6, fontSize: 12, color: '#94A3B8' }}>{children}</div>;
+}
+function RowJustify({ a, b }: { a: string; b: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
+      <span>{a}</span>
+      <strong>{b}</strong>
+    </div>
+  );
+}
+
+function Input({ t, label, placeholder }: { t: ReturnType<typeof useTheme>; label: string; placeholder?: string }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 12, color: t.mut, marginBottom: 6 }}>{label}</label>
+      <input
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          padding: '12px 12px',
+          borderRadius: 12,
+          border: `1px solid ${t.border}`,
+          background: t.dark ? '#0b1b2b' : '#fff',
+          color: t.text,
+          outline: 'none',
+        }}
+      />
+    </div>
+  );
+                               }
