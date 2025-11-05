@@ -1,46 +1,297 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 
-const my = { company:"LA CREATIVO", address:"Karachi • Pakistan", email:"billing@lacreativo.com" };
-const invoice = { id:"INV-003", client:"Fintech Inc", items:[{name:"Dashboard Design", qty:1, price:8000}], total:8000, status:"Paid" };
+export default function ClientDashboard() {
+  const [dark, setDark] = useState(false);
 
-export default function Client(){
-  function downloadPDF(){
-    const win = window.open("", "PRINT", "height=650,width=900,top=100,left=150");
-    if(!win) return;
-    win.document.write(`<html><head><title>${invoice.id}</title></head><body>`);
-    win.document.write(`<h2 style="margin:0">Invoice ${invoice.id}</h2><div>${my.company} — ${my.address}</div><hr/>`);
-    win.document.write(`<div><b>Bill To:</b> ${invoice.client}</div>`);
-    win.document.write(`<table border="1" cellspacing="0" cellpadding="6" style="margin-top:8px;border-collapse:collapse;"><tr><th>Item</th><th>Qty</th><th>Price</th></tr>${
-      invoice.items.map(i=>`<tr><td>${i.name}</td><td>${i.qty}</td><td>$${i.price.toLocaleString()}</td></tr>`).join("")
-    }</table>`);
-    win.document.write(`<h3>Total: $${invoice.total.toLocaleString()}</h3>`);
-    win.document.write(`<div>Status: ${invoice.status}</div>`);
-    win.document.write(`</body></html>`);
-    win.document.close(); win.focus(); win.print(); win.close();
-  }
+  const theme = {
+    bg: dark ? "#0A0F1C" : "#F4F7FB",
+    sidebar: dark ? "#0E1629" : "#FFFFFF",
+    card: dark ? "#111C34" : "#FFFFFF",
+    border: dark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)",
+    text: dark ? "#E7ECF3" : "#0F172A",
+    muted: dark ? "#9AA8BC" : "#6B7280",
+    brand: "#06B6D4",
+  };
+
+  const projects = [
+    {
+      id: "C-PR-2001",
+      name: "Business Website – Skyline Interiors",
+      status: "In Revisions",
+      progress: 68,
+    },
+    {
+      id: "C-PR-2002",
+      name: "Brand Identity – Nordstone Holdings",
+      status: "Draft Submitted",
+      progress: 35,
+    },
+  ];
+
+  const invoices = [
+    { id: "INV-9001", amount: "$350", status: "Paid", date: "Oct 18, 2025" },
+    { id: "INV-9002", amount: "$220", status: "Pending", date: "Oct 29, 2025" },
+  ];
 
   return (
-    <div className="grid">
-      <h2 className="h">My Dashboard</h2>
-      <div className="kpis">
-        <div className="card kpi"><div className="mut">Active Projects</div><div className="v">2</div></div>
-        <div className="card kpi"><div className="mut">Invoices</div><div className="v">1 Paid</div></div>
-        <div className="card kpi"><div className="mut">AM</div><div className="v">Jane</div></div>
-        <div className="card kpi"><div className="mut">Last Update</div><div className="v">Today</div></div>
-      </div>
-
-      <section className="card">
-        <div className="row"><h3 className="h">Billing</h3><button className="btn" onClick={downloadPDF}>Download Paid Invoice (PDF)</button></div>
-        <div className="mut">Most recent: {invoice.id} — ${invoice.total.toLocaleString()} — {invoice.status}</div>
-      </section>
-
-      <section className="card">
-        <h3 className="h">Files</h3>
-        <div style={{border:"2px dashed rgba(148,163,184,.35)",padding:10,borderRadius:12}}>
-          <input type="file" /> <span className="mut">Attach revision notes if needed.</span>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        background: theme.bg,
+        color: theme.text,
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {/* SIDEBAR */}
+      <aside
+        style={{
+          width: 240,
+          background: theme.sidebar,
+          padding: "26px 18px",
+          borderRight: `1px solid ${theme.border}`,
+        }}
+      >
+        <div style={{ fontSize: 22, fontWeight: 900, color: theme.brand, marginBottom: 28 }}>
+          CLIENT DASHBOARD
         </div>
-      </section>
+
+        {["Overview", "Projects", "Billing", "Profile"].map((item) => (
+          <div
+            key={item}
+            style={{
+              padding: "10px 12px",
+              marginBottom: 6,
+              cursor: "pointer",
+              borderRadius: 10,
+              color: theme.muted,
+              fontWeight: 600,
+            }}
+          >
+            {item}
+          </div>
+        ))}
+
+        <button
+          onClick={() => setDark(!dark)}
+          style={{
+            marginTop: 30,
+            width: "100%",
+            padding: "10px",
+            borderRadius: 10,
+            border: `1px solid ${theme.border}`,
+            background: "transparent",
+            cursor: "pointer",
+            color: theme.text,
+          }}
+        >
+          {dark ? "Light Mode" : "Dark Mode"}
+        </button>
+      </aside>
+
+      {/* MAIN */}
+      <main style={{ flex: 1, padding: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Overview</h1>
+
+        {/* KPI CARDS */}
+        <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+          <div
+            style={{
+              flex: 1,
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ fontSize: 14, color: theme.muted }}>Active Projects</div>
+            <div style={{ fontSize: 32, fontWeight: 900 }}>{projects.length}</div>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ fontSize: 14, color: theme.muted }}>Paid Invoices</div>
+            <div style={{ fontSize: 32, fontWeight: 900 }}>
+              {invoices.filter((i) => i.status === "Paid").length}
+            </div>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ fontSize: 14, color: theme.muted }}>Pending Amount</div>
+            <div style={{ fontSize: 32, fontWeight: 900 }}>$220</div>
+          </div>
+        </div>
+
+        {/* PROJECT LIST */}
+        <div
+          style={{
+            background: theme.card,
+            padding: 20,
+            borderRadius: 16,
+            border: `1px solid ${theme.border}`,
+            marginBottom: 40,
+          }}
+        >
+          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Your Projects</h2>
+
+          {projects.map((p) => (
+            <div
+              key={p.id}
+              style={{
+                borderBottom: `1px solid ${theme.border}`,
+                padding: "14px 0",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700 }}>{p.name}</div>
+                <div style={{ fontSize: 13, color: theme.muted }}>
+                  {p.status} • {p.progress}% complete
+                </div>
+              </div>
+              <button
+                style={{
+                  padding: "8px 16px",
+                  background: theme.brand,
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                View
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* BILLING */}
+        <div
+          style={{
+            background: theme.card,
+            padding: 20,
+            borderRadius: 16,
+            border: `1px solid ${theme.border}`,
+            marginBottom: 40,
+          }}
+        >
+          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Billing</h2>
+
+          {invoices.map((inv) => (
+            <div
+              key={inv.id}
+              style={{
+                padding: "14px 0",
+                borderBottom: `1px solid ${theme.border}`,
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700 }}>{inv.id}</div>
+                <div style={{ fontSize: 13, color: theme.muted }}>{inv.date}</div>
+              </div>
+
+              <div style={{ fontWeight: 700 }}>{inv.amount}</div>
+
+              <button
+                style={{
+                  padding: "8px 16px",
+                  background:
+                    inv.status === "Paid" ? "#10B981" : "#F59E0B",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                {inv.status}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* PROFILE */}
+        <div
+          style={{
+            background: theme.card,
+            padding: 20,
+            borderRadius: 16,
+            border: `1px solid ${theme.border}`,
+          }}
+        >
+          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Profile</h2>
+
+          <div style={{ display: "grid", gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 13, color: theme.muted }}>Full Name</div>
+              <input
+                value="Mansoor Ahmed"
+                readOnly
+                style={{
+                  width: "100%",
+                  marginTop: 4,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: `1px solid ${theme.border}`,
+                  background: dark ? "#101A30" : "#fff",
+                  color: theme.text,
+                }}
+              />
+            </div>
+
+            <div>
+              <div style={{ fontSize: 13, color: theme.muted }}>Email</div>
+              <input
+                value="client@example.com"
+                readOnly
+                style={{
+                  width: "100%",
+                  marginTop: 4,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: `1px solid ${theme.border}`,
+                  background: dark ? "#101A30" : "#fff",
+                  color: theme.text,
+                }}
+              />
+            </div>
+
+            <button
+              style={{
+                marginTop: 10,
+                padding: "12px 16px",
+                background: theme.brand,
+                borderRadius: 10,
+                border: "none",
+                cursor: "pointer",
+                color: "#fff",
+                fontWeight: 700,
+                width: 180,
+              }}
+            >
+              Update Profile
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
