@@ -1,40 +1,170 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState } from 'react';
-import RequireAuth from '@/components/RequireAuth';
+import React, { useState } from "react";
+import RequireAuth from "@/components/RequireAuth";
 
-/* ========= THEME ========= */
-function useTheme(defaultDark = true) {
-  const [dark, setDark] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return defaultDark;
-    return (localStorage.getItem('lac_theme') ?? (defaultDark ? 'dark' : 'light')) === 'dark';
-  });
+export default function SalesPage() {
+  const [dark, setDark] = useState(false);
 
-  const t = useMemo(
-    () => ({
-      dark,
-      setDark: (v: boolean) => {
-        setDark(v);
-        if (typeof window !== 'undefined') localStorage.setItem('lac_theme', v ? 'dark' : 'light');
-      },
-      bg: dark ? '#070F22' : '#F5F7FB',
-      card: dark ? 'rgba(16,28,56,.72)' : 'rgba(255,255,255,.92)',
-      text: dark ? '#E8EEF7' : '#0F172A',
-      mut: dark ? '#9AA6B2' : '#64748B',
-      border: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
-      glowA: 'radial-gradient(50% 40% at 20% 10%, rgba(99,102,241,.18), transparent)',
-      glowB: 'radial-gradient(55% 40% at 90% 90%, rgba(6,182,212,.16), transparent)',
-      brand: '#06B6D4',
-      accent: '#6366F1',
-      ok: '#10B981',
-      warn: '#F59E0B',
-      danger: '#EF4444',
-      shadow: dark ? '0 30px 80px rgba(2,6,23,.55)' : '0 30px 80px rgba(2,6,23,.12)',
-      radius: 18,
-    }),
-    [dark]
+  const theme = {
+    bg: dark ? "#0F172A" : "#F8FAFC",
+    text: dark ? "#E2E8F0" : "#1E293B",
+    card: dark ? "#1E293B" : "#FFFFFF",
+    border: dark ? "#334155" : "#CBD5E1",
+    sidebar: dark ? "#1E2536" : "#FFFFFF",
+    muted: dark ? "#94A3B8" : "#64748B",
+  };
+
+  const leads = [
+    { id: 1, name: "David Reeves", status: "New", budget: "$1,200" },
+    { id: 2, name: "Sarah Thomas", status: "Follow-up", budget: "$900" },
+    { id: 3, name: "Mike Anderson", status: "Qualified", budget: "$2,800" },
+  ];
+
+  return (
+    <RequireAuth allowed={["sales"]}>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          background: theme.bg,
+          color: theme.text,
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        {/* SIDEBAR */}
+        <aside
+          style={{
+            width: 240,
+            background: theme.sidebar,
+            borderRight: `1px solid ${theme.border}`,
+            padding: "26px 18px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 900,
+              marginBottom: 30,
+              color: "#06B6D4",
+            }}
+          >
+            SALES PORTAL
+          </div>
+
+          {["Overview", "Leads", "Clients", "Performance", "Reports", "Profile"].map(
+            (item) => (
+              <div
+                key={item}
+                style={{
+                  padding: "10px 12px",
+                  marginBottom: 6,
+                  cursor: "pointer",
+                  borderRadius: 10,
+                  color: theme.muted,
+                  fontWeight: 600,
+                }}
+              >
+                {item}
+              </div>
+            )
+          )}
+
+          <button
+            onClick={() => setDark(!dark)}
+            style={{
+              marginTop: 30,
+              width: "100%",
+              padding: "10px",
+              background: "transparent",
+              borderRadius: 10,
+              border: `1px solid ${theme.border}`,
+              cursor: "pointer",
+              color: theme.text,
+            }}
+          >
+            {dark ? "Light Mode" : "Dark Mode"}
+          </button>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <main style={{ flex: 1, padding: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
+            Sales Overview
+          </h1>
+
+          {/* KPI CARDS */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+            {[
+              { label: "Monthly Leads", value: "124" },
+              { label: "Closed Deals", value: "18" },
+              { label: "Revenue", value: "$21,400" },
+            ].map((k) => (
+              <div
+                key={k.label}
+                style={{
+                  flex: 1,
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  padding: 20,
+                  borderRadius: 16,
+                }}
+              >
+                <div style={{ fontSize: 14, color: theme.muted }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 800 }}>{k.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* LEADS TABLE */}
+          <div
+            style={{
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
+              Recent Leads
+            </h2>
+
+            {leads.map((l) => (
+              <div
+                key={l.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "14px 0",
+                  borderBottom: `1px solid ${theme.border}`,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700 }}>{l.name}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>
+                    {l.status} • Budget: {l.budget}
+                  </div>
+                </div>
+                <button
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#06B6D4",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </RequireAuth>
   );
-
+                }
   return t;
 }
 
