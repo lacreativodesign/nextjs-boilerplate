@@ -168,6 +168,6 @@ export default function Admin2025() {
         </div>
       </main>
     </div>
-      </RequireAuth>
+  </RequireAuth>
   );
 }
