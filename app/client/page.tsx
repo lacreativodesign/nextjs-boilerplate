@@ -14,15 +14,32 @@ export default function ClientPage() {
     muted: dark ? "#94A3B8" : "#475569",
   };
 
+  const KPIS = [
+    { label: "Projects", value: "4 Active" },
+    { label: "Invoices", value: "2 Due" },
+    { label: "Chats", value: "5 Unread" },
+  ];
+
   const PROJECTS = [
-    { id: 1, name: "Redroot Café Website", status: "Draft Ready", progress: 70 },
-    { id: 2, name: "Branding Kit — Horizon Gym", status: "Revision Needed", progress: 40 },
+    { id: 1, name: "Redroot Café Website", stage: "Revisions" },
+    { id: 2, name: "Branding Kit", stage: "Draft Submitted" },
+    { id: 3, name: "Menu Design", stage: "Final Delivered" },
   ];
 
   const INVOICES = [
-    { id: 1, label: "Website Deposit", amount: "$299", status: "Paid" },
-    { id: 2, label: "Branding Package", amount: "$499", status: "Unpaid" },
+    { id: 1, label: "Website Design – Phase 2", status: "Due", amount: "$450" },
+    { id: 2, label: "Branding Add-ons", status: "Paid", amount: "$199" },
   ];
+
+  const PROFILE = {
+    name: "Redroot Café",
+    email: "owner@redrootcafe.com",
+    phone: "+1 (555) 123-4567",
+  };
+
+  function downloadInvoice(id: number) {
+    alert("Invoice download stub – will integrate Firebase Storage later.");
+  }
 
   return (
     <RequireAuth allowed={["client"]}>
@@ -44,27 +61,32 @@ export default function ClientPage() {
             padding: "26px 18px",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
-            CLIENT PORTAL
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 900,
+              marginBottom: 30,
+              color: "#06B6D4",
+            }}
+          >
+            CLIENT
           </div>
 
-          {["Overview", "Projects", "Files", "Billing", "Activity", "Support", "Profile"].map(
-            (item) => (
-              <div
-                key={item}
-                style={{
-                  padding: "10px 12px",
-                  marginBottom: 6,
-                  cursor: "pointer",
-                  borderRadius: 10,
-                  color: theme.muted,
-                  fontWeight: 600,
-                }}
-              >
-                {item}
-              </div>
-            )
-          )}
+          {["Overview", "Projects", "Billing", "Profile"].map((item) => (
+            <div
+              key={item}
+              style={{
+                padding: "10px 12px",
+                marginBottom: 6,
+                cursor: "pointer",
+                borderRadius: 10,
+                color: theme.muted,
+                fontWeight: 600,
+              }}
+            >
+              {item}
+            </div>
+          ))}
 
           <button
             onClick={() => setDark(!dark)}
@@ -85,18 +107,43 @@ export default function ClientPage() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              marginBottom: 20,
+            }}
+          >
             Client Dashboard
           </h1>
 
-          {/* PROJECTS CARD */}
+          {/* KPIs */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+            {KPIS.map((kpi) => (
+              <div
+                key={kpi.label}
+                style={{
+                  flex: 1,
+                  background: theme.card,
+                  padding: 20,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                <div style={{ fontSize: 14, color: theme.muted }}>{kpi.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* PROJECTS */}
           <div
             style={{
               background: theme.card,
               padding: 20,
               borderRadius: 16,
               border: `1px solid ${theme.border}`,
-              marginBottom: 28,
+              marginBottom: 30,
             }}
           >
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
@@ -107,42 +154,41 @@ export default function ClientPage() {
               <div
                 key={p.id}
                 style={{
-                  padding: "12px 0",
+                  padding: "14px 0",
                   borderBottom: `1px solid ${theme.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 700 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: theme.muted }}>{p.status}</div>
-
-                <div
+                <div>
+                  <div style={{ fontWeight: 700 }}>{p.name}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>{p.stage}</div>
+                </div>
+                <button
                   style={{
-                    marginTop: 8,
-                    height: 8,
-                    background: dark ? "#1E293B" : "#E2E8F0",
-                    borderRadius: 6,
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#06B6D4",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: 600,
                   }}
                 >
-                  <div
-                    style={{
-                      width: `${p.progress}%`,
-                      height: "100%",
-                      background: "#06B6D4",
-                      borderRadius: 6,
-                    }}
-                  />
-                </div>
+                  View
+                </button>
               </div>
             ))}
           </div>
 
-          {/* BILLING CARD */}
+          {/* BILLING */}
           <div
             style={{
               background: theme.card,
               padding: 20,
               borderRadius: 16,
               border: `1px solid ${theme.border}`,
-              marginBottom: 28,
+              marginBottom: 30,
             }}
           >
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
@@ -153,7 +199,7 @@ export default function ClientPage() {
               <div
                 key={inv.id}
                 style={{
-                  padding: "14px 0",
+                  padding: "12px 0",
                   borderBottom: `1px solid ${theme.border}`,
                   display: "flex",
                   justifyContent: "space-between",
@@ -161,25 +207,32 @@ export default function ClientPage() {
               >
                 <div>
                   <div style={{ fontWeight: 700 }}>{inv.label}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>{inv.amount}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>{inv.status}</div>
                 </div>
-                <div
-                  style={{
-                    padding: "6px 12px",
-                    background: inv.status === "Paid" ? "#22C55E" : "#EAB308",
-                    color: "#fff",
-                    borderRadius: 10,
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  {inv.status}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontWeight: 700 }}>{inv.amount}</div>
+
+                  <button
+                    onClick={() => downloadInvoice(inv.id)}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#06B6D4",
+                      color: "#fff",
+                      borderRadius: 8,
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Download
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* PROFILE SUMMARY */}
+          {/* PROFILE */}
           <div
             style={{
               background: theme.card,
@@ -188,16 +241,30 @@ export default function ClientPage() {
               border: `1px solid ${theme.border}`,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Your Profile
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
+              Profile
             </h2>
 
-            <div style={{ fontSize: 15, marginBottom: 6 }}>Name: John Doe</div>
-            <div style={{ fontSize: 15, marginBottom: 6 }}>Email: johndoe@gmail.com</div>
-            <div style={{ fontSize: 15, marginBottom: 6 }}>Role: Client</div>
+            <div style={{ fontSize: 14, marginBottom: 6 }}>Business Name: {PROFILE.name}</div>
+            <div style={{ fontSize: 14, marginBottom: 6 }}>Email: {PROFILE.email}</div>
+            <div style={{ fontSize: 14, marginBottom: 14 }}>Phone: {PROFILE.phone}</div>
+
+            <button
+              style={{
+                padding: "10px 16px",
+                background: "#06B6D4",
+                borderRadius: 10,
+                border: "none",
+                fontWeight: 700,
+                cursor: "pointer",
+                color: "#fff",
+              }}
+            >
+              Edit Profile
+            </button>
           </div>
         </main>
       </div>
     </RequireAuth>
   );
-                    }
+                             }
