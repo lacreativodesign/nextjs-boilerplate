@@ -1,66 +1,53 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { auth, fetchUserRole } from "@/lib/firebaseClient";
-import { onAuthStateChanged } from "firebase/auth";
+
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { auth } from "@/lib/firebaseClient";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebaseClient";
 
-type Props = {
-  allowed: string[]; // e.g. ["admin"] or ["sales","admin"]
-  children: React.ReactNode;
-};
-
-export default function RequireAuth({ allowed, children }: Props) {
-  const [ready, setReady] = useState(false);
-  const [ok, setOk] = useState(false);
+export default function RequireAuth({ children, allowed }) {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace("/login");
-        setReady(true);
-        setOk(false);
+        router.push("/login");
         return;
       }
-      const role = await fetchUserRole(user.uid);
-      if (!role || !allowed.includes(role)) {
-        // If logged in but wrong role → send them to their own dashboard
-        switch (role) {
-          case "admin":
-            router.replace("/admin");
-            break;
-          case "sales":
-            router.replace("/sales");
-            break;
-          case "am":
-            router.replace("/am");
-            break;
-          case "client":
-            router.replace("/client");
-            break;
-          case "production":
-            router.replace("/production");
-            break;
-          case "hr":
-            router.replace("/hr");
-            break;
-          case "finance":
-            router.replace("/finance");
-            break;
-          default:
-            router.replace("/login");
-        }
-        setReady(true);
-        setOk(false);
-        return;
-      }
-      setOk(true);
-      setReady(true);
-    });
-    return () => unsub();
-  }, [router, allowed]);
 
-  if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (!ok) return null;
-  return <>{children}</>;
+      // Fetch role from Firestore
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+
+      if (!snap.exists()) {
+        router.push("/login");
+        return;
+      }
+
+      const role = snap.data().role;
+
+      // Allowed roles check
+      if (!allowed.includes(role)) {
+        router.push("/login");
+        return;
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        Checking access…
+      </div>
+    );
+  }
+
+  return children;
 }
