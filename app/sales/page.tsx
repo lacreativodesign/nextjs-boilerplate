@@ -1,363 +1,396 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 
+/** ===== Theme hook (local, same 2025 aesthetic) ===== */
+function useTheme(defaultDark = true) {
+  const [dark, setDark] = useState(defaultDark);
+  const t = useMemo(
+    () => ({
+      dark,
+      setDark,
+      bg: dark ? "#070F22" : "#F5F7FB",
+      text: dark ? "#E8EEF7" : "#0F172A",
+      muted: dark ? "#91A0B4" : "#64748B",
+      border: dark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.10)",
+      card: dark ? "rgba(16,28,56,.78)" : "rgba(255,255,255,.92)",
+      sidebar: dark ? "rgba(12,22,44,.86)" : "#FFFFFF",
+      brand: "#06B6D4",
+      accent: "#6366F1",
+      ok: "#10B981",
+      warn: "#F59E0B",
+      danger: "#EF4444",
+      bubbleMe: dark ? "#0EA5E9" : "#0EA5E9",
+      bubbleThem: dark ? "#111827" : "#E5E7EB",
+      radius: 16,
+      shadow: dark
+        ? "0 30px 80px rgba(2,6,23,.55)"
+        : "0 30px 80px rgba(2,6,23,.12)",
+    }),
+    [dark]
+  );
+  return t;
+}
+
+/** ===== Dummy data (stable) ===== */
+const LEADS = [
+  { id: "L-1001", name: "Redroot Café", source: "Website", stage: "Qualified", owner: "Ayesha", value: 1800, age: "3d" },
+  { id: "L-1002", name: "Northbridge Law", source: "LinkedIn", stage: "Discovery", owner: "Hamza", value: 4200, age: "1d" },
+  { id: "L-1003", name: "Evercrest Fitness", source: "Referral", stage: "Proposal", owner: "Ali", value: 5900, age: "5d" },
+  { id: "L-1004", name: "Seabrook Dental", source: "Cold Email", stage: "Won", owner: "Sara", value: 2400, age: "7d" },
+];
+
+const PIPELINE = [
+  { stage: "New", count: 24, amount: 18000 },
+  { stage: "Qualified", count: 12, amount: 24000 },
+  { stage: "Discovery", count: 8, amount: 19500 },
+  { stage: "Proposal", count: 6, amount: 31000 },
+  { stage: "Won", count: 5, amount: 22800 },
+];
+
+const ACTIVITY = [
+  { id: 1, who: "Ayesha", what: "Logged call with Redroot Café", when: "Today 10:12" },
+  { id: 2, who: "Hamza", what: "Sent proposal to Northbridge Law", when: "Yesterday 18:22" },
+  { id: 3, who: "Sara", what: "Closed Won — Seabrook Dental", when: "Yesterday 13:04" },
+  { id: 4, who: "Ali", what: "Qualified lead Evercrest Fitness", when: "Mon 09:15" },
+];
+
+/** ===== Sales Dashboard (Locked 2025) ===== */
 export default function SalesPage() {
-  const [dark, setDark] = useState(false);
+  const t = useTheme(true);
+  const [search, setSearch] = useState("");
 
-  const theme = {
-    bg: dark ? "#0F172A" : "#F8FAFC",
-    text: dark ? "#E2E8F0" : "#1E293B",
-    card: dark ? "#1E293B" : "#FFFFFF",
-    border: dark ? "#334155" : "#CBD5E1",
-    sidebar: dark ? "#1E2536" : "#FFFFFF",
-    muted: dark ? "#94A3B8" : "#64748B",
-  };
-
-  const leads = [
-    { id: 1, name: "David Reeves", status: "New", budget: "$1,200" },
-    { id: 2, name: "Sarah Thomas", status: "Follow-up", budget: "$900" },
-    { id: 3, name: "Mike Anderson", status: "Qualified", budget: "$2,800" },
-  ];
+  const filtered = LEADS.filter(
+    (l) =>
+      l.name.toLowerCase().includes(search.toLowerCase()) ||
+      l.id.toLowerCase().includes(search.toLowerCase()) ||
+      l.owner.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <RequireAuth allowed={["sales"]}>
+    <RequireAuth allowed={["sales", "admin"]}>
       <div
         style={{
           minHeight: "100vh",
           display: "flex",
-          background: theme.bg,
-          color: theme.text,
-          fontFamily: "Inter, sans-serif",
+          background: t.bg,
+          color: t.text,
+          fontFamily: "Inter, ui-sans-serif, system-ui",
         }}
       >
         {/* SIDEBAR */}
         <aside
           style={{
             width: 240,
-            background: theme.sidebar,
-            borderRight: `1px solid ${theme.border}`,
+            background: t.sidebar,
+            borderRight: `1px solid ${t.border}`,
             padding: "26px 18px",
+            position: "sticky",
+            top: 0,
+            height: "100vh",
           }}
         >
           <div
             style={{
               fontSize: 22,
               fontWeight: 900,
-              marginBottom: 30,
-              color: "#06B6D4",
+              marginBottom: 22,
+              color: t.brand,
+              letterSpacing: -0.3,
             }}
           >
             SALES PORTAL
           </div>
 
-          {["Overview", "Leads", "Clients", "Performance", "Reports", "Profile"].map(
-            (item) => (
-              <div
-                key={item}
-                style={{
-                  padding: "10px 12px",
-                  marginBottom: 6,
-                  cursor: "pointer",
-                  borderRadius: 10,
-                  color: theme.muted,
-                  fontWeight: 600,
-                }}
-              >
-                {item}
-              </div>
-            )
-          )}
+          {[
+            "Overview",
+            "Leads",
+            "Pipeline",
+            "Opportunities",
+            "Activity",
+            "Reports",
+            "Profile",
+          ].map((item) => (
+            <div
+              key={item}
+              style={{
+                padding: "10px 12px",
+                marginBottom: 6,
+                borderRadius: 10,
+                cursor: "pointer",
+                color: t.muted,
+                fontWeight: 600,
+              }}
+            >
+              {item}
+            </div>
+          ))}
 
           <button
-            onClick={() => setDark(!dark)}
+            onClick={() => t.setDark?.(!t.dark)}
             style={{
-              marginTop: 30,
+              marginTop: 22,
               width: "100%",
-              padding: "10px",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: `1px solid ${t.border}`,
               background: "transparent",
-              borderRadius: 10,
-              border: `1px solid ${theme.border}`,
+              color: t.text,
               cursor: "pointer",
-              color: theme.text,
             }}
           >
-            {dark ? "Light Mode" : "Dark Mode"}
+            {t.dark ? "Light Mode" : "Dark Mode"}
           </button>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
-            Sales Overview
-          </h1>
-
-          {/* KPI CARDS */}
-          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
-            {[
-              { label: "Monthly Leads", value: "124" },
-              { label: "Closed Deals", value: "18" },
-              { label: "Revenue", value: "$21,400" },
-            ].map((k) => (
-              <div
-                key={k.label}
-                style={{
-                  flex: 1,
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  padding: 20,
-                  borderRadius: 16,
-                }}
-              >
-                <div style={{ fontSize: 14, color: theme.muted }}>{k.label}</div>
-                <div style={{ fontSize: 26, fontWeight: 800 }}>{k.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* LEADS TABLE */}
+        {/* MAIN */}
+        <main style={{ flex: 1, padding: 28 }}>
+          {/* Top bar */}
           <div
             style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 18,
+              justifyContent: "space-between",
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Recent Leads
-            </h2>
-
-            {leads.map((l) => (
-              <div
-                key={l.id}
+            <div style={{ fontSize: 26, fontWeight: 800 }}>Leads & Pipeline</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search leads, owners, IDs…"
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "14px 0",
-                  borderBottom: `1px solid ${theme.border}`,
+                  padding: "10px 12px",
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 12,
+                  background: t.dark ? "#0B1530" : "#FFFFFF",
+                  color: t.text,
+                  width: 260,
+                }}
+              />
+              <button
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: t.brand,
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: "pointer",
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{l.name}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>
-                    {l.status} • Budget: {l.budget}
-                  </div>
-                </div>
+                + New Lead
+              </button>
+            </div>
+          </div>
+
+          {/* KPIs */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+              gap: 14,
+              marginBottom: 18,
+            }}
+          >
+            <KPI t={t} label="Open Leads" value="50" delta="+8 this week" />
+            <KPI t={t} label="Pipeline (USD)" value="$115,300" delta="+$9,200" />
+            <KPI t={t} label="Win Rate" value="28%" delta="+2.4%" />
+            <KPI t={t} label="Avg. Cycle" value="14 days" delta="-1.2d" />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.2fr .8fr",
+              gap: 14,
+            }}
+          >
+            {/* Leads table */}
+            <Card t={t}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Active Leads</h2>
                 <button
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: 8,
                     border: "none",
-                    background: "#06B6D4",
-                    color: "#fff",
+                    background: "transparent",
+                    color: t.accent,
                     cursor: "pointer",
+                    fontWeight: 700,
                   }}
                 >
-                  View
+                  Export CSV
                 </button>
               </div>
-            ))}
+
+              <div
+                style={{
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                }}
+              >
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 14,
+                  }}
+                >
+                  <thead
+                    style={{
+                      background: t.dark ? "rgba(255,255,255,.03)" : "#F8FAFC",
+                      color: t.muted,
+                      textAlign: "left",
+                    }}
+                  >
+                    <tr>
+                      {["ID", "Company", "Source", "Stage", "Owner", "Value", "Age"].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            style={{ padding: "10px 12px", borderBottom: `1px solid ${t.border}` }}
+                          >
+                            {h}
+                          </th>
+                        )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((l) => (
+                      <tr key={l.id} style={{ borderBottom: `1px solid ${t.border}` }}>
+                        <td style={{ padding: "10px 12px" }}>{l.id}</td>
+                        <td style={{ padding: "10px 12px", fontWeight: 600 }}>{l.name}</td>
+                        <td style={{ padding: "10px 12px", color: t.muted }}>{l.source}</td>
+                        <td style={{ padding: "10px 12px" }}>
+                          <Badge t={t} tone={stageTone(l.stage)}>
+                            {l.stage}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: "10px 12px" }}>{l.owner}</td>
+                        <td style={{ padding: "10px 12px" }}>${l.value.toLocaleString()}</td>
+                        <td style={{ padding: "10px 12px", color: t.muted }}>{l.age}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Pipeline + Activity */}
+            <div style={{ display: "grid", gap: 14 }}>
+              <Card t={t}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 8px 0" }}>
+                  Pipeline Summary
+                </h2>
+                <div style={{ fontSize: 13, color: t.muted, marginBottom: 8 }}>
+                  Stage counts & weighted amounts
+                </div>
+
+                {/* Simple bar view */}
+                <div style={{ display: "grid", gap: 10 }}>
+                  {PIPELINE.map((p) => (
+                    <div key={p.stage}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 13,
+                          marginBottom: 6,
+                        }}
+                      >
+                        <span style={{ color: t.muted }}>{p.stage}</span>
+                        <span style={{ fontWeight: 700 }}>
+                          {p.count} • ${p.amount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 10,
+                          background: t.dark ? "#0E1A33" : "#E5E7EB",
+                          borderRadius: 999,
+                          overflow: "hidden",
+                          border: `1px solid ${t.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${Math.min(100, (p.amount / 31000) * 100)}%`,
+                            height: "100%",
+                            background:
+                              p.stage === "Won"
+                                ? t.ok
+                                : p.stage === "Proposal"
+                                ? t.accent
+                                : t.brand,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card t={t}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 8px 0" }}>
+                  Recent Activity
+                </h2>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {ACTIVITY.map((a) => (
+                    <li
+                      key={a.id}
+                      style={{
+                        padding: "10px 0",
+                        borderBottom: `1px solid ${t.border}`,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{a.who}</div>
+                        <div style={{ color: t.muted, fontSize: 13 }}>{a.what}</div>
+                      </div>
+                      <div style={{ color: t.muted, fontSize: 12 }}>{a.when}</div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </div>
           </div>
         </main>
       </div>
     </RequireAuth>
   );
-                }          style={{
-            width: 240,
-            background: theme.sidebar,
-            borderRight: `1px solid ${theme.border}`,
-            padding: "26px 18px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 900,
-              marginBottom: 30,
-              color: "#06B6D4",
-            }}
-          >
-            SALES PORTAL
-          </div>
-
-          {["Overview", "Leads", "Clients", "Performance", "Reports", "Profile"].map(
-            (item) => (
-              <div
-                key={item}
-                style={{
-                  padding: "10px 12px",
-                  marginBottom: 6,
-                  cursor: "pointer",
-                  borderRadius: 10,
-                  color: theme.muted,
-                  fontWeight: 600,
-                }}
-              >
-                {item}
-              </div>
-            )
-          )}
-
-          <button
-            onClick={() => setDark(!dark)}
-            style={{
-              marginTop: 30,
-              width: "100%",
-              padding: "10px",
-              background: "transparent",
-              borderRadius: 10,
-              border: `1px solid ${theme.border}`,
-              cursor: "pointer",
-              color: theme.text,
-            }}
-          >
-            {dark ? "Light Mode" : "Dark Mode"}
-          </button>
-        </aside>
-
-        {/* MAIN CONTENT */}
-        <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
-            Sales Overview
-          </h1>
-
-          {/* KPI CARDS */}
-          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
-            {[
-              { label: "Monthly Leads", value: "124" },
-              { label: "Closed Deals", value: "18" },
-              { label: "Revenue", value: "$21,400" },
-            ].map((k) => (
-              <div
-                key={k.label}
-                style={{
-                  flex: 1,
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  padding: 20,
-                  borderRadius: 16,
-                }}
-              >
-                <div style={{ fontSize: 14, color: theme.muted }}>{k.label}</div>
-                <div style={{ fontSize: 26, fontWeight: 800 }}>{k.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* LEADS TABLE */}
-          <div
-            style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Recent Leads
-            </h2>
-
-            {leads.map((l) => (
-              <div
-                key={l.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "14px 0",
-                  borderBottom: `1px solid ${theme.border}`,
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{l.name}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>
-                    {l.status} • Budget: {l.budget}
-                  </div>
-                </div>
-                <button
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: "#06B6D4",
-                    color: "#fff",
-                    cursor: "pointer",
-                  }}
-                >
-                  View
-                </button>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    </RequireAuth>
-  );
-                }
-  return t;
 }
 
-/* ========= Dummy Data ========= */
-const LEADS = [
-  { id: 'LD-0012', name: 'Sarah Lee', service: 'Web Design', budget: 2800, status: 'Hot', source: 'Website' },
-  { id: 'LD-0011', name: 'Michael Chen', service: 'Branding', budget: 1500, status: 'Warm', source: 'Instagram' },
-  { id: 'LD-0010', name: 'Ravi Kumar', service: 'SEO', budget: 2200, status: 'Cold', source: 'Google' },
-];
-
-const PIPELINE = [14, 18, 15, 20, 22, 28, 32, 38];
-const CONVERSION = [32, 41, 28, 39, 35, 43];
-
-/* ========= SVG Charts ========= */
-function LineChart({ data, w = 500, h = 120, stroke = '#6366F1' }) {
-  const max = Math.max(...data, 1);
-  const step = data.length > 1 ? w / (data.length - 1) : w;
-  const pts = data.map((v, i) => `${i * step},${h - (v / max) * (h - 10)}`).join(' ');
-
-  return (
-    <svg width={w} height={h}>
-      <polyline fill="none" stroke={stroke} strokeWidth="2.4" points={pts} strokeLinecap="round" />
-      {data.map((v, i) => (
-        <circle key={i} cx={i * step} cy={h - (v / max) * (h - 10)} r={3} fill={stroke} />
-      ))}
-    </svg>
-  );
-}
-
-function BarChart({ values, labels, w = 350, h = 120, color = '#06B6D4' }) {
-  const max = Math.max(...values, 1);
-  const gap = 10;
-  const bw = Math.max(16, w / values.length - gap);
-
-  return (
-    <svg width={w} height={h}>
-      {values.map((v, i) => {
-        const hVal = (v / max) * (h - 26);
-        const x = i * (bw + gap) + 10;
-        return (
-          <g key={i}>
-            <rect x={x} y={h - hVal - 20} width={bw} height={hVal} rx={6} fill={color} />
-            <text x={x + bw / 2} y={h - 6} textAnchor="middle" fontSize={10} fill="#94A3B8">
-              {labels[i]}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/* ========= Helpers ========= */
-function Card({ t, children, style }) {
+/** ===== Small UI bits ===== */
+function Card({
+  t,
+  children,
+}: {
+  t: ReturnType<typeof useTheme>;
+  children: React.ReactNode;
+}) {
   return (
     <div
       style={{
         background: t.card,
         border: `1px solid ${t.border}`,
-        borderRadius: 18,
-        padding: 16,
+        borderRadius: t.radius,
         boxShadow: t.shadow,
-        ...style,
+        padding: 16,
       }}
     >
       {children}
@@ -365,434 +398,76 @@ function Card({ t, children, style }) {
   );
 }
 
-const currency = (n) => '$' + n.toLocaleString();
-
-/* ========= SALES DASHBOARD PAGE ========= */
-export default function SalesPage() {
-  const t = useTheme(true);
-  const [tab, setTab] = useState('overview');
-  const [search, setSearch] = useState('');
-
-  const filtered = LEADS.filter((l) =>
-    [l.id, l.name, l.service, l.status, l.source].join(' ').toLowerCase().includes(search.toLowerCase())
-  );
-
+function KPI({
+  t,
+  label,
+  value,
+  delta,
+}: {
+  t: ReturnType<typeof useTheme>;
+  label: string;
+  value: string;
+  delta: string;
+}) {
   return (
-    <RequireAuth allowed={['sales', 'admin']}>
-      <div style={{ minHeight: '100vh', background: `${t.bg}, ${t.glowA}, ${t.glowB}`, display: 'flex', color: t.text }}>
-        {/* SIDEBAR */}
-        <aside
-          style={{
-            width: 260,
-            padding: 20,
-            background: t.dark ? '#071127' : '#ffffff',
-            borderRight: `1px solid ${t.border}`,
-          }}
-        >
-          <div style={{ fontWeight: 900, marginBottom: 20, color: t.brand }}>Sales Dashboard</div>
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: t.mut }}>Theme</span>
-            <input type="checkbox" checked={t.dark} onChange={(e) => t.setDark(e.target.checked)} />
-          </label>
-
-          <nav style={{ display: 'grid', gap: 6 }}>
-            {['overview', 'leads', 'pipeline', 'reports', 'profile'].map((key) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                style={{
-                  textAlign: 'left',
-                  padding: '10px 12px',
-                  borderRadius: 12,
-                  border: 0,
-                  cursor: 'pointer',
-                  background: tab === key ? (t.dark ? '#0b1b2b' : '#eef2ff') : 'transparent',
-                  fontWeight: 700,
-                  color: tab === key ? t.text : t.mut,
-                }}
-              >
-                {key[0].toUpperCase() + key.slice(1)}
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* MAIN */}
-        <main style={{ flex: 1, padding: 28 }}>
-          {/* TOP BAR */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search leads…"
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  border: `1px solid ${t.border}`,
-                  background: t.card,
-                  color: t.text,
-                }}
-              />
-              <span style={{ fontSize: 12, color: t.mut }}>LAC-SALES-LOCKED-2025.10.24-v1.0</span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: t.card, border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                👤
-              </div>
-              <div>
-                <div style={{ fontWeight: 800 }}>Sales Rep</div>
-                <div style={{ fontSize: 12, color: t.mut }}>Lead Access</div>
-              </div>
-            </div>
-          </div>
-
-          {/* TABS */}
-          {tab === 'overview' && (
-            <section>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-                <Card t={t}>
-                  <h4 style={{ marginTop: 0 }}>Monthly Quota</h4>
-                  <div style={{ fontSize: 26, fontWeight: 900 }}>{currency(20000)}</div>
-                  <div style={{ fontSize: 13, color: t.mut }}>Target</div>
-                </Card>
-
-                <Card t={t}>
-                  <h4 style={{ marginTop: 0 }}>Closed This Month</h4>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: t.ok }}>{currency(15800)}</div>
-                  <div style={{ fontSize: 13, color: t.mut }}>79% of quota</div>
-                </Card>
-
-                <Card t={t}>
-                  <h4 style={{ marginTop: 0 }}>Conversion Rate</h4>
-                  <div style={{ fontSize: 26, fontWeight: 900 }}>{Math.round(0.27 * 100)}%</div>
-                  <div style={{ fontSize: 13, color: t.mut }}>Across all leads</div>
-                </Card>
-              </div>
-
-              <div style={{ marginTop: 20 }}>
-                <Card t={t}>
-                  <h3 style={{ marginTop: 0 }}>Pipeline Trend</h3>
-                  <LineChart data={PIPELINE} w={650} h={140} stroke={t.accent} />
-                </Card>
-              </div>
-            </section>
-          )}
-
-          {tab === 'leads' && (
-            <section>
-              <h2 style={{ marginTop: 0 }}>Leads</h2>
-              <Card t={t}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${t.border}`, color: t.mut, fontSize: 12 }}>
-                      <th style={{ padding: 8 }}>ID</th>
-                      <th style={{ padding: 8 }}>Name</th>
-                      <th style={{ padding: 8 }}>Service</th>
-                      <th style={{ padding: 8 }}>Budget</th>
-                      <th style={{ padding: 8 }}>Status</th>
-                      <th style={{ padding: 8 }}>Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((l) => (
-                      <tr key={l.id} style={{ borderBottom: `1px dashed ${t.border}` }}>
-                        <td style={{ padding: 8, fontWeight: 800 }}>{l.id}</td>
-                        <td style={{ padding: 8 }}>{l.name}</td>
-                        <td style={{ padding: 8 }}>{l.service}</td>
-                        <td style={{ padding: 8 }}>{currency(l.budget)}</td>
-                        <td style={{ padding: 8, color: l.status === 'Hot' ? t.ok : l.status === 'Warm' ? t.warn : t.mut }}>{l.status}</td>
-                        <td style={{ padding: 8 }}>{l.source}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            </section>
-          )}
-
-          {tab === 'pipeline' && (
-            <section>
-              <h2 style={{ marginTop: 0 }}>Pipeline Analytics</h2>
-              <Card t={t}>
-                <BarChart values={CONVERSION} labels={['W1', 'W2', 'W3', 'W4', 'W5', 'W6']} w={520} h={120} color={t.brand} />
-              </Card>
-            </section>
-          )}
-
-          {tab === 'reports' && (
-            <section>
-              <h2 style={{ marginTop: 0 }}>Reports</h2>
-              <Card t={t}>
-                <p style={{ color: t.mut }}>Export CSV reports (connect Firestore later)</p>
-                <button
-                  onClick={() => alert('Demo — CSV export')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    background: t.brand,
-                    color: '#fff',
-                    border: 0,
-                    fontWeight: 800,
-                  }}
-                >
-                  Export Leads CSV
-                </button>
-              </Card>
-            </section>
-          )}
-
-          {tab === 'profile' && (
-            <section>
-              <h2 style={{ marginTop: 0 }}>Profile</h2>
-              <Card t={t}>
-                <p style={{ color: t.mut, marginTop: 0 }}>Sales Rep Profile (image upload + password change later)</p>
-                <div style={{ maxWidth: 500, display: 'grid', gap: 14 }}>
-                  <Input t={t} label="Name" placeholder="Sales Rep" />
-                  <Input t={t} label="Email" placeholder="you@company.com" />
-                  <button
-                    onClick={() => alert('Demo save')}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      background: t.brand,
-                      color: '#fff',
-                      border: 0,
-                      fontWeight: 800,
-                    }}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </Card>
-            </section>
-          )}
-        </main>
-      </div>
-    </RequireAuth>
-  );
-}
-
-/* ========= Input Component ========= */
-function Input({ t, label, placeholder }) {
-  return (
-    <div>
-      <label style={{ fontSize: 12, color: t.mut }}>{label}</label>
-      <input
-        placeholder={placeholder}
-        style={{
-          width: '100%',
-          marginTop: 6,
-          padding: '12px 12px',
-          borderRadius: 12,
-          border: `1px solid ${t.border}`,
-          background: t.dark ? '#0b1b2b' : '#fff',
-          color: t.text,
-          outline: 'none',
-        }}
-      />
-    </div>
-  );
-    }  return (
     <div
       style={{
-        minHeight: "100vh",
-        display: "flex",
-        background: theme.bg,
-        color: theme.text,
-        fontFamily: "Inter, sans-serif",
+        background: t.card,
+        border: `1px solid ${t.border}`,
+        borderRadius: t.radius,
+        boxShadow: t.shadow,
+        padding: 16,
       }}
     >
-      {/* SIDEBAR */}
-      <aside
-        style={{
-          width: 240,
-          background: theme.sidebar,
-          borderRight: `1px solid ${theme.border}`,
-          padding: "26px 18px",
-        }}
-      >
-        <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
-          AM PORTAL
-        </div>
-
-        {["Overview", "Projects", "Chats", "Activity", "Files", "Reports", "Profile"].map(
-          (item) => (
-            <div
-              key={item}
-              style={{
-                padding: "10px 12px",
-                marginBottom: 6,
-                cursor: "pointer",
-                borderRadius: 10,
-                color: theme.muted,
-                fontWeight: 600,
-              }}
-            >
-              {item}
-            </div>
-          )
-        )}
-
-        <button
-          onClick={() => setDark(!dark)}
-          style={{
-            marginTop: 30,
-            width: "100%",
-            padding: "10px",
-            background: "transparent",
-            borderRadius: 10,
-            border: `1px solid ${theme.border}`,
-            cursor: "pointer",
-            color: theme.text,
-          }}
-        >
-          {dark ? "Light Mode" : "Dark Mode"}
-        </button>
-      </aside>
-
-      {/* MAIN */}
-      <main style={{ flex: 1, padding: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
-          Project Management
-        </h1>
-
-        {/* PROJECT LIST */}
-        <div
-          style={{
-            background: theme.card,
-            padding: 20,
-            borderRadius: 16,
-            border: `1px solid ${theme.border}`,
-            marginBottom: 30,
-          }}
-        >
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Active Projects</h2>
-
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              style={{
-                padding: "14px 0",
-                borderBottom: `1px solid ${theme.border}`,
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: theme.muted }}>
-                  {p.status} • {p.files} Files
-                </div>
-              </div>
-              <button
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#06B6D4",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                View
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* CHAT AREA */}
-        <div
-          style={{
-            background: theme.card,
-            borderRadius: 16,
-            padding: 20,
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
-            Client Chat — Redroot Café
-          </h2>
-
-          <div style={{ maxHeight: 350, overflowY: "auto", marginBottom: 20 }}>
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                style={{
-                  marginBottom: 12,
-                  display: "flex",
-                  justifyContent: m.from === "am" ? "flex-end" : "flex-start",
-                }}
-              >
-                <div
-                  style={{
-                    maxWidth: "70%",
-                    padding: "10px 14px",
-                    borderRadius: 14,
-                    background:
-                      m.from === "am"
-                        ? theme.bubbleAM
-                        : theme.bubbleClient,
-                    color: m.from === "am" ? "#ffffff" : theme.text,
-                  }}
-                >
-                  <div>{m.text}</div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      opacity: 0.7,
-                      marginTop: 4,
-                      textAlign: "right",
-                    }}
-                  >
-                    {m.time}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* INPUT BAR */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              borderTop: `1px solid ${theme.border}`,
-              paddingTop: 12,
-            }}
-          >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
-              style={{
-                flex: 1,
-                padding: "12px 14px",
-                borderRadius: 12,
-                border: `1px solid ${theme.border}`,
-                background: dark ? "#101A30" : "#FFFFFF",
-                color: theme.text,
-              }}
-            />
-            <button
-              onClick={sendMessage}
-              style={{
-                padding: "12px 18px",
-                background: "#06B6D4",
-                color: "#fff",
-                fontWeight: 700,
-                borderRadius: 12,
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      </main>
+      <div style={{ color: t.muted, fontSize: 12, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: -0.2 }}>{value}</div>
+      <div style={{ fontSize: 12, color: t.ok, marginTop: 4 }}>{delta}</div>
     </div>
   );
 }
+
+function Badge({
+  t,
+  children,
+  tone = "neutral",
+}: {
+  t: ReturnType<typeof useTheme>;
+  children: React.ReactNode;
+  tone?: "neutral" | "good" | "warn" | "bad";
+}) {
+  const bg =
+    tone === "good" ? "rgba(16,185,129,.18)" : tone === "warn"
+      ? "rgba(245,158,11,.18)"
+      : tone === "bad"
+      ? "rgba(239,68,68,.18)"
+      : t.dark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.06)";
+  const col =
+    tone === "good" ? "#10B981" : tone === "warn"
+      ? "#F59E0B"
+      : tone === "bad"
+      ? "#EF4444"
+      : t.muted;
+
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "6px 10px",
+        borderRadius: 999,
+        background: bg,
+        color: col,
+        fontSize: 12,
+        fontWeight: 700,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function stageTone(stage: string): "neutral" | "good" | "warn" | "bad" {
+  if (stage === "Won") return "good";
+  if (stage === "Proposal" || stage === "Discovery") return "neutral";
+  if (stage === "Qualified") return "neutral";
+  return "warn";
+                         }
