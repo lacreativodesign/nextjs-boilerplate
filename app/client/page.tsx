@@ -1,297 +1,203 @@
 "use client";
-import React, { useState } from "react";
+import RequireAuth from "@/components/RequireAuth";
+import { useState } from "react";
 
-export default function ClientDashboard() {
+export default function ClientPage() {
   const [dark, setDark] = useState(false);
 
   const theme = {
-    bg: dark ? "#0A0F1C" : "#F4F7FB",
-    sidebar: dark ? "#0E1629" : "#FFFFFF",
-    card: dark ? "#111C34" : "#FFFFFF",
-    border: dark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)",
-    text: dark ? "#E7ECF3" : "#0F172A",
-    muted: dark ? "#9AA8BC" : "#6B7280",
-    brand: "#06B6D4",
+    bg: dark ? "#0F172A" : "#F8FAFC",
+    text: dark ? "#F1F5F9" : "#0F172A",
+    card: dark ? "#1E293B" : "#FFFFFF",
+    sidebar: dark ? "#0D1323" : "#F1F5F9",
+    border: dark ? "#334155" : "#E2E8F0",
+    muted: dark ? "#94A3B8" : "#475569",
   };
 
-  const projects = [
-    {
-      id: "C-PR-2001",
-      name: "Business Website – Skyline Interiors",
-      status: "In Revisions",
-      progress: 68,
-    },
-    {
-      id: "C-PR-2002",
-      name: "Brand Identity – Nordstone Holdings",
-      status: "Draft Submitted",
-      progress: 35,
-    },
+  const PROJECTS = [
+    { id: 1, name: "Redroot Café Website", status: "Draft Ready", progress: 70 },
+    { id: 2, name: "Branding Kit — Horizon Gym", status: "Revision Needed", progress: 40 },
   ];
 
-  const invoices = [
-    { id: "INV-9001", amount: "$350", status: "Paid", date: "Oct 18, 2025" },
-    { id: "INV-9002", amount: "$220", status: "Pending", date: "Oct 29, 2025" },
+  const INVOICES = [
+    { id: 1, label: "Website Deposit", amount: "$299", status: "Paid" },
+    { id: 2, label: "Branding Package", amount: "$499", status: "Unpaid" },
   ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        background: theme.bg,
-        color: theme.text,
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      {/* SIDEBAR */}
-      <aside
+    <RequireAuth allowed={["client"]}>
+      <div
         style={{
-          width: 240,
-          background: theme.sidebar,
-          padding: "26px 18px",
-          borderRight: `1px solid ${theme.border}`,
+          minHeight: "100vh",
+          display: "flex",
+          background: theme.bg,
+          color: theme.text,
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        <div style={{ fontSize: 22, fontWeight: 900, color: theme.brand, marginBottom: 28 }}>
-          CLIENT DASHBOARD
-        </div>
+        {/* SIDEBAR */}
+        <aside
+          style={{
+            width: 240,
+            background: theme.sidebar,
+            borderRight: `1px solid ${theme.border}`,
+            padding: "26px 18px",
+          }}
+        >
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
+            CLIENT PORTAL
+          </div>
 
-        {["Overview", "Projects", "Billing", "Profile"].map((item) => (
-          <div
-            key={item}
+          {["Overview", "Projects", "Files", "Billing", "Activity", "Support", "Profile"].map(
+            (item) => (
+              <div
+                key={item}
+                style={{
+                  padding: "10px 12px",
+                  marginBottom: 6,
+                  cursor: "pointer",
+                  borderRadius: 10,
+                  color: theme.muted,
+                  fontWeight: 600,
+                }}
+              >
+                {item}
+              </div>
+            )
+          )}
+
+          <button
+            onClick={() => setDark(!dark)}
             style={{
-              padding: "10px 12px",
-              marginBottom: 6,
-              cursor: "pointer",
+              marginTop: 30,
+              width: "100%",
+              padding: "10px",
+              background: "transparent",
               borderRadius: 10,
-              color: theme.muted,
-              fontWeight: 600,
+              border: `1px solid ${theme.border}`,
+              cursor: "pointer",
+              color: theme.text,
             }}
           >
-            {item}
-          </div>
-        ))}
+            {dark ? "Light Mode" : "Dark Mode"}
+          </button>
+        </aside>
 
-        <button
-          onClick={() => setDark(!dark)}
-          style={{
-            marginTop: 30,
-            width: "100%",
-            padding: "10px",
-            borderRadius: 10,
-            border: `1px solid ${theme.border}`,
-            background: "transparent",
-            cursor: "pointer",
-            color: theme.text,
-          }}
-        >
-          {dark ? "Light Mode" : "Dark Mode"}
-        </button>
-      </aside>
+        {/* MAIN CONTENT */}
+        <main style={{ flex: 1, padding: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
+            Client Dashboard
+          </h1>
 
-      {/* MAIN */}
-      <main style={{ flex: 1, padding: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Overview</h1>
-
-        {/* KPI CARDS */}
-        <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+          {/* PROJECTS CARD */}
           <div
             style={{
-              flex: 1,
               background: theme.card,
               padding: 20,
               borderRadius: 16,
               border: `1px solid ${theme.border}`,
+              marginBottom: 28,
             }}
           >
-            <div style={{ fontSize: 14, color: theme.muted }}>Active Projects</div>
-            <div style={{ fontSize: 32, fontWeight: 900 }}>{projects.length}</div>
-          </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
+              Your Projects
+            </h2>
 
-          <div
-            style={{
-              flex: 1,
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <div style={{ fontSize: 14, color: theme.muted }}>Paid Invoices</div>
-            <div style={{ fontSize: 32, fontWeight: 900 }}>
-              {invoices.filter((i) => i.status === "Paid").length}
-            </div>
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <div style={{ fontSize: 14, color: theme.muted }}>Pending Amount</div>
-            <div style={{ fontSize: 32, fontWeight: 900 }}>$220</div>
-          </div>
-        </div>
-
-        {/* PROJECT LIST */}
-        <div
-          style={{
-            background: theme.card,
-            padding: 20,
-            borderRadius: 16,
-            border: `1px solid ${theme.border}`,
-            marginBottom: 40,
-          }}
-        >
-          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Your Projects</h2>
-
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              style={{
-                borderBottom: `1px solid ${theme.border}`,
-                padding: "14px 0",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
+            {PROJECTS.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  padding: "12px 0",
+                  borderBottom: `1px solid ${theme.border}`,
+                }}
+              >
                 <div style={{ fontWeight: 700 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: theme.muted }}>
-                  {p.status} • {p.progress}% complete
+                <div style={{ fontSize: 13, color: theme.muted }}>{p.status}</div>
+
+                <div
+                  style={{
+                    marginTop: 8,
+                    height: 8,
+                    background: dark ? "#1E293B" : "#E2E8F0",
+                    borderRadius: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${p.progress}%`,
+                      height: "100%",
+                      background: "#06B6D4",
+                      borderRadius: 6,
+                    }}
+                  />
                 </div>
               </div>
-              <button
-                style={{
-                  padding: "8px 16px",
-                  background: theme.brand,
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#fff",
-                }}
-              >
-                View
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* BILLING */}
-        <div
-          style={{
-            background: theme.card,
-            padding: 20,
-            borderRadius: 16,
-            border: `1px solid ${theme.border}`,
-            marginBottom: 40,
-          }}
-        >
-          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Billing</h2>
-
-          {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              style={{
-                padding: "14px 0",
-                borderBottom: `1px solid ${theme.border}`,
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>{inv.id}</div>
-                <div style={{ fontSize: 13, color: theme.muted }}>{inv.date}</div>
-              </div>
-
-              <div style={{ fontWeight: 700 }}>{inv.amount}</div>
-
-              <button
-                style={{
-                  padding: "8px 16px",
-                  background:
-                    inv.status === "Paid" ? "#10B981" : "#F59E0B",
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#fff",
-                }}
-              >
-                {inv.status}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* PROFILE */}
-        <div
-          style={{
-            background: theme.card,
-            padding: 20,
-            borderRadius: 16,
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          <h2 style={{ fontSize: 20, marginBottom: 14 }}>Profile</h2>
-
-          <div style={{ display: "grid", gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 13, color: theme.muted }}>Full Name</div>
-              <input
-                value="Mansoor Ahmed"
-                readOnly
-                style={{
-                  width: "100%",
-                  marginTop: 4,
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: `1px solid ${theme.border}`,
-                  background: dark ? "#101A30" : "#fff",
-                  color: theme.text,
-                }}
-              />
-            </div>
-
-            <div>
-              <div style={{ fontSize: 13, color: theme.muted }}>Email</div>
-              <input
-                value="client@example.com"
-                readOnly
-                style={{
-                  width: "100%",
-                  marginTop: 4,
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: `1px solid ${theme.border}`,
-                  background: dark ? "#101A30" : "#fff",
-                  color: theme.text,
-                }}
-              />
-            </div>
-
-            <button
-              style={{
-                marginTop: 10,
-                padding: "12px 16px",
-                background: theme.brand,
-                borderRadius: 10,
-                border: "none",
-                cursor: "pointer",
-                color: "#fff",
-                fontWeight: 700,
-                width: 180,
-              }}
-            >
-              Update Profile
-            </button>
+            ))}
           </div>
-        </div>
-      </main>
-    </div>
+
+          {/* BILLING CARD */}
+          <div
+            style={{
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+              marginBottom: 28,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
+              Billing & Invoices
+            </h2>
+
+            {INVOICES.map((inv) => (
+              <div
+                key={inv.id}
+                style={{
+                  padding: "14px 0",
+                  borderBottom: `1px solid ${theme.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700 }}>{inv.label}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>{inv.amount}</div>
+                </div>
+                <div
+                  style={{
+                    padding: "6px 12px",
+                    background: inv.status === "Paid" ? "#22C55E" : "#EAB308",
+                    color: "#fff",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {inv.status}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* PROFILE SUMMARY */}
+          <div
+            style={{
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
+              Your Profile
+            </h2>
+
+            <div style={{ fontSize: 15, marginBottom: 6 }}>Name: John Doe</div>
+            <div style={{ fontSize: 15, marginBottom: 6 }}>Email: johndoe@gmail.com</div>
+            <div style={{ fontSize: 15, marginBottom: 6 }}>Role: Client</div>
+          </div>
+        </main>
+      </div>
+    </RequireAuth>
   );
-}
+                    }
