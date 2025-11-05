@@ -1,4 +1,14 @@
+// app/admin/page.tsx
 "use client";
+import RequireAuth from "@/components/RequireAuth";
+import React from "react";
+
+export default function AdminPage() {
+  return (
+    <RequireAuth allowed={["admin"]}>
+      {/* your locked Admin UI here */}
+      <div style={{ padding: 24 }}>Admin Dashboard (secured)</div>
+      "use client";
 import React, { useState } from "react";
 
 export default function Admin2025() {
@@ -158,5 +168,6 @@ export default function Admin2025() {
         </div>
       </main>
     </div>
+      </RequireAuth>
   );
 }
