@@ -1,7 +1,7 @@
-'use client';
-
-import React, { useMemo, useState } from 'react';
-import RequireAuth from '@/components/RequireAuth';
+"use client";
+import React, { useEffect, useState } from "react";
+import RequireAuth from "@/components/RequireAuth";
+import { watchProjects } from "@/lib/data";
 
 /** ========= THEME HOOK (2025 aesthetic) ========= */
 function useTheme(defaultDark = true) {
