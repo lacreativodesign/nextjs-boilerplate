@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useMemo } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import { watchProjects } from "@/lib/data";
 
@@ -65,8 +66,8 @@ const ACTIVITY = [
   { t: '2025-11-02 17:20', who: 'Ali', what: 'Uploaded Draft v2 on LC-0005', ref: 'LC-0005' },
 ];
 
-/** ========= SMALL SVG CHARTS (no external deps) ========= */
-function LineChart({ data, w = 520, h = 120, stroke = '#6366F1' }: { data: number[]; w?: number; h?: number; stroke?: string }) {
+/** ========= SMALL SVG CHARTS ========= */
+function LineChart({ data, w = 520, h = 120, stroke = '#6366F1' }) {
   const max = Math.max(1, ...data);
   const step = data.length > 1 ? w / (data.length - 1) : w;
   const pts = data.map((v, i) => `${i * step},${h - (v / max) * (h - 10)}`).join(' ');
@@ -80,24 +81,12 @@ function LineChart({ data, w = 520, h = 120, stroke = '#6366F1' }: { data: numbe
   );
 }
 
-function BarChart({
-  labels,
-  values,
-  w = 360,
-  h = 120,
-  color = '#06B6D4',
-}: {
-  labels: string[];
-  values: number[];
-  w?: number;
-  h?: number;
-  color?: string;
-}) {
+function BarChart({ labels, values, w = 360, h = 120, color = '#06B6D4' }) {
   const max = Math.max(1, ...values);
   const gap = 10;
   const bw = Math.max(16, w / values.length - gap);
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+    <svg width={w} height={h}>
       {values.map((v, i) => {
         const x = i * (bw + gap) + 8;
         const barH = (v / max) * (h - 26);
@@ -114,15 +103,7 @@ function BarChart({
   );
 }
 
-function Donut({
-  values,
-  colors,
-  size = 140,
-}: {
-  values: number[];
-  colors: string[];
-  size?: number;
-}) {
+function Donut({ values, colors, size = 140 }) {
   const total = values.reduce((s, v) => s + v, 0) || 1;
   const cx = size / 2;
   const cy = size / 2;
@@ -130,7 +111,7 @@ function Donut({
   let angle = -90;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size}>
       {values.map((v, i) => {
         const slice = (v / total) * 360;
         const a1 = (angle * Math.PI) / 180;
@@ -149,9 +130,9 @@ function Donut({
 }
 
 /** ========= HELPERS ========= */
-const currency = (n: number) => '$' + (n || 0).toLocaleString();
+const currency = (n) => '$' + (n || 0).toLocaleString();
 
-function exportCSV(rows: Record<string, any>[], filename = 'export.csv') {
+function exportCSV(rows, filename = 'export.csv') {
   if (!rows?.length) return;
   const headers = Object.keys(rows[0]);
   const data = [headers, ...rows.map((r) => headers.map((h) => String(r[h] ?? '')))];
@@ -171,9 +152,7 @@ function exportCSV(rows: Record<string, any>[], filename = 'export.csv') {
 export default function AdminPage() {
   const t = useTheme(true);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'overview' | 'team' | 'hierarchy' | 'activity' | 'projects' | 'clients' | 'finance' | 'reports' | 'settings' | 'profile'>(
-    'overview'
-  );
+  const [tab, setTab] = useState('overview');
 
   const lineSeries = [14, 18, 16, 22, 21, 26, 25, 29, 33, 31, 36, 40];
   const barLabels = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'];
@@ -206,7 +185,7 @@ export default function AdminPage() {
         >
           <div style={{ fontWeight: 900, letterSpacing: -0.4, color: t.brand, fontSize: 18, marginBottom: 12 }}>LA CREATIVO — Admin</div>
 
-          {/* Theme toggle (switch style, not a button) */}
+          {/* Theme Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: t.mut }}>Theme</div>
             <label style={{ position: 'relative', width: 60, height: 30, display: 'inline-block' }}>
@@ -215,7 +194,6 @@ export default function AdminPage() {
                 checked={t.dark}
                 onChange={(e) => t.setDark(e.target.checked)}
                 style={{ display: 'none' }}
-                aria-label="Toggle theme"
               />
               <span
                 style={{
@@ -223,7 +201,6 @@ export default function AdminPage() {
                   inset: 0,
                   background: t.dark ? '#0b1b2b' : '#e2e8f0',
                   borderRadius: 999,
-                  boxShadow: t.shadow,
                 }}
               />
               <span
@@ -242,7 +219,7 @@ export default function AdminPage() {
             </label>
           </div>
 
-          {/* Nav */}
+          {/* NAVIGATION */}
           <nav style={{ display: 'grid', gap: 6 }}>
             {[
               ['overview', 'Overview'],
@@ -258,7 +235,7 @@ export default function AdminPage() {
             ].map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => setTab(key as any)}
+                onClick={() => setTab(key)}
                 style={{
                   textAlign: 'left',
                   padding: '10px 12px',
@@ -296,9 +273,9 @@ export default function AdminPage() {
           </div>
         </aside>
 
-        {/* MAIN */}
+        {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 28 }}>
-          {/* Top bar */}
+          {/* TOP BAR */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div
@@ -328,6 +305,7 @@ export default function AdminPage() {
               </div>
               <div style={{ fontSize: 12, color: t.mut }}>ADMIN • LAC-ADMIN-LOCKED-2025.10.24-v1.0</div>
             </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div
                 title="Notifications"
@@ -346,6 +324,7 @@ export default function AdminPage() {
               >
                 🔔
               </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div
                   style={{
@@ -369,7 +348,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* TABS */}
+          {/* ===================== TABS ===================== */}
+
           {tab === 'overview' && (
             <section>
               {/* KPIs */}
@@ -428,7 +408,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Projects Table */}
+              {/* PROJECTS TABLE */}
               <Card t={t} style={{ marginTop: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0 }}>Projects</h3>
@@ -447,6 +427,7 @@ export default function AdminPage() {
                     Export CSV
                   </button>
                 </div>
+
                 <div style={{ marginTop: 10, overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -460,6 +441,7 @@ export default function AdminPage() {
                         <th style={{ padding: '8px 6px' }}>Progress</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {filtered.map((p) => (
                         <tr key={p.id} style={{ borderBottom: `1px dashed ${t.border}` }}>
@@ -500,16 +482,19 @@ export default function AdminPage() {
                   <Card key={m.name} t={t}>
                     <h4 style={{ margin: '0 0 4px 0' }}>{m.name}</h4>
                     <Small>KPIs this month</Small>
+
                     <div style={{ height: 8 }} />
+
                     <div style={{ display: 'grid', gap: 6, fontSize: 13 }}>
                       <RowJustify a="Quota / Closed" b={`${currency(m.kpi.quota)} / ${currency(m.kpi.closed)}`} />
                       <RowJustify a="Conversion" b={`${Math.round(m.kpi.conv * 100)}%`} />
-                      {'portfolio' in m.kpi && <RowJustify a="Portfolio" b={`${(m.kpi as any).portfolio}`} />}
-                      {'health' in m.kpi && <RowJustify a="Health" b={`${Math.round((m.kpi as any).health * 100)}%`} />}
-                      {'csat' in m.kpi && <RowJustify a="CSAT" b={`${(m.kpi as any).csat}/5`} />}
-                      {'tasks' in m.kpi && <RowJustify a="Open Tasks" b={`${(m.kpi as any).tasks}`} />}
-                      {'onTime' in m.kpi && <RowJustify a="On-time" b={`${Math.round((m.kpi as any).onTime * 100)}%`} />}
-                      {'bugs' in m.kpi && <RowJustify a="Bugs" b={`${(m.kpi as any).bugs}`} />}
+
+                      {'portfolio' in m.kpi && <RowJustify a="Portfolio" b={`${m.kpi.portfolio}`} />}
+                      {'health' in m.kpi && <RowJustify a="Health" b={`${Math.round(m.kpi.health * 100)}%`} />}
+                      {'csat' in m.kpi && <RowJustify a="CSAT" b={`${m.kpi.csat}/5`} />}
+                      {'tasks' in m.kpi && <RowJustify a="Open Tasks" b={`${m.kpi.tasks}`} />}
+                      {'onTime' in m.kpi && <RowJustify a="On-time" b={`${Math.round(m.kpi.onTime * 100)}%`} />}
+                      {'bugs' in m.kpi && <RowJustify a="Bugs" b={`${m.kpi.bugs}`} />}
                     </div>
                   </Card>
                 ))}
@@ -520,11 +505,13 @@ export default function AdminPage() {
           {tab === 'hierarchy' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Hierarchy & Roles</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>
                   View and assign team leads. When a user is marked as Team Lead, all users under their org node will display that line
                   manager on their profile. (Data wiring via Firestore comes next.)
                 </p>
+
                 <button
                   onClick={() => alert('Demo: would open hierarchy editor')}
                   style={{
@@ -546,6 +533,7 @@ export default function AdminPage() {
           {tab === 'activity' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Recent Activity</h2>
+
               <Card t={t}>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                   {ACTIVITY.map((a, i) => (
@@ -561,8 +549,10 @@ export default function AdminPage() {
           {tab === 'projects' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Projects</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>Clickable rows will route to project detail (wire to /app/projects/[id]).</p>
+
                 <div style={{ marginTop: 10, overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -576,9 +566,10 @@ export default function AdminPage() {
                         <th style={{ padding: '8px 6px' }}>Progress</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {filtered.map((p) => (
-                        <tr key={p.id} style={{ borderBottom: `1px dashed ${t.border}`, cursor: 'pointer' }} onClick={() => alert(`Open ${p.id}`)}>
+                        <tr key={p.id} style={{ borderBottom: `1px dashed ${t.border}`, cursor: 'pointer' }}>
                           <td style={{ padding: '10px 6px', fontWeight: 800 }}>{p.id}</td>
                           <td style={{ padding: '10px 6px' }}>{p.title}</td>
                           <td style={{ padding: '10px 6px' }}>{p.client}</td>
@@ -611,8 +602,10 @@ export default function AdminPage() {
           {tab === 'clients' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Clients</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>Client directory with payments and services (wire to /app/clients/[id]).</p>
+
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                   {['Acme Co', 'Bistro Ltd', 'Fintech Inc', 'Moda'].map((c) => (
                     <li key={c} style={{ padding: '10px 0', borderBottom: `1px dashed ${t.border}` }}>
@@ -627,8 +620,10 @@ export default function AdminPage() {
           {tab === 'finance' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Finance</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>Mark paid (Admin only), export AR aging, and view monthly revenue run-rate.</p>
+
                 <div style={{ marginTop: 10 }}>
                   <BarChart labels={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']} values={[62, 71, 68, 88, 79, 95]} w={520} h={120} color={t.accent} />
                 </div>
@@ -639,8 +634,10 @@ export default function AdminPage() {
           {tab === 'reports' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Reports</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>Export operational and finance reports. (Hook to server actions later.)</p>
+
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
                     onClick={() => exportCSV(PROJECTS, 'projects.csv')}
@@ -656,6 +653,7 @@ export default function AdminPage() {
                   >
                     Export Projects
                   </button>
+
                   <button
                     onClick={() =>
                       exportCSV(
@@ -686,6 +684,7 @@ export default function AdminPage() {
           {tab === 'settings' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Settings</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>
                   Company config (branding, email provider, role mapping, pipelines). (Wire to Firestore & Resend after auth.)
@@ -697,21 +696,27 @@ export default function AdminPage() {
           {tab === 'profile' && (
             <section>
               <h2 style={{ marginTop: 0 }}>Profile</h2>
+
               <Card t={t}>
                 <p style={{ marginTop: 0, color: t.mut }}>Admin profile with uploader + password change (connect later to Firebase Auth).</p>
+
                 <div style={{ display: 'grid', gap: 10, maxWidth: 560 }}>
                   <Input t={t} label="Name" placeholder="Your name" />
                   <Input t={t} label="Email" placeholder="you@company.com" />
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <Input t={t} label="City" placeholder="Karachi" />
                     <Input t={t} label="State" placeholder="Sindh" />
                   </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <Input t={t} label="Zip" placeholder="-" />
                     <Input t={t} label="Role" placeholder="Admin" />
                   </div>
+
                   <div>
                     <label style={{ display: 'block', fontSize: 12, color: t.mut, marginBottom: 6 }}>Profile Image</label>
+
                     <div
                       style={{
                         border: `1px dashed ${t.border}`,
@@ -725,6 +730,7 @@ export default function AdminPage() {
                       Click to upload (wire Uploadcare later)
                     </div>
                   </div>
+
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
                       onClick={() => alert('Demo save')}
@@ -740,6 +746,7 @@ export default function AdminPage() {
                     >
                       Save Profile
                     </button>
+
                     <button
                       onClick={() => alert('Demo password change')}
                       style={{
@@ -766,15 +773,7 @@ export default function AdminPage() {
 }
 
 /** ========= UI ATOMS ========= */
-function Card({
-  t,
-  children,
-  style,
-}: {
-  t: ReturnType<typeof useTheme>;
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
+function Card({ t, children, style }) {
   return (
     <div
       style={{
@@ -791,20 +790,23 @@ function Card({
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }) {
   return <div style={{ fontSize: 12, color: '#94A3B8' }}>{children}</div>;
 }
-function Big({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+
+function Big({ children, style }) {
   return (
     <div style={{ marginTop: 8, fontWeight: 900, fontSize: 22, letterSpacing: -0.2, ...style }}>
       {children}
     </div>
   );
 }
-function Small({ children }: { children: React.ReactNode }) {
+
+function Small({ children }) {
   return <div style={{ marginTop: 6, fontSize: 12, color: '#94A3B8' }}>{children}</div>;
 }
-function RowJustify({ a, b }: { a: string; b: string }) {
+
+function RowJustify({ a, b }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
       <span>{a}</span>
@@ -813,10 +815,11 @@ function RowJustify({ a, b }: { a: string; b: string }) {
   );
 }
 
-function Input({ t, label, placeholder }: { t: ReturnType<typeof useTheme>; label: string; placeholder?: string }) {
+function Input({ t, label, placeholder }) {
   return (
     <div>
       <label style={{ display: 'block', fontSize: 12, color: t.mut, marginBottom: 6 }}>{label}</label>
+
       <input
         placeholder={placeholder}
         style={{
@@ -831,4 +834,4 @@ function Input({ t, label, placeholder }: { t: ReturnType<typeof useTheme>; labe
       />
     </div>
   );
-                               }
+}
