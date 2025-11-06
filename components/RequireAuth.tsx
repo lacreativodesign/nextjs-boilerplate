@@ -6,14 +6,13 @@ import { auth } from "@/lib/firebase";
 import { getUserRole } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
-// ✅ Prevent server crash by running ONLY on the client
-export default function RequireAuth({ children, allowed }: { children: any; allowed: string[] }) {
+export default function RequireAuth({ children, allowed }) {
   const router = useRouter();
-  const [check, setCheck] = useState(true);
-  const [okay, setOkay] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [access, setAccess] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return; // ✅ NEVER run on server
+    if (typeof window === "undefined") return;
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -29,18 +28,17 @@ export default function RequireAuth({ children, allowed }: { children: any; allo
       }
 
       if (allowed.includes(role)) {
-        setOkay(true);
+        setAccess(true);
       } else {
         router.replace("/denied");
       }
 
-      setCheck(false);
+      setLoading(false);
     });
 
     return () => unsub();
-  }, [router, allowed]);
+  }, [allowed, router]);
 
-  if (check) return null;
-
-  return okay ? children : null;
+  if (loading) return null;
+  return access ? children : null;
 }
