@@ -1,83 +1,43 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { auth, fetchUserRole } from "@/lib/firebaseClient";
+import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { getUserRole } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
-type Props = {
-  allowed: string[];
-  children: React.ReactNode;
-};
-
-export default function RequireAuth({ allowed, children }: Props) {
-  const [checking, setChecking] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+export default function RequireAuth({ children, allowed }: { children: any; allowed: string[] }) {
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
+  const [allowedView, setAllowedView] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      // ✅ 1 — User not logged in → send to login
       if (!user) {
-        setAuthorized(false);
-        setChecking(false);
-        router.replace("/login");
+        router.replace("/");
         return;
       }
 
-      try {
-        // ✅ 2 — Fetch user role from Firestore
-        const role = await fetchUserRole(user.uid);
+      const role = await getUserRole(user.uid);
 
-        if (!role) {
-          // No role assigned → send to login
-          setAuthorized(false);
-          setChecking(false);
-          router.replace("/login");
-          return;
-        }
-
-        // ✅ 3 — Allowed role → display page
-        if (allowed.includes(role)) {
-          setAuthorized(true);
-          setChecking(false);
-          return;
-        }
-
-        // ✅ 4 — Wrong role → redirect them to THEIR dashboard
-        const redirectMap: Record<string, string> = {
-          admin: "/admin",
-          sales: "/sales",
-          am: "/am",
-          client: "/client",
-          production: "/production",
-          hr: "/hr",
-          finance: "/finance",
-        };
-
-        const destination = redirectMap[role] ?? "/login";
-
-        setAuthorized(false);
-        setChecking(false);
-        router.replace(destination);
-      } catch (err) {
-        console.error("RequireAuth error:", err);
-        setAuthorized(false);
-        setChecking(false);
-        router.replace("/login");
+      if (!role) {
+        router.replace("/");
+        return;
       }
+
+      if (allowed.includes(role)) {
+        setAllowedView(true);
+      } else {
+        router.replace(`/denied`);
+      }
+
+      setChecking(false);
     });
 
     return () => unsub();
-  }, [allowed, router]);
+  }, [router, allowed]);
 
-  // ✅ Prevents flicker & weird empty UI flashes
-  if (checking) {
-    return <div style={{ padding: 30 }}>Checking permissions…</div>;
-  }
+  if (checking) return <div>Loading...</div>;
 
-  // ✅ If not authorized, we already redirected → render nothing
-  if (!authorized) return null;
-
-  return <>{children}</>;
+  return allowedView ? children : null;
 }
