@@ -1,5 +1,7 @@
-"use client";
+"use client"; // MUST BE FIRST LINE ALWAYS
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 import React, { useEffect, useState, useMemo } from "react";
 import RequireAuth from "@/components/RequireAuth";
