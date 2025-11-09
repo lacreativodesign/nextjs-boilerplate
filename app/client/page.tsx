@@ -14,6 +14,7 @@ export default function ClientPage() {
         border: "#1E293B",
         card: "#111B2E",
         muted: "#94A3B8",
+        accent: "#06B6D4",
       }
     : {
         bg: "#F8FAFC",
@@ -22,25 +23,41 @@ export default function ClientPage() {
         border: "#CBD5E1",
         card: "#FFFFFF",
         muted: "#475569",
+        accent: "#06B6D4",
       };
 
-  const invoices = [
-    { id: 1, number: "INV-001", amount: "$450", status: "Paid" },
-    { id: 2, number: "INV-002", amount: "$900", status: "Pending" },
-    { id: 3, number: "INV-003", amount: "$180", status: "Paid" },
+  // ===== Dummy Data =====
+  const kpis = [
+    { label: "Active Projects", value: 3 },
+    { label: "Pending Invoices", value: 1 },
+    { label: "Unread Messages", value: 4 },
+    { label: "Files Delivered", value: 12 },
   ];
 
   const projects = [
-    { id: 1, name: "Redroot Café Website", stage: "Review", progress: "70%" },
-    { id: 2, name: "Brand Identity Upgrade", stage: "Drafting", progress: "40%" },
+    { id: "P-1021", name: "Corporate Website Revamp", status: "In Review", files: 5 },
+    { id: "P-1012", name: "Brand Identity Kit", status: "Revisions", files: 9 },
+    { id: "P-0997", name: "Explainer Video", status: "Production", files: 3 },
+  ];
+
+  const invoices = [
+    { id: "INV-23011", amount: "$1,200", status: "Paid", date: "2025-10-01" },
+    { id: "INV-23012", amount: "$900", status: "Unpaid", date: "2025-10-28" },
+  ];
+
+  const files = [
+    { id: 1, name: "Homepage_v2_DRAFT.fig", tag: "Draft" },
+    { id: 2, name: "Logo_Final.ai", tag: "Final" },
+    { id: 3, name: "BrandGuidelines.pdf", tag: "Final" },
+    { id: 4, name: "Storyboard_rev1.pdf", tag: "Revision" },
   ];
 
   return (
     <RequireAuth allowed={["client"]}>
       <div
         style={{
-          minHeight: "100vh",
           display: "flex",
+          minHeight: "100vh",
           background: t.bg,
           color: t.text,
           fontFamily: "Inter, sans-serif",
@@ -52,14 +69,22 @@ export default function ClientPage() {
             width: 240,
             background: t.sidebar,
             borderRight: `1px solid ${t.border}`,
-            padding: "26px 18px",
+            padding: "28px 18px",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: t.accent }}>
             CLIENT PORTAL
           </div>
 
-          {["Overview", "Projects", "Billing", "Profile"].map((item) => (
+          {[
+            "Overview",
+            "Projects",
+            "Files",
+            "Invoices",
+            "Messages",
+            "Activity",
+            "Profile",
+          ].map((item) => (
             <div
               key={item}
               style={{
@@ -92,86 +117,69 @@ export default function ClientPage() {
           </button>
         </aside>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Welcome Back</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Overview</h1>
 
-          {/* KPIs */}
-          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
-            <div
-              style={{
-                background: t.card,
-                padding: 20,
-                borderRadius: 14,
-                border: `1px solid ${t.border}`,
-                flex: 1,
-              }}
-            >
-              <div style={{ fontSize: 14, color: t.muted }}>Active Projects</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>2</div>
-            </div>
-
-            <div
-              style={{
-                background: t.card,
-                padding: 20,
-                borderRadius: 14,
-                border: `1px solid ${t.border}`,
-                flex: 1,
-              }}
-            >
-              <div style={{ fontSize: 14, color: t.muted }}>Pending Invoices</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>1</div>
-            </div>
-
-            <div
-              style={{
-                background: t.card,
-                padding: 20,
-                borderRadius: 14,
-                border: `1px solid ${t.border}`,
-                flex: 1,
-              }}
-            >
-              <div style={{ fontSize: 14, color: t.muted }}>Completed Files</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>6</div>
-            </div>
+          {/* KPI ROW */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 16,
+              marginBottom: 24,
+            }}
+          >
+            {kpis.map((k) => (
+              <div
+                key={k.label}
+                style={{
+                  background: t.card,
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 16,
+                  padding: 16,
+                }}
+              >
+                <div style={{ fontSize: 12, color: t.muted }}>{k.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{k.value}</div>
+              </div>
+            ))}
           </div>
 
-          {/* PROJECT LIST */}
+          {/* PROJECTS */}
           <div
             style={{
               background: t.card,
-              padding: 20,
-              borderRadius: 16,
               border: `1px solid ${t.border}`,
-              marginBottom: 30,
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 24,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Your Projects</h2>
-
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Projects</h2>
             {projects.map((p) => (
               <div
                 key={p.id}
                 style={{
-                  padding: "14px 0",
+                  padding: "12px 0",
                   borderBottom: `1px solid ${t.border}`,
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
                 <div>
                   <div style={{ fontWeight: 700 }}>{p.name}</div>
                   <div style={{ fontSize: 13, color: t.muted }}>
-                    {p.stage} • {p.progress} Done
+                    {p.id} • {p.status} • {p.files} files
                   </div>
                 </div>
                 <button
                   style={{
-                    padding: "6px 14px",
+                    padding: "6px 16px",
                     borderRadius: 8,
                     border: "none",
-                    background: "#06B6D4",
+                    background: t.accent,
                     color: "#fff",
                     cursor: "pointer",
                   }}
@@ -182,63 +190,96 @@ export default function ClientPage() {
             ))}
           </div>
 
-          {/* BILLING */}
+          {/* FILES */}
           <div
             style={{
               background: t.card,
-              padding: 20,
-              borderRadius: 16,
               border: `1px solid ${t.border}`,
-              marginBottom: 30,
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 24,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Billing</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Files</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+              {files.map((f) => (
+                <div
+                  key={f.id}
+                  style={{
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 12,
+                    padding: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    background: dark ? "#0E192E" : "#FFFFFF",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{f.name}</div>
+                    <div style={{ fontSize: 12, color: t.muted }}>{f.tag}</div>
+                  </div>
+                  <button
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: t.accent,
+                      color: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Download
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
+          {/* INVOICES */}
+          <div
+            style={{
+              background: t.card,
+              border: `1px solid ${t.border}`,
+              borderRadius: 16,
+              padding: 20,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Invoices</h2>
             {invoices.map((inv) => (
               <div
                 key={inv.id}
                 style={{
-                  padding: "14px 0",
+                  padding: "12px 0",
                   borderBottom: `1px solid ${t.border}`,
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700 }}>{inv.number}</div>
-                  <div style={{ fontSize: 13, color: t.muted }}>{inv.amount}</div>
+                  <div style={{ fontWeight: 700 }}>{inv.id}</div>
+                  <div style={{ fontSize: 13, color: t.muted }}>{inv.date}</div>
                 </div>
-
-                <span
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    background: inv.status === "Paid" ? "#16A34A" : "#F59E0B",
-                    color: "#fff",
-                    fontWeight: 600,
-                  }}
-                >
-                  {inv.status}
-                </span>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  <div style={{ fontWeight: 800 }}>{inv.amount}</div>
+                  <span
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      border: `1px solid ${t.border}`,
+                      fontSize: 12,
+                      color: inv.status === "Paid" ? "#10B981" : "#F97316",
+                      background: dark ? "#0B1427" : "#F8FAFC",
+                    }}
+                  >
+                    {inv.status}
+                  </span>
+                </div>
               </div>
             ))}
-          </div>
-
-          {/* PROFILE */}
-          <div
-            style={{
-              background: t.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Your Profile</h2>
-            <div style={{ fontSize: 14, color: t.muted }}>Coming soon…</div>
           </div>
         </main>
       </div>
     </RequireAuth>
   );
-        }
+            }
