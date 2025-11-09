@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import { auth, fetchUserRole } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
@@ -19,7 +20,6 @@ export default function RequireAuth({ allowed, children }: Props) {
       if (!user) {
         router.replace("/login");
         setReady(true);
-        setOk(false);
         return;
       }
 
@@ -49,7 +49,6 @@ export default function RequireAuth({ allowed, children }: Props) {
             router.replace("/login");
         }
         setReady(true);
-        setOk(false);
         return;
       }
 
@@ -58,7 +57,7 @@ export default function RequireAuth({ allowed, children }: Props) {
     });
 
     return () => unsub();
-  }, [router, allowed]);
+  }, [allowed, router]);
 
   if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
   if (!ok) return null;
