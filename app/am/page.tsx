@@ -1,32 +1,50 @@
 "use client";
+
 import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 
 export default function AMPage() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
+  const theme = dark
+    ? {
+        bg: "#0D1527",
+        text: "#E2E8F0",
+        sidebar: "#0B1220",
+        border: "#1E293B",
+        card: "#111B2E",
+        muted: "#94A3B8",
+        bubbleAM: "#06B6D4",
+        bubbleClient: "#1E293B",
+      }
+    : {
+        bg: "#F8FAFC",
+        text: "#0F172A",
+        sidebar: "#FFFFFF",
+        border: "#CBD5E1",
+        card: "#FFFFFF",
+        muted: "#475569",
+        bubbleAM: "#06B6D4",
+        bubbleClient: "#E2E8F0",
+      };
 
-  const theme = {
-    bg: dark ? "#0F172A" : "#F8FAFC",
-    text: dark ? "#F1F5F9" : "#0F172A",
-    card: dark ? "#1E293B" : "#FFFFFF",
-    sidebar: dark ? "#0D1323" : "#F1F5F9",
-    border: dark ? "#334155" : "#E2E8F0",
-    muted: dark ? "#94A3B8" : "#475569",
-    bubbleAM: "#06B6D4",
-    bubbleClient: dark ? "#334155" : "#E2E8F0",
+  const projects = [
+    { id: 1, name: "Redroot Café Website", status: "Active", files: 4 },
+    { id: 2, name: "Atlas Finance Branding", status: "Draft", files: 2 },
+    { id: 3, name: "GlowSkin Clinic Website", status: "Review", files: 7 },
+  ];
+
+  const messages = [
+    { id: 1, from: "client", text: "Hi! Any update on the last revision?", time: "10:21 AM" },
+    { id: 2, from: "am", text: "Yes, sharing the updated draft in a bit.", time: "10:23 AM" },
+    { id: 3, from: "client", text: "Great, thank you!", time: "10:24 AM" },
+  ];
+
+  const [input, setInput] = useState("");
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+    setInput("");
   };
-
-  const PROJECTS = [
-    { id: 1, name: "Redroot Café Website", status: "In Progress", files: 12 },
-    { id: 2, name: "Eclipse Fitness Branding", status: "Review", files: 5 },
-    { id: 3, name: "Stark Motors – SEO", status: "Active", files: 7 },
-  ];
-
-  const MESSAGES = [
-    { id: 1, text: "Hey, any update on the homepage?", from: "client", time: "10:21 AM" },
-    { id: 2, text: "Yes, draft is ready. Uploading now!", from: "am", time: "10:22 AM" },
-    { id: 3, text: "Great! Checking.", from: "client", time: "10:23 AM" },
-  ];
 
   return (
     <RequireAuth allowed={["am"]}>
@@ -87,13 +105,11 @@ export default function AMPage() {
           </button>
         </aside>
 
-        {/* MAIN */}
+        {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
-            Account Manager Dashboard
-          </h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Account Manager Overview</h1>
 
-          {/* PROJECT LIST */}
+          {/* PROJECTS */}
           <div
             style={{
               background: theme.card,
@@ -105,7 +121,7 @@ export default function AMPage() {
           >
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Active Projects</h2>
 
-            {PROJECTS.map((p) => (
+            {projects.map((p) => (
               <div
                 key={p.id}
                 style={{
@@ -137,7 +153,7 @@ export default function AMPage() {
             ))}
           </div>
 
-          {/* CHAT AREA */}
+          {/* CHAT MODULE */}
           <div
             style={{
               background: theme.card,
@@ -151,7 +167,7 @@ export default function AMPage() {
             </h2>
 
             <div style={{ maxHeight: 350, overflowY: "auto", marginBottom: 20 }}>
-              {MESSAGES.map((m) => (
+              {messages.map((m) => (
                 <div
                   key={m.id}
                   style={{
@@ -165,8 +181,7 @@ export default function AMPage() {
                       maxWidth: "70%",
                       padding: "10px 14px",
                       borderRadius: 14,
-                      background:
-                        m.from === "am" ? theme.bubbleAM : theme.bubbleClient,
+                      background: m.from === "am" ? theme.bubbleAM : theme.bubbleClient,
                       color: m.from === "am" ? "#ffffff" : theme.text,
                     }}
                   >
@@ -186,7 +201,7 @@ export default function AMPage() {
               ))}
             </div>
 
-            {/* INPUT BAR */}
+            {/* INPUT */}
             <div
               style={{
                 display: "flex",
@@ -196,6 +211,8 @@ export default function AMPage() {
               }}
             >
               <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your message..."
                 style={{
                   flex: 1,
@@ -207,6 +224,7 @@ export default function AMPage() {
                 }}
               />
               <button
+                onClick={sendMessage}
                 style={{
                   padding: "12px 18px",
                   background: "#06B6D4",
@@ -225,4 +243,4 @@ export default function AMPage() {
       </div>
     </RequireAuth>
   );
-                        }
+    }
