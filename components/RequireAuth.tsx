@@ -1,44 +1,67 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { auth, fetchUserRole } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { getUserRole } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
-export default function RequireAuth({ children, allowed }) {
+type Props = {
+  allowed: string[];
+  children: React.ReactNode;
+};
+
+export default function RequireAuth({ allowed, children }: Props) {
+  const [ready, setReady] = useState(false);
+  const [ok, setOk] = useState(false);
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [access, setAccess] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.replace("/login");
+        setReady(true);
+        setOk(false);
         return;
       }
 
-      const role = await getUserRole(user.uid);
+      const role = await fetchUserRole(user.uid);
 
-      if (!role) {
-        router.replace("/login");
+      if (!role || !allowed.includes(role)) {
+        switch (role) {
+          case "admin":
+            router.replace("/admin");
+            break;
+          case "sales":
+            router.replace("/sales");
+            break;
+          case "am":
+            router.replace("/am");
+            break;
+          case "client":
+            router.replace("/client");
+            break;
+          case "production":
+            router.replace("/production");
+            break;
+          case "hr":
+            router.replace("/hr");
+            break;
+          default:
+            router.replace("/login");
+        }
+        setReady(true);
+        setOk(false);
         return;
       }
 
-      if (allowed.includes(role)) {
-        setAccess(true);
-      } else {
-        router.replace("/denied");
-      }
-
-      setLoading(false);
+      setOk(true);
+      setReady(true);
     });
 
     return () => unsub();
-  }, [allowed, router]);
+  }, [router, allowed]);
 
-  if (loading) return null;
-  return access ? children : null;
+  if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (!ok) return null;
+
+  return <>{children}</>;
 }
