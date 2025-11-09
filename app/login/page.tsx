@@ -16,13 +16,9 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const userCred = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
+
       const role = await fetchUserRole(uid);
 
       if (!role) {
@@ -30,6 +26,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Redirect by role
       switch (role) {
         case "admin":
           router.replace("/admin");
@@ -50,7 +47,7 @@ export default function LoginPage() {
           router.replace("/hr");
           break;
         default:
-          setError("Invalid role. Contact admin.");
+          setError("Invalid role assigned. Contact admin.");
       }
     } catch (err: any) {
       setError(err.message);
@@ -66,6 +63,7 @@ export default function LoginPage() {
         alignItems: "center",
         background: "#F1F5F9",
         fontFamily: "Inter, sans-serif",
+        padding: 20,
       }}
     >
       <div
@@ -106,7 +104,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin}>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={{
@@ -153,4 +151,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-            }
+              }
