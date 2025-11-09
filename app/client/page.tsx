@@ -1,49 +1,38 @@
 "use client";
+
+import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import { useMemo, useState } from "react";
 
 export default function ClientPage() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
 
-  const t = useMemo(
-    () => ({
-      bg: dark ? "#0F172A" : "#F8FAFC",
-      text: dark ? "#E6EEF7" : "#0F172A",
-      card: dark ? "#162035" : "#FFFFFF",
-      sidebar: dark ? "#0B1224" : "#F1F5F9",
-      border: dark ? "#2A3A57" : "#E2E8F0",
-      muted: dark ? "#94A3B8" : "#475569",
-      brand: "#06B6D4",
-      chip: dark ? "rgba(2,132,199,.2)" : "rgba(6,182,212,.1)",
-    }),
-    [dark]
-  );
+  const t = dark
+    ? {
+        bg: "#0D1527",
+        text: "#E2E8F0",
+        sidebar: "#0B1220",
+        border: "#1E293B",
+        card: "#111B2E",
+        muted: "#94A3B8",
+      }
+    : {
+        bg: "#F8FAFC",
+        text: "#0F172A",
+        sidebar: "#FFFFFF",
+        border: "#CBD5E1",
+        card: "#FFFFFF",
+        muted: "#475569",
+      };
 
-  const PROJECTS = [
-    {
-      id: "P-101",
-      name: "Brand Identity",
-      status: "In Review",
-      progress: 68,
-      lastUpdate: "2025-10-24",
-    },
-    {
-      id: "P-102",
-      name: "Website Development",
-      status: "Draft",
-      progress: 35,
-      lastUpdate: "2025-10-22",
-    },
+  const invoices = [
+    { id: 1, number: "INV-001", amount: "$450", status: "Paid" },
+    { id: 2, number: "INV-002", amount: "$900", status: "Pending" },
+    { id: 3, number: "INV-003", amount: "$180", status: "Paid" },
   ];
 
-  const INVOICES = [
-    { id: "INV-101", amount: 1200, date: "2025-10-12", status: "Paid" },
-    { id: "INV-102", amount: 1800, date: "2025-10-20", status: "Unpaid" },
-  ];
-
-  const MESSAGES = [
-    { id: 1, from: "am", text: "Hi! Your draft is ready for review.", time: "11:02 AM" },
-    { id: 2, from: "client", text: "Great! Looking now.", time: "11:05 AM" },
+  const projects = [
+    { id: 1, name: "Redroot Café Website", stage: "Review", progress: "70%" },
+    { id: 2, name: "Brand Identity Upgrade", stage: "Drafting", progress: "40%" },
   ];
 
   return (
@@ -54,7 +43,7 @@ export default function ClientPage() {
           display: "flex",
           background: t.bg,
           color: t.text,
-          fontFamily: "Inter, ui-sans-serif",
+          fontFamily: "Inter, sans-serif",
         }}
       >
         {/* SIDEBAR */}
@@ -66,11 +55,11 @@ export default function ClientPage() {
             padding: "26px 18px",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: t.brand }}>
-            CLIENT
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
+            CLIENT PORTAL
           </div>
 
-          {["Overview", "Projects", "Invoices", "Files", "Messages", "Profile"].map((item) => (
+          {["Overview", "Projects", "Billing", "Profile"].map((item) => (
             <div
               key={item}
               style={{
@@ -92,9 +81,9 @@ export default function ClientPage() {
               marginTop: 30,
               width: "100%",
               padding: "10px",
+              background: "transparent",
               borderRadius: 10,
               border: `1px solid ${t.border}`,
-              background: "transparent",
               cursor: "pointer",
               color: t.text,
             }}
@@ -105,176 +94,151 @@ export default function ClientPage() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>Client Dashboard</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Welcome Back</h1>
 
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 30 }}>
-            {[
-              { label: "Active Projects", value: PROJECTS.length },
-              { label: "Invoices", value: INVOICES.length },
-              { label: "Paid", value: INVOICES.filter((i) => i.status === "Paid").length },
-              { label: "Unread Messages", value: 1 },
-            ].map((k) => (
-              <div
-                key={k.label}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  background: t.card,
-                  border: `1px solid ${t.border}`,
-                }}
-              >
-                <div style={{ fontSize: 13, color: t.muted }}>{k.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800 }}>{k.value}</div>
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+            <div
+              style={{
+                background: t.card,
+                padding: 20,
+                borderRadius: 14,
+                border: `1px solid ${t.border}`,
+                flex: 1,
+              }}
+            >
+              <div style={{ fontSize: 14, color: t.muted }}>Active Projects</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>2</div>
+            </div>
+
+            <div
+              style={{
+                background: t.card,
+                padding: 20,
+                borderRadius: 14,
+                border: `1px solid ${t.border}`,
+                flex: 1,
+              }}
+            >
+              <div style={{ fontSize: 14, color: t.muted }}>Pending Invoices</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>1</div>
+            </div>
+
+            <div
+              style={{
+                background: t.card,
+                padding: 20,
+                borderRadius: 14,
+                border: `1px solid ${t.border}`,
+                flex: 1,
+              }}
+            >
+              <div style={{ fontSize: 14, color: t.muted }}>Completed Files</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>6</div>
+            </div>
           </div>
 
-          {/* PROJECTS SECTION */}
-          <section
+          {/* PROJECT LIST */}
+          <div
             style={{
               background: t.card,
+              padding: 20,
               borderRadius: 16,
               border: `1px solid ${t.border}`,
-              padding: 20,
               marginBottom: 30,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Your Projects</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Your Projects</h2>
 
-            {PROJECTS.map((p) => (
+            {projects.map((p) => (
               <div
                 key={p.id}
                 style={{
                   padding: "14px 0",
                   borderBottom: `1px solid ${t.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 700 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: t.muted }}>
-                  {p.status} • Last updated {p.lastUpdate}
+                <div>
+                  <div style={{ fontWeight: 700 }}>{p.name}</div>
+                  <div style={{ fontSize: 13, color: t.muted }}>
+                    {p.stage} • {p.progress} Done
+                  </div>
                 </div>
-
-                <div
+                <button
                   style={{
-                    marginTop: 10,
-                    height: 8,
-                    borderRadius: 6,
-                    background: t.border,
-                    overflow: "hidden",
-                    width: "100%",
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#06B6D4",
+                    color: "#fff",
+                    cursor: "pointer",
                   }}
                 >
-                  <div
-                    style={{
-                      width: `${p.progress}%`,
-                      background: t.brand,
-                      height: "100%",
-                    }}
-                  ></div>
-                </div>
+                  View
+                </button>
               </div>
             ))}
-          </section>
+          </div>
 
-          {/* INVOICES */}
-          <section
+          {/* BILLING */}
+          <div
             style={{
               background: t.card,
+              padding: 20,
               borderRadius: 16,
               border: `1px solid ${t.border}`,
-              padding: 20,
               marginBottom: 30,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Invoices</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Billing</h2>
 
-            {INVOICES.map((inv) => (
+            {invoices.map((inv) => (
               <div
                 key={inv.id}
                 style={{
-                  padding: "12px 0",
+                  padding: "14px 0",
                   borderBottom: `1px solid ${t.border}`,
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                <div>{inv.id}</div>
-                <div>${inv.amount}</div>
-                <div>{inv.date}</div>
                 <div>
-                  <span
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      background: t.chip,
-                      border: `1px solid ${t.border}`,
-                      fontSize: 12,
-                    }}
-                  >
-                    {inv.status}
-                  </span>
+                  <div style={{ fontWeight: 700 }}>{inv.number}</div>
+                  <div style={{ fontSize: 13, color: t.muted }}>{inv.amount}</div>
                 </div>
-              </div>
-            ))}
-          </section>
 
-          {/* CHAT PREVIEW */}
-          <section
-            style={{
-              background: t.card,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
-              padding: 20,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Recent Messages</h2>
-
-            <div style={{ maxHeight: 280, overflowY: "auto", marginBottom: 20 }}>
-              {MESSAGES.map((m) => (
-                <div
-                  key={m.id}
+                <span
                   style={{
-                    marginBottom: 12,
-                    display: "flex",
-                    justifyContent: m.from === "client" ? "flex-end" : "flex-start",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    background: inv.status === "Paid" ? "#16A34A" : "#F59E0B",
+                    color: "#fff",
+                    fontWeight: 600,
                   }}
                 >
-                  <div
-                    style={{
-                      maxWidth: "70%",
-                      padding: "10px 14px",
-                      borderRadius: 14,
-                      background:
-                        m.from === "client"
-                          ? "#06B6D4"
-                          : t.bubbleClient || "rgba(0,0,0,0.05)",
-                      color: m.from === "client" ? "#ffffff" : t.text,
-                    }}
-                  >
-                    <div>{m.text}</div>
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4, textAlign: "right" }}>
-                      {m.time}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  {inv.status}
+                </span>
+              </div>
+            ))}
+          </div>
 
-            <input
-              placeholder="Start a message…"
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 12,
-                border: `1px solid ${t.border}`,
-                background: dark ? "#101A30" : "#fff",
-                color: t.text,
-              }}
-            />
-          </section>
+          {/* PROFILE */}
+          <div
+            style={{
+              background: t.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${t.border}`,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Your Profile</h2>
+            <div style={{ fontSize: 14, color: t.muted }}>Coming soon…</div>
+          </div>
         </main>
       </div>
     </RequireAuth>
   );
-            }
+        }
