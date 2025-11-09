@@ -1,69 +1,73 @@
 "use client";
+
+import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import { useState, useMemo } from "react";
 
 export default function ProductionPage() {
-  const [dark, setDark] = useState(false);
-  const [message, setMessage] = useState("");
+  const [dark, setDark] = useState(true);
+  const [input, setInput] = useState("");
 
-  const t = useMemo(
-    () => ({
-      bg: dark ? "#0F172A" : "#F8FAFC",
-      text: dark ? "#E6EEF7" : "#0F172A",
-      card: dark ? "#162035" : "#FFFFFF",
-      sidebar: dark ? "#0B1224" : "#F1F5F9",
-      border: dark ? "#2A3A57" : "#E2E8F0",
-      muted: dark ? "#94A3B8" : "#475569",
-      bubbleProd: dark ? "#1E293B" : "#06B6D4",
-      bubbleClient: dark ? "#1E293B" : "#E2E8F0",
-      brand: "#06B6D4",
-    }),
-    [dark]
-  );
+  const theme = dark
+    ? {
+        bg: "#0D1527",
+        text: "#E2E8F0",
+        sidebar: "#0B1220",
+        border: "#1E293B",
+        card: "#111B2E",
+        muted: "#94A3B8",
+        bubbleProd: "#06B6D4",
+        bubbleClient: "#1E293B",
+      }
+    : {
+        bg: "#F8FAFC",
+        text: "#0F172A",
+        sidebar: "#FFFFFF",
+        border: "#CBD5E1",
+        card: "#FFFFFF",
+        muted: "#475569",
+        bubbleProd: "#06B6D4",
+        bubbleClient: "#E2E8F0",
+      };
 
-  const PROJECTS = [
-    {
-      id: "PR-401",
-      name: "E-Commerce UI Kit",
-      stage: "Revisions",
-      files: 12,
-      updated: "2025-10-24",
-    },
-    {
-      id: "PR-402",
-      name: "Logo + Branding Pack",
-      stage: "Draft",
-      files: 5,
-      updated: "2025-10-23",
-    },
+  // Dummy Data
+  const tasks = [
+    { id: 1, name: "Website Draft", status: "In Progress" },
+    { id: 2, name: "Branding Kit", status: "Pending Review" },
   ];
 
-  const MESSAGES = [
-    { id: 1, from: "production", text: "First draft uploaded.", time: "09:30 AM" },
-    { id: 2, from: "client", text: "Reviewing now!", time: "09:33 AM" },
+  const messages = [
+    { id: 1, from: "prod", text: "Draft has been uploaded.", time: "10:30 AM" },
+    { id: 2, from: "client", text: "Received. Reviewing now.", time: "10:33 AM" },
+    { id: 3, from: "prod", text: "Let us know if revisions needed.", time: "10:34 AM" },
   ];
+
+  const files = {
+    draft: ["draft_v1.pdf", "homepage_mockup.png"],
+    revision: ["revision_round1.pdf"],
+    final: ["final_package.zip"],
+  };
 
   return (
     <RequireAuth allowed={["production"]}>
       <div
         style={{
-          minHeight: "100vh",
           display: "flex",
-          background: t.bg,
-          color: t.text,
-          fontFamily: "Inter, ui-sans-serif",
+          minHeight: "100vh",
+          background: theme.bg,
+          color: theme.text,
+          fontFamily: "Inter, sans-serif",
         }}
       >
         {/* SIDEBAR */}
         <aside
           style={{
             width: 240,
-            background: t.sidebar,
-            borderRight: `1px solid ${t.border}`,
-            padding: "26px 18px",
+            background: theme.sidebar,
+            borderRight: `1px solid ${theme.border}`,
+            padding: "28px 18px",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: t.brand }}>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
             PRODUCTION
           </div>
 
@@ -76,7 +80,7 @@ export default function ProductionPage() {
                   marginBottom: 6,
                   cursor: "pointer",
                   borderRadius: 10,
-                  color: t.muted,
+                  color: theme.muted,
                   fontWeight: 600,
                 }}
               >
@@ -91,11 +95,11 @@ export default function ProductionPage() {
               marginTop: 30,
               width: "100%",
               padding: "10px",
-              borderRadius: 10,
-              border: `1px solid ${t.border}`,
               background: "transparent",
+              borderRadius: 10,
+              border: `1px solid ${theme.border}`,
               cursor: "pointer",
-              color: t.text,
+              color: theme.text,
             }}
           >
             {dark ? "Light Mode" : "Dark Mode"}
@@ -104,70 +108,102 @@ export default function ProductionPage() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>Production Queue</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Production Queue</h1>
 
-          {/* PROJECT LIST */}
-          <section
+          {/* TASK LIST */}
+          <div
             style={{
-              background: t.card,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
+              background: theme.card,
               padding: 20,
-              marginBottom: 32,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+              marginBottom: 30,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 18 }}>Active Projects</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Active Tasks</h2>
 
-            {PROJECTS.map((p) => (
+            {tasks.map((t) => (
               <div
-                key={p.id}
+                key={t.id}
                 style={{
                   padding: "14px 0",
-                  borderBottom: `1px solid ${t.border}`,
+                  borderBottom: `1px solid ${theme.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 700 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: t.muted }}>
-                  {p.stage} • {p.files} Files • Updated {p.updated}
+                <div>
+                  <div style={{ fontWeight: 700 }}>{t.name}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>{t.status}</div>
                 </div>
-
                 <button
                   style={{
-                    marginTop: 10,
                     padding: "6px 14px",
                     borderRadius: 8,
                     border: "none",
-                    background: t.brand,
+                    background: "#06B6D4",
                     color: "#fff",
-                    fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
-                  Open
+                  View
                 </button>
               </div>
             ))}
-          </section>
+          </div>
 
-          {/* CHAT */}
-          <section
+          {/* FILE SECTIONS */}
+          <div
             style={{
-              background: t.card,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
+              background: theme.card,
               padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+              marginBottom: 30,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Files</h2>
+
+            {["draft", "revision", "final"].map((section) => (
+              <div key={section} style={{ marginBottom: 24 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                  {section.toUpperCase()} FILES
+                </div>
+                {files[section].map((f, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: "10px 0",
+                      borderBottom: `1px solid ${theme.border}`,
+                      fontSize: 14,
+                    }}
+                  >
+                    {f}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* CHAT SECTION */}
+          <div
+            style={{
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
             }}
           >
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Client Chat</h2>
 
-            <div style={{ maxHeight: 300, overflowY: "auto", marginBottom: 20 }}>
-              {MESSAGES.map((m) => (
+            <div style={{ maxHeight: 350, overflowY: "auto", marginBottom: 20 }}>
+              {messages.map((m) => (
                 <div
                   key={m.id}
                   style={{
                     marginBottom: 12,
                     display: "flex",
-                    justifyContent: m.from === "production" ? "flex-end" : "flex-start",
+                    justifyContent: m.from === "prod" ? "flex-end" : "flex-start",
                   }}
                 >
                   <div
@@ -175,8 +211,9 @@ export default function ProductionPage() {
                       maxWidth: "70%",
                       padding: "10px 14px",
                       borderRadius: 14,
-                      background: m.from === "production" ? t.bubbleProd : t.bubbleClient,
-                      color: m.from === "production" ? "#fff" : t.text,
+                      background:
+                        m.from === "prod" ? theme.bubbleProd : theme.bubbleClient,
+                      color: m.from === "prod" ? "#ffffff" : theme.text,
                     }}
                   >
                     <div>{m.text}</div>
@@ -195,38 +232,44 @@ export default function ProductionPage() {
               ))}
             </div>
 
-            {/* INPUT */}
-            <div style={{ display: "flex", gap: 10 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                borderTop: `1px solid ${theme.border}`,
+                paddingTop: 12,
+              }}
+            >
               <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Send update..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
                 style={{
                   flex: 1,
                   padding: "12px 14px",
                   borderRadius: 12,
-                  border: `1px solid ${t.border}`,
-                  background: dark ? "#101A30" : "#ffffff",
-                  color: t.text,
+                  border: `1px solid ${theme.border}`,
+                  background: dark ? "#101A30" : "#FFFFFF",
+                  color: theme.text,
                 }}
               />
               <button
                 style={{
-                  padding: "12px 16px",
-                  background: t.brand,
+                  padding: "12px 18px",
+                  background: "#06B6D4",
                   color: "#fff",
+                  fontWeight: 700,
                   borderRadius: 12,
                   border: "none",
-                  fontWeight: 700,
                   cursor: "pointer",
                 }}
               >
                 Send
               </button>
             </div>
-          </section>
+          </div>
         </main>
       </div>
     </RequireAuth>
   );
-                }
+            }
