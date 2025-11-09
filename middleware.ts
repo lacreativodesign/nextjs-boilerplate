@@ -1,32 +1,58 @@
-// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getAppCookies } from "./lib/getAppCookies"; // your cookie reader
 
 export function middleware(req: NextRequest) {
-  const host = req.headers.get("host") || "";
+  const { pathname } = req.nextUrl;
 
-  // Always show the Login page on login.lacreativo.com
-  if (host.startsWith("login.")) {
-    // Allow assets/_next/static to pass through
-    const pathname = req.nextUrl.pathname;
-
-    const assetPaths = ["/_next", "/favicon.ico", "/icons", "/images", "/public"];
-    if (assetPaths.some((p) => pathname.startsWith(p))) {
-      return NextResponse.next();
-    }
-
-    // If the user is not already on /login, rewrite there
-    if (pathname !== "/login") {
-      const url = req.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.rewrite(url);
-    }
+  // Public route: login
+  if (pathname.startsWith("/login")) {
+    return NextResponse.next();
   }
 
-  // Everything else (dashboard.lacreativo.com, vercel domain, etc.) continues normally
+  // Read user session
+  const cookie = req.cookies.get("lc_session")?.value;
+
+  if (!cookie) {
+    // Not logged in → redirect to login
+    return NextResponse.redirect(new URL("https://login.lacreativo.com", req.url));
+  }
+
+  // Cookie exists → parse it
+  const session = JSON.parse(cookie);
+  const role = session.role;
+
+  // Role-based routing
+  const roleToPath = {
+    admin: "/admin",
+    sales: "/sales",
+    am: "/am",
+    hr: "/hr",
+    production: "/production",
+    client: "/client",
+    finance: "/finance",
+  };
+
+  const expectedPath = roleToPath[role];
+
+  // If user hits wrong dashboard, redirect to the correct one
+  if (!pathname.startsWith(expectedPath)) {
+    return NextResponse.redirect(new URL(expectedPath, req.url));
+  }
+
+  // Allow
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/:path*"], // run on all paths
+  matcher: [
+    "/admin/:path*",
+    "/sales/:path*",
+    "/am/:path*",
+    "/hr/:path*",
+    "/finance/:path*",
+    "/production/:path*",
+    "/client/:path*",
+    "/login/:path*",
+  ],
 };
