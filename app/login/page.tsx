@@ -1,30 +1,36 @@
 "use client";
+
 import React, { useState } from "react";
-import { auth, loginUser } from "@/lib/firebaseClient";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, fetchUserRole } from "@/lib/firebaseClient";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const router = useRouter();
+  const [error, setError] = useState("");
 
-  const attemptLogin = async () => {
-    setErr("");
-    setLoading(true);
+  async function handleLogin(e: any) {
+    e.preventDefault();
+    setError("");
+
     try {
       const userCred = await signInWithEmailAndPassword(
         auth,
-        email.trim(),
+        email,
         password
       );
+
       const uid = userCred.user.uid;
+      const role = await fetchUserRole(uid);
 
-      const res = await loginUser(uid);
+      if (!role) {
+        setError("No role assigned. Contact Admin.");
+        return;
+      }
 
-      switch (res) {
+      switch (role) {
         case "admin":
           router.replace("/admin");
           break;
@@ -44,101 +50,107 @@ export default function LoginPage() {
           router.replace("/hr");
           break;
         default:
-          setErr("Your account role is invalid.");
+          setError("Invalid role. Contact admin.");
       }
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (err: any) {
+      setError(err.message);
     }
-    setLoading(false);
-  };
+  }
 
   return (
     <div
       style={{
         minHeight: "100vh",
         display: "flex",
-        alignItems: "center",
         justifyContent: "center",
-        background: "#0f172a",
-        padding: 20,
+        alignItems: "center",
+        background: "#F1F5F9",
+        fontFamily: "Inter, sans-serif",
       }}
     >
       <div
         style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "rgba(255,255,255,0.08)",
-          padding: 30,
+          width: 360,
+          padding: 32,
           borderRadius: 16,
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255,255,255,0.15)",
+          background: "#FFFFFF",
+          border: "1px solid #E2E8F0",
         }}
       >
-        <h2
+        <h1
           style={{
-            textAlign: "center",
-            marginBottom: 20,
-            color: "white",
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: 800,
+            marginBottom: 20,
+            textAlign: "center",
           }}
         >
-          LA CREATIVO LOGIN
-        </h2>
+          LA CREATIVO ERP LOGIN
+        </h1>
 
-        <input
-          placeholder="Email"
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 10,
-            marginBottom: 12,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 10,
-            marginBottom: 12,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {err && (
-          <div style={{ color: "#f87171", marginBottom: 12 }}>{err}</div>
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              background: "#FEE2E2",
+              color: "#B91C1C",
+              borderRadius: 8,
+              fontSize: 14,
+            }}
+          >
+            {error}
+          </div>
         )}
 
-        <button
-          onClick={attemptLogin}
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 10,
-            border: "none",
-            background: "#06B6D4",
-            fontWeight: 700,
-            color: "white",
-            cursor: "pointer",
-            marginTop: 10,
-          }}
-        >
-          {loading ? "Please wait..." : "Login"}
-        </button>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              marginBottom: 14,
+              borderRadius: 8,
+              border: "1px solid #CBD5E1",
+            }}
+            required
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              marginBottom: 14,
+              borderRadius: 8,
+              border: "1px solid #CBD5E1",
+            }}
+            required
+          />
+
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#06B6D4",
+              borderRadius: 8,
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+              border: "none",
+            }}
+          >
+            Login
+          </button>
+        </form>
       </div>
     </div>
   );
-}
+            }
