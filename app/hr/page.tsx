@@ -1,56 +1,67 @@
 "use client";
+
+import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import { useState, useMemo } from "react";
 
 export default function HRPage() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
 
-  const t = useMemo(
-    () => ({
-      bg: dark ? "#0F172A" : "#F8FAFC",
-      text: dark ? "#E6EEF7" : "#0F172A",
-      card: dark ? "#162035" : "#FFFFFF",
-      sidebar: dark ? "#0B1224" : "#F1F5F9",
-      border: dark ? "#2A3A57" : "#E2E8F0",
-      muted: dark ? "#94A3B8" : "#475569",
-      brand: "#06B6D4",
-    }),
-    [dark]
-  );
+  const theme = dark
+    ? {
+        bg: "#0D1527",
+        text: "#E2E8F0",
+        sidebar: "#0B1220",
+        border: "#1E293B",
+        card: "#111B2E",
+        muted: "#94A3B8",
+      }
+    : {
+        bg: "#F8FAFC",
+        text: "#0F172A",
+        sidebar: "#FFFFFF",
+        border: "#CBD5E1",
+        card: "#FFFFFF",
+        muted: "#475569",
+      };
 
-  const EMPLOYEES = [
-    { id: 1, name: "Ahsan R.", role: "Frontend Dev", status: "Active" },
-    { id: 2, name: "Sadia K.", role: "Designer", status: "Probation" },
-    { id: 3, name: "Bilal A.", role: "AM Lead", status: "Active" },
+  // Dummy Data — HR
+  const employees = [
+    { id: 1, name: "Sarah Ali", role: "Account Manager", status: "Active" },
+    { id: 2, name: "Adnan Iqbal", role: "Sales Executive", status: "Probation" },
   ];
 
-  const ONBOARDING = [
-    { id: 1, task: "Collect Documents", due: "2025-10-25", status: "Pending" },
-    { id: 2, task: "Create Accounts", due: "2025-10-26", status: "In Progress" },
+  const onboarding = [
+    { id: 1, name: "John Doe", role: "Designer", due: "2 days" },
+    { id: 2, name: "Lisa Kent", role: "Content Writer", due: "5 days" },
+  ];
+
+  const activity = [
+    { id: 1, text: "Sarah updated profile", time: "10:20 AM" },
+    { id: 2, text: "New hire added: John Doe", time: "9:10 AM" },
   ];
 
   return (
     <RequireAuth allowed={["hr"]}>
       <div
         style={{
-          minHeight: "100vh",
           display: "flex",
-          background: t.bg,
-          color: t.text,
-          fontFamily: "Inter, ui-sans-serif",
+          minHeight: "100vh",
+          background: theme.bg,
+          color: theme.text,
+          fontFamily: "Inter, sans-serif",
         }}
       >
         {/* SIDEBAR */}
         <aside
           style={{
             width: 240,
-            background: t.sidebar,
-            borderRight: `1px solid ${t.border}`,
-            padding: "26px 18px",
+            background: theme.sidebar,
+            borderRight: `1px solid ${theme.border}`,
+            padding: "28px 18px",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: t.brand }}>
-            HR PANEL
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 30, color: "#06B6D4" }}>
+            HR PORTAL
           </div>
 
           {["Overview", "Employees", "Onboarding", "Performance", "Documents", "Activity", "Reports", "Profile"].map(
@@ -62,7 +73,7 @@ export default function HRPage() {
                   marginBottom: 6,
                   cursor: "pointer",
                   borderRadius: 10,
-                  color: t.muted,
+                  color: theme.muted,
                   fontWeight: 600,
                 }}
               >
@@ -77,92 +88,140 @@ export default function HRPage() {
               marginTop: 30,
               width: "100%",
               padding: "10px",
-              borderRadius: 10,
-              border: `1px solid ${t.border}`,
               background: "transparent",
+              borderRadius: 10,
+              border: `1px solid ${theme.border}`,
               cursor: "pointer",
-              color: t.text,
+              color: theme.text,
             }}
           >
             {dark ? "Light Mode" : "Dark Mode"}
           </button>
         </aside>
 
-        {/* MAIN */}
+        {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>HR Overview</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>HR Overview</h1>
 
           {/* EMPLOYEE LIST */}
-          <section
+          <div
             style={{
-              background: t.card,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
+              background: theme.card,
               padding: 20,
-              marginBottom: 32,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+              marginBottom: 30,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Employees</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Employees</h2>
 
-            {EMPLOYEES.map((e) => (
+            {employees.map((emp) => (
               <div
-                key={e.id}
+                key={emp.id}
                 style={{
                   padding: "14px 0",
-                  borderBottom: `1px solid ${t.border}`,
+                  borderBottom: `1px solid ${theme.border}`,
                   display: "flex",
                   justifyContent: "space-between",
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700 }}>{e.name}</div>
-                  <div style={{ fontSize: 13, color: t.muted }}>{e.role}</div>
+                  <div style={{ fontWeight: 700 }}>{emp.name}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>
+                    {emp.role} • {emp.status}
+                  </div>
                 </div>
 
-                <div
+                <button
                   style={{
                     padding: "6px 14px",
                     borderRadius: 8,
-                    background: t.brand,
+                    border: "none",
+                    background: "#06B6D4",
                     color: "#fff",
-                    fontWeight: 700,
-                    fontSize: 13,
+                    cursor: "pointer",
                   }}
                 >
-                  {e.status}
-                </div>
+                  View
+                </button>
               </div>
             ))}
-          </section>
+          </div>
 
           {/* ONBOARDING */}
-          <section
+          <div
             style={{
-              background: t.card,
-              borderRadius: 16,
-              border: `1px solid ${t.border}`,
+              background: theme.card,
               padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+              marginBottom: 30,
             }}
           >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Onboarding Tasks</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
+              Onboarding Tasks
+            </h2>
 
-            {ONBOARDING.map((o) => (
+            {onboarding.map((ob) => (
               <div
-                key={o.id}
+                key={ob.id}
                 style={{
                   padding: "14px 0",
-                  borderBottom: `1px solid ${t.border}`,
+                  borderBottom: `1px solid ${theme.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
-                <div style={{ fontWeight: 700 }}>{o.task}</div>
-                <div style={{ fontSize: 13, color: t.muted }}>
-                  Due: {o.due} • {o.status}
+                <div>
+                  <div style={{ fontWeight: 700 }}>{ob.name}</div>
+                  <div style={{ fontSize: 13, color: theme.muted }}>
+                    {ob.role} • Due in {ob.due}
+                  </div>
                 </div>
+
+                <button
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#06B6D4",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  Manage
+                </button>
               </div>
             ))}
-          </section>
+          </div>
+
+          {/* ACTIVITY FEED */}
+          <div
+            style={{
+              background: theme.card,
+              padding: 20,
+              borderRadius: 16,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Recent Activity</h2>
+
+            {activity.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  padding: "10px 0",
+                  borderBottom: `1px solid ${theme.border}`,
+                  fontSize: 14,
+                }}
+              >
+                <div>{a.text}</div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{a.time}</div>
+              </div>
+            ))}
+          </div>
         </main>
       </div>
     </RequireAuth>
   );
-                  }
+                }
