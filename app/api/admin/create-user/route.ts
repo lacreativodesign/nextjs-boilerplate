@@ -52,6 +52,9 @@ export async function POST(req: Request) {
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import crypto from "crypto";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -84,6 +87,22 @@ export async function POST(req: Request) {
       createdAt: Date.now(),
       systemPassword: password, // will be removed after first login
     });
+// Send welcome email with system-generated password
+await resend.emails.send({
+  from: "LA CREATIVO <noreply@lacreativo.com>",
+  to: email,
+  subject: "Welcome to LA CREATIVO — Your Account Details",
+  html: `
+    <p>Hi ${name},</p>
+    <p>Congratulations! Your user account area is now active now.
+Use the credentials below to log in. You can update your password anytime from your profile.</p>
+    <p><strong>Email:</strong> ${email}</p>
+    <p><strong>Temporary Password:</strong> ${password}</p>
+    <p>Please log in and change your password immediately.</p>
+    <br/>
+    <p>LA CREATIVO</p>
+  `,
+});
 
     return NextResponse.json({
       success: true,
