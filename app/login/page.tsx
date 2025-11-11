@@ -2,7 +2,10 @@
 
 import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, fetchUserRole } from "@/lib/firebaseClient";
+import { auth, fetchUserRole, UserRole } from "@/lib/firebaseClient";
+
+const BASE = "https://dashboard.lacreativo.com";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 5; // 5 days (seconds)
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,18 +19,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Login via Firebase
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      const uid = userCred.user.uid;
+      // 1) Firebase sign-in
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
 
-      // Get role from Firestore
-      const role = await fetchUserRole(uid);
-      if (!role) {
-        throw new Error("No role assigned. Contact LA CREATIVO Admin.");
-      }
+      // 2) Role from Firestore
+      const role: UserRole = await fetchUserRole(uid);
 
-      // Create secure session cookie
-      const idToken = await userCred.user.getIdToken(true);
+      // 3) Get ID token
+      const idToken = await cred.user.getIdToken(true);
+
+      // 4) Create secure HTTP-only session cookie on server
       const resp = await fetch("/api/session-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,26 +37,24 @@ export default function LoginPage() {
         body: JSON.stringify({ idToken }),
       });
 
-      const out = await resp.json();
-      if (!resp.ok || !out?.ok) {
-        throw new Error(out?.error || "Session cookie failed");
+      const json = await resp.json();
+      if (!resp.ok || !json?.ok) {
+        throw new Error(json?.error || "Session cookie creation failed");
       }
 
-      // Redirect
-      const BASE = "https://dashboard.lacreativo.com";
-      const routes: Record<string, string> = {
+      // 5) ALSO set a readable role cookie for middleware/routing
+      document.cookie = `lac_role=${role}; Domain=.lacreativo.com; Path=/; Max-Age=${COOKIE_MAX_AGE}; Secure; SameSite=Lax`;
+
+      // 6) Redirect to the correct dashboard
+      const routes: Record<UserRole, string> = {
         admin: "/admin",
         sales: "/sales",
         am: "/am",
-        hr: "/hr",
-        production: "/production",
         client: "/client",
+        hr: "/hr",
         finance: "/finance",
+        production: "/production",
       };
-
-      if (!routes[role]) {
-        throw new Error(`Invalid role "${role}" assigned.`);
-      }
 
       window.location.href = `${BASE}${routes[role]}`;
     } catch (err: any) {
@@ -65,48 +65,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#F1F5F9",
-        fontFamily: "Inter, sans-serif",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          width: 360,
-          padding: 32,
-          borderRadius: 16,
-          background: "#FFFFFF",
-          border: "1px solid #E2E8F0",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            marginBottom: 20,
-            textAlign: "center",
-          }}
-        >
-          LA CREATIVO ERP LOGIN
-        </h1>
+    <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#F1F5F9", padding: 20 }}>
+      <div style={{ width: 360, padding: 32, borderRadius: 16, background: "#fff", border: "1px solid #E2E8F0" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20, textAlign: "center" }}>LA CREATIVO ERP LOGIN</h1>
 
         {error && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 12,
-              background: "#FEE2E2",
-              color: "#B91C1C",
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          >
+          <div style={{ marginBottom: 16, padding: 12, background: "#FEE2E2", color: "#B91C1C", borderRadius: 8, fontSize: 14 }}>
             {error}
           </div>
         )}
@@ -117,13 +81,7 @@ export default function LoginPage() {
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              marginBottom: 14,
-              borderRadius: 8,
-              border: "1px solid #CBD5E1",
-            }}
+            style={{ width: "100%", padding: "12px 14px", marginBottom: 14, borderRadius: 8, border: "1px solid #CBD5E1" }}
             required
           />
 
@@ -132,30 +90,14 @@ export default function LoginPage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              marginBottom: 14,
-              borderRadius: 8,
-              border: "1px solid #CBD5E1",
-            }}
+            style={{ width: "100%", padding: "12px 14px", marginBottom: 14, borderRadius: 8, border: "1px solid #CBD5E1" }}
             required
           />
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "#06B6D4",
-              borderRadius: 8,
-              color: "#fff",
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
-              border: "none",
-              opacity: loading ? 0.6 : 1,
-            }}
+            style={{ width: "100%", padding: "12px", background: "#06B6D4", borderRadius: 8, color: "#fff", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", border: "none", opacity: loading ? 0.6 : 1 }}
           >
             {loading ? "Signing in..." : "Login"}
           </button>
