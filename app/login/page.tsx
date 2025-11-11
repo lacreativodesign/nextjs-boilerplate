@@ -3,54 +3,76 @@
 import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, fetchUserRole } from "@/lib/firebaseClient";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleLogin(e: any) {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
+      // 1) Client-side Firebase login
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
+      // 2) Fetch role from Firestore
       const role = await fetchUserRole(uid);
-
       if (!role) {
-        setError("No role assigned. Contact Admin.");
+        setLoading(false);
+        setError("No role assigned. Contact admin.");
         return;
       }
 
-      // Redirect by role
+      // 3) Get Firebase ID token
+      const idToken = await userCred.user.getIdToken(true);
+
+      // 4) Exchange for secure HTTP-only cookie (VERY IMPORTANT)
+      const res = await fetch("/api/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // <-- MUST HAVE
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Session cookie creation failed");
+      }
+
+      // 5) Redirect based on role
+      const base = "https://dashboard.lacreativo.com";
+
       switch (role) {
         case "admin":
-          router.replace("/admin");
+          window.location.href = `${base}/admin`;
           break;
         case "sales":
-          router.replace("/sales");
+          window.location.href = `${base}/sales`;
           break;
         case "am":
-          router.replace("/am");
+          window.location.href = `${base}/am`;
           break;
         case "client":
-          router.replace("/client");
+          window.location.href = `${base}/client`;
           break;
         case "production":
-          router.replace("/production");
+          window.location.href = `${base}/production`;
           break;
         case "hr":
-          router.replace("/hr");
+          window.location.href = `${base}/hr`;
           break;
         default:
           setError("Invalid role assigned. Contact admin.");
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -134,6 +156,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               width: "100%",
               padding: "12px",
@@ -141,14 +164,15 @@ export default function LoginPage() {
               borderRadius: 8,
               color: "#fff",
               fontWeight: 700,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               border: "none",
+              opacity: loading ? 0.6 : 1,
             }}
           >
-            Login
+            {loading ? "Signing in..." : "Login"}
           </button>
         </form>
       </div>
     </div>
   );
-              }
+}
