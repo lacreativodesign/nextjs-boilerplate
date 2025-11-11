@@ -1,27 +1,47 @@
+// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+const SESSION_COOKIE = "lac_session";
+const ROLE_COOKIE = "lac_role";
+const LOGIN_URL = "https://login.lacreativo.com/login";
 
-  // Public route: login
-  if (pathname.startsWith("/login")) {
+const rolePaths: Record<string, string> = {
+  admin: "/admin",
+  sales: "/sales",
+  am: "/am",
+  client: "/client",
+  hr: "/hr",
+  finance: "/finance",
+  production: "/production",
+};
+
+export function middleware(req: NextRequest) {
+  const { pathname, hostname } = req.nextUrl;
+
+  // Login domain → never block anything
+  if (hostname === "login.lacreativo.com") {
     return NextResponse.next();
   }
 
-  // ✅ Correct cookie name
-  const cookie = req.cookies.get("lac_session")?.value;
-
-  // ✅ No cookie → force login
-  if (!cookie) {
-    return NextResponse.redirect("https://login.lacreativo.com");
+  // Protect dashboard.lacreativo.com
+  const session = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!session) {
+    return NextResponse.redirect(LOGIN_URL);
   }
 
-  // ✅ Do NOT JSON.parse the cookie (it's a JWT)
-  // Just trust it exists. Role will be checked on dashboard API calls.
+  const role = (req.cookies.get(ROLE_COOKIE)?.value || "").toLowerCase();
+  const allowedPath = rolePaths[role];
 
-  // Role-based redirection (client-side sets role into routes)
-  // Just allow access here.
+  if (!allowedPath) {
+    return NextResponse.redirect(LOGIN_URL);
+  }
+
+  // If user is not in their correct dashboard path → redirect them
+  if (!pathname.startsWith(allowedPath)) {
+    return NextResponse.redirect(`https://dashboard.lacreativo.com${allowedPath}`);
+  }
+
   return NextResponse.next();
 }
 
@@ -30,10 +50,9 @@ export const config = {
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",
-    "/hr/:path*",
-    "/finance/:path*",
-    "/production/:path*",
     "/client/:path*",
-    "/login/:path*",
+    "/production/:path*",
+    "/finance/:path*",
+    "/hr/:path*",
   ],
 };
