@@ -10,67 +10,58 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: any) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // 1) Client-side Firebase login
+      // 1) Firebase login
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
-      // 2) Fetch role from Firestore
+      // 2) Find role in Firestore
       const role = await fetchUserRole(uid);
       if (!role) {
-        setLoading(false);
-        setError("No role assigned. Contact admin.");
-        return;
+        throw new Error("No role assigned. Contact LA CREATIVO Admin.");
       }
 
-      // 3) Get Firebase ID token
+      // 3) Create secure session cookie
       const idToken = await userCred.user.getIdToken(true);
 
-      // 4) Exchange for secure HTTP-only cookie (VERY IMPORTANT)
-      const res = await fetch("/api/session-login", {
+      const sess = await fetch("/api/session-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // <-- MUST HAVE
+        credentials: "include",
         body: JSON.stringify({ idToken }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Session cookie creation failed");
+      const out = await sess.json();
+      if (!sess.ok || !out.ok) {
+        throw new Error(out?.error || "Session cookie failed");
       }
 
-      // 5) Redirect based on role
-      const base = "https://dashboard.lacreativo.com";
+      // 4) Absolute redirect to dashboard domain
+      const BASE = "https://dashboard.lacreativo.com";
 
-      switch (role) {
-        case "admin":
-          window.location.href = `${base}/admin`;
-          break;
-        case "sales":
-          window.location.href = `${base}/sales`;
-          break;
-        case "am":
-          window.location.href = `${base}/am`;
-          break;
-        case "client":
-          window.location.href = `${base}/client`;
-          break;
-        case "production":
-          window.location.href = `${base}/production`;
-          break;
-        case "hr":
-          window.location.href = `${base}/hr`;
-          break;
-        default:
-          setError("Invalid role assigned. Contact admin.");
+      const routes: Record<string, string> = {
+        admin: "/admin",
+        sales: "/sales",
+        am: "/am",
+        hr: "/hr",
+        production: "/production",
+        finance: "/finance",
+        client: "/client",
+      };
+
+      if (!routes[role]) {
+        throw new Error(Invalid role "${role}" assigned.);
       }
+
+      window.location.href = ${BASE}${routes[role]};
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      console.error("LOGIN ERROR:", err);
+      setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
     }
