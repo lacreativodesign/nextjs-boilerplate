@@ -16,34 +16,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 1) Firebase login
+      // Login via Firebase
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
-      // 2) Fetch role
+      // Get role from Firestore
       const role = await fetchUserRole(uid);
       if (!role) {
         throw new Error("No role assigned. Contact LA CREATIVO Admin.");
       }
 
-      // 3) Create secure session cookie
+      // Create secure session cookie
       const idToken = await userCred.user.getIdToken(true);
-
-      const sess = await fetch("/api/session-login", {
+      const resp = await fetch("/api/session-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ idToken }),
       });
 
-      const out = await sess.json();
-      if (!sess.ok || !out.ok) {
+      const out = await resp.json();
+      if (!resp.ok || !out?.ok) {
         throw new Error(out?.error || "Session cookie failed");
       }
 
-      // 4) Redirect based on role
+      // Redirect
       const BASE = "https://dashboard.lacreativo.com";
-
       const routes: Record<string, string> = {
         admin: "/admin",
         sales: "/sales",
@@ -55,12 +53,11 @@ export default function LoginPage() {
       };
 
       if (!routes[role]) {
-        throw new Error(Invalid role "${role}" assigned.);
+        throw new Error(`Invalid role "${role}" assigned.`);
       }
 
-      window.location.href = ${BASE}${routes[role]};
+      window.location.href = `${BASE}${routes[role]}`;
     } catch (err: any) {
-      console.error("LOGIN ERROR:", err);
       setError(err?.message || "Login failed");
     } finally {
       setLoading(false);

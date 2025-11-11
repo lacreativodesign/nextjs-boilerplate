@@ -1,23 +1,39 @@
-// lib/firebaseClient.ts
-import { doc, getDoc, getFirestore } from "firebase/firestore";
-import { app } from "./firebase"; // your initialized client app
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
-const VALID_ROLES = ["admin", "sales", "am", "hr", "production", "client", "finance"] as const;
-export type UserRole = (typeof VALID_ROLES)[number];
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+};
 
-export async function fetchUserRole(uid: string): Promise<UserRole> {
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+export type UserRole =
+  | "admin"
+  | "sales"
+  | "am"
+  | "client"
+  | "production"
+  | "hr"
+  | "finance";
+
+export async function fetchUserRole(uid: string): Promise<UserRole | null> {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    throw new Error("No user profile found. Contact LA CREATIVO Admin.");
-  }
+  if (!snap.exists()) return null;
 
   const role = (snap.data().role || "").toString().toLowerCase();
+  const VALID = ["admin", "sales", "am", "client", "production", "hr", "finance"];
 
-  if (!VALID_ROLES.includes(role as UserRole)) {
-    throw new Error(Invalid role "${role}". Contact LA CREATIVO Admin.);
+  if (!VALID.includes(role)) {
+    throw new Error(`Invalid role "${role}". Contact LA CREATIVO Admin.`);
   }
 
   return role as UserRole;
