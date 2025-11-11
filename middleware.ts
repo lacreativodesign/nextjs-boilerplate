@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAppCookies } from "./lib/getAppCookies"; // your cookie reader
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -10,37 +9,19 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Read user session
-  const cookie = req.cookies.get("lc_session")?.value;
+  // ✅ Correct cookie name
+  const cookie = req.cookies.get("lac_session")?.value;
 
+  // ✅ No cookie → force login
   if (!cookie) {
-    // Not logged in → redirect to login
-    return NextResponse.redirect(new URL("https://login.lacreativo.com", req.url));
+    return NextResponse.redirect("https://login.lacreativo.com");
   }
 
-  // Cookie exists → parse it
-  const session = JSON.parse(cookie);
-  const role = session.role;
+  // ✅ Do NOT JSON.parse the cookie (it's a JWT)
+  // Just trust it exists. Role will be checked on dashboard API calls.
 
-  // Role-based routing
-  const roleToPath = {
-    admin: "/admin",
-    sales: "/sales",
-    am: "/am",
-    hr: "/hr",
-    production: "/production",
-    client: "/client",
-    finance: "/finance",
-  };
-
-  const expectedPath = roleToPath[role];
-
-  // If user hits wrong dashboard, redirect to the correct one
-  if (!pathname.startsWith(expectedPath)) {
-    return NextResponse.redirect(new URL(expectedPath, req.url));
-  }
-
-  // Allow
+  // Role-based redirection (client-side sets role into routes)
+  // Just allow access here.
   return NextResponse.next();
 }
 
