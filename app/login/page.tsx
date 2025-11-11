@@ -20,7 +20,7 @@ export default function LoginPage() {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
-      // 2) Find role in Firestore
+      // 2) Fetch role
       const role = await fetchUserRole(uid);
       if (!role) {
         throw new Error("No role assigned. Contact LA CREATIVO Admin.");
@@ -41,7 +41,7 @@ export default function LoginPage() {
         throw new Error(out?.error || "Session cookie failed");
       }
 
-      // 4) Absolute redirect to dashboard domain
+      // 4) Redirect based on role
       const BASE = "https://dashboard.lacreativo.com";
 
       const routes: Record<string, string> = {
@@ -50,8 +50,8 @@ export default function LoginPage() {
         am: "/am",
         hr: "/hr",
         production: "/production",
-        finance: "/finance",
         client: "/client",
+        finance: "/finance",
       };
 
       if (!routes[role]) {
