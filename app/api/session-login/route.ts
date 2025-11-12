@@ -5,7 +5,7 @@ import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-const COOKIE_DOMAIN = ".lacreativo.com";
+const COOKIE_DOMAIN = "lacreativo.com";
 const SESSION_COOKIE = "lac_session";
 const ROLE_COOKIE = "lac_role";
 const SESSION_DAYS = 5;
