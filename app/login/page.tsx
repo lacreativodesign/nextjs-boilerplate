@@ -1,5 +1,11 @@
 "use client";
 
+// Immediately bounce if someone opened /login on dashboard host
+if (typeof window !== "undefined" && window.location.hostname.startsWith("dashboard.")) {
+  window.location.replace("https://login.lacreativo.com/login");
+  return null;
+}
+
 import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, fetchUserRole, UserRole } from "@/lib/firebaseClient";
