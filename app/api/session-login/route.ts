@@ -52,16 +52,15 @@ export async function POST(req: Request) {
 
     // HTTP-only JWT cookie
     c.set({
-      name: SESSION_COOKIE,
-      value: sessionCookie,
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      domain: COOKIE_DOMAIN,
-      path: "/",
-      maxAge: expiresIn / 1000,
-    });
-
+  name: "lac_session",
+  value: sessionCookie,
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax", 
+  path: "/", 
+  domain: ".lacreativo.com",  // ✅ MUST BE EXACTLY LIKE THIS
+  maxAge: expiresIn / 1000,
+});
     // ✅ Role cookie (critical)
     c.set({
       name: ROLE_COOKIE,
