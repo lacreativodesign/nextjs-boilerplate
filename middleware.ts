@@ -2,21 +2,22 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const url = req.nextUrl;
+  const path = url.pathname;
 
-  // Allow login pages always
-  if (pathname.startsWith("/login")) {
+  // ✅ 1 — Allow login host completely
+  if (req.headers.get("host")?.startsWith("login.")) {
     return NextResponse.next();
   }
 
-  const cookie = req.cookies.get("lac_session")?.value;
+  // ✅ 2 — Require cookie on dashboard
+  const sessionCookie = req.cookies.get("lac_session")?.value;
 
-  // No cookie → send to login.lacreativo.com/login
-  if (!cookie) {
+  if (!sessionCookie) {
     return NextResponse.redirect("https://login.lacreativo.com/login");
   }
 
-  // Cookie exists → DO NOTHING. Let the dashboard pages handle roles.
+  // ✅ 3 — If cookie exists, allow dashboard pages
   return NextResponse.next();
 }
 
@@ -26,8 +27,8 @@ export const config = {
     "/sales/:path*",
     "/am/:path*",
     "/hr/:path*",
-    "/finance/:path*",
     "/production/:path*",
+    "/finance/:path*",
     "/client/:path*",
     "/login/:path*",
   ],
