@@ -1,19 +1,23 @@
 // app/page.tsx
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import LoginPage from "./login/page"; // reuse your existing client login UI
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export default async function Home() {
   const session = cookies().get("lac_session")?.value;
-  if (!session) redirect("/login");
 
+  // Not signed in? Render login right on "/"
+  if (!session) return <LoginPage />;
+
+  // Signed in → read role and route accordingly
   try {
     const decoded = await adminAuth.verifySessionCookie(session, true);
-    const uid = decoded?.uid;
+    const uid = decoded.uid;
     const snap = await adminDb.collection("users").doc(uid).get();
-    const role = (snap.data()?.role || "").toLowerCase();
+    const role = (snap.data()?.role || "").toString().toLowerCase();
 
-    const roleRoutes: Record<string, string> = {
+    const routes: Record<string, string> = {
       admin: "/admin",
       sales: "/sales",
       am: "/am",
@@ -23,9 +27,8 @@ export default async function Home() {
       client: "/client",
     };
 
-    const route = roleRoutes[role] || "/login";
-    redirect(route);
-  } catch (err) {
+    redirect(routes[role] ?? "/login");
+  } catch {
     redirect("/login");
   }
 }

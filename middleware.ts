@@ -6,24 +6,30 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("lac_session")?.value;
 
-  // Public routes
-  if (pathname.startsWith("/login")) {
-    // If signed in, skip login → go to root
-    if (token) return NextResponse.redirect(new URL("/", req.url));
+  // Public: root (/) and /login are public pages
+  if (pathname === "/" || pathname.startsWith("/login")) {
+    // already signed in? don't let them see the login page
+    if (token && pathname.startsWith("/login")) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
     return NextResponse.next();
   }
 
-  // Require token for all protected routes
-  if (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/sales") ||
-    pathname.startsWith("/am") ||
-    pathname.startsWith("/finance") ||
-    pathname.startsWith("/production") ||
-    pathname.startsWith("/hr") ||
-    pathname.startsWith("/client")
-  ) {
-    if (!token) return NextResponse.redirect(new URL("/login", req.url));
+  // Protected sections require token
+  const protectedPrefixes = [
+    "/admin",
+    "/sales",
+    "/am",
+    "/finance",
+    "/production",
+    "/hr",
+    "/client",
+  ];
+
+  if (protectedPrefixes.some(p => pathname.startsWith(p))) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
   }
 
   return NextResponse.next();
@@ -32,6 +38,7 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/login/:path*",
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",
@@ -39,6 +46,5 @@ export const config = {
     "/production/:path*",
     "/hr/:path*",
     "/client/:path*",
-    "/login/:path*",
   ],
 };
