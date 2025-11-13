@@ -2,16 +2,35 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const path = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
 
-  // Public route
-  if (path.startsWith("/login")) return NextResponse.next();
+  const session = req.cookies.get("lac_session")?.value;
 
-  // Check session cookie
-  const cookie = req.cookies.get("lac_session")?.value;
+  // ✅ If user is logged in and hits /login → redirect them to their dashboard
+  if (pathname.startsWith("/login")) {
+    if (session) {
+      return NextResponse.redirect(
+        new URL("/admin", req.url) // default fallback redirect
+      );
+    }
+    return NextResponse.next();
+  }
 
-  if (!cookie) {
-    return NextResponse.redirect("https://dashboard.lacreativo.com/login");
+  // ✅ Protect all dashboard sections
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/am") ||
+    pathname.startsWith("/hr") ||
+    pathname.startsWith("/finance") ||
+    pathname.startsWith("/production") ||
+    pathname.startsWith("/client")
+  ) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    return NextResponse.next();
   }
 
   return NextResponse.next();
@@ -19,13 +38,13 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",
     "/hr/:path*",
     "/finance/:path*",
     "/production/:path*",
-    "/client/:path*",
-    "/login/:path*",
+    "/client/:path*"
   ],
 };
