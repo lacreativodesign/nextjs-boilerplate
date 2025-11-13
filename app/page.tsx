@@ -1,34 +1,31 @@
 // app/page.tsx
-"use client";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
-import { useEffect } from "react";
+export default async function Home() {
+  const session = cookies().get("lac_session")?.value;
+  if (!session) redirect("/login");
 
-export default function RootRedirect() {
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/me", { credentials: "include" });
-        if (!res.ok) {
-          window.location.href = "/login";
-          return;
-        }
-        const me = await res.json();
-        const routes: Record<string, string> = {
-          admin: "/admin",
-          sales: "/sales",
-          am: "/am",
-          hr: "/hr",
-          production: "/production",
-          client: "/client",
-          finance: "/finance",
-        };
-        const dest = routes[me.role] || "/client";
-        window.location.href = dest;
-      } catch {
-        window.location.href = "/login";
-      }
-    })();
-  }, []);
+  try {
+    const decoded = await adminAuth.verifySessionCookie(session, true);
+    const uid = decoded?.uid;
+    const snap = await adminDb.collection("users").doc(uid).get();
+    const role = (snap.data()?.role || "").toLowerCase();
 
-  return null;
+    const roleRoutes: Record<string, string> = {
+      admin: "/admin",
+      sales: "/sales",
+      am: "/am",
+      hr: "/hr",
+      finance: "/finance",
+      production: "/production",
+      client: "/client",
+    };
+
+    const route = roleRoutes[role] || "/login";
+    redirect(route);
+  } catch (err) {
+    redirect("/login");
+  }
 }

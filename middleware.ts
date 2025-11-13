@@ -6,17 +6,24 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("lac_session")?.value;
 
-  // Allow login and root page
-  if (pathname.startsWith("/login") || pathname === "/") {
-    if (token) {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
+  // Public routes
+  if (pathname.startsWith("/login")) {
+    // If signed in, skip login → go to root
+    if (token) return NextResponse.redirect(new URL("/", req.url));
     return NextResponse.next();
   }
 
-  // Require session for protected routes
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Require token for all protected routes
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/am") ||
+    pathname.startsWith("/finance") ||
+    pathname.startsWith("/production") ||
+    pathname.startsWith("/hr") ||
+    pathname.startsWith("/client")
+  ) {
+    if (!token) return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();
@@ -28,9 +35,9 @@ export const config = {
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",
-    "/hr/:path*",
     "/finance/:path*",
     "/production/:path*",
+    "/hr/:path*",
     "/client/:path*",
     "/login/:path*",
   ],
