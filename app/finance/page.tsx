@@ -1,227 +1,80 @@
 "use client";
 
-import { useState } from "react";
-import RequireAuth from "@/components/RequireAuth";
+import React from "react";
 
 export default function FinancePage() {
-  const [dark, setDark] = useState(true);
-
-  const theme = dark
-    ? {
-        bg: "#0D1527",
-        text: "#E2E8F0",
-        sidebar: "#0B1220",
-        border: "#1E293B",
-        card: "#111B2E",
-        muted: "#94A3B8",
-      }
-    : {
-        bg: "#F8FAFC",
-        text: "#0F172A",
-        sidebar: "#FFFFFF",
-        border: "#CBD5E1",
-        card: "#FFFFFF",
-        muted: "#475569",
-      };
-
-  // ===== Dummy Finance Data =====
-
-  const invoices = [
-    { id: 1, client: "Redroot Café", amount: "$1,200", status: "Paid" },
-    { id: 2, client: "Bluewave Studio", amount: "$2,100", status: "Unpaid" },
-    { id: 3, client: "Nova Brands", amount: "$900", status: "Pending" },
-  ];
-
-  const payments = [
-    { id: 1, type: "Stripe", date: "2025-01-15", amount: "$500" },
-    { id: 2, type: "Bank Transfer", date: "2025-01-17", amount: "$1,000" },
-  ];
-
-  const payroll = [
-    { id: 1, name: "Sarah Ali", role: "Account Manager", salary: "$850" },
-    { id: 2, name: "Adnan Iqbal", role: "Sales Executive", salary: "$650" },
-  ];
+  async function handleLogout() {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  }
 
   return (
-    <RequireAuth allowed={["finance"]}>
-      <div
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f9fafb",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {/* Top Bar */}
+      <header
         style={{
           display: "flex",
-          minHeight: "100vh",
-          background: theme.bg,
-          color: theme.text,
-          fontFamily: "Inter, sans-serif",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 40px",
+          backgroundColor: "#111827",
+          color: "white",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
         }}
       >
-        {/* SIDEBAR */}
-        <aside
+        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Finance Dashboard</h1>
+
+        <button
+          onClick={handleLogout}
           style={{
-            width: 240,
-            background: theme.sidebar,
-            borderRight: `1px solid ${theme.border}`,
-            padding: "28px 18px",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: "#ef4444",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+            transition: "background 0.2s ease",
           }}
+          onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
         >
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 900,
-              marginBottom: 30,
-              color: "#06B6D4",
-            }}
-          >
-            FINANCE PORTAL
-          </div>
+          LOGOUT
+        </button>
+      </header>
 
-          {["Overview", "Invoices", "Payments", "Payroll", "Reports", "Settings", "Profile"].map(
-            (item) => (
-              <div
-                key={item}
-                style={{
-                  padding: "10px 12px",
-                  marginBottom: 6,
-                  cursor: "pointer",
-                  borderRadius: 10,
-                  color: theme.muted,
-                  fontWeight: 600,
-                }}
-              >
-                {item}
-              </div>
-            )
-          )}
+      {/* Main content */}
+      <main
+        style={{
+          flex: 1,
+          padding: "40px",
+          textAlign: "center",
+          color: "#374151",
+        }}
+      >
+        <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
+          Welcome, Finance Team 💰
+        </h2>
 
-          <button
-            onClick={() => setDark(!dark)}
-            style={{
-              marginTop: 30,
-              width: "100%",
-              padding: "10px",
-              background: "transparent",
-              borderRadius: 10,
-              border: `1px solid ${theme.border}`,
-              cursor: "pointer",
-              color: theme.text,
-            }}
-          >
-            {dark ? "Light Mode" : "Dark Mode"}
-          </button>
-        </aside>
-
-        {/* MAIN CONTENT */}
-        <main style={{ flex: 1, padding: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>Finance Overview</h1>
-
-          {/* INVOICES */}
-          <div
-            style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-              marginBottom: 30,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Invoices</h2>
-
-            {invoices.map((inv) => (
-              <div
-                key={inv.id}
-                style={{
-                  padding: "12px 0",
-                  borderBottom: `1px solid ${theme.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{inv.client}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>{inv.status}</div>
-                </div>
-
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ fontWeight: 700 }}>{inv.amount}</div>
-
-                  <button
-                    style={{
-                      padding: "6px 16px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "#06B6D4",
-                      color: "#fff",
-                      cursor: "pointer",
-                    }}
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* PAYMENTS */}
-          <div
-            style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-              marginBottom: 30,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Payments</h2>
-
-            {payments.map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  padding: "12px 0",
-                  borderBottom: `1px solid ${theme.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{p.type}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>{p.date}</div>
-                </div>
-                <div style={{ fontWeight: 700 }}>{p.amount}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* PAYROLL */}
-          <div
-            style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Payroll</h2>
-
-            {payroll.map((pr) => (
-              <div
-                key={pr.id}
-                style={{
-                  padding: "12px 0",
-                  borderBottom: `1px solid ${theme.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{pr.name}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>{pr.role}</div>
-                </div>
-                <div style={{ fontWeight: 700 }}>{pr.salary}</div>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    </RequireAuth>
+        <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
+          Payments, invoices, payroll & financial analytics will appear here soon.
+        </p>
+      </main>
+    </div>
   );
-                }
+}
