@@ -1,7 +1,36 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export default function AdminPage() {
+  const [loading, setLoading] = useState(true);
+
+  async function fetchRole() {
+    try {
+      const res = await fetch("/api/me", { credentials: "include" });
+      if (!res.ok) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const data = await res.json();
+
+      // If role is not admin, kick the user to their dashboard
+      if (data.role !== "admin") {
+        window.location.href = `/${data.role}`;
+        return;
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Session error:", err);
+      window.location.href = "/login";
+    }
+  }
+
+  useEffect(() => {
+    fetchRole();
+  }, []);
+
   async function handleLogout() {
     try {
       await fetch("/api/logout", {
@@ -12,6 +41,23 @@ export default function AdminPage() {
     } catch (err) {
       console.error("Logout failed:", err);
     }
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#f9fafb",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <p style={{ color: "#6b7280", fontSize: "18px" }}>Loading...</p>
+      </div>
+    );
   }
 
   return (
@@ -33,7 +79,7 @@ export default function AdminPage() {
           padding: "20px 40px",
           backgroundColor: "#111827",
           color: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
         }}
       >
         <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Admin Dashboard</h1>
@@ -56,7 +102,7 @@ export default function AdminPage() {
         </button>
       </header>
 
-      {/* Main content placeholder */}
+      {/* Main content */}
       <main
         style={{
           flex: 1,
