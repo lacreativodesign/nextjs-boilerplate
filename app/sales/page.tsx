@@ -1,182 +1,122 @@
 "use client";
-
-import React, { useState } from "react";
-import RequireAuth from "@/components/RequireAuth";
+import React, { useEffect, useState } from "react";
 
 export default function SalesPage() {
-  const [dark, setDark] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const theme = dark
-    ? {
-        bg: "#0F172A",
-        card: "#1E293B",
-        text: "#F8FAFC",
-        muted: "#94A3B8",
-        border: "#334155",
-        sidebar: "#1E293B",
+  async function fetchRole() {
+    try {
+      const res = await fetch("/api/me", { credentials: "include" });
+      if (!res.ok) {
+        window.location.href = "/login";
+        return;
       }
-    : {
-        bg: "#F1F5F9",
-        card: "#FFFFFF",
-        text: "#0F172A",
-        muted: "#475569",
-        border: "#E2E8F0",
-        sidebar: "#FFFFFF",
-      };
 
-  return (
-    <RequireAuth allowed={["sales", "admin"]}>
+      const data = await res.json();
+
+      if (data.role !== "sales") {
+        window.location.href = `/${data.role}`;
+        return;
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Session error:", err);
+      window.location.href = "/login";
+    }
+  }
+
+  useEffect(() => {
+    fetchRole();
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  }
+
+  if (loading) {
+    return (
       <div
         style={{
           minHeight: "100vh",
           display: "flex",
-          background: theme.bg,
-          color: theme.text,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#f9fafb",
           fontFamily: "Inter, sans-serif",
         }}
       >
-        {/* SIDEBAR */}
-        <aside
-          style={{
-            width: 240,
-            background: theme.sidebar,
-            borderRight: `1px solid ${theme.border}`,
-            padding: "26px 18px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 900,
-              marginBottom: 30,
-              color: "#06B6D4",
-            }}
-          >
-            SALES PORTAL
-          </div>
-
-          {[
-            "Overview",
-            "Leads",
-            "Clients",
-            "Performance",
-            "Reports",
-            "Profile",
-          ].map((item) => (
-            <div
-              key={item}
-              style={{
-                padding: "10px 12px",
-                marginBottom: 6,
-                cursor: "pointer",
-                borderRadius: 10,
-                color: theme.muted,
-                fontWeight: 600,
-              }}
-            >
-              {item}
-            </div>
-          ))}
-
-          <button
-            onClick={() => setDark(!dark)}
-            style={{
-              marginTop: 30,
-              width: "100%",
-              padding: "10px",
-              background: "transparent",
-              borderRadius: 10,
-              border: `1px solid ${theme.border}`,
-              cursor: "pointer",
-              color: theme.text,
-            }}
-          >
-            {dark ? "Light Mode" : "Dark Mode"}
-          </button>
-        </aside>
-
-        {/* MAIN CONTENT */}
-        <main style={{ flex: 1, padding: 32 }}>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 800,
-              marginBottom: 30,
-            }}
-          >
-            Leads Overview
-          </h1>
-
-          {/* LEADS LIST */}
-          <div
-            style={{
-              background: theme.card,
-              padding: 20,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-              marginBottom: 30,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              New Leads
-            </h2>
-
-            {LEADS.map((lead) => (
-              <div
-                key={lead.id}
-                style={{
-                  padding: "14px 0",
-                  borderBottom: `1px solid ${theme.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{lead.name}</div>
-                  <div style={{ fontSize: 13, color: theme.muted }}>
-                    {lead.email} • {lead.status}
-                  </div>
-                </div>
-
-                <button
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: "#06B6D4",
-                    color: "#fff",
-                    cursor: "pointer",
-                  }}
-                >
-                  View
-                </button>
-              </div>
-            ))}
-          </div>
-        </main>
+        <p style={{ color: "#6b7280", fontSize: "18px" }}>Loading...</p>
       </div>
-    </RequireAuth>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f9fafb",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {/* Top Bar */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 40px",
+          backgroundColor: "#111827",
+          color: "white",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
+        }}
+      >
+        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Sales Dashboard</h1>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: "10px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: "#ef4444",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+            transition: "background 0.2s ease",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
+        >
+          LOGOUT
+        </button>
+      </header>
+
+      {/* Main content */}
+      <main
+        style={{
+          flex: 1,
+          padding: "40px",
+          textAlign: "center",
+          color: "#374151",
+        }}
+      >
+        <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
+          Welcome, Sales Team 🚀
+        </h2>
+        <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
+          Your sales dashboard and lead management will appear here soon.
+        </p>
+      </main>
+    </div>
   );
 }
-
-/* ========== Dummy Leads (Replace later with Firestore) ========== */
-const LEADS = [
-  {
-    id: 1,
-    name: "Michael Jordan",
-    email: "mj23@example.com",
-    status: "New Lead",
-  },
-  {
-    id: 2,
-    name: "Sarah Parker",
-    email: "sarahp@example.com",
-    status: "Follow-up Needed",
-  },
-  {
-    id: 3,
-    name: "John Davidson",
-    email: "jdavids@example.com",
-    status: "Proposal Sent",
-  },
-];
