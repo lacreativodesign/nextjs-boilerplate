@@ -1,185 +1,315 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { db } from "@/lib/firebaseClient";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-export default function ViewUsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
+type UserRole =
+  | "admin"
+  | "sales"
+  | "am"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
+
+interface UserRow {
+  uid: string;
+  name?: string;
+  email: string;
+  role: UserRole;
+  createdAt?: number;
+}
+
+export default function AdminViewUsersPage() {
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function fetchUsers() {
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+
+        const list: UserRow[] = [];
+        snap.forEach((doc) => {
+          const data = doc.data() as any;
+          list.push({
+            uid: doc.id,
+            name: data.name || "",
+            email: data.email || "",
+            role: (data.role || "client") as UserRole,
+            createdAt: data.createdAt || 0,
+          });
+        });
+
+        setUsers(list);
+      } catch (err: any) {
+        console.error("LOAD USERS ERROR:", err);
+        setError(err.message || "Failed to load users.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUsers();
+  }, []);
+
+  async function handleDelete(uid: string, email: string) {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${email}"?\nThis action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
     try {
-      setLoading(true);
-      const res = await fetch("/api/admin/list-users", {
-        method: "GET",
+      const res = await fetch("/api/admin/delete-user", {
+        method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load users");
+      if (!res.ok || !data?.ok) {
+        throw new Error(data.error || "Delete failed");
+      }
 
-      setUsers(data.users || []);
+      alert("User deleted successfully.");
+
+      // Remove from local state without full reload
+      setUsers((prev) => prev.filter((u) => u.uid !== uid));
     } catch (err: any) {
-      setError(err.message || "Unable to load users");
-    } finally {
-      setLoading(false);
+      console.error("DELETE USER ERROR:", err);
+      alert("ERROR: " + (err.message || "Delete failed"));
     }
   }
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const tdStyle: React.CSSProperties = {
+    padding: "12px 16px",
+    fontSize: 14,
+    color: "#111827",
+    borderBottom: "1px solid #e5e7eb",
+    textAlign: "left",
+  };
+
+  const thStyle: React.CSSProperties = {
+    padding: "12px 16px",
+    fontSize: 12,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    color: "#6b7280",
+    borderBottom: "1px solid #e5e7eb",
+    textAlign: "left",
+    background: "#f9fafb",
+  };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
         display: "flex",
         flexDirection: "column",
+        backgroundColor: "#f9fafb",
+        fontFamily: "Inter, sans-serif",
       }}
     >
-      {/* TOP BAR */}
+      {/* Top Bar - same dark theme as locked Admin UI */}
       <header
         style={{
-          backgroundColor: "#111827",
-          color: "white",
-          padding: "20px 40px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          padding: "20px 40px",
+          backgroundColor: "#111827",
+          color: "white",
           boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
         }}
       >
-        <h1 style={{ fontSize: 20, fontWeight: 600 }}>Admin Dashboard</h1>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            onClick={() => (window.location.href = "/admin")}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "#3b82f6",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Back
-          </button>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 600 }}>
+            Admin · User Directory
+          </h1>
+          <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+            Manage all LA CREATIVO roles and access from one place.
+          </p>
         </div>
-      </header>
 
-      {/* MAIN CONTENT */}
-      <main style={{ padding: 40, flex: 1 }}>
-        <h2
+        <button
+          onClick={() => (window.location.href = "/admin")}
           style={{
-            fontSize: 24,
-            fontWeight: 600,
-            marginBottom: 20,
-            color: "#111827",
+            padding: "10px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: "#374151",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 500,
           }}
         >
-          All Users 👥
-        </h2>
+          ← Back to Admin Home
+        </button>
+      </header>
 
-        {error && (
+      {/* Main Content */}
+      <main
+        style={{
+          flex: 1,
+          padding: "30px 40px 40px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            background: "#ffffff",
+            borderRadius: 16,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+            padding: 24,
+          }}
+        >
           <div
             style={{
-              marginBottom: 20,
-              padding: "12px",
-              background: "#FEE2E2",
-              color: "#B91C1C",
-              borderRadius: 8,
-              fontSize: 14,
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            {error}
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827" }}>
+                Team & Clients
+              </h2>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#6b7280",
+                  marginTop: 4,
+                }}
+              >
+                View, edit, and delete users across LA CREATIVO (Admin only).
+              </p>
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                textAlign: "right",
+              }}
+            >
+              Total Users:{" "}
+              <span style={{ fontWeight: 600, color: "#111827" }}>
+                {users.length}
+              </span>
+            </div>
           </div>
-        )}
 
-        {loading && (
-          <p style={{ fontSize: 16, color: "#6b7280" }}>Loading users...</p>
-        )}
+          {loading && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "#6b7280",
+                padding: "16px 8px",
+              }}
+            >
+              Loading users…
+            </p>
+          )}
 
-        {!loading && users.length === 0 && (
-          <p style={{ fontSize: 16, color: "#6b7280" }}>
-            No users found in system.
-          </p>
-        )}
+          {error && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "#b91c1c",
+                padding: "16px 8px",
+              }}
+            >
+              {error}
+            </p>
+          )}
 
-        {!loading && users.length > 0 && (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              background: "white",
-              borderRadius: 8,
-              overflow: "hidden",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-            }}
-          >
-            <thead style={{ background: "#f3f4f6" }}>
-              <tr>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Role</th>
-                <th style={thStyle}>Created</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
+          {!loading && !error && users.length === 0 && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "#6b7280",
+                padding: "16px 8px",
+              }}
+            >
+              No users found yet. Create the first one from{" "}
+              <strong>Admin &gt; Create User</strong>.
+            </p>
+          )}
 
-            <tbody>
-              {users.map((u, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={tdStyle}>{u.email}</td>
-                  <td style={tdStyle}>{u.role}</td>
-                  <td style={tdStyle}>
-                    {u.createdAt
-                      ? new Date(u.createdAt._seconds * 1000).toLocaleString()
-                      : "—"}
-                  </td>
+          {!loading && users.length > 0 && (
+            <div style={{ overflowX: "auto", marginTop: 8 }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  minWidth: 600,
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Email</th>
+                    <th style={thStyle}>Role</th>
+                    <th style={thStyle}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.uid}>
+                      <td style={tdStyle}>{u.name || "—"}</td>
+                      <td style={tdStyle}>{u.email}</td>
+                      <td style={tdStyle}>{u.role.toUpperCase()}</td>
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            (window.location.href = `/admin/edit-user/${u.uid}`)
+                          }
+                          style={{
+                            padding: "6px 12px",
+                            background: "#3b82f6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            marginRight: 10,
+                          }}
+                        >
+                          Edit
+                        </button>
 
-                  <td style={tdStyle}>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button style={actionBtn("#3b82f6")}>Edit</button>
-                      <button style={actionBtn("#ef4444")}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                        <button
+                          onClick={() => handleDelete(u.uid, u.email)}
+                          style={{
+                            padding: "6px 12px",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
-}
-
-const thStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  textAlign: "left",
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#374151",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  fontSize: 14,
-  color: "#374151",
-};
-
-function actionBtn(color: string): React.CSSProperties {
-  return {
-    padding: "6px 12px",
-    borderRadius: 6,
-    border: "none",
-    cursor: "pointer",
-    background: color,
-    color: "white",
-    fontSize: 13,
-    fontWeight: 600,
-  };
 }
