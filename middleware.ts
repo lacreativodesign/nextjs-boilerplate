@@ -1,21 +1,20 @@
-// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
   const token = req.cookies.get("lac_session")?.value;
+  const { pathname } = req.nextUrl;
 
-  // Public: root (/) and /login are public pages
+  // Public routes: "/" and "/login"
   if (pathname === "/" || pathname.startsWith("/login")) {
-    // already signed in? don't let them see the login page
+    // already signed in? send to root (which handles redirect to correct role)
     if (token && pathname.startsWith("/login")) {
       return NextResponse.redirect(new URL("/", req.url));
     }
     return NextResponse.next();
   }
 
-  // Protected sections require token
+  // Protected role routes
   const protectedPrefixes = [
     "/admin",
     "/sales",
@@ -26,7 +25,8 @@ export function middleware(req: NextRequest) {
     "/client",
   ];
 
-  if (protectedPrefixes.some(p => pathname.startsWith(p))) {
+  // if user not logged in, redirect to login
+  if (protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
