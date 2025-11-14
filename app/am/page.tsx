@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export default function AMPage() {
+export default function AccountManagerDashboard() {
   async function handleLogout() {
     try {
       await fetch("/api/logout", {
@@ -37,7 +37,10 @@ export default function AMPage() {
           boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
         }}
       >
-        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Account Manager Dashboard</h1>
+        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>
+          Account Manager Dashboard
+        </h1>
+
         <button
           onClick={handleLogout}
           style={{
@@ -57,7 +60,7 @@ export default function AMPage() {
         </button>
       </header>
 
-      {/* Main content placeholder */}
+      {/* Main content */}
       <main
         style={{
           flex: 1,
@@ -69,8 +72,9 @@ export default function AMPage() {
         <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
           Welcome, Account Manager 👋
         </h2>
+
         <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
-          Your dashboard interface will appear here soon.
+          Client communications, project updates & submissions will appear here.
         </p>
       </main>
     </div>
