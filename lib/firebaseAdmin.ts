@@ -1,31 +1,16 @@
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-if (privateKey) privateKey = privateKey.replace(/\\n/g, "\n");
-
-if (!projectId || !clientEmail || !privateKey) {
-  console.error("❌ Missing Firebase Admin ENV variables", {
-    projectId,
-    clientEmail,
-    hasPrivateKey: !!privateKey,
+// Prevent re-initializing during hot reload or multiple imports
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
   });
 }
 
-const credentials = {
-  project_id: projectId,
-  client_email: clientEmail,
-  private_key: privateKey,
-};
-
-export const adminApp =
-  getApps().length === 0
-    ? initializeApp({ credential: cert(credentials) })
-    : getApps()[0];
-
-export const adminAuth = getAuth(adminApp);
-export const adminDb = getFirestore(adminApp);
+// EXPORT CLEAN DIRECT ACCESS
+export const adminAuth = admin.auth();
+export const adminDb = admin.firestore();
