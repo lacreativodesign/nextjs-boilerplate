@@ -1,16 +1,35 @@
-import { db } from "@/lib/firebaseClient";
-import { doc, getDoc } from "firebase/firestore";
+// lib/serverAuth.ts
 
-export async function fetchUserRole(uid: string): Promise<string | null> {
+import { cookies } from "next/headers";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+
+const SESSION_COOKIE_NAME = "lac_session";
+
+// IMPORTANT: disable Vercel prerendering on server functions
+export const dynamic = "force-dynamic";
+
+/**
+ * Returns user profile (server-side)
+ */
+export async function getUserProfile() {
   try {
-    const ref = doc(db, "users", uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-    const data = snap.data();
-    return data.role || null;
+    if (!sessionCookie) return null;
+
+    const decoded = await adminAuth().verifySessionCookie(sessionCookie, true);
+
+    const snap = await adminDb()
+      .collection("users")
+      .doc(decoded.uid)
+      .get();
+
+    if (!snap.exists) return null;
+
+    return { uid: decoded.uid, ...(snap.data() as any) };
   } catch (err) {
-    console.error("fetchUserRole ERROR:", err);
+    console.error("getUserProfile ERROR:", err);
     return null;
   }
 }
