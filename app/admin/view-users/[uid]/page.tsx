@@ -1,77 +1,106 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-export default function UserDetailsPage() {
-  const { uid } = useParams();
-  const [user, setUser] = useState<any>(null);
+type UserRecord = {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt?: number;
+};
+
+const ROLES = [
+  "admin",
+  "sales",
+  "am",
+  "production",
+  "hr",
+  "finance",
+  "client",
+];
+
+export default function AdminUserDetailPage({ params }: any) {
+  const router = useRouter();
+  const { uid } = params;
+
+  const [user, setUser] = useState<UserRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [newRole, setNewRole] = useState("");
+  const [success, setSuccess] = useState("");
 
+  async function handleLogout() {
+    try {
+      await fetch("/api/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  }
+
+  // Load user by UID
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/admin/get-user?uid=${uid}`, {
-          method: "GET",
           credentials: "include",
         });
-
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+
+        if (!res.ok) throw new Error(data?.error || "Failed loading user");
 
         setUser(data.user);
-        setNewRole(data.user.role);
       } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     }
-
     load();
   }, [uid]);
 
-  async function updateRole() {
+  async function saveChanges() {
+    if (!user) return;
+
     try {
-      const res = await fetch(`/api/admin/update-user`, {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const res = await fetch("/api/admin/update-user", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid, role: newRole }),
+        body: JSON.stringify({
+          uid: user.uid,
+          name: user.name,
+          role: user.role,
+          status: user.status,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      alert("Role updated successfully!");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  }
 
-  async function resetPassword() {
-    try {
-      const res = await fetch(`/api/admin/reset-password`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email }),
-      });
+      if (!res.ok) throw new Error(data?.error || "Failed to update user");
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      alert("Password reset email sent.");
+      setSuccess("User updated successfully");
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
   async function deleteUser() {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    if (!confirm("Are you sure? This action cannot be undone.")) return;
 
     try {
-      const res = await fetch(`/api/admin/delete-user`, {
+      setSaving(true);
+
+      const res = await fetch("/api/admin/delete-user", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -79,144 +108,256 @@ export default function UserDetailsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
 
-      alert("User deleted successfully.");
-      window.location.href = "/admin/view-users";
+      if (!res.ok) throw new Error(data?.error || "Delete failed");
+
+      router.push("/admin/view-users");
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: 40,
+          textAlign: "center",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        Loading user…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div
+        style={{
+          padding: 40,
+          textAlign: "center",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        User not found.
+      </div>
+    );
   }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        fontFamily: "Inter, sans-serif",
+        display: "flex",
+        flexDirection: "column",
         backgroundColor: "#f9fafb",
-        padding: "40px",
+        fontFamily: "Inter, sans-serif",
       }}
     >
-      <h1
+      {/* HEADER */}
+      <header
         style={{
-          fontSize: "28px",
-          fontWeight: 700,
-          marginBottom: "20px",
-          color: "#111827",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 40px",
+          backgroundColor: "#111827",
+          color: "white",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
         }}
       >
-        User Details
-      </h1>
+        <h1 style={{ fontSize: 20, fontWeight: 600 }}>
+          Admin · Edit User ({user.role})
+        </h1>
 
-      {loading && <p style={{ color: "#6b7280" }}>Loading user...</p>}
-      {error && (
-        <p
+        <button
+          onClick={handleLogout}
           style={{
-            background: "#fee2e2",
-            color: "#b91c1c",
-            padding: "12px",
-            borderRadius: "8px",
-            marginBottom: "20px",
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: "#ef4444",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
           }}
         >
-          {error}
-        </p>
-      )}
+          LOGOUT
+        </button>
+      </header>
 
-      {user && (
+      {/* BODY */}
+      <main style={{ padding: 40 }}>
+        <button
+          onClick={() => router.push("/admin/view-users")}
+          style={{
+            marginBottom: 20,
+            padding: "8px 14px",
+            background: "#e5e7eb",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontWeight: 500,
+          }}
+        >
+          ← Back to all users
+        </button>
+
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              background: "#FEE2E2",
+              color: "#B91C1C",
+              borderRadius: 8,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              background: "#DCFCE7",
+              color: "#166534",
+              borderRadius: 8,
+            }}
+          >
+            {success}
+          </div>
+        )}
+
+        {/* FORM */}
         <div
           style={{
-            background: "white",
-            padding: "30px",
-            borderRadius: "12px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-            maxWidth: "600px",
+            background: "#fff",
+            padding: 30,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            maxWidth: 500,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           }}
         >
-          <p style={field}>
-            <strong>Name:</strong> {user.name}
-          </p>
+          {/* Name */}
+          <label style={{ fontWeight: 600 }}>Name</label>
+          <input
+            type="text"
+            value={user.name}
+            onChange={(e) => setUser({ ...user, name: e.target.value })}
+            style={{
+              width: "100%",
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              marginTop: 6,
+              marginBottom: 18,
+            }}
+          />
 
-          <p style={field}>
-            <strong>Email:</strong> {user.email}
-          </p>
+          {/* Email (read-only) */}
+          <label style={{ fontWeight: 600 }}>Email</label>
+          <input
+            type="text"
+            readOnly
+            value={user.email}
+            style={{
+              width: "100%",
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              background: "#f3f4f6",
+              marginTop: 6,
+              marginBottom: 18,
+            }}
+          />
 
-          <p style={field}>
-            <strong>Role:</strong> {user.role}
-          </p>
+          {/* Role */}
+          <label style={{ fontWeight: 600 }}>Role</label>
+          <select
+            value={user.role}
+            onChange={(e) => setUser({ ...user, role: e.target.value })}
+            style={{
+              width: "100%",
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              marginTop: 6,
+              marginBottom: 18,
+            }}
+          >
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r.toUpperCase()}
+              </option>
+            ))}
+          </select>
 
-          {/* Edit Role */}
-          <div style={{ marginTop: "20px" }}>
-            <label style={{ fontWeight: 600 }}>Change Role:</label>
-            <select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
+          {/* Status */}
+          <label style={{ fontWeight: 600 }}>Status</label>
+          <select
+            value={user.status}
+            onChange={(e) => setUser({ ...user, status: e.target.value })}
+            style={{
+              width: "100%",
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              marginTop: 6,
+              marginBottom: 20,
+            }}
+          >
+            <option value="active">ACTIVE</option>
+            <option value="suspended">SUSPENDED</option>
+            <option value="disabled">DISABLED</option>
+          </select>
+
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              disabled={saving}
+              onClick={saveChanges}
               style={{
-                width: "100%",
-                marginTop: "8px",
-                padding: "10px",
-                borderRadius: "8px",
-                border: "1px solid #d1d5db",
+                flex: 1,
+                padding: "12px",
+                background: "#0ea5e9",
+                borderRadius: 8,
+                border: "none",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+                opacity: saving ? 0.6 : 1,
               }}
             >
-              <option value="admin">Admin</option>
-              <option value="sales">Sales</option>
-              <option value="am">Account Manager</option>
-              <option value="production">Production</option>
-              <option value="hr">HR</option>
-              <option value="finance">Finance</option>
-              <option value="client">Client</option>
-            </select>
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
 
-            <button onClick={updateRole} style={saveBtn}>
-              Save Role
+            <button
+              disabled={saving}
+              onClick={deleteUser}
+              style={{
+                flex: 1,
+                padding: "12px",
+                background: "#ef4444",
+                borderRadius: 8,
+                border: "none",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              Delete User
             </button>
           </div>
-
-          <hr style={{ margin: "30px 0" }} />
-
-          {/* Reset Password */}
-          <button onClick={resetPassword} style={actionBtn}>
-            Reset Password
-          </button>
-
-          {/* Delete User */}
-          <button
-            onClick={deleteUser}
-            style={{ ...actionBtn, background: "#ef4444", marginTop: "10px" }}
-          >
-            Delete User
-          </button>
         </div>
-      )}
+      </main>
     </div>
   );
-}
-
-const field = {
-  fontSize: "16px",
-  color: "#374151",
-  marginBottom: "12px",
-};
-
-const saveBtn = {
-  marginTop: "12px",
-  padding: "10px 18px",
-  background: "#06b6d4",
-  color: "white",
-  borderRadius: "8px",
-  border: "none",
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-const actionBtn = {
-  width: "100%",
-  padding: "12px",
-  background: "#3b82f6",
-  color: "white",
-  borderRadius: "8px",
-  border: "none",
-  cursor: "pointer",
-  fontWeight: 600,
-};
+          }
