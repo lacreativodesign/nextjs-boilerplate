@@ -1,36 +1,39 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDB } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDB } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
     const { email, password, role } = await req.json();
 
     if (!email || !password || !role) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing fields" },
+        { status: 400 }
+      );
     }
 
-    const auth = getAdminAuth();
-    const db = getAdminDB();
-
-    // 1. Create Firebase Auth user
-    const user = await auth.createUser({
+    // 1. Create user in Firebase Auth
+    const userRecord = await adminAuth.createUser({
       email,
       password,
-      emailVerified: true,
     });
 
-    // 2. Store role in Firestore
-    await db.collection("users").doc(user.uid).set({
+    // 2. Save role in Firestore
+    await adminDB.collection("users").doc(userRecord.uid).set({
       email,
       role,
       createdAt: new Date(),
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      success: true,
+      uid: userRecord.uid,
+    });
   } catch (err: any) {
+    console.error("Create user error:", err);
     return NextResponse.json(
-      { error: err.message || "User creation failed" },
-      { status: 400 }
+      { error: err.message },
+      { status: 500 }
     );
   }
 }
