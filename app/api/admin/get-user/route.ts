@@ -1,36 +1,29 @@
 import { NextResponse } from "next/server";
-import { adminDB } from "@/lib/firebaseAdmin";
+import { getAdminDB } from "@/lib/firebaseAdmin";
+import { authGuard } from "@/lib/serverAuth";
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const uid = searchParams.get("uid");
+    const session = await authGuard();
+    if (!session || session.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
+    const { uid } = await req.json();
     if (!uid) {
-      return NextResponse.json(
-        { error: "Missing uid parameter" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing uid" }, { status: 400 });
     }
 
-    const doc = await adminDB.collection("users").doc(uid).get();
+    const db = getAdminDB();
+    const docRef = db.collection("users").doc(uid);
+    const snap = await docRef.get();
 
-    if (!doc.exists) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    if (!snap.exists) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      uid,
-      ...doc.data(),
-    });
+    return NextResponse.json({ user: snap.data() });
   } catch (err: any) {
-    console.error("Get user error:", err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
