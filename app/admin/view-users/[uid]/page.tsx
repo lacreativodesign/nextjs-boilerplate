@@ -1,22 +1,25 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 interface UserRecord {
   uid: string;
   name: string;
   email: string;
   role: string;
-  createdAt: number;
 }
 
-export default function ViewSingleUserPage() {
+export default function UserDetailsPage() {
   const { uid } = useParams();
+  const router = useRouter();
+
   const [user, setUser] = useState<UserRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  async function fetchUser() {
+  async function loadUser() {
     try {
       const res = await fetch(`/api/admin/get-user?uid=${uid}`, {
         method: "GET",
@@ -24,19 +27,37 @@ export default function ViewSingleUserPage() {
       });
 
       const data = await res.json();
-      if (res.ok && data?.user) {
-        setUser(data.user);
-      }
+
+      if (res.ok && data.user) setUser(data.user);
     } catch (err) {
-      console.error("Failed to fetch user:", err);
+      console.error("Failed to load user:", err);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (uid) fetchUser();
-  }, [uid]);
+    loadUser();
+  }, []);
+
+  async function deleteUser() {
+    setDeleting(true);
+
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ uid }),
+    });
+
+    setDeleting(false);
+
+    if (res.ok) {
+      alert("User deleted successfully");
+      router.push("/admin/view-users");
+    } else {
+      alert("Failed to delete user");
+    }
+  }
 
   if (loading) {
     return (
@@ -49,54 +70,67 @@ export default function ViewSingleUserPage() {
   if (!user) {
     return (
       <div style={container}>
-        <h2 style={errorText}>User not found</h2>
+        <h2 style={loadingText}>User not found</h2>
       </div>
     );
   }
 
   return (
     <div style={container}>
-      <h1 style={title}>User Details 🧾</h1>
+      <h1 style={title}>User Details 👤</h1>
 
       <div style={card}>
-        <div style={row}>
-          <strong style={label}>Name:</strong>
-          <span style={value}>{user.name}</span>
-        </div>
+        <p><strong>Name:</strong> {user.name}</p>
+        <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>Role:</strong> {user.role}</p>
 
-        <div style={row}>
-          <strong style={label}>Email:</strong>
-          <span style={value}>{user.email}</span>
-        </div>
-
-        <div style={row}>
-          <strong style={label}>Role:</strong>
-          <span style={value}>{user.role.toUpperCase()}</span>
-        </div>
-
-        <div style={row}>
-          <strong style={label}>Created:</strong>
-          <span style={value}>
-            {new Date(user.createdAt).toLocaleDateString("en-US")}
-          </span>
-        </div>
-
-        <div style={{ marginTop: 30 }}>
-          <a
-            href="/admin/view-users"
-            style={backButton}
-          >
-            ← Back to Users
+        <div style={buttonRow}>
+          <a href={`/admin/view-users/${uid}/edit`} style={editButton}>
+            Edit User
           </a>
+
+          <button
+            style={deleteButton}
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete User
+          </button>
         </div>
       </div>
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div style={modalOverlay}>
+          <div style={modal}>
+            <h3 style={modalTitle}>Are you sure?</h3>
+            <p style={modalText}>
+              This action cannot be undone. The user account and all associated data will be deleted.
+            </p>
+
+            <div style={modalButtons}>
+              <button
+                style={confirmDeleteButton}
+                disabled={deleting}
+                onClick={deleteUser}
+              >
+                {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+
+              <button
+                style={cancelModalButton}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* -----------------------
-   Styles (Same Locked Theme)
------------------------- */
+/* ========== Styles (Same Locked Theme) ========== */
 
 const container: React.CSSProperties = {
   minHeight: "100vh",
@@ -114,35 +148,34 @@ const title: React.CSSProperties = {
 
 const card: React.CSSProperties = {
   backgroundColor: "#fff",
-  borderRadius: 12,
   padding: "30px",
+  borderRadius: 12,
   maxWidth: 600,
   boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
 };
 
-const row: React.CSSProperties = {
+const buttonRow: React.CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
-  marginBottom: 18,
+  marginTop: 20,
+  gap: 15,
 };
 
-const label: React.CSSProperties = {
-  fontSize: 16,
-  color: "#4b5563",
-};
-
-const value: React.CSSProperties = {
-  fontSize: 16,
-  color: "#111827",
+const editButton: React.CSSProperties = {
+  padding: "12px 20px",
+  backgroundColor: "#111827",
+  color: "white",
+  borderRadius: 8,
+  textDecoration: "none",
   fontWeight: 600,
 };
 
-const backButton: React.CSSProperties = {
-  padding: "10px 16px",
-  backgroundColor: "#111827",
-  color: "#fff",
+const deleteButton: React.CSSProperties = {
+  padding: "12px 20px",
+  backgroundColor: "#dc2626",
+  color: "white",
   borderRadius: 8,
-  textDecoration: "none",
+  border: "none",
+  cursor: "pointer",
   fontWeight: 600,
 };
 
@@ -151,7 +184,57 @@ const loadingText: React.CSSProperties = {
   color: "#6b7280",
 };
 
-const errorText: React.CSSProperties = {
-  fontSize: 20,
-  color: "#ef4444",
+/* Modal Styles */
+const modalOverlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.4)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const modal: React.CSSProperties = {
+  background: "#fff",
+  padding: "30px",
+  width: 400,
+  borderRadius: 12,
+  boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+};
+
+const modalTitle: React.CSSProperties = {
+  fontSize: 22,
+  fontWeight: 700,
+  marginBottom: 10,
+};
+
+const modalText: React.CSSProperties = {
+  fontSize: 15,
+  color: "#4b5563",
+  marginBottom: 20,
+};
+
+const modalButtons: React.CSSProperties = {
+  display: "flex",
+  gap: 12,
+};
+
+const confirmDeleteButton: React.CSSProperties = {
+  padding: "10px 20px",
+  backgroundColor: "#dc2626",
+  color: "white",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const cancelModalButton: React.CSSProperties = {
+  padding: "10px 20px",
+  backgroundColor: "#6b7280",
+  color: "white",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 600,
 };
