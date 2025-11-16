@@ -1,16 +1,36 @@
-import * as admin from "firebase-admin";
+// lib/firebaseAdmin.ts
+import { getApps, initializeApp, cert, App } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
-// Prevent re-initializing during hot reload or multiple imports
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-  });
+let adminApp: App | undefined;
+
+/**
+ * Singleton Firebase Admin app – uses your Vercel env vars:
+ * FIREBASE_PROJECT_ID
+ * FIREBASE_CLIENT_EMAIL
+ * FIREBASE_PRIVATE_KEY
+ */
+export function getAdminApp(): App {
+  if (!adminApp) {
+    adminApp = initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process
+          .env
+          .FIREBASE_PRIVATE_KEY
+          ?.replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+  return adminApp;
 }
 
-// EXPORT CLEAN DIRECT ACCESS
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+export function getAdminAuth() {
+  return getAuth(getAdminApp());
+}
+
+export function getAdminDB() {
+  return getFirestore(getAdminApp());
+}
