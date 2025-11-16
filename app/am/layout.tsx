@@ -4,16 +4,21 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function AMLayout({ children }: { children: React.ReactNode }) {
+export default function AMLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
 
   const navItems = [
     { label: "Overview", path: "/am" },
-    { label: "Projects", path: "/am/projects" },
     { label: "Clients", path: "/am/clients" },
+    { label: "Projects", path: "/am/projects" },
     { label: "Tasks", path: "/am/tasks" },
-    { label: "Activity", path: "/am/activity" },
-    { label: "Settings", path: "/am/settings" },
+    { label: "Files", path: "/am/files" },
+    { label: "Messages", path: "/am/messages" },
+    { label: "Reports", path: "/am/reports" },
   ];
 
   return (
@@ -39,7 +44,7 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
         }}
       >
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 30 }}>
-          AM PANEL
+          AM DASHBOARD
         </h2>
 
         {navItems.map((item) => {
@@ -65,9 +70,9 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
         })}
       </aside>
 
-      {/* MAIN RIGHT AREA */}
+      {/* MAIN CONTENT AREA */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* TOP HEADER */}
+        {/* HEADER */}
         <header
           style={{
             backgroundColor: "#ffffff",
@@ -79,7 +84,7 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
           }}
         >
           <h1 style={{ fontSize: 20, fontWeight: 600, color: "#111827" }}>
-            Account Manager Dashboard
+            Account Manager
           </h1>
 
           <button
@@ -104,9 +109,9 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
           </button>
         </header>
 
-        {/* PAGE CONTENT */}
+        {/* CONTENT */}
         <main style={{ padding: "30px" }}>{children}</main>
       </div>
     </div>
   );
-          }
+}
