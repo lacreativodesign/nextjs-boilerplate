@@ -13,7 +13,10 @@ function getAdminApp(): App {
       credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(
+          /\\n/g,
+          "\n"
+        ),
       }),
     });
   } else {
@@ -23,16 +26,16 @@ function getAdminApp(): App {
   return adminApp!;
 }
 
-/** Server-side Auth (firebase-admin) */
+/** MAIN named exports you should use going forward */
 export function adminAuth() {
   return getAuth(getAdminApp());
 }
 
-/** Server-side Firestore (firebase-admin) */
 export function adminDb() {
   return getFirestore(getAdminApp());
 }
 
-/** Backward-compat aliases so older imports don't break */
-export const getAdminAuth = adminAuth;
-export const getAdminDB = adminDb;
+/** Aliases so ANY old import style keeps working */
+export const adminDB = adminDb;        // for `import { adminDB } ...`
+export const getAdminAuth = adminAuth; // for `import { getAdminAuth } ...`
+export const getAdminDB = adminDb;     // for `import { getAdminDB } ...`
