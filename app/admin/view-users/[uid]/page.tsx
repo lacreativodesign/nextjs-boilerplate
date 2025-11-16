@@ -2,165 +2,221 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseClient";
 
-export default function AdminViewSingleUser() {
+export default function UserDetailsPage() {
   const { uid } = useParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [newRole, setNewRole] = useState("");
 
   useEffect(() => {
-    async function loadUser() {
+    async function load() {
       try {
-        if (!uid) return;
+        const res = await fetch(`/api/admin/get-user?uid=${uid}`, {
+          method: "GET",
+          credentials: "include",
+        });
 
-        const ref = doc(db, "users", uid as string);
-        const snap = await getDoc(ref);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
 
-        if (!snap.exists()) {
-          setError("User profile not found.");
-          return;
-        }
-
-        setUser(snap.data());
+        setUser(data.user);
+        setNewRole(data.user.role);
       } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Failed to load user");
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     }
 
-    loadUser();
+    load();
   }, [uid]);
+
+  async function updateRole() {
+    try {
+      const res = await fetch(`/api/admin/update-user`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, role: newRole }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Role updated successfully!");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function resetPassword() {
+    try {
+      const res = await fetch(`/api/admin/reset-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Password reset email sent.");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function deleteUser() {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      const res = await fetch(`/api/admin/delete-user`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      alert("User deleted successfully.");
+      window.location.href = "/admin/view-users";
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#f9fafb",
         fontFamily: "Inter, sans-serif",
+        backgroundColor: "#f9fafb",
+        padding: "40px",
       }}
     >
-      {/* TOP BAR — same theme */}
-      <header
+      <h1
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          backgroundColor: "#111827",
-          color: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+          fontSize: "28px",
+          fontWeight: 700,
+          marginBottom: "20px",
+          color: "#111827",
         }}
       >
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600 }}>
-            User Details
-          </h1>
-          <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
-            Viewing complete profile for the selected user.
-          </p>
-        </div>
+        User Details
+      </h1>
 
-        <button
-          onClick={() => (window.location.href = "/admin/view-users")}
+      {loading && <p style={{ color: "#6b7280" }}>Loading user...</p>}
+      {error && (
+        <p
           style={{
-            padding: "10px 18px",
-            borderRadius: 8,
-            border: "none",
-            background: "#374151",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: 500,
+            background: "#fee2e2",
+            color: "#b91c1c",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px",
           }}
         >
-          ← Back to Users
-        </button>
-      </header>
+          {error}
+        </p>
+      )}
 
-      {/* MAIN CONTENT */}
-      <main
-        style={{
-          flex: 1,
-          padding: "40px",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
+      {user && (
         <div
           style={{
-            width: "100%",
-            maxWidth: 600,
             background: "white",
-            borderRadius: 16,
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
-            padding: 30,
+            padding: "30px",
+            borderRadius: "12px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+            maxWidth: "600px",
           }}
         >
-          {loading && (
-            <p style={{ fontSize: 14, color: "#6b7280" }}>
-              Loading user profile…
-            </p>
-          )}
+          <p style={field}>
+            <strong>Name:</strong> {user.name}
+          </p>
 
-          {error && (
-            <p style={{ fontSize: 14, color: "#b91c1c" }}>
-              {error}
-            </p>
-          )}
+          <p style={field}>
+            <strong>Email:</strong> {user.email}
+          </p>
 
-          {!loading && !error && user && (
-            <>
-              <h2
-                style={{
-                  fontSize: 22,
-                  fontWeight: 600,
-                  marginBottom: 20,
-                  color: "#111827",
-                }}
-              >
-                {user.name || "Unnamed User"}
-              </h2>
+          <p style={field}>
+            <strong>Role:</strong> {user.role}
+          </p>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong style={{ color: "#374151" }}>Email:</strong>
-                <p style={{ color: "#6b7280", marginTop: 4 }}>
-                  {user.email}
-                </p>
-              </div>
+          {/* Edit Role */}
+          <div style={{ marginTop: "20px" }}>
+            <label style={{ fontWeight: 600 }}>Change Role:</label>
+            <select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              style={{
+                width: "100%",
+                marginTop: "8px",
+                padding: "10px",
+                borderRadius: "8px",
+                border: "1px solid #d1d5db",
+              }}
+            >
+              <option value="admin">Admin</option>
+              <option value="sales">Sales</option>
+              <option value="am">Account Manager</option>
+              <option value="production">Production</option>
+              <option value="hr">HR</option>
+              <option value="finance">Finance</option>
+              <option value="client">Client</option>
+            </select>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong style={{ color: "#374151" }}>Role:</strong>
-                <p style={{ color: "#6b7280", marginTop: 4 }}>
-                  {user.role?.toUpperCase()}
-                </p>
-              </div>
+            <button onClick={updateRole} style={saveBtn}>
+              Save Role
+            </button>
+          </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong style={{ color: "#374151" }}>UID:</strong>
-                <p style={{ color: "#6b7280", marginTop: 4 }}>
-                  {uid}
-                </p>
-              </div>
+          <hr style={{ margin: "30px 0" }} />
 
-              <div style={{ marginBottom: 12 }}>
-                <strong style={{ color: "#374151" }}>Created At:</strong>
-                <p style={{ color: "#6b7280", marginTop: 4 }}>
-                  {user.createdAt
-                    ? new Date(user.createdAt).toLocaleString()
-                    : "—"}
-                </p>
-              </div>
-            </>
-          )}
+          {/* Reset Password */}
+          <button onClick={resetPassword} style={actionBtn}>
+            Reset Password
+          </button>
+
+          {/* Delete User */}
+          <button
+            onClick={deleteUser}
+            style={{ ...actionBtn, background: "#ef4444", marginTop: "10px" }}
+          >
+            Delete User
+          </button>
         </div>
-      </main>
+      )}
     </div>
   );
 }
+
+const field = {
+  fontSize: "16px",
+  color: "#374151",
+  marginBottom: "12px",
+};
+
+const saveBtn = {
+  marginTop: "12px",
+  padding: "10px 18px",
+  background: "#06b6d4",
+  color: "white",
+  borderRadius: "8px",
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const actionBtn = {
+  width: "100%",
+  padding: "12px",
+  background: "#3b82f6",
+  color: "white",
+  borderRadius: "8px",
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 600,
+};
