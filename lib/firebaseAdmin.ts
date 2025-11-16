@@ -1,36 +1,38 @@
 // lib/firebaseAdmin.ts
-import { getApps, initializeApp, cert, App } from "firebase-admin/app";
+import { cert, getApps, initializeApp, App, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-let adminApp: App | undefined;
+let adminApp: App | null = null;
 
-/**
- * Singleton Firebase Admin app – uses your Vercel env vars:
- * FIREBASE_PROJECT_ID
- * FIREBASE_CLIENT_EMAIL
- * FIREBASE_PRIVATE_KEY
- */
-export function getAdminApp(): App {
-  if (!adminApp) {
+function getAdminApp(): App {
+  if (adminApp) return adminApp;
+
+  if (!getApps().length) {
     adminApp = initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process
-          .env
-          .FIREBASE_PRIVATE_KEY
-          ?.replace(/\\n/g, "\n"),
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
       }),
     });
+  } else {
+    adminApp = getApp();
   }
-  return adminApp;
+
+  return adminApp!;
 }
 
-export function getAdminAuth() {
+/** Server-side Auth (firebase-admin) */
+export function adminAuth() {
   return getAuth(getAdminApp());
 }
 
-export function getAdminDB() {
+/** Server-side Firestore (firebase-admin) */
+export function adminDb() {
   return getFirestore(getAdminApp());
 }
+
+/** Backward-compat aliases so older imports don't break */
+export const getAdminAuth = adminAuth;
+export const getAdminDB = adminDb;
