@@ -1,36 +1,9 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 
 export default function AdminPage() {
-  const [loading, setLoading] = useState(true);
-
-  async function fetchRole() {
-    try {
-      const res = await fetch("/api/me", { credentials: "include" });
-      if (!res.ok) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const data = await res.json();
-
-      // If role is not admin, kick the user to their dashboard
-      if (data.role !== "admin") {
-        window.location.href = `/${data.role}`;
-        return;
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Session error:", err);
-      window.location.href = "/login";
-    }
-  }
-
-  useEffect(() => {
-    fetchRole();
-  }, []);
-
   async function handleLogout() {
     try {
       await fetch("/api/logout", {
@@ -43,81 +16,79 @@ export default function AdminPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#f9fafb",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <p style={{ color: "#6b7280", fontSize: "18px" }}>Loading...</p>
-      </div>
-    );
-  }
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
-      }}
+    <DashboardLayout
+      title="Admin Dashboard"
+      current="overview"
+      onLogout={handleLogout}
+      navLinks={[
+        { key: "overview", label: "Overview", href: "/admin" },
+        { key: "users", label: "Users", href: "/admin/view-users" },
+        // we’ll add more later: Finance, HR, Settings, etc.
+      ]}
     >
-      {/* Top Bar */}
-      <header
+      {/* Simple “2030-ready” placeholder content for now */}
+      <section
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          backgroundColor: "#111827",
-          color: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 20,
+          marginBottom: 24,
         }}
       >
-        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Admin Dashboard</h1>
-        <button
-          onClick={handleLogout}
+        <div
           style={{
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: 600,
-            transition: "background 0.2s ease",
+            backgroundColor: "#ffffff",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
           }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
         >
-          LOGOUT
-        </button>
-      </header>
+          <h2
+            style={{
+              fontSize: 16,
+              fontWeight: 600,
+              marginBottom: 8,
+              color: "#111827",
+            }}
+          >
+            Welcome, Admin 👋
+          </h2>
+          <p
+            style={{
+              fontSize: 14,
+              color: "#6b7280",
+            }}
+          >
+            This is your command center for LA CREATIVO. User management,
+            roles, and global settings will live here.
+          </p>
+        </div>
 
-      {/* Main content */}
-      <main
-        style={{
-          flex: 1,
-          padding: "40px",
-          textAlign: "center",
-          color: "#374151",
-        }}
-      >
-        <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
-          Welcome, Admin 👋
-        </h2>
-        <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
-          Your dashboard interface will appear here soon.
-        </p>
-      </main>
-    </div>
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 6,
+              color: "#111827",
+            }}
+          >
+            Quick Snapshot
+          </h3>
+          <p style={{ fontSize: 13, color: "#6b7280" }}>
+            Coming soon: live tiles for active users, open projects, invoices,
+            and team workload.
+          </p>
+        </div>
+      </section>
+    </DashboardLayout>
   );
 }
