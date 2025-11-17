@@ -12,9 +12,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const userDoc = await adminDb.collection("users").doc(uid).get();
+    const doc = await adminDb.collection("users").doc(uid).get();
 
-    if (!userDoc.exists) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      user: userDoc.data(),
+      user: { uid, ...doc.data() },
     });
   } catch (error: any) {
     return NextResponse.json(
