@@ -5,13 +5,12 @@ import ERPLayout from "@/components/layouts/ERPLayout";
 export default function SalesDashboard() {
   return (
     <ERPLayout role="sales" title="Sales Dashboard">
-
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
-        Welcome, Sales Rockstar 👋
+        Your Sales Dashboard 🚀
       </h2>
 
       <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
-        Track your leads, performance metrics, and follow-ups — all in one place.
+        Stay focused. Track your leads, pipeline, tasks and daily activities.
       </p>
 
       {/* Dashboard Grid */}
@@ -36,11 +35,11 @@ export default function SalesDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Leads</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            View, update, and manage all leads assigned to you.
+            View and manage the leads assigned to you.
           </p>
         </div>
 
-        {/* Follow Ups */}
+        {/* Pipeline */}
         <div
           style={{
             padding: 20,
@@ -51,9 +50,9 @@ export default function SalesDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Follow Ups</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Sales Pipeline</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Stay on top of tasks and pipeline activities.
+            Lead → Qualified → Proposal → Negotiation → Closed.
           </p>
         </div>
 
@@ -70,11 +69,11 @@ export default function SalesDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Performance</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Track monthly revenue, targets, and conversions.
+            Track your quota and monthly revenue progress.
           </p>
         </div>
 
-        {/* New Lead */}
+        {/* Tasks & Follow-ups */}
         <div
           style={{
             padding: 20,
@@ -85,9 +84,43 @@ export default function SalesDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Add New Lead</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Tasks & Follow-ups</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Create new leads and move them into your sales pipeline.
+            Daily calls, messages, reminders and scheduled tasks.
+          </p>
+        </div>
+
+        {/* My Clients */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Clients</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            View clients you’ve closed & their project statuses.
+          </p>
+        </div>
+
+        {/* Activity Log */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Activity Log</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Track everything you've done this week and month.
           </p>
         </div>
       </div>
