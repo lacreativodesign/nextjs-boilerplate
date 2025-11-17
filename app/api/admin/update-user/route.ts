@@ -3,24 +3,26 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { uid, email, role } = await req.json();
+    const { uid, name, role } = await req.json();
 
-    if (!uid) {
+    if (!uid || !name || !role) {
       return NextResponse.json(
-        { error: "UID is required" },
+        { error: "Missing fields" },
         { status: 400 }
       );
     }
 
-    // Update Firebase Auth if email provided
-    if (email) {
-      await adminAuth.updateUser(uid, { email });
-    }
+    // Update Firebase Auth displayName
+    await adminAuth.updateUser(uid, {
+      displayName: name,
+    });
 
-    // Update Firestore role
-    if (role) {
-      await adminDb.collection("users").doc(uid).update({ role });
-    }
+    // Update Firestore user data
+    await adminDb.collection("users").doc(uid).update({
+      name,
+      role,
+      updatedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({
       success: true,
