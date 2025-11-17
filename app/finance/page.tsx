@@ -1,80 +1,66 @@
 "use client";
 
-import React from "react";
+import ERPLayout from "@/components/layouts/ERPLayout";
 
-export default function FinancePage() {
-  async function handleLogout() {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/login";
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  }
-
+export default function FinanceDashboard() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      {/* Top Bar */}
-      <header
+    <ERPLayout role="finance" title="Finance Dashboard">
+      <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
+        Welcome, Finance Manager 💼
+      </h2>
+
+      <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
+        Manage invoices, payments, payroll, and financial reports right here.
+      </p>
+
+      {/* KPI Cards */}
+      <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          backgroundColor: "#111827",
-          color: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: 20,
+          marginTop: 20,
         }}
       >
-        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Finance Dashboard</h1>
-
-        <button
-          onClick={handleLogout}
+        <div
           style={{
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: 600,
-            transition: "background 0.2s ease",
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
           }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
         >
-          LOGOUT
-        </button>
-      </header>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Total Revenue</h3>
+          <p style={{ fontSize: 28, fontWeight: 700, marginTop: 5 }}>$0</p>
+        </div>
 
-      {/* Main content */}
-      <main
-        style={{
-          flex: 1,
-          padding: "40px",
-          textAlign: "center",
-          color: "#374151",
-        }}
-      >
-        <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
-          Welcome, Finance Team 💰
-        </h2>
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Pending Invoices</h3>
+          <p style={{ fontSize: 28, fontWeight: 700, marginTop: 5 }}>0</p>
+        </div>
 
-        <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
-          Payments, invoices, payroll & financial analytics will appear here soon.
-        </p>
-      </main>
-    </div>
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Monthly Expenses</h3>
+          <p style={{ fontSize: 28, fontWeight: 700, marginTop: 5 }}>$0</p>
+        </div>
+      </div>
+    </ERPLayout>
   );
-}
+          }
