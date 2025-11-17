@@ -1,30 +1,26 @@
 import { NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { uid, email, displayName, role } = await req.json();
+    const { uid, email, role } = await req.json();
 
     if (!uid) {
       return NextResponse.json(
-        { error: "Missing UID" },
+        { error: "UID is required" },
         { status: 400 }
       );
     }
 
-    // Update auth record (email + name)
-    await adminAuth.updateUser(uid, {
-      email: email || undefined,
-      displayName: displayName || undefined,
-    });
+    // Update Firebase Auth if email provided
+    if (email) {
+      await adminAuth.updateUser(uid, { email });
+    }
 
-    // Update Firestore user profile
-    await adminDb.collection("users").doc(uid).update({
-      email,
-      displayName,
-      role,
-      updatedAt: new Date().toISOString(),
-    });
+    // Update Firestore role
+    if (role) {
+      await adminDb.collection("users").doc(uid).update({ role });
+    }
 
     return NextResponse.json({
       success: true,
