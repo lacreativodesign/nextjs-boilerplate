@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import ERPLayout from "@/components/layout/ERPLayout";
 
 export default function AdminPage() {
   async function handleLogout() {
@@ -17,78 +17,45 @@ export default function AdminPage() {
   }
 
   return (
-    <DashboardLayout
-      title="Admin Dashboard"
-      current="overview"
-      onLogout={handleLogout}
-      navLinks={[
-        { key: "overview", label: "Overview", href: "/admin" },
-        { key: "users", label: "Users", href: "/admin/view-users" },
-        // we’ll add more later: Finance, HR, Settings, etc.
-      ]}
-    >
-      {/* Simple “2030-ready” placeholder content for now */}
-      <section
+    <ERPLayout title="Admin Dashboard" role="admin" onLogout={handleLogout}>
+      <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 20,
-          marginBottom: 24,
+          textAlign: "left",
+          color: "#374151",
         }}
       >
-        <div
+        <h2
           style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            padding: 20,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+            fontSize: 24,
+            fontWeight: 600,
+            marginBottom: 8,
           }}
         >
-          <h2
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              marginBottom: 8,
-              color: "#111827",
-            }}
-          >
-            Welcome, Admin 👋
-          </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: "#6b7280",
-            }}
-          >
-            This is your command center for LA CREATIVO. User management,
-            roles, and global settings will live here.
-          </p>
-        </div>
-
-        <div
+          Welcome, Admin 👋
+        </h2>
+        <p
           style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            padding: 20,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+            marginTop: 4,
+            fontSize: 15,
+            color: "#6b7280",
           }}
         >
-          <h3
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              marginBottom: 6,
-              color: "#111827",
-            }}
-          >
-            Quick Snapshot
-          </h3>
-          <p style={{ fontSize: 13, color: "#6b7280" }}>
-            Coming soon: live tiles for active users, open projects, invoices,
-            and team workload.
-          </p>
-        </div>
-      </section>
-    </DashboardLayout>
+          Your LA CREATIVO ERP command center is ready. Soon you’ll see:
+        </p>
+        <ul
+          style={{
+            marginTop: 16,
+            marginLeft: 18,
+            fontSize: 14,
+            color: "#4b5563",
+            lineHeight: 1.7,
+          }}
+        >
+          <li>High-level overview of all teams and active projects</li>
+          <li>User Management for Sales, AM, Production, HR, Finance & Clients</li>
+          <li>Role-based analytics: performance, utilization, and pipeline</li>
+        </ul>
+      </div>
+    </ERPLayout>
   );
 }
