@@ -4,13 +4,13 @@ import ERPLayout from "@/components/layouts/ERPLayout";
 
 export default function SalesManagerDashboard() {
   return (
-    <ERPLayout role="sales_manager" title="Sales Manager Dashboard">
+    <ERPLayout role="sales-manager" title="Sales Manager Dashboard">
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
-        Sales Manager Overview 📊
+        Team Sales Overview 📊
       </h2>
 
       <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
-        Track team performance, assign leads, and manage the entire sales pipeline.
+        Monitor your team, assign leads, review performance, and track progress.
       </p>
 
       {/* Dashboard Grid */}
@@ -22,6 +22,40 @@ export default function SalesManagerDashboard() {
           marginTop: 20,
         }}
       >
+        {/* Team Members */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Team Members</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            View all sales team members and their assigned leads.
+          </p>
+        </div>
+
+        {/* Team Pipeline */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Team Pipeline</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Monitor all leads assigned across your team.
+          </p>
+        </div>
+
         {/* Team Performance */}
         <div
           style={{
@@ -35,7 +69,7 @@ export default function SalesManagerDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>Team Performance</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            View every salesperson’s numbers, KPIs & weekly progress.
+            Track monthly revenue, quota progress, and overall efficiency.
           </p>
         </div>
 
@@ -50,13 +84,13 @@ export default function SalesManagerDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Assign Leads</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Lead Assignment</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Distribute leads and track who is working on what.
+            Assign, reassign and manage team lead distribution.
           </p>
         </div>
 
-        {/* Pipeline Overview */}
+        {/* Activity Log */}
         <div
           style={{
             padding: 20,
@@ -67,13 +101,13 @@ export default function SalesManagerDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Pipeline Overview</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Team Activity Log</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Monitor the full sales pipeline from lead → negotiation → closed.
+            Track calls, follow-ups, proposals and closing attempts.
           </p>
         </div>
 
-        {/* Revenue & Targets */}
+        {/* Top Performers */}
         <div
           style={{
             padding: 20,
@@ -84,29 +118,12 @@ export default function SalesManagerDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Revenue & Targets</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Top Performers</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Track quota vs achieved revenue for the full team.
-          </p>
-        </div>
-
-        {/* Team Chat */}
-        <div
-          style={{
-            padding: 20,
-            background: "#fff",
-            borderRadius: 10,
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-            cursor: "pointer",
-          }}
-        >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Team Communication</h3>
-          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Collaborate with your sales team in real-time.
+            Identify your highest performing team members.
           </p>
         </div>
       </div>
     </ERPLayout>
   );
-            }
+}
