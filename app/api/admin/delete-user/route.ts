@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // Delete from Firebase Auth
     await adminAuth.deleteUser(uid);
 
-    // Delete from Firestore
+    // Delete Firestore record
     await adminDb.collection("users").doc(uid).delete();
 
     return NextResponse.json({
