@@ -14,6 +14,7 @@
     "@hookform/resolvers": "^3.3.4",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
+    "@headlessui/react": "^1.7.17",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.441.0",
     "date-fns": "^3.6.0",
