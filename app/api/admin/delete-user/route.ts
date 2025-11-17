@@ -7,7 +7,7 @@ export async function POST(req: Request) {
 
     if (!uid) {
       return NextResponse.json(
-        { error: "UID is required" },
+        { error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // Delete from Firebase Auth
     await adminAuth.deleteUser(uid);
 
-    // Delete Firestore record
+    // Delete from Firestore
     await adminDb.collection("users").doc(uid).delete();
 
     return NextResponse.json({
