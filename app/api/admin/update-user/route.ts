@@ -1,38 +1,38 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDB } from "@/lib/firebaseAdmin";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { uid, name, email, role } = await req.json();
+    const { uid, email, displayName, role } = await req.json();
 
-    if (!uid || !name || !email || !role) {
+    if (!uid) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing UID" },
         { status: 400 }
       );
     }
 
-    const auth = getAdminAuth();
-    const db = getAdminDB();
-
-    // Update Firebase Auth user
-    await auth.updateUser(uid, {
-      displayName: name,
-      email: email,
+    // Update auth record (email + name)
+    await adminAuth.updateUser(uid, {
+      email: email || undefined,
+      displayName: displayName || undefined,
     });
 
-    // Update Firestore user document
-    await db.collection("users").doc(uid).update({
-      name,
+    // Update Firestore user profile
+    await adminDb.collection("users").doc(uid).update({
       email,
-      role: role.toLowerCase(),
-      updatedAt: Date.now(),
+      displayName,
+      role,
+      updatedAt: new Date().toISOString(),
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
+    return NextResponse.json({
+      success: true,
+      message: "User updated successfully",
+    });
+  } catch (error: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to update user" },
+      { error: error.message || "Failed to update user" },
       { status: 500 }
     );
   }
