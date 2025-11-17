@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 export default function HRAttendancePage() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAttendance() {
@@ -25,6 +26,10 @@ export default function HRAttendancePage() {
     loadAttendance();
   }, []);
 
+  const toggleRow = (userId: string) => {
+    setOpenRow(openRow === userId ? null : userId);
+  };
+
   return (
     <div
       style={{
@@ -41,7 +46,6 @@ export default function HRAttendancePage() {
         Daily login attendance for every employee.
       </p>
 
-      {/* Loading State */}
       {loading && (
         <div
           style={{
@@ -56,7 +60,6 @@ export default function HRAttendancePage() {
         </div>
       )}
 
-      {/* Attendance Table */}
       {!loading && (
         <div
           style={{
@@ -70,6 +73,7 @@ export default function HRAttendancePage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ background: "#f3f4f6" }}>
               <tr>
+                <th style={th}></th>
                 <th style={th}>Name</th>
                 <th style={th}>Email</th>
                 <th style={th}>Role</th>
@@ -78,20 +82,72 @@ export default function HRAttendancePage() {
             </thead>
 
             <tbody>
-              {attendance.map((u, i) => {
+              {attendance.map((u) => {
                 const lastLog = u.logs?.[0];
 
                 return (
-                  <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={td}>{u.name}</td>
-                    <td style={td}>{u.email}</td>
-                    <td style={td}>{u.role}</td>
-                    <td style={td}>
-                      {lastLog
-                        ? new Date(lastLog.timestamp).toLocaleString()
-                        : "No logins yet"}
-                    </td>
-                  </tr>
+                  <>
+                    <tr
+                      key={u.userId}
+                      style={{ borderBottom: "1px solid #f3f4f6" }}
+                    >
+                      <td style={td}>
+                        <button
+                          onClick={() => toggleRow(u.userId)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            fontSize: "18px",
+                          }}
+                        >
+                          {openRow === u.userId ? "▾" : "▸"}
+                        </button>
+                      </td>
+
+                      <td style={td}>{u.name}</td>
+                      <td style={td}>{u.email}</td>
+                      <td style={td}>{u.role}</td>
+
+                      <td style={td}>
+                        {lastLog
+                          ? new Date(lastLog.timestamp).toLocaleString()
+                          : "No logins yet"}
+                      </td>
+                    </tr>
+
+                    {/* EXPANDED ROW */}
+                    {openRow === u.userId && (
+                      <tr>
+                        <td colSpan={5} style={expandedBox}>
+                          <h3 style={expHeader}>Full Attendance History</h3>
+
+                          {u.logs.length === 0 && (
+                            <p style={{ color: "#6b7280" }}>
+                              No attendance records found.
+                            </p>
+                          )}
+
+                          {u.logs.length > 0 && (
+                            <ul style={{ paddingLeft: "20px" }}>
+                              {u.logs.map((log: any, idx: number) => (
+                                <li
+                                  key={idx}
+                                  style={{
+                                    marginBottom: "6px",
+                                    fontSize: "14px",
+                                    color: "#374151",
+                                  }}
+                                >
+                                  {new Date(log.timestamp).toLocaleString()}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
@@ -114,4 +170,16 @@ const td = {
   padding: "14px",
   fontSize: "14px",
   color: "#4b5563",
+};
+
+const expandedBox = {
+  background: "#f9fafb",
+  padding: "20px",
+  borderTop: "1px solid #e5e7eb",
+};
+
+const expHeader = {
+  fontSize: "16px",
+  fontWeight: 600,
+  marginBottom: "10px",
 };
