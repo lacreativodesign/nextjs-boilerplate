@@ -7,14 +7,14 @@ export async function POST(req: Request) {
 
     if (!uid) {
       return NextResponse.json(
-        { error: "Missing UID" },
+        { error: "UID is required" },
         { status: 400 }
       );
     }
 
-    const doc = await adminDb.collection("users").doc(uid).get();
+    const userDoc = await adminDb.collection("users").doc(uid).get();
 
-    if (!doc.exists) {
+    if (!userDoc.exists) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
@@ -22,12 +22,12 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      uid,
-      ...doc.data(),
+      success: true,
+      user: userDoc.data(),
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to get user" },
+      { error: error.message || "Failed to fetch user" },
       { status: 500 }
     );
   }
