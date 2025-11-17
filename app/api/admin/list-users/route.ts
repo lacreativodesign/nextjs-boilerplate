@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function GET() {
   try {
-    const snapshot = await adminDb().collection("users").get();
+    const list = await adminAuth.listUsers();
+    const users = [];
 
-    const users = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    for (const user of list.users) {
+      const snap = await adminDb.collection("users").doc(user.uid).get();
+      users.push({
+        uid: user.uid,
+        email: user.email,
+        role: snap.exists ? snap.data()?.role : "unknown",
+      });
+    }
 
-    return NextResponse.json({ users }, { status: 200 });
-  } catch (error: any) {
-    console.error("Error fetching users:", error);
-    return NextResponse.json(
-      { error: error.message || "Something went wrong" },
-      { status: 500 }
-    );
+    return NextResponse.json({ users });
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
