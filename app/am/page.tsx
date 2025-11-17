@@ -5,16 +5,15 @@ import ERPLayout from "@/components/layouts/ERPLayout";
 export default function AMDashboard() {
   return (
     <ERPLayout role="am" title="Account Manager Dashboard">
-
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
-        Welcome, Account Manager 👋
+        Account Manager Overview 🧩
       </h2>
 
       <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
-        Manage clients, oversee projects, coordinate with production, and ensure delivery quality.
+        Manage client communication, track project updates, and stay on top of deliverables.
       </p>
 
-      {/* Dashboard Grid */}
+      {/* AM Dashboard Grid */}
       <div
         style={{
           display: "grid",
@@ -23,7 +22,7 @@ export default function AMDashboard() {
           marginTop: 20,
         }}
       >
-        {/* My Clients */}
+        {/* Clients */}
         <div
           style={{
             padding: 20,
@@ -36,7 +35,7 @@ export default function AMDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Clients</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            View, track, and manage all clients assigned to you.
+            View and manage all clients assigned to you.
           </p>
         </div>
 
@@ -53,7 +52,7 @@ export default function AMDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>Projects</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Monitor project timelines, deliverables, drafts, and revisions.
+            Track project status, escalate delays, and update clients.
           </p>
         </div>
 
@@ -68,13 +67,13 @@ export default function AMDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Client Messages</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Messages</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Communicate with clients & coordinate feedback in real time.
+            Communicate with clients & production in real-time.
           </p>
         </div>
 
-        {/* Files */}
+        {/* Deliverables Review */}
         <div
           style={{
             padding: 20,
@@ -85,9 +84,26 @@ export default function AMDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Project Files</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Deliverables</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Upload and manage drafts, revisions, and final deliverables.
+            Approve drafts, track revisions, and share updates with clients.
+          </p>
+        </div>
+
+        {/* Escalations */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Escalations</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Escalate production issues directly to management.
           </p>
         </div>
       </div>
