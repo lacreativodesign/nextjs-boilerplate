@@ -5,16 +5,15 @@ import ERPLayout from "@/components/layouts/ERPLayout";
 export default function ClientDashboard() {
   return (
     <ERPLayout role="client" title="Client Dashboard">
-      
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
-        Welcome to Your Client Portal 👋
+        Welcome to Your Client Portal 🤝
       </h2>
 
       <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
-        Track your projects, view invoices, access files, and communicate with your team.
+        Track project progress, view deliverables, invoices, and collaborate seamlessly.
       </p>
 
-      {/* Quick Modules */}
+      {/* Client Grid */}
       <div
         style={{
           display: "grid",
@@ -34,13 +33,13 @@ export default function ClientDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Projects</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>My Projects</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            View project phases, timelines, milestones & deliverables.
+            View progress, milestones, files, and project updates.
           </p>
         </div>
 
-        {/* Files */}
+        {/* Deliverables */}
         <div
           style={{
             padding: 20,
@@ -51,9 +50,9 @@ export default function ClientDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Files</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Deliverables</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Download drafts, revisions, and final deliverables.
+            Access drafts, revisions, and final files shared by your team.
           </p>
         </div>
 
@@ -68,13 +67,13 @@ export default function ClientDashboard() {
             cursor: "pointer",
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Billing & Invoices</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Invoices</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            View and download invoices, receipts, and payment history.
+            View and download your invoices, receipts, and payment history.
           </p>
         </div>
 
-        {/* Chat */}
+        {/* Messages */}
         <div
           style={{
             padding: 20,
@@ -87,10 +86,10 @@ export default function ClientDashboard() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>Messages</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Chat with your assigned account manager.
+            Chat with your project manager and track communication threads.
           </p>
         </div>
       </div>
     </ERPLayout>
   );
-            }
+}
