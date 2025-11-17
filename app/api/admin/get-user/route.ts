@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      user: { uid, ...doc.data() },
+      user: doc.data(),
     });
   } catch (error: any) {
     return NextResponse.json(
