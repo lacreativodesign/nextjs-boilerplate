@@ -12,6 +12,7 @@
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.1.2",
     "@hookform/resolvers": "^3.3.4",
+    "@headlessui/react": "^1.7.18",
     "lucide-react": "^0.441.0",
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.11",
