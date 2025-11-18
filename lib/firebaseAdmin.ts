@@ -1,38 +1,26 @@
-// lib/firebaseAdmin.ts
-import { cert, getApps, initializeApp, App, getApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
-let adminApp: App | null = null;
+let app: admin.app.App;
 
-function getAdminApp(): App {
-  if (adminApp) return adminApp;
-
-  if (!getApps().length) {
-    adminApp = initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-      }),
-    });
-  } else {
-    adminApp = getApp();
-  }
-
-  return adminApp!;
+if (!admin.apps.length) {
+  app = admin.initializeApp({
+    credential: admin.credential.cert(
+      JSON.parse(process.env.FIREBASE_ADMIN_KEY || "{}")
+    ),
+  });
+} else {
+  app = admin.app();
 }
 
-/** Server-side Auth (firebase-admin) */
-export function adminAuth() {
-  return getAuth(getAdminApp());
-}
+// Core services
+const auth = admin.auth(app);
+const db = admin.firestore(app);
 
-/** Server-side Firestore (firebase-admin) */
-export function adminDb() {
-  return getFirestore(getAdminApp());
-}
+// Export in all formats your API routes expect
+export const adminAuth = auth;
+export const adminDb = db;
+export const adminDB = db; // Some routes use this
+export const getAdminAuth = () => auth;
+export const getAdminDB = () => db;
 
-/** Backward-compat aliases so older imports don't break */
-export const getAdminAuth = adminAuth;
-export const getAdminDB = adminDb;
+export default app;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDB } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
@@ -7,24 +7,24 @@ export async function POST(req: Request) {
 
     if (!uid) {
       return NextResponse.json(
-        { error: "Missing UID" },
+        { error: "User ID is required" },
         { status: 400 }
       );
     }
 
-    const auth = getAdminAuth();
-    const db = getAdminDB();
+    // Delete from Firebase Auth
+    await adminAuth.deleteUser(uid);
 
-    // 1) Delete auth user
-    await auth.deleteUser(uid);
+    // Delete Firestore profile
+    await adminDb.collection("users").doc(uid).delete();
 
-    // 2) Delete Firestore user record
-    await db.collection("users").doc(uid).delete();
-
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
+    return NextResponse.json({
+      success: true,
+      message: "User deleted successfully",
+    });
+  } catch (error: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to delete user" },
+      { error: error.message || "Failed to delete user" },
       { status: 500 }
     );
   }

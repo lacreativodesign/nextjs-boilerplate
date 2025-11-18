@@ -1,78 +1,95 @@
 "use client";
 
-import React from "react";
+import ERPLayout from "@/components/layouts/ERPLayout";
 
-export default function ProductionPage() {
-  async function handleLogout() {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/login";
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  }
-
+export default function ProductionDashboard() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      {/* Top Bar */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          backgroundColor: "#111827",
-          color: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h1 style={{ fontSize: "20px", fontWeight: 600 }}>Production Dashboard</h1>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: 600,
-            transition: "background 0.2s ease",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
-        >
-          LOGOUT
-        </button>
-      </header>
+    <ERPLayout role="production" title="Production Dashboard">
+      <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
+        Welcome, Production Team 🛠️
+      </h2>
 
-      {/* Main content */}
-      <main
+      <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 30 }}>
+        Track active tasks, manage project files, and stay aligned with delivery timelines.
+      </p>
+
+      {/* Production Grid */}
+      <div
         style={{
-          flex: 1,
-          padding: "40px",
-          textAlign: "center",
-          color: "#374151",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 20,
+          marginTop: 20,
         }}
       >
-        <h2 style={{ fontSize: "24px", fontWeight: "600" }}>
-          Welcome, Production Team ⚙️
-        </h2>
-        <p style={{ marginTop: "10px", fontSize: "16px", color: "#6b7280" }}>
-          Your production queue, tasks, and files will live here soon.
-        </p>
-      </main>
-    </div>
+        {/* Active Queue */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Active Queue</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Review projects in the production pipeline and update statuses.
+          </p>
+        </div>
+
+        {/* Files Management */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Files Management</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Upload drafts, revisions, and final deliverables for client approval.
+          </p>
+        </div>
+
+        {/* Project Activity */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Activity Log</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Track changes, progress notes, and communication from AM & clients.
+          </p>
+        </div>
+
+        {/* Reports */}
+        <div
+          style={{
+            padding: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Reports</h3>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
+            Review workload, delivery timelines, and production performance insights.
+          </p>
+        </div>
+      </div>
+    </ERPLayout>
   );
 }
