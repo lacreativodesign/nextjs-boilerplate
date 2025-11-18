@@ -8,12 +8,21 @@
     "start": "next start"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dayjs": "^1.11.19",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.6.0",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.554.0",
     "next": "14.2.12",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-hot-toast": "^2.6.0",
     "resend": "^3.5.0",
+    "tailwind-merge": "^3.4.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
