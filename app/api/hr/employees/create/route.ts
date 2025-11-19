@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebaseAdmin";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    const { name, email, role, department, status } = body;
+
+    if (!name || !email || !role || !department) {
+      return NextResponse.json(
+        { success: false, message: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const newEmployee = {
+      name,
+      email,
+      role,
+      department,
+      status: status || "Active",
+      createdAt: new Date().toISOString(),
+    };
+
+    // Firestore Path: employees/{autoID}
+    const docRef = await adminDb.collection("employees").add(newEmployee);
+
+    return NextResponse.json(
+      {
+        success: true,
+        id: docRef.id,
+        message: "Employee created successfully",
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    console.error("Error creating employee:", err);
+    return NextResponse.json(
+      { success: false, message: err.message || "Server error" },
+      { status: 500 }
+    );
+  }
+          }
