@@ -1,120 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
-export default function AdminCreateUserPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Admin");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
+export default function UserListPage() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    setLoading(true);
-    setResult("");
-
-    const res = await fetch("/api/admin/create-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, role }),
-    });
-
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setResult("❌ " + (data.error || "Failed to create user"));
-    } else {
-      setResult(
-        `✅ User created!
-Name: ${name}
-Email: ${email}
-Password: ${data.password}
-Role: ${role}`
-      );
-      setName("");
-      setEmail("");
-      setRole("Admin");
+  useEffect(() => {
+    async function load() {
+      const res = await fetch("/api/admin/users/list");
+      const data = await res.json();
+      setUsers(data.users || []);
+      setLoading(false);
     }
-  };
+    load();
+  }, []);
+
+  if (loading) return <p>Loading users...</p>;
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1 style={{ fontSize: 30, fontWeight: "bold", marginBottom: 20 }}>
-        Create New User — LA CREATIVO
-      </h1>
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 700 }}>User Management</h2>
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
-        <label>Name</label>
-        <input
-          className="input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-
-        <label>Email</label>
-        <input
-          className="input"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-
-        <label>Role</label>
-        <select
-          className="input"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option>Admin</option>
-          <option>Sales</option>
-          <option>AM</option>
-          <option>Production</option>
-          <option>HR</option>
-          <option>Finance</option>
-          <option>Client</option>
-        </select>
-
-        <button
-          type="submit"
-          className="btn"
-          disabled={loading}
+        <Link
+          href="/admin/users/create"
           style={{
-            marginTop: 20,
-            padding: "10px 20px",
-            background: "#000",
-            color: "#fff",
+            background: "#2563eb",
+            color: "white",
+            padding: "10px 18px",
+            borderRadius: 8,
+            fontWeight: 600,
+            textDecoration: "none",
           }}
         >
-          {loading ? "Creating..." : "Create User"}
-        </button>
-      </form>
+          + Create User
+        </Link>
+      </div>
 
-      {result && (
-        <pre
-          style={{
-            marginTop: 20,
-            background: "#f4f4f4",
-            padding: 20,
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {result}
-        </pre>
-      )}
+      {/* Table */}
+      <div
+        style={{
+          background: "var(--card-bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead style={{ background: "var(--header-bg)" }}>
+            <tr>
+              {["Name", "Email", "Role", "Status", "Actions"].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    padding: 14,
+                    textAlign: "left",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
 
-      <style>{`
-        .input {
-          width: 100%;
-          margin-bottom: 15px;
-          padding: 10px;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-        }
-      `}</style>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.uid}>
+                <td style={{ padding: 14 }}>{u.name}</td>
+                <td style={{ padding: 14 }}>{u.email}</td>
+                <td style={{ padding: 14, textTransform: "capitalize" }}>{u.role}</td>
+                <td style={{ padding: 14 }}>{u.disabled ? "Disabled" : "Active"}</td>
+
+                <td style={{ padding: 14 }}>
+                  <Link
+                    href={`/admin/users/${u.uid}`}
+                    style={{
+                      background: "#0ea5e9",
+                      padding: "6px 12px",
+                      color: "white",
+                      borderRadius: 6,
+                      marginRight: 10,
+                      textDecoration: "none",
+                      fontSize: 14,
+                    }}
+                  >
+                    Edit
+                  </Link>
+
+                  <button
+                    onClick={async () => {
+                      if (!confirm("Are you sure?")) return;
+
+                      await fetch("/api/admin/users/delete", {
+                        method: "POST",
+                        body: JSON.stringify({ uid: u.uid }),
+                      });
+
+                      window.location.reload();
+                    }}
+                    style={{
+                      background: "#ef4444",
+                      padding: "6px 12px",
+                      color: "white",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {users.length === 0 && (
+              <tr>
+                <td style={{ padding: 20 }} colSpan={5}>
+                  No users found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
-}
+        }
