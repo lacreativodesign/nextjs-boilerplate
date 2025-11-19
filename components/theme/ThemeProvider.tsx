@@ -1,61 +1,29 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
-interface ThemeContextValue {
-  theme: Theme;
-  toggleTheme: () => void;
-}
+const ThemeContext = createContext({
+  theme: "light" as Theme,
+  toggleTheme: () => {},
+});
 
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error("useTheme must be used inside ThemeProvider");
-  }
-  return ctx;
-}
-
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
-export function ThemeProvider({ children }: ThemeProviderProps) {
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
 
-  // Load saved theme from localStorage (if any)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("lac_theme");
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored);
-      document.documentElement.dataset.theme = stored;
-    } else {
-      // default: light
-      setTheme("light");
-      document.documentElement.dataset.theme = "light";
-    }
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark") setTheme("dark");
+    document.documentElement.classList.toggle("dark", stored === "dark");
   }, []);
 
-  // Whenever theme changes, update <html> data-attr + save
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("lac_theme", theme);
-  }, [theme]);
-
-  function toggleTheme() {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  }
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -63,3 +31,5 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     </ThemeContext.Provider>
   );
 }
+
+export const useTheme = () => useContext(ThemeContext);
