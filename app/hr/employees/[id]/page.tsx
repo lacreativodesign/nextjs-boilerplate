@@ -1,152 +1,133 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ERPLayout from "@/components/layouts/ERPLayout";
 
-type Employee = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department?: string;
-  status?: string;
-  createdAt?: string;
-};
-
-export default function EmployeeProfile() {
-  const params = useParams();
-  const id = params?.id as string;
-
-  const [data, setData] = useState<Employee | null>(null);
+export default function EmployeeProfilePage() {
+  const { id } = useParams();
+  const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-
-    async function fetchData() {
+    async function load() {
       try {
-        const res = await fetch(`/api/hr/employees/get?id=${id}`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        const json = await res.json();
-
-        setData(
-          json.employee ||
-            json.user ||
-            json.data ||
-            (json?.id ? json : null)
-        );
-      } catch (err) {
-        console.error("Profile fetch error:", err);
+        const res = await fetch(`/api/hr/employees/get?id=${id}`);
+        const data = await res.json();
+        if (data.success) setEmployee(data.employee);
+      } catch (e) {
+        console.error("Error loading employee:", e);
       } finally {
         setLoading(false);
       }
     }
-
-    fetchData();
+    load();
   }, [id]);
+
+  if (loading) {
+    return (
+      <ERPLayout role="hr" title="Employee Profile">
+        <p>Loading...</p>
+      </ERPLayout>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <ERPLayout role="hr" title="Employee Profile">
+        <p>Employee not found.</p>
+      </ERPLayout>
+    );
+  }
 
   return (
     <ERPLayout role="hr" title="Employee Profile">
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        {loading ? (
-          <p style={{ textAlign: "center", marginTop: 40 }}>Loading...</p>
-        ) : !data ? (
-          <p style={{ textAlign: "center", marginTop: 40 }}>
-            Employee not found.
+      <div
+        style={{
+          background: "#fff",
+          padding: 30,
+          borderRadius: 12,
+          border: "1px solid #e5e7eb",
+        }}
+      >
+        {/* HEADER */}
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
+          {employee.name}
+        </h2>
+
+        <p style={{ color: "#6b7280", marginBottom: 25 }}>{employee.email}</p>
+
+        {/* GRID */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 20,
+          }}
+        >
+          <ProfileCard label="Role" value={employee.role} />
+          <ProfileCard label="Department" value={employee.department} />
+          <ProfileCard label="Status" value={employee.status} />
+          <ProfileCard
+            label="Joined"
+            value={new Date(employee.createdAt).toLocaleDateString()}
+          />
+        </div>
+
+        {/* SPACER */}
+        <div style={{ height: 30 }} />
+
+        {/* PLACEHOLDER FOR NEXT STEPS */}
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+          Attendance Summary (Coming Next)
+        </h3>
+        <div
+          style={{
+            background: "#f9fafb",
+            padding: 20,
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <p style={{ color: "#6b7280" }}>
+            Attendance charts and logs will show here once we complete Step 5.
           </p>
-        ) : (
-          <>
-            <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-              {data.name}
-            </h2>
+        </div>
 
-            <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 30 }}>
-              Employee details and HR insights
-            </p>
+        <div style={{ height: 30 }} />
 
-            {/* Card */}
-            <div
-              style={{
-                background: "#fff",
-                padding: 24,
-                borderRadius: 12,
-                border: "1px solid #e5e7eb",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-              }}
-            >
-              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>
-                Personal Information
-              </h3>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  rowGap: 20,
-                  columnGap: 40,
-                }}
-              >
-                <Field label="Name" value={data.name} />
-                <Field label="Email" value={data.email} />
-                <Field label="Role" value={data.role} />
-                <Field label="Department" value={data.department || "—"} />
-                <Field label="Status" value={data.status || "—"} />
-                <Field
-                  label="Joined"
-                  value={
-                    data.createdAt
-                      ? new Date(data.createdAt).toLocaleDateString()
-                      : "—"
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Second Card */}
-            <div
-              style={{
-                background: "#fff",
-                padding: 24,
-                marginTop: 30,
-                borderRadius: 12,
-                border: "1px solid #e5e7eb",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-              }}
-            >
-              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>
-                HR Summary
-              </h3>
-
-              <p style={{ fontSize: 14, color: "#6b7280" }}>
-                Attendance logs, project mapping, and performance insights will
-                be added once backend is active.
-              </p>
-            </div>
-          </>
-        )}
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+          Activity Log (Coming Next)
+        </h3>
+        <div
+          style={{
+            background: "#f9fafb",
+            padding: 20,
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <p style={{ color: "#6b7280" }}>
+            Recent activity will appear here after backend integration.
+          </p>
+        </div>
       </div>
     </ERPLayout>
   );
 }
 
-function Field({ label, value }: { label: string; value: any }) {
+function ProfileCard({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p
-        style={{
-          fontSize: 12,
-          color: "#6b7280",
-          textTransform: "uppercase",
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </p>
-      <p style={{ fontSize: 15, fontWeight: 500 }}>{value}</p>
+    <div
+      style={{
+        padding: 20,
+        background: "#fff",
+        borderRadius: 10,
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <p style={{ fontSize: 14, color: "#6b7280" }}>{label}</p>
+      <p style={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>{value}</p>
     </div>
   );
-          }
+}
