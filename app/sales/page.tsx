@@ -1,9 +1,8 @@
-// app/sales/page.tsx
 "use client";
 
 export default function SalesOverview() {
   return (
-    <>
+    <div>
       <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
         Sales Overview
       </h2>
@@ -50,7 +49,7 @@ export default function SalesOverview() {
         >
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>Follow Ups</h3>
           <p style={{ marginTop: 8, fontSize: 14, color: "#6b7280" }}>
-            Stay on top of client calls, emails, WhatsApp and follow-up cycles.
+            Stay on top of client calls, emails, and WhatsApp follow-ups.
           </p>
         </div>
 
@@ -94,7 +93,7 @@ export default function SalesOverview() {
             padding: 20,
             background: "#fff",
             borderRadius: 10,
-            border: "1px solid "#e5e7eb",
+            border: "1px solid #e5e7eb",
             boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
             cursor: "pointer",
           }}
@@ -105,6 +104,6 @@ export default function SalesOverview() {
           </p>
         </div>
       </div>
-    </>
+    </div>
   );
-          }
+            }
