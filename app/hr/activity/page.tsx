@@ -1,90 +1,157 @@
 "use client";
 
-import React from "react";
-import dayjs from "dayjs";
+import React, { useEffect, useState } from "react";
+import ERPLayout from "@/components/layouts/ERPLayout";
 
-export default function HRActivityPage() {
-  // Dummy logs until endpoints exist
-  const logs = [
-    {
-      id: 1,
-      user: "John Carter",
-      type: "login",
-      timestamp: "2025-01-15T09:00:00",
-    },
-    {
-      id: 2,
-      user: "John Carter",
-      type: "logout",
-      timestamp: "2025-01-15T18:00:00",
-    },
-    {
-      id: 3,
-      user: "Sarah Miles",
-      type: "login",
-      timestamp: "2025-01-15T08:45:00",
-    },
-    {
-      id: 4,
-      user: "Sarah Miles",
-      type: "logout",
-      timestamp: "2025-01-15T17:45:00",
-    },
-    {
-      id: 5,
-      user: "Ahsan Ali",
-      type: "login",
-      timestamp: "2025-01-15T10:12:00",
-    },
-  ];
+type ActivityRecord = {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  action: string;
+  timestamp: string;
+  details?: string;
+};
 
-  const getColor = (type: string) => {
-    if (type === "login") return "text-green-600";
-    if (type === "logout") return "text-red-600";
-    return "text-gray-600";
-  };
+export default function HRActivityLogPage() {
+  const [records, setRecords] = useState<ActivityRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch("/api/hr/activity/list", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        const json = await res.json();
+
+        const arr =
+          json.records ||
+          json.logs ||
+          json.data ||
+          (Array.isArray(json) ? json : []);
+
+        setRecords(arr);
+      } catch (err) {
+        console.error("Activity fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
 
   return (
-    <div className="p-6 space-y-10">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-bold">Activity Logs</h1>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
-          Track login, logout, system access, and overall user activity in real-time.
-        </p>
-      </div>
+    <ERPLayout role="hr" title="Activity Log">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* PAGE HEADER */}
+        <div>
+          <h2 style={{ fontSize: 24, fontWeight: 600 }}>Employee Activity Log</h2>
+          <p style={{ fontSize: 14, color: "#6b7280" }}>
+            Monitor every action taken across the ERP system.
+          </p>
+        </div>
 
-      {/* TABLE */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700">
-            <tr>
-              <th className="text-left p-4 font-medium">User</th>
-              <th className="text-left p-4 font-medium">Activity</th>
-              <th className="text-left p-4 font-medium">Timestamp</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {logs.map((log) => (
-              <tr
-                key={log.id}
-                className="border-b border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 transition"
-              >
-                <td className="p-4 font-medium">{log.user}</td>
-
-                <td className={`p-4 font-semibold capitalize ${getColor(log.type)}`}>
-                  {log.type}
-                </td>
-
-                <td className="p-4 text-gray-600 dark:text-neutral-400">
-                  {dayjs(log.timestamp).format("DD MMM YYYY • hh:mm A")}
-                </td>
+        {/* TABLE */}
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            overflowX: "auto",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 14,
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#f9fafb", textAlign: "left" }}>
+                <th style={th}>Name</th>
+                <th style={th}>Email</th>
+                <th style={th}>Action</th>
+                <th style={th}>Details</th>
+                <th style={th}>Timestamp</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} style={loadingCell}>
+                    Loading...
+                  </td>
+                </tr>
+              ) : records.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={loadingCell}>
+                    No activity recorded.
+                  </td>
+                </tr>
+              ) : (
+                records.map((r) => (
+                  <tr key={r.id} style={row}>
+                    <td style={td}>{r.name || "—"}</td>
+                    <td style={td}>{r.email || "—"}</td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          background: "#eef2ff",
+                          color: "#4f46e5",
+                          border: "1px solid #c7d2fe",
+                          fontWeight: 600,
+                          fontSize: 12,
+                        }}
+                      >
+                        {r.action}
+                      </span>
+                    </td>
+                    <td style={td}>{r.details || "—"}</td>
+                    <td style={td}>
+                      {new Date(r.timestamp).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </ERPLayout>
   );
-                    }
+}
+
+/* -------------------- TABLE STYLES -------------------- */
+
+const th: React.CSSProperties = {
+  padding: "14px 16px",
+  fontWeight: 600,
+  fontSize: 13,
+  borderBottom: "1px solid #e5e7eb",
+  color: "#374151",
+};
+
+const td: React.CSSProperties = {
+  padding: "14px 16px",
+  borderBottom: "1px solid #f3f4f6",
+  color: "#374151",
+};
+
+const row: React.CSSProperties = {
+  background: "#fff",
+};
+
+const loadingCell: React.CSSProperties = {
+  textAlign: "center",
+  padding: 30,
+  color: "#6b7280",
+};
