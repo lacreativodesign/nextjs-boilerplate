@@ -1,160 +1,198 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import dayjs from "dayjs";
 import ERPLayout from "@/components/layouts/ERPLayout";
 
-type AttendanceLog = {
-  id: string;
-  userId: string;
-  email: string;
-  name: string;
-  type: "login" | "logout";
-  timestamp: string;
-};
-
-export default function HRAttendancePage() {
-  const [logs, setLogs] = useState<AttendanceLog[]>([]);
+export default function AttendanceDashboard() {
+  const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [month, setMonth] = useState(dayjs());
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  const start = month.startOf("month");
+  const end = month.endOf("month");
+  const daysInMonth = end.date();
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/hr/attendance/list", {
-          method: "GET",
-          credentials: "include",
-        });
+    fetchData();
+  }, [month]);
 
-        const json = await res.json();
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/hr/attendance?month=${month.format("YYYY-MM")}`
+      );
+      const data = await res.json();
 
-        // Accept multiple shapes from backend
-        const arr =
-          json.logs ||
-          json.data ||
-          json.attendance ||
-          (Array.isArray(json) ? json : []);
-
-        setLogs(arr);
-      } catch (err) {
-        console.error("Attendance fetch error:", err);
-      } finally {
-        setLoading(false);
+      if (data.success) {
+        setAttendance(data.attendance);
+        setEmployees(data.employees);
       }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }
+
+  function getDayAttendance(empId: string, day: number) {
+    const dateStr = month.date(day).format("YYYY-MM-DD");
+
+    const logs = attendance.filter(
+      (a) => a.userId === empId && a.date === dateStr
+    );
+
+    if (logs.length === 0) return null;
+
+    const login = logs.find((l) => l.type === "login");
+    const logout = logs.find((l) => l.type === "logout");
+
+    let total = 0;
+    if (login && logout) {
+      total =
+        new Date(logout.timestamp).getTime() -
+        new Date(login.timestamp).getTime();
     }
 
-    load();
-  }, []);
+    const hrs = (total / (1000 * 60 * 60)).toFixed(1);
+
+    return { login, logout, hrs };
+  }
+
+  if (loading) {
+    return (
+      <ERPLayout role="hr" title="Attendance">
+        <p>Loading...</p>
+      </ERPLayout>
+    );
+  }
 
   return (
     <ERPLayout role="hr" title="Attendance">
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        {/* Page Header */}
-        <div>
-          <h2 style={{ fontSize: 24, fontWeight: 600 }}>Attendance Logs</h2>
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
-            View login and logout records for all employees.
-          </p>
-        </div>
+      {/* HEADER */}
+      <div
+        style={{
+          marginBottom: 30,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          border: "1px solid #e5e7eb",
+        }}
+      >
+        <h2 style={{ fontSize: 24, fontWeight: 700 }}>
+          Attendance — {month.format("MMMM YYYY")}
+        </h2>
 
-        {/* Table */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-            overflowX: "auto",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 14,
-            }}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => setMonth(month.subtract(1, "month"))}
+            style={btn}
           >
-            <thead>
-              <tr style={{ background: "#f9fafb", textAlign: "left" }}>
-                <th style={th}>Name</th>
-                <th style={th}>Email</th>
-                <th style={th}>Type</th>
-                <th style={th}>Timestamp</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4} style={loadingCell}>
-                    Loading...
-                  </td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={loadingCell}>
-                    No attendance logs found.
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log) => (
-                  <tr key={log.id} style={row}>
-                    <td style={td}>{log.name || "—"}</td>
-                    <td style={td}>{log.email || "—"}</td>
-                    <td style={td}>
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background:
-                            log.type === "login" ? "#ecfdf5" : "#fef2f2",
-                          color:
-                            log.type === "login" ? "#065f46" : "#b91c1c",
-                          border:
-                            log.type === "login"
-                              ? "1px solid #a7f3d0"
-                              : "1px solid #fecaca",
-                          fontWeight: 600,
-                          fontSize: 12,
-                        }}
-                      >
-                        {log.type.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={td}>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+            Prev
+          </button>
+          <button onClick={() => setMonth(dayjs())} style={btn}>
+            Today
+          </button>
+          <button
+            onClick={() => setMonth(month.add(1, "month"))}
+            style={btn}
+          >
+            Next
+          </button>
         </div>
+      </div>
+
+      {/* TABLE */}
+      <div
+        style={{
+          overflowX: "auto",
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          background: "#fff",
+        }}
+      >
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead style={{ background: "#f3f4f6" }}>
+            <tr>
+              <th style={th}>Employee</th>
+              {Array.from({ length: daysInMonth }).map((_, i) => (
+                <th key={i} style={th}>
+                  {i + 1}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {employees.map((emp) => (
+              <tr key={emp.id}>
+                <td style={tdLabel}>{emp.name}</td>
+
+                {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
+                  const info = getDayAttendance(emp.id, dayIndex + 1);
+                  const isWeekend =
+                    month.date(dayIndex + 1).day() === 0 ||
+                    month.date(dayIndex + 1).day() === 6;
+
+                  let bg = "#ffffff";
+                  let text = "#111827";
+
+                  if (isWeekend) {
+                    bg = "#f3f4f6";
+                  }
+
+                  if (info?.hrs) {
+                    bg = "#dcfce7"; // green
+                    text = "#166534";
+                  }
+
+                  return (
+                    <td key={dayIndex} style={{ ...td, background: bg, color: text }}>
+                      {info?.hrs || ""}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </ERPLayout>
   );
 }
 
-/* -------------------- TABLE STYLES -------------------- */
+const btn = {
+  padding: "8px 16px",
+  background: "#2563eb",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+};
 
-const th: React.CSSProperties = {
-  padding: "14px 16px",
-  fontWeight: 600,
+const th = {
+  padding: 10,
   fontSize: 13,
+  fontWeight: 600,
   borderBottom: "1px solid #e5e7eb",
-  color: "#374151",
+  whiteSpace: "nowrap" as const,
 };
 
-const td: React.CSSProperties = {
-  padding: "14px 16px",
+const td = {
+  padding: 10,
+  fontSize: 13,
+  textAlign: "center" as const,
   borderBottom: "1px solid #f3f4f6",
-  color: "#374151",
 };
 
-const row: React.CSSProperties = {
-  background: "#fff",
-};
-
-const loadingCell: React.CSSProperties = {
-  textAlign: "center",
-  padding: 30,
-  color: "#6b7280",
+const tdLabel = {
+  padding: 10,
+  fontSize: 14,
+  fontWeight: 600,
+  borderBottom: "1px solid #f3f4f6",
+  whiteSpace: "nowrap" as const,
 };
