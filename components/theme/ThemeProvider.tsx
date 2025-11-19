@@ -1,35 +1,43 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
 const ThemeContext = createContext({
   theme: "light" as Theme,
-  toggleTheme: () => {},
+  toggle: () => {},
 });
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function useTheme() {
+  return useContext(ThemeContext);
+}
+
+export default function ThemeProvider({ children }: any) {
   const [theme, setTheme] = useState<Theme>("light");
 
+  // Load on start
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark") setTheme("dark");
-    document.documentElement.classList.toggle("dark", stored === "dark");
+    const saved = localStorage.getItem("erp-theme");
+    if (saved === "dark") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
   }, []);
 
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-  };
+  // When toggled
+  function toggle() {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("erp-theme", newTheme);
+
+    if (newTheme === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggle }}>
       {children}
     </ThemeContext.Provider>
   );
-}
-
-export const useTheme = () => useContext(ThemeContext);
+            }
