@@ -1,8 +1,6 @@
-export const dynamic = "force-dynamic";
-
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../_utils";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { getCurrentUser, isAdminRole, isSuperAdmin } from "../_utils";
 
 export const runtime = "nodejs";
 
@@ -13,23 +11,25 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get users from Firestore "users" collection
-    const snap = await adminDb.collection("users").get();
+    // ADMIN: can only see non-admin users
+    // SUPER_ADMIN: can see all
+    let ref = adminDb.collection("users");
 
-    const users: any[] = [];
+    if (!isSuperAdmin(current.role)) {
+      ref = ref.where("role", "!=", "admin").where("role", "!=", "super_admin");
+    }
+
+    const snap = await ref.get();
+    const list: any[] = [];
+
     snap.forEach((doc) => {
-      const data = doc.data();
-      users.push({
+      list.push({
         uid: doc.id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        disabled: data.disabled || false,
-        createdAt: data.createdAt || null,
+        ...doc.data(),
       });
     });
 
-    return NextResponse.json({ users });
+    return NextResponse.json(list);
   } catch (e: any) {
     console.error("Error list users:", e);
     return new NextResponse("Server error", { status: 500 });
