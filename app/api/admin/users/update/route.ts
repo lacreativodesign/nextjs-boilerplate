@@ -11,59 +11,68 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const body = await req.json();
-    const { uid, name, email, role, disabled } = body;
+    const { uid, name, email, role, disabled } = await req.json();
 
-    if (!uid) return new NextResponse("Missing uid", { status: 400 });
-
-    // Load target user
-    const snap = await adminDb.collection("users").doc(uid).get();
-    if (!snap.exists) return new NextResponse("User not found", { status: 404 });
-    const existing = snap.data() || {};
-
-    const updates: any = {
-      name,
-      role,
-      disabled: !!disabled,
-    };
-
-    // Email & role change security
-    const isEditingAdminOrSuper =
-      existing.role === "admin" || existing.role === "super_admin";
-
-    // Only super_admin can change admin/super_admin email or role
-    if (isEditingAdminOrSuper && !isSuperAdmin(current.role)) {
-      return new NextResponse("Only Super Admin can modify Admin/Super Admin", {
-        status: 403,
-      });
+    if (!uid) {
+      return new NextResponse("Missing uid", { status: 400 });
     }
 
-    // Only admins can change email at all – not normal roles
-    if (email && email !== existing.email) {
-      if (!isAdminRole(current.role)) {
-        return new NextResponse("Only Admin can change email", { status: 403 });
+    const doc = await adminDb.collection("users").doc(uid).get();
+    if (!doc.exists) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+
+    const currentData = doc.data();
+
+    // Admin cannot update Admin or Super_Admin
+    if (!isSuperAdmin(current.role)) {
+      if (currentData?.role === "admin" || currentData?.role === "super_admin") {
+        return new NextResponse("Forbidden", { status: 403 });
       }
-
-      // Update email in Auth and Firestore
-      await adminAuth.updateUser(uid, { email });
-      updates.email = email;
     }
 
-    // Update display name in Auth
-    if (name && name !== existing.name) {
-      await adminAuth.updateUser(uid, { displayName: name });
+    // Build update payload
+    const updateAuth: any = {};
+    const updateFirestore: any = {};
+
+    if (name) {
+      updateAuth.displayName = name;
+      updateFirestore.name = name;
     }
 
-    // Update custom claims for role if changed
-    if (role && role !== existing.role) {
+    if (email) {
+      updateAuth.email = email;
+      updateFirestore.email = email;
+    }
+
+    if (typeof disabled === "boolean") {
+      updateAuth.disabled = disabled;
+      updateFirestore.disabled = disabled;
+    }
+
+    if (role) {
+      // Only SUPER_ADMIN can change roles
+      if (!isSuperAdmin(current.role)) {
+        return new NextResponse("Only SUPER_ADMIN can change roles", {
+          status: 403,
+        });
+      }
+      updateFirestore.role = role;
       await adminAuth.setCustomUserClaims(uid, { role });
     }
 
-    await adminDb.collection("users").doc(uid).update(updates);
+    // Apply updates
+    if (Object.keys(updateAuth).length > 0) {
+      await adminAuth.updateUser(uid, updateAuth);
+    }
 
-    return NextResponse.json({ ok: true });
+    if (Object.keys(updateFirestore).length > 0) {
+      await adminDb.collection("users").doc(uid).update(updateFirestore);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error("Error update user:", e);
     return new NextResponse("Server error", { status: 500 });
   }
-                                          }
+}
