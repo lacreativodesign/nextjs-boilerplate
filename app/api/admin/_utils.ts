@@ -1,12 +1,11 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
-// Get currently logged in user from session cookie
+// Current Logged-in User
 export async function getCurrentUser() {
   try {
     const cookieStore = cookies();
     const session = cookieStore.get("session")?.value;
-
     if (!session) return null;
 
     const decoded = await adminAuth.verifySessionCookie(session, true);
@@ -14,16 +13,13 @@ export async function getCurrentUser() {
     const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
     if (!userDoc.exists) return null;
 
-    return {
-      uid: decoded.uid,
-      ...userDoc.data(),
-    };
-  } catch {
+    return { uid: decoded.uid, ...userDoc.data() };
+  } catch (err) {
     return null;
   }
 }
 
-// Admin & Super Admin access check
+// Role Check
 export function isAdminRole(role: string) {
   return role === "admin" || role === "super_admin";
 }
