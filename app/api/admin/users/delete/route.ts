@@ -11,32 +11,34 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const body = await req.json();
-    const { uid } = body;
-    if (!uid) return new NextResponse("Missing uid", { status: 400 });
-
-    // Get target user's role
-    const snap = await adminDb.collection("users").doc(uid).get();
-    if (!snap.exists) return new NextResponse("User not found", { status: 404 });
-    const data = snap.data() || {};
-
-    const isTargetAdminOrSuper =
-      data.role === "admin" || data.role === "super_admin";
-
-    if (isTargetAdminOrSuper && !isSuperAdmin(current.role)) {
-      return new NextResponse(
-        "Only Super Admin can delete Admin/Super Admin",
-        { status: 403 }
-      );
+    const { uid } = await req.json();
+    if (!uid) {
+      return new NextResponse("Missing uid", { status: 400 });
     }
 
-    // Delete from Auth & Firestore
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+
+    const data = userDoc.data();
+
+    // Prevent Admin from deleting Admin / Super Admin
+    if (!isSuperAdmin(current.role)) {
+      if (data?.role === "admin" || data?.role === "super_admin") {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
+    }
+
+    // Delete FIREBASE auth account
     await adminAuth.deleteUser(uid);
+
+    // Delete Firestore profile
     await adminDb.collection("users").doc(uid).delete();
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error("Error delete user:", e);
     return new NextResponse("Server error", { status: 500 });
   }
-  }
+}
