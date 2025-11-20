@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { getCurrentUser, isAdminRole } from "../../users/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
