@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 
-export default function ActivityPage() {
+export default function AdminActivityPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/admin/activity/list");
-        if (!res.ok) return;
+        const res = await fetch("/api/admin/activity/list", {
+          cache: "no-store",
+        });
         const data = await res.json();
-        setLogs(data.logs);
+        setLogs(data);
       } catch (e) {
-      } finally {
-        setLoading(false);
+        console.error("Failed to load activity:", e);
       }
+      setLoading(false);
     }
     load();
   }, []);
@@ -27,55 +28,44 @@ export default function ActivityPage() {
         Activity Log
       </h2>
 
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 10,
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        {loading ? (
-          <p>Loading activity...</p>
-        ) : logs.length === 0 ? (
-          <p>No recent activity.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
-                <th style={{ padding: 10 }}>Action</th>
-                <th style={{ padding: 10 }}>Actor</th>
-                <th style={{ padding: 10 }}>Target</th>
-                <th style={{ padding: 10 }}>Details</th>
-                <th style={{ padding: 10 }}>Timestamp</th>
-              </tr>
-            </thead>
+      <p style={{ fontSize: 16, color: "var(--sidebar-text)" }}>
+        System-wide admin actions & audit tracking.
+      </p>
 
-            <tbody>
-              {logs.map((log) => (
-                <tr
-                  key={log.id}
-                  style={{ borderBottom: "1px solid #e5e7eb" }}
-                >
-                  <td style={{ padding: 10 }}>{log.action}</td>
-                  <td style={{ padding: 10 }}>
-                    {log.actorRole} ({log.actorUid})
-                  </td>
-                  <td style={{ padding: 10 }}>
-                    {log.targetUid || "-"}
-                  </td>
-                  <td style={{ padding: 10, fontSize: 12 }}>
-                    {JSON.stringify(log.details || {}, null, 2)}
-                  </td>
-                  <td style={{ padding: 10 }}>
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {loading ? (
+        <p style={{ color: "#666", marginTop: 30 }}>Loading...</p>
+      ) : logs.length === 0 ? (
+        <p style={{ color: "#999", marginTop: 30 }}>No activity found.</p>
+      ) : (
+        <div
+          style={{
+            marginTop: 30,
+            background: "var(--card-bg)",
+            borderRadius: 10,
+            padding: 20,
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div style={{ display: "grid", gap: 20 }}>
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                style={{
+                  padding: 15,
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <p style={{ fontSize: 15, fontWeight: 600 }}>
+                  {log.message}
+                </p>
+                <p style={{ fontSize: 13, color: "#777", marginTop: 4 }}>
+                  {new Date(log.createdAt).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
             }
