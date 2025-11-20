@@ -1,132 +1,91 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
-export default function UserListPage() {
+export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch("/api/admin/users/list");
-      const data = await res.json();
-      setUsers(data.users || []);
+      try {
+        const res = await fetch("/api/admin/users/list", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        setUsers(data);
+      } catch (e) {
+        console.error("Failed to load users:", e);
+      }
       setLoading(false);
     }
     load();
   }, []);
 
-  if (loading) return <p>Loading users...</p>;
-
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 26, fontWeight: 700 }}>User Management</h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 15 }}>
+        Users
+      </h2>
 
-        <Link
-          href="/admin/users/create"
+      <p style={{ fontSize: 16, color: "var(--sidebar-text)" }}>
+        Manage all system users, roles & access levels.
+      </p>
+
+      {loading ? (
+        <p style={{ marginTop: 25, color: "#777" }}>Loading...</p>
+      ) : users.length === 0 ? (
+        <p style={{ marginTop: 25, color: "#999" }}>No users found.</p>
+      ) : (
+        <div
           style={{
-            background: "#2563eb",
-            color: "white",
-            padding: "10px 18px",
-            borderRadius: 8,
-            fontWeight: 600,
-            textDecoration: "none",
+            marginTop: 25,
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            background: "var(--card-bg)",
+            padding: 10,
           }}
         >
-          + Create User
-        </Link>
-      </div>
-
-      {/* Table */}
-      <div
-        style={{
-          background: "var(--card-bg)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          overflow: "hidden",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "var(--header-bg)" }}>
-            <tr>
-              {["Name", "Email", "Role", "Status", "Actions"].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: 14,
-                    textAlign: "left",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.uid}>
-                <td style={{ padding: 14 }}>{u.name}</td>
-                <td style={{ padding: 14 }}>{u.email}</td>
-                <td style={{ padding: 14, textTransform: "capitalize" }}>{u.role}</td>
-                <td style={{ padding: 14 }}>{u.disabled ? "Disabled" : "Active"}</td>
-
-                <td style={{ padding: 14 }}>
-                  <Link
-                    href={`/admin/users/${u.uid}`}
-                    style={{
-                      background: "#0ea5e9",
-                      padding: "6px 12px",
-                      color: "white",
-                      borderRadius: 6,
-                      marginRight: 10,
-                      textDecoration: "none",
-                      fontSize: 14,
-                    }}
-                  >
-                    Edit
-                  </Link>
-
-                  <button
-                    onClick={async () => {
-                      if (!confirm("Are you sure?")) return;
-
-                      await fetch("/api/admin/users/delete", {
-                        method: "POST",
-                        body: JSON.stringify({ uid: u.uid }),
-                      });
-
-                      window.location.reload();
-                    }}
-                    style={{
-                      background: "#ef4444",
-                      padding: "6px 12px",
-                      color: "white",
-                      borderRadius: 6,
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {users.length === 0 && (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
               <tr>
-                <td style={{ padding: 20 }} colSpan={5}>
-                  No users found.
-                </td>
+                <th style={th}>Name</th>
+                <th style={th}>Email</th>
+                <th style={th}>Role</th>
+                <th style={th}>Status</th>
+                <th style={th}>Created</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+
+            <tbody>
+              {users.map((u, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={td}>{u.name}</td>
+                  <td style={td}>{u.email}</td>
+                  <td style={td}>{u.role}</td>
+                  <td style={td}>{u.disabled ? "Disabled" : "Active"}</td>
+                  <td style={td}>
+                    {new Date(u.createdAt).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
-        }
+}
+
+const th = {
+  textAlign: "left",
+  padding: "12px 8px",
+  fontWeight: 600,
+  fontSize: 14,
+  color: "var(--sidebar-text)",
+};
+
+const td = {
+  padding: "12px 8px",
+  fontSize: 14,
+};
