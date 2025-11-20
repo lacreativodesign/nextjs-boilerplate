@@ -1,8 +1,6 @@
-export const dynamic = "force-dynamic";
-
 import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminRole } from "../../users/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { getCurrentUser, isAdminRole } from "../../_utils";
 
 export const runtime = "nodejs";
 
@@ -14,17 +12,19 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("activity_logs")
-      .orderBy("timestamp", "desc")
-      .limit(200)
+      .collection("activity")
+      .orderBy("createdAt", "desc")
+      .limit(50)
       .get();
 
-    const logs: any[] = [];
-    snap.forEach((doc) => logs.push({ id: doc.id, ...doc.data() }));
+    const logs = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
 
-    return NextResponse.json({ logs });
+    return NextResponse.json(logs);
   } catch (e) {
-    console.error("Activity list error:", e);
+    console.error("ACTIVITY_LIST_ERROR:", e);
     return new NextResponse("Server error", { status: 500 });
   }
 }
