@@ -1,41 +1,45 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-type ThemeContextType = {
-  theme: "light" | "dark";
-  setTheme: (value: "light" | "dark") => void;
-};
+type Theme = "light" | "dark";
 
-const ThemeContext = createContext<ThemeContextType>({
-  theme: "light",
-  setTheme: () => {},
-});
+interface ThemeContextProps {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<Theme>("light");
 
-  // Load theme on client
+  // Load saved theme
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light" || saved === "dark") {
-      setTheme(saved);
-      document.documentElement.classList.toggle("dark", saved === "dark");
+    const stored = localStorage.getItem("theme") as Theme | null;
+    if (stored) {
+      setTheme(stored);
+      document.documentElement.classList.toggle("dark", stored === "dark");
     }
   }, []);
 
-  // Update document + localStorage
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  // Update theme
+  const updateTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme: updateTheme }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
-// EXPORTED HOOK — THIS is what AdminLayout must use
-export const useThemeContext = () => useContext(ThemeContext);
+// ✅ THIS WAS MISSING! This is why your build was failing.
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
+  return ctx;
+}
