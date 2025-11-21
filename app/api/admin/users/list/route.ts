@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../_utils";
+import { getCurrentUser, isAdminRole } from "../../_utils";
 
 export const runtime = "nodejs";
 
@@ -13,13 +13,13 @@ export async function GET() {
 
     const snap = await adminDb.collection("users").get();
 
-    const users = snap.docs.map((d) => ({
-      id: d.id,
+    const list = snap.docs.map((d) => ({
+      uid: d.id,
       ...d.data(),
     }));
 
-    return NextResponse.json(users);
-  } catch (e: any) {
+    return NextResponse.json(list);
+  } catch (e) {
     console.error("Error list users:", e);
     return new NextResponse("Server error", { status: 500 });
   }
