@@ -12,7 +12,7 @@ export default function KeyAccountsPage() {
         Key Accounts
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder screen for VIP / Retainer clients.
+        Placeholder for high-value client list (renewal dates, risk, strategy notes).
       </p>
     </div>
   );
