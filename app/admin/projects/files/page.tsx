@@ -11,8 +11,9 @@ export default function GlobalFilesPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Global Files
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder screen where Admin can browse all Draft/Revision/Final files.
+        Placeholder for global file browser (Draft / Revision / Final).
       </p>
     </div>
   );
