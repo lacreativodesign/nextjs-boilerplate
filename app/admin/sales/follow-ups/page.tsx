@@ -11,8 +11,9 @@ export default function FollowUpsPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Follow-Ups
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder screen to track upcoming and overdue follow-ups.
+        Placeholder for follow-up schedule list (upcoming, overdue).
       </p>
     </div>
   );
