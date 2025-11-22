@@ -12,23 +12,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
-  // ✅ ONLY THREE ITEMS NOW
+  // ✅ Minimal sidebar (adds Reports + Settings only)
   const navItems = [
-  { label: "Overview", path: "/admin" },
-  { label: "Users", path: "/admin/users" },
-  { label: "Clients", path: "/admin/clients" },
-  { label: "Sales & Pipeline", path: "/admin/sales" },
-  { label: "Projects & Delivery", path: "/admin/projects" },
-  { label: "Production", path: "/admin/production" },
-  { label: "Finance & Billing", path: "/admin/finance" },
-  { label: "HR & Team", path: "/admin/hr" },
-  { label: "Reports", path: "/admin/reports" },
-  { label: "System Settings", path: "/admin/settings" },
-];
+    { label: "Overview", path: "/admin" },
+    { label: "Users", path: "/admin/users" },
+    { label: "Activity", path: "/admin/activity" },
+    { label: "Reports", path: "/admin/reports" },
+    { label: "Settings", path: "/admin/settings" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">
-      
+
       {/* SIDEBAR */}
       <aside
         className={clsx(
@@ -50,7 +45,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <nav className="flex flex-col gap-1 px-2">
           {navItems.map((item) => {
-            const active = pathname.startsWith(item.path);
+            const active =
+              pathname === item.path || pathname.startsWith(item.path + "/");
+
             return (
               <Link
                 key={item.path}
@@ -74,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* MAIN AREA */}
       <div className="flex-1 flex flex-col">
-        
+
         {/* HEADER */}
         <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-[#111113]/80 backdrop-blur-sm">
           <h1 className="text-lg font-semibold">Admin Dashboard</h1>
@@ -109,4 +106,4 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
-      }
+                }
