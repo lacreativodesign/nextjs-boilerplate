@@ -12,7 +12,7 @@ export default function AllClientsPage() {
         All Clients
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder screen. We will connect real Firestore client data here.
+        Placeholder for master client list table (name, company, AM, status, value).
       </p>
     </div>
   );
