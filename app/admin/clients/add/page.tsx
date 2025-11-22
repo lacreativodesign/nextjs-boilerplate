@@ -11,8 +11,9 @@ export default function AddClientPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Add Client
       </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder form. Next step we build full add-client flow.
+
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 20 }}>
+        Placeholder for client creation form (name, company, website, AM, timezone).
       </p>
     </div>
   );
