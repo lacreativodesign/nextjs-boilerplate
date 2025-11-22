@@ -21,7 +21,7 @@ export default function UsersPage() {
         User Management
       </h2>
 
-      {/* HORIZONTAL TABS */}
+      {/* HORIZONTAL TABS (MASTER LAYOUT) */}
       <div
         style={{
           display: "flex",
@@ -55,7 +55,7 @@ export default function UsersPage() {
         })}
       </div>
 
-      {/* TAB CONTENT AREA */}
+      {/* TAB CONTENT SECTION */}
       <div
         style={{
           padding: 20,
@@ -64,26 +64,27 @@ export default function UsersPage() {
           border: "1px solid var(--border)",
         }}
       >
-        {activeTab === "all" && <AllUsersSection />}
-        {activeTab === "create" && <CreateUserSection />}
-        {activeTab === "view" && <ViewUserSection />}
-        {activeTab === "activity" && <ActivityLogSection />}
+        {activeTab === "all" && <AllUsers />}
+        {activeTab === "create" && <CreateUser />}
+        {activeTab === "view" && <ViewUser />}
+        {activeTab === "activity" && <ActivityLog />}
       </div>
     </div>
   );
 }
 
-/* =============== TAB SECTIONS =============== */
+/* =======================================================
+                      TAB COMPONENTS
+   ======================================================= */
 
-function AllUsersSection() {
+function AllUsers() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         All Users
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
-        This table will show every user in the system with role, status and
-        quick actions.
+        This table will show every user with role, status and quick actions.
       </p>
 
       <div style={{ overflowX: "auto" }}>
@@ -109,7 +110,6 @@ function AllUsersSection() {
             </tr>
           </thead>
           <tbody>
-            {/* Dummy row for now – later we’ll connect Firebase data here */}
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
               <td style={{ padding: "8px 4px" }}>John Doe</td>
               <td style={{ padding: "8px 4px" }}>john@example.com</td>
@@ -137,14 +137,14 @@ function AllUsersSection() {
   );
 }
 
-function CreateUserSection() {
+function CreateUser() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         Create New User
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
-        Fill in the details below to create a new ERP user account.
+        Fill in the details below to create an ERP user account.
       </p>
 
       <form
@@ -154,47 +154,9 @@ function CreateUserSection() {
           gap: 16,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500 }}>Full Name</label>
-          <input
-            type="text"
-            placeholder="e.g. Sarah Khan"
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500 }}>Email</label>
-          <input
-            type="email"
-            placeholder="name@company.com"
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500 }}>Password</label>
-          <input
-            type="password"
-            placeholder="Temporary password"
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
-          />
-        </div>
+        <Input label="Full Name" placeholder="e.g. Sarah Khan" />
+        <Input label="Email" placeholder="name@company.com" type="email" />
+        <Input label="Password" placeholder="Temporary password" type="password" />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: 13, fontWeight: 500 }}>Role</label>
@@ -220,58 +182,65 @@ function CreateUserSection() {
         </div>
       </form>
 
-      <div style={{ marginTop: 20 }}>
-        <button
-          type="button"
-          style={{
-            padding: "10px 18px",
-            borderRadius: 8,
-            border: "none",
-            background: "#2563eb",
-            color: "#ffffff",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Save User (wire to API later)
-        </button>
-      </div>
+      <button
+        type="button"
+        style={{
+          marginTop: 20,
+          padding: "10px 18px",
+          borderRadius: 8,
+          background: "#2563eb",
+          color: "#fff",
+          border: "none",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Save User (wire to API later)
+      </button>
     </div>
   );
 }
 
-function ViewUserSection() {
+function Input({ label, placeholder, type = "text" }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
+      <input
+        type={type}
+        placeholder={placeholder}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          background: "var(--page-bg)",
+        }}
+      />
+    </div>
+  );
+}
+
+function ViewUser() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         View User Details
       </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
-        This section will be used to view and edit a specific user’s profile,
-        roles and status.
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        This section will let you view/edit user profile, roles and status.
       </p>
-
-      <p style={{ fontSize: 14 }}>We’ll hook this up after All Users + Create are live.</p>
     </div>
   );
 }
 
-function ActivityLogSection() {
+function ActivityLog() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         User Activity Log
       </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
-        This will show who created/edited users, logins, role changes, and
-        security-sensitive actions.
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Tracks who created users, changed roles, disabled accounts, etc.
       </p>
-
-      <ul style={{ fontSize: 14, lineHeight: 1.6 }}>
-        <li>• Track who created new users</li>
-        <li>• Track who changed roles or disabled accounts</li>
-        <li>• Track suspicious access for security audits</li>
-      </ul>
     </div>
   );
-        }
+              }
