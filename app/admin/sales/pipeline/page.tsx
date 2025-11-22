@@ -1,4 +1,4 @@
-export default function SalesPipelinePage() {
+export default function PipelinePage() {
   return (
     <div
       style={{
@@ -11,10 +11,9 @@ export default function SalesPipelinePage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Pipeline
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder Kanban view. Stages will be:
-        <br />
-        New Lead → Contacted → Qualified → Proposal Sent → Negotiation → Closed Won → Closed Lost
+        Placeholder for Kanban pipeline (New Lead → Contacted → Qualified → Proposal → Negotiation → Won/Lost).
       </p>
     </div>
   );
