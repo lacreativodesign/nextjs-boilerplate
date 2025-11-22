@@ -12,7 +12,7 @@ export default function ClientSegmentsPage() {
         Client Segments
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder screen for segmentation rules.
+        Placeholder for segmentation categories (retainer, web only, full service).
       </p>
     </div>
   );
