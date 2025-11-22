@@ -11,8 +11,9 @@ export default function DealsPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Deals
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder deals list with value, probability, expected close date.
+        Placeholder for deals list with value, probability, close date.
       </p>
     </div>
   );
