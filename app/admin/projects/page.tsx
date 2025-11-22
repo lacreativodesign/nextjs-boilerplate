@@ -11,8 +11,9 @@ export default function AllProjectsPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         All Projects
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder list. Later we will fetch all projects with filters.
+        Placeholder for master project list (Client, AM, Type, Status, Dates).
       </p>
     </div>
   );
