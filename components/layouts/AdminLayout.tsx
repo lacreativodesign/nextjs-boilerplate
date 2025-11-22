@@ -14,12 +14,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // ✅ Minimal sidebar (adds Reports + Settings only)
   const navItems = [
-    { label: "Overview", path: "/admin" },
-    { label: "Users", path: "/admin/users" },
-    { label: "Activity", path: "/admin/activity" },
-    { label: "Reports", path: "/admin/reports" },
-    { label: "Settings", path: "/admin/settings" },
-  ];
+  { label: "Overview", path: "/admin" },
+
+  // USERS
+  { label: "Users", path: "/admin/users" },
+
+  // CLIENTS
+  { label: "Clients", path: "/admin/clients" },
+
+  // SALES & PIPELINE
+  { label: "Sales & Pipeline", path: "/admin/sales" },
+
+  // PROJECTS & DELIVERY
+  { label: "Projects & Delivery", path: "/admin/projects" },
+
+  // PRODUCTION
+  { label: "Production", path: "/admin/production" },
+
+  // FINANCE & BILLING
+  { label: "Finance", path: "/admin/finance" },
+
+  // HR & TEAM
+  { label: "HR & Team", path: "/admin/hr" },
+
+  // REPORTS
+  { label: "Reports", path: "/admin/reports" },
+
+  // SETTINGS
+  { label: "Settings", path: "/admin/settings" },
+];
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">
