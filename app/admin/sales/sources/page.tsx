@@ -1,4 +1,4 @@
-export default function SourcesCampaignsPage() {
+export default function SourcesPage() {
   return (
     <div
       style={{
@@ -11,8 +11,9 @@ export default function SourcesCampaignsPage() {
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
         Sources & Campaigns
       </h3>
+
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder area for lead sources & campaign performance tracking.
+        Placeholder for lead sources & campaign performance.
       </p>
     </div>
   );
