@@ -1,17 +1,28 @@
-export default function FinanceInvoicesPage() {
+"use client";
+
+import SubTabs from "@/components/ui/SubTabs";
+
+const tabs = [
+  { label: "Invoices", path: "/admin/finance/invoices" },
+  { label: "Payments", path: "/admin/finance/payments" },
+  { label: "AR Aging", path: "/admin/finance/ar" },
+  { label: "Estimates", path: "/admin/finance/estimates" },
+  { label: "Retainers", path: "/admin/finance/retainers" },
+];
+
+export default function FinanceHome() {
   return (
-    <div
-      style={{
-        background: "var(--card-bg)",
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        padding: 20,
-      }}
-    >
-      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Invoices</h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder for invoices list: client, amount, due date, status.
+    <div>
+      <h2 className="text-2xl font-bold mb-2">Finance & Billing</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        Manage invoices, payments, AR aging, and retainers.
       </p>
+
+      <SubTabs tabs={tabs} />
+
+      <div className="text-gray-500 dark:text-gray-400">
+        Select a tab above to continue.
+      </div>
     </div>
   );
 }
