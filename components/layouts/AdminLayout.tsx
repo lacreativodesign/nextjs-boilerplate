@@ -14,10 +14,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // ✅ ONLY THREE ITEMS NOW
   const navItems = [
-    { label: "Overview", path: "/admin" },
-    { label: "Users", path: "/admin/users" },
-    { label: "Activity", path: "/admin/activity" }
-  ];
+  { label: "Overview", path: "/admin" },
+  { label: "Users", path: "/admin/users" },
+  { label: "Clients", path: "/admin/clients" },
+  { label: "Sales & Pipeline", path: "/admin/sales" },
+  { label: "Projects & Delivery", path: "/admin/projects" },
+  { label: "Production", path: "/admin/production" },
+  { label: "Finance & Billing", path: "/admin/finance" },
+  { label: "HR & Team", path: "/admin/hr" },
+  { label: "Reports", path: "/admin/reports" },
+  { label: "System Settings", path: "/admin/settings" },
+];
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">
