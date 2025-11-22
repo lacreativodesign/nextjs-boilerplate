@@ -17,17 +17,15 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="w-full">
-      {/* Page Title */}
       <div className="mb-4">
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
           Sales & Pipeline
         </h2>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Manage leads, pipeline stages, deals, follow-ups and campaigns.
+          Manage leads, pipeline stages, deals & follow-ups.
         </p>
       </div>
 
-      {/* Horizontal Tabs */}
       <div
         className="flex gap-2 border-b mb-6"
         style={{ borderColor: "var(--border)" }}
@@ -51,8 +49,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
         })}
       </div>
 
-      {/* Content */}
       <div>{children}</div>
     </div>
   );
-      }
+        }
