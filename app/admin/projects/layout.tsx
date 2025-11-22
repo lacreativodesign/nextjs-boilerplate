@@ -8,7 +8,7 @@ const tabs = [
   { label: "All Projects", path: "/admin/projects" },
   { label: "Delivery Pipeline", path: "/admin/projects/pipeline" },
   { label: "Global Files", path: "/admin/projects/files" },
-  { label: "Change Requests", path: "/admin/projects/changes" },
+  { label: "Change Requests", path: "/admin/projects/change-requests" },
 ];
 
 export default function ProjectsLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
           Projects & Delivery
         </h2>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Manage all ongoing client projects and delivery stages.
+          Manage all project workflows & delivery stages.
         </p>
       </div>
 
@@ -51,4 +51,4 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
       <div>{children}</div>
     </div>
   );
-        }
+              }
