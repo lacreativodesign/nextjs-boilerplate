@@ -1,28 +1,109 @@
 "use client";
 
-import SubTabs from "@/components/ui/SubTabs";
+import { useState } from "react";
 
-const tabs = [
-  { label: "Invoices", path: "/admin/finance/invoices" },
-  { label: "Payments", path: "/admin/finance/payments" },
-  { label: "AR Aging", path: "/admin/finance/ar" },
-  { label: "Estimates", path: "/admin/finance/estimates" },
-  { label: "Retainers", path: "/admin/finance/retainers" },
-];
+type TabKey = "invoices" | "payments" | "aging" | "estimates" | "retainers";
 
-export default function FinanceHome() {
+export default function FinancePage() {
+  const [activeTab, setActiveTab] = useState<TabKey>("invoices");
+
+  const tabs = [
+    { key: "invoices", label: "Invoices" },
+    { key: "payments", label: "Payments" },
+    { key: "aging", label: "AR Aging" },
+    { key: "estimates", label: "Estimates & Proposals" },
+    { key: "retainers", label: "Retainers" },
+  ];
+
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-2">Finance & Billing</h2>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Manage invoices, payments, AR aging, and retainers.
-      </p>
+      {/* SPACER FOR BLUE PILL TABS (Handled in layout.tsx) */}
+      <div style={{ marginBottom: 20 }} />
 
-      <SubTabs tabs={tabs} />
-
-      <div className="text-gray-500 dark:text-gray-400">
-        Select a tab above to continue.
+      {/* CONTENT AREA */}
+      <div
+        style={{
+          padding: 20,
+          borderRadius: 12,
+          background: "var(--card-bg)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        {activeTab === "invoices" && <InvoicesSection />}
+        {activeTab === "payments" && <PaymentsSection />}
+        {activeTab === "aging" && <AgingSection />}
+        {activeTab === "estimates" && <EstimatesSection />}
+        {activeTab === "retainers" && <RetainersSection />}
       </div>
+    </div>
+  );
+}
+
+/* =======================================================
+                    TAB CONTENT SECTIONS
+   ======================================================= */
+
+function InvoicesSection() {
+  return (
+    <div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+        Invoices
+      </h3>
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Placeholder for invoices list (client, amount, due date, status).
+      </p>
+    </div>
+  );
+}
+
+function PaymentsSection() {
+  return (
+    <div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+        Payments
+      </h3>
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Placeholder for logged payments table.
+      </p>
+    </div>
+  );
+}
+
+function AgingSection() {
+  return (
+    <div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+        Accounts Receivable (Aging)
+      </h3>
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Placeholder for AR aging buckets: 0–30, 31–60, 61–90, 90+ days.
+      </p>
+    </div>
+  );
+}
+
+function EstimatesSection() {
+  return (
+    <div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+        Estimates & Proposals
+      </h3>
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Placeholder for estimates & proposals list.
+      </p>
+    </div>
+  );
+}
+
+function RetainersSection() {
+  return (
+    <div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+        Retainers
+      </h3>
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        Placeholder for monthly retainers & subscription billing.
+      </p>
     </div>
   );
 }
