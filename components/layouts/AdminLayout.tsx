@@ -3,35 +3,45 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Sun, Moon, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Activity,
+  BarChart3,
+  Settings,
+  Menu,
+  Sun,
+  Moon,
+  LogOut
+} from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import clsx from "clsx";
 
+// Sidebar items WITH icons (REQUIRED FIX)
+const navItems = [
+  { label: "Overview", path: "/admin", icon: <LayoutDashboard size={18} /> },
+  { label: "Users", path: "/admin/users", icon: <Users size={18} /> },
+  { label: "Activity", path: "/admin/activity", icon: <Activity size={18} /> },
+  { label: "Reports", path: "/admin/reports", icon: <BarChart3 size={18} /> },
+  { label: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
+];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const nextPathname = usePathname();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+
   const [collapsed, setCollapsed] = useState(false);
+  const [realPath, setRealPath] = useState(pathname);
 
-  // ✅ Real path from browser (fixes overview always-active bug)
-  const [realPath, setRealPath] = useState(nextPathname);
-
+  // Get REAL browser path to fix Overview highlight
   useEffect(() => {
     if (typeof window !== "undefined") {
       setRealPath(window.location.pathname);
     }
-  }, [nextPathname]);
+  }, [pathname]);
 
-  const navItems = [
-    { label: "Overview", path: "/admin" },
-    { label: "Users", path: "/admin/users" },
-    { label: "Activity", path: "/admin/activity" },
-    { label: "Reports", path: "/admin/reports" },
-    { label: "Settings", path: "/admin/settings" },
-  ];
-
-  // Normalize helper
+  // Normalize paths
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
-
   const current = normalize(realPath);
 
   return (
@@ -45,9 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       >
         <div className="flex items-center justify-between p-4">
-          {!collapsed && (
-            <h2 className="text-xl font-bold tracking-tight">ADMIN</h2>
-          )}
+          {!collapsed && <h2 className="text-xl font-bold tracking-tight">ADMIN</h2>}
           <button
             className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => setCollapsed(!collapsed)}
@@ -63,37 +71,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             const active = isOverview
               ? current === "/admin"
-              : current === itemPath || current.startsWith(itemPath + "/");
+              : current.startsWith(itemPath);
 
             return (
               <Link
-  key={item.path}
-  href={item.path}
-  className={clsx(
-    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-    active
-      ? "bg-blue-600 text-white"
-      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-  )}
->
-  {/* ICON */}
-  <span
-    className={clsx(
-      "flex items-center",
-      active ? "text-white" : "text-gray-500 dark:text-gray-400"
-    )}
-  >
-    {item.icon}
-  </span>
+                key={item.path}
+                href={item.path}
+                className={clsx(
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                  active
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+              >
+                {/* ICON ALWAYS */}
+                <span
+                  className={clsx(
+                    "flex items-center",
+                    active ? "text-white" : "text-gray-500 dark:text-gray-400"
+                  )}
+                >
+                  {item.icon}
+                </span>
 
-  {/* LABEL */}
-  {!collapsed && <span>{item.label}</span>}
-  {collapsed && (
-    <span className="text-sm font-semibold">
-      {item.label[0]}
-    </span>
-  )}
-</Link>
+                {/* LABEL visible only if not collapsed */}
+                {!collapsed && <span>{item.label}</span>}
+
+                {/* Collapsed - Only First Letter */}
+                {collapsed && (
+                  <span className="text-sm font-semibold">{item.label[0]}</span>
+                )}
+              </Link>
             );
           })}
         </nav>
@@ -107,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="text-lg font-semibold">Admin Dashboard</h1>
 
           <div className="flex items-center gap-3">
-            {/* THEME TOGGLE */}
+            {/* Theme Toggle */}
             <button
               className="p-2 rounded-md bg-gray-100 dark:bg-gray-800"
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
@@ -115,7 +123,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {theme === "light" ? <Moon /> : <Sun />}
             </button>
 
-            {/* LOGOUT */}
+            {/* Logout */}
             <button
               onClick={async () => {
                 await fetch("/api/logout", {
@@ -136,4 +144,4 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
-                        }
+              }
