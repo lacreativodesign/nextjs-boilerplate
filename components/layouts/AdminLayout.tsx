@@ -1,47 +1,13 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import clsx from "clsx";
-
-const nav = [
-  { label: "Overview", path: "/admin" },
-  { label: "Users", path: "/admin/users" },
-  { label: "Clients", path: "/admin/clients" },
-  { label: "Sales & Pipeline", path: "/admin/sales" },
-  { label: "Projects & Delivery", path: "/admin/projects" },
-  { label: "Production", path: "/admin/production" },
-  { label: "Finance", path: "/admin/finance" },
-  { label: "HR & Team", path: "/admin/hr" },
-  { label: "Reports", path: "/admin/reports" },
-  { label: "Settings", path: "/admin/settings" },
-];
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  return (
-    <div className="flex w-full">
-      {/* SIDEBAR */}
-      <aside
-        className="hidden md:flex flex-col w-60 border-r"
-        style={{ background: "var(--sidebar-bg)", borderColor: "var(--border)" }}
-      >
-        <h2
-          className="px-4 py-4 text-xl font-bold"
-          style={{ color: "var(--text)" }}
-        >
-          ADMIN
-        </h2>
-
-        <nav className="flex flex-col gap-1 px-2">
+<nav className="flex flex-col gap-1 px-2">
   {navItems.map((item) => {
-    const isOverview = item.path === "/admin";
+    const normalized = pathname.replace(/\/+$/, ""); // remove trailing slash
+    const itemNormalized = item.path.replace(/\/+$/, "");
 
-    // FIXED ACTIVE LOGIC
+    const isOverview = itemNormalized === "/admin";
+
     const active = isOverview
-      ? pathname === "/admin" // ONLY exact match highlights Overview
-      : pathname.startsWith(item.path); // Others can use startsWith normally
+      ? normalized === "/admin"
+      : normalized.startsWith(itemNormalized);
 
     return (
       <Link
@@ -67,10 +33,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   })}
 </nav>
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <main className="flex-1 p-6">{children}</main>
-    </div>
-  );
-}
