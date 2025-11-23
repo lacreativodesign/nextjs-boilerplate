@@ -76,9 +76,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
   )}
 >
+  {/* ICON */}
+  <span
+    className={clsx(
+      "flex items-center",
+      active ? "text-white" : "text-gray-500 dark:text-gray-400"
+    )}
+  >
+    {item.icon}
+  </span>
+
+  {/* LABEL */}
   {!collapsed && <span>{item.label}</span>}
   {collapsed && (
-    <span className="text-sm font-semibold">{item.label[0]}</span>
+    <span className="text-sm font-semibold">
+      {item.label[0]}
+    </span>
   )}
 </Link>
             );
