@@ -1,9 +1,19 @@
-export default function IntegrationsSettingsPage() {
+export default function IntegrationSettings() {
   return (
-    <div>
-      <h3 className="text-xl font-semibold mb-2">Integrations</h3>
-      <p className="text-gray-600 dark:text-gray-400">
-        Tawk.to, email provider, payment gateways, WhatsApp API (coming soon).
+    <div
+      style={{
+        background: "var(--card-bg)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: 20,
+      }}
+    >
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
+        Integrations
+      </h3>
+
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+        API keys, third-party tools, CRMs, automations (coming soon).
       </p>
     </div>
   );
