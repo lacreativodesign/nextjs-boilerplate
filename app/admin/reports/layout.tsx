@@ -17,7 +17,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="w-full">
-      {/* TITLE */}
+
       <div className="mb-4">
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
           Reports & Analytics
@@ -27,15 +27,16 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
         </p>
       </div>
 
-      {/* BLUE TABS */}
       <div
         className="flex gap-2 border-b mb-6"
         style={{ borderColor: "var(--border)" }}
       >
         {tabs.map((t) => {
-          const active =
+          // FIX: Sales Reports must only be active on EXACT path "/admin/reports"
+          const isActive =
             pathname === t.path ||
-            pathname.startsWith(t.path + "/");
+            (pathname.startsWith(t.path + "/") &&
+              t.path !== "/admin/reports");
 
           return (
             <Link
@@ -43,7 +44,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
               href={t.path}
               className={clsx(
                 "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                active
+                isActive
                   ? "bg-blue-600 text-white"
                   : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               )}
@@ -54,8 +55,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
         })}
       </div>
 
-      {/* TAB CONTENT */}
       <div>{children}</div>
     </div>
   );
-                                }
+}
