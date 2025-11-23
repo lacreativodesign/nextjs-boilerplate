@@ -4,92 +4,81 @@ import { useState } from "react";
 
 export default function CreateUserPage() {
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
 
-  const handleSubmit = async (e: any) => {
+  async function handleCreateUser(e: any) {
     e.preventDefault();
     setLoading(true);
-    setMsg("");
 
     const formData = new FormData(e.target);
-    const body = Object.fromEntries(formData);
+    const payload = Object.fromEntries(formData.entries()) as any;
 
-    const res = await fetch("/api/admin/users/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
-    const result = await res.json();
-    setLoading(false);
+      if (!res.ok) throw new Error("Failed");
 
-    if (!res.ok) {
-      setMsg(result.error || "Failed to create user.");
-      return;
+      alert("User created successfully!");
+      e.target.reset();
+    } catch (err) {
+      alert("Failed to create user");
     }
 
-    setMsg("User created successfully! Redirecting…");
-
-    setTimeout(() => {
-      window.location.href = "/admin/users";
-    }, 1200);
-  };
+    setLoading(false);
+  }
 
   return (
-    <div>
-      <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 14 }}>
-        Create New User
-      </h3>
+    <div className="max-w-4xl mx-auto space-y-8">
 
-      {msg && (
-        <div
-          style={{
-            marginBottom: 18,
-            padding: 12,
-            borderRadius: 8,
-            background: "#e0f2fe",
-            border: "1px solid #7dd3fc",
-            color: "#0369a1",
-          }}
-        >
-          {msg}
-        </div>
-      )}
+      {/* PAGE TITLE */}
+      <div>
+        <h1 className="text-2xl font-bold mb-2">Create User</h1>
+        <p className="text-gray-600 dark:text-gray-300">
+          Add a new team member to the La Creativo ERP system.
+        </p>
+      </div>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 20,
-          marginBottom: 20,
-        }}
-      >
-        <Input label="Full Name" name="name" placeholder="e.g. Sarah Khan" required />
-        <Input label="Email" name="email" type="email" placeholder="name@company.com" required />
-        <Input label="Password" name="password" type="password" placeholder="Temporary password" required />
-        <Input label="Phone" name="phone" placeholder="+92-" />
-        <Input label="CNIC" name="cnic" placeholder="XXXXX-XXXXXXX-X" />
-        <Input label="Address" name="address" />
-        <Input label="City" name="city" />
-        <Input label="Country" name="country" />
-        <Input label="Department" name="department" placeholder="Sales / HR / AM / Dev…" />
+      {/* FORM */}
+      <form onSubmit={handleCreateUser} className="space-y-6 bg-white dark:bg-[#111113] p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500 }}>Role</label>
+        {/* FULL NAME */}
+        <FormInput
+          label="Full Name"
+          name="name"
+          placeholder="Enter full name"
+          required
+        />
+
+        {/* EMAIL */}
+        <FormInput
+          label="Email"
+          name="email"
+          type="email"
+          placeholder="Enter email address"
+          required
+        />
+
+        {/* PASSWORD */}
+        <FormInput
+          label="Password"
+          name="password"
+          type="password"
+          placeholder="Set a login password"
+          required
+        />
+
+        {/* ROLE */}
+        <div className="flex flex-col gap-2">
+          <label className="font-semibold text-sm">Role</label>
           <select
             name="role"
             required
-            style={{
-              padding: "10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
+            className="p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0f0f11]"
           >
-            <option value="ADMIN">Admin</option>
             <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="ADMIN">Admin</option>
             <option value="SALES_MANAGER">Sales Manager</option>
             <option value="SALES">Sales</option>
             <option value="ACCOUNT_MANAGER">Account Manager</option>
@@ -99,48 +88,76 @@ export default function CreateUserPage() {
           </select>
         </div>
 
-        <Input label="Joining Date" name="joiningDate" type="date" />
-        <Input label="Date of Birth" name="dob" type="date" />
-        <Input label="Salary (Rs.)" name="salary" />
-        <Input label="Monthly Target (Rs.)" name="targetMonthly" />
-      </form>
+        {/* CONTACT INFO */}
+        <FormInput label="Contact Number" name="phone" placeholder="0300-0000000" />
 
-      <button
-        type="submit"
-        form="create"
-        disabled={loading}
-        style={{
-          padding: "12px 24px",
-          borderRadius: 8,
-          background: "#2563eb",
-          color: "#fff",
-          border: "none",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        {loading ? "Creating…" : "Create User"}
-      </button>
+        <FormInput label="CNIC" name="cnic" placeholder="42101-0000000-0" />
+
+        <FormInput label="Address" name="address" placeholder="House, Street, City" />
+
+        {/* DATES */}
+        <FormInput label="Joining Date" name="joiningDate" type="date" required />
+
+        <FormInput label="Date of Birth" name="dob" type="date" />
+
+        {/* SALARY */}
+        <FormInput
+          label="Salary (Rs.)"
+          name="salary"
+          type="number"
+          placeholder="50000"
+        />
+
+        {/* TARGET (USD) */}
+        <FormInput
+          label="Monthly Target (USD $)"
+          name="targetMonthly"
+          type="number"
+          placeholder="1000"
+        />
+
+        {/* SUBMIT */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+        >
+          {loading ? "Creating user..." : "Create User"}
+        </button>
+      </form>
     </div>
   );
 }
 
-/* COMMON INPUT COMPONENT */
-function Input({ label, name, placeholder, type = "text", required = false }: any) {
+/* --------------------------------------------------------
+   REUSABLE FORM INPUT COMPONENT (with border added)
+--------------------------------------------------------- */
+function FormInput({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  required = false,
+}: any) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
+    <div className="flex flex-col gap-2">
+      <label className="font-semibold text-sm">{label}</label>
       <input
         name={name}
         type={type}
         placeholder={placeholder}
         required={required}
-        style={{
-          padding: "10px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          background: "var(--page-bg)",
-        }}
+        className="
+          p-3
+          rounded-lg
+          border border-gray-300 
+          dark:border-gray-700
+          bg-white 
+          dark:bg-[#0f0f11]
+          text-gray-800 
+          dark:text-gray-200
+          outline-none
+        "
       />
     </div>
   );
