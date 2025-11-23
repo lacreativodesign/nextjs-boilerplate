@@ -21,7 +21,7 @@ export default function ClientsPage() {
         Client Management
       </h2>
 
-      {/* HORIZONTAL TABS — SAME AS USERS LAYOUT */}
+      {/* HORIZONTAL TABS — UNIVERSAL LAYOUT */}
       <div
         style={{
           display: "flex",
@@ -234,7 +234,7 @@ function ClientSegments() {
   );
 }
 
-/* COMMON INPUT COMPONENT */
+/* INPUT COMPONENT */
 function Input({ label, placeholder, type = "text" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
