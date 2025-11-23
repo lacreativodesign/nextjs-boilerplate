@@ -21,13 +21,14 @@ export default function ClientsPage() {
         Client Management
       </h2>
 
-      {/* HORIZONTAL TABS — UNIVERSAL LAYOUT */}
+      {/* NEW SALES-STYLE TABS (LOCKED UNIVERSAL PATTERN) */}
       <div
         style={{
           display: "flex",
-          gap: 24,
+          gap: 28,
           borderBottom: "1px solid var(--border)",
           marginBottom: 20,
+          paddingBottom: 2,
         }}
       >
         {tabs.map((tab) => {
@@ -39,14 +40,15 @@ export default function ClientsPage() {
               style={{
                 background: "transparent",
                 border: "none",
-                padding: "10px 0",
                 cursor: "pointer",
                 fontSize: 15,
                 fontWeight: isActive ? 700 : 500,
+                color: isActive ? "#111827" : "var(--sidebar-text)",
+                padding: "8px 0",
                 borderBottom: isActive
                   ? "3px solid #2563eb"
                   : "3px solid transparent",
-                color: isActive ? "#111827" : "var(--sidebar-text)",
+                transition: "0.2s ease",
               }}
             >
               {tab.label}
@@ -55,7 +57,7 @@ export default function ClientsPage() {
         })}
       </div>
 
-      {/* CONTENT BOX */}
+      {/* CONTENT CARD */}
       <div
         style={{
           padding: 20,
@@ -83,13 +85,8 @@ function AllClients() {
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         All Clients
       </h3>
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--sidebar-text)",
-          marginBottom: 16,
-        }}
-      >
+
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
         This table will show every client with status, AM assigned and quick actions.
       </p>
 
@@ -102,12 +99,7 @@ function AllClients() {
           }}
         >
           <thead>
-            <tr
-              style={{
-                textAlign: "left",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
+            <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left" }}>
               <th style={{ padding: "8px 4px" }}>Client</th>
               <th style={{ padding: "8px 4px" }}>Company</th>
               <th style={{ padding: "8px 4px" }}>AM Assigned</th>
@@ -115,6 +107,7 @@ function AllClients() {
               <th style={{ padding: "8px 4px" }}>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
               <td style={{ padding: "8px 4px" }}>ACME Corp</td>
@@ -125,10 +118,10 @@ function AllClients() {
                 <button
                   style={{
                     padding: "4px 10px",
-                    fontSize: 12,
                     borderRadius: 6,
-                    border: "1px solid var(--border)",
+                    fontSize: 12,
                     background: "#f3f4f6",
+                    border: "1px solid var(--border)",
                     cursor: "pointer",
                   }}
                 >
@@ -149,13 +142,8 @@ function AddClient() {
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         Add New Client
       </h3>
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--sidebar-text)",
-          marginBottom: 16,
-        }}
-      >
+
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
         Fill in the details below to register a new client.
       </p>
 
@@ -215,7 +203,7 @@ function KeyAccounts() {
         Key Accounts
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        These are your top-priority high-value clients (retainers & enterprise level).
+        These are top-priority high-value clients (retainers, enterprise-level).
       </p>
     </div>
   );
@@ -228,13 +216,13 @@ function ClientSegments() {
         Client Segments
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Different segments like Web-Only, Branding + Web, Retainers, Dormant, etc.
+        Segments like Web-Only, Branding+Web, Retainers, Dormant, etc.
       </p>
     </div>
   );
 }
 
-/* INPUT COMPONENT */
+/* Reusable Input Component */
 function Input({ label, placeholder, type = "text" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -251,4 +239,4 @@ function Input({ label, placeholder, type = "text" }) {
       />
     </div>
   );
-        }
+          }
