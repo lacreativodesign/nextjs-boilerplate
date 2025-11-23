@@ -1,5 +1,3 @@
-"use client";
-
 import ModuleSectionLayout from "@/components/admin/ModuleSectionLayout";
 
 export default function UsersLayout({ children }: { children: React.ReactNode }) {
