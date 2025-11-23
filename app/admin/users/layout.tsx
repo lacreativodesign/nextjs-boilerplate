@@ -17,24 +17,21 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
   return (
     <div className="w-full">
 
-      {/* TITLE */}
-      <div className="mb-4">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-          User Management
-        </h2>
-        <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Manage all users, roles and user activity.
-        </p>
-      </div>
+      {/* PAGE TITLE */}
+      <h2 className="text-[26px] font-bold mb-1">User Management</h2>
+      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
+        Manage all users, roles and user activity.
+      </p>
 
-      {/* BLUE PILL TABS (LOCKED STYLE) */}
+      {/* BLUE PILL TABS */}
       <div
         className="flex gap-2 border-b mb-6"
         style={{ borderColor: "var(--border)" }}
       >
         {tabs.map((t) => {
           const active =
-            pathname === t.path || pathname.startsWith(t.path + "/");
+            pathname === t.path ||
+            (pathname.startsWith(t.path + "/") && t.path !== "/admin/users");
 
           return (
             <Link
@@ -53,8 +50,7 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
         })}
       </div>
 
-      {/* TAB CONTENT */}
-      <div>{children}</div>
+      {children}
     </div>
   );
-      }
+}
