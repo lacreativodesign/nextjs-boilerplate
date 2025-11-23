@@ -21,7 +21,7 @@ export default function UsersPage() {
         User Management
       </h2>
 
-      {/* HORIZONTAL TABS */}
+      {/* TABS */}
       <div
         style={{
           display: "flex",
@@ -55,7 +55,7 @@ export default function UsersPage() {
         })}
       </div>
 
-      {/* CONTENT WRAPPER */}
+      {/* CONTENT AREA */}
       <div
         style={{
           padding: 20,
@@ -64,20 +64,20 @@ export default function UsersPage() {
           border: "1px solid var(--border)",
         }}
       >
-        {activeTab === "all" && <AllUsersSection />}
-        {activeTab === "create" && <CreateUserSection />}
-        {activeTab === "view" && <ViewUserSection />}
-        {activeTab === "activity" && <ActivityLogSection />}
+        {activeTab === "all" && <AllUsers />}
+        {activeTab === "create" && <CreateUserForm />}
+        {activeTab === "view" && <ViewUser />}
+        {activeTab === "activity" && <ActivityLog />}
       </div>
     </div>
   );
 }
 
-/* =======================================================
-                      ALL USERS TABLE
-   ======================================================= */
+/* ============================================
+   TAB 1 — ALL USERS (TABLE)
+================================================ */
 
-function AllUsersSection() {
+function AllUsers() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
@@ -85,7 +85,7 @@ function AllUsersSection() {
       </h3>
 
       <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
-        Below is the complete list of users in the ERP.
+        List of all system users.
       </p>
 
       <div style={{ overflowX: "auto" }}>
@@ -97,29 +97,24 @@ function AllUsersSection() {
           }}
         >
           <thead>
-            <tr
-              style={{
-                textAlign: "left",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <th style={{ padding: "8px 4px" }}>Name</th>
-              <th style={{ padding: "8px 4px" }}>Email</th>
-              <th style={{ padding: "8px 4px" }}>Role</th>
-              <th style={{ padding: "8px 4px" }}>Status</th>
-              <th style={{ padding: "8px 4px" }}>Joining Date</th>
-              <th style={{ padding: "8px 4px" }}>Actions</th>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              <th style={{ padding: 8 }}>Name</th>
+              <th style={{ padding: 8 }}>Email</th>
+              <th style={{ padding: 8 }}>Role</th>
+              <th style={{ padding: 8 }}>Status</th>
+              <th style={{ padding: 8 }}>Joining Date</th>
+              <th style={{ padding: 8 }}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={{ padding: "8px 4px" }}>John Doe</td>
-              <td style={{ padding: "8px 4px" }}>john@example.com</td>
-              <td style={{ padding: "8px 4px" }}>Sales</td>
-              <td style={{ padding: "8px 4px" }}>Active</td>
-              <td style={{ padding: "8px 4px" }}>2024-01-10</td>
-              <td style={{ padding: "8px 4px" }}>
+              <td style={{ padding: 8 }}>John Doe</td>
+              <td style={{ padding: 8 }}>john@example.com</td>
+              <td style={{ padding: 8 }}>Sales</td>
+              <td style={{ padding: 8 }}>Active</td>
+              <td style={{ padding: 8 }}>2024-12-01</td>
+              <td style={{ padding: 8 }}>
                 <button
                   style={{
                     padding: "4px 10px",
@@ -141,47 +136,43 @@ function AllUsersSection() {
   );
 }
 
-/* =======================================================
-                   CREATE USER - GRID FORM
-   ======================================================= */
+/* ============================================
+   TAB 2 — CREATE USER (GRID FORM)
+================================================ */
 
-function CreateUserSection() {
+function CreateUserForm() {
   return (
     <div>
       <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         Create New User
       </h3>
 
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--sidebar-text)",
-          marginBottom: 20,
-        }}
-      >
-        Fill in the details below to create a new ERP user account.
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 20 }}>
+        Fill in the user details below.
       </p>
 
       {/* GRID FORM */}
       <form
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "22px",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 20,
         }}
       >
-        {/* NAME */}
-        <Input label="Full Name" placeholder="e.g. Sarah Khan" />
+        <FormField label="Full Name" type="text" placeholder="John Khan" />
+        <FormField label="Email" type="email" placeholder="john@company.com" />
+        <FormField label="Password" type="password" placeholder="Create password" />
+        <FormField label="Phone Number" placeholder="+92 300 1234567" />
+        <FormField label="CNIC" placeholder="42101-1234567-1" />
+        <FormField label="Address" placeholder="Street, City, Country" />
+        <FormField label="Joining Date" type="date" />
+        <FormField label="Salary (Rs.)" type="number" placeholder="50000" />
+        <FormField label="Monthly Target (USD$)" type="number" placeholder="10000" />
 
-        {/* EMAIL */}
-        <Input label="Email" placeholder="name@company.com" type="email" />
-
-        {/* PASSWORD */}
-        <Input label="Password" placeholder="Temporary password" type="password" />
-
-        {/* ROLE */}
+        {/* ROLE DROPDOWN */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 600 }}>Role</label>
+          <label style={{ fontSize: 13, fontWeight: 500 }}>Role</label>
+
           <select
             style={{
               padding: "10px 12px",
@@ -190,136 +181,76 @@ function CreateUserSection() {
               background: "var(--page-bg)",
             }}
           >
-            <option value="">Select role</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
-            <option value="ADMIN">Admin</option>
-            <option value="SALES_MANAGER">Sales Manager</option>
-            <option value="SALES">Sales</option>
-            <option value="ACCOUNT_MANAGER">Account Manager</option>
-            <option value="PRODUCTION">Production</option>
-            <option value="HR">HR</option>
-            <option value="FINANCE">Finance</option>
-            <option value="CLIENT">Client</option>
+            <option>Select Role</option>
+            <option>SUPER_ADMIN</option>
+            <option>ADMIN</option>
+            <option>SALES_MANAGER</option>
+            <option>SALES</option>
+            <option>ACCOUNT_MANAGER</option>
+            <option>PRODUCTION</option>
+            <option>HR</option>
+            <option>FINANCE</option>
           </select>
         </div>
-
-        {/* PHONE */}
-        <Input label="Phone" placeholder="+92 XXX XXXXXXX" />
-
-        {/* CNIC */}
-        <Input label="CNIC" placeholder="42101-XXXXXXX-X" />
-
-        {/* ADDRESS (full width) */}
-        <div
-          style={{
-            gridColumn: "1 / -1",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
-          <label style={{ fontSize: 13, fontWeight: 600 }}>Address</label>
-          <input
-            type="text"
-            placeholder="House / Street / City"
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
-          />
-        </div>
-
-        {/* JOINING DATE */}
-        <Input label="Joining Date" type="date" />
-
-        {/* DOB */}
-        <Input label="Date of Birth" type="date" />
-
-        {/* SALARY */}
-        <Input label="Salary (PKR)" placeholder="50000" type="number" />
-
-        {/* MONTHLY TARGET */}
-        <Input label="Monthly Target (USD)" placeholder="2000" type="number" />
       </form>
 
       {/* SUBMIT */}
-      <div style={{ marginTop: 28 }}>
-        <button
-          type="button"
-          style={{
-            padding: "12px 20px",
-            borderRadius: 8,
-            border: "none",
-            background: "#2563eb",
-            color: "#ffffff",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontSize: 15,
-          }}
-        >
-          Save User (Wire to API later)
-        </button>
-      </div>
+      <button
+        style={{
+          marginTop: 20,
+          padding: "10px 18px",
+          background: "#2563eb",
+          color: "white",
+          border: "none",
+          borderRadius: 8,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Save User
+      </button>
     </div>
   );
 }
 
-/* =======================================================
-                VIEW USER DETAILS (PLACEHOLDER)
-   ======================================================= */
+/* ============================================
+   TAB 3 — VIEW USER
+================================================ */
 
-function ViewUserSection() {
+function ViewUser() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-        View User Details
-      </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Select a user from the table to load details here.
+      <h3 style={{ fontSize: 18, fontWeight: 600 }}>View User Details</h3>
+      <p style={{ color: "var(--sidebar-text)", fontSize: 14 }}>
+        Coming soon — will load full user profile here.
       </p>
     </div>
   );
 }
 
-/* =======================================================
-                   ACTIVITY LOG (PLACEHOLDER)
-   ======================================================= */
+/* ============================================
+   TAB 4 — ACTIVITY LOG
+================================================ */
 
-function ActivityLogSection() {
+function ActivityLog() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-        User Activity Log
-      </h3>
-
-      <ul style={{ fontSize: 14, lineHeight: 1.6 }}>
-        <li>• User creation and updates</li>
-        <li>• Role changes</li>
-        <li>• Login / logout history</li>
-        <li>• Suspicious or blocked access attempts</li>
-      </ul>
+      <h3 style={{ fontSize: 18, fontWeight: 600 }}>Activity Log</h3>
+      <p style={{ color: "var(--sidebar-text)", fontSize: 14 }}>
+        Coming soon — will track all user actions.
+      </p>
     </div>
   );
 }
 
-/* =======================================================
-                   INPUT COMPONENT
-   ======================================================= */
+/* ============================================
+   SHARED INPUT FIELD
+================================================ */
 
-function Input({
-  label,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  placeholder?: string;
-  type?: string;
-}) {
+function FormField({ label, type = "text", placeholder = "" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 600 }}>{label}</label>
+      <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
       <input
         type={type}
         placeholder={placeholder}
