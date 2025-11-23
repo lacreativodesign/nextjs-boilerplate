@@ -2,61 +2,30 @@
 
 import { useState } from "react";
 
-type TabKey = "sales" | "clients" | "projects" | "finance" | "team";
+type TabKey =
+  | "sales"
+  | "clients"
+  | "projects"
+  | "finance"
+  | "team";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("sales");
 
-  const tabs: { key: TabKey; label: string }[] = [
+  const tabs = [
     { key: "sales", label: "Sales Reports" },
     { key: "clients", label: "Client Reports" },
     { key: "projects", label: "Project Reports" },
     { key: "finance", label: "Finance Reports" },
-    { key: "team", label: "Team Productivity" },
+    { key: "team", label: "Team Performance" },
   ];
 
   return (
     <div>
-      {/* PAGE TITLE */}
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>
-        Reports & Analytics
-      </h2>
+      {/* LEAVE SPACE FOR BLUE PILLS (layout handles tabs) */}
+      <div style={{ marginBottom: 20 }} />
 
-      {/* HORIZONTAL TABS */}
-      <div
-        style={{
-          display: "flex",
-          gap: 24,
-          borderBottom: "1px solid var(--border)",
-          marginBottom: 20,
-        }}
-      >
-        {tabs.map((tab) => {
-          const isActive = tab.key === activeTab;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: "10px 0",
-                cursor: "pointer",
-                fontSize: 15,
-                fontWeight: isActive ? 700 : 500,
-                borderBottom: isActive
-                  ? "3px solid #2563eb"
-                  : "3px solid transparent",
-                color: isActive ? "#111827" : "var(--sidebar-text)",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* TAB CONTENT */}
+      {/* CONTENT WRAPPER */}
       <div
         style={{
           padding: 20,
@@ -71,20 +40,69 @@ export default function ReportsPage() {
         {activeTab === "finance" && <FinanceReports />}
         {activeTab === "team" && <TeamReports />}
       </div>
+
+      {/* BLUE TABS */}
+      <ReportTabs activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} />
     </div>
   );
 }
 
-/* ================= TAB SECTIONS ================= */
+/* =======================================================
+                      BLUE TAB COMPONENT
+   ======================================================= */
+
+function ReportTabs({
+  activeTab,
+  setActiveTab,
+  tabs,
+}: {
+  activeTab: string;
+  setActiveTab: (t: any) => void;
+  tabs: { key: string; label: string }[];
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        borderBottom: "1px solid var(--border)",
+        marginBottom: 20,
+        marginTop: -70,
+      }}
+    >
+      {tabs.map((tab) => {
+        const active = tab.key === activeTab;
+
+        return (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={
+              active
+                ? "bg-blue-600 text-white px-4 py-2 rounded-t-md font-semibold"
+                : "text-gray-700 dark:text-gray-300 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-t-md"
+            }
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* =======================================================
+                      TAB SECTIONS
+   ======================================================= */
 
 function SalesReports() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
         Sales Reports
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Sales performance, conversion rates, pipeline analytics.
+        KPIs: conversion rates, lead sources, pipeline performance, revenue.
       </p>
     </div>
   );
@@ -93,11 +111,11 @@ function SalesReports() {
 function ClientReports() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
         Client Reports
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Churn, retention, satisfaction and client segmentation metrics.
+        Churn rate, retention, satisfaction, client lifecycle insights.
       </p>
     </div>
   );
@@ -106,11 +124,11 @@ function ClientReports() {
 function ProjectReports() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
         Project Reports
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        On-time delivery stats and project workload analytics.
+        Project status, on-time delivery, revision counts, AM performance.
       </p>
     </div>
   );
@@ -119,11 +137,11 @@ function ProjectReports() {
 function FinanceReports() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
         Finance Reports
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Revenue, cashflow, AR aging and monthly recurring revenue.
+        Revenue, AR, recurring revenue, financial insights.
       </p>
     </div>
   );
@@ -132,12 +150,12 @@ function FinanceReports() {
 function TeamReports() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-        Team Productivity
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
+        Team Performance
       </h3>
       <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Productivity, workload, and operational efficiency by role/department.
+        Workload, productivity, performance insights.
       </p>
     </div>
   );
-              }
+}
