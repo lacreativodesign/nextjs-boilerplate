@@ -2,86 +2,34 @@
 
 import { useState } from "react";
 
-type TabKey = "all" | "create" | "view" | "activity";
-
 export default function UsersPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
-
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: "all", label: "All Users" },
-    { key: "create", label: "Create User" },
-    { key: "view", label: "View User Details" },
-    { key: "activity", label: "Activity Log" },
-  ];
+  const [activeTab, setActiveTab] = useState("all");
 
   return (
     <div>
-      {/* PAGE TITLE */}
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>
-        User Management
-      </h2>
-
-      {/* TABS */}
-      <div
-        style={{
-          display: "flex",
-          gap: 24,
-          borderBottom: "1px solid var(--border)",
-          marginBottom: 20,
-        }}
-      >
-        {tabs.map((tab) => {
-          const isActive = tab.key === activeTab;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: "10px 0",
-                cursor: "pointer",
-                fontSize: 15,
-                fontWeight: isActive ? 700 : 500,
-                borderBottom: isActive
-                  ? "3px solid #2563eb"
-                  : "3px solid transparent",
-                color: isActive ? "#111827" : "var(--sidebar-text)",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* CONTENT BOX */}
-      <div
-        style={{
-          padding: 20,
-          borderRadius: 12,
-          background: "var(--card-bg)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        {activeTab === "all" && <AllUsers />}
-        {activeTab === "create" && <CreateUser />}
-        {activeTab === "view" && <ViewUser />}
-        {activeTab === "activity" && <ActivityLog />}
-      </div>
+      {/* ALL USERS LIST */}
+      {activeTab === "all" && <AllUsersSection />}
+      {activeTab === "create" && <CreateUserSection />}
+      {activeTab === "view" && <ViewUserSection />}
+      {activeTab === "activity" && <ActivityLogSection />}
     </div>
   );
 }
 
-/* =======================================================
-                      ALL USERS
-   ======================================================= */
-function AllUsers() {
+/* ============================================================================
+    ALL USERS SECTION (NO TABS HERE—CLEAN, SINGLE SECTION)
+============================================================================ */
+
+function AllUsersSection() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
         All Users
-      </h3>
+      </h2>
+
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
+        List of all users with roles, status and actions.
+      </p>
 
       <div style={{ overflowX: "auto" }}>
         <table
@@ -89,33 +37,31 @@ function AllUsers() {
             width: "100%",
             borderCollapse: "collapse",
             fontSize: 14,
+            background: "var(--card-bg)",
+            borderRadius: 12,
+            overflow: "hidden",
+            border: "1px solid var(--border)",
           }}
         >
           <thead>
-            <tr
-              style={{
-                textAlign: "left",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <th style={{ padding: "8px 4px" }}>Name</th>
-              <th style={{ padding: "8px 4px" }}>Email</th>
-              <th style={{ padding: "8px 4px" }}>Role</th>
-              <th style={{ padding: "8px 4px" }}>Status</th>
-              <th style={{ padding: "8px 4px" }}>Joining Date</th>
-              <th style={{ padding: "8px 4px" }}>Actions</th>
+            <tr style={{ background: "var(--page-bg)", borderBottom: "1px solid var(--border)" }}>
+              <th style={th}>Name</th>
+              <th style={th}>Email</th>
+              <th style={th}>Role</th>
+              <th style={th}>Status</th>
+              <th style={th}>Joining Date</th>
+              <th style={th}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {/* Dummy Row */}
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={{ padding: "8px 4px" }}>John Doe</td>
-              <td style={{ padding: "8px 4px" }}>john@example.com</td>
-              <td style={{ padding: "8px 4px" }}>Sales</td>
-              <td style={{ padding: "8px 4px" }}>Active</td>
-              <td style={{ padding: "8px 4px" }}>2025-01-12</td>
-              <td style={{ padding: "8px 4px" }}>
+              <td style={td}>John Doe</td>
+              <td style={td}>john@example.com</td>
+              <td style={td}>Sales</td>
+              <td style={td}>Active</td>
+              <td style={td}>12 Jan 2024</td>
+              <td style={td}>
                 <button
                   style={{
                     padding: "4px 10px",
@@ -137,45 +83,42 @@ function AllUsers() {
   );
 }
 
-/* =======================================================
-                      CREATE USER (GRID FORM)
-   ======================================================= */
-function CreateUser() {
+const th = { padding: "10px 8px", fontWeight: 600 };
+const td = { padding: "10px 8px" };
+
+/* ============================================================================
+    CREATE USER (KEEPING YOUR CURRENT LAYOUT EXACTLY)
+============================================================================ */
+
+function CreateUserSection() {
   return (
     <div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-        Create New User
-      </h3>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Create New User</h2>
 
-      {/* GRID FORM */}
       <form
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 20,
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 16,
+          background: "var(--card-bg)",
+          padding: 20,
+          borderRadius: 12,
+          border: "1px solid var(--border)",
         }}
       >
-        <Input label="Full Name" placeholder="e.g. Clara Smith" />
-        <Input label="Email" type="email" placeholder="user@company.com" />
-        <Input label="Password" type="password" placeholder="Temporary password" />
-        <Input label="CNIC" placeholder="42101-xxxxxxx-x" />
-        <Input label="Phone" placeholder="+92-3xx-xxxxxxx" />
+        <Input label="Full Name" placeholder="e.g. Sarah Khan" />
+        <Input label="Email" type="email" placeholder="name@company.com" />
+        <Input label="Phone" placeholder="+923001234567" />
+        <Input label="CNIC" placeholder="12345-1234567-1" />
+        <Input label="City" placeholder="Karachi" />
         <Input label="Address" placeholder="Full address" />
         <Input label="Joining Date" type="date" />
-        <Input label="Salary (PKR)" type="number" placeholder="50000" />
-        <Input label="Monthly Target (USD)" type="number" placeholder="1000" />
+        <Input label="Salary (Rs.)" type="number" />
+        <Input label="Monthly Target (USD$)" type="number" />
 
-        {/* ROLE DROPDOWN */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: 13, fontWeight: 500 }}>Role</label>
-          <select
-            style={{
-              padding: "10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--page-bg)",
-            }}
-          >
+          <select style={inputStyle}>
             <option value="">Select role</option>
             <option value="SUPER_ADMIN">Super Admin</option>
             <option value="ADMIN">Admin</option>
@@ -185,12 +128,12 @@ function CreateUser() {
             <option value="PRODUCTION">Production</option>
             <option value="HR">HR</option>
             <option value="FINANCE">Finance</option>
+            <option value="CLIENT">Client</option>
           </select>
         </div>
       </form>
 
       <button
-        type="button"
         style={{
           marginTop: 20,
           padding: "10px 18px",
@@ -208,34 +151,30 @@ function CreateUser() {
   );
 }
 
-/* =======================================================
-                      PLACEHOLDERS
-   ======================================================= */
-function ViewUser() {
-  return <p style={{ fontSize: 14 }}>User detail viewer coming soon.</p>;
-}
-
-function ActivityLog() {
-  return <p style={{ fontSize: 14 }}>User activity logs will appear here.</p>;
-}
-
-/* =======================================================
-                      INPUT COMPONENT
-   ======================================================= */
 function Input({ label, placeholder, type = "text" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
-      <input
-        type={type}
-        placeholder={placeholder}
-        style={{
-          padding: "10px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          background: "var(--page-bg)",
-        }}
-      />
+      <input type={type} placeholder={placeholder} style={inputStyle} />
     </div>
   );
+}
+
+const inputStyle = {
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--page-bg)",
+};
+
+/* ============================================================================
+  PLACEHOLDER SECTIONS
+============================================================================ */
+
+function ViewUserSection() {
+  return <p style={{ padding: 20 }}>View User Page – Coming Soon</p>;
+}
+
+function ActivityLogSection() {
+  return <p style={{ padding: 20 }}>Activity Log – Coming Soon</p>;
 }
