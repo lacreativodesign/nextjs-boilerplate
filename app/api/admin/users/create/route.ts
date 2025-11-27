@@ -1,53 +1,104 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { auth, firestore } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { getCurrentUser, isAdminRole } from "../_utils";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const token = cookies().get("lac_session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    // 1) Get current logged-in user from existing util
+    const current = await getCurrentUser();
+    if (!current) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Use admin.auth().verifyIdToken
-    const decoded = await auth.verifyIdToken(token).catch(() => null);
-    if (!decoded?.uid) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    const currentRole = (current.role || "").toLowerCase();
+
+    // 2) Only admin or super_admin can create users
+    if (!isAdminRole(currentRole)) {
+      return NextResponse.json(
+        { error: "Access denied" },
+        { status: 403 }
+      );
     }
 
-    const currentUid = decoded.uid;
-    const currentUserDoc = await firestore.collection("users").doc(currentUid).get();
-    if (!currentUserDoc.exists) {
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
-    }
+    // SUPER_ADMIN can create anyone
+    // ADMIN cannot create ADMIN or SUPER_ADMIN
+    const canManageRole = (targetRole: string) => {
+      const roleLower = (targetRole || "").toLowerCase();
 
-    const currentRole = (currentUserDoc.data()?.role || "").toLowerCase();
-    if (currentRole !== "admin" && currentRole !== "super_admin") {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
+      if (currentRole === "super_admin") return true;
 
+      if (currentRole === "admin") {
+        return roleLower !== "admin" && roleLower !== "super_admin";
+      }
+
+      return false;
+    };
+
+    // 3) Read body
     const body = await req.json();
-    const { name, email, password, role, phone, department, designation, salary, monthlyTarget, commission, joiningDate, status } = body;
 
-    if (!name || !email || !password || !role) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const roleLower = role.toLowerCase();
-    if (currentRole === "admin" && (roleLower === "admin" || roleLower === "super_admin")) {
-      return NextResponse.json({ error: "Admins cannot create admin or super_admin users" }, { status: 403 });
-    }
-
-    const newUser = await auth.createUser({ email, password, displayName: name, disabled: status === "disabled" });
-    const uid = newUser.uid;
-
-    await firestore.collection("users").doc(uid).set({
-      uid,
+    const {
       name,
       email,
-      role: roleLower,
+      password,
+      role,
+      phone,
+      department,
+      designation,
+      salary,
+      monthlyTarget,
+      commission,
+      joiningDate,
+      status,
+    } = body;
+
+    // 4) Validate required fields
+    if (!email || !password || !role || !name) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (!canManageRole(role)) {
+      return NextResponse.json(
+        { error: "Permission denied for selected role" },
+        { status: 403 }
+      );
+    }
+
+    const targetRole = (role || "").toLowerCase();
+
+    // 5) Check duplicate email
+    const existingUser = await adminAuth
+      .getUserByEmail(email)
+      .catch(() => null);
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 409 }
+      );
+    }
+
+    // 6) Create Firebase Auth user
+    const userRecord = await adminAuth.createUser({
+      email,
+      password,
+      displayName: name,
+      disabled: status === "disabled",
+    });
+
+    // 7) Assign custom claims
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role: targetRole });
+
+    // 8) Save user document in Firestore
+    await adminDb.collection("users").doc(userRecord.uid).set({
+      uid: userRecord.uid,
+      name,
+      email,
+      role: targetRole,
       phone: phone || "",
       department: department || "",
       designation: designation || "",
@@ -56,22 +107,34 @@ export async function POST(req: Request) {
       commission: commission || "",
       joiningDate: joiningDate || "",
       status: status || "active",
-      createdAt: firestore.FieldValue.serverTimestamp(),
-      updatedAt: firestore.FieldValue.serverTimestamp(),
-      createdBy: currentUid,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: current.uid,
     });
 
-    await firestore.collection("admin_activity").add({
+    // 9) Log admin activity
+    await adminDb.collection("admin_activity").add({
       action: "create_user",
-      targetUser: uid,
-      role: roleLower,
-      createdBy: currentUid,
-      timestamp: firestore.FieldValue.serverTimestamp(),
+      performedBy: current.uid,
+      performedByRole: currentRole,
+      targetUser: {
+        uid: userRecord.uid,
+        email,
+        role: targetRole,
+      },
+      timestamp: new Date().toISOString(),
     });
 
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Create user error:", error);
-    return NextResponse.json({ error: error.message || "Server error" }, { status: 500 });
+    // 10) Respond
+    return NextResponse.json({
+      success: true,
+      uid: userRecord.uid,
+    });
+  } catch (e: any) {
+    console.error("Error create user:", e);
+    return NextResponse.json(
+      { error: e?.message || "Server error" },
+      { status: 500 }
+    );
   }
 }
