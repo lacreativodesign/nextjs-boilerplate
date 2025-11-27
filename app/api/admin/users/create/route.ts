@@ -1,26 +1,35 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import {
   auth as adminAuth,
   firestore as adminFirestore,
 } from "@/lib/firebaseAdmin";
-import { getAuthSession } from "@/lib/getAuthSession";
 import { isSuperAdmin } from "../_utils";
 
 export async function POST(req: Request) {
   try {
-    const session = await getAuthSession();
+    // 1. Get session cookie
+    const sessionCookie = cookies().get("lac_session")?.value;
 
-    if (!session || !session.uid) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+    if (!sessionCookie) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Fetch the current logged-in user's profile
+    // 2. Verify session
+    const decoded = await adminAuth
+      .verifySessionCookie(sessionCookie, true)
+      .catch(() => null);
+
+    if (!decoded || !decoded.uid) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
+
+    const currentUid = decoded.uid;
+
+    // 3. Fetch current user's Firestore profile
     const currentUserDoc = await adminFirestore
       .collection("users")
-      .doc(session.uid)
+      .doc(currentUid)
       .get();
 
     if (!currentUserDoc.exists) {
@@ -33,16 +42,13 @@ export async function POST(req: Request) {
     const currentUser = currentUserDoc.data();
     const currentRole = (currentUser?.role || "").toLowerCase();
 
-    // Only admin + super_admin allowed
+    // Only admin or super_admin can create users
     if (currentRole !== "admin" && currentRole !== "super_admin") {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    // Extract body
     const body = await req.json();
-
     const {
       name,
       email,
@@ -58,17 +64,17 @@ export async function POST(req: Request) {
       status,
     } = body;
 
-    // Required fields
+    // Required fields check
     if (!name || !email || !password || !role) {
       return NextResponse.json(
-        { error: "Missing fields" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
     const roleLower = role.toLowerCase();
 
-    // Permission rules
+    // Admin CANNOT create admin or super_admin
     if (currentRole === "admin") {
       if (roleLower === "admin" || roleLower === "super_admin") {
         return NextResponse.json(
@@ -78,7 +84,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Create Firebase Auth user
+    // 4. Create Firebase Auth user
     const newUser = await adminAuth.createUser({
       email,
       password,
@@ -88,7 +94,7 @@ export async function POST(req: Request) {
 
     const uid = newUser.uid;
 
-    // Create Firestore profile
+    // 5. Create user document in Firestore
     await adminFirestore.collection("users").doc(uid).set({
       uid,
       name,
@@ -103,17 +109,16 @@ export async function POST(req: Request) {
       joiningDate: joiningDate || "",
       status: status || "active",
       createdAt: adminFirestore.FieldValue.serverTimestamp(),
-      createdBy: session.uid,
       updatedAt: adminFirestore.FieldValue.serverTimestamp(),
+      createdBy: currentUid,
     });
 
-    // Log activity
+    // 6. Log activity
     await adminFirestore.collection("admin_activity").add({
       action: "create_user",
       targetUser: uid,
-      email,
+      createdBy: currentUid,
       role: roleLower,
-      createdBy: session.uid,
       timestamp: adminFirestore.FieldValue.serverTimestamp(),
     });
 
