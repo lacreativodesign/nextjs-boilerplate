@@ -2,255 +2,468 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import RequireAuth from "@/components/RequireAuth";
-import { useRouter } from "next/navigation";
+
+type StatusType = "active" | "disabled";
+
+const ROLE_OPTIONS = [
+  { value: "super_admin", label: "Super Admin" },
+  { value: "admin", label: "Admin" },
+  { value: "sales_manager", label: "Sales Manager" },
+  { value: "sales", label: "Sales" },
+  { value: "am", label: "Account Manager" },
+  { value: "hr", label: "HR" },
+  { value: "finance", label: "Finance" },
+  { value: "production", label: "Production" },
+  { value: "client", label: "Client" },
+];
+
+const DEPARTMENTS = [
+  "management",
+  "sales",
+  "marketing",
+  "am",
+  "hr",
+  "finance",
+  "production",
+  "support",
+];
 
 export default function CreateUserPage() {
-  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("sales");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    department: "",
-    designation: "",
-    salary: "",
-    monthlyTarget: "",
-    commission: "",
-    joiningDate: "",
-    role: "",
-    password: "",
-    status: "active",
-  });
+  const [phone, setPhone] = useState("");
+  const [department, setDepartment] = useState("sales");
+  const [designation, setDesignation] = useState("");
+  const [joiningDate, setJoiningDate] = useState("");
+
+  const [salary, setSalary] = useState("");
+  const [monthlyTarget, setMonthlyTarget] = useState("");
+  const [commission, setCommission] = useState("");
+  const [status, setStatus] = useState<StatusType>("active");
 
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const resetMessages = () => {
+    setSuccessMsg("");
+    setErrorMsg("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setMsg("");
+    resetMessages();
 
-    try {
-      const res = await fetch("/api/admin/users/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setMsg(data.error || "Missing fields");
-      } else {
-        setMsg("User created successfully.");
-        setTimeout(() => router.push("/admin/users"), 800);
-      }
-    } catch (err: any) {
-      setMsg("Unexpected error: " + err.message);
+    if (!name.trim() || !email.trim() || !password.trim() || !role) {
+      setErrorMsg("Please fill in name, email, role and password.");
+      return;
     }
 
-    setLoading(false);
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password: password.trim(),
+          role,
+
+          phone: phone.trim(),
+          department,
+          designation: designation.trim(),
+          joiningDate: joiningDate || "",
+
+          salary: salary.trim(),
+          monthlyTarget: monthlyTarget.trim(),
+          commission: commission.trim(),
+
+          status,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const msg = data?.error || "Failed to create user.";
+        throw new Error(msg);
+      }
+
+      setSuccessMsg("User created successfully.");
+      // Clear fields but keep sensible defaults
+      setName("");
+      setEmail("");
+      setPassword("");
+      setPhone("");
+      setDepartment("sales");
+      setDesignation("");
+      setJoiningDate("");
+      setSalary("");
+      setMonthlyTarget("");
+      setCommission("");
+      setRole("sales");
+      setStatus("active");
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <RequireAuth allowed={["super_admin", "admin"]}>
-      <div className="p-6 w-full">
-        <h1 className="text-2xl font-semibold mb-6">Create User</h1>
+    <div>
+      {/* PAGE TITLE */}
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
+        Create User
+      </h2>
 
-        {msg && (
-          <div
-            className={`mb-4 p-3 rounded ${
-              msg.toLowerCase().includes("success")
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {msg}
-          </div>
-        )}
+      <p
+        style={{
+          fontSize: 14,
+          color: "var(--sidebar-text)",
+          marginBottom: 20,
+        }}
+      >
+        Add a new team member to the LA CREATIVO ERP and assign role, department and
+        payroll settings.
+      </p>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6"
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        {/* PERSONAL INFO CARD */}
+        <div
+          style={{
+            background: "var(--card-bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: 20,
+          }}
         >
-          {/* LEFT SIDE */}
-          <div className="flex flex-col gap-4">
-            <Field
-              label="Full Name"
-              required
-              value={form.name}
-              onChange={(v) => handleChange("name", v)}
-            />
-            <Field
-              label="Phone"
-              value={form.phone}
-              onChange={(v) => handleChange("phone", v)}
-            />
-            <Field
-              label="Designation"
-              value={form.designation}
-              onChange={(v) => handleChange("designation", v)}
-            />
-            <Field
-              label="Monthly Target"
-              value={form.monthlyTarget}
-              onChange={(v) => handleChange("monthlyTarget", v)}
-            />
-            <Field
-              label="Joining Date"
-              type="date"
-              value={form.joiningDate}
-              onChange={(v) => handleChange("joiningDate", v)}
-            />
-          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+            Personal Information
+          </h3>
 
-          {/* RIGHT SIDE */}
-          <div className="flex flex-col gap-4">
-            <Field
-              label="Email"
-              type="email"
-              required
-              value={form.email}
-              onChange={(v) => handleChange("email", v)}
-            />
-            <Select
-              label="Department"
-              required
-              value={form.department}
-              onChange={(v) => handleChange("department", v)}
-              options={[
-                "Admin",
-                "Sales",
-                "Sales Manager",
-                "Account Manager",
-                "Finance",
-                "HR",
-                "Production",
-                "Client",
-              ]}
-            />
-            <Field
-              label="Salary"
-              value={form.salary}
-              onChange={(v) => handleChange("salary", v)}
-            />
-            <Field
-              label="Commission %"
-              value={form.commission}
-              onChange={(v) => handleChange("commission", v)}
-            />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {/* Full Name */}
+            <FieldWrapper label="Full Name" required>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                style={inputStyle}
+              />
+            </FieldWrapper>
 
-            {/* Password with eye toggle */}
-            <div className="flex flex-col">
-              <label className="mb-1 font-medium">Password</label>
-              <div className="relative">
+            {/* Email */}
+            <FieldWrapper label="Email Address" required>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Phone */}
+            <FieldWrapper label="Phone Number">
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+92 300 0000000"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Status */}
+            <FieldWrapper label="Status">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as StatusType)}
+                style={selectStyle}
+              >
+                <option value="active">Active</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </FieldWrapper>
+
+            {/* Password */}
+            <FieldWrapper label="Password" required>
+              <div
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
                 <input
-                  required
                   type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={(e) => handleChange("password", e.target.value)}
-                  className="w-full p-2 pr-10 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Assign a secure password"
+                  style={{ ...inputStyle, paddingRight: 40 }}
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    color: "var(--sidebar-text)",
+                  }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-            </div>
+            </FieldWrapper>
           </div>
+        </div>
 
-          {/* ROLE + STATUS SPAN TWO COLUMNS */}
-          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Select
-              label="Role"
-              required
-              value={form.role}
-              onChange={(v) => handleChange("role", v)}
-              options={[
-                "admin",
-                "sales_manager",
-                "sales",
-                "am",
-                "production",
-                "hr",
-                "finance",
-                "client",
-              ]}
-            />
+        {/* JOB DETAILS CARD */}
+        <div
+          style={{
+            background: "var(--card-bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: 20,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+            Job Details
+          </h3>
 
-            <Select
-              label="Status"
-              value={form.status}
-              onChange={(v) => handleChange("status", v)}
-              options={["active", "disabled"]}
-            />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {/* Role */}
+            <FieldWrapper label="Role" required>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                style={selectStyle}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </FieldWrapper>
+
+            {/* Department */}
+            <FieldWrapper label="Department">
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                style={selectStyle}
+              >
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>
+                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </FieldWrapper>
+
+            {/* Designation */}
+            <FieldWrapper label="Designation / Title">
+              <input
+                value={designation}
+                onChange={(e) => setDesignation(e.target.value)}
+                placeholder="e.g. Senior Account Manager"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Joining Date */}
+            <FieldWrapper label="Joining Date">
+              <input
+                type="date"
+                value={joiningDate}
+                onChange={(e) => setJoiningDate(e.target.value)}
+                style={inputStyle}
+              />
+            </FieldWrapper>
           </div>
+        </div>
 
-          {/* BUTTON */}
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold disabled:opacity-50"
+        {/* PAYROLL CARD */}
+        <div
+          style={{
+            background: "var(--card-bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: 20,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+            Payroll & Targets
+          </h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {/* Salary */}
+            <FieldWrapper label="Monthly Salary (PKR)">
+              <input
+                value={salary}
+                onChange={(e) => setSalary(e.target.value)}
+                placeholder="e.g. 150000"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Monthly Target */}
+            <FieldWrapper label="Monthly Target (Amount)">
+              <input
+                value={monthlyTarget}
+                onChange={(e) => setMonthlyTarget(e.target.value)}
+                placeholder="e.g. 500000"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Commission */}
+            <FieldWrapper label="Commission (%)">
+              <input
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+                placeholder="e.g. 10"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+          </div>
+        </div>
+
+        {/* ACTIONS + MESSAGES */}
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              alignSelf: "flex-start",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              background: loading ? "var(--border)" : "var(--primary)",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Creating user..." : "Create User"}
+          </button>
+
+          {successMsg && (
+            <p
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--success)",
+              }}
             >
-              {loading ? "Creating..." : "Create User"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </RequireAuth>
+              {successMsg}
+            </p>
+          )}
+
+          {errorMsg && (
+            <p
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--danger)",
+              }}
+            >
+              {errorMsg}
+            </p>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }
 
-/* -------------------- REUSABLE COMPONENTS -------------------- */
-
-function Field({
+function FieldWrapper({
   label,
-  value,
-  onChange,
-  required = false,
-  type = "text",
-}: any) {
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col">
-      <label className="mb-1 font-medium">{label}</label>
-      <input
-        required={required}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
-      />
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <label
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--sidebar-text)",
+        }}
+      >
+        {label}
+        {required && (
+          <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
+        )}
+      </label>
+      {children}
     </div>
   );
 }
 
-function Select({ label, value, onChange, options, required = false }: any) {
-  return (
-    <div className="flex flex-col">
-      <label className="mb-1 font-medium">{label}</label>
-      <select
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
-      >
-        <option value="">Select {label}</option>
-        {options.map((o: string) => (
-          <option key={o} value={o.toLowerCase().replace(/ /g, "_")}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
+const inputStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--input-bg)",
+  color: "var(--text)",
+  fontSize: 14,
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--input-bg)",
+  color: "var(--text)",
+  fontSize: 14,
+};
