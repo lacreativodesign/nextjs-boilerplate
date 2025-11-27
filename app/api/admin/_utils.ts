@@ -1,25 +1,49 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
-// Current Logged-in User
-export async function getCurrentUser() {
+export type CurrentUser = {
+  uid: string;
+  role: string;
+  // we also spread all user doc fields into this object
+  [key: string]: any;
+};
+
+// Central helper: get the currently logged in admin user
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     const cookieStore = cookies();
-    const session = cookieStore.get("session")?.value;
-    if (!session) return null;
 
-    const decoded = await adminAuth.verifySessionCookie(session, true);
+    // Use the SAME cookie as middleware + app/page.tsx + session-login
+    const sessionCookie = cookieStore.get("lac_session")?.value;
+    if (!sessionCookie) return null;
 
-    const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const uid = decoded.uid;
+
+    const userDoc = await adminDb.collection("users").doc(uid).get();
     if (!userDoc.exists) return null;
 
-    return { uid: decoded.uid, ...userDoc.data() };
+    const data = userDoc.data() || {};
+    const role = (data.role as string | undefined)?.toLowerCase() || "sales";
+
+    return {
+      uid,
+      role,
+      ...data,
+    };
   } catch (err) {
+    console.error("getCurrentUser error:", err);
     return null;
   }
 }
 
-// Role Check
+// Role checks
 export function isAdminRole(role: string) {
-  return role === "admin" || role === "super_admin";
+  const r = (role || "").toLowerCase();
+  return r === "admin" || r === "super_admin";
+}
+
+export function isSuperAdmin(role: string) {
+  const r = (role || "").toLowerCase();
+  return r === "super_admin";
 }
