@@ -1,24 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import RequireAuth from "@/components/RequireAuth";
+import { useRouter } from "next/navigation";
 
 export default function CreateUserPage() {
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     email: "",
-    role: "",
-    password: "",
+    phone: "",
     department: "",
     designation: "",
-    phone: "",
     salary: "",
     monthlyTarget: "",
     commission: "",
     joiningDate: "",
+    role: "",
+    password: "",
     status: "active",
   });
 
@@ -44,24 +46,21 @@ export default function CreateUserPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setMsg(data.error || "Failed to create user");
+        setMsg(data.error || "Missing fields");
       } else {
         setMsg("User created successfully.");
-        setTimeout(() => {
-          router.push("/admin/users");
-        }, 800);
+        setTimeout(() => router.push("/admin/users"), 800);
       }
     } catch (err: any) {
-      console.error(err);
       setMsg("Unexpected error: " + err.message);
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
     <RequireAuth allowed={["super_admin", "admin"]}>
-      <div className="p-6">
+      <div className="p-6 w-full">
         <h1 className="text-2xl font-semibold mb-6">Create User</h1>
 
         {msg && (
@@ -78,103 +77,126 @@ export default function CreateUserPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          {/* Personal / basic */}
-          <Field
-            label="Full Name"
-            required
-            value={form.name}
-            onChange={(v) => handleChange("name", v)}
-          />
-          <Field
-            label="Email"
-            type="email"
-            required
-            value={form.email}
-            onChange={(v) => handleChange("email", v)}
-          />
-          <Field
-            label="Phone"
-            value={form.phone}
-            onChange={(v) => handleChange("phone", v)}
-          />
-          <Field
-            label="Department"
-            value={form.department}
-            onChange={(v) => handleChange("department", v)}
-          />
-          <Field
-            label="Designation"
-            value={form.designation}
-            onChange={(v) => handleChange("designation", v)}
-          />
-
-          {/* Job / payroll */}
-          <Field
-            label="Salary"
-            value={form.salary}
-            onChange={(v) => handleChange("salary", v)}
-          />
-          <Field
-            label="Monthly Target"
-            value={form.monthlyTarget}
-            onChange={(v) => handleChange("monthlyTarget", v)}
-          />
-          <Field
-            label="Commission %"
-            value={form.commission}
-            onChange={(v) => handleChange("commission", v)}
-          />
-          <Field
-            label="Joining Date"
-            type="date"
-            value={form.joiningDate}
-            onChange={(v) => handleChange("joiningDate", v)}
-          />
-
-          {/* System access */}
-          <div className="flex flex-col">
-            <label className="mb-1 font-medium">Role</label>
-            <select
+          {/* LEFT SIDE */}
+          <div className="flex flex-col gap-4">
+            <Field
+              label="Full Name"
               required
-              className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
+              value={form.name}
+              onChange={(v) => handleChange("name", v)}
+            />
+            <Field
+              label="Phone"
+              value={form.phone}
+              onChange={(v) => handleChange("phone", v)}
+            />
+            <Field
+              label="Designation"
+              value={form.designation}
+              onChange={(v) => handleChange("designation", v)}
+            />
+            <Field
+              label="Monthly Target"
+              value={form.monthlyTarget}
+              onChange={(v) => handleChange("monthlyTarget", v)}
+            />
+            <Field
+              label="Joining Date"
+              type="date"
+              value={form.joiningDate}
+              onChange={(v) => handleChange("joiningDate", v)}
+            />
+          </div>
+
+          {/* RIGHT SIDE */}
+          <div className="flex flex-col gap-4">
+            <Field
+              label="Email"
+              type="email"
+              required
+              value={form.email}
+              onChange={(v) => handleChange("email", v)}
+            />
+            <Select
+              label="Department"
+              required
+              value={form.department}
+              onChange={(v) => handleChange("department", v)}
+              options={[
+                "Admin",
+                "Sales",
+                "Sales Manager",
+                "Account Manager",
+                "Finance",
+                "HR",
+                "Production",
+                "Client",
+              ]}
+            />
+            <Field
+              label="Salary"
+              value={form.salary}
+              onChange={(v) => handleChange("salary", v)}
+            />
+            <Field
+              label="Commission %"
+              value={form.commission}
+              onChange={(v) => handleChange("commission", v)}
+            />
+
+            {/* Password with eye toggle */}
+            <div className="flex flex-col">
+              <label className="mb-1 font-medium">Password</label>
+              <div className="relative">
+                <input
+                  required
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  className="w-full p-2 pr-10 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ROLE + STATUS SPAN TWO COLUMNS */}
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Select
+              label="Role"
+              required
               value={form.role}
-              onChange={(e) => handleChange("role", e.target.value)}
-            >
-              <option value="">Select role</option>
-              <option value="admin">Admin</option>
-              <option value="sales_manager">Sales Manager</option>
-              <option value="sales">Sales</option>
-              <option value="am">Account Manager</option>
-              <option value="production">Production</option>
-              <option value="hr">HR</option>
-              <option value="finance">Finance</option>
-              <option value="client">Client</option>
-            </select>
-          </div>
+              onChange={(v) => handleChange("role", v)}
+              options={[
+                "admin",
+                "sales_manager",
+                "sales",
+                "am",
+                "production",
+                "hr",
+                "finance",
+                "client",
+              ]}
+            />
 
-          <Field
-            label="Password"
-            type="password"
-            required
-            value={form.password}
-            onChange={(v) => handleChange("password", v)}
-          />
-
-          <div className="flex flex-col">
-            <label className="mb-1 font-medium">Status</label>
-            <select
-              className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
+            <Select
+              label="Status"
               value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-            >
-              <option value="active">Active</option>
-              <option value="disabled">Disabled</option>
-            </select>
+              onChange={(v) => handleChange("status", v)}
+              options={["active", "disabled"]}
+            />
           </div>
 
-          <div className="md:col-span-2 mt-2">
+          {/* BUTTON */}
+          <div className="md:col-span-2">
             <button
               type="submit"
               disabled={loading}
@@ -189,21 +211,15 @@ export default function CreateUserPage() {
   );
 }
 
-type FieldProps = {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  required?: boolean;
-};
+/* -------------------- REUSABLE COMPONENTS -------------------- */
 
 function Field({
   label,
   value,
   onChange,
-  type = "text",
   required = false,
-}: FieldProps) {
+  type = "text",
+}: any) {
   return (
     <div className="flex flex-col">
       <label className="mb-1 font-medium">{label}</label>
@@ -214,6 +230,27 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
       />
+    </div>
+  );
+}
+
+function Select({ label, value, onChange, options, required = false }: any) {
+  return (
+    <div className="flex flex-col">
+      <label className="mb-1 font-medium">{label}</label>
+      <select
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="p-2 rounded border border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800"
+      >
+        <option value="">Select {label}</option>
+        {options.map((o: string) => (
+          <option key={o} value={o.toLowerCase().replace(/ /g, "_")}>
+            {o}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
