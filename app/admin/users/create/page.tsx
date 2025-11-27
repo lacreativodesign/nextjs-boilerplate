@@ -6,14 +6,22 @@ import RequireAuth from "@/components/RequireAuth";
 
 export default function CreateUserPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
-  const [password, setPassword] = useState("");
+
+  const [form, setForm] = useState({
+    displayName: "",
+    email: "",
+    password: "",
+    role: "",
+  });
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
@@ -22,12 +30,7 @@ export default function CreateUserPage() {
       const res = await fetch("/api/admin/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName,
-          email,
-          password,
-          role,
-        }),
+        body: JSON.stringify(form),
       });
 
       const data = await res.json();
@@ -60,50 +63,54 @@ export default function CreateUserPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-neutral-900 p-6 rounded-lg border"
+          className="bg-white dark:bg-neutral-900 border rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <div>
-            <label className="block mb-1">Full Name</label>
+          {/* Full Name */}
+          <div className="flex flex-col">
+            <label className="mb-1">Full Name</label>
             <input
               type="text"
               required
-              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              className="p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={form.displayName}
+              onChange={(e) => handleChange("displayName", e.target.value)}
             />
           </div>
 
-          <div>
-            <label className="block mb-1">Email</label>
+          {/* Email */}
+          <div className="flex flex-col">
+            <label className="mb-1">Email</label>
             <input
               type="email"
               required
-              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              className="p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={form.email}
+              onChange={(e) => handleChange("email", e.target.value)}
             />
           </div>
 
-          <div>
-            <label className="block mb-1">Password</label>
+          {/* Password */}
+          <div className="flex flex-col">
+            <label className="mb-1">Password</label>
             <input
               type="password"
               required
-              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={form.password}
+              onChange={(e) => handleChange("password", e.target.value)}
             />
           </div>
 
-          <div>
-            <label className="block mb-1">Role</label>
+          {/* Role */}
+          <div className="flex flex-col">
+            <label className="mb-1">Role</label>
             <select
               required
-              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              className="p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={form.role}
+              onChange={(e) => handleChange("role", e.target.value)}
             >
-              <option value="">Select a role</option>
+              <option value="">Select role</option>
               <option value="SUPER_ADMIN">SUPER_ADMIN</option>
               <option value="ADMIN">ADMIN</option>
               <option value="SALES_MANAGER">SALES_MANAGER</option>
