@@ -1,31 +1,12 @@
-import { cookies } from "next/headers";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import {
+  getCurrentUser as baseGetCurrentUser,
+  isAdminRole as baseIsAdminRole,
+  isSuperAdmin as baseIsSuperAdmin,
+  CurrentUser as BaseCurrentUser,
+} from "../../_utils";
 
-export type CurrentUser = {
-  uid: string;
-  role: string;
-};
+export type CurrentUser = BaseCurrentUser;
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
-
-  if (!sessionCookie) return null;
-
-  const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-  const snap = await adminDb.collection("users").doc(decoded.uid).get();
-  const data = snap.data() || {};
-
-  return {
-    uid: decoded.uid,
-    role: data.role || "sales",
-  };
-}
-
-export function isAdminRole(role: string) {
-  return role === "admin" || role === "super_admin";
-}
-
-export function isSuperAdmin(role: string) {
-  return role === "super_admin";
-}
+export const getCurrentUser = baseGetCurrentUser;
+export const isAdminRole = baseIsAdminRole;
+export const isSuperAdmin = baseIsSuperAdmin;
