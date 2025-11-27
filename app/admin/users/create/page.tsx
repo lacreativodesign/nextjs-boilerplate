@@ -1,164 +1,132 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function CreateUserPage() {
+  const router = useRouter();
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  async function handleCreateUser(e: any) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    const formData = new FormData(e.target);
-    const payload = Object.fromEntries(formData.entries()) as any;
+    setErrorMsg("");
 
     try {
       const res = await fetch("/api/admin/users/create", {
         method: "POST",
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName,
+          email,
+          password,
+          role,
+        }),
       });
 
-      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
 
-      alert("User created successfully!");
-      e.target.reset();
+      if (!res.ok) {
+        setErrorMsg(data.error || "Failed to create user");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/admin/users");
     } catch (err) {
-      alert("Failed to create user");
+      console.error(err);
+      setErrorMsg("Unexpected error");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <RequireAuth allowedRoles={["SUPER_ADMIN", "ADMIN"]}>
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold mb-6">Create User</h1>
 
-      {/* PAGE TITLE */}
-      <div>
-        <h1 className="text-2xl font-bold mb-2">Create User</h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Add a new team member to the La Creativo ERP system.
-        </p>
-      </div>
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {errorMsg}
+          </div>
+        )}
 
-      {/* FORM */}
-      <form onSubmit={handleCreateUser} className="space-y-6 bg-white dark:bg-[#111113] p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
-
-        {/* FULL NAME */}
-        <FormInput
-          label="Full Name"
-          name="name"
-          placeholder="Enter full name"
-          required
-        />
-
-        {/* EMAIL */}
-        <FormInput
-          label="Email"
-          name="email"
-          type="email"
-          placeholder="Enter email address"
-          required
-        />
-
-        {/* PASSWORD */}
-        <FormInput
-          label="Password"
-          name="password"
-          type="password"
-          placeholder="Set a login password"
-          required
-        />
-
-        {/* ROLE */}
-        <div className="flex flex-col gap-2">
-          <label className="font-semibold text-sm">Role</label>
-          <select
-            name="role"
-            required
-            className="p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0f0f11]"
-          >
-            <option value="SUPER_ADMIN">Super Admin</option>
-            <option value="ADMIN">Admin</option>
-            <option value="SALES_MANAGER">Sales Manager</option>
-            <option value="SALES">Sales</option>
-            <option value="ACCOUNT_MANAGER">Account Manager</option>
-            <option value="PRODUCTION">Production</option>
-            <option value="HR">HR</option>
-            <option value="FINANCE">Finance</option>
-          </select>
-        </div>
-
-        {/* CONTACT INFO */}
-        <FormInput label="Contact Number" name="phone" placeholder="0300-0000000" />
-
-        <FormInput label="CNIC" name="cnic" placeholder="42101-0000000-0" />
-
-        <FormInput label="Address" name="address" placeholder="House, Street, City" />
-
-        {/* DATES */}
-        <FormInput label="Joining Date" name="joiningDate" type="date" required />
-
-        <FormInput label="Date of Birth" name="dob" type="date" />
-
-        {/* SALARY */}
-        <FormInput
-          label="Salary (Rs.)"
-          name="salary"
-          type="number"
-          placeholder="50000"
-        />
-
-        {/* TARGET (USD) */}
-        <FormInput
-          label="Monthly Target (USD $)"
-          name="targetMonthly"
-          type="number"
-          placeholder="1000"
-        />
-
-        {/* SUBMIT */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-neutral-900 p-6 rounded-lg border"
         >
-          {loading ? "Creating user..." : "Create User"}
-        </button>
-      </form>
-    </div>
-  );
-}
+          <div>
+            <label className="block mb-1">Full Name</label>
+            <input
+              type="text"
+              required
+              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
 
-/* --------------------------------------------------------
-   REUSABLE FORM INPUT COMPONENT (with border added)
---------------------------------------------------------- */
-function FormInput({
-  label,
-  name,
-  type = "text",
-  placeholder,
-  required = false,
-}: any) {
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="font-semibold text-sm">{label}</label>
-      <input
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        required={required}
-        className="
-          p-3
-          rounded-lg
-          border border-gray-300 
-          dark:border-gray-700
-          bg-white 
-          dark:bg-[#0f0f11]
-          text-gray-800 
-          dark:text-gray-200
-          outline-none
-        "
-      />
-    </div>
+          <div>
+            <label className="block mb-1">Email</label>
+            <input
+              type="email"
+              required
+              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1">Password</label>
+            <input
+              type="password"
+              required
+              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1">Role</label>
+            <select
+              required
+              className="w-full p-2 rounded border bg-neutral-100 dark:bg-neutral-800"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="">Select a role</option>
+              <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="SALES_MANAGER">SALES_MANAGER</option>
+              <option value="SALES">SALES</option>
+              <option value="ACCOUNT_MANAGER">ACCOUNT_MANAGER</option>
+              <option value="PRODUCTION">PRODUCTION</option>
+              <option value="HR">HR</option>
+              <option value="FINANCE">FINANCE</option>
+              <option value="CLIENT">CLIENT</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? "Creating..." : "Create User"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </RequireAuth>
   );
 }
