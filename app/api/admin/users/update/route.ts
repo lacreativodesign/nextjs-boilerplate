@@ -7,61 +7,69 @@ export async function POST(req: Request) {
     const { uid, ...fields } = body;
 
     if (!uid) {
-      return NextResponse.json(
-        { error: "Missing user ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
     }
 
-    // Extract token from cookie
+    // GET COOKIE
     const cookieHeader = req.headers.get("cookie") || "";
-    const token = cookieHeader
+    const lacCookie = cookieHeader
       .split("; ")
-      .find((c) => c.startsWith("session="))
-      ?.split("=")[1];
+      .find((c) => c.startsWith("lac_session="));
 
-    if (!token) {
+    if (!lacCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify token
+    // PARSE ARRAY FROM COOKIE
+    let token = "";
+    try {
+      const raw = decodeURIComponent(lacCookie.split("=")[1]);
+      const arr = JSON.parse(raw);
+      token = arr[0]; // first token is always the idToken
+    } catch (err) {
+      console.error("COOKIE PARSING ERROR:", err);
+      return NextResponse.json({ error: "Invalid session cookie" }, { status: 401 });
+    }
+
+    // VERIFY TOKEN
     let decoded;
     try {
       decoded = await adminAuth.verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    } catch (err) {
+      console.error("TOKEN VERIFY ERROR:", err);
+      return NextResponse.json(
+        { error: "Invalid session token" },
+        { status: 401 }
+      );
     }
 
-    // Load session user
+    // LOAD SESSION USER
     const sessionSnap = await adminDb.collection("users").doc(decoded.uid).get();
     if (!sessionSnap.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Session user not found" },
+        { status: 401 }
+      );
     }
 
     const sessionUser = sessionSnap.data();
     const isSuperAdmin = sessionUser.role === "super_admin";
     const isAdmin = sessionUser.role === "admin";
 
-    // Permission model (OPTION B)
+    // PERMISSION CHECK (OPTION B)
     if (!isSuperAdmin && !isAdmin) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     }
 
-    // Load target user
+    // LOAD TARGET USER
     const targetSnap = await adminDb.collection("users").doc(uid).get();
     if (!targetSnap.exists) {
-      return NextResponse.json(
-        { error: "Target user not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
     const targetUser = targetSnap.data();
 
-    // Admin cannot modify a super_admin
+    // ADMIN cannot modify super_admin
     if (isAdmin && targetUser.role === "super_admin") {
       return NextResponse.json(
         { error: "Admins cannot modify super_admin accounts" },
@@ -69,7 +77,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Admin cannot assign super_admin role
+    // ADMIN cannot assign super_admin role
     if (isAdmin && fields.role?.toLowerCase() === "super_admin") {
       return NextResponse.json(
         { error: "Admins cannot assign super_admin role" },
@@ -77,7 +85,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Build payload
+    // PREP PAYLOAD
     const payload = {
       name: fields.name || "",
       email: fields.email || "",
@@ -93,12 +101,12 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Update Firestore
+    // UPDATE FIRESTORE
     await adminDb.collection("users").doc(uid).update(payload);
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("UPDATE USER ERROR:", err);
+    console.error("UPDATE ERROR:", err);
     return NextResponse.json(
       { error: "Failed to update user" },
       { status: 500 }
