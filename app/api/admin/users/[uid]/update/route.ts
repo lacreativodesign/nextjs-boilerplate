@@ -1,16 +1,43 @@
 import { NextResponse } from "next/server";
-import getCurrentUser from "@/lib/getCurrentUser";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request, { params }: { params: { uid: string } }) {
   try {
-    const sessionUser = await getCurrentUser();
+    // GET TOKEN FROM COOKIES
+    const token = (await req.headers.get("cookie"))
+      ?.split("; ")
+      ?.find((c) => c.startsWith("session="))
+      ?.split("=")[1];
 
-    // AUTH CHECK
-    if (!sessionUser) {
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // VERIFY TOKEN
+    let decoded;
+    try {
+      decoded = await adminAuth.verifyIdToken(token);
+    } catch (err) {
+      console.error("Invalid token:", err);
+      return NextResponse.json(
+        { error: "Invalid session token" },
+        { status: 401 }
+      );
+    }
+
+    // LOAD SESSION USER FROM FIRESTORE
+    const sessionUserSnap = await adminDb
+      .collection("users")
+      .doc(decoded.uid)
+      .get();
+
+    if (!sessionUserSnap.exists) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    }
+
+    const sessionUser = sessionUserSnap.data();
+
+    // PERMISSION CHECK
     if (
       sessionUser.role !== "super_admin" &&
       sessionUser.role !== "admin"
@@ -21,15 +48,16 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       );
     }
 
+    // TARGET USER ID
     const uid = params.uid;
     const body = await req.json();
 
-    // REQUIRED FIELD CHECK
-    const required = ["name", "email", "role"];
-    for (const f of required) {
+    // REQUIRED FIELDS
+    const requiredFields = ["name", "email", "role"];
+    for (const f of requiredFields) {
       if (!body[f]) {
         return NextResponse.json(
-          { error: `Missing required field: ${f}` },
+          { error: `Missing field: ${f}` },
           { status: 400 }
         );
       }
@@ -51,11 +79,12 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       updatedAt: new Date().toISOString(),
     };
 
+    // UPDATE FIRESTORE
     await adminDb.collection("users").doc(uid).update(payload);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("UPDATE USER ERROR:", err);
+  } catch (err) {
+    console.error("UPDATE ROUTE ERROR:", err);
     return NextResponse.json(
       { error: "Failed to update user." },
       { status: 500 }
