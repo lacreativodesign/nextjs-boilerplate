@@ -3,10 +3,11 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request, { params }: { params: { uid: string } }) {
   try {
-    // GET TOKEN FROM COOKIES
-    const token = (await req.headers.get("cookie"))
-      ?.split("; ")
-      ?.find((c) => c.startsWith("session="))
+    // GET TOKEN FROM COOKIE
+    const cookieHeader = req.headers.get("cookie") || "";
+    const token = cookieHeader
+      .split("; ")
+      .find((c) => c.startsWith("session="))
       ?.split("=")[1];
 
     if (!token) {
@@ -18,57 +19,68 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
     try {
       decoded = await adminAuth.verifyIdToken(token);
     } catch (err) {
-      console.error("Invalid token:", err);
-      return NextResponse.json(
-        { error: "Invalid session token" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid session token" }, { status: 401 });
     }
 
     // LOAD SESSION USER FROM FIRESTORE
-    const sessionUserSnap = await adminDb
-      .collection("users")
-      .doc(decoded.uid)
-      .get();
-
-    if (!sessionUserSnap.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    const sessionSnap = await adminDb.collection("users").doc(decoded.uid).get();
+    if (!sessionSnap.exists) {
+      return NextResponse.json({ error: "Session user not found" }, { status: 401 });
     }
 
-    const sessionUser = sessionUserSnap.data();
+    const sessionUser = sessionSnap.data();
+    const isSuperAdmin = sessionUser.role === "super_admin";
+    const isAdmin = sessionUser.role === "admin";
 
-    // PERMISSION CHECK
-    if (
-      sessionUser.role !== "super_admin" &&
-      sessionUser.role !== "admin"
-    ) {
+    // PERMISSION CHECK (OPTION B)
+    if (!isSuperAdmin && !isAdmin) {
       return NextResponse.json(
         { error: "Permission denied" },
         { status: 403 }
       );
     }
 
-    // TARGET USER ID
     const uid = params.uid;
     const body = await req.json();
 
     // REQUIRED FIELDS
-    const requiredFields = ["name", "email", "role"];
-    for (const f of requiredFields) {
-      if (!body[f]) {
+    if (!body.name || !body.email || !body.role) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const newRole = String(body.role).toLowerCase();
+
+    // OPTION B PERMISSION RULES
+    if (isAdmin) {
+      // Admin CANNOT give anyone super_admin role
+      if (newRole === "super_admin") {
         return NextResponse.json(
-          { error: `Missing field: ${f}` },
-          { status: 400 }
+          { error: "Admins cannot assign super_admin role" },
+          { status: 403 }
+        );
+      }
+
+      // Admin cannot change a super_admin account at all
+      const targetSnap = await adminDb.collection("users").doc(uid).get();
+      const target = targetSnap.data();
+
+      if (target?.role === "super_admin") {
+        return NextResponse.json(
+          { error: "Admins cannot modify super_admin accounts" },
+          { status: 403 }
         );
       }
     }
 
-    // CLEAN PAYLOAD
+    // PAYLOAD
     const payload = {
-      name: body.name || "",
-      email: body.email || "",
+      name: body.name,
+      email: body.email,
       phone: body.phone || "",
-      role: (body.role || "").toLowerCase(),
+      role: newRole,
       department: body.department || "",
       designation: body.designation || "",
       salary: body.salary ? Number(body.salary) : 0,
@@ -79,12 +91,11 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       updatedAt: new Date().toISOString(),
     };
 
-    // UPDATE FIRESTORE
     await adminDb.collection("users").doc(uid).update(payload);
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("UPDATE ROUTE ERROR:", err);
+    console.error("UPDATE USER ERROR:", err);
     return NextResponse.json(
       { error: "Failed to update user." },
       { status: 500 }
