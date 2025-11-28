@@ -419,38 +419,39 @@ function UserDetailsPanel({ user }: { user: UserRecord }) {
       <DetailItem label="Department" value={user.department || "-"} />
       <DetailItem label="Designation" value={user.designation || "-"} />
       <DetailItem
-        label="Monthly Salary"
-        value={
-          typeof user.salary === "number"
-            ? user.salary.toLocaleString("en-PK", {
-                maximumFractionDigits: 0,
-              })
-            : "-"
-        }
-      />
-      <DetailItem
-        label="Monthly Target"
-        value={
-          typeof user.monthlyTarget === "number"
-            ? user.monthlyTarget.toLocaleString("en-PK", {
-                maximumFractionDigits: 0,
-              })
-            : "-"
-        }
-      />
-      <DetailItem
-        label="Commission (%)"
-        value={
-          typeof user.commission === "number"
-            ? `${user.commission}%`
-            : "-"
-        }
-      />
-      <DetailItem label="Joining Date" value={user.joiningDate || "-"} />
-      <DetailItem
-        label="Status"
-        value={user.status ? user.status.toString() : "-"}
-      />
+  label="Monthly Salary (PKR)"
+  value={
+    user.salary
+      ? `Rs. ${Number(user.salary).toLocaleString("en-PK")}`
+      : "-"
+  }
+/>
+
+<DetailItem
+  label="Monthly Target (USD)"
+  value={
+    user.monthlyTarget
+      ? `$${Number(user.monthlyTarget).toLocaleString("en-US")}`
+      : "-"
+  }
+/>
+
+<DetailItem
+  label="Commission (%)"
+  value={
+    user.commission
+      ? `${Number(user.commission)}%`
+      : "-"
+  }
+/>
+<DetailItem
+  label="Joining Date"
+  value={
+    user.joiningDate
+      ? new Date(user.joiningDate).toLocaleDateString()
+      : "-"
+  }
+/>
     </div>
   );
 }
