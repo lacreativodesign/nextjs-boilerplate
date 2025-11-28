@@ -14,29 +14,38 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 text-sm dark:border-neutral-800 dark:bg-neutral-900">
-          {tabs.map((t) => {
-            const isActive = pathname === t.path;
+    <div className="w-full">
+      {/* PAGE TITLE */}
+      <h2 className="text-[26px] font-bold mb-1">User Management</h2>
+      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
+        Manage all users, roles and user activity.
+      </p>
 
-            return (
-              <Link
-                key={t.path}
-                href={t.path}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md transition-colors whitespace-nowrap",
-                  isActive
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-neutral-800"
-                )}
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </div>
+      {/* BLUE PILL TABS */}
+      <div
+        className="flex gap-2 border-b mb-6"
+        style={{ borderColor: "var(--border)" }}
+      >
+        {tabs.map((t) => {
+          const active =
+            pathname === t.path ||
+            (pathname.startsWith(t.path + "/") && t.path !== "/admin/users");
+
+          return (
+            <Link
+              key={t.path}
+              href={t.path}
+              className={clsx(
+                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
+                active
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              )}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
       </div>
 
       {children}
