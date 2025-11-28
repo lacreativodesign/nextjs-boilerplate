@@ -97,19 +97,19 @@ export async function POST(req: Request) {
 
     // 5) BUILD CLEAN PAYLOAD
     const payload = {
-      name: fields.name || "",
-      email: fields.email || "",
-      phone: fields.phone || "",
-      role: newRole,
-      department: fields.department || "",
-      designation: fields.designation || "",
-      salary: fields.salary ? Number(fields.salary) : 0,
-      monthlyTarget: fields.monthlyTarget ? Number(fields.monthlyTarget) : 0,
-      commission: fields.commission ? Number(fields.commission) : 0,
-      joiningDate: fields.joiningDate || "",
-      status: fields.status ? String(fields.status).toLowerCase() : "active",
-      updatedAt: new Date().toISOString(),
-    };
+  name: fields.name ?? targetUser.name ?? "",
+  email: fields.email ?? targetUser.email ?? "",
+  phone: fields.phone ?? targetUser.phone ?? "",
+  role: newRole,
+  department: fields.department ?? targetUser.department ?? "",
+  designation: fields.designation ?? targetUser.designation ?? "",
+  salary: fields.salary ? Number(fields.salary) : (targetUser.salary || 0),
+  monthlyTarget: fields.monthlyTarget ? Number(fields.monthlyTarget) : (targetUser.monthlyTarget || 0),
+  commission: fields.commission ? Number(fields.commission) : (targetUser.commission || 0),
+  joiningDate: fields.joiningDate ?? targetUser.joiningDate ?? "",
+  status: fields.status ? String(fields.status).toLowerCase() : (targetUser.status || "active"),
+  updatedAt: new Date().toISOString(),
+};
 
     // 6) UPDATE FIRESTORE
     await adminDb.collection("users").doc(uid).update(payload);
