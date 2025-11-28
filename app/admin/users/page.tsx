@@ -408,6 +408,17 @@ function UserDetailsPanel({ user }: { user: UserRecord }) {
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 16,
       }}
+      {/* EDIT USER BUTTON */}
+{user?.uid && (
+  <div className="flex justify-end mt-4">
+    <a
+      href={`/admin/users/${user.uid}/edit`}
+      className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors"
+    >
+      Edit User
+    </a>
+  </div>
+)}
     >
       <DetailItem label="Full Name" value={user.name || "-"} />
       <DetailItem label="Email" value={user.email || "-"} />
