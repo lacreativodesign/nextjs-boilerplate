@@ -39,36 +39,23 @@ export default function UsersPage() {
         setLoading(true);
         setError("");
 
-        const res = await fetch("/api/admin/users/list", {
-          method: "GET",
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load users");
-        }
+        const res = await fetch("/api/admin/users/list");
+        if (!res.ok) throw new Error("Failed to load users");
 
         const data = await res.json();
-        if (isMounted && Array.isArray(data)) {
-          setUsers(data);
-        }
+        if (isMounted && Array.isArray(data)) setUsers(data);
       } catch (err: any) {
-        if (isMounted) {
-          setError(err?.message || "Something went wrong while loading users.");
-        }
+        if (isMounted) setError(err.message || "Unexpected error occurred.");
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
     loadUsers();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
+  /** SORTING LOGIC */
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -78,96 +65,73 @@ export default function UsersPage() {
     }
   };
 
-  const getSortValue = (user: UserRecord, key: SortKey) => {
-    if (key === "salary") {
-      const val = user.salary;
-      return typeof val === "number" ? val : parseFloat(val || "0");
-    }
-
+  const getSortValue = (u: UserRecord, key: SortKey) => {
+    if (key === "salary") return Number(u.salary) || 0;
     if (key === "joiningDate") {
-      const d = user.joiningDate ? new Date(user.joiningDate) : null;
+      const d = u.joiningDate ? new Date(u.joiningDate) : null;
       return d && !isNaN(d.getTime()) ? d.getTime() : 0;
     }
-
-    const field =
+    const f =
       key === "name"
-        ? user.name
+        ? u.name
         : key === "email"
-        ? user.email
+        ? u.email
         : key === "role"
-        ? user.role
+        ? u.role
         : key === "department"
-        ? user.department
+        ? u.department
         : "";
-    return (field || "").toString().toLowerCase();
+    return (f || "").toString().toLowerCase();
   };
 
-  const normalizedUsers = users.map((u) => ({
-    ...u,
-    role: u.role ? String(u.role).toLowerCase() : "",
-    status: u.status ? String(u.status).toLowerCase() : "",
-  }));
-
-  const filteredUsers = normalizedUsers.filter((u) => {
+  /** FILTER */
+  const filtered = users.filter((u) => {
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
-
-    const fields = [
-      u.name || "",
-      u.email || "",
-      u.phone || "",
-      u.role || "",
-      u.department || "",
-    ];
-
-    return fields.some((val) =>
-      val.toString().toLowerCase().includes(term)
-    );
+    return [
+      u.name,
+      u.email,
+      u.phone,
+      u.role,
+      u.department,
+    ]
+      .filter(Boolean)
+      .some((v) => v!.toString().toLowerCase().includes(term));
   });
 
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
+  /** SORT */
+  const sorted = [...filtered].sort((a, b) => {
     const aVal = getSortValue(a, sortKey);
     const bVal = getSortValue(b, sortKey);
-
     if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
-  const toggleExpand = (uid: string) => {
+  const toggleExpand = (uid: string) =>
     setExpandedUid((prev) => (prev === uid ? null : uid));
+
+  /** UI HELPERS */
+  const headerCellStyle: React.CSSProperties = {
+    padding: 10,
+    textAlign: "left",
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   };
 
-  const formatDate = (value?: string) => {
-    if (!value) return "-";
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return value;
-    return d.toLocaleDateString();
-  };
-
-  const formatCurrencyPKR = (value?: number | string) => {
-    if (value === undefined || value === null || value === "") return "-";
-    return `Rs. ${Number(value).toLocaleString("en-PK")}`;
-  };
-
-  const formatCurrencyUSD = (value?: number | string) => {
-    if (value === undefined || value === null || value === "") return "-";
-    return `$${Number(value).toLocaleString("en-US")}`;
+  const bodyCellStyle: React.CSSProperties = {
+    padding: 10,
+    fontSize: 13,
+    verticalAlign: "middle",
   };
 
   return (
     <div>
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>All Users</h2>
-
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--sidebar-text)",
-          marginBottom: 16,
-        }}
-      >
-        View every user in the ERP, filter by name, email or department, and inspect
-        details via the View panel.
+      <p style={{ fontSize: 14, color: "var(--sidebar-text)", marginBottom: 16 }}>
+        View all users, search, sort, and expand to view full details.
       </p>
 
       {/* SEARCH BAR */}
@@ -198,15 +162,11 @@ export default function UsersPage() {
         }}
       >
         {loading ? (
-          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-            Loading users...
-          </p>
+          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>Loading users...</p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "var(--danger)" }}>{error}</p>
-        ) : sortedUsers.length === 0 ? (
-          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-            No users found.
-          </p>
+        ) : sorted.length === 0 ? (
+          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>No users found.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
@@ -223,8 +183,8 @@ export default function UsersPage() {
               </thead>
 
               <tbody>
-                {sortedUsers.map((u) => {
-                  const isExpanded = expandedUid === u.uid;
+                {sorted.map((u) => {
+                  const expanded = expandedUid === u.uid;
                   return (
                     <>
                       <tr key={u.uid} style={{ borderBottom: "1px solid var(--border)" }}>
@@ -232,9 +192,10 @@ export default function UsersPage() {
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
                         <td style={bodyCellStyle}>{u.role || "-"}</td>
                         <td style={bodyCellStyle}>{u.department || "-"}</td>
-                        <td style={bodyCellStyle}>{formatCurrencyPKR(u.salary)}</td>
-                        <td style={bodyCellStyle}>{formatDate(u.joiningDate)}</td>
-
+                        <td style={bodyCellStyle}>Rs. {Number(u.salary || 0).toLocaleString()}</td>
+                        <td style={bodyCellStyle}>
+                          {u.joiningDate ? new Date(u.joiningDate).toLocaleDateString() : "-"}
+                        </td>
                         <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                           <button
                             onClick={() => toggleExpand(u.uid)}
@@ -242,19 +203,19 @@ export default function UsersPage() {
                               padding: "6px 14px",
                               borderRadius: 999,
                               border: "1px solid var(--border)",
-                              background: isExpanded ? "var(--primary)" : "var(--input-bg)",
-                              color: isExpanded ? "#fff" : "var(--text)",
+                              background: expanded ? "var(--primary)" : "var(--input-bg)",
+                              color: expanded ? "#fff" : "var(--text)",
                               fontSize: 13,
                               fontWeight: 500,
                               cursor: "pointer",
                             }}
                           >
-                            {isExpanded ? "Hide" : "View"}
+                            {expanded ? "Hide" : "View"}
                           </button>
                         </td>
                       </tr>
 
-                      {isExpanded && (
+                      {expanded && (
                         <tr key={`${u.uid}-details`}>
                           <td colSpan={7} style={{ padding: 0 }}>
                             <div
@@ -281,26 +242,29 @@ export default function UsersPage() {
   );
 }
 
-const headerCellStyle: React.CSSProperties = {
-  padding: 10,
-  textAlign: "left",
-  fontWeight: 600,
-  fontSize: 13,
-  whiteSpace: "nowrap",
-  cursor: "pointer",
-};
-
-const bodyCellStyle: React.CSSProperties = {
-  padding: 10,
-  fontSize: 13,
-  verticalAlign: "middle",
-};
-
-/* -----------------------------
-   USER DETAILS DRAWER (fixed)
-------------------------------*/
+/* -------------------------------------------------
+   SAFE DETAILS PANEL (NO RUNTIME ERRORS POSSIBLE)
+--------------------------------------------------*/
 
 function UserDetailsPanel({ user }: { user: UserRecord }) {
+  const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
+
+  const formatPKR = (v: any) => {
+    const num = Number(v);
+    return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
+  };
+
+  const formatUSD = (v: any) => {
+    const num = Number(v);
+    return isNaN(num) ? "-" : `$${num.toLocaleString("en-US")}`;
+  };
+
+  const formatDate = (v: any) => {
+    if (!v) return "-";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  };
+
   return (
     <div
       style={{
@@ -313,20 +277,20 @@ function UserDetailsPanel({ user }: { user: UserRecord }) {
         gap: 16,
       }}
     >
-      <DetailItem label="Full Name" value={user.name || "-"} />
-      <DetailItem label="Email" value={user.email || "-"} />
-      <DetailItem label="Phone" value={user.phone || "-"} />
-      <DetailItem label="Role" value={user.role || "-"} />
-      <DetailItem label="Department" value={user.department || "-"} />
-      <DetailItem label="Designation" value={user.designation || "-"} />
-      <DetailItem label="Monthly Salary (PKR)" value={formatCurrencyPKR(user.salary)} />
-      <DetailItem label="Monthly Target (USD)" value={formatCurrencyUSD(user.monthlyTarget)} />
-      <DetailItem label="Commission (%)" value={user.commission ? `${user.commission}%` : "-"} />
-      <DetailItem label="Joining Date" value={user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : "-"} />
+      <DetailItem label="Full Name" value={safe(user.name)} />
+      <DetailItem label="Email" value={safe(user.email)} />
+      <DetailItem label="Phone" value={safe(user.phone)} />
+      <DetailItem label="Role" value={safe(user.role)} />
+      <DetailItem label="Department" value={safe(user.department)} />
+      <DetailItem label="Designation" value={safe(user.designation)} />
 
-      {/* EDIT USER BUTTON */}
+      <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
+      <DetailItem label="Monthly Target (USD)" value={formatUSD(user.monthlyTarget)} />
+      <DetailItem label="Commission (%)" value={safe(user.commission ? `${user.commission}%` : "-")} />
+      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
+
       {user.uid && (
-        <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>
+        <div style={{ gridColumn: "1 / -1", textAlign: "right", marginTop: 10 }}>
           <a
             href={`/admin/users/${user.uid}/edit`}
             style={{
