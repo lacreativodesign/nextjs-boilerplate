@@ -8,12 +8,12 @@ type UserRecord = {
   email?: string;
   role?: string;
   department?: string;
-  salary?: number;
+  salary?: number | string;
   joiningDate?: string;
   phone?: string;
   designation?: string;
-  monthlyTarget?: number;
-  commission?: number;
+  monthlyTarget?: number | string;
+  commission?: number | string;
   status?: string;
   [key: string]: any;
 };
@@ -81,7 +81,7 @@ export default function UsersPage() {
   const getSortValue = (user: UserRecord, key: SortKey) => {
     if (key === "salary") {
       const val = user.salary;
-      return typeof val === "number" ? val : 0;
+      return typeof val === "number" ? val : parseFloat(val || "0");
     }
 
     if (key === "joiningDate") {
@@ -145,29 +145,19 @@ export default function UsersPage() {
     return d.toLocaleDateString();
   };
 
-  const formatCurrency = (value?: number) => {
-    if (typeof value !== "number") return "-";
-    try {
-      return value.toLocaleString("en-PK", {
-        maximumFractionDigits: 0,
-      });
-    } catch {
-      return String(value);
-    }
+  const formatCurrencyPKR = (value?: number | string) => {
+    if (value === undefined || value === null || value === "") return "-";
+    return `Rs. ${Number(value).toLocaleString("en-PK")}`;
   };
 
-  const renderSortLabel = (label: string, key: SortKey) => {
-    const isActive = sortKey === key;
-    const arrow = !isActive ? "" : sortDir === "asc" ? " ▲" : " ▼";
-    return label + arrow;
+  const formatCurrencyUSD = (value?: number | string) => {
+    if (value === undefined || value === null || value === "") return "-";
+    return `$${Number(value).toLocaleString("en-US")}`;
   };
 
   return (
     <div>
-      {/* PAGE TITLE */}
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        All Users
-      </h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>All Users</h2>
 
       <p
         style={{
@@ -177,35 +167,25 @@ export default function UsersPage() {
         }}
       >
         View every user in the ERP, filter by name, email or department, and inspect
-        full details via the View panel.
+        details via the View panel.
       </p>
 
-      {/* TOP BAR: SEARCH */}
-      <div
-        style={{
-          marginBottom: 14,
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <input
-            placeholder="Search by name, email, phone, role or department..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "9px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--input-bg)",
-              color: "var(--text)",
-              fontSize: 14,
-            }}
-          />
-        </div>
+      {/* SEARCH BAR */}
+      <div style={{ marginBottom: 14 }}>
+        <input
+          placeholder="Search by name, email, phone, role or department..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "9px 12px",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            background: "var(--input-bg)",
+            color: "var(--text)",
+            fontSize: 14,
+          }}
+        />
       </div>
 
       {/* MAIN CARD */}
@@ -218,131 +198,51 @@ export default function UsersPage() {
         }}
       >
         {loading ? (
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--sidebar-text)",
-            }}
-          >
+          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
             Loading users...
           </p>
         ) : error ? (
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--danger)",
-            }}
-          >
-            {error}
-          </p>
+          <p style={{ fontSize: 14, color: "var(--danger)" }}>{error}</p>
         ) : sortedUsers.length === 0 ? (
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--sidebar-text)",
-            }}
-          >
+          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
             No users found.
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 14,
-              }}
-            >
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid var(--border)",
-                    background: "var(--table-header-bg)",
-                  }}
-                >
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("name")}
-                  >
-                    {renderSortLabel("Name", "name")}
-                  </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("email")}
-                  >
-                    {renderSortLabel("Email", "email")}
-                  </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("role")}
-                  >
-                    {renderSortLabel("Role", "role")}
-                  </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("department")}
-                  >
-                    {renderSortLabel("Department", "department")}
-                  </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("salary")}
-                  >
-                    {renderSortLabel("Salary", "salary")}
-                  </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("joiningDate")}
-                  >
-                    {renderSortLabel("Joining Date", "joiningDate")}
-                  </th>
-                  <th
-                    style={{
-                      ...headerCellStyle,
-                      textAlign: "right",
-                    }}
-                  >
-                    Action
-                  </th>
+                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--table-header-bg)" }}>
+                  <th style={headerCellStyle} onClick={() => handleSort("name")}>Name</th>
+                  <th style={headerCellStyle} onClick={() => handleSort("email")}>Email</th>
+                  <th style={headerCellStyle} onClick={() => handleSort("role")}>Role</th>
+                  <th style={headerCellStyle} onClick={() => handleSort("department")}>Department</th>
+                  <th style={headerCellStyle} onClick={() => handleSort("salary")}>Salary</th>
+                  <th style={headerCellStyle} onClick={() => handleSort("joiningDate")}>Joining Date</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {sortedUsers.map((u) => {
                   const isExpanded = expandedUid === u.uid;
                   return (
                     <>
-                      <tr
-                        key={u.uid}
-                        style={{
-                          borderBottom: "1px solid var(--border)",
-                        }}
-                      >
+                      <tr key={u.uid} style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={bodyCellStyle}>{u.name || "-"}</td>
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
-                        <td style={bodyCellStyle}>
-                          {u.role ? u.role.toString() : "-"}
-                        </td>
+                        <td style={bodyCellStyle}>{u.role || "-"}</td>
                         <td style={bodyCellStyle}>{u.department || "-"}</td>
-                        <td style={bodyCellStyle}>{formatCurrency(u.salary)}</td>
-                        <td style={bodyCellStyle}>
-                          {formatDate(u.joiningDate)}
-                        </td>
-                        <td
-                          style={{
-                            ...bodyCellStyle,
-                            textAlign: "right",
-                          }}
-                        >
+                        <td style={bodyCellStyle}>{formatCurrencyPKR(u.salary)}</td>
+                        <td style={bodyCellStyle}>{formatDate(u.joiningDate)}</td>
+
+                        <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                           <button
-                            type="button"
                             onClick={() => toggleExpand(u.uid)}
                             style={{
                               padding: "6px 14px",
                               borderRadius: 999,
                               border: "1px solid var(--border)",
-                              background: isExpanded
-                                ? "var(--primary)"
-                                : "var(--input-bg)",
+                              background: isExpanded ? "var(--primary)" : "var(--input-bg)",
                               color: isExpanded ? "#fff" : "var(--text)",
                               fontSize: 13,
                               fontWeight: 500,
@@ -386,8 +286,8 @@ const headerCellStyle: React.CSSProperties = {
   textAlign: "left",
   fontWeight: 600,
   fontSize: 13,
-  cursor: "pointer",
   whiteSpace: "nowrap",
+  cursor: "pointer",
 };
 
 const bodyCellStyle: React.CSSProperties = {
@@ -395,6 +295,10 @@ const bodyCellStyle: React.CSSProperties = {
   fontSize: 13,
   verticalAlign: "middle",
 };
+
+/* -----------------------------
+   USER DETAILS DRAWER (fixed)
+------------------------------*/
 
 function UserDetailsPanel({ user }: { user: UserRecord }) {
   return (
@@ -408,61 +312,37 @@ function UserDetailsPanel({ user }: { user: UserRecord }) {
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 16,
       }}
-      {/* EDIT USER BUTTON */}
-{user?.uid && (
-  <div className="flex justify-end mt-4">
-    <a
-      href={`/admin/users/${user.uid}/edit`}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors"
-    >
-      Edit User
-    </a>
-  </div>
-)}
     >
       <DetailItem label="Full Name" value={user.name || "-"} />
       <DetailItem label="Email" value={user.email || "-"} />
       <DetailItem label="Phone" value={user.phone || "-"} />
-      <DetailItem
-        label="Role"
-        value={user.role ? user.role.toString() : "-"}
-      />
+      <DetailItem label="Role" value={user.role || "-"} />
       <DetailItem label="Department" value={user.department || "-"} />
       <DetailItem label="Designation" value={user.designation || "-"} />
-      <DetailItem
-  label="Monthly Salary (PKR)"
-  value={
-    user.salary
-      ? `Rs. ${Number(user.salary).toLocaleString("en-PK")}`
-      : "-"
-  }
-/>
+      <DetailItem label="Monthly Salary (PKR)" value={formatCurrencyPKR(user.salary)} />
+      <DetailItem label="Monthly Target (USD)" value={formatCurrencyUSD(user.monthlyTarget)} />
+      <DetailItem label="Commission (%)" value={user.commission ? `${user.commission}%` : "-"} />
+      <DetailItem label="Joining Date" value={user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : "-"} />
 
-<DetailItem
-  label="Monthly Target (USD)"
-  value={
-    user.monthlyTarget
-      ? `$${Number(user.monthlyTarget).toLocaleString("en-US")}`
-      : "-"
-  }
-/>
-
-<DetailItem
-  label="Commission (%)"
-  value={
-    user.commission
-      ? `${Number(user.commission)}%`
-      : "-"
-  }
-/>
-<DetailItem
-  label="Joining Date"
-  value={
-    user.joiningDate
-      ? new Date(user.joiningDate).toLocaleDateString()
-      : "-"
-  }
-/>
+      {/* EDIT USER BUTTON */}
+      {user.uid && (
+        <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>
+          <a
+            href={`/admin/users/${user.uid}/edit`}
+            style={{
+              padding: "8px 16px",
+              background: "var(--primary)",
+              color: "#fff",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Edit User
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -492,4 +372,4 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   );
-    }
+}
