@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/getCurrentUser";
+import getCurrentUser from "@/lib/getCurrentUser";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request, { params }: { params: { uid: string } }) {
@@ -24,12 +24,12 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
     const uid = params.uid;
     const body = await req.json();
 
-    // REQUIRED VALIDATION
-    const requiredFields = ["name", "email", "role"];
-    for (const field of requiredFields) {
-      if (!body[field]) {
+    // REQUIRED FIELD CHECK
+    const required = ["name", "email", "role"];
+    for (const f of required) {
+      if (!body[f]) {
         return NextResponse.json(
-          { error: `Missing required field: ${field}` },
+          { error: `Missing required field: ${f}` },
           { status: 400 }
         );
       }
