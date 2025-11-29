@@ -14,19 +14,18 @@ const ROLE_OPTIONS = [
   { value: "hr", label: "HR" },
   { value: "finance", label: "Finance" },
   { value: "production", label: "Production" },
-  { value: "client", label: "Client" },
 ];
 
 const DEPARTMENTS = [
-  "management",
   "sales",
-  "marketing",
   "am",
+  "production",
   "hr",
   "finance",
-  "production",
-  "support",
+  "admin",
 ];
+
+type StatusApi = StatusType | string | undefined;
 
 type UserRecord = {
   uid: string;
@@ -37,11 +36,12 @@ type UserRecord = {
   department?: string;
   designation?: string;
   joiningDate?: string;
-  salary?: number;
-  monthlyTarget?: number;
-  commission?: number;
-  status?: string;
-  [key: string]: any;
+  salary?: number | string;
+  monthlyTarget?: number | string;
+  commission?: number | string;
+  status?: StatusApi;
+  cnic?: string;
+  dob?: string;
 };
 
 export default function EditUserPage() {
@@ -49,11 +49,12 @@ export default function EditUserPage() {
   const router = useRouter();
   const uid = params?.uid as string | undefined;
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string>("");
-  const [successMsg, setSuccessMsg] = useState<string>("");
+
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,6 +64,9 @@ export default function EditUserPage() {
   const [department, setDepartment] = useState("sales");
   const [designation, setDesignation] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
+
+  const [cnic, setCnic] = useState("");
+  const [dob, setDob] = useState("");
 
   const [salary, setSalary] = useState("");
   const [monthlyTarget, setMonthlyTarget] = useState("");
@@ -86,7 +90,7 @@ export default function EditUserPage() {
     async function loadUser() {
       try {
         setLoading(true);
-        setErrorMsg("");
+
         const res = await fetch("/api/admin/users/get", {
           method: "POST",
           headers: {
@@ -101,7 +105,6 @@ export default function EditUserPage() {
         }
 
         const data: UserRecord = await res.json();
-
         if (!isMounted) return;
 
         setName(data.name || "");
@@ -110,12 +113,12 @@ export default function EditUserPage() {
         setRole(data.role ? String(data.role).toLowerCase() : "sales");
         setPhone(data.phone || "");
         setDepartment(
-          data.department
-            ? String(data.department).toLowerCase()
-            : "sales"
+          data.department ? String(data.department).toLowerCase() : "sales"
         );
         setDesignation(data.designation || "");
         setJoiningDate(data.joiningDate || "");
+        setCnic(data.cnic || "");
+        setDob(data.dob || "");
 
         setSalary(
           typeof data.salary === "number"
@@ -147,12 +150,11 @@ export default function EditUserPage() {
         setInitialLoaded(true);
       } catch (err: any) {
         if (isMounted) {
-          setErrorMsg(err?.message || "Something went wrong while loading user.");
+          console.error("Error loading user:", err);
+          setErrorMsg(err?.message || "Failed to load user.");
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -194,6 +196,9 @@ export default function EditUserPage() {
           department,
           designation: designation.trim(),
           joiningDate: joiningDate || "",
+          cnic: cnic.trim(),
+          dob: dob || "",
+
           salary: salary.trim(),
           monthlyTarget: monthlyTarget.trim(),
           commission: commission.trim(),
@@ -209,12 +214,9 @@ export default function EditUserPage() {
       }
 
       setSuccessMsg("User updated successfully.");
-      // Optional: redirect after short delay
-      setTimeout(() => {
-        router.push("/admin/users");
-      }, 1000);
     } catch (err: any) {
-      setErrorMsg(err?.message || "Something went wrong.");
+      console.error("Error updating user:", err);
+      setErrorMsg(err?.message || "Failed to update user.");
     } finally {
       setSaving(false);
     }
@@ -243,27 +245,21 @@ export default function EditUserPage() {
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
         Edit User
       </h2>
-
       <p
         style={{
           fontSize: 14,
           color: "var(--sidebar-text)",
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
-        Update user details, role, department and payroll configuration.
+        Update user details, role, department and payroll information.
       </p>
 
       {loading && !initialLoaded ? (
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--sidebar-text)",
-          }}
-        >
+        <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
           Loading user details...
         </p>
-      ) : errorMsg && !initialLoaded ? (
+      ) : errorMsg ? (
         <p
           style={{
             fontSize: 14,
@@ -336,6 +332,26 @@ export default function EditUserPage() {
                 />
               </FieldWrapper>
 
+              {/* CNIC */}
+              <FieldWrapper label="CNIC Number">
+                <input
+                  value={cnic}
+                  onChange={(e) => setCnic(e.target.value)}
+                  placeholder="42101-1234567-1"
+                  style={inputStyle}
+                />
+              </FieldWrapper>
+
+              {/* Date of Birth */}
+              <FieldWrapper label="Date of Birth (D.O.B.)">
+                <input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  style={inputStyle}
+                />
+              </FieldWrapper>
+
               {/* Status */}
               <FieldWrapper label="Status">
                 <select
@@ -373,7 +389,7 @@ export default function EditUserPage() {
               }}
             >
               {/* Role */}
-              <FieldWrapper label="Role" required>
+              <FieldWrapper label="Role">
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
@@ -469,65 +485,43 @@ export default function EditUserPage() {
                 <input
                   value={commission}
                   onChange={(e) => setCommission(e.target.value)}
-                  placeholder="e.g. 10"
+                  placeholder="e.g. 5"
                   style={inputStyle}
                 />
               </FieldWrapper>
             </div>
           </div>
 
-          {/* ACTIONS + MESSAGES */}
-          <div
+          <button
+            type="submit"
+            disabled={saving}
             style={{
-              marginTop: 8,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
+              alignSelf: "flex-start",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              background: saving ? "var(--border)" : "var(--primary)",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.7 : 1,
             }}
           >
-            <button
-              type="submit"
-              disabled={saving}
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+
+          {successMsg && (
+            <p
               style={{
-                alignSelf: "flex-start",
-                padding: "10px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: saving ? "var(--border)" : "var(--primary)",
-                color: "#fff",
-                fontWeight: 600,
                 fontSize: 14,
-                cursor: saving ? "default" : "pointer",
-                opacity: saving ? 0.7 : 1,
+                color: "var(--success)",
+                marginTop: 8,
               }}
             >
-              {saving ? "Saving changes..." : "Save Changes"}
-            </button>
-
-            {successMsg && (
-              <p
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "var(--success)",
-                }}
-              >
-                {successMsg}
-              </p>
-            )}
-
-            {errorMsg && (
-              <p
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "var(--danger)",
-                }}
-              >
-                {errorMsg}
-              </p>
-            )}
-          </div>
+              {successMsg}
+            </p>
+          )}
         </form>
       )}
     </div>
@@ -547,9 +541,11 @@ function FieldWrapper({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label
         style={{
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 500,
           color: "var(--sidebar-text)",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
         }}
       >
         {label}
