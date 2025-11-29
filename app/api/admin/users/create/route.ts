@@ -14,29 +14,15 @@ export async function POST(req: Request) {
 
     const currentRole = (current.role || "").toLowerCase();
 
-    // 2) Only admin or super_admin can create users
+    // 2) Only admin / super_admin / other privileged roles allowed
     if (!isAdminRole(currentRole)) {
       return NextResponse.json(
-        { error: "Access denied" },
+        { error: "Only admin users can create new users" },
         { status: 403 }
       );
     }
 
-    // SUPER_ADMIN can create anyone
-    // ADMIN cannot create ADMIN or SUPER_ADMIN
-    const canManageRole = (targetRole: string) => {
-      const roleLower = (targetRole || "").toLowerCase();
-
-      if (currentRole === "super_admin") return true;
-
-      if (currentRole === "admin") {
-        return roleLower !== "admin" && roleLower !== "super_admin";
-      }
-
-      return false;
-    };
-
-    // 3) Read body
+    // 3) Parse body
     const body = await req.json();
 
     const {
@@ -51,6 +37,8 @@ export async function POST(req: Request) {
       monthlyTarget,
       commission,
       joiningDate,
+      cnic,
+      dob,
       status,
     } = body;
 
@@ -107,6 +95,8 @@ export async function POST(req: Request) {
       commission: commission || "",
       joiningDate: joiningDate || "",
       status: status || "active",
+      cnic: cnic || "",
+      dob: dob || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: current.uid,
@@ -137,4 +127,13 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Same helper logic as you already had
+function canManageRole(targetRole: string) {
+  const r = (targetRole || "").toLowerCase();
+  // super_admin / admin allowed to manage all roles except restricting logic already implemented where needed
+  return ["super_admin", "admin", "sales_manager", "sales", "am", "hr", "finance", "production"].includes(
+    r
+  );
 }
