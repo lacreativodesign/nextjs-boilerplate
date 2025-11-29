@@ -1,3 +1,98 @@
-html,body,#__next{height:100%}
-*{box-sizing:border-box}
-a{color:#0ea5e9;text-decoration:none}
+/* === LA CREATIVO ERP – CORE THEME TOKENS === */
+
+:root {
+  /* Backgrounds */
+  --bg: #020617;                /* overall app background */
+  --bg-elevated: #020617;
+  --card-bg: #020617;
+  --card-bg-alt: #020617;
+
+  /* Text */
+  --text: #f9fafb;
+  --sidebar-text: #9ca3af;
+
+  /* Borders & surfaces */
+  --border: rgba(148, 163, 184, 0.35);
+  --input-bg: #020617;
+  --input-bg-disabled: #020617;
+  --table-header-bg: #020617;
+
+  /* Brand / States */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: rgba(37, 99, 235, 0.12);
+
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.16);
+
+  --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.16);
+}
+
+/* LIGHT THEME OVERRIDES */
+[data-theme="light"] {
+  --bg: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --card-bg: #ffffff;
+  --card-bg-alt: #f9fafb;
+
+  --text: #0f172a;
+  --sidebar-text: #6b7280;
+
+  --border: rgba(15, 23, 42, 0.08);
+  --input-bg: #f9fafb;
+  --input-bg-disabled: #e5e7eb;
+  --table-header-bg: #f3f4f6;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: rgba(37, 99, 235, 0.08);
+
+  --danger: #b91c1c;
+  --danger-soft: rgba(185, 28, 28, 0.12);
+
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.12);
+}
+
+/* OPTIONAL: base button utility if you want to reuse later */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
