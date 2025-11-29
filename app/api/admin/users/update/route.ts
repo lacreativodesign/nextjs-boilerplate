@@ -21,43 +21,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sessionCookie = decodeURIComponent(lacCookie.split("=", 2)[1] || "");
-
-    if (!sessionCookie) {
-      return NextResponse.json({ error: "Invalid session cookie" }, { status: 401 });
-    }
-
-    // 2) VERIFY SESSION COOKIE (this is how session-login created it)
-    let decoded;
+    const lacValue = decodeURIComponent(lacCookie.split("=")[1] || "");
+    let decoded: any = null;
     try {
-      decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    } catch (err) {
-      console.error("verifySessionCookie error:", err);
-      return NextResponse.json({ error: "Invalid session cookie" }, { status: 401 });
+      decoded = JSON.parse(lacValue);
+    } catch {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const sessionUid = decoded.uid as string;
+    const currentUid = decoded?.uid;
+    const currentRole = (decoded?.role || "").toLowerCase();
 
-    // 3) LOAD SESSION USER FROM FIRESTORE
-    const sessionSnap = await adminDb.collection("users").doc(sessionUid).get();
-    if (!sessionSnap.exists) {
-      return NextResponse.json(
-        { error: "Session user not found" },
-        { status: 401 }
-      );
+    if (!currentUid || !currentRole) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const sessionUser = sessionSnap.data() || {};
-    const sessionRole = (sessionUser.role || "").toLowerCase();
+    const isSuperAdmin = currentRole === "super_admin";
+    const isAdmin = currentRole === "admin";
 
-    const isSuperAdmin = sessionRole === "super_admin";
-    const isAdmin = sessionRole === "admin";
-
-    // 🔐 OPTION B PERMISSIONS:
-    // super_admin → full access
-    // admin       → full access EXCEPT:
-    //               - cannot edit super_admin accounts
-    //               - cannot assign super_admin role
     if (!isSuperAdmin && !isAdmin) {
       return NextResponse.json(
         { error: "Permission denied" },
@@ -69,26 +50,29 @@ export async function POST(req: Request) {
     const targetSnap = await adminDb.collection("users").doc(uid).get();
     if (!targetSnap.exists) {
       return NextResponse.json(
-        { error: "Target user not found" },
+        { error: "User not found" },
         { status: 404 }
       );
     }
-
     const targetUser = targetSnap.data() || {};
+
     const targetRole = (targetUser.role || "").toLowerCase();
 
-    // Admin cannot touch super_admin accounts
-    if (isAdmin && targetRole === "super_admin") {
-      return NextResponse.json(
-        { error: "Admins cannot modify super_admin accounts" },
-        { status: 403 }
-      );
+    // Admin cannot edit super_admin user or assign super_admin
+    if (!isSuperAdmin) {
+      if (targetRole === "super_admin") {
+        return NextResponse.json(
+          { error: "Admins cannot edit super_admin accounts" },
+          { status: 403 }
+        );
+      }
     }
 
-    const newRole = fields.role ? String(fields.role).toLowerCase() : targetRole;
+    // 5) DETERMINE NEW ROLE
+    const requestedRole = fields.role || targetUser.role || "sales";
+    const newRole = String(requestedRole).toLowerCase();
 
-    // Admin cannot assign super_admin role
-    if (isAdmin && newRole === "super_admin") {
+    if (!isSuperAdmin && newRole === "super_admin") {
       return NextResponse.json(
         { error: "Admins cannot assign super_admin role" },
         { status: 403 }
@@ -97,22 +81,45 @@ export async function POST(req: Request) {
 
     // 5) BUILD CLEAN PAYLOAD
     const payload = {
-  name: fields.name ?? targetUser.name ?? "",
-  email: fields.email ?? targetUser.email ?? "",
-  phone: fields.phone ?? targetUser.phone ?? "",
-  role: newRole,
-  department: fields.department ?? targetUser.department ?? "",
-  designation: fields.designation ?? targetUser.designation ?? "",
-  salary: fields.salary ? Number(fields.salary) : (targetUser.salary || 0),
-  monthlyTarget: fields.monthlyTarget ? Number(fields.monthlyTarget) : (targetUser.monthlyTarget || 0),
-  commission: fields.commission ? Number(fields.commission) : (targetUser.commission || 0),
-  joiningDate: fields.joiningDate ?? targetUser.joiningDate ?? "",
-  status: fields.status ? String(fields.status).toLowerCase() : (targetUser.status || "active"),
-  updatedAt: new Date().toISOString(),
-};
+      name: fields.name ?? targetUser.name ?? "",
+      email: fields.email ?? targetUser.email ?? "",
+      phone: fields.phone ?? targetUser.phone ?? "",
+      role: newRole,
+      department: fields.department ?? targetUser.department ?? "",
+      designation: fields.designation ?? targetUser.designation ?? "",
+      salary: fields.salary
+        ? Number(fields.salary)
+        : targetUser.salary || 0,
+      monthlyTarget: fields.monthlyTarget
+        ? Number(fields.monthlyTarget)
+        : targetUser.monthlyTarget || 0,
+      commission: fields.commission
+        ? Number(fields.commission)
+        : targetUser.commission || 0,
+      joiningDate:
+        fields.joiningDate ?? targetUser.joiningDate ?? "",
+      cnic: fields.cnic ?? targetUser.cnic ?? "",
+      dob: fields.dob ?? targetUser.dob ?? "",
+      status: fields.status
+        ? String(fields.status).toLowerCase()
+        : targetUser.status || "active",
+      updatedAt: new Date().toISOString(),
+    };
 
     // 6) UPDATE FIRESTORE
     await adminDb.collection("users").doc(uid).update(payload);
+
+    // 7) SYNC AUTH DISABLED / ROLE IF NEEDED
+    try {
+      await adminAuth.updateUser(uid, {
+        disabled: payload.status === "disabled",
+        displayName: payload.name,
+      });
+      await adminAuth.setCustomUserClaims(uid, { role: newRole });
+    } catch (err) {
+      console.error("Failed to sync auth user:", err);
+      // Don't fail whole request for this – we log it.
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
