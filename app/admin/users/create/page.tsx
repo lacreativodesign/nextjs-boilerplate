@@ -14,18 +14,15 @@ const ROLE_OPTIONS = [
   { value: "hr", label: "HR" },
   { value: "finance", label: "Finance" },
   { value: "production", label: "Production" },
-  { value: "client", label: "Client" },
 ];
 
 const DEPARTMENTS = [
-  "management",
   "sales",
-  "marketing",
   "am",
+  "production",
   "hr",
   "finance",
-  "production",
-  "support",
+  "admin",
 ];
 
 export default function CreateUserPage() {
@@ -40,6 +37,9 @@ export default function CreateUserPage() {
   const [designation, setDesignation] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
 
+  const [cnic, setCnic] = useState("");
+  const [dob, setDob] = useState("");
+
   const [salary, setSalary] = useState("");
   const [monthlyTarget, setMonthlyTarget] = useState("");
   const [commission, setCommission] = useState("");
@@ -50,8 +50,8 @@ export default function CreateUserPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const resetMessages = () => {
-    setSuccessMsg("");
     setErrorMsg("");
+    setSuccessMsg("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,6 +81,8 @@ export default function CreateUserPage() {
           department,
           designation: designation.trim(),
           joiningDate: joiningDate || "",
+          cnic: cnic.trim(),
+          dob: dob || "",
 
           salary: salary.trim(),
           monthlyTarget: monthlyTarget.trim(),
@@ -98,21 +100,27 @@ export default function CreateUserPage() {
       }
 
       setSuccessMsg("User created successfully.");
+
       // Clear fields but keep sensible defaults
       setName("");
       setEmail("");
       setPassword("");
+      setShowPassword(false);
+
       setPhone("");
       setDepartment("sales");
       setDesignation("");
       setJoiningDate("");
+      setCnic("");
+      setDob("");
+
       setSalary("");
       setMonthlyTarget("");
       setCommission("");
-      setRole("sales");
       setStatus("active");
     } catch (err: any) {
-      setErrorMsg(err?.message || "Something went wrong.");
+      console.error("Error creating user:", err);
+      setErrorMsg(err?.message || "Failed to create user.");
     } finally {
       setLoading(false);
     }
@@ -120,21 +128,43 @@ export default function CreateUserPage() {
 
   return (
     <div>
-      {/* PAGE TITLE */}
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        Create User
+        Create New User
       </h2>
-
       <p
         style={{
           fontSize: 14,
           color: "var(--sidebar-text)",
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
-        Add a new team member to the LA CREATIVO ERP and assign role, department and
-        payroll settings.
+        Add a new team member to the LA CREATIVO ERP and assign role,
+        department and payroll settings.
       </p>
+
+      {successMsg && (
+        <p
+          style={{
+            fontSize: 14,
+            color: "var(--success)",
+            marginBottom: 10,
+          }}
+        >
+          {successMsg}
+        </p>
+      )}
+
+      {errorMsg && (
+        <p
+          style={{
+            fontSize: 14,
+            color: "var(--danger)",
+            marginBottom: 10,
+          }}
+        >
+          {errorMsg}
+        </p>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -191,6 +221,26 @@ export default function CreateUserPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+92 300 0000000"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* CNIC */}
+            <FieldWrapper label="CNIC Number">
+              <input
+                value={cnic}
+                onChange={(e) => setCnic(e.target.value)}
+                placeholder="42101-1234567-1"
+                style={inputStyle}
+              />
+            </FieldWrapper>
+
+            {/* Date of Birth */}
+            <FieldWrapper label="Date of Birth (D.O.B.)">
+              <input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
                 style={inputStyle}
               />
             </FieldWrapper>
@@ -363,60 +413,31 @@ export default function CreateUserPage() {
               <input
                 value={commission}
                 onChange={(e) => setCommission(e.target.value)}
-                placeholder="e.g. 10"
+                placeholder="e.g. 5"
                 style={inputStyle}
               />
             </FieldWrapper>
           </div>
         </div>
 
-        {/* ACTIONS + MESSAGES */}
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              alignSelf: "flex-start",
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: loading ? "var(--border)" : "var(--primary)",
-              color: "#fff",
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: loading ? "default" : "pointer",
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? "Creating user..." : "Create User"}
-          </button>
-
-          {successMsg && (
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "var(--success)",
-              }}
-            >
-              {successMsg}
-            </p>
-          )}
-
-          {errorMsg && (
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "var(--danger)",
-              }}
-            >
-              {errorMsg}
-            </p>
-          )}
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            alignSelf: "flex-start",
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: loading ? "var(--border)" : "var(--primary)",
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: loading ? "default" : "pointer",
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? "Creating..." : "Create User"}
+        </button>
       </form>
     </div>
   );
@@ -435,9 +456,11 @@ function FieldWrapper({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label
         style={{
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 500,
           color: "var(--sidebar-text)",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
         }}
       >
         {label}
