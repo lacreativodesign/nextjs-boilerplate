@@ -19,16 +19,12 @@ type UserRecord = {
   status?: string;
   createdAt?: string;
   updatedAt?: string;
+  cnic?: string;
+  dob?: string;
   [key: string]: any;
 };
 
-type SortKey =
-  | "name"
-  | "email"
-  | "phone"
-  | "role"
-  | "department"
-  | "createdAt";
+type SortKey = "name" | "email" | "phone" | "department";
 type SortDir = "asc" | "desc";
 
 export default function UsersPage() {
@@ -117,11 +113,6 @@ export default function UsersPage() {
   };
 
   const getSortValue = (u: UserRecord, key: SortKey) => {
-    if (key === "createdAt") {
-      const d = u.createdAt ? new Date(u.createdAt) : null;
-      return d && !isNaN(d.getTime()) ? d.getTime() : 0;
-    }
-
     const f =
       key === "name"
         ? u.name
@@ -129,8 +120,6 @@ export default function UsersPage() {
         ? u.email
         : key === "phone"
         ? u.phone
-        : key === "role"
-        ? u.role
         : key === "department"
         ? u.department
         : "";
@@ -142,7 +131,7 @@ export default function UsersPage() {
   const filtered = users.filter((u) => {
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
-    return [u.name, u.email, u.phone, u.role, u.department]
+    return [u.name, u.email, u.phone, u.department]
       .filter(Boolean)
       .some((v) => v!.toString().toLowerCase().includes(term));
   });
@@ -188,7 +177,7 @@ export default function UsersPage() {
       {/* SEARCH BAR */}
       <div style={{ marginBottom: 14 }}>
         <input
-          placeholder="Search by name, email, phone, role or department..."
+          placeholder="Search by name, email, phone or department..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -239,42 +228,34 @@ export default function UsersPage() {
                   <th style={headerCellStyle} onClick={() => handleSort("phone")}>
                     Phone {sortKey === "phone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("role")}>
-                    Role {sortKey === "role" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </th>
                   <th style={headerCellStyle} onClick={() => handleSort("department")}>
                     Department{" "}
                     {sortKey === "department" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("createdAt")}>
-                    Joining Date{" "}
-                    {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((u) => {
+                {sorted.map((u, index) => {
                   const expanded = expandedUid === u.uid;
+                  const isStriped = index % 2 === 1;
+
                   return (
                     <>
                       <tr
                         key={u.uid}
                         style={{
                           borderBottom: "1px solid var(--border)",
+                          background: isStriped
+                            ? "var(--card-bg-alt)"
+                            : "transparent",
                           transition: "background 0.15s ease",
                         }}
                       >
                         <td style={bodyCellStyle}>{u.name || "-"}</td>
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
                         <td style={bodyCellStyle}>{u.phone || "-"}</td>
-                        <td style={bodyCellStyle}>{u.role || "-"}</td>
                         <td style={bodyCellStyle}>{u.department || "-"}</td>
-                        <td style={bodyCellStyle}>
-                          {u.createdAt
-                            ? new Date(u.createdAt).toLocaleDateString()
-                            : "-"}
-                        </td>
                         <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                           <button
                             type="button"
@@ -301,7 +282,7 @@ export default function UsersPage() {
 
                       {expanded && (
                         <tr key={`${u.uid}-details`}>
-                          <td colSpan={7} style={{ padding: 0 }}>
+                          <td colSpan={5} style={{ padding: 0 }}>
                             <div
                               style={{
                                 padding: 20,
@@ -378,14 +359,13 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
         gap: 20,
       }}
     >
-      {/* You and I can later decide which fields stay here.
-          For now, we keep everything visible & clear. */}
-      <DetailItem label="Full Name" value={safe(user.name)} />
-      <DetailItem label="Email" value={safe(user.email)} />
-      <DetailItem label="Phone" value={safe(user.phone)} />
-      <DetailItem label="Role" value={safe(user.role)} />
-      <DetailItem label="Department" value={safe(user.department)} />
+      {/* ONLY detailed fields here – no basic table fields */}
       <DetailItem label="Designation" value={safe(user.designation)} />
+      <DetailItem label="Role" value={safe(user.role)} />
+      <DetailItem label="Status" value={safe(user.status)} />
+      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
+      <DetailItem label="CNIC" value={safe(user.cnic)} />
+      <DetailItem label="D.O.B." value={formatDate(user.dob)} />
       <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
       <DetailItem
         label="Monthly Target (USD)"
@@ -399,10 +379,6 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
             : "-"
         }
       />
-      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
-      <DetailItem label="Status" value={safe(user.status)} />
-      <DetailItem label="Created At" value={formatDate(user.createdAt)} />
-      <DetailItem label="Updated At" value={formatDate(user.updatedAt)} />
 
       <div
         style={{
@@ -484,4 +460,4 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   );
-    }
+      }
