@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import type React from "react";
 
 type StatusType = "active" | "disabled";
 
@@ -16,14 +17,7 @@ const ROLE_OPTIONS = [
   { value: "production", label: "Production" },
 ];
 
-const DEPARTMENTS = [
-  "sales",
-  "am",
-  "production",
-  "hr",
-  "finance",
-  "admin",
-];
+const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
 
 type StatusApi = StatusType | string | undefined;
 
@@ -46,7 +40,6 @@ type UserRecord = {
 
 export default function EditUserPage() {
   const params = useParams();
-  const router = useRouter();
   const uid = params?.uid as string | undefined;
 
   const [loading, setLoading] = useState(true);
@@ -496,16 +489,11 @@ export default function EditUserPage() {
             type="submit"
             disabled={saving}
             style={{
-              alignSelf: "flex-start",
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
+              ...primaryButtonStyle,
               background: saving ? "var(--border)" : "var(--primary)",
-              color: "#fff",
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: saving ? "default" : "pointer",
               opacity: saving ? 0.7 : 1,
+              cursor: saving ? "default" : "pointer",
+              marginTop: 4,
             }}
           >
             {saving ? "Saving..." : "Save Changes"}
@@ -574,4 +562,16 @@ const selectStyle: React.CSSProperties = {
   background: "var(--input-bg)",
   color: "var(--text)",
   fontSize: 14,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: "8px 18px",
+  borderRadius: 999,
+  border: "none",
+  background: "var(--primary)",
+  color: "#fff",
+  fontWeight: 600,
+  fontSize: 14,
+  cursor: "pointer",
+  transition: "background 0.15s ease, opacity 0.15s ease",
 };
