@@ -95,7 +95,7 @@ export default function CreateUserPage() {
 
       setSuccessMsg("User created successfully.");
 
-      // Clear fields but keep sensible defaults
+      // Reset but keep sensible defaults
       setName("");
       setEmail("");
       setPassword("");
@@ -128,7 +128,7 @@ export default function CreateUserPage() {
       <p
         style={{
           fontSize: 14,
-          color: "var(--sidebar-text)",
+          color: "var(--mut, #94A3B8)",
           marginBottom: 16,
         }}
       >
@@ -140,7 +140,7 @@ export default function CreateUserPage() {
         <p
           style={{
             fontSize: 14,
-            color: "var(--success)",
+            color: "var(--success, #22C55E)",
             marginBottom: 10,
           }}
         >
@@ -152,7 +152,7 @@ export default function CreateUserPage() {
         <p
           style={{
             fontSize: 14,
-            color: "var(--danger)",
+            color: "var(--danger, #EF4444)",
             marginBottom: 10,
           }}
         >
@@ -168,12 +168,12 @@ export default function CreateUserPage() {
           gap: 16,
         }}
       >
-        {/* PERSONAL INFO CARD */}
+        {/* PERSONAL INFORMATION CARD */}
         <div
           style={{
-            background: "var(--card-bg)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
+            background: "var(--card, #0D1A33)",
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,.35)",
             padding: 20,
           }}
         >
@@ -280,7 +280,7 @@ export default function CreateUserPage() {
                     border: "none",
                     cursor: "pointer",
                     padding: 0,
-                    color: "var(--sidebar-text)",
+                    color: "var(--mut, #94A3B8)",
                   }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -293,9 +293,9 @@ export default function CreateUserPage() {
         {/* JOB DETAILS CARD */}
         <div
           style={{
-            background: "var(--card-bg)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
+            background: "var(--card, #0D1A33)",
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,.35)",
             padding: 20,
           }}
         >
@@ -365,9 +365,9 @@ export default function CreateUserPage() {
         {/* PAYROLL CARD */}
         <div
           style={{
-            background: "var(--card-bg)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
+            background: "var(--card, #0D1A33)",
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,.35)",
             padding: 20,
           }}
         >
@@ -415,21 +415,19 @@ export default function CreateUserPage() {
         </div>
 
         <button
-  type="submit"
-  disabled={loading}
-  className="btn"
-  style={{
-    marginTop: 4,
-    borderRadius: 999,
-    background: loading
-      ? "rgba(148,163,184,.5)"
-      : "var(--accent, #6366F1)",
-    opacity: loading ? 0.7 : 1,
-    cursor: loading ? "default" : "pointer",
-  }}
->
-  {loading ? "Creating..." : "Create User"}
-</button>
+          type="submit"
+          disabled={loading}
+          className="btn"
+          style={{
+            marginTop: 4,
+            borderRadius: 999,
+            background: loading
+              ? "rgba(148,163,184,.5)"
+              : "var(--accent, #6366F1)",
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "default" : "pointer",
+          }}
+        >
           {loading ? "Creating..." : "Create User"}
         </button>
       </form>
@@ -452,14 +450,16 @@ function FieldWrapper({
         style={{
           fontSize: 12,
           fontWeight: 500,
-          color: "var(--sidebar-text)",
+          color: "var(--mut, #94A3B8)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
       >
         {label}
         {required && (
-          <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
+          <span style={{ color: "var(--danger, #EF4444)", marginLeft: 4 }}>
+            *
+          </span>
         )}
       </label>
       {children}
@@ -470,29 +470,17 @@ function FieldWrapper({
 const inputStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--input-bg)",
-  color: "var(--text)",
+  border: "1px solid rgba(148,163,184,.35)",
+  background: "transparent",
+  color: "inherit",
   fontSize: 14,
 };
 
 const selectStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--input-bg)",
-  color: "var(--text)",
+  border: "1px solid rgba(148,163,184,.35)",
+  background: "transparent",
+  color: "inherit",
   fontSize: 14,
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "8px 18px",
-  borderRadius: 999,
-  border: "none",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 600,
-  fontSize: 14,
-  cursor: "pointer",
-  transition: "background 0.15s ease, opacity 0.15s ease",
 };
