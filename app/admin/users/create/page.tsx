@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import type React from "react";
 
 type StatusType = "active" | "disabled";
 
@@ -16,14 +17,7 @@ const ROLE_OPTIONS = [
   { value: "production", label: "Production" },
 ];
 
-const DEPARTMENTS = [
-  "sales",
-  "am",
-  "production",
-  "hr",
-  "finance",
-  "admin",
-];
+const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
 
 export default function CreateUserPage() {
   const [name, setName] = useState("");
@@ -424,16 +418,11 @@ export default function CreateUserPage() {
           type="submit"
           disabled={loading}
           style={{
-            alignSelf: "flex-start",
-            padding: "10px 20px",
-            borderRadius: 8,
-            border: "none",
+            ...primaryButtonStyle,
             background: loading ? "var(--border)" : "var(--primary)",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: loading ? "default" : "pointer",
             opacity: loading ? 0.7 : 1,
+            cursor: loading ? "default" : "pointer",
+            marginTop: 4,
           }}
         >
           {loading ? "Creating..." : "Create User"}
@@ -489,4 +478,16 @@ const selectStyle: React.CSSProperties = {
   background: "var(--input-bg)",
   color: "var(--text)",
   fontSize: 14,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: "8px 18px",
+  borderRadius: 999,
+  border: "none",
+  background: "var(--primary)",
+  color: "#fff",
+  fontWeight: 600,
+  fontSize: 14,
+  cursor: "pointer",
+  transition: "background 0.15s ease, opacity 0.15s ease",
 };
