@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type React from "react";
 import { useRouter } from "next/navigation";
 
 type UserRecord = {
@@ -259,7 +260,10 @@ export default function UsersPage() {
                     <>
                       <tr
                         key={u.uid}
-                        style={{ borderBottom: "1px solid var(--border)" }}
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                          transition: "background 0.15s ease",
+                        }}
                       >
                         <td style={bodyCellStyle}>{u.name || "-"}</td>
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
@@ -276,7 +280,7 @@ export default function UsersPage() {
                             type="button"
                             onClick={() => toggleExpand(u.uid)}
                             style={{
-                              padding: "6px 14px",
+                              padding: "6px 16px",
                               borderRadius: 999,
                               border: "1px solid var(--border)",
                               background: expanded
@@ -286,6 +290,8 @@ export default function UsersPage() {
                               fontSize: 13,
                               fontWeight: 500,
                               cursor: "pointer",
+                              transition:
+                                "background 0.15s ease, color 0.15s ease, border-color 0.15s ease",
                             }}
                           >
                             {expanded ? "Hide" : "View"}
@@ -298,9 +304,11 @@ export default function UsersPage() {
                           <td colSpan={7} style={{ padding: 0 }}>
                             <div
                               style={{
-                                padding: 16,
-                                background: "var(--card-bg-alt)",
+                                padding: 20,
+                                background: "var(--card-bg)",
                                 borderTop: "1px solid var(--border)",
+                                boxShadow:
+                                  "0 18px 40px rgba(15, 23, 42, 0.25)",
                               }}
                             >
                               <UserDetailsPanel
@@ -335,7 +343,7 @@ type UserDetailsProps = {
 };
 
 /* -------------------------------------------------
-   DETAILS PANEL
+   DETAILS PANEL (DRAWER)
 --------------------------------------------------*/
 
 function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps) {
@@ -361,15 +369,17 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
   return (
     <div
       style={{
-        borderRadius: 10,
+        borderRadius: 12,
         border: "1px solid var(--border)",
-        background: "var(--card-bg)",
-        padding: 16,
+        background: "var(--card-bg-alt)",
+        padding: 20,
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 16,
+        gap: 20,
       }}
     >
+      {/* You and I can later decide which fields stay here.
+          For now, we keep everything visible & clear. */}
       <DetailItem label="Full Name" value={safe(user.name)} />
       <DetailItem label="Email" value={safe(user.email)} />
       <DetailItem label="Phone" value={safe(user.phone)} />
@@ -399,8 +409,8 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
           gridColumn: "1 / -1",
           display: "flex",
           justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 10,
+          gap: 10,
+          marginTop: 4,
         }}
       >
         {onDelete && (
@@ -409,15 +419,16 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
             onClick={() => onDelete(user.uid)}
             disabled={deleting}
             style={{
-              padding: "8px 16px",
+              padding: "8px 18px",
               background: "#ef4444",
               color: "#fff",
-              borderRadius: 8,
+              borderRadius: 999,
               fontSize: 14,
               fontWeight: 600,
               border: "none",
               cursor: deleting ? "not-allowed" : "pointer",
               opacity: deleting ? 0.7 : 1,
+              transition: "background 0.15s ease, opacity 0.15s ease",
             }}
           >
             {deleting ? "Deleting..." : "Delete User"}
@@ -429,14 +440,15 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
             type="button"
             onClick={() => onEdit(user.uid)}
             style={{
-              padding: "8px 16px",
+              padding: "8px 18px",
               background: "var(--primary)",
               color: "#fff",
-              borderRadius: 8,
+              borderRadius: 999,
               fontSize: 14,
               fontWeight: 600,
               border: "none",
               cursor: "pointer",
+              transition: "background 0.15s ease, opacity 0.15s ease",
             }}
           >
             Edit User
@@ -452,11 +464,11 @@ function DetailItem({ label, value }: { label: string; value: string }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <span
         style={{
-          fontSize: 12,
-          fontWeight: 500,
+          fontSize: 11,
+          fontWeight: 600,
           color: "var(--sidebar-text)",
           textTransform: "uppercase",
-          letterSpacing: 0.4,
+          letterSpacing: 0.5,
         }}
       >
         {label}
@@ -464,7 +476,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       <span
         style={{
           fontSize: 14,
-          fontWeight: 500,
+          fontWeight: 400,
           color: "var(--text)",
         }}
       >
@@ -472,4 +484,4 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   );
-            }
+    }
