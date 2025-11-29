@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type React from "react";
 import { useRouter } from "next/navigation";
 
 type UserRecord = {
   uid: string;
   name?: string;
   email?: string;
+  phone?: string;
   role?: string;
   department?: string;
   salary?: number | string;
   joiningDate?: string;
-  phone?: string;
   designation?: string;
   monthlyTarget?: number | string;
   commission?: number | string;
@@ -28,7 +27,6 @@ type SortKey =
   | "phone"
   | "role"
   | "department"
-  | "salary"
   | "createdAt";
 type SortDir = "asc" | "desc";
 
@@ -52,12 +50,13 @@ export default function UsersPage() {
         setLoading(true);
         setError("");
 
-        // IMPORTANT: use the full users list endpoint from your repo
         const res = await fetch("/api/admin/users/list");
         if (!res.ok) throw new Error("Failed to load users");
 
         const data = await res.json();
-        if (isMounted && Array.isArray(data)) setUsers(data);
+        if (isMounted && Array.isArray(data)) {
+          setUsers(data);
+        }
       } catch (err: any) {
         if (isMounted) setError(err.message || "Unexpected error occurred.");
       } finally {
@@ -66,23 +65,27 @@ export default function UsersPage() {
     }
 
     loadUsers();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  /** HARD DELETE HANDLER */
+  /** HARD DELETE (AUTH + FIRESTORE) */
   const handleDelete = async (uid: string) => {
-    const confirmed = window.confirm(
+    const confirmDelete = window.confirm(
       "Are you sure you want to permanently delete this user? This action cannot be undone."
     );
-    if (!confirmed) return;
+    if (!confirmDelete) return;
 
     try {
       setDeletingUid(uid);
 
       const res = await fetch("/api/admin/users/delete", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ uid }),
       });
 
@@ -92,7 +95,6 @@ export default function UsersPage() {
         return;
       }
 
-      // Remove from list + collapse drawer if open
       setUsers((prev) => prev.filter((u) => u.uid !== uid));
       setExpandedUid((prev) => (prev === uid ? null : prev));
     } catch (e) {
@@ -114,8 +116,6 @@ export default function UsersPage() {
   };
 
   const getSortValue = (u: UserRecord, key: SortKey) => {
-    if (key === "salary") return Number(u.salary) || 0;
-
     if (key === "createdAt") {
       const d = u.createdAt ? new Date(u.createdAt) : null;
       return d && !isNaN(d.getTime()) ? d.getTime() : 0;
@@ -156,6 +156,11 @@ export default function UsersPage() {
     return 0;
   });
 
+  const toggleExpand = (uid: string) => {
+    setExpandedUid((prev) => (prev === uid ? null : uid));
+  };
+
+  /** UI STYLES */
   const headerCellStyle: React.CSSProperties = {
     padding: 10,
     textAlign: "left",
@@ -179,7 +184,7 @@ export default function UsersPage() {
         View all users, search, sort, and expand to view full details.
       </p>
 
-      {/* SEARCH */}
+      {/* SEARCH BAR */}
       <div style={{ marginBottom: 14 }}>
         <input
           placeholder="Search by name, email, phone, role or department..."
@@ -198,6 +203,7 @@ export default function UsersPage() {
         />
       </div>
 
+      {/* MAIN CARD */}
       <div
         style={{
           background: "var(--card-bg)",
@@ -223,7 +229,8 @@ export default function UsersPage() {
                   }}
                 >
                   <th style={headerCellStyle} onClick={() => handleSort("name")}>
-                    Full Name {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    Full Name{" "}
+                    {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th style={headerCellStyle} onClick={() => handleSort("email")}>
                     Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
@@ -250,7 +257,10 @@ export default function UsersPage() {
                   const expanded = expandedUid === u.uid;
                   return (
                     <>
-                      <tr key={u.uid} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <tr
+                        key={u.uid}
+                        style={{ borderBottom: "1px solid var(--border)" }}
+                      >
                         <td style={bodyCellStyle}>{u.name || "-"}</td>
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
                         <td style={bodyCellStyle}>{u.phone || "-"}</td>
@@ -264,9 +274,7 @@ export default function UsersPage() {
                         <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                           <button
                             type="button"
-                            onClick={() =>
-                              setExpandedUid((prev) => (prev === u.uid ? null : u.uid))
-                            }
+                            onClick={() => toggleExpand(u.uid)}
                             style={{
                               padding: "6px 14px",
                               borderRadius: 999,
@@ -299,7 +307,9 @@ export default function UsersPage() {
                                 user={u}
                                 deleting={deletingUid === u.uid}
                                 onDelete={handleDelete}
-                                onEdit={() => router.push(`/admin/users/${u.uid}/edit`)}
+                                onEdit={(uid) =>
+                                  router.push(`/admin/users/${uid}/edit`)
+                                }
                               />
                             </div>
                           </td>
@@ -320,9 +330,13 @@ export default function UsersPage() {
 type UserDetailsProps = {
   user: UserRecord;
   onDelete?: (uid: string) => void;
-  onEdit?: () => void;
+  onEdit?: (uid: string) => void;
   deleting?: boolean;
 };
+
+/* -------------------------------------------------
+   DETAILS PANEL
+--------------------------------------------------*/
 
 function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps) {
   const safe = (v: any) =>
@@ -358,11 +372,10 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
     >
       <DetailItem label="Full Name" value={safe(user.name)} />
       <DetailItem label="Email" value={safe(user.email)} />
-      <DetailItem label "Phone" value={safe(user.phone)} />
+      <DetailItem label="Phone" value={safe(user.phone)} />
       <DetailItem label="Role" value={safe(user.role)} />
       <DetailItem label="Department" value={safe(user.department)} />
       <DetailItem label="Designation" value={safe(user.designation)} />
-
       <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
       <DetailItem
         label="Monthly Target (USD)"
@@ -381,57 +394,55 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
       <DetailItem label="Created At" value={formatDate(user.createdAt)} />
       <DetailItem label="Updated At" value={formatDate(user.updatedAt)} />
 
-      {user.uid && (
-        <div
-          style={{
-            gridColumn: "1 / -1",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
-            marginTop: 10,
-          }}
-        >
-          {onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(user.uid)}
-              disabled={deleting}
-              style={{
-                padding: "8px 16px",
-                background: "#ef4444",
-                color: "#fff",
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                border: "none",
-                cursor: deleting ? "not-allowed" : "pointer",
-                opacity: deleting ? 0.7 : 1,
-              }}
-            >
-              {deleting ? "Deleting..." : "Delete User"}
-            </button>
-          )}
+      <div
+        style={{
+          gridColumn: "1 / -1",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 10,
+        }}
+      >
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(user.uid)}
+            disabled={deleting}
+            style={{
+              padding: "8px 16px",
+              background: "#ef4444",
+              color: "#fff",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              border: "none",
+              cursor: deleting ? "not-allowed" : "pointer",
+              opacity: deleting ? 0.7 : 1,
+            }}
+          >
+            {deleting ? "Deleting..." : "Delete User"}
+          </button>
+        )}
 
-          {onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              style={{
-                padding: "8px 16px",
-                background: "var(--primary)",
-                color: "#fff",
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Edit User
-            </button>
-          )}
-        </div>
-      )}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(user.uid)}
+            style={{
+              padding: "8px 16px",
+              background: "var(--primary)",
+              color: "#fff",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Edit User
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -461,4 +472,4 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   );
-    }
+            }
