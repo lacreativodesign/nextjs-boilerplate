@@ -420,7 +420,7 @@ export default function CreateUserPage() {
   style={{
     marginTop: 4,
     background: loading
-      ? "rgba(148,163,184,.5)"
+      ? "rgba(37,99,235,.5)"
       : "var(--accent, #6366F1)",
     padding: "10px 18px",
     color: "white",
