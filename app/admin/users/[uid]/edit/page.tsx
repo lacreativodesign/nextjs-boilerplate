@@ -14,37 +14,17 @@ const ROLE_OPTIONS = [
   { value: "am", label: "Account Manager" },
   { value: "hr", label: "HR" },
   { value: "finance", label: "Finance" },
-  { value: "production", label: "Production" },
 ];
 
 const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
 
-type StatusApi = StatusType | string | undefined;
-
-type UserRecord = {
-  uid: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  phone?: string;
-  department?: string;
-  designation?: string;
-  joiningDate?: string;
-  salary?: number | string;
-  monthlyTarget?: number | string;
-  commission?: number | string;
-  status?: StatusApi;
-  cnic?: string;
-  dob?: string;
-};
-
 export default function EditUserPage() {
   const params = useParams();
-  const uid = params?.uid as string | undefined;
+  const uidParam = params?.uid;
+  const uid = Array.isArray(uidParam) ? uidParam[0] : uidParam;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -52,7 +32,6 @@ export default function EditUserPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
-  const [role, setRole] = useState("sales");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("sales");
   const [designation, setDesignation] = useState("");
@@ -61,6 +40,7 @@ export default function EditUserPage() {
   const [cnic, setCnic] = useState("");
   const [dob, setDob] = useState("");
 
+  const [role, setRole] = useState("sales");
   const [salary, setSalary] = useState("");
   const [monthlyTarget, setMonthlyTarget] = useState("");
   const [commission, setCommission] = useState("");
@@ -78,84 +58,52 @@ export default function EditUserPage() {
       return;
     }
 
-    let isMounted = true;
-
     async function loadUser() {
       try {
         setLoading(true);
+        setErrorMsg("");
 
-        const res = await fetch("/api/admin/users/get", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ uid }),
-        });
-
+        const res = await fetch(`/api/admin/users/${uid}`);
         if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || "Failed to load user details");
+          throw new Error("Failed to fetch user details.");
         }
 
-        const data: UserRecord = await res.json();
-        if (!isMounted) return;
+        const data = await res.json();
 
         setName(data.name || "");
         setEmail(data.email || "");
-
-        setRole(data.role ? String(data.role).toLowerCase() : "sales");
         setPhone(data.phone || "");
-        setDepartment(
-          data.department ? String(data.department).toLowerCase() : "sales"
-        );
+        setDepartment(data.department || "sales");
         setDesignation(data.designation || "");
         setJoiningDate(data.joiningDate || "");
-        setCnic(data.cnic || "");
-        setDob(data.dob || "");
-
+        setRole(data.role || "sales");
         setSalary(
-          typeof data.salary === "number"
-            ? String(data.salary)
-            : data.salary
+          data.salary !== undefined && data.salary !== null
             ? String(data.salary)
             : ""
         );
         setMonthlyTarget(
-          typeof data.monthlyTarget === "number"
-            ? String(data.monthlyTarget)
-            : data.monthlyTarget
+          data.monthlyTarget !== undefined && data.monthlyTarget !== null
             ? String(data.monthlyTarget)
             : ""
         );
         setCommission(
-          typeof data.commission === "number"
-            ? String(data.commission)
-            : data.commission
+          data.commission !== undefined && data.commission !== null
             ? String(data.commission)
             : ""
         );
-        setStatus(
-          data.status && String(data.status).toLowerCase() === "disabled"
-            ? "disabled"
-            : "active"
-        );
-
-        setInitialLoaded(true);
+        setStatus((data.status as StatusType) || "active");
+        setCnic(data.cnic || "");
+        setDob(data.dob || "");
       } catch (err: any) {
-        if (isMounted) {
-          console.error("Error loading user:", err);
-          setErrorMsg(err?.message || "Failed to load user.");
-        }
+        console.error("Error fetching user:", err);
+        setErrorMsg(err?.message || "Failed to load user.");
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     }
 
     loadUser();
-
-    return () => {
-      isMounted = false;
-    };
   }, [uid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,39 +111,37 @@ export default function EditUserPage() {
     resetMessages();
 
     if (!uid) {
-      setErrorMsg("Missing user id.");
+      setErrorMsg("Invalid user id.");
       return;
     }
 
-    if (!name.trim()) {
-      setErrorMsg("Name is required.");
+    if (!name.trim() || !email.trim() || !role) {
+      setErrorMsg("Please fill in name, email, and role.");
       return;
     }
 
     try {
       setSaving(true);
 
-      const res = await fetch("/api/admin/users/update", {
+      const res = await fetch(`/api/admin/users/${uid}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          uid,
           name: name.trim(),
-          // email NOT editable
-          role,
+          email: email.trim(),
           phone: phone.trim(),
           department,
           designation: designation.trim(),
           joiningDate: joiningDate || "",
-          cnic: cnic.trim(),
-          dob: dob || "",
-
+          role,
           salary: salary.trim(),
           monthlyTarget: monthlyTarget.trim(),
           commission: commission.trim(),
           status,
+          cnic: cnic.trim(),
+          dob: dob || "",
         }),
       });
 
@@ -241,254 +187,260 @@ export default function EditUserPage() {
       <p
         style={{
           fontSize: 14,
-          color: "var(--sidebar-text)",
+          color: "var(--mut, #94A3B8)",
           marginBottom: 16,
         }}
       >
-        Update user details, role, department and payroll information.
+        Update user profile, job details and payroll settings.
       </p>
 
-      {loading && !initialLoaded ? (
-        <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-          Loading user details...
-        </p>
-      ) : errorMsg ? (
+      {loading ? (
         <p
           style={{
             fontSize: 14,
-            color: "var(--danger)",
+            color: "var(--mut, #94A3B8)",
           }}
         >
-          {errorMsg}
+          Loading user details...
         </p>
       ) : (
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
-          {/* PERSONAL INFORMATION CARD */}
-          <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-              Personal Information
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                gap: 16,
-              }}
-            >
-              {/* Name */}
-              <FieldWrapper label="Full Name" required>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Email (read-only) */}
-              <FieldWrapper label="Email Address">
-                <input
-                  type="email"
-                  value={email}
-                  readOnly
-                  style={{
-                    ...inputStyle,
-                    background: "var(--input-bg-disabled)",
-                    cursor: "not-allowed",
-                    opacity: 0.9,
-                  }}
-                />
-              </FieldWrapper>
-
-              {/* Phone */}
-              <FieldWrapper label="Phone Number">
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+92 300 0000000"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* CNIC */}
-              <FieldWrapper label="CNIC Number">
-                <input
-                  value={cnic}
-                  onChange={(e) => setCnic(e.target.value)}
-                  placeholder="42101-1234567-1"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Date of Birth */}
-              <FieldWrapper label="Date of Birth (D.O.B.)">
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Status */}
-              <FieldWrapper label="Status">
-                <select
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as StatusType)
-                  }
-                  style={selectStyle}
-                >
-                  <option value="active">Active</option>
-                  <option value="disabled">Disabled</option>
-                </select>
-              </FieldWrapper>
-            </div>
-          </div>
-
-          {/* JOB DETAILS CARD */}
-          <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-              Job Details
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                gap: 16,
-              }}
-            >
-              {/* Role */}
-              <FieldWrapper label="Role">
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  style={selectStyle}
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </FieldWrapper>
-
-              {/* Department */}
-              <FieldWrapper label="Department">
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  style={selectStyle}
-                >
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d.charAt(0).toUpperCase() + d.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </FieldWrapper>
-
-              {/* Designation */}
-              <FieldWrapper label="Designation / Title">
-                <input
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  placeholder="e.g. Senior Account Manager"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Joining Date */}
-              <FieldWrapper label="Joining Date">
-                <input
-                  type="date"
-                  value={joiningDate}
-                  onChange={(e) => setJoiningDate(e.target.value)}
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-            </div>
-          </div>
-
-          {/* PAYROLL CARD */}
-          <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-              Payroll & Targets
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                gap: 16,
-              }}
-            >
-              {/* Salary */}
-              <FieldWrapper label="Monthly Salary (PKR)">
-                <input
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                  placeholder="e.g. 150000"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Monthly Target */}
-              <FieldWrapper label="Monthly Target (Amount)">
-                <input
-                  value={monthlyTarget}
-                  onChange={(e) => setMonthlyTarget(e.target.value)}
-                  placeholder="e.g. 500000"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-
-              {/* Commission */}
-              <FieldWrapper label="Commission (%)">
-                <input
-                  value={commission}
-                  onChange={(e) => setCommission(e.target.value)}
-                  placeholder="e.g. 5"
-                  style={inputStyle}
-                />
-              </FieldWrapper>
-            </div>
-          </div>
-
-          <button
-  type="submit"
-  disabled={saving}
-  className="btn"
-  style={{
-    marginTop: 4,
-    opacity: saving ? 0.7 : 1,
-    cursor: saving ? "default" : "pointer",
-  }}
->
-  {saving ? "Saving..." : "Save Changes"}
-          </button>
-
+        <>
           {successMsg && (
             <p
               style={{
                 fontSize: 14,
                 color: "var(--success)",
-                marginTop: 8,
+                marginBottom: 8,
               }}
             >
               {successMsg}
             </p>
           )}
-        </form>
+
+          {errorMsg && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--danger)",
+                marginBottom: 8,
+              }}
+            >
+              {errorMsg}
+            </p>
+          )}
+
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            {/* PERSONAL INFORMATION CARD */}
+            <div style={sectionCardStyle}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+                Personal Information
+              </h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {/* Name */}
+                <FieldWrapper label="Full Name" required>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="John Doe"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Email */}
+                <FieldWrapper label="Email Address" required>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Phone */}
+                <FieldWrapper label="Phone Number">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+92 300 0000000"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* CNIC */}
+                <FieldWrapper label="CNIC Number">
+                  <input
+                    value={cnic}
+                    onChange={(e) => setCnic(e.target.value)}
+                    placeholder="42101-1234567-1"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Date of Birth */}
+                <FieldWrapper label="Date of Birth (D.O.B.)">
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Status */}
+                <FieldWrapper label="Status">
+                  <select
+                    value={status}
+                    onChange={(e) =>
+                      setStatus(e.target.value as StatusType)
+                    }
+                    style={selectStyle}
+                  >
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </FieldWrapper>
+              </div>
+            </div>
+
+            {/* JOB DETAILS CARD */}
+            <div style={sectionCardStyle}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+                Job Details
+              </h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {/* Role */}
+                <FieldWrapper label="Role" required>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    style={selectStyle}
+                  >
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </FieldWrapper>
+
+                {/* Department */}
+                <FieldWrapper label="Department">
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    style={selectStyle}
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </FieldWrapper>
+
+                {/* Designation */}
+                <FieldWrapper label="Designation / Title">
+                  <input
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    placeholder="e.g. Senior Account Manager"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Joining Date */}
+                <FieldWrapper label="Joining Date">
+                  <input
+                    type="date"
+                    value={joiningDate}
+                    onChange={(e) => setJoiningDate(e.target.value)}
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+              </div>
+            </div>
+
+            {/* PAYROLL CARD */}
+            <div style={sectionCardStyle}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+                Payroll & Targets
+              </h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {/* Salary */}
+                <FieldWrapper label="Monthly Salary (PKR)">
+                  <input
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value)}
+                    placeholder="e.g. 150000"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Monthly Target */}
+                <FieldWrapper label="Monthly Target (Amount)">
+                  <input
+                    value={monthlyTarget}
+                    onChange={(e) => setMonthlyTarget(e.target.value)}
+                    placeholder="e.g. 500000"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+
+                {/* Commission */}
+                <FieldWrapper label="Commission (%)">
+                  <input
+                    value={commission}
+                    onChange={(e) => setCommission(e.target.value)}
+                    placeholder="e.g. 5"
+                    style={inputStyle}
+                  />
+                </FieldWrapper>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn"
+              style={{
+                marginTop: 4,
+                opacity: saving ? 0.7 : 1,
+                cursor: saving ? "default" : "pointer",
+              }}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </form>
+        </>
       )}
     </div>
   );
@@ -509,7 +461,7 @@ function FieldWrapper({
         style={{
           fontSize: 12,
           fontWeight: 500,
-          color: "var(--sidebar-text)",
+          color: "#E5E7EB",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -524,32 +476,28 @@ function FieldWrapper({
   );
 }
 
+const sectionCardStyle: React.CSSProperties = {
+  borderRadius: 20,
+  background: "#3C3C3C",
+  color: "#FFFFFF",
+  padding: 20,
+  border: "1px solid rgba(148,163,184,0.5)",
+};
+
 const inputStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--input-bg)",
-  color: "var(--text)",
+  border: "1px solid rgba(148,163,184,0.6)",
+  background: "#1F2937",
+  color: "#FFFFFF",
   fontSize: 14,
 };
 
 const selectStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--input-bg)",
-  color: "var(--text)",
+  border: "1px solid rgba(148,163,184,0.6)",
+  background: "#1F2937",
+  color: "#FFFFFF",
   fontSize: 14,
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "8px 18px",
-  borderRadius: 999,
-  border: "none",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 600,
-  fontSize: 14,
-  cursor: "pointer",
-  transition: "background 0.15s ease, opacity 0.15s ease",
 };
