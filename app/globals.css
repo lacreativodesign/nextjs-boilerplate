@@ -2,9 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 :root{
-  --bg:#0B1224; --bg2:#0F172A; --card:#0D1A33; --mut:#94A3B8; --text:#E9EEF5;
-  --brand:#06B6D4; --accent:#6366F1; --ok:#10B981; --warn:#F59E0B; --danger:#EF4444; --radius:16px;
-  --lightbg:#F6F8FC; --lightcard:#FFFFFF; --lighttext:#0F172A; --lightmut:#6B7280;
+  /* LA CREATIVO ERP core palette */
+  --lac-blue: #2563EB;
+  --lac-grey: #3C3C3C;
+  --lac-red:  #EF4444;
+
+  /* Tints (semi-transparent) */
+  --lac-blue-soft:  rgba(37, 99, 235, 0.06);  /* light mode table */
+  --lac-blue-strong: rgba(37, 99, 235, 0.22); /* dark mode drawer */
+
+  --lac-grey-soft:  rgba(60, 60, 60, 0.06);   /* light mode drawer */
+  --lac-grey-strong: rgba(60, 60, 60, 0.70);  /* dark mode table */
+
+  /* Existing usage hooks */
+  --accent: var(--lac-blue);
+  --danger: var(--lac-red);
 }
 *{box-sizing:border-box;font-family:Inter,system-ui}
 html,body{margin:0}
