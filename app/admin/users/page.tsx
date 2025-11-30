@@ -47,7 +47,6 @@ export default function UsersPage() {
         setLoading(true);
         setError("");
 
-        // NOTE: this matches the new API routes we set up together
         const res = await fetch("/api/admin/users/list");
         if (!res.ok) throw new Error("Failed to load users");
 
@@ -209,15 +208,8 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* MAIN CARD */}
-      <div
-        style={{
-          background: "var(--card, #0D1A33)",
-          borderRadius: 16,
-          border: "1px solid rgba(148,163,184,.35)",
-          padding: 16,
-        }}
-      >
+      {/* MAIN CARD (uses global .card tint) */}
+      <div className="card" style={{ padding: 16 }}>
         {loading ? (
           <p style={{ fontSize: 14, color: "var(--mut, #94A3B8)" }}>
             Loading users...
@@ -241,11 +233,7 @@ export default function UsersPage() {
               className="table"
             >
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px dashed rgba(148,163,184,.3)",
-                  }}
-                >
+                <tr>
                   <th style={headerCellStyle} onClick={() => handleSort("name")}>
                     Full Name{" "}
                     {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
@@ -302,13 +290,7 @@ export default function UsersPage() {
                   const expanded = expandedUid === u.uid;
                   return (
                     <>
-                      <tr
-                        key={u.uid}
-                        style={{
-                          borderBottom:
-                            "1px dashed rgba(148,163,184,.3)",
-                        }}
-                      >
+                      <tr key={u.uid}>
                         <td style={bodyCellStyle}>{u.name || "-"}</td>
                         <td style={bodyCellStyle}>{u.email || "-"}</td>
                         <td style={bodyCellStyle}>{u.phone || "-"}</td>
@@ -349,8 +331,6 @@ export default function UsersPage() {
                             <div
                               style={{
                                 padding: 16,
-                                background:
-                                  "rgba(15,23,42,.85)",
                               }}
                             >
                               <UserDetailsPanel
@@ -415,16 +395,13 @@ function UserDetailsPanel({
 
   return (
     <div
+      className="card"
       style={{
-        borderRadius: 16,
-        border: "1px solid rgba(148,163,184,.35)",
-        background: "rgba(15,23,42,.9)",
         padding: 16,
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 16,
       }}
-      className="card"
     >
       {/* Only the fields you requested in drawer */}
       <DetailItem label="Designation" value={safe(user.designation)} />
@@ -446,7 +423,7 @@ function UserDetailsPanel({
       />
       <DetailItem label="Status" value={safe(user.status)} />
 
-      {/* Extra info that is still useful for drawer context */}
+      {/* Extra info */}
       <DetailItem label="CNIC" value={safe(user.cnic)} />
       <DetailItem label="Date of Birth" value={formatDate(user.dob)} />
       <DetailItem label="Created At" value={formatDate(user.createdAt)} />
@@ -468,14 +445,14 @@ function UserDetailsPanel({
             onClick={() => onDelete(user.uid)}
             disabled={deleting}
             style={{
-              padding: "8px 16px",
-              borderRadius: 12,
-              border: "none",
+              marginLeft: "auto",
               background: "var(--danger, #EF4444)",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 700,
+              padding: "10px 18px",
+              color: "white",
+              borderRadius: 8,
+              border: "none",
               cursor: deleting ? "not-allowed" : "pointer",
+              fontWeight: 600,
               opacity: deleting ? 0.7 : 1,
             }}
           >
@@ -487,13 +464,14 @@ function UserDetailsPanel({
           <button
             type="button"
             onClick={() => onEdit(user.uid)}
-            // Use global .btn style + accent color
-            className="btn"
             style={{
-              borderRadius: 999,
-              fontSize: 14,
-              fontWeight: 700,
               background: "var(--accent, #6366F1)",
+              padding: "10px 18px",
+              color: "white",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
             }}
           >
             Edit User
