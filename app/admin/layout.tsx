@@ -20,7 +20,6 @@ import {
   Moon,
   LogOut,
 } from "lucide-react";
-
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { auth } from "@/lib/firebaseClient";
 import { signOut } from "firebase/auth";
@@ -30,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Keep realPath in sync to avoid weird highlight issues
+  // Keep a stable path for proper active state
   const [realPath, setRealPath] = useState(pathname);
 
   useEffect(() => {
@@ -58,31 +57,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
-      // Sign out from Firebase (this is what RequireAuth listens to)
+      // 🔐 Properly log out from Firebase auth so RequireAuth sees user = null
       await signOut(auth);
     } catch (err) {
       console.error("Firebase signOut error:", err);
+    } finally {
+      // No /api/logout here – avoids server redirect loops
+      window.location.href = "/login";
     }
-
-    // IMPORTANT: do NOT hit /api/logout for now to avoid redirect loops
-    // Frontend auth is fully Firebase-based (RequireAuth), so this is enough.
-    window.location.href = "/login";
   };
 
   return (
-    <div
-      className={clsx(
-        "flex min-h-screen transition-colors",
-        // Light mode: blue + white feel
-        "bg-[#EEF3FF] text-slate-900",
-        // Dark mode: ChatGPT-style deep navy/black
-        "dark:bg-[#020617] dark:text-slate-100"
-      )}
-    >
+    <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">
       {/* SIDEBAR */}
       <aside
         className={clsx(
-          "border-r border-gray-200 dark:border-slate-800 h-screen sticky top-0 transition-all duration-300",
+          "border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0 transition-all duration-300",
           collapsed ? "w-20" : "w-64"
         )}
       >
@@ -92,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <h2 className="text-xl font-bold tracking-tight">ADMIN</h2>
           )}
           <button
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => setCollapsed(!collapsed)}
           >
             <Menu size={20} />
@@ -119,7 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
                   active
                     ? "bg-blue-600 text-white"
-                    : "text-slate-800 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-800"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
                 <Icon size={18} />
@@ -134,13 +124,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* MAIN SECTION */}
       <div className="flex-1 flex flex-col">
         {/* TOP HEADER */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-slate-800 bg-white/90 dark:bg-[#020617]/95 backdrop-blur-sm">
+        <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-[#111113]/80 backdrop-blur-sm">
           <h1 className="text-lg font-semibold">Admin Dashboard</h1>
 
           <div className="flex items-center gap-3">
             {/* THEME TOGGLE */}
             <button
-              className="p-2 rounded-md bg-gray-100 dark:bg-slate-800"
+              className="p-2 rounded-md bg-gray-100 dark:bg-gray-800"
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             >
               {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
