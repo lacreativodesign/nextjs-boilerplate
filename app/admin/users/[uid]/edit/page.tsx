@@ -271,14 +271,7 @@ export default function EditUserPage() {
           }}
         >
           {/* PERSONAL INFORMATION CARD */}
-          <div
-            style={{
-              background: "var(--card-bg)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: 20,
-            }}
-          >
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
               Personal Information
             </h3>
@@ -362,14 +355,7 @@ export default function EditUserPage() {
           </div>
 
           {/* JOB DETAILS CARD */}
-          <div
-            style={{
-              background: "var(--card-bg)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: 20,
-            }}
-          >
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
               Job Details
             </h3>
@@ -434,14 +420,7 @@ export default function EditUserPage() {
           </div>
 
           {/* PAYROLL CARD */}
-          <div
-            style={{
-              background: "var(--card-bg)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: 20,
-            }}
-          >
+          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
               Payroll & Targets
             </h3>
