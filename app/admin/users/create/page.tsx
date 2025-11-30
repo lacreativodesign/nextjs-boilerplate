@@ -14,7 +14,6 @@ const ROLE_OPTIONS = [
   { value: "am", label: "Account Manager" },
   { value: "hr", label: "HR" },
   { value: "finance", label: "Finance" },
-  { value: "production", label: "Production" },
 ];
 
 const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
@@ -169,7 +168,7 @@ export default function CreateUserPage() {
         }}
       >
         {/* PERSONAL INFORMATION CARD */}
-        <div className="card" style={{ padding: 20 }}>
+        <div style={sectionCardStyle}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Personal Information
           </h3>
@@ -273,7 +272,7 @@ export default function CreateUserPage() {
                     border: "none",
                     cursor: "pointer",
                     padding: 0,
-                    color: "var(--mut, #94A3B8)",
+                    color: "#E5E7EB",
                   }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -284,7 +283,7 @@ export default function CreateUserPage() {
         </div>
 
         {/* JOB DETAILS CARD */}
-        <div className="card" style={{ padding: 20 }}>
+        <div style={sectionCardStyle}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Job Details
           </h3>
@@ -349,7 +348,7 @@ export default function CreateUserPage() {
         </div>
 
         {/* PAYROLL CARD */}
-        <div className="card" style={{ padding: 20 }}>
+        <div style={sectionCardStyle}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Payroll & Targets
           </h3>
@@ -394,16 +393,16 @@ export default function CreateUserPage() {
         </div>
 
         <button
-  type="submit"
-  disabled={loading}
-  className="btn"
-  style={{
-    marginTop: 4,
-    opacity: loading ? 0.7 : 1,
-    cursor: loading ? "default" : "pointer",
-  }}
->
-  {loading ? "Creating..." : "Create User"}
+          type="submit"
+          disabled={loading}
+          className="btn"
+          style={{
+            marginTop: 4,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "default" : "pointer",
+          }}
+        >
+          {loading ? "Creating..." : "Create User"}
         </button>
       </form>
     </div>
@@ -425,7 +424,7 @@ function FieldWrapper({
         style={{
           fontSize: 12,
           fontWeight: 500,
-          color: "var(--mut, #94A3B8)",
+          color: "#E5E7EB",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -442,20 +441,28 @@ function FieldWrapper({
   );
 }
 
+const sectionCardStyle: React.CSSProperties = {
+  borderRadius: 20,
+  background: "#3C3C3C",
+  color: "#FFFFFF",
+  padding: 20,
+  border: "1px solid rgba(148,163,184,0.5)",
+};
+
 const inputStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid rgba(148,163,184,.35)",
-  background: "transparent",
-  color: "inherit",
+  border: "1px solid rgba(148,163,184,0.6)",
+  background: "#1F2937",
+  color: "#FFFFFF",
   fontSize: 14,
 };
 
 const selectStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid rgba(148,163,184,.35)",
-  background: "transparent",
-  color: "inherit",
+  border: "1px solid rgba(148,163,184,0.6)",
+  background: "#1F2937",
+  color: "#FFFFFF",
   fontSize: 14,
 };
