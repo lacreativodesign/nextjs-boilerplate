@@ -486,17 +486,16 @@ export default function EditUserPage() {
           </div>
 
           <button
-            type="submit"
-            disabled={saving}
-            style={{
-              ...primaryButtonStyle,
-              background: saving ? "var(--border)" : "var(--primary)",
-              opacity: saving ? 0.7 : 1,
-              cursor: saving ? "default" : "pointer",
-              marginTop: 4,
-            }}
-          >
-            {saving ? "Saving..." : "Save Changes"}
+  type="submit"
+  disabled={saving}
+  className="btn"
+  style={{
+    marginTop: 4,
+    opacity: saving ? 0.7 : 1,
+    cursor: saving ? "default" : "pointer",
+  }}
+>
+  {saving ? "Saving..." : "Save Changes"}
           </button>
 
           {successMsg && (
