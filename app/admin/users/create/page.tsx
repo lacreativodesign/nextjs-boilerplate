@@ -169,14 +169,7 @@ export default function CreateUserPage() {
         }}
       >
         {/* PERSONAL INFORMATION CARD */}
-        <div
-          style={{
-            background: "var(--card, #0D1A33)",
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,.35)",
-            padding: 20,
-          }}
-        >
+        <div className="card" style={{ padding: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Personal Information
           </h3>
@@ -291,14 +284,7 @@ export default function CreateUserPage() {
         </div>
 
         {/* JOB DETAILS CARD */}
-        <div
-          style={{
-            background: "var(--card, #0D1A33)",
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,.35)",
-            padding: 20,
-          }}
-        >
+        <div className="card" style={{ padding: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Job Details
           </h3>
@@ -363,14 +349,7 @@ export default function CreateUserPage() {
         </div>
 
         {/* PAYROLL CARD */}
-        <div
-          style={{
-            background: "var(--card, #0D1A33)",
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,.35)",
-            padding: 20,
-          }}
-        >
+        <div className="card" style={{ padding: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
             Payroll & Targets
           </h3>
