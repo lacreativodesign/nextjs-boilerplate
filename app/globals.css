@@ -36,20 +36,21 @@ html,body{margin:0}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media (max-width:1024px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.kpis{grid-template-columns:1fr}}
-/* Base card – LIGHT MODE (outer table card) */
+/* LIGHT MODE card – no glow, plain grey */
 .card {
-  background: var(--lac-blue-soft);                /* light blue tint */
+  background: #f3f4f6;                /* soft light grey */
   border-radius: var(--radius);
   padding: 14px;
   border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
+  box-shadow: none;                   /* no shadow */
 }
 
-/* Inner card nested inside another card – used by drawers */
+/* Nested card inside another card (drawer/details) – light mode */
 .card .card {
-  background: var(--lac-grey-soft);                /* soft grey contrast */
+  background: #e5e7eb;                /* a bit darker grey */
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.30);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: none;
 }
 
 /* DARK MODE – outer table card */
