@@ -14,34 +14,20 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
 
-  // Load saved theme OR system preference on first mount
+  // Load saved theme
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("theme") as Theme | null;
-      let initial: Theme = "light";
-
-      if (stored === "light" || stored === "dark") {
-        initial = stored;
-      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        initial = "dark";
-      }
-
-      setTheme(initial);
-      document.documentElement.classList.toggle("dark", initial === "dark");
-    } catch (e) {
-      console.error("Theme init error:", e);
+    const stored = localStorage.getItem("theme") as Theme | null;
+    if (stored) {
+      setTheme(stored);
+      document.documentElement.classList.toggle("dark", stored === "dark");
     }
   }, []);
 
-  // Update theme when user toggles
+  // Update theme
   const updateTheme = (newTheme: Theme) => {
-    try {
-      setTheme(newTheme);
-      localStorage.setItem("theme", newTheme);
-      document.documentElement.classList.toggle("dark", newTheme === "dark");
-    } catch (e) {
-      console.error("Theme update error:", e);
-    }
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
   return (
@@ -51,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// hook
+// MUST exist or everything breaks
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
