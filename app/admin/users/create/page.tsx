@@ -415,17 +415,20 @@ export default function CreateUserPage() {
         </div>
 
         <button
-          type="submit"
-          disabled={loading}
-          className="btn"
-          style={{
-            marginTop: 4,
-            borderRadius: 999,
-            background: loading
-              ? "rgba(148,163,184,.5)"
-              : "var(--accent, #6366F1)",
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? "default" : "pointer",
+  type="submit"
+  disabled={loading}
+  style={{
+    marginTop: 4,
+    background: loading
+      ? "rgba(148,163,184,.5)"
+      : "var(--accent, #6366F1)",
+    padding: "10px 18px",
+    color: "white",
+    borderRadius: 8,
+    border: "none",
+    cursor: loading ? "default" : "pointer",
+    fontWeight: 600,
+    opacity: loading ? 0.7 : 1,
           }}
         >
           {loading ? "Creating..." : "Create User"}
