@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Keep a stable path for proper active state
+  // Always correct URL (prevents Overview from staying highlighted)
   const [realPath, setRealPath] = useState(pathname);
 
   useEffect(() => {
@@ -57,14 +57,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
-      // 🔐 Properly log out from Firebase auth so RequireAuth sees user = null
+      // 1) Sign out from Firebase (RequireAuth listens to this)
       await signOut(auth);
     } catch (err) {
       console.error("Firebase signOut error:", err);
-    } finally {
-      // No /api/logout here – avoids server redirect loops
-      window.location.href = "/login";
     }
+
+    try {
+      // 2) Tell backend to clear the 'session' cookie
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("API logout error:", err);
+    }
+
+    // 3) Hard redirect to login
+    window.location.href = "/login";
   };
 
   return (
