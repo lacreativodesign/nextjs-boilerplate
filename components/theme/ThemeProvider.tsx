@@ -17,10 +17,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Load saved theme
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored) {
-      setTheme(stored);
-      document.documentElement.classList.toggle("dark", stored === "dark");
-    }
+
+    const preferred =
+      stored ??
+      (window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light");
+
+    setTheme(preferred);
+    document.documentElement.classList.toggle("dark", preferred === "dark");
   }, []);
 
   // Update theme
@@ -37,7 +42,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ✅ THIS WAS MISSING! This is why your build was failing.
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
