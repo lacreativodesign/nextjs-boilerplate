@@ -75,7 +75,7 @@ html,body{margin:0}
 .badge.ok{background:rgba(16,185,129,.15);color:#10B981}
 .badge.warn{background:rgba(245,158,11,.15);color:#D97706}
 .badge.mut{background:rgba(99,102,241,.15);color:#6366F1}
-/* Base button */
+/* Base blue button – plain, no shadow */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -84,37 +84,27 @@ html,body{margin:0}
   padding: 10px 18px;
   border-radius: 8px;
   border: none;
-  background: var(--accent);        /* BLUE #2563EB */
+  background: var(--accent, #2563eb);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-  transition:
-    background 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.1s ease,
-    opacity 0.15s ease;
 }
 
 .btn:hover {
-  background: #1D4ED8; /* slightly darker blue */
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
-  transform: translateY(-1px);
+  background: #1d4ed8; /* slightly darker blue on hover */
 }
 
 .btn:disabled {
   opacity: 0.7;
   cursor: default;
-  box-shadow: none;
 }
 
-/* Ghost / outline button – used for View / Hide etc */
+/* Ghost style (e.g. View / Hide) */
 .btn.ghost {
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.5);
   color: inherit;
-  box-shadow: none;
 }
 
 /* DANGER button – for Delete, Logout */
