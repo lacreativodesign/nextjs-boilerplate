@@ -421,7 +421,7 @@ export default function CreateUserPage() {
     marginTop: 4,
     background: loading
       ? "rgba(37,99,235,.5)"
-      : "var(--accent, #6366F1)",
+      : "var(--accent, #2563EB)",
     padding: "10px 18px",
     color: "white",
     borderRadius: 8,
