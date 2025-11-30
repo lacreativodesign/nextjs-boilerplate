@@ -20,14 +20,16 @@ import {
   Moon,
   LogOut
 } from "lucide-react";
+
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { auth } from "@/lib/firebaseClient";
+import { signOut } from "firebase/auth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
-  // 🟦 FIX: Always correct URL (prevents Overview from staying highlighted)
   const [realPath, setRealPath] = useState(pathname);
 
   useEffect(() => {
@@ -54,8 +56,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">
-
+    <div
+      className={clsx(
+        "flex min-h-screen transition-colors",
+        theme === "dark"
+          ? "dark:bg-[#0f0f11] dark:text-gray-100"
+          : "bg-gray-50 text-gray-900"
+      )}
+    >
       {/* SIDEBAR */}
       <aside
         className={clsx(
@@ -127,7 +135,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* LOGOUT */}
             <button
               onClick={async () => {
-                await fetch("/api/logout", { method: "POST", credentials: "include" });
+                try {
+                  await signOut(auth);
+                } catch (err) {
+                  console.error("Firebase signOut error:", err);
+                }
+
+                await fetch("/api/logout", {
+                  method: "POST",
+                  credentials: "include",
+                });
+
                 window.location.href = "/login";
               }}
               className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600"
