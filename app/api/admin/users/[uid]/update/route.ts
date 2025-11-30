@@ -75,7 +75,7 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       }
     }
 
-    // PAYLOAD
+    // PAYLOAD (now includes CNIC + DOB)
     const payload = {
       name: body.name,
       email: body.email,
@@ -88,6 +88,8 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       commission: body.commission ? Number(body.commission) : 0,
       joiningDate: body.joiningDate || "",
       status: (body.status || "active").toLowerCase(),
+      cnic: body.cnic || "",
+      dob: body.dob || "",
       updatedAt: new Date().toISOString(),
     };
 
