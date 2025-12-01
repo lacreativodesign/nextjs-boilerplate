@@ -16,17 +16,13 @@ import {
   BarChart3,
   Settings as SettingsIcon,
   Menu,
-  Sun,
-  Moon,
   LogOut,
 } from "lucide-react";
-import { useTheme } from "@/components/theme/ThemeProvider";
 import { auth } from "@/lib/firebaseClient";
 import { signOut } from "firebase/auth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
   // Always correct URL (prevents Overview from staying highlighted)
@@ -138,14 +134,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="text-lg font-semibold">Admin Dashboard</h1>
 
           <div className="flex items-center gap-3">
-            {/* THEME TOGGLE */}
-            <button
-              className="p-2 rounded-md bg-gray-100 dark:bg-gray-800"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-            </button>
-
             {/* LOGOUT */}
             <button
               onClick={handleLogout}
