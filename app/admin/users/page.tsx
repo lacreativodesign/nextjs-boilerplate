@@ -164,13 +164,13 @@ export default function UsersPage() {
     setExpandedUid((prev) => (prev === uid ? null : uid));
   };
 
-  // === TABLE STYLES (same grey-modern vibe) ===
+  // === TABLE STYLES (Hybrid: solid table shell) ===
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    background: "#111827",
-    border: "1px solid rgba(148,163,184,0.45)",
+    background: "var(--table-bg, #020617)", // solid card
+    border: "1px solid rgba(148,163,184,0.55)",
     padding: 16,
-    boxShadow: "0 20px 45px rgba(15,23,42,0.85)",
+    boxShadow: "0 22px 60px rgba(15,23,42,0.9)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -180,9 +180,10 @@ export default function UsersPage() {
     letterSpacing: 0.08,
     color: "#9CA3AF",
     fontWeight: 600,
-    borderBottom: "1px solid rgba(148,163,184,0.5)",
+    borderBottom: "1px solid rgba(148,163,184,0.55)",
     whiteSpace: "nowrap",
     textAlign: "left",
+    cursor: "pointer",
   };
 
   const bodyCellStyle: React.CSSProperties = {
@@ -220,7 +221,7 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Table Shell */}
+      {/* Table Shell (solid) */}
       <div style={tableShellStyle}>
         {loading ? (
           <p style={{ fontSize: 14, color: "#E5E7EB" }}>Loading users...</p>
@@ -359,7 +360,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* RIGHT-SIDE DRAWER (Option B, tinted card) */}
+      {/* RIGHT-SIDE DRAWER (Hybrid: glassy drawer) */}
       {activeUser && (
         <>
           {/* Backdrop */}
@@ -368,8 +369,9 @@ export default function UsersPage() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(15,23,42,0.45)",
-              backdropFilter: "blur(4px)",
+              background: "rgba(15,23,42,0.55)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
               zIndex: 40,
             }}
           />
@@ -382,14 +384,16 @@ export default function UsersPage() {
               right: 0,
               height: "100vh",
               width: "min(420px, 100%)",
-              background: "var(--card-bg, #020617)",
-              borderLeft: "1px solid rgba(148,163,184,0.45)",
-              boxShadow: "-32px 0 80px rgba(15,23,42,0.85)",
+              background:
+                "radial-gradient(circle at top left, rgba(56,189,248,0.16), transparent 55%), var(--card-bg, #020617)",
+              borderLeft: "1px solid rgba(148,163,184,0.55)",
+              boxShadow: "-32px 0 80px rgba(15,23,42,0.95)",
               padding: 20,
               display: "flex",
               flexDirection: "column",
               gap: 16,
               zIndex: 50,
+              animation: "slideInUsersDrawer 220ms ease-out",
             }}
           >
             {/* Drawer header */}
@@ -453,6 +457,20 @@ export default function UsersPage() {
               />
             </div>
           </aside>
+
+          {/* Global keyframes for slide-in */}
+          <style jsx global>{`
+            @keyframes slideInUsersDrawer {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `}</style>
         </>
       )}
     </div>
