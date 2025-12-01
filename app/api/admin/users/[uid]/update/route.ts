@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 const COOKIE_NAME = "lac_session";
+const COOKIE_DOMAIN = ".lacreativo.com";
 
 export async function POST(
   req: Request,
   { params }: { params: { uid: string } }
 ) {
   try {
-    // GET TOKEN FROM COOKIE (lac_session)
+    // ----------------------------------------------------
+    // 1. READ SESSION COOKIE (lac_session)
+    // ----------------------------------------------------
     const cookieHeader = req.headers.get("cookie") || "";
     const token = cookieHeader
       .split(";")
@@ -20,19 +23,28 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // VERIFY TOKEN
+    // ----------------------------------------------------
+    // 2. VERIFY SESSION COOKIE (IMPORTANT FIX)
+    // ----------------------------------------------------
     let decoded;
     try {
-      decoded = await adminAuth.verifyIdToken(token);
+      decoded = await adminAuth.verifySessionCookie(token, true);
     } catch (err) {
+      console.error("SESSION COOKIE VERIFY ERROR:", err);
       return NextResponse.json(
         { error: "Invalid session token" },
         { status: 401 }
       );
     }
 
-    // LOAD SESSION USER FROM FIRESTORE
-    const sessionSnap = await adminDb.collection("users").doc(decoded.uid).get();
+    // ----------------------------------------------------
+    // 3. LOAD SESSION USER (the one performing update)
+    // ----------------------------------------------------
+    const sessionSnap = await adminDb
+      .collection("users")
+      .doc(decoded.uid)
+      .get();
+
     if (!sessionSnap.exists) {
       return NextResponse.json(
         { error: "Session user not found" },
@@ -44,7 +56,9 @@ export async function POST(
     const isSuperAdmin = sessionUser.role === "super_admin";
     const isAdmin = sessionUser.role === "admin";
 
-    // PERMISSION CHECK (OPTION B / your model)
+    // ----------------------------------------------------
+    // 4. PERMISSION CHECK (YOUR OPTION A RULES)
+    // ----------------------------------------------------
     if (!isSuperAdmin && !isAdmin) {
       return NextResponse.json(
         { error: "Permission denied" },
@@ -55,7 +69,9 @@ export async function POST(
     const uid = params.uid;
     const body = await req.json();
 
-    // REQUIRED FIELDS
+    // ----------------------------------------------------
+    // 5. VALIDATE REQUIRED FIELDS
+    // ----------------------------------------------------
     if (!body.name || !body.email || !body.role) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -65,9 +81,11 @@ export async function POST(
 
     const newRole = String(body.role).toLowerCase();
 
-    // Admin-specific guardrails (cannot touch super_admin)
+    // ----------------------------------------------------
+    // 6. ADMIN RESTRICTIONS (CANNOT TOUCH SUPER ADMIN)
+    // ----------------------------------------------------
     if (isAdmin) {
-      // Admin CANNOT give anyone super_admin role
+      // Admin cannot assign super_admin role
       if (newRole === "super_admin") {
         return NextResponse.json(
           { error: "Admins cannot assign super_admin role" },
@@ -75,7 +93,7 @@ export async function POST(
         );
       }
 
-      // Admin cannot change a super_admin account at all
+      // Admin cannot modify super_admin accounts at all
       const targetSnap = await adminDb.collection("users").doc(uid).get();
       const target = targetSnap.data();
 
@@ -87,7 +105,9 @@ export async function POST(
       }
     }
 
-    // PAYLOAD (includes CNIC + DOB)
+    // ----------------------------------------------------
+    // 7. BUILD PAYLOAD (matches Firestore exactly)
+    // ----------------------------------------------------
     const payload = {
       name: body.name,
       email: body.email,
@@ -105,6 +125,9 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     };
 
+    // ----------------------------------------------------
+    // 8. SAVE TO FIRESTORE
+    // ----------------------------------------------------
     await adminDb.collection("users").doc(uid).update(payload);
 
     return NextResponse.json({ success: true });
