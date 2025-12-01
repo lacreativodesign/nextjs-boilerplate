@@ -1,7 +1,9 @@
+// app/admin/users/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type React from "react";
 
 type UserRecord = {
   uid: string;
@@ -16,14 +18,14 @@ type UserRecord = {
   monthlyTarget?: number | string;
   commission?: number | string;
   status?: string;
-  createdAt?: string;
-  updatedAt?: string;
   cnic?: string;
   dob?: string;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: any;
 };
 
-type SortKey = "name" | "email" | "phone" | "role" | "department" | "createdAt";
+type SortKey = "name" | "email" | "phone" | "department" | "createdAt" | "role";
 type SortDir = "asc" | "desc";
 
 export default function UsersPage() {
@@ -33,7 +35,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [expandedUid, setExpandedUid] = useState<string | null>(null);
+  const [expandedUid, setExpandedUid] = useState<string | null>(null); // used for the drawer
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
   const router = useRouter();
@@ -54,7 +56,7 @@ export default function UsersPage() {
           setUsers(data);
         }
       } catch (err: any) {
-        if (isMounted) setError(err.message || "Unexpected error occurred.");
+        if (isMounted) setError(err?.message || "Unexpected error occurred.");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -67,7 +69,7 @@ export default function UsersPage() {
     };
   }, []);
 
-  /** DELETE USER */
+  /** HARD DELETE (AUTH + FIRESTORE) */
   const handleDelete = async (uid: string) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to permanently delete this user? This action cannot be undone."
@@ -79,7 +81,9 @@ export default function UsersPage() {
 
       const res = await fetch("/api/admin/users/delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ uid }),
       });
 
@@ -89,20 +93,20 @@ export default function UsersPage() {
         return;
       }
 
-      setUsers(prev => prev.filter(u => u.uid !== uid));
-      setExpandedUid(prev => (prev === uid ? null : prev));
+      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+      setExpandedUid((prev) => (prev === uid ? null : prev)); // close drawer if this user is open
     } catch (e) {
-      console.error("Delete error:", e);
+      console.error("Error deleting user:", e);
       alert("Error deleting user");
     } finally {
-      setDeletingUid(null);
+      setDeletingUid((prev) => (prev === uid ? null : prev));
     }
   };
 
-  /** SORTING */
+  /** SORTING LOGIC */
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortDir("asc");
@@ -132,160 +136,221 @@ export default function UsersPage() {
   };
 
   /** FILTER */
-  const filtered = users.filter(u => {
+  const filtered = users.filter((u) => {
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
     return [u.name, u.email, u.phone, u.role, u.department]
       .filter(Boolean)
-      .some(v => v!.toString().toLowerCase().includes(term));
+      .some((v) => v!.toString().toLowerCase().includes(term));
   });
 
   /** SORT */
   const sorted = [...filtered].sort((a, b) => {
     const aVal = getSortValue(a, sortKey);
     const bVal = getSortValue(b, sortKey);
+
     if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
+  /** Which user is active in the drawer */
+  const activeUser =
+    expandedUid && users.length
+      ? users.find((u) => u.uid === expandedUid) || null
+      : null;
+
   const toggleExpand = (uid: string) => {
-    setExpandedUid(prev => (prev === uid ? null : uid));
+    setExpandedUid((prev) => (prev === uid ? null : uid));
   };
 
-  /** STYLES */
-  const headerStyle: React.CSSProperties = {
-    padding: "10px",
-    textAlign: "left",
+  // === TABLE STYLES (same grey-modern vibe) ===
+  const tableShellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    background: "#111827",
+    border: "1px solid rgba(148,163,184,0.45)",
+    padding: 16,
+    boxShadow: "0 20px 45px rgba(15,23,42,0.85)",
+  };
+
+  const headerCellStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.08,
+    color: "#9CA3AF",
     fontWeight: 600,
-    fontSize: 13,
-    cursor: "pointer",
-    userSelect: "none",
+    borderBottom: "1px solid rgba(148,163,184,0.5)",
     whiteSpace: "nowrap",
-    color: "var(--text)",
+    textAlign: "left",
   };
 
-  const cellStyle: React.CSSProperties = {
-    padding: "10px",
-    fontSize: 13,
+  const bodyCellStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    fontSize: 14,
+    color: "#E5E7EB",
+    borderBottom: "1px dashed rgba(148,163,184,0.35)",
     verticalAlign: "middle",
-    color: "var(--text)",
+    whiteSpace: "nowrap",
   };
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
         All Users
       </h2>
-
-      <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16 }}>
-        View all users, search, sort, and manage user details.
+      <p
+        style={{
+          fontSize: 14,
+          color: "var(--mut, #94A3B8)",
+          marginBottom: 16,
+        }}
+      >
+        Manage all internal users in one place. Search, sort, and open full HR
+        details in a clean right-side drawer.
       </p>
 
-      {/* SEARCH BAR */}
-      <div style={{ marginBottom: 14 }}>
+      {/* Search input */}
+      <div style={{ marginBottom: 16, maxWidth: 360 }}>
         <input
           className="input"
-          placeholder="Search by name, email, phone, role or department..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ maxWidth: 420 }}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone, role, department"
         />
       </div>
 
-      {/* MAIN CARD */}
-      <div className="card" style={{ padding: 16 }}>
+      {/* Table Shell */}
+      <div style={tableShellStyle}>
         {loading ? (
-          <p style={{ color: "var(--text-muted)" }}>Loading users...</p>
+          <p style={{ fontSize: 14, color: "#E5E7EB" }}>Loading users...</p>
         ) : error ? (
-          <p style={{ color: "var(--danger)" }}>{error}</p>
+          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>No users found.</p>
+          <p style={{ fontSize: 14, color: "#E5E7EB" }}>No users found.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                background: "var(--card-inner)",
-                borderRadius: 10,
+                fontSize: 14,
               }}
             >
               <thead>
-                <tr style={{ borderBottom: "1px dashed var(--border)" }}>
-                  <th style={headerStyle} onClick={() => handleSort("name")}>
-                    Full Name {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <tr>
+                  <th
+                    style={headerCellStyle}
+                    onClick={() => handleSort("name")}
+                  >
+                    Name{" "}
+                    {sortKey === "name"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
                   </th>
-                  <th style={headerStyle} onClick={() => handleSort("email")}>
-                    Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <th
+                    style={headerCellStyle}
+                    onClick={() => handleSort("email")}
+                  >
+                    Email{" "}
+                    {sortKey === "email"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
                   </th>
-                  <th style={headerStyle} onClick={() => handleSort("phone")}>
-                    Phone {sortKey === "phone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <th
+                    style={headerCellStyle}
+                    onClick={() => handleSort("phone")}
+                  >
+                    Phone{" "}
+                    {sortKey === "phone"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
                   </th>
-                  <th style={headerStyle} onClick={() => handleSort("role")}>
-                    Role {sortKey === "role" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <th
+                    style={headerCellStyle}
+                    onClick={() => handleSort("department")}
+                  >
+                    Department{" "}
+                    {sortKey === "department"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
                   </th>
-                  <th style={headerStyle} onClick={() => handleSort("department")}>
-                    Department {sortKey === "department" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <th
+                    style={headerCellStyle}
+                    onClick={() => handleSort("createdAt")}
+                  >
+                    Joining / Created{" "}
+                    {sortKey === "createdAt"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
                   </th>
-                  <th style={headerStyle} onClick={() => handleSort("createdAt")}>
-                    Joining Date {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <th
+                    style={{
+                      ...headerCellStyle,
+                      textAlign: "right",
+                      cursor: "default",
+                    }}
+                  >
+                    Action
                   </th>
-                  <th style={{ ...headerStyle, textAlign: "right" }}>Action</th>
                 </tr>
               </thead>
-
               <tbody>
-                {sorted.map(u => {
+                {sorted.map((u) => {
                   const expanded = expandedUid === u.uid;
 
                   return (
-                    <>
-                      <tr key={u.uid} style={{ borderBottom: "1px dashed var(--border)" }}>
-                        <td style={cellStyle}>{u.name || "-"}</td>
-                        <td style={cellStyle}>{u.email || "-"}</td>
-                        <td style={cellStyle}>{u.phone || "-"}</td>
-                        <td style={cellStyle}>{u.role || "-"}</td>
-                        <td style={cellStyle}>{u.department || "-"}</td>
-                        <td style={cellStyle}>
-                          {u.createdAt
-                            ? new Date(u.createdAt).toLocaleDateString()
-                            : "-"}
-                        </td>
-
-                        <td style={{ ...cellStyle, textAlign: "right" }}>
-                          <button
-                            className="btn ghost"
-                            type="button"
-                            onClick={() => toggleExpand(u.uid)}
-                          >
-                            {expanded ? "Hide" : "View"}
-                          </button>
-                        </td>
-                      </tr>
-
-                      {expanded && (
-                        <tr key={`${u.uid}-details`}>
-                          <td colSpan={7} style={{ padding: 0 }}>
-                            <div
-                              className="card"
-                              style={{
-                                marginTop: 10,
-                                padding: 16,
-                                background: "var(--card-bg)",
-                              }}
-                            >
-                              <UserDetails
-                                user={u}
-                                deleting={deletingUid === u.uid}
-                                onDelete={handleDelete}
-                                onEdit={() => router.push(`/admin/users/${u.uid}/edit`)}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
+                    <tr
+                      key={u.uid}
+                      style={{
+                        borderBottom:
+                          "1px dashed rgba(148,163,184,0.35)",
+                      }}
+                    >
+                      <td style={bodyCellStyle}>{u.name || "-"}</td>
+                      <td style={bodyCellStyle}>{u.email || "-"}</td>
+                      <td style={bodyCellStyle}>{u.phone || "-"}</td>
+                      <td style={bodyCellStyle}>{u.department || "-"}</td>
+                      <td style={bodyCellStyle}>
+                        {u.joiningDate
+                          ? new Date(u.joiningDate).toLocaleDateString()
+                          : u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td
+                        style={{
+                          ...bodyCellStyle,
+                          textAlign: "right",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(u.uid)}
+                          className="btn ghost"
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            borderColor: "rgba(148,163,184,0.7)",
+                            color: "#FFFFFF",
+                          }}
+                        >
+                          {expanded ? "Close" : "View"}
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -293,25 +358,124 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* RIGHT-SIDE DRAWER (Option B, tinted card) */}
+      {activeUser && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setExpandedUid(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.45)",
+              backdropFilter: "blur(4px)",
+              zIndex: 40,
+            }}
+          />
+
+          {/* Drawer */}
+          <aside
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              height: "100vh",
+              width: "min(420px, 100%)",
+              background: "var(--card-bg, #020617)",
+              borderLeft: "1px solid rgba(148,163,184,0.45)",
+              boxShadow: "-32px 0 80px rgba(15,23,42,0.85)",
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              zIndex: 50,
+            }}
+          >
+            {/* Drawer header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#F9FAFB",
+                  }}
+                >
+                  {activeUser.name || "Untitled User"}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--mut, #9CA3AF)",
+                    marginTop: 2,
+                  }}
+                >
+                  {activeUser.email || "No email"} ·{" "}
+                  {(activeUser.role || "No role").toString()}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setExpandedUid(null)}
+                className="btn ghost"
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Drawer content */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                paddingRight: 2,
+              }}
+            >
+              <UserDetailsPanel
+                user={activeUser}
+                deleting={deletingUid === activeUser.uid}
+                onDelete={handleDelete}
+                onEdit={(uid) => router.push(`/admin/users/${uid}/edit`)}
+              />
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
 
-/* -----------------------------------------------------------
-   USER DETAILS PANEL (DRAWER CONTENT)
------------------------------------------------------------- */
+/* -------------------------------------------------
+   DRAWER PANEL (tinted card, grid layout)
+--------------------------------------------------*/
 
-function UserDetails({
+type UserDetailsProps = {
+  user: UserRecord;
+  onDelete?: (uid: string) => void;
+  onEdit?: (uid: string) => void;
+  deleting?: boolean;
+};
+
+function UserDetailsPanel({
   user,
-  deleting,
   onDelete,
   onEdit,
-}: {
-  user: UserRecord;
-  deleting: boolean;
-  onDelete: (uid: string) => void;
-  onEdit: (uid: string) => void;
-}) {
+  deleting,
+}: UserDetailsProps) {
   const safe = (v: any) =>
     v === null || v === undefined || v === "" ? "-" : String(v);
 
@@ -320,71 +484,114 @@ function UserDetails({
     return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
   };
 
+  const formatAmount = (v: any) => {
+    const num = Number(v);
+    return isNaN(num) ? "-" : num.toLocaleString();
+  };
+
+  const formatDate = (v: any) => {
+    if (!v) return "-";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  };
+
   return (
     <div
-      className="card"
       style={{
+        borderRadius: 20,
+        background: "var(--card-bg, #020617)",
+        color: "#FFFFFF",
         padding: 16,
+        border: "1px solid rgba(148,163,184,0.5)",
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 16,
-        background: "var(--card-bg)",
       }}
     >
-      <Detail label="Designation" value={safe(user.designation)} />
-      <Detail label="Role" value={safe(user.role)} />
-      <Detail label="Department" value={safe(user.department)} />
-      <Detail label="Monthly Salary" value={formatPKR(user.salary)} />
-      <Detail label="Joining Date" value={safe(user.joiningDate)} />
-      <Detail label="Monthly Target" value={safe(user.monthlyTarget)} />
-      <Detail label="Commission (%)" value={safe(user.commission)} />
-      <Detail label="Status" value={safe(user.status)} />
+      {/* Main HR / Payroll details */}
+      <DetailItem label="Designation" value={safe(user.designation)} />
+      <DetailItem label="Role" value={safe(user.role)} />
+      <DetailItem label="Department" value={safe(user.department)} />
+      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
+      <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
+      <DetailItem
+        label="Monthly Target (Amount)"
+        value={formatAmount(user.monthlyTarget)}
+      />
+      <DetailItem
+        label="Commission (%)"
+        value={
+          user.commission !== undefined && user.commission !== null
+            ? `${user.commission}%`
+            : "-"
+        }
+      />
+      <DetailItem label="Status" value={safe(user.status)} />
 
-      {/* ACTION BUTTONS */}
+      {/* Extra context */}
+      <DetailItem label="CNIC" value={safe(user.cnic)} />
+      <DetailItem label="Date of Birth" value={formatDate(user.dob)} />
+      <DetailItem label="Created At" value={formatDate(user.createdAt)} />
+      <DetailItem label="Updated At" value={formatDate(user.updatedAt)} />
+
+      {/* Actions */}
       <div
         style={{
           gridColumn: "1 / -1",
           display: "flex",
           justifyContent: "flex-end",
           gap: 8,
-          marginTop: 8,
+          marginTop: 10,
         }}
       >
-        <button
-          className="btn-danger"
-          disabled={deleting}
-          onClick={() => onDelete(user.uid)}
-        >
-          {deleting ? "Deleting..." : "Delete User"}
-        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(user.uid)}
+            disabled={deleting}
+            className="btn btn-danger"
+            style={{
+              opacity: deleting ? 0.7 : 1,
+              cursor: deleting ? "not-allowed" : "pointer",
+            }}
+          >
+            {deleting ? "Deleting..." : "Delete User"}
+          </button>
+        )}
 
-        <button className="btn" onClick={onEdit}>
-          Edit User
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(user.uid)}
+            className="btn"
+          >
+            Edit User
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <span
         style={{
-          fontSize: 12,
+          fontSize: 11,
+          fontWeight: 600,
+          color: "#E5E7EB",
           textTransform: "uppercase",
-          fontWeight: 500,
-          color: "var(--text-muted)",
+          letterSpacing: 0.4,
         }}
       >
         {label}
       </span>
-
       <span
         style={{
-          fontSize: 15,
-          color: "var(--text)",
+          fontSize: 14,
           fontWeight: 500,
+          color: "#FFFFFF",
         }}
       >
         {value}
