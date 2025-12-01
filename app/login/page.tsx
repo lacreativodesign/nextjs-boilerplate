@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import React, { useState } from "react";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { auth, fetchUserRole } from "@/lib/firebaseClient";
 
 export default function LoginPage() {
@@ -10,52 +13,10 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
-  const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // 🔥 STEP 1 — IF LOGGED IN, REDIRECT TO ROLE DASHBOARD
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const res = await fetch("/api/me", { credentials: "include" });
-
-        if (res.ok) {
-          const data = await res.json();
-
-          if (data?.role) {
-            window.location.href = `/${data.role}`;
-            return;
-          }
-        }
-      } catch (err) {}
-
-      setCheckingSession(false);
-    }
-
-    checkSession();
-  }, []);
-
-  // If checking session → prevent UI flicker
-  if (checkingSession) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontFamily: "Inter, sans-serif",
-          color: "#6b7280",
-          background: "#f9fafb",
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
-
-  // 🔥 STEP 2 — HANDLE LOGIN
-  async function handleLogin(e: any) {
+  // HANDLE LOGIN (same logic as before, no changes)
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -78,19 +39,20 @@ export default function LoginPage() {
       });
 
       if (!cookieRes.ok) {
-        const j = await cookieRes.json();
-        throw new Error(j.error || "Session error");
+        const j = await cookieRes.json().catch(() => null);
+        throw new Error(j?.error || "Session error");
       }
 
+      // Redirect to role dashboard (admin, sales, hr, etc.)
       window.location.href = `/${role}`;
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
   }
 
-  // 🔥 STEP 3 — FORGOT PASSWORD
+  // FORGOT PASSWORD (unchanged)
   async function handleForgot() {
     if (!email) {
       setError("Enter your email first.");
@@ -101,11 +63,11 @@ export default function LoginPage() {
       await sendPasswordResetEmail(auth, email);
       alert("Password reset link has been sent to your email.");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to send reset email.");
     }
   }
 
-  // UI SECTION (SAME THEME AS ADMIN)
+  // UI (unchanged)
   return (
     <div
       style={{
@@ -202,7 +164,9 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <label style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <label
+            style={{ display: "flex", alignItems: "center", marginBottom: 10 }}
+          >
             <input
               type="checkbox"
               checked={remember}
