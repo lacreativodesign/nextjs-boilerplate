@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
-export async function POST(req: Request, { params }: { params: { uid: string } }) {
+const COOKIE_NAME = "lac_session";
+
+export async function POST(
+  req: Request,
+  { params }: { params: { uid: string } }
+) {
   try {
-    // GET TOKEN FROM COOKIE
+    // GET TOKEN FROM COOKIE (lac_session)
     const cookieHeader = req.headers.get("cookie") || "";
     const token = cookieHeader
-      .split("; ")
-      .find((c) => c.startsWith("session="))
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith(`${COOKIE_NAME}=`))
       ?.split("=")[1];
 
     if (!token) {
@@ -19,20 +25,26 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
     try {
       decoded = await adminAuth.verifyIdToken(token);
     } catch (err) {
-      return NextResponse.json({ error: "Invalid session token" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid session token" },
+        { status: 401 }
+      );
     }
 
     // LOAD SESSION USER FROM FIRESTORE
     const sessionSnap = await adminDb.collection("users").doc(decoded.uid).get();
     if (!sessionSnap.exists) {
-      return NextResponse.json({ error: "Session user not found" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Session user not found" },
+        { status: 401 }
+      );
     }
 
     const sessionUser = sessionSnap.data();
     const isSuperAdmin = sessionUser.role === "super_admin";
     const isAdmin = sessionUser.role === "admin";
 
-    // PERMISSION CHECK (OPTION B)
+    // PERMISSION CHECK (OPTION B / your model)
     if (!isSuperAdmin && !isAdmin) {
       return NextResponse.json(
         { error: "Permission denied" },
@@ -53,7 +65,7 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
 
     const newRole = String(body.role).toLowerCase();
 
-    // OPTION B PERMISSION RULES
+    // Admin-specific guardrails (cannot touch super_admin)
     if (isAdmin) {
       // Admin CANNOT give anyone super_admin role
       if (newRole === "super_admin") {
@@ -75,7 +87,7 @@ export async function POST(req: Request, { params }: { params: { uid: string } }
       }
     }
 
-    // PAYLOAD (now includes CNIC + DOB)
+    // PAYLOAD (includes CNIC + DOB)
     const payload = {
       name: body.name,
       email: body.email,
