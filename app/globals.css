@@ -116,10 +116,14 @@ body{color:var(--lac-grey)}
 }
 
 /* Ghost style (e.g. View / Hide) */
-.btn.ghost {
+.btn.ghost{
   background: transparent;
-  border: 1px solid rgba(37,99,235,.25);
-  color: var(--lac-grey);
+  border: 1px solid rgba(37, 99, 235, 0.55); /* stronger outline */
+  color: #2563EB; /* blue text */
+}
+
+.btn.ghost:hover{
+  background: rgba(37, 99, 235, 0.06);
 }
 
 /* DANGER button – for Delete, Logout */
