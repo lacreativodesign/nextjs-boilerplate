@@ -85,7 +85,21 @@ body{color:var(--lac-grey)}
 .kpi .v{font-weight:900;font-size:22px}
 .row{display:flex;justify-content:space-between;align-items:center}
 .table{width:100%;border-collapse:collapse}
-.table th,.table td{padding:10px;border-bottom:1px dashed rgba(148,163,184,.3);text-align:left;font-size:14px}
+.table th,
+.table td{
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--lac-grey); /* #3C3C3C */
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18); /* blue tint from #2563EB */
+}
+
+.table th{
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(60, 60, 60, 0.85); /* readable header */
+}
 .badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
 .badge.ok{background:rgba(16,185,129,.15);color:#10B981}
 .badge.warn{background:rgba(245,158,11,.15);color:#D97706}
