@@ -38,6 +38,24 @@ export default function UsersPage() {
   const [expandedUid, setExpandedUid] = useState<string | null>(null); // used for the drawer
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
+  // System theme (toggle removed). We follow OS and use this only to keep
+  // the All Users table readable in both light + dark.
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
+    // Safari < 14 fallback
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+    };
+  }, []);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -161,16 +179,19 @@ export default function UsersPage() {
       : null;
 
   const toggleExpand = (uid: string) => {
-    setExpandedUid((prev) => (prev === uid ? null : uid));
+    setExpandedUid((prev) => (prev === uid ? null : prev));
   };
 
   // === TABLE STYLES (Hybrid: solid table shell) ===
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    background: "var(--table-bg, #020617)", // solid card
-    border: "1px solid rgba(148,163,184,0.55)",
+    // Light mode: crisp white. Dark mode: deep navy.
+    background: isDark ? "#020617" : "#ffffff",
+    // Use the brand blue as the "outline" vibe you wanted.
+    border: `1px solid rgba(37,99,235,${isDark ? 0.28 : 0.35})`,
     padding: 16,
-    boxShadow: "0 22px 60px rgba(15,23,42,0.9)",
+    // Remove the heavy shadow (it was making the white version look washed). Keep it subtle.
+    boxShadow: isDark ? "0 18px 55px rgba(0,0,0,0.55)" : "none",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -178,9 +199,11 @@ export default function UsersPage() {
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.08,
-    color: "#9CA3AF",
+    color: isDark ? "rgba(147,197,253,0.95)" : "rgba(60,60,60,0.85)",
     fontWeight: 600,
-    borderBottom: "1px solid rgba(148,163,184,0.55)",
+    borderBottom: isDark
+      ? "1px solid rgba(148,163,184,0.35)"
+      : "1px solid rgba(37,99,235,0.22)",
     whiteSpace: "nowrap",
     textAlign: "left",
     cursor: "pointer",
@@ -189,8 +212,10 @@ export default function UsersPage() {
   const bodyCellStyle: React.CSSProperties = {
     padding: "10px 12px",
     fontSize: 14,
-    color: "#E5E7EB",
-    borderBottom: "1px dashed rgba(148,163,184,0.35)",
+    color: isDark ? "#E5E7EB" : "rgba(60,60,60,0.92)",
+    borderBottom: isDark
+      ? "1px dashed rgba(148,163,184,0.25)"
+      : "1px dashed rgba(37,99,235,0.16)",
     verticalAlign: "middle",
     whiteSpace: "nowrap",
   };
@@ -224,11 +249,15 @@ export default function UsersPage() {
       {/* Table Shell (solid) */}
       <div style={tableShellStyle}>
         {loading ? (
-          <p style={{ fontSize: 14, color: "#E5E7EB" }}>Loading users...</p>
+          <p style={{ fontSize: 14, color: isDark ? "#E5E7EB" : "var(--lac-grey)" }}>
+            Loading users...
+          </p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: "#E5E7EB" }}>No users found.</p>
+          <p style={{ fontSize: 14, color: isDark ? "#E5E7EB" : "var(--lac-grey)" }}>
+            No users found.
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table
@@ -240,60 +269,22 @@ export default function UsersPage() {
             >
               <thead>
                 <tr>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("name")}
-                  >
-                    Name{" "}
-                    {sortKey === "name"
-                      ? sortDir === "asc"
-                        ? "▲"
-                        : "▼"
-                      : ""}
+                  <th style={headerCellStyle} onClick={() => handleSort("name")}>
+                    Name {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("email")}
-                  >
-                    Email{" "}
-                    {sortKey === "email"
-                      ? sortDir === "asc"
-                        ? "▲"
-                        : "▼"
-                      : ""}
+                  <th style={headerCellStyle} onClick={() => handleSort("email")}>
+                    Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("phone")}
-                  >
-                    Phone{" "}
-                    {sortKey === "phone"
-                      ? sortDir === "asc"
-                        ? "▲"
-                        : "▼"
-                      : ""}
+                  <th style={headerCellStyle} onClick={() => handleSort("phone")}>
+                    Phone {sortKey === "phone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("department")}
-                  >
+                  <th style={headerCellStyle} onClick={() => handleSort("department")}>
                     Department{" "}
-                    {sortKey === "department"
-                      ? sortDir === "asc"
-                        ? "▲"
-                        : "▼"
-                      : ""}
+                    {sortKey === "department" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th
-                    style={headerCellStyle}
-                    onClick={() => handleSort("createdAt")}
-                  >
+                  <th style={headerCellStyle} onClick={() => handleSort("createdAt")}>
                     Joining / Created{" "}
-                    {sortKey === "createdAt"
-                      ? sortDir === "asc"
-                        ? "▲"
-                        : "▼"
-                      : ""}
+                    {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th
                     style={{
@@ -314,8 +305,9 @@ export default function UsersPage() {
                     <tr
                       key={u.uid}
                       style={{
-                        borderBottom:
-                          "1px dashed rgba(148,163,184,0.35)",
+                        borderBottom: isDark
+                          ? "1px dashed rgba(148,163,184,0.25)"
+                          : "1px dashed rgba(37,99,235,0.16)",
                       }}
                     >
                       <td style={bodyCellStyle}>{u.name || "-"}</td>
@@ -329,12 +321,7 @@ export default function UsersPage() {
                           ? new Date(u.createdAt).toLocaleDateString()
                           : "-"}
                       </td>
-                      <td
-                        style={{
-                          ...bodyCellStyle,
-                          textAlign: "right",
-                        }}
-                      >
+                      <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                         <button
                           type="button"
                           onClick={() => toggleExpand(u.uid)}
@@ -344,8 +331,10 @@ export default function UsersPage() {
                             borderRadius: 999,
                             fontSize: 13,
                             fontWeight: 600,
-                            borderColor: "rgba(148,163,184,0.7)",
-                            color: "#FFFFFF",
+                            borderColor: isDark
+                              ? "rgba(148,163,184,0.7)"
+                              : "rgba(37,99,235,0.55)",
+                            color: isDark ? "#FFFFFF" : "var(--lac-grey)",
                           }}
                         >
                           {expanded ? "Close" : "View"}
@@ -406,24 +395,11 @@ export default function UsersPage() {
               }}
             >
               <div>
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: "#F9FAFB",
-                  }}
-                >
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#F9FAFB" }}>
                   {activeUser.name || "Untitled User"}
                 </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--mut, #9CA3AF)",
-                    marginTop: 2,
-                  }}
-                >
-                  {activeUser.email || "No email"} ·{" "}
-                  {(activeUser.role || "No role").toString()}
+                <div style={{ fontSize: 13, color: "var(--mut, #9CA3AF)", marginTop: 2 }}>
+                  {activeUser.email || "No email"} · {(activeUser.role || "No role").toString()}
                 </div>
               </div>
 
@@ -442,13 +418,7 @@ export default function UsersPage() {
             </div>
 
             {/* Drawer content */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                paddingRight: 2,
-              }}
-            >
+            <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
               <UserDetailsPanel
                 user={activeUser}
                 deleting={deletingUid === activeUser.uid}
@@ -488,14 +458,8 @@ type UserDetailsProps = {
   deleting?: boolean;
 };
 
-function UserDetailsPanel({
-  user,
-  onDelete,
-  onEdit,
-  deleting,
-}: UserDetailsProps) {
-  const safe = (v: any) =>
-    v === null || v === undefined || v === "" ? "-" : String(v);
+function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps) {
+  const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
   const formatPKR = (v: any) => {
     const num = Number(v);
@@ -526,42 +490,24 @@ function UserDetailsPanel({
         gap: 16,
       }}
     >
-      {/* Main HR / Payroll details */}
       <DetailItem label="Designation" value={safe(user.designation)} />
       <DetailItem label="Role" value={safe(user.role)} />
       <DetailItem label="Department" value={safe(user.department)} />
       <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
       <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
-      <DetailItem
-        label="Monthly Target (Amount)"
-        value={formatAmount(user.monthlyTarget)}
-      />
+      <DetailItem label="Monthly Target (Amount)" value={formatAmount(user.monthlyTarget)} />
       <DetailItem
         label="Commission (%)"
-        value={
-          user.commission !== undefined && user.commission !== null
-            ? `${user.commission}%`
-            : "-"
-        }
+        value={user.commission !== undefined && user.commission !== null ? `${user.commission}%` : "-"}
       />
       <DetailItem label="Status" value={safe(user.status)} />
 
-      {/* Extra context */}
       <DetailItem label="CNIC" value={safe(user.cnic)} />
       <DetailItem label="Date of Birth" value={formatDate(user.dob)} />
       <DetailItem label="Created At" value={formatDate(user.createdAt)} />
       <DetailItem label="Updated At" value={formatDate(user.updatedAt)} />
 
-      {/* Actions */}
-      <div
-        style={{
-          gridColumn: "1 / -1",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 10,
-        }}
-      >
+      <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
         {onDelete && (
           <button
             type="button"
@@ -578,11 +524,7 @@ function UserDetailsPanel({
         )}
 
         {onEdit && (
-          <button
-            type="button"
-            onClick={() => onEdit(user.uid)}
-            className="btn"
-          >
+          <button type="button" onClick={() => onEdit(user.uid)} className="btn">
             Edit User
           </button>
         )}
@@ -605,15 +547,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       >
         {label}
       </span>
-      <span
-        style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: "#FFFFFF",
-        }}
-      >
-        {value}
-      </span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF" }}>{value}</span>
     </div>
   );
 }
