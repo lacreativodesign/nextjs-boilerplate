@@ -56,8 +56,8 @@ body{color:var(--lac-grey)}
   background:#ffffff;
   border-radius: var(--radius);
   padding:14px;
-  border:1px solid rgba(37,99,235,.18); /* derived from #2563EB */
-  box-shadow:0 16px 40px rgba(60,60,60,.08); /* derived from #3C3C3C */
+  border:1px solid rgba(37,99,235,.22);
+  box-shadow: none; /* remove floating shadow */
 }
 
 /* Nested card (drawer/details) – light mode */
