@@ -242,7 +242,7 @@ export default function UsersPage() {
           className="input"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, phone, role, department"
+          placeholder="Search keyword"
         />
       </div>
 
