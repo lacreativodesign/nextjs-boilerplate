@@ -40,20 +40,20 @@ const parseNumber = (v: string) => {
 };
 
 export default function AddClientPage() {
-  // Basic info
+  // Company
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [industry, setIndustry] = useState("");
   const [country, setCountry] = useState("");
   const [timezone, setTimezone] = useState("");
 
-  // Primary contact
+  // Primary Contact
   const [contactName, setContactName] = useState("");
   const [contactTitle, setContactTitle] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Status
+  // Lifecycle
   const [stage, setStage] = useState<SalesStage>("New Lead");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
   const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
@@ -71,12 +71,11 @@ export default function AddClientPage() {
 
   // Services tags
   const [serviceInput, setServiceInput] = useState("");
-  const [services, setServices] = useState<string[]>(["Website Design", "SEO Retainer"]);
+  const [services, setServices] = useState<string[]>([]);
 
   const contractValue = useMemo(() => parseNumber(contractValueUsd), [contractValueUsd]);
   const upfrontPaid = useMemo(() => parseNumber(upfrontPaidUsd), [upfrontPaidUsd]);
   const openBalance = useMemo(() => Math.max(contractValue - upfrontPaid, 0), [contractValue, upfrontPaid]);
-
   const monthlyRetainer = useMemo(() => parseNumber(monthlyRetainerUsd), [monthlyRetainerUsd]);
 
   const addService = () => {
@@ -95,8 +94,6 @@ export default function AddClientPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // UI-only for now: simulate submit
-    // Later: save to Firestore
     const payload = {
       companyName,
       website,
@@ -124,147 +121,173 @@ export default function AddClientPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 10 }}>Add Client</h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Add Client</h2>
       <p style={{ fontSize: 14, color: "var(--mut, #94A3B8)", marginBottom: 16 }}>
         Create a new client record (company + owner contact). All amounts are tracked in USD.
       </p>
 
       <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Company Information */}
-        <Section title="Company Information">
-          <Grid>
-            <Field label="Company Name *">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Company Information</div>
+
+          <div className="formGrid">
+            <div className="col12 col6">
+              <div className="fieldLabel">Company Name *</div>
               <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. ACME Trading LLC" required />
-            </Field>
+            </div>
 
-            <Field label="Website">
+            <div className="col12 col6">
+              <div className="fieldLabel">Website</div>
               <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. https://acme.com" />
-            </Field>
+            </div>
 
-            <Field label="Industry">
+            <div className="col12 col6">
+              <div className="fieldLabel">Industry</div>
               <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Retail, SaaS, Healthcare" />
-            </Field>
+            </div>
 
-            <Field label="Country">
+            <div className="col12 col3">
+              <div className="fieldLabel">Country</div>
               <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. United States" />
-            </Field>
+            </div>
 
-            <Field label="Timezone">
+            <div className="col12 col3">
+              <div className="fieldLabel">Timezone</div>
               <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="e.g. America/New_York" />
-            </Field>
-          </Grid>
-        </Section>
+            </div>
+          </div>
+        </div>
 
         {/* Primary Contact */}
-        <Section title="Primary Contact (Business Owner)">
-          <Grid>
-            <Field label="Full Name *">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Primary Contact (Business Owner)</div>
+
+          <div className="formGrid">
+            <div className="col12 col6">
+              <div className="fieldLabel">Full Name *</div>
               <input className="input" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. John Doe" required />
-            </Field>
+            </div>
 
-            <Field label="Title / Designation">
+            <div className="col12 col6">
+              <div className="fieldLabel">Title / Designation</div>
               <input className="input" value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="e.g. Founder / CEO" />
-            </Field>
+            </div>
 
-            <Field label="Email Address *">
+            <div className="col12 col6">
+              <div className="fieldLabel">Email Address *</div>
               <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. owner@company.com" required />
-            </Field>
+            </div>
 
-            <Field label="Phone Number">
+            <div className="col12 col6">
+              <div className="fieldLabel">Phone Number</div>
               <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +1 312 555 0199" />
-            </Field>
-          </Grid>
-        </Section>
+            </div>
+          </div>
+        </div>
 
         {/* Status */}
-        <Section title="Status & Lifecycle">
-          <Grid>
-            <Field label="Sales Stage">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Status & Lifecycle</div>
+
+          <div className="formGrid">
+            <div className="col12 col4">
+              <div className="fieldLabel">Sales Stage</div>
               <select className="input" value={stage} onChange={(e) => setStage(e.target.value as SalesStage)}>
                 {stageOptions.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} style={{ color: "#111827", background: "#ffffff" }}>
                     {s}
                   </option>
                 ))}
               </select>
-            </Field>
+            </div>
 
-            <Field label="Payment Status">
+            <div className="col12 col4">
+              <div className="fieldLabel">Payment Status</div>
               <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
                 {paymentOptions.map((p) => (
-                  <option key={p} value={p}>
+                  <option key={p} value={p} style={{ color: "#111827", background: "#ffffff" }}>
                     {p}
                   </option>
                 ))}
               </select>
-            </Field>
+            </div>
 
-            <Field label="Retainer Status">
+            <div className="col12 col4">
+              <div className="fieldLabel">Retainer Status</div>
               <select className="input" value={retainerStatus} onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}>
                 {retainerOptions.map((r) => (
-                  <option key={r} value={r}>
+                  <option key={r} value={r} style={{ color: "#111827", background: "#ffffff" }}>
                     {r}
                   </option>
                 ))}
               </select>
-            </Field>
-          </Grid>
-        </Section>
+            </div>
+          </div>
+        </div>
 
         {/* Ownership */}
-        <Section title="Ownership & Assignment">
-          <Grid>
-            <Field label="Sales Owner *">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Ownership & Assignment</div>
+
+          <div className="formGrid">
+            <div className="col12 col4">
+              <div className="fieldLabel">Sales Owner *</div>
               <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} placeholder="e.g. Mansoor (Sales)" required />
-            </Field>
+            </div>
 
-            <Field label="Account Manager (AM)">
+            <div className="col12 col4">
+              <div className="fieldLabel">Account Manager (AM)</div>
               <input className="input" value={accountManager} onChange={(e) => setAccountManager(e.target.value)} placeholder="(Assign after payment)" />
-            </Field>
+            </div>
 
-            <Field label="Production Owner">
+            <div className="col12 col4">
+              <div className="fieldLabel">Production Owner</div>
               <input className="input" value={productionOwner} onChange={(e) => setProductionOwner(e.target.value)} placeholder="e.g. Ayesha (Prod)" />
-            </Field>
-          </Grid>
+            </div>
+          </div>
 
           <div style={{ marginTop: 10, fontSize: 13, color: "var(--mut, #94A3B8)" }}>
-            Note: AM assignment is typically used when Payment Status is Paid / Partially Paid.
+            AM assignment is typically used when Payment Status is Paid / Partially Paid.
           </div>
-        </Section>
+        </div>
 
         {/* Money */}
-        <Section title="Money (USD)">
-          <Grid>
-            <Field label="Total Contract Value (USD $) *">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Money (USD)</div>
+
+          <div className="formGrid">
+            <div className="col12 col4">
+              <div className="fieldLabel">Total Contract Value (USD $) *</div>
               <input className="input" value={contractValueUsd} onChange={(e) => setContractValueUsd(e.target.value)} placeholder="e.g. 12500" required />
-            </Field>
+            </div>
 
-            <Field label="Upfront Paid (USD $)">
+            <div className="col12 col4">
+              <div className="fieldLabel">Upfront Paid (USD $)</div>
               <input className="input" value={upfrontPaidUsd} onChange={(e) => setUpfrontPaidUsd(e.target.value)} placeholder="e.g. 2500" />
-            </Field>
+            </div>
 
-            <Field label="Open Balance (Auto)">
+            <div className="col12 col4">
+              <div className="fieldLabel">Open Balance (Auto)</div>
               <input className="input" value={formatUSD(openBalance)} readOnly />
-            </Field>
+            </div>
 
-            <Field label="Monthly Retainer (USD $)">
+            <div className="col12 col4">
+              <div className="fieldLabel">Monthly Retainer (USD $)</div>
               <input className="input" value={monthlyRetainerUsd} onChange={(e) => setMonthlyRetainerUsd(e.target.value)} placeholder="e.g. 800" />
-            </Field>
+            </div>
 
-            <Field label="Billing Day (1-28)">
-              <input
-                className="input"
-                value={billingDay}
-                onChange={(e) => setBillingDay(e.target.value)}
-                placeholder="e.g. 1"
-                inputMode="numeric"
-              />
-            </Field>
-          </Grid>
-        </Section>
+            <div className="col12 col4">
+              <div className="fieldLabel">Billing Day (1–28)</div>
+              <input className="input" value={billingDay} onChange={(e) => setBillingDay(e.target.value)} placeholder="e.g. 1" inputMode="numeric" />
+            </div>
+          </div>
+        </div>
 
         {/* Services */}
-        <Section title="Services (Tags)">
+        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+          <div className="sectionTitle">Services (Tags)</div>
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input
               className="input"
@@ -279,7 +302,7 @@ export default function AddClientPage() {
                 }
               }}
             />
-            <button type="button" className="btn" onClick={addService} style={{ borderRadius: 12, fontWeight: 800 }}>
+            <button type="button" className="btn" onClick={addService} style={{ borderRadius: 12, fontWeight: 700 }}>
               Add
             </button>
           </div>
@@ -297,7 +320,7 @@ export default function AddClientPage() {
                     gap: 8,
                     padding: "6px 10px",
                     borderRadius: 999,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     fontSize: 12,
                     border: "1px solid rgba(148,163,184,0.28)",
                     background: "rgba(255,255,255,0.04)",
@@ -311,7 +334,7 @@ export default function AddClientPage() {
                       border: "none",
                       background: "transparent",
                       cursor: "pointer",
-                      fontWeight: 900,
+                      fontWeight: 800,
                       fontSize: 14,
                       lineHeight: 1,
                       opacity: 0.85,
@@ -325,68 +348,53 @@ export default function AddClientPage() {
               ))
             )}
           </div>
-        </Section>
+        </div>
 
         {/* Submit */}
         <div style={{ marginTop: 6 }}>
-          <button type="submit" className="btn" style={{ width: "100%", borderRadius: 14, fontWeight: 900, padding: "12px 14px" }}>
+          <button type="submit" className="btn" style={{ width: "100%", borderRadius: 14, fontWeight: 700, padding: "12px 14px" }}>
             Create Client
           </button>
         </div>
       </form>
-    </div>
-  );
-}
 
-/** ===== UI helpers (keeps form consistent with Create User) ===== */
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card" style={{ padding: 16, borderRadius: 18 }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 900,
-          marginBottom: 12,
-          letterSpacing: 0.2,
-        }}
-      >
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Grid({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(12, 1fr)",
-        gap: 12,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ gridColumn: "span 12" }}>
-      <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.75, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-        {label}
-      </div>
-      {children}
+      {/* Local CSS that matches your enterprise form behavior (Create User style) */}
       <style jsx>{`
+        .sectionTitle {
+          font-size: 13px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          letter-spacing: 0.2px;
+        }
+
+        .fieldLabel {
+          font-size: 11px;
+          font-weight: 700;
+          opacity: 0.75;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+        }
+
+        .formGrid {
+          display: grid;
+          grid-template-columns: repeat(12, 1fr);
+          gap: 12px;
+        }
+
+        .col12 {
+          grid-column: span 12;
+        }
+
+        /* Desktop layout like Create User (cards with neat columns) */
         @media (min-width: 900px) {
-          div[style*="grid-column: span 12"] {
+          .col6 {
+            grid-column: span 6;
+          }
+          .col4 {
             grid-column: span 4;
           }
-        }
-        @media (min-width: 1200px) {
-          div[style*="grid-column: span 12"] {
+          .col3 {
             grid-column: span 3;
           }
         }
