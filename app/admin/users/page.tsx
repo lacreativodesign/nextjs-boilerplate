@@ -32,15 +32,9 @@ type UserRecord = {
 type SortKey = "name" | "email" | "phone" | "department" | "createdAt" | "role";
 type SortDir = "asc" | "desc";
 
-/** ✅ IMPORTANT FIX: always get a usable ID no matter what your API returns */
+/** Always get a usable ID no matter what your API returns */
 const getRowId = (u: any) =>
-  (u?.uid ||
-    u?.id ||
-    u?.docId ||
-    u?.userId ||
-    u?.firebaseUid ||
-    u?.email ||
-    "") as string;
+  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -99,7 +93,6 @@ export default function UsersPage() {
     };
   }, []);
 
-  /** HARD DELETE (AUTH + FIRESTORE) */
   const handleDelete = async (uid: string) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to permanently delete this user? This action cannot be undone."
@@ -131,7 +124,6 @@ export default function UsersPage() {
     }
   };
 
-  /** SORTING LOGIC */
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -163,14 +155,12 @@ export default function UsersPage() {
     return (field || "").toString().toLowerCase();
   };
 
-  /** Safe date render */
   const renderDate = (v?: string) => {
     if (!v) return "-";
     const d = new Date(v);
     return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
   };
 
-  /** FILTER */
   const filtered = users.filter((u) => {
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
@@ -179,7 +169,6 @@ export default function UsersPage() {
       .some((v) => v!.toString().toLowerCase().includes(term));
   });
 
-  /** SORT */
   const sorted = [...filtered].sort((a, b) => {
     const aVal = getSortValue(a, sortKey);
     const bVal = getSortValue(b, sortKey);
@@ -189,18 +178,15 @@ export default function UsersPage() {
     return 0;
   });
 
-  /** ✅ ACTIVE USER LOOKUP (uses getRowId) */
   const activeUser =
-    expandedUid && users.length
-      ? users.find((u) => getRowId(u) === expandedUid) || null
-      : null;
+    expandedUid && users.length ? users.find((u) => getRowId(u) === expandedUid) || null : null;
 
   const toggleExpand = (uid: string) => {
     if (!uid) return;
     setExpandedUid((prev) => (prev === uid ? null : uid));
   };
 
-  // Table shell background (enterprise)
+  // Table shell
   const lightShell = "#F8FAFC";
   const darkShell = "rgba(255,255,255,0.055)";
 
@@ -235,6 +221,30 @@ export default function UsersPage() {
     whiteSpace: "nowrap",
   };
 
+  // Drawer style (✅ now different for light vs dark)
+  const drawerStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 0,
+    right: 0,
+    height: "100vh",
+    width: "min(420px, 100%)",
+    padding: 20,
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    zIndex: 50,
+    animation: "slideInUsersDrawer 220ms ease-out",
+
+    background: isDark
+      ? "radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 55%), rgba(2,6,23,0.92)"
+      : "radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 55%), rgba(248,250,252,0.98)",
+
+    borderLeft: isDark ? "1px solid rgba(148,163,184,0.35)" : "1px solid rgba(15,23,42,0.10)",
+    boxShadow: isDark ? "-32px 0 80px rgba(2,6,23,0.92)" : "-28px 0 70px rgba(15,23,42,0.20)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+  };
+
   return (
     <div>
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>All Users</h2>
@@ -242,17 +252,10 @@ export default function UsersPage() {
         Manage all internal users in one place. Search, sort, and open full HR details in a clean right-side drawer.
       </p>
 
-      {/* Search */}
       <div style={{ marginBottom: 16, maxWidth: 360 }}>
-        <input
-          className="input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search keyword"
-        />
+        <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keyword" />
       </div>
 
-      {/* Table Shell */}
       <div style={tableShellStyle}>
         {loading ? (
           <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
@@ -304,10 +307,7 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={rowId}
-                      style={{
-                        background: rowBg,
-                        transition: "background 120ms ease",
-                      }}
+                      style={{ background: rowBg, transition: "background 120ms ease" }}
                       onMouseEnter={(e) => {
                         (e.currentTarget as HTMLTableRowElement).style.background = isDark
                           ? "rgba(255,255,255,0.04)"
@@ -351,49 +351,33 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* RIGHT-SIDE DRAWER */}
       {activeUser && (
         <>
-          {/* Backdrop */}
           <div
             onClick={() => setExpandedUid(null)}
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(15,23,42,0.55)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
+              background: isDark ? "rgba(2,6,23,0.68)" : "rgba(15,23,42,0.35)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               zIndex: 40,
             }}
           />
 
-          {/* Drawer */}
-          <aside
-            style={{
-              position: "fixed",
-              top: 0,
-              right: 0,
-              height: "100vh",
-              width: "min(420px, 100%)",
-              background:
-                "radial-gradient(circle at top left, rgba(56,189,248,0.16), transparent 55%), var(--card-bg, #020617)",
-              borderLeft: "1px solid rgba(148,163,184,0.55)",
-              boxShadow: "-32px 0 80px rgba(15,23,42,0.95)",
-              padding: 20,
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              zIndex: 50,
-              animation: "slideInUsersDrawer 220ms ease-out",
-            }}
-          >
-            {/* Header */}
+          <aside style={drawerStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#F9FAFB" }}>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    color: isDark ? "#F9FAFB" : "#0F172A",
+                  }}
+                >
                   {activeUser.name || "Untitled User"}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--mut, #9CA3AF)", marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.62)", marginTop: 2 }}>
                   {activeUser.email || "No email"} · {(activeUser.role || "No role").toString()}
                 </div>
               </div>
@@ -402,16 +386,23 @@ export default function UsersPage() {
                 type="button"
                 onClick={() => setExpandedUid(null)}
                 className="btn ghost"
-                style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12 }}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  borderColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(15,23,42,0.15)",
+                  color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.85)",
+                  background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.60)",
+                }}
               >
                 Close
               </button>
             </div>
 
-            {/* Content */}
             <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
               <UserDetailsPanel
                 user={activeUser}
+                isDark={isDark}
                 deleting={deletingUid === getRowId(activeUser)}
                 onDelete={(id) => handleDelete(id)}
                 onEdit={(id) => router.push(`/admin/users/${id}/edit`)}
@@ -437,28 +428,27 @@ export default function UsersPage() {
   );
 }
 
-/* -------------------------------------------------
-   DRAWER PANEL
---------------------------------------------------*/
-
 type UserDetailsProps = {
   user: UserRecord;
+  isDark: boolean;
   onDelete?: (uid: string) => void;
   onEdit?: (uid: string) => void;
   deleting?: boolean;
 };
 
-function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps) {
+function UserDetailsPanel({ user, isDark, onDelete, onEdit, deleting }: UserDetailsProps) {
   const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
+  // PKR
   const formatPKR = (v: any) => {
     const num = Number(v);
     return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
   };
 
-  const formatAmount = (v: any) => {
+  // USD $
+  const formatUSD = (v: any) => {
     const num = Number(v);
-    return isNaN(num) ? "-" : num.toLocaleString();
+    return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
   };
 
   const formatDate = (v: any) => {
@@ -471,31 +461,34 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
     <div
       style={{
         borderRadius: 20,
-        background: "var(--card-bg, #020617)",
-        color: "#FFFFFF",
         padding: 16,
-        border: "1px solid rgba(148,163,184,0.5)",
+        border: isDark ? "1px solid rgba(148,163,184,0.35)" : "1px solid rgba(15,23,42,0.10)",
+        background: isDark ? "rgba(2,6,23,0.68)" : "rgba(255,255,255,0.85)",
+        boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 16,
       }}
     >
-      <DetailItem label="Designation" value={safe(user.designation)} />
-      <DetailItem label="Role" value={safe(user.role)} />
-      <DetailItem label="Department" value={safe(user.department)} />
-      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} />
-      <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
-      <DetailItem label="Monthly Target (Amount)" value={formatAmount(user.monthlyTarget)} />
+      <DetailItem label="Designation" value={safe(user.designation)} isDark={isDark} />
+      <DetailItem label="Role" value={safe(user.role)} isDark={isDark} />
+      <DetailItem label="Department" value={safe(user.department)} isDark={isDark} />
+      <DetailItem label="Joining Date" value={formatDate(user.joiningDate)} isDark={isDark} />
+
+      <DetailItem label="Monthly Salary (PKR)" value={formatPKR(user.salary)} isDark={isDark} />
+      <DetailItem label="Monthly Target (USD $)" value={formatUSD(user.monthlyTarget)} isDark={isDark} />
+
       <DetailItem
         label="Commission (%)"
         value={user.commission !== undefined && user.commission !== null ? `${user.commission}%` : "-"}
+        isDark={isDark}
       />
-      <DetailItem label="Status" value={safe(user.status)} />
+      <DetailItem label="Status" value={safe(user.status)} isDark={isDark} />
 
-      <DetailItem label="CNIC" value={safe(user.cnic)} />
-      <DetailItem label="Date of Birth" value={formatDate(user.dob)} />
-      <DetailItem label="Created At" value={formatDate(user.createdAt)} />
-      <DetailItem label="Updated At" value={formatDate(user.updatedAt)} />
+      <DetailItem label="CNIC" value={safe(user.cnic)} isDark={isDark} />
+      <DetailItem label="Date of Birth" value={formatDate(user.dob)} isDark={isDark} />
+      <DetailItem label="Created At" value={formatDate(user.createdAt)} isDark={isDark} />
+      <DetailItem label="Updated At" value={formatDate(user.updatedAt)} isDark={isDark} />
 
       <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
         {onDelete && (
@@ -520,21 +513,21 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <span
         style={{
           fontSize: 11,
-          fontWeight: 600,
-          color: "#E5E7EB",
+          fontWeight: 700,
           textTransform: "uppercase",
-          letterSpacing: 0.4,
+          letterSpacing: 0.45,
+          color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)",
         }}
       >
         {label}
       </span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF" }}>{value}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: isDark ? "#FFFFFF" : "#0F172A" }}>{value}</span>
     </div>
   );
 }
