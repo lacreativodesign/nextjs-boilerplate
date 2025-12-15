@@ -39,32 +39,67 @@ const parseNumber = (v: string) => {
   return isNaN(n) ? 0 : n;
 };
 
+// ✅ Detect ERP theme reliably (works with toggle)
+// Supports:
+// - <html class="dark">
+// - <html data-theme="dark">
+// - <body class="dark">
+// - fallback to OS theme
+const getIsDarkNow = () => {
+  if (typeof document === "undefined") return false;
+
+  const html = document.documentElement;
+  const body = document.body;
+
+  const htmlClassDark = html?.classList?.contains("dark");
+  const bodyClassDark = body?.classList?.contains("dark");
+  const dataTheme = html?.getAttribute("data-theme") || body?.getAttribute("data-theme");
+  const dataThemeDark = dataTheme?.toLowerCase() === "dark";
+
+  if (htmlClassDark || bodyClassDark || dataThemeDark) return true;
+
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  return false;
+};
+
 export default function AddClientPage() {
-  // ✅ SAME METHOD AS USERS MODULE (GUARANTEED)
+  // ✅ FIX: use ERP theme detection (not only OS theme)
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setIsDark(!!mql.matches);
-    onChange();
 
-    // Safari fallback supported (same style as your Users page)
+    const update = () => setIsDark(getIsDarkNow());
+    update();
+
+    // Watch for app theme toggles (class/attribute changes)
+    const observer = new MutationObserver(() => update());
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ["class", "data-theme"] });
+
+    // Fallback: OS theme changes
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onMql = () => update();
     // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    mql.addEventListener ? mql.addEventListener("change", onMql) : mql.addListener(onMql);
+
     return () => {
+      observer.disconnect();
       // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+      mql.removeEventListener ? mql.removeEventListener("change", onMql) : mql.removeListener(onMql);
     };
   }, []);
 
-  // ✅ FORCE GREY CARD IN DARK (NO BLUE)
+  // ✅ FORCE GREY CARD IN DARK (match locked tables look)
   const cardStyle = useMemo(() => {
     return {
-      background: isDark ? "rgba(31, 41, 55, 0.72)" : "var(--lightcard)",
-      border: isDark ? "1px solid rgba(59, 130, 246, 0.22)" : "1px solid rgba(37,99,235,0.18)",
-      boxShadow: isDark ? "0 30px 80px rgba(2, 6, 23, 0.38)" : "0 20px 50px rgba(2,6,23,.06)",
-      backdropFilter: isDark ? "blur(10px)" : "none",
+      background: isDark ? "rgba(55, 65, 81, 0.70)" : "var(--lightcard)",
+      border: isDark ? "1px solid rgba(148, 163, 184, 0.16)" : "1px solid rgba(37, 99, 235, 0.18)",
+      boxShadow: isDark ? "0 30px 80px rgba(2, 6, 23, 0.40)" : "0 20px 50px rgba(2,6,23,.06)",
+      backdropFilter: "blur(10px)",
     } as React.CSSProperties;
   }, [isDark]);
 
@@ -139,7 +174,13 @@ export default function AddClientPage() {
           <div className="formGrid">
             <div className="col12 col6">
               <div className="fieldLabel">Company Name *</div>
-              <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. ACME Trading LLC" required />
+              <input
+                className="input"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="e.g. ACME Trading LLC"
+                required
+              />
             </div>
 
             <div className="col12 col6">
@@ -149,7 +190,12 @@ export default function AddClientPage() {
 
             <div className="col12 col6">
               <div className="fieldLabel">Industry</div>
-              <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Retail, SaaS, Healthcare" />
+              <input
+                className="input"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="e.g. Retail, SaaS, Healthcare"
+              />
             </div>
 
             <div className="col12 col3">
@@ -176,12 +222,24 @@ export default function AddClientPage() {
 
             <div className="col12 col6">
               <div className="fieldLabel">Title / Designation</div>
-              <input className="input" value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="e.g. Founder / CEO" />
+              <input
+                className="input"
+                value={contactTitle}
+                onChange={(e) => setContactTitle(e.target.value)}
+                placeholder="e.g. Founder / CEO"
+              />
             </div>
 
             <div className="col12 col6">
               <div className="fieldLabel">Email Address *</div>
-              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. owner@company.com" required />
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. owner@company.com"
+                required
+              />
             </div>
 
             <div className="col12 col6">
@@ -200,7 +258,7 @@ export default function AddClientPage() {
               <div className="fieldLabel">Sales Stage</div>
               <select className="input" value={stage} onChange={(e) => setStage(e.target.value as SalesStage)}>
                 {stageOptions.map((s) => (
-                  <option key={s} value={s} style={{ color: "#111827", background: "#ffffff" }}>
+                  <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
@@ -211,7 +269,7 @@ export default function AddClientPage() {
               <div className="fieldLabel">Payment Status</div>
               <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
                 {paymentOptions.map((p) => (
-                  <option key={p} value={p} style={{ color: "#111827", background: "#ffffff" }}>
+                  <option key={p} value={p}>
                     {p}
                   </option>
                 ))}
@@ -222,7 +280,7 @@ export default function AddClientPage() {
               <div className="fieldLabel">Retainer Status</div>
               <select className="input" value={retainerStatus} onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}>
                 {retainerOptions.map((r) => (
-                  <option key={r} value={r} style={{ color: "#111827", background: "#ffffff" }}>
+                  <option key={r} value={r}>
                     {r}
                   </option>
                 ))}
@@ -282,6 +340,11 @@ export default function AddClientPage() {
               <div className="fieldLabel">Billing Day (1–28)</div>
               <input className="input" value={billingDay} onChange={(e) => setBillingDay(e.target.value)} placeholder="e.g. 1" inputMode="numeric" />
             </div>
+
+            <div className="col12 col4">
+              <div className="fieldLabel">Monthly Retainer (formatted)</div>
+              <input className="input" value={formatUSD(monthlyRetainer)} readOnly />
+            </div>
           </div>
         </div>
 
@@ -323,15 +386,23 @@ export default function AddClientPage() {
                     borderRadius: 999,
                     fontWeight: 700,
                     fontSize: 12,
-                    border: "1px solid rgba(148,163,184,0.28)",
-                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(148,163,184,0.22)",
+                    background: isDark ? "rgba(17,24,39,0.55)" : "rgba(37,99,235,0.06)",
                   }}
                 >
                   {tag}
                   <button
                     type="button"
                     onClick={() => removeService(tag)}
-                    style={{ border: "none", background: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 14, lineHeight: 1, opacity: 0.85 }}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      fontSize: 14,
+                      lineHeight: 1,
+                      opacity: 0.85,
+                    }}
                     aria-label={`Remove ${tag}`}
                     title="Remove"
                   >
