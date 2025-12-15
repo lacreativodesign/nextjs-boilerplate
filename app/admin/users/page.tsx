@@ -35,11 +35,10 @@ export default function UsersPage() {
   const [search, setSearch] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [expandedUid, setExpandedUid] = useState<string | null>(null); // used for the drawer
+  const [expandedUid, setExpandedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
-  // System theme (toggle removed). We follow OS and use this only to keep
-  // the All Users table readable in both light + dark.
+  // Follow OS theme (no toggle here)
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -99,9 +98,7 @@ export default function UsersPage() {
 
       const res = await fetch("/api/admin/users/delete", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       });
 
@@ -112,7 +109,7 @@ export default function UsersPage() {
       }
 
       setUsers((prev) => prev.filter((u) => u.uid !== uid));
-      setExpandedUid((prev) => (prev === uid ? null : prev)); // close drawer if this user is open
+      setExpandedUid((prev) => (prev === uid ? null : prev));
     } catch (e) {
       console.error("Error deleting user:", e);
       alert("Error deleting user");
@@ -153,6 +150,13 @@ export default function UsersPage() {
     return (field || "").toString().toLowerCase();
   };
 
+  /** Safe date render (kills "Invalid Date") */
+  const renderDate = (v?: string) => {
+    if (!v) return "-";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  };
+
   /** FILTER */
   const filtered = users.filter((u) => {
     if (!search.trim()) return true;
@@ -174,24 +178,29 @@ export default function UsersPage() {
 
   /** Which user is active in the drawer */
   const activeUser =
-    expandedUid && users.length
-      ? users.find((u) => u.uid === expandedUid) || null
-      : null;
+    expandedUid && users.length ? users.find((u) => u.uid === expandedUid) || null : null;
 
   const toggleExpand = (uid: string) => {
     setExpandedUid((prev) => (prev === uid ? null : prev));
   };
 
-  // === TABLE STYLES (Hybrid: solid table shell) ===
+  // === TABLE STYLES (final: neutral enterprise surfaces) ===
+
+  // Light: soft slate surface (less “white sheet”)
+  const lightShell = "#F8FAFC"; // slate-50
+  const lightInset = "0 0 0 1px rgba(15,23,42,0.06) inset";
+
+  // Dark: neutral charcoal (NOT navy/blue)
+  const darkShell = "rgba(255,255,255,0.055)"; // matches input-grey vibe
+  const darkInset = "0 0 0 1px rgba(255,255,255,0.06) inset";
+
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    // Light mode: crisp white. Dark mode: deep navy.
-    background: isDark ? "#020617" : "#ffffff",
-    // Use the brand blue as the "outline" vibe you wanted.
-    border: `1px solid rgba(37,99,235,${isDark ? 0.28 : 0.35})`,
+    background: isDark ? darkShell : lightShell,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
     padding: 16,
-    // Remove the heavy shadow (it was making the white version look washed). Keep it subtle.
-    boxShadow: isDark ? "0 18px 55px rgba(0,0,0,0.55)" : "none",
+    boxShadow: isDark ? "0 18px 55px rgba(0,0,0,0.55)" : "0 14px 40px rgba(15,23,42,0.06)",
+    ...(isDark ? { boxShadow: "0 18px 55px rgba(0,0,0,0.55)", } : {}),
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -199,41 +208,29 @@ export default function UsersPage() {
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.08,
-    color: isDark ? "rgba(147,197,253,0.95)" : "rgba(60,60,60,0.85)",
-    fontWeight: 600,
-    borderBottom: isDark
-      ? "1px solid rgba(148,163,184,0.35)"
-      : "1px solid rgba(37,99,235,0.22)",
+    color: isDark ? "rgba(255,255,255,0.80)" : "rgba(15,23,42,0.70)",
+    fontWeight: 700,
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
     whiteSpace: "nowrap",
     textAlign: "left",
     cursor: "pointer",
+    userSelect: "none",
   };
 
   const bodyCellStyle: React.CSSProperties = {
     padding: "10px 12px",
     fontSize: 14,
-    color: isDark ? "#E5E7EB" : "rgba(60,60,60,0.92)",
-    borderBottom: isDark
-      ? "1px dashed rgba(148,163,184,0.25)"
-      : "1px dashed rgba(37,99,235,0.16)",
+    color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.86)",
+    borderBottom: isDark ? "1px dashed rgba(255,255,255,0.10)" : "1px dashed rgba(15,23,42,0.10)",
     verticalAlign: "middle",
     whiteSpace: "nowrap",
   };
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        All Users
-      </h2>
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--mut, #94A3B8)",
-          marginBottom: 16,
-        }}
-      >
-        Manage all internal users in one place. Search, sort, and open full HR
-        details in a clean right-side drawer.
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>All Users</h2>
+      <p style={{ fontSize: 14, color: "var(--mut, #94A3B8)", marginBottom: 16 }}>
+        Manage all internal users in one place. Search, sort, and open full HR details in a clean right-side drawer.
       </p>
 
       {/* Search input */}
@@ -246,27 +243,21 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Table Shell (solid) */}
+      {/* Table Shell */}
       <div style={tableShellStyle}>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "#E5E7EB" : "var(--lac-grey)" }}>
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
             Loading users...
           </p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "#E5E7EB" : "var(--lac-grey)" }}>
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
             No users found.
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 14,
-              }}
-            >
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle} onClick={() => handleSort("name")}>
@@ -279,35 +270,42 @@ export default function UsersPage() {
                     Phone {sortKey === "phone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th style={headerCellStyle} onClick={() => handleSort("department")}>
-                    Department{" "}
-                    {sortKey === "department" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    Department {sortKey === "department" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th style={headerCellStyle} onClick={() => handleSort("createdAt")}>
-                    Joining / Created{" "}
-                    {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    Joining / Created {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th
-                    style={{
-                      ...headerCellStyle,
-                      textAlign: "right",
-                      cursor: "default",
-                    }}
-                  >
-                    Action
-                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>Action</th>
                 </tr>
               </thead>
+
               <tbody>
-                {sorted.map((u) => {
+                {sorted.map((u, idx) => {
                   const expanded = expandedUid === u.uid;
+
+                  // subtle row surface (keeps the table from feeling like a single slab)
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
 
                   return (
                     <tr
                       key={u.uid}
                       style={{
-                        borderBottom: isDark
-                          ? "1px dashed rgba(148,163,184,0.25)"
-                          : "1px dashed rgba(37,99,235,0.16)",
+                        background: rowBg,
+                        transition: "background 120ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(15,23,42,0.03)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = rowBg;
                       }}
                     >
                       <td style={bodyCellStyle}>{u.name || "-"}</td>
@@ -315,11 +313,7 @@ export default function UsersPage() {
                       <td style={bodyCellStyle}>{u.phone || "-"}</td>
                       <td style={bodyCellStyle}>{u.department || "-"}</td>
                       <td style={bodyCellStyle}>
-                        {u.joiningDate
-                          ? new Date(u.joiningDate).toLocaleDateString()
-                          : u.createdAt
-                          ? new Date(u.createdAt).toLocaleDateString()
-                          : "-"}
+                        {u.joiningDate ? renderDate(u.joiningDate) : u.createdAt ? renderDate(u.createdAt) : "-"}
                       </td>
                       <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                         <button
@@ -331,10 +325,9 @@ export default function UsersPage() {
                             borderRadius: 999,
                             fontSize: 13,
                             fontWeight: 600,
-                            borderColor: isDark
-                              ? "rgba(148,163,184,0.7)"
-                              : "rgba(37,99,235,0.55)",
-                            color: isDark ? "#FFFFFF" : "var(--lac-grey)",
+                            borderColor: isDark ? "rgba(255,255,255,0.28)" : "rgba(15,23,42,0.18)",
+                            color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.85)",
+                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
                           }}
                         >
                           {expanded ? "Close" : "View"}
@@ -349,7 +342,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* RIGHT-SIDE DRAWER (Hybrid: glassy drawer) */}
+      {/* RIGHT-SIDE DRAWER */}
       {activeUser && (
         <>
           {/* Backdrop */}
@@ -386,14 +379,7 @@ export default function UsersPage() {
             }}
           >
             {/* Drawer header */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "flex-start",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#F9FAFB" }}>
                   {activeUser.name || "Untitled User"}
@@ -407,11 +393,7 @@ export default function UsersPage() {
                 type="button"
                 onClick={() => setExpandedUid(null)}
                 className="btn ghost"
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 999,
-                  fontSize: 12,
-                }}
+                style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12 }}
               >
                 Close
               </button>
@@ -428,7 +410,6 @@ export default function UsersPage() {
             </div>
           </aside>
 
-          {/* Global keyframes for slide-in */}
           <style jsx global>{`
             @keyframes slideInUsersDrawer {
               from {
@@ -514,10 +495,7 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
             onClick={() => onDelete(user.uid)}
             disabled={deleting}
             className="btn btn-danger"
-            style={{
-              opacity: deleting ? 0.7 : 1,
-              cursor: deleting ? "not-allowed" : "pointer",
-            }}
+            style={{ opacity: deleting ? 0.7 : 1, cursor: deleting ? "not-allowed" : "pointer" }}
           >
             {deleting ? "Deleting..." : "Delete User"}
           </button>
