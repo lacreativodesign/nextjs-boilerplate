@@ -20,7 +20,7 @@ type ClientService = {
   name: string;
   type: "One-time" | "Retainer";
   status: DeliveryStatus;
-  priceUsd?: number; // optional for individual service
+  priceUsd?: number;
   startDate?: string;
   dueDate?: string;
   assignedProduction?: string;
@@ -30,28 +30,28 @@ type ClientService = {
 type ClientRecord = {
   id: string;
 
-  // Table fields
+  // Table essentials
   companyName: string;
   primaryContactName: string;
   email: string;
   phone: string;
 
-  stage: SalesStage;
   paymentStatus: PaymentStatus;
-
   totalPaidUsd: number;
-  openBalanceUsd: number;
 
+  createdAt: string;
+
+  // Drawer details
+  stage: SalesStage;
+  openBalanceUsd: number;
   services: ClientService[];
 
   salesOwner: string;
   accountManager?: string; // only meaningful for paid/partial
   productionOwner?: string;
 
-  createdAt: string;
   lastActivityAt?: string;
 
-  // Drawer details
   country?: string;
   timezone?: string;
 
@@ -59,11 +59,11 @@ type ClientRecord = {
   lastPaymentDate?: string;
   nextFollowUpDate?: string;
 
-  // Retainer controls (all USD)
+  // Retainer controls
   retainerStatus: RetainerStatus;
   retainerPlanName?: string;
   monthlyRetainerUsd?: number;
-  billingDay?: number; // 1-28 etc
+  billingDay?: number;
   thisMonthPaid?: boolean;
   nextMonthExpectedUsd?: number;
   retainerStartDate?: string;
@@ -74,13 +74,8 @@ type SortKey =
   | "primaryContactName"
   | "email"
   | "phone"
-  | "stage"
   | "paymentStatus"
   | "totalPaidUsd"
-  | "openBalanceUsd"
-  | "servicesCount"
-  | "salesOwner"
-  | "accountManager"
   | "createdAt";
 
 type SortDir = "asc" | "desc";
@@ -106,7 +101,16 @@ export default function ClientsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // ===== Theme: follow OS =====
+  // Stop page-level horizontal scroll (fixes right-side background + sidebar mess)
+  useEffect(() => {
+    const prev = document.body.style.overflowX;
+    document.body.style.overflowX = "hidden";
+    return () => {
+      document.body.style.overflowX = prev;
+    };
+  }, []);
+
+  // Theme: follow OS
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
@@ -120,7 +124,7 @@ export default function ClientsPage() {
     };
   }, []);
 
-  // ===== Dummy data (safe for now; we’ll wire Firestore/API later) =====
+  // Dummy data
   const clients: ClientRecord[] = useMemo(
     () => [
       {
@@ -173,7 +177,7 @@ export default function ClientsPage() {
         id: "c_002",
         companyName: "Nova Fitness Studio",
         primaryContactName: "Areeba Khan",
-        email: "areeba@novafitness.com",
+        email: "areeba@novafitnesss.com",
         phone: "+44 20 7946 0958",
         stage: "Contacted",
         paymentStatus: "Unpaid",
@@ -223,24 +227,19 @@ export default function ClientsPage() {
     []
   );
 
-  // ===== Search (same behavior style as Users) =====
+  // Search
   const filtered = useMemo(() => {
     if (!search.trim()) return clients;
     const term = search.trim().toLowerCase();
 
     return clients.filter((c) => {
-      const servicesText = (c.services || []).map((s) => s.name).join(" ");
-      const amSafe = isPaidOrPartial(c.paymentStatus) ? c.accountManager || "" : "";
       const haystack = [
         c.companyName,
         c.primaryContactName,
         c.email,
         c.phone,
-        c.stage,
         c.paymentStatus,
-        c.salesOwner,
-        amSafe,
-        servicesText,
+        formatUSD(c.totalPaidUsd),
       ]
         .filter(Boolean)
         .join(" ")
@@ -250,7 +249,7 @@ export default function ClientsPage() {
     });
   }, [clients, search]);
 
-  // ===== Sorting =====
+  // Sorting
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((p) => (p === "asc" ? "desc" : "asc"));
     else {
@@ -270,20 +269,10 @@ export default function ClientsPage() {
           return c.email.toLowerCase();
         case "phone":
           return c.phone.toLowerCase();
-        case "stage":
-          return c.stage.toLowerCase();
         case "paymentStatus":
           return c.paymentStatus.toLowerCase();
         case "totalPaidUsd":
           return Number(c.totalPaidUsd) || 0;
-        case "openBalanceUsd":
-          return Number(c.openBalanceUsd) || 0;
-        case "servicesCount":
-          return (c.services || []).length;
-        case "salesOwner":
-          return c.salesOwner.toLowerCase();
-        case "accountManager":
-          return (isPaidOrPartial(c.paymentStatus) ? (c.accountManager || "") : "").toLowerCase();
         case "createdAt": {
           const d = new Date(c.createdAt);
           return isNaN(d.getTime()) ? 0 : d.getTime();
@@ -310,9 +299,14 @@ export default function ClientsPage() {
 
   const toggleDrawer = (id: string) => setExpandedId((p) => (p === id ? null : id));
 
-  // ===== Locked table shell styling (Users-consistent) =====
+  // Locked table shell styling
   const lightShell = "#F8FAFC";
   const darkShell = "rgba(255,255,255,0.055)";
+
+  const pageWrap: React.CSSProperties = {
+    maxWidth: "100%",
+    overflowX: "hidden",
+  };
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
@@ -320,6 +314,8 @@ export default function ClientsPage() {
     border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
     padding: 16,
     boxShadow: isDark ? "0 18px 55px rgba(0,0,0,0.55)" : "0 14px 40px rgba(15,23,42,0.06)",
+    maxWidth: "100%",
+    overflow: "hidden",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -345,7 +341,7 @@ export default function ClientsPage() {
     whiteSpace: "nowrap",
   };
 
-  // ===== Drawer styling (Users-consistent; light/dark differs) =====
+  // Drawer styling (light/dark differs)
   const drawerStyle: React.CSSProperties = {
     position: "fixed",
     top: 0,
@@ -358,11 +354,9 @@ export default function ClientsPage() {
     gap: 16,
     zIndex: 50,
     animation: "slideInClientsDrawer 220ms ease-out",
-
     background: isDark
       ? "radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 55%), rgba(2,6,23,0.92)"
       : "radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 55%), rgba(248,250,252,0.98)",
-
     borderLeft: isDark ? "1px solid rgba(148,163,184,0.35)" : "1px solid rgba(15,23,42,0.10)",
     boxShadow: isDark ? "-32px 0 80px rgba(2,6,23,0.92)" : "-28px 0 70px rgba(15,23,42,0.20)",
     backdropFilter: "blur(10px)",
@@ -370,7 +364,7 @@ export default function ClientsPage() {
   };
 
   return (
-    <div>
+    <div style={pageWrap}>
       <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 10 }}>All Clients</h2>
       <p style={{ fontSize: 14, color: "var(--mut, #94A3B8)", marginBottom: 16 }}>
         Track every lead and every client — pipeline, payments, services, ownership, and retainers — in one control panel.
@@ -382,8 +376,8 @@ export default function ClientsPage() {
       </div>
 
       <div style={tableShellStyle}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+        <div style={{ width: "100%", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 880 }}>
             <thead>
               <tr>
                 <th style={headerCellStyle} onClick={() => handleSort("companyName")}>
@@ -398,26 +392,11 @@ export default function ClientsPage() {
                 <th style={headerCellStyle} onClick={() => handleSort("phone")}>
                   Phone {sortKey === "phone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </th>
-                <th style={headerCellStyle} onClick={() => handleSort("stage")}>
-                  Stage {sortKey === "stage" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
                 <th style={headerCellStyle} onClick={() => handleSort("paymentStatus")}>
                   Payment {sortKey === "paymentStatus" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </th>
                 <th style={headerCellStyle} onClick={() => handleSort("totalPaidUsd")}>
                   Total Paid {sortKey === "totalPaidUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th style={headerCellStyle} onClick={() => handleSort("openBalanceUsd")}>
-                  Open Balance {sortKey === "openBalanceUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th style={headerCellStyle} onClick={() => handleSort("servicesCount")}>
-                  Services {sortKey === "servicesCount" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th style={headerCellStyle} onClick={() => handleSort("salesOwner")}>
-                  Sales Owner {sortKey === "salesOwner" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th style={headerCellStyle} onClick={() => handleSort("accountManager")}>
-                  AM {sortKey === "accountManager" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </th>
                 <th style={headerCellStyle} onClick={() => handleSort("createdAt")}>
                   Created {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
@@ -436,14 +415,6 @@ export default function ClientsPage() {
                   ? "rgba(15,23,42,0.015)"
                   : "rgba(15,23,42,0.00)";
 
-                const isPaid = isPaidOrPartial(c.paymentStatus);
-                const am = isPaid ? c.accountManager || "-" : "—";
-
-                const servicesCount = (c.services || []).length;
-                const sampleTags = (c.services || []).slice(0, 2).map((s) => s.name);
-                const servicesCompact =
-                  servicesCount === 0 ? "-" : servicesCount <= 2 ? sampleTags.join(" · ") : `${servicesCount} services`;
-
                 return (
                   <tr
                     key={c.id}
@@ -461,13 +432,8 @@ export default function ClientsPage() {
                     <td style={bodyCellStyle}>{c.primaryContactName}</td>
                     <td style={bodyCellStyle}>{c.email}</td>
                     <td style={bodyCellStyle}>{c.phone}</td>
-                    <td style={bodyCellStyle}>{c.stage}</td>
                     <td style={bodyCellStyle}>{c.paymentStatus}</td>
                     <td style={bodyCellStyle}>{formatUSD(c.totalPaidUsd)}</td>
-                    <td style={bodyCellStyle}>{formatUSD(c.openBalanceUsd)}</td>
-                    <td style={bodyCellStyle}>{servicesCompact}</td>
-                    <td style={bodyCellStyle}>{c.salesOwner}</td>
-                    <td style={bodyCellStyle}>{am}</td>
                     <td style={bodyCellStyle}>{formatDate(c.createdAt)}</td>
                     <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                       <button
@@ -542,6 +508,33 @@ export default function ClientsPage() {
             <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
               <ClientDrawerContent client={activeClient} isDark={isDark} />
             </div>
+
+            {/* Drawer Actions (NEW) */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                paddingTop: 10,
+                borderTop: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              }}
+            >
+              <button className="btn" style={{ flex: 1, borderRadius: 12, fontWeight: 800 }}>
+                Edit Client
+              </button>
+              <button
+                className="btn"
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  fontWeight: 800,
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+                }}
+              >
+                Archive
+              </button>
+            </div>
           </aside>
 
           <style jsx global>{`
@@ -595,7 +588,16 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
   };
 
   const sectionTitle = (t: string) => (
-    <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10, color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)" }}>
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 900,
+        letterSpacing: 0.5,
+        textTransform: "uppercase",
+        marginBottom: 10,
+        color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)",
+      }}
+    >
       {t}
     </div>
   );
@@ -640,14 +642,11 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
           <Field label="Created" value={formatDate(client.createdAt)} isDark={isDark} />
           <Field label="Last Activity" value={formatDate(client.lastActivityAt)} isDark={isDark} />
           <Field label="Sales Owner" value={client.salesOwner} isDark={isDark} />
-          <Field
-            label="Assigned To (AM)"
-            value={paidOrPartial ? client.accountManager || "-" : "— (assign after payment)"}
-            isDark={isDark}
-          />
+          <Field label="Assigned To (AM)" value={paidOrPartial ? client.accountManager || "-" : "— (assign after payment)"} isDark={isDark} />
           <Field label="Production Owner" value={client.productionOwner || "-"} isDark={isDark} />
         </div>
 
+        {/* Badges: Stage + Delivery moved here (not in table) */}
         <div style={badgeRow}>
           <div style={badge}>Stage: {client.stage}</div>
           <div style={badge}>Payment: {client.paymentStatus}</div>
@@ -691,7 +690,6 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
       {/* Services */}
       <div style={surface}>
         {sectionTitle("Services")}
-        {/* Compact tags */}
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 900, color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)", marginBottom: 8 }}>
             Services (compact)
@@ -709,7 +707,6 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
           </div>
         </div>
 
-        {/* Detailed lists */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <ServiceGroup title="One-time Services" items={oneTime} isDark={isDark} />
           <ServiceGroup title="Retainer Services" items={retainer} isDark={isDark} />
@@ -720,7 +717,7 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
       <div style={surface}>
         {sectionTitle("Invoices & Payments")}
         <div style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.62)" }}>
-          Coming next: invoices list, payments list, next due date. (This is locked in structure; we’ll wire data later.)
+          Coming next: invoices list, payments list, next due date.
         </div>
       </div>
     </div>
@@ -730,15 +727,7 @@ function ClientDrawerContent({ client, isDark }: { client: ClientRecord; isDark:
 function Field({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 900,
-          textTransform: "uppercase",
-          letterSpacing: 0.45,
-          color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)",
-        }}
-      >
+      <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.45, color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)" }}>
         {label}
       </span>
       <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#FFFFFF" : "#0F172A" }}>{value}</span>
