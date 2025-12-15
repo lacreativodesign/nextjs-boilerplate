@@ -39,48 +39,32 @@ const parseNumber = (v: string) => {
   return isNaN(n) ? 0 : n;
 };
 
-function detectDarkMode() {
-  if (typeof document === "undefined") return false;
-
-  const el = document.documentElement;
-  const body = document.body;
-
-  // Common patterns:
-  // 1) class "dark" on html/body
-  // 2) data-theme="dark"
-  // 3) color-scheme: dark
-  const htmlHasDark = el.classList.contains("dark");
-  const bodyHasDark = body?.classList?.contains("dark");
-  const dataThemeDark = el.getAttribute("data-theme") === "dark" || body?.getAttribute?.("data-theme") === "dark";
-
-  // Fallback: computed background can help, but keep it simple:
-  return Boolean(htmlHasDark || bodyHasDark || dataThemeDark);
-}
-
 export default function AddClientPage() {
+  // ✅ SAME METHOD AS USERS MODULE (GUARANTEED)
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Initial detect
-    setIsDark(detectDarkMode());
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
 
-    // Watch for theme changes (class / attribute changes)
-    const obs = new MutationObserver(() => setIsDark(detectDarkMode()));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
-    if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: ["class", "data-theme"] });
-
-    return () => obs.disconnect();
+    // Safari fallback supported (same style as your Users page)
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+    };
   }, []);
 
+  // ✅ FORCE GREY CARD IN DARK (NO BLUE)
   const cardStyle = useMemo(() => {
-    if (!isDark) return undefined;
-
-    // ✅ Neutral charcoal grey (matches your table vibe) — no blue tint.
     return {
-      background: "rgba(31, 41, 55, 0.72)", // neutral slate/charcoal
-      border: "1px solid rgba(59, 130, 246, 0.22)", // subtle blue accent border
-      boxShadow: "0 30px 80px rgba(2, 6, 23, 0.38)",
-      backdropFilter: "blur(10px)",
+      background: isDark ? "rgba(31, 41, 55, 0.72)" : "var(--lightcard)",
+      border: isDark ? "1px solid rgba(59, 130, 246, 0.22)" : "1px solid rgba(37,99,235,0.18)",
+      boxShadow: isDark ? "0 30px 80px rgba(2, 6, 23, 0.38)" : "0 20px 50px rgba(2,6,23,.06)",
+      backdropFilter: isDark ? "blur(10px)" : "none",
     } as React.CSSProperties;
   }, [isDark]);
 
@@ -107,7 +91,7 @@ export default function AddClientPage() {
   const [accountManager, setAccountManager] = useState("");
   const [productionOwner, setProductionOwner] = useState("");
 
-  // Money (USD only)
+  // Money (USD)
   const [contractValueUsd, setContractValueUsd] = useState<string>("0");
   const [upfrontPaidUsd, setUpfrontPaidUsd] = useState<string>("0");
   const [monthlyRetainerUsd, setMonthlyRetainerUsd] = useState<string>("0");
@@ -137,29 +121,6 @@ export default function AddClientPage() {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const payload = {
-      companyName,
-      website,
-      industry,
-      country,
-      timezone,
-      primaryContact: { contactName, contactTitle, email, phone },
-      stage,
-      paymentStatus,
-      retainerStatus,
-      ownership: { salesOwner, accountManager, productionOwner },
-      money: {
-        contractValueUsd: contractValue,
-        upfrontPaidUsd: upfrontPaid,
-        openBalanceUsd: openBalance,
-        monthlyRetainerUsd: monthlyRetainer,
-        billingDay: Number(billingDay) || 1,
-      },
-      services,
-    };
-
-    console.log("Create Client payload:", payload);
     alert("Client saved (UI simulation). Next step: connect Firestore.");
   };
 
@@ -171,7 +132,7 @@ export default function AddClientPage() {
       </p>
 
       <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Company Information */}
+        {/* Company */}
         <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Company Information</div>
 
@@ -203,7 +164,7 @@ export default function AddClientPage() {
           </div>
         </div>
 
-        {/* Primary Contact */}
+        {/* Contact */}
         <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Primary Contact (Business Owner)</div>
 
@@ -290,10 +251,6 @@ export default function AddClientPage() {
               <input className="input" value={productionOwner} onChange={(e) => setProductionOwner(e.target.value)} placeholder="e.g. Ayesha (Prod)" />
             </div>
           </div>
-
-          <div style={{ marginTop: 10, fontSize: 13, color: "var(--mut, #94A3B8)" }}>
-            AM assignment is typically used when Payment Status is Paid / Partially Paid.
-          </div>
         </div>
 
         {/* Money */}
@@ -374,15 +331,7 @@ export default function AddClientPage() {
                   <button
                     type="button"
                     onClick={() => removeService(tag)}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      fontWeight: 800,
-                      fontSize: 14,
-                      lineHeight: 1,
-                      opacity: 0.85,
-                    }}
+                    style={{ border: "none", background: "transparent", cursor: "pointer", fontWeight: 800, fontSize: 14, lineHeight: 1, opacity: 0.85 }}
                     aria-label={`Remove ${tag}`}
                     title="Remove"
                   >
@@ -394,12 +343,9 @@ export default function AddClientPage() {
           </div>
         </div>
 
-        {/* Submit */}
-        <div style={{ marginTop: 6 }}>
-          <button type="submit" className="btn" style={{ width: "100%", borderRadius: 14, fontWeight: 700, padding: "12px 14px" }}>
-            Create Client
-          </button>
-        </div>
+        <button type="submit" className="btn" style={{ width: "100%", borderRadius: 14, fontWeight: 700, padding: "12px 14px" }}>
+          Create Client
+        </button>
       </form>
 
       <style jsx>{`
@@ -409,7 +355,6 @@ export default function AddClientPage() {
           margin-bottom: 12px;
           letter-spacing: 0.2px;
         }
-
         .fieldLabel {
           font-size: 11px;
           font-weight: 700;
@@ -418,17 +363,14 @@ export default function AddClientPage() {
           letter-spacing: 0.5px;
           margin-bottom: 6px;
         }
-
         .formGrid {
           display: grid;
           grid-template-columns: repeat(12, 1fr);
           gap: 12px;
         }
-
         .col12 {
           grid-column: span 12;
         }
-
         @media (min-width: 900px) {
           .col6 {
             grid-column: span 6;
