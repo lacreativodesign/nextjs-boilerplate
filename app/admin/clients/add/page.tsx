@@ -1,3 +1,4 @@
+// app/admin/clients/add/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -34,72 +35,42 @@ const formatUSD = (v: any) => {
 };
 
 const parseNumber = (v: string) => {
-  const cleaned = v.replace(/[^\d.]/g, "");
+  const cleaned = (v || "").replace(/[^\d.]/g, "");
   const n = Number(cleaned);
   return isNaN(n) ? 0 : n;
 };
 
-// ✅ Detect ERP theme reliably (works with toggle)
-// Supports:
-// - <html class="dark">
-// - <html data-theme="dark">
-// - <body class="dark">
-// - fallback to OS theme
-const getIsDarkNow = () => {
-  if (typeof document === "undefined") return false;
-
-  const html = document.documentElement;
-  const body = document.body;
-
-  const htmlClassDark = html?.classList?.contains("dark");
-  const bodyClassDark = body?.classList?.contains("dark");
-  const dataTheme = html?.getAttribute("data-theme") || body?.getAttribute("data-theme");
-  const dataThemeDark = dataTheme?.toLowerCase() === "dark";
-
-  if (htmlClassDark || bodyClassDark || dataThemeDark) return true;
-
-  if (typeof window !== "undefined" && window.matchMedia) {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  }
-
-  return false;
-};
-
 export default function AddClientPage() {
-  // ✅ FIX: use ERP theme detection (not only OS theme)
+  // Same OS-theme detection approach used in Users module
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const update = () => setIsDark(getIsDarkNow());
-    update();
-
-    // Watch for app theme toggles (class/attribute changes)
-    const observer = new MutationObserver(() => update());
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
-    if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ["class", "data-theme"] });
-
-    // Fallback: OS theme changes
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onMql = () => update();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", onMql) : mql.addListener(onMql);
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
 
+    // Safari fallback supported
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
     return () => {
-      observer.disconnect();
       // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", onMql) : mql.removeListener(onMql);
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
     };
   }, []);
 
-  // ✅ FORCE GREY CARD IN DARK (match locked tables look)
+  /**
+   * ✅ FIX: Force the same grey family you use in table/cards in dark mode
+   * This does NOT depend on a parent ".dark" class, so it WILL apply.
+   */
   const cardStyle = useMemo(() => {
+    const darkBg = "var(--lac-grey-strong)";
     return {
-      background: isDark ? "rgba(55, 65, 81, 0.70)" : "var(--lightcard)",
-      border: isDark ? "1px solid rgba(148, 163, 184, 0.16)" : "1px solid rgba(37, 99, 235, 0.18)",
-      boxShadow: isDark ? "0 30px 80px rgba(2, 6, 23, 0.40)" : "0 20px 50px rgba(2,6,23,.06)",
-      backdropFilter: "blur(10px)",
+      background: isDark ? darkBg : "#ffffff",
+      border: isDark ? "1px solid rgba(148, 163, 184, 0.35)" : "1px solid rgba(37, 99, 235, 0.18)",
+      boxShadow: isDark ? "0 30px 80px rgba(2, 6, 23, 0.70)" : "none",
+      backdropFilter: isDark ? "blur(10px)" : "none",
+      WebkitBackdropFilter: isDark ? "blur(10px)" : "none",
     } as React.CSSProperties;
   }, [isDark]);
 
@@ -144,10 +115,13 @@ export default function AddClientPage() {
   const addService = () => {
     const tag = serviceInput.trim();
     if (!tag) return;
+
     if (services.some((s) => s.toLowerCase() === tag.toLowerCase())) {
       setServiceInput("");
       return;
     }
+
+    // ✅ FIXED
     setServices((prev) => [...prev, tag]);
     setServiceInput("");
   };
@@ -185,7 +159,12 @@ export default function AddClientPage() {
 
             <div className="col12 col6">
               <div className="fieldLabel">Website</div>
-              <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. https://acme.com" />
+              <input
+                className="input"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="e.g. https://acme.com"
+              />
             </div>
 
             <div className="col12 col6">
@@ -200,12 +179,22 @@ export default function AddClientPage() {
 
             <div className="col12 col3">
               <div className="fieldLabel">Country</div>
-              <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. United States" />
+              <input
+                className="input"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="e.g. United States"
+              />
             </div>
 
             <div className="col12 col3">
               <div className="fieldLabel">Timezone</div>
-              <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="e.g. America/New_York" />
+              <input
+                className="input"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                placeholder="e.g. America/New_York"
+              />
             </div>
           </div>
         </div>
@@ -217,7 +206,13 @@ export default function AddClientPage() {
           <div className="formGrid">
             <div className="col12 col6">
               <div className="fieldLabel">Full Name *</div>
-              <input className="input" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. John Doe" required />
+              <input
+                className="input"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="e.g. John Doe"
+                required
+              />
             </div>
 
             <div className="col12 col6">
@@ -244,44 +239,57 @@ export default function AddClientPage() {
 
             <div className="col12 col6">
               <div className="fieldLabel">Phone Number</div>
-              <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +1 312 555 0199" />
+              <input
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +1 312 555 0199"
+              />
             </div>
           </div>
         </div>
 
-        {/* Status */}
+        {/* Status & Lifecycle */}
         <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Status & Lifecycle</div>
 
           <div className="formGrid">
-            <div className="col12 col4">
+            <div className="col12 col6">
               <div className="fieldLabel">Sales Stage</div>
               <select className="input" value={stage} onChange={(e) => setStage(e.target.value as SalesStage)}>
-                {stageOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {stageOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="col12 col4">
+            <div className="col12 col6">
               <div className="fieldLabel">Payment Status</div>
-              <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
-                {paymentOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+              <select
+                className="input"
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+              >
+                {paymentOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="col12 col4">
+            <div className="col12 col6">
               <div className="fieldLabel">Retainer Status</div>
-              <select className="input" value={retainerStatus} onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}>
-                {retainerOptions.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
+              <select
+                className="input"
+                value={retainerStatus}
+                onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}
+              >
+                {retainerOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
               </select>
@@ -291,22 +299,38 @@ export default function AddClientPage() {
 
         {/* Ownership */}
         <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
-          <div className="sectionTitle">Ownership & Assignment</div>
+          <div className="sectionTitle">Ownership</div>
 
           <div className="formGrid">
             <div className="col12 col4">
               <div className="fieldLabel">Sales Owner *</div>
-              <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} placeholder="e.g. Mansoor (Sales)" required />
+              <input
+                className="input"
+                value={salesOwner}
+                onChange={(e) => setSalesOwner(e.target.value)}
+                placeholder="e.g. Mansoor (Sales)"
+                required
+              />
             </div>
 
             <div className="col12 col4">
               <div className="fieldLabel">Account Manager (AM)</div>
-              <input className="input" value={accountManager} onChange={(e) => setAccountManager(e.target.value)} placeholder="(Assign after payment)" />
+              <input
+                className="input"
+                value={accountManager}
+                onChange={(e) => setAccountManager(e.target.value)}
+                placeholder="(Assign after payment)"
+              />
             </div>
 
             <div className="col12 col4">
               <div className="fieldLabel">Production Owner</div>
-              <input className="input" value={productionOwner} onChange={(e) => setProductionOwner(e.target.value)} placeholder="e.g. Ayesha (Prod)" />
+              <input
+                className="input"
+                value={productionOwner}
+                onChange={(e) => setProductionOwner(e.target.value)}
+                placeholder="e.g. Ayesha (Prod)"
+              />
             </div>
           </div>
         </div>
@@ -317,13 +341,24 @@ export default function AddClientPage() {
 
           <div className="formGrid">
             <div className="col12 col4">
-              <div className="fieldLabel">Total Contract Value (USD $) *</div>
-              <input className="input" value={contractValueUsd} onChange={(e) => setContractValueUsd(e.target.value)} placeholder="e.g. 12500" required />
+              <div className="fieldLabel">Contract Value (USD $)</div>
+              <input
+                className="input"
+                value={contractValueUsd}
+                onChange={(e) => setContractValueUsd(e.target.value)}
+                placeholder='e.g. 12500'
+                required
+              />
             </div>
 
             <div className="col12 col4">
               <div className="fieldLabel">Upfront Paid (USD $)</div>
-              <input className="input" value={upfrontPaidUsd} onChange={(e) => setUpfrontPaidUsd(e.target.value)} placeholder="e.g. 2500" />
+              <input
+                className="input"
+                value={upfrontPaidUsd}
+                onChange={(e) => setUpfrontPaidUsd(e.target.value)}
+                placeholder="e.g. 2500"
+              />
             </div>
 
             <div className="col12 col4">
@@ -333,16 +368,27 @@ export default function AddClientPage() {
 
             <div className="col12 col4">
               <div className="fieldLabel">Monthly Retainer (USD $)</div>
-              <input className="input" value={monthlyRetainerUsd} onChange={(e) => setMonthlyRetainerUsd(e.target.value)} placeholder="e.g. 800" />
+              <input
+                className="input"
+                value={monthlyRetainerUsd}
+                onChange={(e) => setMonthlyRetainerUsd(e.target.value)}
+                placeholder="e.g. 800"
+              />
             </div>
 
             <div className="col12 col4">
               <div className="fieldLabel">Billing Day (1–28)</div>
-              <input className="input" value={billingDay} onChange={(e) => setBillingDay(e.target.value)} placeholder="e.g. 1" inputMode="numeric" />
+              <input
+                className="input"
+                value={billingDay}
+                onChange={(e) => setBillingDay(e.target.value)}
+                placeholder="e.g. 1"
+                inputMode="numeric"
+              />
             </div>
 
             <div className="col12 col4">
-              <div className="fieldLabel">Monthly Retainer (formatted)</div>
+              <div className="fieldLabel">Monthly Expected (Auto)</div>
               <input className="input" value={formatUSD(monthlyRetainer)} readOnly />
             </div>
           </div>
@@ -386,8 +432,8 @@ export default function AddClientPage() {
                     borderRadius: 999,
                     fontWeight: 700,
                     fontSize: 12,
-                    border: "1px solid rgba(148,163,184,0.22)",
-                    background: isDark ? "rgba(17,24,39,0.55)" : "rgba(37,99,235,0.06)",
+                    border: "1px solid rgba(148,163,184,0.28)",
+                    background: "rgba(255,255,255,0.04)",
                   }}
                 >
                   {tag}
@@ -414,7 +460,11 @@ export default function AddClientPage() {
           </div>
         </div>
 
-        <button type="submit" className="btn" style={{ width: "100%", borderRadius: 14, fontWeight: 700, padding: "12px 14px" }}>
+        <button
+          type="submit"
+          className="btn"
+          style={{ width: "100%", borderRadius: 14, fontWeight: 700, padding: "12px 14px" }}
+        >
           Create Client
         </button>
       </form>
