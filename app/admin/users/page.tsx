@@ -28,6 +28,15 @@ type UserRecord = {
 type SortKey = "name" | "email" | "phone" | "department" | "createdAt" | "role";
 type SortDir = "asc" | "desc";
 
+const getRowId = (u: any) =>
+  (u?.uid ||
+    u?.id ||
+    u?.docId ||
+    u?.userId ||
+    u?.firebaseUid ||
+    u?.email ||
+    "") as string;
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
