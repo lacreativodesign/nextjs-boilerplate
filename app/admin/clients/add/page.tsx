@@ -128,7 +128,7 @@ export default function AddClientPage() {
 
       <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Company Information */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Company Information</div>
 
           <div className="formGrid">
@@ -160,7 +160,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Primary Contact */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Primary Contact (Business Owner)</div>
 
           <div className="formGrid">
@@ -187,7 +187,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Status */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Status & Lifecycle</div>
 
           <div className="formGrid">
@@ -227,7 +227,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Ownership */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Ownership & Assignment</div>
 
           <div className="formGrid">
@@ -253,7 +253,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Money */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Money (USD)</div>
 
           <div className="formGrid">
@@ -285,7 +285,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Services */}
-        <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
           <div className="sectionTitle">Services (Tags)</div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -358,7 +358,7 @@ export default function AddClientPage() {
         </div>
       </form>
 
-      {/* Local CSS that matches your enterprise form behavior (Create User style) */}
+      {/* Local CSS: keep Create-User vibe + force DARK cards to neutral GREY */}
       <style jsx>{`
         .sectionTitle {
           font-size: 13px;
@@ -386,7 +386,6 @@ export default function AddClientPage() {
           grid-column: span 12;
         }
 
-        /* Desktop layout like Create User (cards with neat columns) */
         @media (min-width: 900px) {
           .col6 {
             grid-column: span 6;
@@ -397,6 +396,14 @@ export default function AddClientPage() {
           .col3 {
             grid-column: span 3;
           }
+        }
+
+        /* ✅ IMPORTANT: force dark-mode cards to "neutral charcoal grey" (no blue tint) */
+        :global(.dark) :global(.clientCard) {
+          background: rgba(31, 41, 55, 0.72) !important; /* neutral slate/charcoal */
+          border: 1px solid rgba(59, 130, 246, 0.22) !important; /* subtle blue accent border */
+          box-shadow: 0 30px 80px rgba(2, 6, 23, 0.38) !important;
+          backdrop-filter: blur(10px);
         }
       `}</style>
     </div>
