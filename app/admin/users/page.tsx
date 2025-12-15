@@ -1,4 +1,3 @@
-// app/admin/users/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,7 +5,12 @@ import { useRouter } from "next/navigation";
 import type React from "react";
 
 type UserRecord = {
-  uid: string;
+  uid?: string;
+  id?: string;
+  docId?: string;
+  userId?: string;
+  firebaseUid?: string;
+
   name?: string;
   email?: string;
   phone?: string;
@@ -28,6 +32,7 @@ type UserRecord = {
 type SortKey = "name" | "email" | "phone" | "department" | "createdAt" | "role";
 type SortDir = "asc" | "desc";
 
+/** ✅ IMPORTANT FIX: always get a usable ID no matter what your API returns */
 const getRowId = (u: any) =>
   (u?.uid ||
     u?.id ||
@@ -47,7 +52,7 @@ export default function UsersPage() {
   const [expandedUid, setExpandedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
-  // Follow OS theme (no toggle here)
+  // Follow OS theme
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -55,7 +60,6 @@ export default function UsersPage() {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setIsDark(!!mql.matches);
     onChange();
-    // Safari < 14 fallback
     // @ts-expect-error older browsers
     mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
     return () => {
@@ -117,7 +121,7 @@ export default function UsersPage() {
         return;
       }
 
-      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+      setUsers((prev) => prev.filter((u) => getRowId(u) !== uid));
       setExpandedUid((prev) => (prev === uid ? null : prev));
     } catch (e) {
       console.error("Error deleting user:", e);
@@ -159,7 +163,7 @@ export default function UsersPage() {
     return (field || "").toString().toLowerCase();
   };
 
-  /** Safe date render (kills "Invalid Date") */
+  /** Safe date render */
   const renderDate = (v?: string) => {
     if (!v) return "-";
     const d = new Date(v);
@@ -185,23 +189,20 @@ export default function UsersPage() {
     return 0;
   });
 
-  /** Which user is active in the drawer */
+  /** ✅ ACTIVE USER LOOKUP (uses getRowId) */
   const activeUser =
-    expandedUid && users.length ? users.find((u) => u.uid === expandedUid) || null : null;
+    expandedUid && users.length
+      ? users.find((u) => getRowId(u) === expandedUid) || null
+      : null;
 
   const toggleExpand = (uid: string) => {
-    setExpandedUid((prev) => (prev === uid ? null : prev));
+    if (!uid) return;
+    setExpandedUid((prev) => (prev === uid ? null : uid));
   };
 
-  // === TABLE STYLES (final: neutral enterprise surfaces) ===
-
-  // Light: soft slate surface (less “white sheet”)
-  const lightShell = "#F8FAFC"; // slate-50
-  const lightInset = "0 0 0 1px rgba(15,23,42,0.06) inset";
-
-  // Dark: neutral charcoal (NOT navy/blue)
-  const darkShell = "rgba(255,255,255,0.055)"; // matches input-grey vibe
-  const darkInset = "0 0 0 1px rgba(255,255,255,0.06) inset";
+  // Table shell background (enterprise)
+  const lightShell = "#F8FAFC";
+  const darkShell = "rgba(255,255,255,0.055)";
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
@@ -209,7 +210,6 @@ export default function UsersPage() {
     border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
     padding: 16,
     boxShadow: isDark ? "0 18px 55px rgba(0,0,0,0.55)" : "0 14px 40px rgba(15,23,42,0.06)",
-    ...(isDark ? { boxShadow: "0 18px 55px rgba(0,0,0,0.55)", } : {}),
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -242,7 +242,7 @@ export default function UsersPage() {
         Manage all internal users in one place. Search, sort, and open full HR details in a clean right-side drawer.
       </p>
 
-      {/* Search input */}
+      {/* Search */}
       <div style={{ marginBottom: 16, maxWidth: 360 }}>
         <input
           className="input"
@@ -290,9 +290,9 @@ export default function UsersPage() {
 
               <tbody>
                 {sorted.map((u, idx) => {
-                  const expanded = expandedUid === u.uid;
+                  const rowId = getRowId(u);
+                  const expanded = expandedUid === rowId;
 
-                  // subtle row surface (keeps the table from feeling like a single slab)
                   const rowBg = isDark
                     ? idx % 2 === 0
                       ? "rgba(255,255,255,0.02)"
@@ -303,7 +303,7 @@ export default function UsersPage() {
 
                   return (
                     <tr
-                      key={u.uid}
+                      key={rowId}
                       style={{
                         background: rowBg,
                         transition: "background 120ms ease",
@@ -327,7 +327,7 @@ export default function UsersPage() {
                       <td style={{ ...bodyCellStyle, textAlign: "right" }}>
                         <button
                           type="button"
-                          onClick={() => toggleExpand(u.uid)}
+                          onClick={() => toggleExpand(rowId)}
                           className="btn ghost"
                           style={{
                             padding: "6px 14px",
@@ -387,7 +387,7 @@ export default function UsersPage() {
               animation: "slideInUsersDrawer 220ms ease-out",
             }}
           >
-            {/* Drawer header */}
+            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#F9FAFB" }}>
@@ -408,13 +408,13 @@ export default function UsersPage() {
               </button>
             </div>
 
-            {/* Drawer content */}
+            {/* Content */}
             <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
               <UserDetailsPanel
                 user={activeUser}
-                deleting={deletingUid === activeUser.uid}
-                onDelete={handleDelete}
-                onEdit={(uid) => router.push(`/admin/users/${uid}/edit`)}
+                deleting={deletingUid === getRowId(activeUser)}
+                onDelete={(id) => handleDelete(id)}
+                onEdit={(id) => router.push(`/admin/users/${id}/edit`)}
               />
             </div>
           </aside>
@@ -438,7 +438,7 @@ export default function UsersPage() {
 }
 
 /* -------------------------------------------------
-   DRAWER PANEL (tinted card, grid layout)
+   DRAWER PANEL
 --------------------------------------------------*/
 
 type UserDetailsProps = {
@@ -501,7 +501,7 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
         {onDelete && (
           <button
             type="button"
-            onClick={() => onDelete(user.uid)}
+            onClick={() => onDelete(getRowId(user))}
             disabled={deleting}
             className="btn btn-danger"
             style={{ opacity: deleting ? 0.7 : 1, cursor: deleting ? "not-allowed" : "pointer" }}
@@ -511,7 +511,7 @@ function UserDetailsPanel({ user, onDelete, onEdit, deleting }: UserDetailsProps
         )}
 
         {onEdit && (
-          <button type="button" onClick={() => onEdit(user.uid)} className="btn">
+          <button type="button" onClick={() => onEdit(getRowId(user))} className="btn">
             Edit User
           </button>
         )}
