@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 
 type SalesStage =
@@ -39,7 +39,51 @@ const parseNumber = (v: string) => {
   return isNaN(n) ? 0 : n;
 };
 
+function detectDarkMode() {
+  if (typeof document === "undefined") return false;
+
+  const el = document.documentElement;
+  const body = document.body;
+
+  // Common patterns:
+  // 1) class "dark" on html/body
+  // 2) data-theme="dark"
+  // 3) color-scheme: dark
+  const htmlHasDark = el.classList.contains("dark");
+  const bodyHasDark = body?.classList?.contains("dark");
+  const dataThemeDark = el.getAttribute("data-theme") === "dark" || body?.getAttribute?.("data-theme") === "dark";
+
+  // Fallback: computed background can help, but keep it simple:
+  return Boolean(htmlHasDark || bodyHasDark || dataThemeDark);
+}
+
 export default function AddClientPage() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Initial detect
+    setIsDark(detectDarkMode());
+
+    // Watch for theme changes (class / attribute changes)
+    const obs = new MutationObserver(() => setIsDark(detectDarkMode()));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: ["class", "data-theme"] });
+
+    return () => obs.disconnect();
+  }, []);
+
+  const cardStyle = useMemo(() => {
+    if (!isDark) return undefined;
+
+    // ✅ Neutral charcoal grey (matches your table vibe) — no blue tint.
+    return {
+      background: "rgba(31, 41, 55, 0.72)", // neutral slate/charcoal
+      border: "1px solid rgba(59, 130, 246, 0.22)", // subtle blue accent border
+      boxShadow: "0 30px 80px rgba(2, 6, 23, 0.38)",
+      backdropFilter: "blur(10px)",
+    } as React.CSSProperties;
+  }, [isDark]);
+
   // Company
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
@@ -128,7 +172,7 @@ export default function AddClientPage() {
 
       <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Company Information */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Company Information</div>
 
           <div className="formGrid">
@@ -160,7 +204,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Primary Contact */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Primary Contact (Business Owner)</div>
 
           <div className="formGrid">
@@ -187,7 +231,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Status */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Status & Lifecycle</div>
 
           <div className="formGrid">
@@ -227,7 +271,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Ownership */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Ownership & Assignment</div>
 
           <div className="formGrid">
@@ -253,7 +297,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Money */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Money (USD)</div>
 
           <div className="formGrid">
@@ -285,7 +329,7 @@ export default function AddClientPage() {
         </div>
 
         {/* Services */}
-        <div className="card clientCard" style={{ padding: 16, borderRadius: 18 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 18, ...cardStyle }}>
           <div className="sectionTitle">Services (Tags)</div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -358,7 +402,6 @@ export default function AddClientPage() {
         </div>
       </form>
 
-      {/* Local CSS: keep Create-User vibe + force DARK cards to neutral GREY */}
       <style jsx>{`
         .sectionTitle {
           font-size: 13px;
@@ -396,14 +439,6 @@ export default function AddClientPage() {
           .col3 {
             grid-column: span 3;
           }
-        }
-
-        /* ✅ IMPORTANT: force dark-mode cards to "neutral charcoal grey" (no blue tint) */
-        :global(.dark) :global(.clientCard) {
-          background: rgba(31, 41, 55, 0.72) !important; /* neutral slate/charcoal */
-          border: 1px solid rgba(59, 130, 246, 0.22) !important; /* subtle blue accent border */
-          box-shadow: 0 30px 80px rgba(2, 6, 23, 0.38) !important;
-          backdrop-filter: blur(10px);
         }
       `}</style>
     </div>
