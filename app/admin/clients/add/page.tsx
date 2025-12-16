@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebaseClient";
+import { useMemo, useState } from "react";
+import type React from "react";
 
 type SalesStage =
   | "New Lead"
@@ -15,6 +13,7 @@ type SalesStage =
   | "Closed Lost";
 
 type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid";
+
 type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
 const stageOptions: SalesStage[] = [
@@ -28,595 +27,550 @@ const stageOptions: SalesStage[] = [
 ];
 
 const paymentOptions: PaymentStatus[] = ["Unpaid", "Partially Paid", "Paid"];
+
 const retainerOptions: RetainerStatus[] = ["None", "Active", "Paused", "Cancelled"];
 
-function parseMoneyToNumber(input: string) {
-  const cleaned = (input || "").replaceAll("$", "").replaceAll(",", "").trim();
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatUSD(n: number) {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return `$ ${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-  }
-}
-
-function useIsMobile(breakpoint = 720) {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onResize = () => setIsMobile(window.innerWidth < breakpoint);
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [breakpoint]);
-  return isMobile;
-}
+const formatUSD = (v: any) => {
+  const num = Number(v);
+  return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
+};
 
 export default function AddClientPage() {
-  const router = useRouter();
-  const isMobile = useIsMobile(720);
-
-  // Company
-  const [companyName, setCompanyName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [country, setCountry] = useState("");
-  const [timezone, setTimezone] = useState("");
-
-  // Primary Contact
-  const [contactName, setContactName] = useState("");
-  const [contactTitle, setContactTitle] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-
-  // Status & Lifecycle
-  const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
-  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
-
-  // Ownership
-  const [salesOwner, setSalesOwner] = useState("");
-  const [accountManager, setAccountManager] = useState("");
-  const [productionOwner, setProductionOwner] = useState("");
-
-  // Money (ALL USD)
-  const [totalPaidInput, setTotalPaidInput] = useState("");
-  const [openBalanceInput, setOpenBalanceInput] = useState("");
-
-  // Services
-  const [servicesInput, setServicesInput] = useState("");
-
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-  const totalPaid = useMemo(() => parseMoneyToNumber(totalPaidInput), [totalPaidInput]);
-  const openBalance = useMemo(() => parseMoneyToNumber(openBalanceInput), [openBalanceInput]);
+  const [form, setForm] = useState({
+    companyName: "",
+    website: "",
+    industry: "",
+    country: "",
+    timezone: "",
 
-  // Keep layout clean (prevents weird horizontal scroll issues)
-  useEffect(() => {
-    const prev = document.body.style.overflowX;
-    document.body.style.overflowX = "hidden";
-    return () => {
-      document.body.style.overflowX = prev;
-    };
-  }, []);
+    ownerName: "",
+    ownerTitle: "",
+    ownerEmail: "",
+    ownerPhone: "",
 
-  // ====== STYLES (aligned to your ERP tokens) ======
-  const pageWrap: React.CSSProperties = {
-    width: "100%",
-    maxWidth: "100%",
-    paddingBottom: 92, // space for sticky action bar
+    salesStage: "New Lead" as SalesStage,
+    paymentStatus: "Unpaid" as PaymentStatus,
+    retainerStatus: "None" as RetainerStatus,
+
+    salesOwner: "",
+    accountManager: "",
+    productionOwner: "",
+
+    totalContractValue: "",
+    totalPaid: "",
+    openBalance: "",
+    services: "", // tags/notes for now
+  });
+
+  const sectionCardStyle: React.CSSProperties = useMemo(
+    () => ({
+      background: "var(--table-bg)", // ✅ uses the same grey family as your locked data table
+      border: "1px solid var(--table-border)",
+      borderRadius: 16,
+      padding: 18,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+      width: "100%",
+    }),
+    []
+  );
+
+  const labelStyle: React.CSSProperties = useMemo(
+    () => ({
+      fontSize: 11,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      color: "var(--muted)",
+      fontWeight: 700,
+      marginBottom: 6,
+      display: "block",
+    }),
+    []
+  );
+
+  const inputBaseStyle: React.CSSProperties = useMemo(
+    () => ({
+      width: "100%",
+      padding: "12px 12px",
+      borderRadius: 10,
+      border: "1px solid var(--table-border)",
+      background: "var(--input-bg)",
+      color: "var(--text)",
+      outline: "none",
+      fontSize: 14,
+    }),
+    []
+  );
+
+  const selectStyle: React.CSSProperties = useMemo(
+    () => ({
+      ...inputBaseStyle,
+      appearance: "none",
+      WebkitAppearance: "none",
+      MozAppearance: "none",
+      paddingRight: 34,
+    }),
+    [inputBaseStyle]
+  );
+
+  const grid2: React.CSSProperties = useMemo(
+    () => ({
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 14,
+    }),
+    []
+  );
+
+  const grid3: React.CSSProperties = useMemo(
+    () => ({
+      display: "grid",
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: 14,
+    }),
+    []
+  );
+
+  const rowWrap: React.CSSProperties = useMemo(
+    () => ({
+      display: "flex",
+      gap: 14,
+      flexWrap: "wrap",
+    }),
+    []
+  );
+
+  const fullWidthWrap: React.CSSProperties = useMemo(
+    () => ({
+      maxWidth: 1120, // ✅ fills the page like your User Create layout (no ugly right gap)
+      width: "100%",
+    }),
+    []
+  );
+
+  const setField = (k: keyof typeof form, v: any) => {
+    setForm((prev) => ({ ...prev, [k]: v }));
+    setSavedMsg(null);
   };
 
-  const titleStyle: React.CSSProperties = {
-    margin: "0 0 6px 0",
-    fontSize: 30,
-    fontWeight: 900,
-    letterSpacing: -0.2,
-  };
-
-  const subtitleStyle: React.CSSProperties = {
-    margin: "0 0 18px 0",
-    opacity: 0.78,
-    fontSize: 14,
-  };
-
-  const sectionCardStyle: React.CSSProperties = {
-    borderRadius: 18,
-    border: "1px solid rgba(148,163,184,0.22)",
-    padding: 16,
-    background: "var(--table-bg)", // ✅ uses your global grey token
-    boxShadow: "var(--table-shadow)",
-    width: "100%",
-  };
-
-  const sectionTitle: React.CSSProperties = {
-    fontWeight: 900,
-    marginBottom: 12,
-    fontSize: 14,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11,
-    letterSpacing: "0.06em",
-    textTransform: "uppercase",
-    fontWeight: 800,
-    opacity: 0.9,
-    marginBottom: 6,
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(148,163,184,0.22)",
-    background: "rgba(255,255,255,0.04)",
-    color: "var(--table-text)",
-    outline: "none",
-  };
-
-  const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    appearance: "none",
-    color: "var(--table-text)", // ✅ selected text visible
-  };
-
-  const grid2: React.CSSProperties = isMobile
-    ? { display: "grid", gridTemplateColumns: "1fr", gap: 14 }
-    : { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 };
-
-  const grid3: React.CSSProperties = isMobile
-    ? { display: "grid", gridTemplateColumns: "1fr", gap: 14 }
-    : { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 };
-
-  const fieldWrap: React.CSSProperties = { display: "flex", flexDirection: "column" };
-
-  const errorBox: React.CSSProperties = {
-    background: "rgba(239,68,68,0.10)",
-    border: "1px solid rgba(239,68,68,0.35)",
-    color: "var(--table-text)",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
-    fontWeight: 650,
-  };
-
-  const stickyBar: React.CSSProperties = {
-    position: "sticky",
-    bottom: 0,
-    marginTop: 18,
-    borderRadius: 16,
-    border: "1px solid rgba(148,163,184,0.18)",
-    background: "var(--table-bg)",
-    boxShadow: "0 -10px 30px rgba(0,0,0,0.18)",
-    padding: 12,
-    display: "flex",
-    gap: 10,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    zIndex: 5,
-  };
-
-  const btnBase: React.CSSProperties = {
-    height: 38,
-    padding: "0 14px",
-    borderRadius: 10,
-    fontWeight: 800,
-    fontSize: 13,
-    cursor: saving ? "not-allowed" : "pointer",
-    whiteSpace: "nowrap",
-  };
-
-  const btnGhost: React.CSSProperties = {
-    ...btnBase,
-    background: "transparent",
-    border: "1px solid rgba(148,163,184,0.28)",
-    color: "var(--table-text)",
-  };
-
-  const btnPrimary: React.CSSProperties = {
-    ...btnBase,
-    background: "var(--accent, #2563eb)",
-    border: "1px solid rgba(37,99,235,0.35)",
-    color: "#fff",
-  };
-
-  // ====== ACTIONS ======
-  async function handleSubmit(next: "list" | "stay") {
-    setError(null);
-
-    if (!companyName.trim()) return setError("Company Name is required.");
-    if (!contactName.trim()) return setError("Primary Contact Full Name is required.");
-    if (!contactEmail.trim()) return setError("Primary Contact Email is required.");
-    if (!salesOwner.trim()) return setError("Sales Owner is required.");
-
+  const fakeSave = async (mode: "single" | "another") => {
     setSaving(true);
-    try {
-      const services = servicesInput
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+    setSavedMsg(null);
 
-      const payload = {
-        // Company
-        companyName: companyName.trim(),
-        website: website.trim(),
-        industry: industry.trim(),
-        country: country.trim(),
-        timezone: timezone.trim(),
+    // TODO: replace with Firestore write when you say "go"
+    await new Promise((r) => setTimeout(r, 600));
 
-        // Primary Contact
-        primaryContact: {
-          fullName: contactName.trim(),
-          title: contactTitle.trim(),
-          email: contactEmail.trim().toLowerCase(),
-          phone: contactPhone.trim(),
-        },
+    setSaving(false);
+    setSavedMsg(
+      mode === "single"
+        ? "Saved ✅ (dummy save)"
+        : "Saved ✅ (dummy save) — ready for another"
+    );
 
-        // Lifecycle
-        salesStage,
-        paymentStatus,
-        retainerStatus,
-
-        // Ownership
-        salesOwner: salesOwner.trim(),
-        accountManager: accountManager.trim(),
-        productionOwner: productionOwner.trim(),
-
-        // Money (USD)
-        currency: "USD",
-        totalPaid,
-        openBalance,
-
-        // Services
-        services,
-
-        // System
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, "clients"), payload);
-
-      if (next === "list") {
-        router.push("/admin/clients");
-        return;
-      }
-
-      // reset for quick entry
-      setCompanyName("");
-      setWebsite("");
-      setIndustry("");
-      setCountry("");
-      setTimezone("");
-
-      setContactName("");
-      setContactTitle("");
-      setContactEmail("");
-      setContactPhone("");
-
-      setSalesStage("New Lead");
-      setPaymentStatus("Unpaid");
-      setRetainerStatus("None");
-
-      setSalesOwner("");
-      setAccountManager("");
-      setProductionOwner("");
-
-      setTotalPaidInput("");
-      setOpenBalanceInput("");
-      setServicesInput("");
-    } catch (e: any) {
-      setError(e?.message || "Failed to create client.");
-    } finally {
-      setSaving(false);
+    if (mode === "another") {
+      setForm((prev) => ({
+        ...prev,
+        companyName: "",
+        website: "",
+        industry: "",
+        country: "",
+        timezone: "",
+        ownerName: "",
+        ownerTitle: "",
+        ownerEmail: "",
+        ownerPhone: "",
+        salesStage: "New Lead",
+        paymentStatus: "Unpaid",
+        retainerStatus: "None",
+        salesOwner: "",
+        accountManager: "",
+        productionOwner: "",
+        totalContractValue: "",
+        totalPaid: "",
+        openBalance: "",
+        services: "",
+      }));
     }
-  }
+  };
+
+  const onCancel = () => {
+    // Keep it simple: just go back to All Clients
+    window.location.href = "/admin/clients";
+  };
 
   return (
-    <div style={pageWrap}>
-      {/* Fix dropdown option visibility in dark mode */}
+    <div className="client-add-form" style={{ width: "100%" }}>
+      {/* ✅ Fix dropdown option colors in dark mode (browser default menus are ugly) */}
       <style jsx global>{`
-        select option {
-          background: #0b1220;
-          color: #ffffff;
+        .client-add-form select option {
+          color: #111 !important;
+          background: #fff !important;
+        }
+        html.dark .client-add-form select option,
+        [data-theme="dark"] .client-add-form select option {
+          color: #f5f5f5 !important;
+          background: #111827 !important;
         }
       `}</style>
 
-      <h1 style={titleStyle}>Add Client</h1>
-      <p style={subtitleStyle}>
-        Create a new client record (company + owner contact). All amounts are tracked in USD.
-      </p>
-
-      {error ? <div style={errorBox}>{error}</div> : null}
-
-      {/* Company Info */}
-      <div style={sectionCardStyle}>
-        <div style={sectionTitle}>Company Information</div>
-
-        <div style={grid2}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Company Name *</div>
-            <input
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="e.g. ACME Trading LLC"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Website</div>
-            <input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="e.g. https://acme.com"
-              style={inputStyle}
-            />
-          </div>
+      <div style={fullWidthWrap}>
+        <div style={{ marginBottom: 18 }}>
+          <h1 style={{ margin: 0, fontSize: 32, color: "var(--text)" }}>Add Client</h1>
+          <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: 13 }}>
+            Create a new client record (company + owner contact). All amounts are tracked in USD.
+          </p>
         </div>
 
-        <div style={{ height: 14 }} />
-
-        <div style={grid3}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Industry</div>
-            <input
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              placeholder="e.g. Retail, SaaS, Healthcare"
-              style={inputStyle}
-            />
+        {/* Company Information */}
+        <div style={sectionCardStyle}>
+          <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 12, fontSize: 14 }}>
+            Company Information
           </div>
 
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Country</div>
-            <input
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g. United States"
-              style={inputStyle}
-            />
-          </div>
+          <div style={grid2}>
+            <div>
+              <label style={labelStyle}>
+                Company Name <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                style={inputBaseStyle}
+                value={form.companyName}
+                onChange={(e) => setField("companyName", e.target.value)}
+                placeholder="e.g. ACME Trading LLC"
+              />
+            </div>
 
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Timezone</div>
-            <input
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              placeholder="e.g. America/New_York"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 14 }} />
-
-      {/* Primary Contact */}
-      <div style={sectionCardStyle}>
-        <div style={sectionTitle}>Primary Contact (Business Owner)</div>
-
-        <div style={grid2}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Full Name *</div>
-            <input
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              placeholder="e.g. John Doe"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Title / Designation</div>
-            <input
-              value={contactTitle}
-              onChange={(e) => setContactTitle(e.target.value)}
-              placeholder="e.g. Founder / CEO"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        <div style={{ height: 14 }} />
-
-        <div style={grid2}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Email Address *</div>
-            <input
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="e.g. owner@company.com"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Phone Number</div>
-            <input
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              placeholder="e.g. +1 312 555 0199"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 14 }} />
-
-      {/* Status & Lifecycle */}
-      <div style={sectionCardStyle}>
-        <div style={sectionTitle}>Status & Lifecycle</div>
-
-        <div style={grid3}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Sales Stage</div>
-            <select value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)} style={selectStyle}>
-              {stageOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Payment Status</div>
-            <select
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
-              style={selectStyle}
-            >
-              {paymentOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Retainer Status</div>
-            <select
-              value={retainerStatus}
-              onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}
-              style={selectStyle}
-            >
-              {retainerOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 14 }} />
-
-      {/* Ownership */}
-      <div style={sectionCardStyle}>
-        <div style={sectionTitle}>Ownership</div>
-
-        <div style={grid3}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Sales Owner *</div>
-            <input
-              value={salesOwner}
-              onChange={(e) => setSalesOwner(e.target.value)}
-              placeholder="e.g. Mansoor (Sales)"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Account Manager (AM)</div>
-            <input
-              value={accountManager}
-              onChange={(e) => setAccountManager(e.target.value)}
-              placeholder="(Assign after payment)"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Production Owner</div>
-            <input
-              value={productionOwner}
-              onChange={(e) => setProductionOwner(e.target.value)}
-              placeholder="e.g. Ayesha (Prod)"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 14 }} />
-
-      {/* Money & Services */}
-      <div style={sectionCardStyle}>
-        <div style={sectionTitle}>Money & Services (USD)</div>
-
-        <div style={grid2}>
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Total Paid (lifetime)</div>
-            <input
-              value={totalPaidInput}
-              onChange={(e) => setTotalPaidInput(e.target.value)}
-              placeholder='$ 12,500'
-              style={inputStyle}
-            />
-            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-              Preview: <strong>{formatUSD(totalPaid)}</strong>
+            <div>
+              <label style={labelStyle}>Website</label>
+              <input
+                style={inputBaseStyle}
+                value={form.website}
+                onChange={(e) => setField("website", e.target.value)}
+                placeholder="e.g. https://acme.com"
+              />
             </div>
           </div>
 
-          <div style={fieldWrap}>
-            <div style={labelStyle}>Open Balance</div>
-            <input
-              value={openBalanceInput}
-              onChange={(e) => setOpenBalanceInput(e.target.value)}
-              placeholder='$ 1,500'
-              style={inputStyle}
-            />
-            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-              Preview: <strong>{formatUSD(openBalance)}</strong>
+          <div style={{ height: 12 }} />
+
+          <div style={grid3}>
+            <div>
+              <label style={labelStyle}>Industry</label>
+              <input
+                style={inputBaseStyle}
+                value={form.industry}
+                onChange={(e) => setField("industry", e.target.value)}
+                placeholder="e.g. Retail, SaaS, Healthcare"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Country</label>
+              <input
+                style={inputBaseStyle}
+                value={form.country}
+                onChange={(e) => setField("country", e.target.value)}
+                placeholder="e.g. United States"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Timezone</label>
+              <input
+                style={inputBaseStyle}
+                value={form.timezone}
+                onChange={(e) => setField("timezone", e.target.value)}
+                placeholder="e.g. America/New_York"
+              />
             </div>
           </div>
         </div>
 
         <div style={{ height: 14 }} />
 
-        <div style={fieldWrap}>
-          <div style={labelStyle}>Services (comma-separated)</div>
-          <input
-            value={servicesInput}
-            onChange={(e) => setServicesInput(e.target.value)}
-            placeholder="Website Design, SEO Retainer, Social Media Marketing"
-            style={inputStyle}
-          />
+        {/* Primary Contact */}
+        <div style={sectionCardStyle}>
+          <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 12, fontSize: 14 }}>
+            Primary Contact (Business Owner)
+          </div>
+
+          <div style={grid2}>
+            <div>
+              <label style={labelStyle}>
+                Full Name <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                style={inputBaseStyle}
+                value={form.ownerName}
+                onChange={(e) => setField("ownerName", e.target.value)}
+                placeholder="e.g. John Doe"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Title / Designation</label>
+              <input
+                style={inputBaseStyle}
+                value={form.ownerTitle}
+                onChange={(e) => setField("ownerTitle", e.target.value)}
+                placeholder="e.g. Founder / CEO"
+              />
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div style={grid2}>
+            <div>
+              <label style={labelStyle}>
+                Email Address <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                style={inputBaseStyle}
+                value={form.ownerEmail}
+                onChange={(e) => setField("ownerEmail", e.target.value)}
+                placeholder="e.g. owner@company.com"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Phone Number</label>
+              <input
+                style={inputBaseStyle}
+                value={form.ownerPhone}
+                onChange={(e) => setField("ownerPhone", e.target.value)}
+                placeholder="e.g. +1 312 555 0199"
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Sticky action bar (aligned, consistent, usable) */}
-      <div style={stickyBar}>
-        <button
-          type="button"
-          style={btnGhost}
-          disabled={saving}
-          onClick={() => router.push("/admin/clients")}
-        >
-          Cancel
-        </button>
+        <div style={{ height: 14 }} />
 
-        <button
-          type="button"
-          style={btnGhost}
-          disabled={saving}
-          onClick={() => handleSubmit("stay")}
-          title="Save this client and reset the form for quick entry"
-        >
-          {saving ? "Saving..." : "Save & Add Another"}
-        </button>
+        {/* Status & Lifecycle */}
+        <div style={sectionCardStyle}>
+          <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 12, fontSize: 14 }}>
+            Status & Lifecycle
+          </div>
 
-        <button
-          type="button"
-          style={btnPrimary}
-          disabled={saving}
-          onClick={() => handleSubmit("list")}
+          <div style={grid3}>
+            <div>
+              <label style={labelStyle}>Sales Stage</label>
+              <select
+                style={selectStyle}
+                value={form.salesStage}
+                onChange={(e) => setField("salesStage", e.target.value as SalesStage)}
+              >
+                {stageOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Payment Status</label>
+              <select
+                style={selectStyle}
+                value={form.paymentStatus}
+                onChange={(e) => setField("paymentStatus", e.target.value as PaymentStatus)}
+              >
+                {paymentOptions.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Retainer Status</label>
+              <select
+                style={selectStyle}
+                value={form.retainerStatus}
+                onChange={(e) => setField("retainerStatus", e.target.value as RetainerStatus)}
+              >
+                {retainerOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height: 14 }} />
+
+        {/* Ownership */}
+        <div style={sectionCardStyle}>
+          <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 12, fontSize: 14 }}>
+            Ownership
+          </div>
+
+          <div style={grid3}>
+            <div>
+              <label style={labelStyle}>
+                Sales Owner <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                style={inputBaseStyle}
+                value={form.salesOwner}
+                onChange={(e) => setField("salesOwner", e.target.value)}
+                placeholder="e.g. Mansoor (Sales)"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Account Manager (AM)</label>
+              <input
+                style={inputBaseStyle}
+                value={form.accountManager}
+                onChange={(e) => setField("accountManager", e.target.value)}
+                placeholder="(Assign after payment)"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Production Owner</label>
+              <input
+                style={inputBaseStyle}
+                value={form.productionOwner}
+                onChange={(e) => setField("productionOwner", e.target.value)}
+                placeholder="e.g. Ayesha (Prod)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height: 14 }} />
+
+        {/* Money & Services */}
+        <div style={sectionCardStyle}>
+          <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 12, fontSize: 14 }}>
+            Money & Services (USD)
+          </div>
+
+          <div style={grid3}>
+            <div>
+              <label style={labelStyle}>Total Contract Value</label>
+              <input
+                style={inputBaseStyle}
+                value={form.totalContractValue}
+                onChange={(e) => setField("totalContractValue", e.target.value)}
+                placeholder={formatUSD(12500)}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Total Paid</label>
+              <input
+                style={inputBaseStyle}
+                value={form.totalPaid}
+                onChange={(e) => setField("totalPaid", e.target.value)}
+                placeholder={formatUSD(0)}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Open Balance</label>
+              <input
+                style={inputBaseStyle}
+                value={form.openBalance}
+                onChange={(e) => setField("openBalance", e.target.value)}
+                placeholder={formatUSD(0)}
+              />
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div>
+            <label style={labelStyle}>Services (tags / notes for now)</label>
+            <input
+              style={inputBaseStyle}
+              value={form.services}
+              onChange={(e) => setField("services", e.target.value)}
+              placeholder="e.g. Website Design · SEO Retainer · Social Media Marketing"
+            />
+          </div>
+        </div>
+
+        {/* ✅ BUTTONS: centered, no sticky, no background strip, end of form */}
+        <div style={{ height: 18 }} />
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center", // ✅ centered
+            alignItems: "center",
+            gap: 10,
+            paddingBottom: 10,
+            background: "transparent", // ✅ no strip
+          }}
         >
-          {saving ? "Saving..." : "Save Client"}
-        </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            style={{
+              border: "1px solid var(--table-border)",
+              background: "transparent",
+              color: "var(--text)",
+              padding: "10px 14px",
+              borderRadius: 999,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fakeSave("another")}
+            disabled={saving}
+            style={{
+              border: "1px solid var(--table-border)",
+              background: "transparent",
+              color: "var(--text)",
+              padding: "10px 14px",
+              borderRadius: 999,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "Save & Add Another"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fakeSave("single")}
+            disabled={saving}
+            style={{
+              border: "1px solid transparent",
+              background: "var(--accent)",
+              color: "#fff",
+              padding: "10px 16px",
+              borderRadius: 999,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "Save Client"}
+          </button>
+        </div>
+
+        {savedMsg ? (
+          <div style={{ marginTop: 10, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
+            {savedMsg}
+          </div>
+        ) : null}
+
+        <div style={{ height: 28 }} />
       </div>
     </div>
   );
