@@ -67,8 +67,9 @@ export default function AddClientPage() {
 
   const sectionCardStyle: React.CSSProperties = useMemo(
     () => ({
-      background: "var(--table-bg)", // ✅ uses the same grey family as your locked data table
-      border: "1px solid var(--table-border)",
+      // Same neutral ERP card surface (grey in dark mode)
+      background: "var(--card-bg)",
+      border: "1px solid var(--card-border)",
       borderRadius: 16,
       padding: 18,
       boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
@@ -133,18 +134,9 @@ export default function AddClientPage() {
     []
   );
 
-  const rowWrap: React.CSSProperties = useMemo(
-    () => ({
-      display: "flex",
-      gap: 14,
-      flexWrap: "wrap",
-    }),
-    []
-  );
-
   const fullWidthWrap: React.CSSProperties = useMemo(
     () => ({
-      maxWidth: 1120, // ✅ fills the page like your User Create layout (no ugly right gap)
+      maxWidth: 1120, // aligns with Create User layout width
       width: "100%",
     }),
     []
@@ -196,13 +188,12 @@ export default function AddClientPage() {
   };
 
   const onCancel = () => {
-    // Keep it simple: just go back to All Clients
     window.location.href = "/admin/clients";
   };
 
   return (
     <div className="client-add-form" style={{ width: "100%" }}>
-      {/* ✅ Fix dropdown option colors in dark mode (browser default menus are ugly) */}
+      {/* Dropdown font color fix (browser dropdowns can be ugly in dark mode) */}
       <style jsx global>{`
         .client-add-form select option {
           color: #111 !important;
@@ -505,11 +496,12 @@ export default function AddClientPage() {
         <div
           style={{
             display: "flex",
-            justifyContent: "center", // ✅ centered
+            justifyContent: "center",
             alignItems: "center",
             gap: 10,
+            paddingTop: 10,
             paddingBottom: 10,
-            background: "transparent", // ✅ no strip
+            background: "transparent",
           }}
         >
           <button
@@ -521,7 +513,7 @@ export default function AddClientPage() {
               background: "transparent",
               color: "var(--text)",
               padding: "10px 14px",
-              borderRadius: 999,
+              borderRadius: 12,
               fontWeight: 700,
               cursor: "pointer",
             }}
@@ -538,7 +530,7 @@ export default function AddClientPage() {
               background: "transparent",
               color: "var(--text)",
               padding: "10px 14px",
-              borderRadius: 999,
+              borderRadius: 12,
               fontWeight: 700,
               cursor: "pointer",
             }}
@@ -555,7 +547,7 @@ export default function AddClientPage() {
               background: "var(--accent)",
               color: "#fff",
               padding: "10px 16px",
-              borderRadius: 999,
+              borderRadius: 12,
               fontWeight: 800,
               cursor: "pointer",
             }}
