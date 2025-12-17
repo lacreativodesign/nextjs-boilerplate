@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 type SalesStage =
   | "New Lead"
@@ -64,6 +64,23 @@ function fmtDate(iso?: string | null) {
   return d.toLocaleDateString("en-US");
 }
 
+// Force branding: Order IDs must present as LC-0001... even if legacy data contains ORD-0001
+function normalizeOrderId(orderId?: string) {
+  const v = (orderId || "").trim();
+  if (!v) return "";
+  const up = v.toUpperCase();
+
+  if (up.startsWith("LC-")) return up;
+  if (up.startsWith("ORD-")) return `LC-${up.slice(4)}`;
+
+  // If someone stored only digits like "12" or "00012", normalize to LC-0012-ish
+  const digits = up.replace(/\D/g, "");
+  if (digits) return `LC-${digits.padStart(4, "0")}`;
+
+  // Fallback: still brand it
+  return `LC-${up}`;
+}
+
 /**
  * Your ERP uses ThemeProvider class toggling, not OS theme.
  * So dark mode must read <html class="dark"> (or similar).
@@ -102,14 +119,14 @@ export default function KeyAccountsPage() {
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
   // Same table surface rules you already approved globally
-  const tableShellStyle: React.CSSProperties = {
+  const tableShellStyle: CSSProperties = {
     background: isDark ? "rgba(20, 20, 20, 0.65)" : "rgba(255, 255, 255, 0.9)",
     border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
     borderRadius: 16,
     boxShadow: isDark ? "0 10px 30px rgba(0,0,0,0.45)" : "0 10px 30px rgba(15,23,42,0.08)",
   };
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     width: "100%",
     maxWidth: 360,
     padding: "12px 14px",
@@ -166,12 +183,14 @@ export default function KeyAccountsPage() {
     if (!q) return base;
 
     return base.filter((c) => {
+      const orderIdLc = normalizeOrderId(c.orderId);
       const hay = [
         c.companyName,
         c.primaryContactName,
         c.primaryContactEmail,
         c.primaryContactPhone,
         c.orderId,
+        orderIdLc,
       ]
         .filter(Boolean)
         .join(" ")
@@ -221,7 +240,7 @@ export default function KeyAccountsPage() {
           style={inputStyle}
         />
         <div style={{ fontSize: 12, opacity: 0.7 }}>
-          {loading ? "Loading..." { /* keep it clean */ } : `${keyAccounts.length} key account(s)`}
+          {loading ? "Loading..." : `${keyAccounts.length} key account(s)`}
         </div>
       </div>
 
@@ -298,51 +317,51 @@ export default function KeyAccountsPage() {
 
               {!error &&
                 !loading &&
-                keyAccounts.map((c) => (
-                  <tr
-                    key={c.id}
-                    style={{
-                      borderBottom: isDark
-                        ? "1px dashed rgba(255,255,255,0.08)"
-                        : "1px dashed rgba(15,23,42,0.08)",
-                    }}
-                  >
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      {c.orderId || "-"}
-                    </td>
-                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>{c.companyName || "-"}</td>
-                    <td style={{ padding: "14px 16px" }}>{c.primaryContactName || "-"}</td>
-                    <td style={{ padding: "14px 16px" }}>{c.primaryContactEmail || "-"}</td>
-                    <td style={{ padding: "14px 16px" }}>{c.primaryContactPhone || "-"}</td>
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      {c.paymentStatus || "-"}
-                    </td>
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap", fontWeight: 700 }}>
-                      {fmtMoney(Number(c.totalPaidUsd || 0))}
-                    </td>
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      {fmtDate(c.createdAt)}
-                    </td>
-                    <td style={{ padding: "14px 16px" }}>
-                      <button
-                        onClick={() => openDrawer(c)}
-                        style={{
-                          padding: "8px 14px",
-                          borderRadius: 999,
-                          background: "transparent",
-                          cursor: "pointer",
-                          border: isDark
-                            ? "1px solid rgba(255,255,255,0.22)"
-                            : "1px solid rgba(15,23,42,0.22)",
-                          color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
-                          fontWeight: 700,
-                        }}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                keyAccounts.map((c) => {
+                  const orderIdLc = normalizeOrderId(c.orderId) || "-";
+
+                  return (
+                    <tr
+                      key={c.id}
+                      style={{
+                        borderBottom: isDark
+                          ? "1px dashed rgba(255,255,255,0.08)"
+                          : "1px dashed rgba(15,23,42,0.08)",
+                      }}
+                    >
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>{orderIdLc}</td>
+                      <td style={{ padding: "14px 16px", fontWeight: 700 }}>{c.companyName || "-"}</td>
+                      <td style={{ padding: "14px 16px" }}>{c.primaryContactName || "-"}</td>
+                      <td style={{ padding: "14px 16px" }}>{c.primaryContactEmail || "-"}</td>
+                      <td style={{ padding: "14px 16px" }}>{c.primaryContactPhone || "-"}</td>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        {c.paymentStatus || "-"}
+                      </td>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap", fontWeight: 700 }}>
+                        {fmtMoney(Number(c.totalPaidUsd || 0))}
+                      </td>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>{fmtDate(c.createdAt)}</td>
+                      <td style={{ padding: "14px 16px" }}>
+                        <button
+                          onClick={() => openDrawer(c)}
+                          style={{
+                            padding: "8px 14px",
+                            borderRadius: 999,
+                            background: "transparent",
+                            cursor: "pointer",
+                            border: isDark
+                              ? "1px solid rgba(255,255,255,0.22)"
+                              : "1px solid rgba(15,23,42,0.22)",
+                            color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -437,7 +456,7 @@ export default function KeyAccountsPage() {
             <div style={{ height: 14 }} />
 
             <Section title="COMPANY" isDark={isDark}>
-              <Row label="Order ID" value={selected.orderId || "-"} isDark={isDark} />
+              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} isDark={isDark} />
               <Row label="Company" value={selected.companyName || "-"} isDark={isDark} />
               <Row label="Website" value={selected.website || "-"} isDark={isDark} />
               <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
@@ -479,7 +498,6 @@ export default function KeyAccountsPage() {
                   cursor: "pointer",
                 }}
                 onClick={() => {
-                  // Hook your edit route here later (same pattern as All Clients)
                   alert("Edit flow: wire to your Edit Client route.");
                 }}
               >
@@ -515,7 +533,7 @@ function Section({
   isDark,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   isDark: boolean;
 }) {
   return (
@@ -527,9 +545,7 @@ function Section({
         background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
-        {title}
-      </div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
