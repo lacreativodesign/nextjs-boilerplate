@@ -1,128 +1,188 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type Client = {
+type SalesStage =
+  | "New Lead"
+  | "Contacted"
+  | "Qualified"
+  | "Proposal Sent"
+  | "Negotiation"
+  | "Closed Won"
+  | "Closed Lost";
+
+type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
+type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
+
+type ClientRecord = {
   id: string;
-  companyName?: string;
-  ownerName?: string;
-  ownerEmail?: string;
-  ownerPhone?: string;
+  companyName: string;
+  website?: string;
   industry?: string;
   country?: string;
   timezone?: string;
 
-  salesStage?: string;
-  paymentStatus?: string;
-  retainerStatus?: string;
+  primaryContactName: string;
+  primaryContactTitle?: string;
+  primaryContactEmail: string;
+  primaryContactPhone?: string;
+
+  salesStage?: SalesStage | string;
+  paymentStatus?: PaymentStatus | string;
+  retainerStatus?: RetainerStatus | string;
 
   salesOwner?: string;
   accountManager?: string;
   productionOwner?: string;
 
-  totalPaidUsd?: number;
+  totalPaidUsd: number;
+  orderId?: string;
 
-  createdAt?: string;     // or Timestamp string
-  lastActivity?: string;  // or Timestamp string
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  lastActivity?: string | null;
 };
 
-const KEY_ACCOUNT_MIN_USD = 1000;
+const KEY_ACCOUNT_THRESHOLD = 1000;
 
-function money(n: any) {
-  const num = Number(n || 0);
-  return `$ ${num.toLocaleString("en-US")}`;
+function fmtMoney(n: number) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return `$ ${Number(n || 0).toLocaleString()}`;
+  }
 }
 
-function safeText(v: any) {
-  return v === null || v === undefined || v === "" ? "—" : String(v);
-}
-
-function dateText(v: any) {
-  if (!v) return "—";
-  // Handles ISO strings & simple date strings
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return String(v);
+function fmtDate(iso?: string | null) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("en-US");
 }
 
-export default function KeyAccountsPage() {
-  const [search, setSearch] = useState("");
-  const [clients, setClients] = useState<Client[]>([]); // IMPORTANT: default []
-  const [loading, setLoading] = useState(true);
-
-  const [selected, setSelected] = useState<Client | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
+/**
+ * Your ERP uses ThemeProvider class toggling, not OS theme.
+ * So dark mode must read <html class="dark"> (or similar).
+ */
+function useIsDarkMode() {
   const [isDark, setIsDark] = useState(false);
 
-  // Match your existing theme toggling logic (class="dark" on html/body)
   useEffect(() => {
-    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    const root = document.documentElement;
+
+    const read = () => {
+      setIsDark(root.classList.contains("dark"));
+    };
+
+    read();
+
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+
     return () => obs.disconnect();
   }, []);
 
-  // LIVE fetch (falls back safely to empty [])
+  return isDark;
+}
+
+export default function KeyAccountsPage() {
+  const isDark = useIsDarkMode();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<ClientRecord[]>([]);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selected, setSelected] = useState<ClientRecord | null>(null);
+
+  // Same table surface rules you already approved globally
+  const tableShellStyle: React.CSSProperties = {
+    background: isDark ? "rgba(20, 20, 20, 0.65)" : "rgba(255, 255, 255, 0.9)",
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+    borderRadius: 16,
+    boxShadow: isDark ? "0 10px 30px rgba(0,0,0,0.45)" : "0 10px 30px rgba(15,23,42,0.08)",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    maxWidth: 360,
+    padding: "12px 14px",
+    borderRadius: 12,
+    outline: "none",
+    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.95)",
+    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.92)",
+    border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+  };
+
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
 
     async function load() {
+      setLoading(true);
+      setError(null);
+
       try {
-        setLoading(true);
-        const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+        const res = await fetch("/api/admin/clients/list", {
+          method: "GET",
+          cache: "no-store",
+        });
+
         const json = await res.json();
-
-        if (!mounted) return;
-
-        if (json?.ok && Array.isArray(json.clients)) {
-          setClients(json.clients);
-        } else {
-          // Safe fallback (no crash)
-          setClients([]);
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || "Failed to load clients");
         }
-      } catch (e) {
-        setClients([]);
+
+        const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
+
+        if (!alive) return;
+        setRows(list);
+      } catch (e: any) {
+        if (!alive) return;
+        setError(e?.message || "Failed to load clients");
+        setRows([]);
       } finally {
-        if (mounted) setLoading(false);
+        if (!alive) return;
+        setLoading(false);
       }
     }
 
     load();
     return () => {
-      mounted = false;
+      alive = false;
     };
   }, []);
 
   const keyAccounts = useMemo(() => {
-    const list = Array.isArray(clients) ? clients : [];
+    const q = query.trim().toLowerCase();
 
-    const filtered = list.filter((c) => Number(c.totalPaidUsd || 0) >= KEY_ACCOUNT_MIN_USD);
+    const base = (rows || []).filter((c) => Number(c?.totalPaidUsd || 0) >= KEY_ACCOUNT_THRESHOLD);
 
-    const q = search.trim().toLowerCase();
-    if (!q) return filtered;
+    if (!q) return base;
 
-    return filtered.filter((c) => {
-      const blob = [
+    return base.filter((c) => {
+      const hay = [
         c.companyName,
-        c.ownerName,
-        c.ownerEmail,
-        c.ownerPhone,
-        c.paymentStatus,
-        c.salesStage,
-        c.retainerStatus,
-        c.country,
+        c.primaryContactName,
+        c.primaryContactEmail,
+        c.primaryContactPhone,
+        c.orderId,
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return blob.includes(q);
-    });
-  }, [clients, search]);
 
-  function openDrawer(client: Client) {
-    setSelected(client);
+      return hay.includes(q);
+    });
+  }, [rows, query]);
+
+  function openDrawer(c: ClientRecord) {
+    setSelected(c);
     setDrawerOpen(true);
   }
 
@@ -131,116 +191,150 @@ export default function KeyAccountsPage() {
     setSelected(null);
   }
 
-  const cardBg = isDark ? "rgba(17, 24, 39, 0.72)" : "rgba(255, 255, 255, 0.9)";
-  const tableSurface = isDark ? "rgba(31, 41, 55, 0.55)" : "#ffffff";
-  const tableBorder = isDark ? "rgba(59, 130, 246, 0.20)" : "rgba(59, 130, 246, 0.18)";
-  const textMuted = isDark ? "rgba(229, 231, 235, 0.70)" : "rgba(17, 24, 39, 0.55)";
-  const inputBg = isDark ? "rgba(17, 24, 39, 0.75)" : "rgba(255, 255, 255, 0.95)";
-  const inputBorder = isDark ? "rgba(148, 163, 184, 0.25)" : "rgba(148, 163, 184, 0.35)";
-
   return (
-    <div style={{ padding: "18px 22px 28px" }}>
-      <h1 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6 }}>Key Accounts</h1>
-      <div style={{ color: textMuted, marginBottom: 18 }}>
-        High-value clients (revenue-based). Key Account = <b>Total Paid ≥ ${KEY_ACCOUNT_MIN_USD.toLocaleString("en-US")}</b>.
+    <div style={{ width: "100%" }}>
+      <h1
+        style={{
+          fontSize: 34,
+          fontWeight: 800,
+          marginBottom: 8,
+          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+        }}
+      >
+        Key Accounts
+      </h1>
+
+      <div
+        style={{
+          marginBottom: 18,
+          color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+        }}
+      >
+        High-value clients (revenue-based). Key Account = <b>Total Paid ≥ $1,000</b>.
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
         <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Search keyword"
-          style={{
-            width: 360,
-            maxWidth: "100%",
-            padding: "10px 12px",
-            borderRadius: 10,
-            outline: "none",
-            background: inputBg,
-            border: `1px solid ${inputBorder}`,
-            color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.9)",
-          }}
+          style={inputStyle}
         />
-        <div style={{ color: textMuted, fontSize: 13 }}>
-          {loading ? "Loading…" : `${keyAccounts.length} key account(s)`}
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          {loading ? "Loading..." { /* keep it clean */ } : `${keyAccounts.length} key account(s)`}
         </div>
       </div>
 
-      {/* TABLE CARD (match your locked style) */}
-      <div
-        style={{
-          background: tableSurface,
-          border: `1px solid ${tableBorder}`,
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.45)" : "0 18px 50px rgba(15,23,42,0.08)",
-        }}
-      >
+      <div style={{ ...tableShellStyle, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
               <tr
                 style={{
-                  background: isDark ? "rgba(17,24,39,0.55)" : "rgba(248,250,252,0.9)",
+                  background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.03)",
                 }}
               >
-                {["COMPANY", "CONTACT", "EMAIL", "PHONE", "PAYMENT", "TOTAL PAID", "CREATED", "ACTION"].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      style={{
-                        textAlign: "left",
-                        padding: "14px 16px",
-                        fontSize: 12,
-                        letterSpacing: "0.04em",
-                        color: isDark ? "rgba(255,255,255,0.75)" : "rgba(17,24,39,0.55)",
-                        borderBottom: `1px solid ${isDark ? "rgba(148,163,184,0.14)" : "rgba(226,232,240,0.8)"}`,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {[
+                  "ORDER ID",
+                  "COMPANY",
+                  "CONTACT",
+                  "EMAIL",
+                  "PHONE",
+                  "PAYMENT",
+                  "TOTAL PAID",
+                  "CREATED",
+                  "ACTION",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      fontSize: 11,
+                      letterSpacing: "0.06em",
+                      padding: "14px 16px",
+                      color: isDark ? "rgba(255,255,255,0.55)" : "rgba(15,23,42,0.55)",
+                      borderBottom: isDark
+                        ? "1px solid rgba(255,255,255,0.08)"
+                        : "1px solid rgba(15,23,42,0.08)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
 
             <tbody>
-              {!loading && keyAccounts.length === 0 ? (
+              {error && (
                 <tr>
-                  <td colSpan={8} style={{ padding: 18, color: textMuted }}>
-                    No key accounts found (Total Paid ≥ ${KEY_ACCOUNT_MIN_USD.toLocaleString("en-US")}).
+                  <td colSpan={9} style={{ padding: 16, color: "rgba(239,68,68,0.9)" }}>
+                    {error}
                   </td>
                 </tr>
-              ) : (
+              )}
+
+              {!error && loading && (
+                <tr>
+                  <td colSpan={9} style={{ padding: 16, opacity: 0.7 }}>
+                    Loading key accounts...
+                  </td>
+                </tr>
+              )}
+
+              {!error && !loading && keyAccounts.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={9}
+                    style={{
+                      padding: 16,
+                      color: isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)",
+                    }}
+                  >
+                    No key accounts found (Total Paid ≥ $1,000).
+                  </td>
+                </tr>
+              )}
+
+              {!error &&
+                !loading &&
                 keyAccounts.map((c) => (
                   <tr
                     key={c.id}
                     style={{
-                      borderBottom: `1px dashed ${isDark ? "rgba(148,163,184,0.18)" : "rgba(226,232,240,0.9)"}`,
+                      borderBottom: isDark
+                        ? "1px dashed rgba(255,255,255,0.08)"
+                        : "1px dashed rgba(15,23,42,0.08)",
                     }}
                   >
-                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>
-                      {safeText(c.companyName)}
+                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                      {c.orderId || "-"}
                     </td>
-                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerName)}</td>
-                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerEmail)}</td>
-                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerPhone)}</td>
-                    <td style={{ padding: "14px 16px" }}>{safeText(c.paymentStatus)}</td>
-                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>
-                      {money(c.totalPaidUsd)}
+                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>{c.companyName || "-"}</td>
+                    <td style={{ padding: "14px 16px" }}>{c.primaryContactName || "-"}</td>
+                    <td style={{ padding: "14px 16px" }}>{c.primaryContactEmail || "-"}</td>
+                    <td style={{ padding: "14px 16px" }}>{c.primaryContactPhone || "-"}</td>
+                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                      {c.paymentStatus || "-"}
                     </td>
-                    <td style={{ padding: "14px 16px" }}>{dateText(c.createdAt)}</td>
+                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap", fontWeight: 700 }}>
+                      {fmtMoney(Number(c.totalPaidUsd || 0))}
+                    </td>
+                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                      {fmtDate(c.createdAt)}
+                    </td>
                     <td style={{ padding: "14px 16px" }}>
                       <button
                         onClick={() => openDrawer(c)}
                         style={{
-                          padding: "7px 14px",
+                          padding: "8px 14px",
                           borderRadius: 999,
-                          border: `1px solid ${isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.45)"}`,
-                          background: isDark ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.9)",
-                          color: isDark ? "rgba(255,255,255,0.9)" : "rgba(17,24,39,0.85)",
+                          background: "transparent",
                           cursor: "pointer",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.22)"
+                            : "1px solid rgba(15,23,42,0.22)",
+                          color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
                           fontWeight: 700,
                         }}
                       >
@@ -248,24 +342,24 @@ export default function KeyAccountsPage() {
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* DRAWER (same pattern as Users/Clients locked UI) */}
-      {drawerOpen && (
+      {/* Drawer (matches your Users/All Clients pattern: blurred overlay + right panel) */}
+      {drawerOpen && selected && (
         <div
-          onClick={closeDrawer}
           style={{
             position: "fixed",
             inset: 0,
+            zIndex: 50,
             background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(10px)",
-            zIndex: 999,
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
           }}
+          onClick={closeDrawer}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -273,20 +367,19 @@ export default function KeyAccountsPage() {
               position: "absolute",
               top: 0,
               right: 0,
+              width: "min(460px, 92vw)",
               height: "100%",
-              width: "420px",
-              maxWidth: "92vw",
-              background: cardBg,
-              borderLeft: `1px solid ${isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.22)"}`,
-              padding: 16,
-              overflow: "auto",
+              padding: 18,
+              background: isDark ? "rgba(12,12,12,0.92)" : "rgba(255,255,255,0.96)",
+              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              overflowY: "auto",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>{safeText(selected?.companyName)}</div>
-                <div style={{ fontSize: 12, color: textMuted }}>
-                  {safeText(selected?.ownerName)} · {safeText(selected?.ownerEmail)}
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{selected.companyName}</div>
+                <div style={{ opacity: 0.75, fontSize: 12 }}>
+                  {selected.primaryContactName} · {selected.primaryContactEmail}
                 </div>
               </div>
 
@@ -296,68 +389,98 @@ export default function KeyAccountsPage() {
                   height: 34,
                   padding: "0 14px",
                   borderRadius: 999,
-                  border: `1px solid ${isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.45)"}`,
                   background: "transparent",
-                  color: isDark ? "rgba(255,255,255,0.9)" : "rgba(17,24,39,0.85)",
                   cursor: "pointer",
-                  fontWeight: 700,
+                  border: isDark ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(15,23,42,0.20)",
                 }}
               >
                 Close
               </button>
             </div>
 
+            <div style={{ height: 14 }} />
+
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 14,
+                border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+                background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.03)",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
+                SUMMARY
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                {[
+                  ["Sales Stage", selected.salesStage || "-"],
+                  ["Payment Status", selected.paymentStatus || "-"],
+                  ["Retainer Status", selected.retainerStatus || "-"],
+                  ["Total Paid (USD)", fmtMoney(Number(selected.totalPaidUsd || 0))],
+                ].map(([k, v]) => (
+                  <div
+                    key={k}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+                    }}
+                  >
+                    <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 800 }}>{k}</div>
+                    <div style={{ marginTop: 4, fontWeight: 800 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 14 }} />
+
+            <Section title="COMPANY" isDark={isDark}>
+              <Row label="Order ID" value={selected.orderId || "-"} isDark={isDark} />
+              <Row label="Company" value={selected.companyName || "-"} isDark={isDark} />
+              <Row label="Website" value={selected.website || "-"} isDark={isDark} />
+              <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
+              <Row label="Country" value={selected.country || "-"} isDark={isDark} />
+              <Row label="Timezone" value={selected.timezone || "-"} isDark={isDark} />
+            </Section>
+
             <div style={{ height: 12 }} />
 
-            <Section title="Summary" isDark={isDark}>
-              <Grid4 isDark={isDark}>
-                <MiniCard label="Sales Stage" value={safeText(selected?.salesStage)} isDark={isDark} />
-                <MiniCard label="Payment Status" value={safeText(selected?.paymentStatus)} isDark={isDark} />
-                <MiniCard label="Retainer Status" value={safeText(selected?.retainerStatus)} isDark={isDark} />
-                <MiniCard label="Total Paid (USD)" value={money(selected?.totalPaidUsd)} isDark={isDark} />
-              </Grid4>
+            <Section title="CONTACT" isDark={isDark}>
+              <Row label="Contact" value={selected.primaryContactName || "-"} isDark={isDark} />
+              <Row label="Title" value={selected.primaryContactTitle || "-"} isDark={isDark} />
+              <Row label="Email" value={selected.primaryContactEmail || "-"} isDark={isDark} />
+              <Row label="Phone" value={selected.primaryContactPhone || "-"} isDark={isDark} />
             </Section>
 
-            <Section title="Company" isDark={isDark}>
-              <KeyVal label="Company" value={safeText(selected?.companyName)} isDark={isDark} />
-              <KeyVal label="Website" value={safeText((selected as any)?.website)} isDark={isDark} />
-              <KeyVal label="Industry" value={safeText(selected?.industry)} isDark={isDark} />
-              <KeyVal label="Country" value={safeText(selected?.country)} isDark={isDark} />
-              <KeyVal label="Timezone" value={safeText(selected?.timezone)} isDark={isDark} />
-            </Section>
+            <div style={{ height: 12 }} />
 
-            <Section title="Contact" isDark={isDark}>
-              <KeyVal label="Contact" value={safeText(selected?.ownerName)} isDark={isDark} />
-              <KeyVal label="Email" value={safeText(selected?.ownerEmail)} isDark={isDark} />
-              <KeyVal label="Phone" value={safeText(selected?.ownerPhone)} isDark={isDark} />
-            </Section>
-
-            <Section title="Ownership" isDark={isDark}>
-              <KeyVal label="Sales Owner" value={safeText(selected?.salesOwner)} isDark={isDark} />
-              <KeyVal label="Assigned To (AM)" value={safeText(selected?.accountManager)} isDark={isDark} />
-              <KeyVal label="Production Owner" value={safeText(selected?.productionOwner)} isDark={isDark} />
-              <KeyVal label="Created" value={dateText(selected?.createdAt)} isDark={isDark} />
-              <KeyVal label="Last Activity" value={dateText(selected?.lastActivity)} isDark={isDark} />
+            <Section title="OWNERSHIP" isDark={isDark}>
+              <Row label="Sales Owner" value={selected.salesOwner || "-"} isDark={isDark} />
+              <Row label="Assigned to (AM)" value={selected.accountManager || "-"} isDark={isDark} />
+              <Row label="Production Owner" value={selected.productionOwner || "-"} isDark={isDark} />
+              <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
+              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
             </Section>
 
             <div style={{ height: 14 }} />
 
-            {/* Action buttons (match Clients drawer style you already have) */}
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 style={{
                   flex: 1,
-                  height: 44,
+                  padding: "12px 14px",
                   borderRadius: 12,
-                  border: "0",
+                  border: "none",
                   background: "#2563eb",
                   color: "white",
-                  fontWeight: 800,
+                  fontWeight: 900,
                   cursor: "pointer",
                 }}
                 onClick={() => {
-                  // TODO: route to edit page when available
-                  alert("Edit Client (wire me to the edit route next)");
+                  // Hook your edit route here later (same pattern as All Clients)
+                  alert("Edit flow: wire to your Edit Client route.");
                 }}
               >
                 Edit Client
@@ -366,23 +489,19 @@ export default function KeyAccountsPage() {
               <button
                 style={{
                   flex: 1,
-                  height: 44,
+                  padding: "12px 14px",
                   borderRadius: 12,
-                  border: `1px solid ${isDark ? "rgba(239,68,68,0.35)" : "rgba(239,68,68,0.35)"}`,
-                  background: isDark ? "rgba(127,29,29,0.18)" : "rgba(254,242,242,0.7)",
-                  color: isDark ? "rgba(255,255,255,0.9)" : "rgba(127,29,29,0.95)",
-                  fontWeight: 800,
+                  background: "transparent",
+                  border: "1px solid rgba(239,68,68,0.55)",
+                  color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
+                  fontWeight: 900,
                   cursor: "pointer",
                 }}
-                onClick={() => {
-                  alert("Archive (wire logic next)");
-                }}
+                onClick={() => alert("Archive flow: wire to archive endpoint later.")}
               >
                 Archive
               </button>
             </div>
-
-            <div style={{ height: 10 }} />
           </div>
         </div>
       )}
@@ -402,88 +521,34 @@ function Section({
   return (
     <div
       style={{
-        marginBottom: 12,
+        padding: 14,
         borderRadius: 14,
-        padding: 12,
-        border: `1px solid ${isDark ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.22)"}`,
-        background: isDark ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.85)",
+        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
-      <div
-        style={{
-          fontSize: 12,
-          letterSpacing: "0.06em",
-          fontWeight: 900,
-          opacity: isDark ? 0.8 : 0.7,
-          marginBottom: 10,
-          textTransform: "uppercase",
-        }}
-      >
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
         {title}
       </div>
-      {children}
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function Grid4({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 10,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function MiniCard({
-  label,
-  value,
-  isDark,
-}: {
-  label: string;
-  value: string;
-  isDark: boolean;
-}) {
-  return (
-    <div
-      style={{
-        borderRadius: 12,
         padding: 12,
-        border: `1px solid ${isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.22)"}`,
-        background: isDark ? "rgba(0,0,0,0.18)" : "rgba(248,250,252,0.8)",
-      }}
-    >
-      <div style={{ fontSize: 11, opacity: isDark ? 0.75 : 0.6, fontWeight: 800 }}>
-        {label}
-      </div>
-      <div style={{ marginTop: 6, fontSize: 14, fontWeight: 900 }}>{value}</div>
-    </div>
-  );
-}
-
-function KeyVal({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
-  return (
-    <div
-      style={{
+        borderRadius: 12,
+        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
         display: "flex",
         justifyContent: "space-between",
-        gap: 14,
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: `1px solid ${isDark ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.2)"}`,
-        background: isDark ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.7)",
-        marginBottom: 8,
+        gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 900, opacity: isDark ? 0.75 : 0.6 }}>
-        {label.toUpperCase()}
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
