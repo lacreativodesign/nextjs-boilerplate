@@ -1,238 +1,248 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-// ✅ LOCKED RULE
-const KEY_ACCOUNT_THRESHOLD_USD = 1000;
-
-// Keep these labels consistent with your ERP
-type SalesStage =
-  | "New Lead"
-  | "Contacted"
-  | "Qualified"
-  | "Proposal Sent"
-  | "Negotiation"
-  | "Closed Won"
-  | "Closed Lost";
-
-type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
-type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
-
-type ClientRecord = {
+type Client = {
   id: string;
-  companyName: string;
-  website?: string;
+  companyName?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
   industry?: string;
   country?: string;
   timezone?: string;
 
-  primaryContactName: string;
-  primaryContactEmail: string;
-  primaryContactPhone?: string;
+  salesStage?: string;
+  paymentStatus?: string;
+  retainerStatus?: string;
 
-  salesStage: SalesStage;
-  paymentStatus: PaymentStatus;
-  retainerStatus: RetainerStatus;
+  salesOwner?: string;
+  accountManager?: string;
+  productionOwner?: string;
 
-  totalPaidUsd: number;
-  createdAt: string; // yyyy-mm-dd or m/d/yyyy (your UI already shows both in places)
-  lastActivity?: string;
+  totalPaidUsd?: number;
 
-  salesOwner?: string; // e.g. "Mansoor (Sales)"
-  accountManager?: string; // e.g. "Sarah (AM)"
-  productionOwner?: string; // e.g. "Ayesha (Prod)"
+  createdAt?: string;     // or Timestamp string
+  lastActivity?: string;  // or Timestamp string
 };
 
-// ✅ Dummy data (matches your current Clients module approach)
-const DUMMY_CLIENTS: ClientRecord[] = [
-  {
-    id: "cl_001",
-    companyName: "ACME Trading LLC",
-    website: "acme.com",
-    industry: "Retail",
-    country: "United States",
-    timezone: "America/Chicago",
-    primaryContactName: "Bilal Ahmed",
-    primaryContactEmail: "bilal@acme.com",
-    primaryContactPhone: "+1 312 555 0199",
-    salesStage: "Qualified",
-    paymentStatus: "Partially Paid",
-    retainerStatus: "Active",
-    totalPaidUsd: 2500,
-    createdAt: "2025-12-01",
-    lastActivity: "2025-12-11",
-    salesOwner: "Mansoor (Sales)",
-    accountManager: "Sarah (AM)",
-    productionOwner: "Ayesha (Prod)",
-  },
-  {
-    id: "cl_002",
-    companyName: "Brightwood Press",
-    website: "brightwoodpress.com",
-    industry: "Publishing",
-    country: "United States",
-    timezone: "America/New_York",
-    primaryContactName: "Jennifer Lanzetti",
-    primaryContactEmail: "jennifer@brightwoodpress.com",
-    primaryContactPhone: "+1 646 555 0101",
-    salesStage: "Closed Won",
-    paymentStatus: "Paid",
-    retainerStatus: "Active",
-    totalPaidUsd: 12000,
-    createdAt: "2025-11-19",
-    lastActivity: "2025-12-12",
-    salesOwner: "Mansoor (Sales)",
-    accountManager: "Sarah (AM)",
-    productionOwner: "Ayesha (Prod)",
-  },
-  {
-    id: "cl_003",
-    companyName: "Zenora Dental Group",
-    website: "zenoradental.com",
-    industry: "Healthcare",
-    country: "United States",
-    timezone: "America/New_York",
-    primaryContactName: "Hassan Raza",
-    primaryContactEmail: "hassan@zenoradental.com",
-    primaryContactPhone: "+1 213 555 0120",
-    salesStage: "Closed Won",
-    paymentStatus: "Paid",
-    retainerStatus: "None",
-    totalPaidUsd: 18500,
-    createdAt: "2025-10-28",
-    lastActivity: "2025-12-09",
-    salesOwner: "Junaid (Sales)",
-    accountManager: "Sarah (AM)",
-    productionOwner: "Ayesha (Prod)",
-  },
-  {
-    id: "cl_004",
-    companyName: "Nova Fitness Studio",
-    website: "novafitnessss.com",
-    industry: "Fitness",
-    country: "United Kingdom",
-    timezone: "Europe/London",
-    primaryContactName: "Areeba Khan",
-    primaryContactEmail: "areeba@novafitnessss.com",
-    primaryContactPhone: "+44 20 7946 0958",
-    salesStage: "Contacted",
-    paymentStatus: "Unpaid",
-    retainerStatus: "None",
-    totalPaidUsd: 0,
-    createdAt: "12/9/2025",
-    lastActivity: "12/11/2025",
-    salesOwner: "Junaid (Sales)",
-    accountManager: "",
-    productionOwner: "",
-  },
-];
+const KEY_ACCOUNT_MIN_USD = 1000;
 
-function formatMoneyUSD(n: number) {
-  // ✅ locked formatting: $ 12,500
-  const safe = Number.isFinite(n) ? n : 0;
-  return `$ ${safe.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+function money(n: any) {
+  const num = Number(n || 0);
+  return `$ ${num.toLocaleString("en-US")}`;
 }
 
-function safeText(v?: string) {
-  const s = (v ?? "").toString().trim();
-  return s.length ? s : "—";
+function safeText(v: any) {
+  return v === null || v === undefined || v === "" ? "—" : String(v);
+}
+
+function dateText(v: any) {
+  if (!v) return "—";
+  // Handles ISO strings & simple date strings
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString("en-US");
 }
 
 export default function KeyAccountsPage() {
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<ClientRecord | null>(null);
+  const [clients, setClients] = useState<Client[]>([]); // IMPORTANT: default []
+  const [loading, setLoading] = useState(true);
 
-  // ✅ key accounts list (never undefined)
-  const keyAccounts = useMemo(() => {
-    const list = Array.isArray(DUMMY_CLIENTS) ? DUMMY_CLIENTS : [];
-    return list.filter((c) => (c?.totalPaidUsd ?? 0) >= KEY_ACCOUNT_THRESHOLD_USD);
+  const [selected, setSelected] = useState<Client | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const [isDark, setIsDark] = useState(false);
+
+  // Match your existing theme toggling logic (class="dark" on html/body)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
   }, []);
 
-  // ✅ search (never undefined)
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return keyAccounts;
+  // LIVE fetch (falls back safely to empty [])
+  useEffect(() => {
+    let mounted = true;
 
-    return keyAccounts.filter((c) => {
-      const hay = [
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+        const json = await res.json();
+
+        if (!mounted) return;
+
+        if (json?.ok && Array.isArray(json.clients)) {
+          setClients(json.clients);
+        } else {
+          // Safe fallback (no crash)
+          setClients([]);
+        }
+      } catch (e) {
+        setClients([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const keyAccounts = useMemo(() => {
+    const list = Array.isArray(clients) ? clients : [];
+
+    const filtered = list.filter((c) => Number(c.totalPaidUsd || 0) >= KEY_ACCOUNT_MIN_USD);
+
+    const q = search.trim().toLowerCase();
+    if (!q) return filtered;
+
+    return filtered.filter((c) => {
+      const blob = [
         c.companyName,
-        c.primaryContactName,
-        c.primaryContactEmail,
-        c.primaryContactPhone,
+        c.ownerName,
+        c.ownerEmail,
+        c.ownerPhone,
         c.paymentStatus,
         c.salesStage,
-        c.website,
+        c.retainerStatus,
         c.country,
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-
-      return hay.includes(q);
+      return blob.includes(q);
     });
-  }, [search, keyAccounts]);
+  }, [clients, search]);
+
+  function openDrawer(client: Client) {
+    setSelected(client);
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setSelected(null);
+  }
+
+  const cardBg = isDark ? "rgba(17, 24, 39, 0.72)" : "rgba(255, 255, 255, 0.9)";
+  const tableSurface = isDark ? "rgba(31, 41, 55, 0.55)" : "#ffffff";
+  const tableBorder = isDark ? "rgba(59, 130, 246, 0.20)" : "rgba(59, 130, 246, 0.18)";
+  const textMuted = isDark ? "rgba(229, 231, 235, 0.70)" : "rgba(17, 24, 39, 0.55)";
+  const inputBg = isDark ? "rgba(17, 24, 39, 0.75)" : "rgba(255, 255, 255, 0.95)";
+  const inputBorder = isDark ? "rgba(148, 163, 184, 0.25)" : "rgba(148, 163, 184, 0.35)";
 
   return (
-    <div className="w-full">
-      {/* Page header + description (matches Clients module style) */}
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Key Accounts</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          High-value clients (revenue-based). Key Account = <b>Total Paid ≥ {formatMoneyUSD(KEY_ACCOUNT_THRESHOLD_USD)}</b>.
-        </p>
+    <div style={{ padding: "18px 22px 28px" }}>
+      <h1 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6 }}>Key Accounts</h1>
+      <div style={{ color: textMuted, marginBottom: 18 }}>
+        High-value clients (revenue-based). Key Account = <b>Total Paid ≥ ${KEY_ACCOUNT_MIN_USD.toLocaleString("en-US")}</b>.
       </div>
 
-      {/* Search (same as Users / All Clients) */}
-      <div className="mb-4">
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search keyword"
-          className="w-full max-w-sm rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-[#141414] dark:text-white"
+          style={{
+            width: 360,
+            maxWidth: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            outline: "none",
+            background: inputBg,
+            border: `1px solid ${inputBorder}`,
+            color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.9)",
+          }}
         />
+        <div style={{ color: textMuted, fontSize: 13 }}>
+          {loading ? "Loading…" : `${keyAccounts.length} key account(s)`}
+        </div>
       </div>
 
-      {/* Table (same “Users-style” surface in light & dark) */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#171717]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] border-collapse">
+      {/* TABLE CARD (match your locked style) */}
+      <div
+        style={{
+          background: tableSurface,
+          border: `1px solid ${tableBorder}`,
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.45)" : "0 18px 50px rgba(15,23,42,0.08)",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                <th className="px-5 py-4">Company</th>
-                <th className="px-5 py-4">Contact</th>
-                <th className="px-5 py-4">Email</th>
-                <th className="px-5 py-4">Phone</th>
-                <th className="px-5 py-4">Payment</th>
-                <th className="px-5 py-4">Total Paid</th>
-                <th className="px-5 py-4">Created</th>
-                <th className="px-5 py-4 text-right">Action</th>
+              <tr
+                style={{
+                  background: isDark ? "rgba(17,24,39,0.55)" : "rgba(248,250,252,0.9)",
+                }}
+              >
+                {["COMPANY", "CONTACT", "EMAIL", "PHONE", "PAYMENT", "TOTAL PAID", "CREATED", "ACTION"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "14px 16px",
+                        fontSize: 12,
+                        letterSpacing: "0.04em",
+                        color: isDark ? "rgba(255,255,255,0.75)" : "rgba(17,24,39,0.55)",
+                        borderBottom: `1px solid ${isDark ? "rgba(148,163,184,0.14)" : "rgba(226,232,240,0.8)"}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
 
-            <tbody className="text-sm text-gray-900 dark:text-white">
-              {filtered.length === 0 ? (
+            <tbody>
+              {!loading && keyAccounts.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-6 text-gray-500 dark:text-gray-400" colSpan={8}>
-                    No key accounts found.
+                  <td colSpan={8} style={{ padding: 18, color: textMuted }}>
+                    No key accounts found (Total Paid ≥ ${KEY_ACCOUNT_MIN_USD.toLocaleString("en-US")}).
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => (
+                keyAccounts.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-t border-gray-100 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5"
+                    style={{
+                      borderBottom: `1px dashed ${isDark ? "rgba(148,163,184,0.18)" : "rgba(226,232,240,0.9)"}`,
+                    }}
                   >
-                    <td className="px-5 py-5 font-medium">{c.companyName}</td>
-                    <td className="px-5 py-5">{c.primaryContactName}</td>
-                    <td className="px-5 py-5">{c.primaryContactEmail}</td>
-                    <td className="px-5 py-5">{safeText(c.primaryContactPhone)}</td>
-                    <td className="px-5 py-5">{c.paymentStatus}</td>
-                    <td className="px-5 py-5">{formatMoneyUSD(c.totalPaidUsd)}</td>
-                    <td className="px-5 py-5">{c.createdAt}</td>
-                    <td className="px-5 py-5 text-right">
+                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>
+                      {safeText(c.companyName)}
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerName)}</td>
+                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerEmail)}</td>
+                    <td style={{ padding: "14px 16px" }}>{safeText(c.ownerPhone)}</td>
+                    <td style={{ padding: "14px 16px" }}>{safeText(c.paymentStatus)}</td>
+                    <td style={{ padding: "14px 16px", fontWeight: 700 }}>
+                      {money(c.totalPaidUsd)}
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>{dateText(c.createdAt)}</td>
+                    <td style={{ padding: "14px 16px" }}>
                       <button
-                        onClick={() => setSelected(c)}
-                        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-white/10 dark:bg-[#141414] dark:text-white dark:hover:bg-white/5"
+                        onClick={() => openDrawer(c)}
+                        style={{
+                          padding: "7px 14px",
+                          borderRadius: 999,
+                          border: `1px solid ${isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.45)"}`,
+                          background: isDark ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.9)",
+                          color: isDark ? "rgba(255,255,255,0.9)" : "rgba(17,24,39,0.85)",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
                       >
                         View
                       </button>
@@ -245,124 +255,134 @@ export default function KeyAccountsPage() {
         </div>
       </div>
 
-      {/* ✅ Drawer (matches All Clients behavior) */}
-      {selected && (
-        <div className="fixed inset-0 z-50">
-          {/* overlay */}
+      {/* DRAWER (same pattern as Users/Clients locked UI) */}
+      {drawerOpen && (
+        <div
+          onClick={closeDrawer}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+            backdropFilter: "blur(10px)",
+            zIndex: 999,
+          }}
+        >
           <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-[2px] dark:bg-black/60"
-            onClick={() => setSelected(null)}
-          />
-
-          {/* panel */}
-          <div className="absolute right-0 top-0 h-full w-full max-w-[440px] bg-white shadow-2xl dark:bg-[#0f0f10]">
-            <div className="flex h-full flex-col">
-              <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-white/10">
-                <div className="min-w-0">
-                  <div className="truncate text-lg font-bold text-gray-900 dark:text-white">
-                    {selected.companyName}
-                  </div>
-                  <div className="truncate text-xs text-gray-600 dark:text-gray-300">
-                    {selected.primaryContactName} · {selected.primaryContactEmail}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelected(null)}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-900 hover:bg-gray-50 dark:border-white/10 dark:bg-[#141414] dark:text-white dark:hover:bg-white/5"
-                >
-                  Close
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#141414]">
-                  <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                    Summary
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-gray-200 p-3 dark:border-white/10">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300">Sales Stage</div>
-                      <div className="mt-1 text-sm font-semibold">{selected.salesStage}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 p-3 dark:border-white/10">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300">Payment Status</div>
-                      <div className="mt-1 text-sm font-semibold">{selected.paymentStatus}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 p-3 dark:border-white/10">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300">Retainer Status</div>
-                      <div className="mt-1 text-sm font-semibold">{selected.retainerStatus}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 p-3 dark:border-white/10">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300">Total Paid (USD)</div>
-                      <div className="mt-1 text-sm font-semibold">{formatMoneyUSD(selected.totalPaidUsd)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#141414]">
-                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                      Company
-                    </div>
-                    <div className="space-y-3 text-sm">
-                      <Row label="Company" value={selected.companyName} />
-                      <Row label="Website" value={safeText(selected.website)} />
-                      <Row label="Industry" value={safeText(selected.industry)} />
-                      <Row label="Country" value={safeText(selected.country)} />
-                      <Row label="Timezone" value={safeText(selected.timezone)} />
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#141414]">
-                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                      Contact
-                    </div>
-                    <div className="space-y-3 text-sm">
-                      <Row label="Contact" value={selected.primaryContactName} />
-                      <Row label="Email" value={selected.primaryContactEmail} />
-                      <Row label="Phone" value={safeText(selected.primaryContactPhone)} />
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#141414]">
-                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                      Ownership
-                    </div>
-                    <div className="space-y-3 text-sm">
-                      <Row label="Sales Owner" value={safeText(selected.salesOwner)} />
-                      <Row label="Assigned To (AM)" value={safeText(selected.accountManager)} />
-                      <Row label="Production Owner" value={safeText(selected.productionOwner)} />
-                      <Row label="Created" value={safeText(selected.createdAt)} />
-                      <Row label="Last Activity" value={safeText(selected.lastActivity)} />
-                    </div>
-                  </div>
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              height: "100%",
+              width: "420px",
+              maxWidth: "92vw",
+              background: cardBg,
+              borderLeft: `1px solid ${isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.22)"}`,
+              padding: 16,
+              overflow: "auto",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{safeText(selected?.companyName)}</div>
+                <div style={{ fontSize: 12, color: textMuted }}>
+                  {safeText(selected?.ownerName)} · {safeText(selected?.ownerEmail)}
                 </div>
               </div>
 
-              {/* bottom actions (same pattern as your Clients drawer screenshot) */}
-              <div className="border-t border-gray-100 px-5 py-4 dark:border-white/10">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      // TODO: route to edit page when you wire edit flow
-                      // example: router.push(`/admin/clients/edit?id=${selected.id}`)
-                      alert("Edit Client (wire route next)");
-                    }}
-                    className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-                  >
-                    Edit Client
-                  </button>
-
-                  <button
-                    onClick={() => alert("Archive (wire backend next)")}
-                    className="flex-1 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200 hover:bg-red-500/15"
-                  >
-                    Archive
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={closeDrawer}
+                style={{
+                  height: 34,
+                  padding: "0 14px",
+                  borderRadius: 999,
+                  border: `1px solid ${isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.45)"}`,
+                  background: "transparent",
+                  color: isDark ? "rgba(255,255,255,0.9)" : "rgba(17,24,39,0.85)",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Close
+              </button>
             </div>
+
+            <div style={{ height: 12 }} />
+
+            <Section title="Summary" isDark={isDark}>
+              <Grid4 isDark={isDark}>
+                <MiniCard label="Sales Stage" value={safeText(selected?.salesStage)} isDark={isDark} />
+                <MiniCard label="Payment Status" value={safeText(selected?.paymentStatus)} isDark={isDark} />
+                <MiniCard label="Retainer Status" value={safeText(selected?.retainerStatus)} isDark={isDark} />
+                <MiniCard label="Total Paid (USD)" value={money(selected?.totalPaidUsd)} isDark={isDark} />
+              </Grid4>
+            </Section>
+
+            <Section title="Company" isDark={isDark}>
+              <KeyVal label="Company" value={safeText(selected?.companyName)} isDark={isDark} />
+              <KeyVal label="Website" value={safeText((selected as any)?.website)} isDark={isDark} />
+              <KeyVal label="Industry" value={safeText(selected?.industry)} isDark={isDark} />
+              <KeyVal label="Country" value={safeText(selected?.country)} isDark={isDark} />
+              <KeyVal label="Timezone" value={safeText(selected?.timezone)} isDark={isDark} />
+            </Section>
+
+            <Section title="Contact" isDark={isDark}>
+              <KeyVal label="Contact" value={safeText(selected?.ownerName)} isDark={isDark} />
+              <KeyVal label="Email" value={safeText(selected?.ownerEmail)} isDark={isDark} />
+              <KeyVal label="Phone" value={safeText(selected?.ownerPhone)} isDark={isDark} />
+            </Section>
+
+            <Section title="Ownership" isDark={isDark}>
+              <KeyVal label="Sales Owner" value={safeText(selected?.salesOwner)} isDark={isDark} />
+              <KeyVal label="Assigned To (AM)" value={safeText(selected?.accountManager)} isDark={isDark} />
+              <KeyVal label="Production Owner" value={safeText(selected?.productionOwner)} isDark={isDark} />
+              <KeyVal label="Created" value={dateText(selected?.createdAt)} isDark={isDark} />
+              <KeyVal label="Last Activity" value={dateText(selected?.lastActivity)} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 14 }} />
+
+            {/* Action buttons (match Clients drawer style you already have) */}
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 12,
+                  border: "0",
+                  background: "#2563eb",
+                  color: "white",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  // TODO: route to edit page when available
+                  alert("Edit Client (wire me to the edit route next)");
+                }}
+              >
+                Edit Client
+              </button>
+
+              <button
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 12,
+                  border: `1px solid ${isDark ? "rgba(239,68,68,0.35)" : "rgba(239,68,68,0.35)"}`,
+                  background: isDark ? "rgba(127,29,29,0.18)" : "rgba(254,242,242,0.7)",
+                  color: isDark ? "rgba(255,255,255,0.9)" : "rgba(127,29,29,0.95)",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  alert("Archive (wire logic next)");
+                }}
+              >
+                Archive
+              </button>
+            </div>
+
+            <div style={{ height: 10 }} />
           </div>
         </div>
       )}
@@ -370,13 +390,100 @@ export default function KeyAccountsPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Section({
+  title,
+  children,
+  isDark,
+}: {
+  title: string;
+  children: React.ReactNode;
+  isDark: boolean;
+}) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+    <div
+      style={{
+        marginBottom: 12,
+        borderRadius: 14,
+        padding: 12,
+        border: `1px solid ${isDark ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.22)"}`,
+        background: isDark ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.85)",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          letterSpacing: "0.06em",
+          fontWeight: 900,
+          opacity: isDark ? 0.8 : 0.7,
+          marginBottom: 10,
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Grid4({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MiniCard({
+  label,
+  value,
+  isDark,
+}: {
+  label: string;
+  value: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 12,
+        padding: 12,
+        border: `1px solid ${isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.22)"}`,
+        background: isDark ? "rgba(0,0,0,0.18)" : "rgba(248,250,252,0.8)",
+      }}
+    >
+      <div style={{ fontSize: 11, opacity: isDark ? 0.75 : 0.6, fontWeight: 800 }}>
         {label}
       </div>
-      <div className="text-right text-sm font-semibold text-gray-900 dark:text-white">{value}</div>
+      <div style={{ marginTop: 6, fontSize: 14, fontWeight: 900 }}>{value}</div>
+    </div>
+  );
+}
+
+function KeyVal({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 14,
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: `1px solid ${isDark ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.2)"}`,
+        background: isDark ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.7)",
+        marginBottom: 8,
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 900, opacity: isDark ? 0.75 : 0.6 }}>
+        {label.toUpperCase()}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
