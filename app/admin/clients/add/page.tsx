@@ -35,6 +35,11 @@ const formatUSD = (v: any) => {
   return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
 };
 
+function toNumber(v: any) {
+  const n = Number(String(v ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
 export default function AddClientPage() {
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
@@ -67,7 +72,6 @@ export default function AddClientPage() {
 
   const sectionCardStyle: React.CSSProperties = useMemo(
     () => ({
-      // Same neutral ERP card surface (grey in dark mode)
       background: "var(--card-bg)",
       border: "1px solid var(--card-border)",
       borderRadius: 16,
@@ -136,7 +140,7 @@ export default function AddClientPage() {
 
   const fullWidthWrap: React.CSSProperties = useMemo(
     () => ({
-      maxWidth: 1120, // aligns with Create User layout width
+      maxWidth: 1120,
       width: "100%",
     }),
     []
@@ -147,43 +151,114 @@ export default function AddClientPage() {
     setSavedMsg(null);
   };
 
-  const fakeSave = async (mode: "single" | "another") => {
+  const resetForm = () => {
+    setForm({
+      companyName: "",
+      website: "",
+      industry: "",
+      country: "",
+      timezone: "",
+
+      ownerName: "",
+      ownerTitle: "",
+      ownerEmail: "",
+      ownerPhone: "",
+
+      salesStage: "New Lead",
+      paymentStatus: "Unpaid",
+      retainerStatus: "None",
+
+      salesOwner: "",
+      accountManager: "",
+      productionOwner: "",
+
+      totalContractValue: "",
+      totalPaid: "",
+      openBalance: "",
+      services: "",
+    });
+  };
+
+  const validate = () => {
+    const companyName = form.companyName.trim();
+    const ownerName = form.ownerName.trim();
+    const ownerEmail = form.ownerEmail.trim();
+    const salesOwner = form.salesOwner.trim();
+
+    if (!companyName) return "Company Name is required.";
+    if (!ownerName) return "Primary Contact Name is required.";
+    if (!ownerEmail) return "Primary Contact Email is required.";
+    if (!salesOwner) return "Sales Owner is required.";
+    return null;
+  };
+
+  const handleSubmit = async (mode: "single" | "another") => {
+    const err = validate();
+    if (err) {
+      setSavedMsg(err);
+      return;
+    }
+
     setSaving(true);
     setSavedMsg(null);
 
-    // TODO: replace with Firestore write when you say "go"
-    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const payload = {
+        companyName: form.companyName.trim(),
+        website: form.website.trim(),
+        industry: form.industry.trim(),
+        country: form.country.trim(),
+        timezone: form.timezone.trim(),
 
-    setSaving(false);
-    setSavedMsg(
-      mode === "single"
-        ? "Saved ✅ (dummy save)"
-        : "Saved ✅ (dummy save) — ready for another"
-    );
+        primaryContactName: form.ownerName.trim(),
+        primaryContactTitle: form.ownerTitle.trim(),
+        primaryContactEmail: form.ownerEmail.trim(),
+        primaryContactPhone: form.ownerPhone.trim(),
 
-    if (mode === "another") {
-      setForm((prev) => ({
-        ...prev,
-        companyName: "",
-        website: "",
-        industry: "",
-        country: "",
-        timezone: "",
-        ownerName: "",
-        ownerTitle: "",
-        ownerEmail: "",
-        ownerPhone: "",
-        salesStage: "New Lead",
-        paymentStatus: "Unpaid",
-        retainerStatus: "None",
-        salesOwner: "",
-        accountManager: "",
-        productionOwner: "",
-        totalContractValue: "",
-        totalPaid: "",
-        openBalance: "",
-        services: "",
-      }));
+        salesStage: form.salesStage,
+        paymentStatus: form.paymentStatus,
+        retainerStatus: form.retainerStatus,
+
+        salesOwner: form.salesOwner.trim(),
+        accountManager: form.accountManager.trim(),
+        productionOwner: form.productionOwner.trim(),
+
+        totalContractValueUsd: toNumber(form.totalContractValue),
+        totalPaidUsd: toNumber(form.totalPaid),
+        openBalanceUsd: toNumber(form.openBalance),
+
+        services: form.services.trim(),
+      };
+
+      const res = await fetch("/api/admin/clients/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Failed to save client");
+      }
+
+      const orderId = String(json?.orderId || "").trim(); // expected: LC-0001
+      setSavedMsg(
+        mode === "another"
+          ? `Saved ✅ (${orderId || "LC-0000"}) — ready for another`
+          : `Saved ✅ (${orderId || "LC-0000"})`
+      );
+
+      if (mode === "another") {
+        resetForm();
+      } else {
+        // go back to clients list so you can see it immediately
+        window.location.href = "/admin/clients";
+      }
+    } catch (e: any) {
+      setSavedMsg(e?.message || "Failed to save client");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,7 +268,6 @@ export default function AddClientPage() {
 
   return (
     <div className="client-add-form" style={{ width: "100%" }}>
-      {/* Dropdown font color fix (browser dropdowns can be ugly in dark mode) */}
       <style jsx global>{`
         .client-add-form select option {
           color: #111 !important;
@@ -490,9 +564,9 @@ export default function AddClientPage() {
           </div>
         </div>
 
-        {/* ✅ BUTTONS: centered, no sticky, no background strip, end of form */}
         <div style={{ height: 18 }} />
 
+        {/* Buttons */}
         <div
           style={{
             display: "flex",
@@ -523,7 +597,7 @@ export default function AddClientPage() {
 
           <button
             type="button"
-            onClick={() => fakeSave("another")}
+            onClick={() => handleSubmit("another")}
             disabled={saving}
             style={{
               border: "1px solid var(--table-border)",
@@ -540,7 +614,7 @@ export default function AddClientPage() {
 
           <button
             type="button"
-            onClick={() => fakeSave("single")}
+            onClick={() => handleSubmit("single")}
             disabled={saving}
             style={{
               border: "1px solid transparent",
