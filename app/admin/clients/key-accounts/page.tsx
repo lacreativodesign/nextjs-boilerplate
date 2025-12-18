@@ -1,17 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type SalesStage =
+  | "New Lead"
+  | "Contacted"
+  | "Qualified"
+  | "Proposal Sent"
+  | "Negotiation"
+  | "Closed Won"
+  | "Closed Lost";
+
+type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
+type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
 type ClientRecord = {
   id: string;
   companyName: string;
+  website?: string;
+  industry?: string;
+  country?: string;
+  timezone?: string;
+
   primaryContactName: string;
+  primaryContactTitle?: string;
   primaryContactEmail: string;
   primaryContactPhone?: string;
-  paymentStatus?: string;
+
+  salesStage?: SalesStage | string;
+  paymentStatus?: PaymentStatus | string;
+  retainerStatus?: RetainerStatus | string;
+
+  salesOwner?: string;
+  accountManager?: string;
+  productionOwner?: string;
+
   totalPaidUsd: number;
   orderId?: string;
+
   createdAt?: string | null;
+  updatedAt?: string | null;
+  lastActivity?: string | null;
 };
 
 const KEY_ACCOUNT_THRESHOLD = 1000;
@@ -29,20 +58,24 @@ type SortKey =
 type SortDir = "asc" | "desc";
 
 function fmtMoney(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(n || 0));
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(Number(n || 0));
+  } catch {
+    return `$ ${Number(n || 0).toLocaleString()}`;
+  }
 }
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-US");
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-US");
 }
 
-// Branding rule: ALWAYS present as LC-0001...
 function normalizeOrderId(orderId?: string) {
   const v = (orderId || "").trim();
   if (!v) return "";
@@ -57,7 +90,31 @@ function normalizeOrderId(orderId?: string) {
   return `LC-${up}`;
 }
 
+/**
+ * Your ERP uses ThemeProvider class toggling.
+ * This matches what your other pages are doing.
+ */
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const read = () => setIsDark(root.classList.contains("dark"));
+    read();
+
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => obs.disconnect();
+  }, []);
+
+  return isDark;
+}
+
 export default function KeyAccountsPage() {
+  const isDark = useIsDarkMode();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,42 +124,34 @@ export default function KeyAccountsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("totalPaidUsd");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // Theme-safe tokens: these should already work in your ERP dark/light
-  const surfaceStyle: CSSProperties = {
-    background: "var(--card-bg)",
-    border: "1px solid var(--border)",
-    borderRadius: 16,
-    boxShadow: "var(--shadow-md)",
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selected, setSelected] = useState<ClientRecord | null>(null);
+
+  const tableShellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 12,
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(2,6,23,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
-  const inputStyle: CSSProperties = {
-    width: "100%",
-    maxWidth: 360,
+  const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderRadius: 12,
-    outline: "none",
-    background: "var(--input-bg)",
-    color: "var(--text)",
-    border: "1px solid var(--border)",
-  };
-
-  const thStyle: CSSProperties = {
-    textAlign: "left",
     fontSize: 11,
-    letterSpacing: "0.06em",
-    padding: "14px 16px",
-    color: "var(--muted)",
-    borderBottom: "1px solid var(--border)",
-    whiteSpace: "nowrap",
-    userSelect: "none",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
     cursor: "pointer",
+    userSelect: "none",
+    whiteSpace: "nowrap",
   };
 
-  const tdStyle: CSSProperties = {
-    padding: "14px 16px",
-    borderBottom: "1px dashed var(--border)",
+  const cellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
-    color: "var(--text)",
   };
 
   useEffect(() => {
@@ -116,7 +165,7 @@ export default function KeyAccountsPage() {
         const res = await fetch("/api/admin/clients/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include", // IMPORTANT for cookie-based auth
+          credentials: "include",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -217,120 +266,253 @@ export default function KeyAccountsPage() {
 
   const sortBadge = (k: SortKey) => (k !== sortKey ? "" : sortDir === "asc" ? " ▲" : " ▼");
 
+  function openDrawer(c: ClientRecord) {
+    setSelected(c);
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setSelected(null);
+  }
+
   return (
     <div style={{ width: "100%" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 8, color: "var(--text)" }}>
+      <h1
+        style={{
+          fontSize: 34,
+          fontWeight: 900,
+          marginBottom: 8,
+          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+        }}
+      >
         Key Accounts
       </h1>
 
-      <div style={{ marginBottom: 18, color: "var(--muted)" }}>
+      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
         High-value clients (revenue-based). Key Account = <b>Total Paid ≥ $1,000</b>.
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search keyword"
-          style={inputStyle}
-        />
-        <div style={{ fontSize: 12, color: "var(--muted)" }}>
+      <div style={{ marginBottom: 16, maxWidth: 360, display: "flex", alignItems: "center", gap: 12 }}>
+        <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
+        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
           {loading ? "Loading..." : `${keyAccountsSorted.length} key account(s)`}
         </div>
       </div>
 
-      <div style={{ ...surfaceStyle, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
-            <thead>
-              <tr style={{ background: "var(--table-head-bg)" }}>
-                <th style={thStyle} onClick={() => toggleSort("orderId")}>
-                  ORDER ID{sortBadge("orderId")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("companyName")}>
-                  COMPANY{sortBadge("companyName")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("primaryContactName")}>
-                  CONTACT{sortBadge("primaryContactName")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("primaryContactEmail")}>
-                  EMAIL{sortBadge("primaryContactEmail")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("primaryContactPhone")}>
-                  PHONE{sortBadge("primaryContactPhone")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("paymentStatus")}>
-                  PAYMENT{sortBadge("paymentStatus")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("totalPaidUsd")}>
-                  TOTAL PAID{sortBadge("totalPaidUsd")}
-                </th>
-                <th style={thStyle} onClick={() => toggleSort("createdAt")}>
-                  CREATED{sortBadge("createdAt")}
-                </th>
-                <th style={{ ...thStyle, cursor: "default" }}>ACTION</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {error && (
+      <div style={tableShellStyle}>
+        {loading ? (
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+            Loading key accounts...
+          </p>
+        ) : error ? (
+          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
+        ) : keyAccountsSorted.length === 0 ? (
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+            No key accounts found.
+          </p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
+              <thead>
                 <tr>
-                  <td colSpan={9} style={{ padding: 16, color: "var(--danger)" }}>
-                    {error}
-                  </td>
+                  <th style={headerCellStyle} onClick={() => toggleSort("orderId")}>
+                    Order ID{sortBadge("orderId")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
+                    Company{sortBadge("companyName")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactName")}>
+                    Contact{sortBadge("primaryContactName")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactEmail")}>
+                    Email{sortBadge("primaryContactEmail")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
+                    Phone{sortBadge("primaryContactPhone")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("paymentStatus")}>
+                    Payment{sortBadge("paymentStatus")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("totalPaidUsd")}>
+                    Total Paid{sortBadge("totalPaidUsd")}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
+                    Created{sortBadge("createdAt")}
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>Action</th>
                 </tr>
-              )}
+              </thead>
 
-              {!error && loading && (
-                <tr>
-                  <td colSpan={9} style={{ padding: 16, color: "var(--muted)" }}>
-                    Loading key accounts...
-                  </td>
-                </tr>
-              )}
+              <tbody>
+                {keyAccountsSorted.map((c, idx) => {
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
 
-              {!error && !loading && keyAccountsSorted.length === 0 && (
-                <tr>
-                  <td colSpan={9} style={{ padding: 16, color: "var(--muted)" }}>
-                    No key accounts found (Total Paid ≥ $1,000).
-                  </td>
-                </tr>
-              )}
-
-              {!error &&
-                !loading &&
-                keyAccountsSorted.map((c) => (
-                  <tr key={c.id}>
-                    <td style={tdStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
-                    <td style={{ ...tdStyle, fontWeight: 800, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
-                    <td style={tdStyle}>{c.primaryContactName || "-"}</td>
-                    <td style={tdStyle}>{c.primaryContactEmail || "-"}</td>
-                    <td style={tdStyle}>{c.primaryContactPhone || "-"}</td>
-                    <td style={tdStyle}>{c.paymentStatus || "-"}</td>
-                    <td style={{ ...tdStyle, fontWeight: 800 }}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
-                    <td style={tdStyle}>{fmtDate(c.createdAt)}</td>
-                    <td style={tdStyle}>
-                      <button
-                        style={{
-                          padding: "8px 14px",
-                          borderRadius: 999,
-                          background: "transparent",
-                          cursor: "pointer",
-                          border: "1px solid var(--border)",
-                          color: "var(--text)",
-                          fontWeight: 800,
-                        }}
-                        onClick={() => alert("View drawer next: wire this to your approved drawer component.")}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={c.id} style={{ background: rowBg, transition: "background 120ms ease" }}>
+                      <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
+                      <td style={{ ...cellStyle, fontWeight: 800, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
+                      <td style={cellStyle}>{c.primaryContactName || "-"}</td>
+                      <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
+                      <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
+                      <td style={cellStyle}>{c.paymentStatus || "-"}</td>
+                      <td style={{ ...cellStyle, fontWeight: 900 }}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
+                      <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>
+                        <button
+                          onClick={() => openDrawer(c)}
+                          style={{
+                            padding: "8px 14px",
+                            borderRadius: 999,
+                            background: "transparent",
+                            cursor: "pointer",
+                            border: isDark ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(15,23,42,0.22)",
+                            color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
+                            fontWeight: 800,
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Drawer */}
+      {drawerOpen && selected && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+          }}
+          onClick={closeDrawer}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: "min(460px, 92vw)",
+              height: "100%",
+              padding: 18,
+              background: isDark ? "rgba(12,12,12,0.92)" : "rgba(255,255,255,0.96)",
+              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{selected.companyName}</div>
+                <div style={{ opacity: 0.75, fontSize: 12 }}>
+                  {selected.primaryContactName} · {selected.primaryContactEmail}
+                </div>
+              </div>
+
+              <button
+                onClick={closeDrawer}
+                style={{
+                  height: 34,
+                  padding: "0 14px",
+                  borderRadius: 999,
+                  background: "transparent",
+                  cursor: "pointer",
+                  border: isDark ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(15,23,42,0.20)",
+                  color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
+                  fontWeight: 800,
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ height: 14 }} />
+
+            <Section title="Company" isDark={isDark}>
+              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} isDark={isDark} />
+              <Row label="Website" value={selected.website || "-"} isDark={isDark} />
+              <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
+              <Row label="Country" value={selected.country || "-"} isDark={isDark} />
+              <Row label="Timezone" value={selected.timezone || "-"} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 12 }} />
+
+            <Section title="Contact" isDark={isDark}>
+              <Row label="Name" value={selected.primaryContactName || "-"} isDark={isDark} />
+              <Row label="Title" value={selected.primaryContactTitle || "-"} isDark={isDark} />
+              <Row label="Email" value={selected.primaryContactEmail || "-"} isDark={isDark} />
+              <Row label="Phone" value={selected.primaryContactPhone || "-"} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 12 }} />
+
+            <Section title="Finance" isDark={isDark}>
+              <Row label="Payment Status" value={selected.paymentStatus || "-"} isDark={isDark} />
+              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} isDark={isDark} />
+              <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
+              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
+            </Section>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  isDark,
+}: {
+  title: string;
+  children: React.ReactNode;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: 14,
+        borderRadius: 14,
+        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
