@@ -1,98 +1,109 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
-import { db } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../../_utils";
+import { adminDb as db } from "@/lib/firebaseAdmin";
+import { getCurrentUser } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
-function pad4(n: number) {
-  return String(n).padStart(4, "0");
+function canCreateClient(role: string) {
+  const r = (role || "").toLowerCase();
+  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "sales";
 }
 
-async function nextOrderIdLC(): Promise<string> {
-  // Using your existing collection: "Order IDs" doc: "counter" field: seq
-  const ref = db.collection("Order IDs").doc("counter");
-
-  const out = await db.runTransaction(async (tx: any) => {
-    const snap = await tx.get(ref);
-    const current = Number(snap.exists ? snap.data()?.seq : 0) || 0;
-    const next = current + 1;
-    tx.set(ref, { seq: next }, { merge: true });
-    return next;
-  });
-
-  return `LC-${pad4(out)}`;
+function cleanString(v: any) {
+  return String(v ?? "").trim();
 }
 
-function num(v: any) {
-  const n = Number(v);
+function toNumber(v: any) {
+  const n = Number(String(v ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : 0;
+}
+
+function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid" {
+  const s = String(input ?? "").trim().toLowerCase();
+  if (s === "paid") return "Paid";
+  if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
+  return "Unpaid";
 }
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  if (!isAdminRole(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  if (!canCreateClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+
+  let body: any = null;
+  try {
+    body = await req.json();
+  } catch {
+    body = null;
+  }
+
+  const companyName = cleanString(body?.companyName);
+  const primaryContactName = cleanString(body?.primaryContactName);
+  const primaryContactEmail = cleanString(body?.primaryContactEmail);
+  const salesOwner = cleanString(body?.salesOwner);
+
+  if (!companyName) return NextResponse.json({ ok: false, error: "Company Name is required" }, { status: 400 });
+  if (!primaryContactName) return NextResponse.json({ ok: false, error: "Primary Contact Name is required" }, { status: 400 });
+  if (!primaryContactEmail) return NextResponse.json({ ok: false, error: "Primary Contact Email is required" }, { status: 400 });
+  if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
+
+  // IMPORTANT: Order ID is ONLY for paid clients. So on create we DO NOT generate it.
+  // Payment status defaults to Unpaid unless (optional) admin wants to create as paid via update flow.
+  const paymentStatus = "Unpaid" as const;
+
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  const doc = {
+    // Company
+    companyName,
+    website: cleanString(body?.website),
+    industry: cleanString(body?.industry),
+    country: cleanString(body?.country),
+    timezone: cleanString(body?.timezone),
+
+    // Contact
+    primaryContactName,
+    primaryContactTitle: cleanString(body?.primaryContactTitle),
+    primaryContactEmail,
+    primaryContactPhone: cleanString(body?.primaryContactPhone),
+
+    // Lifecycle
+    salesStage: cleanString(body?.salesStage) || "New Lead",
+    paymentStatus,
+    retainerStatus: cleanString(body?.retainerStatus) || "None",
+
+    // Ownership
+    salesOwner,
+    accountManager: cleanString(body?.accountManager),
+    productionOwner: cleanString(body?.productionOwner),
+
+    // Finance
+    totalContractValueUsd: toNumber(body?.totalContractValueUsd),
+    totalPaidUsd: toNumber(body?.totalPaidUsd), // stored but status remains Unpaid until admin updates paymentStatus
+    openBalanceUsd: toNumber(body?.openBalanceUsd),
+
+    // Notes
+    services: cleanString(body?.services),
+
+    // Paid account identifier (ONLY generated when paid/partially paid)
+    orderId: "",
+
+    // Timestamps
+    createdAt: now,
+    updatedAt: now,
+    lastActivity: now,
+  };
+
+  // If someone tries to sneak Paid in create payload, ignore it.
+  // (Paid must be done via update and only admin/super_admin).
+  // We keep this for clarity:
+  void canonicalPaymentStatus(body?.paymentStatus);
 
   try {
-    const body = await req.json().catch(() => ({}));
-
-    // Required minimal validation
-    if (!body?.companyName || !body?.primaryContactEmail) {
-      return NextResponse.json(
-        { ok: false, error: "Missing required fields: companyName, primaryContactEmail" },
-        { status: 400 }
-      );
-    }
-
-    const orderId = await nextOrderIdLC();
-
-    const now = admin.firestore.FieldValue.serverTimestamp();
-
-    const doc = {
-      // Company
-      companyName: String(body.companyName || "").trim(),
-      website: String(body.website || "").trim(),
-      industry: String(body.industry || "").trim(),
-      country: String(body.country || "").trim(),
-      timezone: String(body.timezone || "").trim(),
-
-      // Contact
-      primaryContactName: String(body.primaryContactName || "").trim(),
-      primaryContactTitle: String(body.primaryContactTitle || "").trim(),
-      primaryContactEmail: String(body.primaryContactEmail || "").trim(),
-      primaryContactPhone: String(body.primaryContactPhone || "").trim(),
-
-      // Status
-      salesStage: String(body.salesStage || "New Lead"),
-      paymentStatus: String(body.paymentStatus || "Unpaid"),
-      retainerStatus: String(body.retainerStatus || "None"),
-
-      // Owners
-      salesOwner: String(body.salesOwner || "").trim(),
-      accountManager: String(body.accountManager || "").trim(),
-      productionOwner: String(body.productionOwner || "").trim(),
-
-      // Money
-      totalPaidUsd: num(body.totalPaidUsd),
-      totalContractValueUsd: num(body.totalContractValueUsd),
-      openBalanceUsd: num(body.openBalanceUsd),
-
-      // Notes
-      services: String(body.services || "").trim(),
-
-      // System
-      orderId,
-      createdAt: now,
-      updatedAt: now,
-      lastActivity: now,
-      createdBy: me.uid,
-    };
-
     const ref = await db.collection("clients").add(doc);
-
-    return NextResponse.json({ ok: true, id: ref.id, orderId });
+    return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to create client" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message ?? "Failed to create client" }, { status: 500 });
   }
 }
