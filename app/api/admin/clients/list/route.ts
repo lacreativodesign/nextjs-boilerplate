@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebaseAdmin";
+import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -48,54 +48,57 @@ function toISO(value: any): string | null {
 }
 
 export async function GET() {
-  const me = await getCurrentUser();
-  if (!me) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-  if (me.role !== "SUPER_ADMIN" && me.role !== "ADMIN") {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-  }
-
   try {
+    const me = await getCurrentUser();
+    if (!me) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = (me.role || "").toLowerCase();
+    if (role !== "admin" && role !== "super_admin") {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const snap = await db.collection("clients").orderBy("createdAt", "desc").limit(500).get();
 
     const clients = snap.docs.map((doc) => {
-      const data = (doc.data() || {}) as ClientDoc;
+      const d = (doc.data() || {}) as ClientDoc;
 
       return {
         id: doc.id,
-        companyName: data.companyName ?? "",
-        website: data.website ?? "",
-        industry: data.industry ?? "",
-        country: data.country ?? "",
-        timezone: data.timezone ?? "",
+        companyName: d.companyName || "",
+        website: d.website || "",
+        industry: d.industry || "",
+        country: d.country || "",
+        timezone: d.timezone || "",
 
-        primaryContactName: data.primaryContactName ?? "",
-        primaryContactTitle: data.primaryContactTitle ?? "",
-        primaryContactEmail: data.primaryContactEmail ?? "",
-        primaryContactPhone: data.primaryContactPhone ?? "",
+        primaryContactName: d.primaryContactName || "",
+        primaryContactTitle: d.primaryContactTitle || "",
+        primaryContactEmail: d.primaryContactEmail || "",
+        primaryContactPhone: d.primaryContactPhone || "",
 
-        salesStage: (data.salesStage ?? "New Lead") as string,
-        paymentStatus: (data.paymentStatus ?? "Unpaid") as string,
-        retainerStatus: (data.retainerStatus ?? "None") as string,
+        salesStage: d.salesStage || "",
+        paymentStatus: d.paymentStatus || "",
+        retainerStatus: d.retainerStatus || "",
 
-        salesOwner: data.salesOwner ?? "",
-        accountManager: data.accountManager ?? "",
-        productionOwner: data.productionOwner ?? "",
+        salesOwner: d.salesOwner || "",
+        accountManager: d.accountManager || "",
+        productionOwner: d.productionOwner || "",
 
-        totalPaidUsd: Number(data.totalPaidUsd ?? 0),
-        orderId: data.orderId ?? "",
+        totalPaidUsd: Number(d.totalPaidUsd || 0),
+        orderId: d.orderId || "",
 
-        createdAt: toISO(data.createdAt),
-        updatedAt: toISO(data.updatedAt),
-        lastActivity: toISO(data.lastActivity),
+        createdAt: toISO(d.createdAt),
+        updatedAt: toISO(d.updatedAt),
+        lastActivity: toISO(d.lastActivity),
       };
     });
 
     return NextResponse.json({ ok: true, clients });
   } catch (err: any) {
+    console.error("clients/list error:", err);
     return NextResponse.json(
-      { ok: false, error: err?.message ?? "Failed to load clients" },
+      { ok: false, error: err?.message || "Server error" },
       { status: 500 }
     );
   }
