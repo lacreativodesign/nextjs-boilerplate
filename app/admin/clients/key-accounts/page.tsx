@@ -91,22 +91,38 @@ function normalizeOrderId(orderId?: string) {
 }
 
 /**
- * Your ERP uses ThemeProvider class toggling.
- * This matches what your other pages are doing.
+ * Works with BOTH:
+ * 1) Manual toggle (.dark on html)
+ * 2) System dark mode (prefers-color-scheme)
  */
 function useIsDarkMode() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const root = document.documentElement;
+    if (typeof window === "undefined") return;
 
-    const read = () => setIsDark(root.classList.contains("dark"));
+    const root = document.documentElement;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const read = () => {
+      const byClass = root.classList.contains("dark");
+      const bySystem = !!mql.matches;
+      setIsDark(byClass || bySystem);
+    };
+
     read();
 
     const obs = new MutationObserver(() => read());
     obs.observe(root, { attributes: true, attributeFilter: ["class"] });
 
-    return () => obs.disconnect();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+
+    return () => {
+      obs.disconnect();
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
   }, []);
 
   return isDark;
@@ -131,7 +147,7 @@ export default function KeyAccountsPage() {
     borderRadius: 20,
     padding: 12,
     border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(2,6,23,0.55)" : "rgba(255,255,255,0.85)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
     boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
@@ -367,15 +383,8 @@ export default function KeyAccountsPage() {
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
                           onClick={() => openDrawer(c)}
-                          style={{
-                            padding: "8px 14px",
-                            borderRadius: 999,
-                            background: "transparent",
-                            cursor: "pointer",
-                            border: isDark ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(15,23,42,0.22)",
-                            color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
-                            fontWeight: 800,
-                          }}
+                          className="btn ghost"
+                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
                         >
                           View
                         </button>
@@ -411,32 +420,22 @@ export default function KeyAccountsPage() {
               width: "min(460px, 92vw)",
               height: "100%",
               padding: 18,
-              background: isDark ? "rgba(12,12,12,0.92)" : "rgba(255,255,255,0.96)",
+              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
               borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
               overflowY: "auto",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>{selected.companyName}</div>
-                <div style={{ opacity: 0.75, fontSize: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                  {selected.companyName}
+                </div>
+                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
                   {selected.primaryContactName} · {selected.primaryContactEmail}
                 </div>
               </div>
 
-              <button
-                onClick={closeDrawer}
-                style={{
-                  height: 34,
-                  padding: "0 14px",
-                  borderRadius: 999,
-                  background: "transparent",
-                  cursor: "pointer",
-                  border: isDark ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(15,23,42,0.20)",
-                  color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.88)",
-                  fontWeight: 800,
-                }}
-              >
+              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
                 Close
               </button>
             </div>
@@ -486,10 +485,10 @@ function Section({
 }) {
   return (
     <div
+      className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
         background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
