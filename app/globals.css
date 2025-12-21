@@ -2,102 +2,146 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
-  /* =========
-     LA CREATIVO ERP core palette
-     ========= */
-  --lac-blue: #2563EB;
-  --lac-grey: #3C3C3C;
-  --lac-red:  #EF4444;
+/* =========================
+   LA CREATIVO ERP — GLOBALS
+   Source of Truth: Key-Accounts Master UI
+   Theme: OS/Browser only (no .dark class)
+   Font: Inter
+   ========================= */
 
-  /* =========
-     Global typography (LOCKED)
-     ========= */
-  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+:root {
+  --lac-blue: #2563eb;
+  --lac-red: #ef4444;
 
-  /* =========
-     Key-Accounts UI tokens (LIGHT default)
-     ========= */
-  --erp-text: rgba(15,23,42,0.95);
-  --erp-muted: rgba(15,23,42,0.65);
+  /* Neutral enterprise ink */
+  --ink: rgba(15, 23, 42, 0.95);
+  --muted: rgba(15, 23, 42, 0.65);
 
-  --erp-shell-bg: rgba(255,255,255,0.85);
-  --erp-shell-border: rgba(15,23,42,0.10);
-  --erp-shell-shadow: 0 18px 55px rgba(15,23,42,0.10);
+  /* Page surfaces */
+  --page-bg: #ffffff;
+  --app-bg: #f8fafc;
 
-  --erp-row-border: rgba(15,23,42,0.10);
-  --erp-row-border-dashed: rgba(15,23,42,0.10);
+  /* Shell (Key-Accounts vibe) */
+  --shell-bg: rgba(255, 255, 255, 0.85);
+  --shell-border: rgba(15, 23, 42, 0.1);
+  --shell-shadow: 0 18px 55px rgba(15, 23, 42, 0.1);
 
-  --erp-row-even: rgba(15,23,42,0.015);
-  --erp-row-odd: rgba(15,23,42,0.00);
-  --erp-row-hover: rgba(15,23,42,0.03);
+  /* Sidebar */
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --sidebar-border: rgba(15, 23, 42, 0.06);
 
-  --erp-th-text: rgba(15,23,42,0.55);
-  --erp-td-text: rgba(15,23,42,0.85);
-
-  --erp-input-bg: #ffffff;
-  --erp-input-border: rgba(15,23,42,0.10);
-
-  --erp-ghost-border: rgba(15,23,42,0.18);
-  --erp-ghost-bg: rgba(255,255,255,0.60);
-  --erp-ghost-text: rgba(15,23,42,0.85);
-
-  --erp-drawer-bg: rgba(255,255,255,0.96);
-  --erp-drawer-border: rgba(15,23,42,0.10);
-  --erp-backdrop: rgba(15,23,42,0.35);
+  /* Input */
+  --input-bg: #ffffff;
+  --input-border: rgba(15, 23, 42, 0.12);
+  --input-focus: rgba(37, 99, 235, 0.22);
 
   /* Buttons */
-  --accent: var(--lac-blue);
-  --danger: var(--lac-red);
+  --btn-bg: var(--lac-blue);
+  --btn-bg-hover: #1d4ed8;
+  --btn-ghost-border: rgba(15, 23, 42, 0.12);
+  --btn-ghost-bg-hover: rgba(15, 23, 42, 0.03);
 
-  /* Radius */
-  --radius: 16px;
+  /* Card */
+  --card-bg: rgba(15, 23, 42, 0.02);
+  --card-border: rgba(15, 23, 42, 0.1);
 }
 
-*{box-sizing:border-box;font-family:var(--font-sans)}
-html,body{margin:0}
-body{color:var(--lac-grey)}
-
-/* =========================
-   Layout + Sidebar (keep as-is, but stable)
-   ========================= */
-.wrap{display:flex;min-height:100vh;background:var(--lightbg)}
-.sidebar{width:260px;padding:20px;background:var(--lightcard);border-right:1px solid rgba(0,0,0,.06)}
-.brand{color:var(--brand);font-weight:900;font-size:22px}
-.mut{color:var(--mut)}
-.nav button{width:100%;padding:10px 12px;margin:4px 0;border:0;border-radius:12px;background:transparent;color:#475569;font-weight:700;cursor:pointer;text-align:left}
-.nav button.active{background:rgba(99,102,241,.15)}
-.toggle{border:1px solid rgba(0,0,0,.1);background:transparent;padding:10px 12px;border-radius:12px;font-weight:700;cursor:pointer;color:#475569}
-.content{flex:1;padding:20px}
-.grid{display:grid;gap:14px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media (max-width:1024px){.kpis{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:640px){.kpis{grid-template-columns:1fr}}
-
-/* =========================
-   Cards (keep, but enterprise)
-   ========================= */
-.card{
-  background:#ffffff;
-  border-radius: var(--radius);
-  padding:14px;
-  border:1px solid rgba(37,99,235,.22);
-  box-shadow: none;
-}
-.card .card{
-  background:#ffffff;
-  border-radius:18px;
-  border:1px solid rgba(37,99,235,.25);
-  box-shadow:none;
+/* Global font + box model */
+* {
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-.h{margin:0 0 8px 0}
-.kpi .v{font-weight:900;font-size:22px}
-.row{display:flex;justify-content:space-between;align-items:center}
+html,
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--ink);
+}
+
+/* Layout (used by App layout) */
+.wrap {
+  display: flex;
+  min-height: 100vh;
+  background: var(--app-bg);
+}
+
+.sidebar {
+  width: 260px;
+  padding: 20px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+/* Text helpers */
+.brand {
+  font-weight: 900;
+  font-size: 22px;
+}
+
+.mut {
+  color: var(--muted);
+}
+
+/* Navigation buttons */
+.nav button {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 4px 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.72);
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.nav button:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+.nav button.active {
+  background: rgba(37, 99, 235, 0.10);
+  color: rgba(15, 23, 42, 0.88);
+}
+
+/* Grid helpers */
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1024px) {
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card (used inside drawers/sections) */
+.card {
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--card-bg);
+}
 
 /* =========================
-   Buttons (LOCKED)
+   Components — Buttons/Input
    ========================= */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -106,198 +150,150 @@ body{color:var(--lac-grey)}
   padding: 10px 18px;
   border-radius: 8px;
   border: none;
-  background: var(--accent, #2563eb);
+  background: var(--btn-bg);
   color: #fff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
-.btn:hover { background: #1d4ed8; }
-.btn:disabled { opacity: 0.7; cursor: default; }
 
-.btn.ghost{
-  background: transparent;
-  border: 1px solid rgba(37, 99, 235, 0.55);
-  color: #2563EB;
-}
-.btn.ghost:hover{ background: rgba(37, 99, 235, 0.06); }
-
-.btn-danger {
-  background: var(--danger);
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
-}
-.btn-danger:hover { background: #DC2626; }
-
-/* =========================
-   Inputs (LOCKED)
-   ========================= */
-.input{
-  width:100%;
-  padding:10px;
-  border-radius:12px;
-  border:1px solid var(--erp-input-border);
-  background:var(--erp-input-bg);
-  color:var(--lac-grey);
-}
-.input:focus{
-  outline:none;
-  border-color: var(--lac-blue);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+.btn:hover {
+  background: var(--btn-bg-hover);
 }
 
-/* =========================
-   ✅ KEY-ACCOUNTS MASTER TABLE SYSTEM (GLOBAL)
-   Use these classes everywhere.
-   ========================= */
-.erp-table-shell{
-  border-radius: 20px;
-  padding: 12px;
-  border: 1px solid var(--erp-shell-border);
-  background: var(--erp-shell-bg);
-  box-shadow: var(--erp-shell-shadow);
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.erp-table-wrap{
-  overflow-x: auto;
-  width: 100%;
-}
-
-.erp-table{
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 980px;
-  table-layout: fixed; /* prevents header sort from shifting layout */
-}
-
-.erp-th{
-  padding: 12px 14px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--erp-th-text);
-  border-bottom: 1px solid var(--erp-shell-border);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-  font-weight: 800;
-}
-
-.erp-th.no-sort{
+.btn:disabled {
+  opacity: 0.7;
   cursor: default;
 }
 
-.erp-th .th-flex{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.erp-th .sort-slot{
-  display:inline-flex;
-  width: 18px;          /* reserved space */
-  justify-content:flex-end;
-  opacity: 0.85;
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--btn-ghost-border);
+  color: rgba(15, 23, 42, 0.85);
 }
 
-.erp-td{
+.btn.ghost:hover {
+  background: var(--btn-ghost-bg-hover);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.92);
+}
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px var(--input-focus);
+}
+
+/* Optional: legacy table class (some pages still use it) */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
   padding: 12px 14px;
-  border-bottom: 1px dashed var(--erp-row-border-dashed);
-  color: var(--erp-td-text);
-  white-space: nowrap;
-  font-weight: 400;     /* table body REGULAR by default (LOCKED) */
+  text-align: left;
+  font-size: 14px;
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.10);
+  color: rgba(15, 23, 42, 0.85);
+  font-weight: 400; /* keep body regular */
 }
-
-.erp-row-even{ background: var(--erp-row-even); }
-.erp-row-odd{ background: var(--erp-row-odd); }
-.erp-row-hover:hover{ background: var(--erp-row-hover); }
-
-.erp-action{
-  text-align: right;
-}
-
-.erp-action-btn{
-  padding: 8px 14px;
-  border-radius: 999px;
+.table th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.55);
   font-weight: 800;
-  border: 1px solid var(--erp-ghost-border);
-  background: var(--erp-ghost-bg);
-  color: var(--erp-ghost-text);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
 }
 
 /* =========================
-   Drawer helpers (GLOBAL baseline)
+   OS DARK MODE (MASTER)
    ========================= */
-.erp-backdrop{
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: var(--erp-backdrop);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: rgba(255, 255, 255, 0.95);
+    --muted: rgba(255, 255, 255, 0.75);
 
-.erp-drawer{
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: min(460px, 92vw);
-  padding: 18px;
-  background: var(--erp-drawer-bg);
-  border-left: 1px solid var(--erp-drawer-border);
-  overflow-y: auto;
-}
+    --page-bg: #0b1220;
+    --app-bg: #0b1220;
 
-/* =========================
-   Dark mode (OS/browser decides)
-   ========================= */
-@media (prefers-color-scheme: dark){
-  :root{
-    --erp-text: rgba(255,255,255,0.95);
-    --erp-muted: rgba(255,255,255,0.75);
+    --shell-bg: rgba(38, 38, 38, 0.55);
+    --shell-border: rgba(148, 163, 184, 0.28);
+    --shell-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
 
-    /* Key-Accounts table shell in dark */
-    --erp-shell-bg: rgba(38,38,38,0.55);
-    --erp-shell-border: rgba(148,163,184,0.25);
-    --erp-shell-shadow: 0 20px 60px rgba(0,0,0,0.55);
+    --sidebar-bg: rgba(18, 18, 18, 0.72);
+    --sidebar-border: rgba(255, 255, 255, 0.08);
 
-    --erp-row-border: rgba(148,163,184,0.22);
-    --erp-row-border-dashed: rgba(148,163,184,0.22);
+    --input-bg: rgba(255, 255, 255, 0.04);
+    --input-border: rgba(255, 255, 255, 0.18);
+    --input-focus: rgba(37, 99, 235, 0.22);
 
-    --erp-row-even: rgba(255,255,255,0.02);
-    --erp-row-odd: rgba(255,255,255,0.00);
-    --erp-row-hover: rgba(255,255,255,0.04);
+    --btn-ghost-border: rgba(255, 255, 255, 0.18);
+    --btn-ghost-bg-hover: rgba(255, 255, 255, 0.06);
 
-    --erp-th-text: rgba(226,232,240,0.70);
-    --erp-td-text: rgba(226,232,240,0.88);
-
-    --erp-input-bg: rgba(255,255,255,.04);
-    --erp-input-border: rgba(255,255,255,.18);
-
-    --erp-ghost-border: rgba(255,255,255,.18);
-    --erp-ghost-bg: rgba(255,255,255,0.04);
-    --erp-ghost-text: rgba(255,255,255,0.92);
-
-    --erp-drawer-bg: rgba(18,18,18,0.96);
-    --erp-drawer-border: rgba(255,255,255,0.10);
-    --erp-backdrop: rgba(0,0,0,0.55);
+    --card-bg: rgba(255, 255, 255, 0.02);
+    --card-border: rgba(255, 255, 255, 0.10);
   }
 
-  body{background:#0B1220;color:#ffffff}
-
-  .input{
-    background: var(--erp-input-bg);
-    border: 1px solid var(--erp-input-border);
-    color:#fff;
+  html,
+  body {
+    background: var(--page-bg);
+    color: var(--ink);
   }
-  .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
 
-  .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
+  .wrap {
+    background: var(--app-bg);
+  }
+
+  .sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .nav button {
+    color: rgba(226, 232, 240, 0.78);
+  }
+  .nav button:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .nav button.active {
+    background: rgba(37, 99, 235, 0.14);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .btn.ghost {
+    color: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .input {
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .table th,
+  .table td {
+    color: rgba(226, 232, 240, 0.88);
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.22);
+  }
+  .table th {
+    color: rgba(226, 232, 240, 0.70);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  }
 }
-
-/* Optional support if any page still toggles .dark somewhere (won’t hurt) */
-.dark .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
-.tag{display:inline-block;border-radius:10px;padding:4px 8px;background:rgba(6,182,212,.12);color:#06B6D4;font-weight:700;font-size:12px}
