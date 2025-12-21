@@ -2,180 +2,188 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
-  LA CREATIVO ERP – Unified Design System
-  Source of truth:
-  - Light/Dark is OS/browser driven (prefers-color-scheme)
-  - One font (Inter via next/font in app/layout.tsx)
-*/
+/* =========================
+   LA CREATIVO ERP – LOCKED DESIGN TOKENS
+   - Font: Inter (from next/font)
+   - Theme: OS level only (prefers-color-scheme)
+   - Dark: neutral charcoal enterprise
+   - Hover: soft blue tint enterprise
+   ========================= */
 
-:root {
+:root{
   /* Brand */
-  --lac-blue: #2563eb;
-  --lac-red: #ef4444;
+  --accent: #2563EB; /* LA blue */
+  --danger: #EF4444;
 
-  /* Typography + radius */
+  /* Typography */
+  --font-sans: var(--font-inter), Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+  /* Radii */
   --radius: 18px;
 
-  /* Light tokens */
-  --bg: #f6f7fb;
-  --text: #0f172a;
-  --muted: rgba(15, 23, 42, 0.60);
-
-  --surface: rgba(255, 255, 255, 0.92);
-  --surface-2: rgba(248, 250, 252, 0.92);
-
-  --border: rgba(15, 23, 42, 0.10);
-
-  --shadow-card: 0 18px 55px rgba(15, 23, 42, 0.08);
+  /* Light */
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-2: #F3F4F6;
+  --text: #0F172A;
+  --muted: rgba(15,23,42,0.62);
+  --border: rgba(15,23,42,0.10);
 
   /* Tables */
-  --table-head: rgba(15, 23, 42, 0.65);
-  --table-text: rgba(15, 23, 42, 0.92);
-  --table-row-border: rgba(15, 23, 42, 0.10);
-  --table-row-hover: rgba(37, 99, 235, 0.06);
+  --table-bg: #FFFFFF;
+  --table-border: rgba(15,23,42,0.10);
+  --table-row-border: rgba(15,23,42,0.08);
+
+  /* Inputs */
+  --input-bg: #FFFFFF;
+  --input-border: rgba(15,23,42,0.10);
 
   /* Drawer */
-  --drawer-overlay: rgba(15, 23, 42, 0.35);
-  --drawer-shell-bg: rgba(255, 255, 255, 0.82);
-  --drawer-shell-border: rgba(15, 23, 42, 0.10);
+  --drawer-bg: #FFFFFF;
+  --drawer-border: rgba(15,23,42,0.12);
 
-  --drawer-panel-bg: rgba(255, 255, 255, 0.92);
-  --drawer-panel-border: rgba(15, 23, 42, 0.10);
+  /* Hover */
+  --hover: rgba(37,99,235,0.08);
+
+  /* Text helpers used in pages */
+  --sidebar-text: rgba(15,23,42,0.70);
+  --card-bg: var(--surface);
+  --card-border: var(--border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0d12;
-    --text: rgba(255, 255, 255, 0.92);
-    --muted: rgba(255, 255, 255, 0.62);
+/* Dark (OS level) */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg: #0B1220;
+    --surface: rgba(38,38,38,0.62);       /* neutral charcoal */
+    --surface-2: rgba(38,38,38,0.42);
+    --text: rgba(255,255,255,0.92);
+    --muted: rgba(255,255,255,0.62);
+    --border: rgba(255,255,255,0.12);
 
-    --surface: rgba(255, 255, 255, 0.06);
-    --surface-2: rgba(255, 255, 255, 0.04);
+    --table-bg: rgba(38,38,38,0.62);
+    --table-border: rgba(255,255,255,0.12);
+    --table-row-border: rgba(255,255,255,0.10);
 
-    --border: rgba(255, 255, 255, 0.10);
+    --input-bg: rgba(0,0,0,0.25);
+    --input-border: rgba(255,255,255,0.14);
 
-    --shadow-card: 0 22px 65px rgba(0, 0, 0, 0.55);
+    --drawer-bg: rgba(38,38,38,0.92);
+    --drawer-border: rgba(255,255,255,0.12);
 
-    --table-head: rgba(255, 255, 255, 0.68);
-    --table-text: rgba(255, 255, 255, 0.88);
-    --table-row-border: rgba(255, 255, 255, 0.10);
-    --table-row-hover: rgba(37, 99, 235, 0.16);
+    --hover: rgba(37,99,235,0.12);
 
-    --drawer-overlay: rgba(0, 0, 0, 0.55);
-    --drawer-shell-bg: rgba(10, 12, 18, 0.78);
-    --drawer-shell-border: rgba(255, 255, 255, 0.10);
-
-    --drawer-panel-bg: rgba(255, 255, 255, 0.06);
-    --drawer-panel-border: rgba(255, 255, 255, 0.10);
+    --sidebar-text: rgba(255,255,255,0.70);
+    --card-bg: var(--surface);
+    --card-border: var(--border);
   }
 }
 
-/* Base */
-html, body { height: 100%; }
-
-body {
+/* Base reset */
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
 }
 
-/* Common utility */
-.mut { color: var(--muted); }
-
-/* Buttons */
-.btn {
-  background: var(--lac-blue);
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 14px;
+/* Cards */
+.card{
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
 }
 
-.btn.ghost {
+/* Inputs */
+.input{
+  width:100%;
+  padding:10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+.input:focus{
+  outline:none;
+  border-color: rgba(37,99,235,0.55);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.18);
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.35rem;
+  padding:10px 18px;
+  border-radius: 10px;
+  border:none;
+  background: var(--accent);
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn:hover{ filter: brightness(0.95); }
+
+.btn.ghost{
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
 }
+.btn.ghost:hover{ background: var(--hover); }
 
-.btn.btn-danger {
-  background: var(--lac-red);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-}
-
-/* Inputs */
-.input {
-  width: 100%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  padding: 12px 14px;
-  border-radius: 14px;
-  outline: none;
-}
-
-/* Cards / Table shells */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
+.btn-danger{
+  background: var(--danger);
+  color:#fff;
 }
 
 /* Tables */
-table {
-  color: var(--table-text);
+.table{ width:100%; border-collapse:collapse; }
+.table th, .table td{
+  padding: 10px 12px;
+  text-align:left;
+  font-size: 14px;
+  border-bottom: 1px solid var(--table-row-border);
+  white-space:nowrap;
+}
+.table th{
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 800;
+  user-select:none;
 }
 
-tbody tr:hover {
-  background: var(--table-row-hover);
+/* =========================
+   OPTION 3 – Locked Drawer System + Animation
+   ========================= */
+@keyframes erpDrawerIn{
+  from{ transform: translateX(14px); opacity:0; }
+  to{ transform: translateX(0); opacity:1; }
 }
-
-/* Drawer (right side) – shared across ERP */
-.drawerOverlay {
+.erp-overlay{
   position: fixed;
   inset: 0;
-  background: var(--drawer-overlay);
+  background: rgba(0,0,0,0.28);
   backdrop-filter: blur(6px);
-  z-index: 999;
-  animation: overlayFade 160ms ease-out both;
+  z-index: 40;
 }
-
-.drawerShell {
+.erp-drawer{
   position: fixed;
-  top: 16px;
-  right: 16px;
-  bottom: 16px;
-
-  width: min(460px, calc(100vw - 32px));
-  padding: 16px;
-
-  background: var(--drawer-shell-bg);
-  border: 1px solid var(--drawer-shell-border);
-  border-radius: 22px;
-
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  animation: drawerIn 180ms ease-out both;
-}
-
-.drawerPanel {
-  background: var(--drawer-panel-bg);
-  border: 1px solid var(--drawer-panel-border);
-  border-radius: 18px;
-}
-
-/* Animations */
-@keyframes drawerIn {
-  from { transform: translateX(12px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes overlayFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(420px, 100%);
+  z-index: 50;
+  padding: 18px;
+  background: var(--drawer-bg);
+  border-left: 1px solid var(--drawer-border);
+  box-shadow: 0 30px 90px rgba(0,0,0,0.35);
+  animation: erpDrawerIn 220ms ease-out;
+  display:flex;
+  flex-direction:column;
+  gap: 14px;
 }
