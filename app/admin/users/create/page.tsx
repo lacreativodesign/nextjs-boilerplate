@@ -61,9 +61,7 @@ export default function CreateUserPage() {
 
       const res = await fetch("/api/admin/users/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
@@ -94,7 +92,7 @@ export default function CreateUserPage() {
 
       setSuccessMsg("User created successfully.");
 
-      // Reset but keep sensible defaults
+      // Reset but keep defaults
       setName("");
       setEmail("");
       setPassword("");
@@ -119,297 +117,218 @@ export default function CreateUserPage() {
     }
   };
 
+  const shell: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 18,
+    border: "1px solid var(--shell-border)",
+    background: "var(--shell-bg)",
+    boxShadow: "var(--shell-shadow)",
+  };
+
+  const sectionCard: React.CSSProperties = {
+    borderRadius: 14,
+    padding: 14,
+    background: "var(--card-bg)",
+    border: "1px solid var(--card-border)",
+  };
+
+  const sectionTitle: React.CSSProperties = {
+    fontSize: 12,
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    marginBottom: 12,
+  };
+
+  const grid: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+    gap: 14,
+  };
+
+  const selectStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "inherit",
+    fontSize: 14,
+  };
+
   return (
-    <div>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        Create New User
-      </h2>
-      <p
+    <div style={{ width: "100%" }}>
+      <h1
         style={{
-          fontSize: 14,
-          color: "var(--mut, #94A3B8)",
-          marginBottom: 16,
+          fontSize: 34,
+          fontWeight: 900,
+          marginBottom: 8,
+          color: "var(--ink)",
         }}
       >
-        Add a new team member to the LA CREATIVO ERP and assign role,
-        department and payroll settings.
-      </p>
+        Create User
+      </h1>
 
-      {successMsg && (
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--success, #22C55E)",
-            marginBottom: 10,
-          }}
-        >
-          {successMsg}
-        </p>
-      )}
+      <div style={{ marginBottom: 18, color: "var(--muted)" }}>
+        Add a new team member and set role, department, payroll and targets.
+      </div>
 
-      {errorMsg && (
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--danger, #EF4444)",
-            marginBottom: 10,
-          }}
-        >
-          {errorMsg}
-        </p>
-      )}
+      {successMsg ? (
+        <div style={{ marginBottom: 12, fontSize: 14, color: "#22C55E", fontWeight: 700 }}>{successMsg}</div>
+      ) : null}
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-        }}
-      >
-        {/* PERSONAL INFORMATION CARD */}
-        <div style={sectionCardStyle}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-            Personal Information
-          </h3>
+      {errorMsg ? (
+        <div style={{ marginBottom: 12, fontSize: 14, color: "#EF4444", fontWeight: 700 }}>{errorMsg}</div>
+      ) : null}
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {/* Full Name */}
-            <FieldWrapper label="Full Name" required>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
-                style={inputStyle}
-              />
-            </FieldWrapper>
+      <div style={shell}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* PERSONAL */}
+          <div style={sectionCard}>
+            <div style={sectionTitle}>Personal Information</div>
+            <div style={grid}>
+              <Field label="Full Name" required>
+                <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
+              </Field>
 
-            {/* Email */}
-            <FieldWrapper label="Email Address" required>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* Phone */}
-            <FieldWrapper label="Phone Number">
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+92 300 0000000"
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* CNIC */}
-            <FieldWrapper label="CNIC Number">
-              <input
-                value={cnic}
-                onChange={(e) => setCnic(e.target.value)}
-                placeholder="42101-1234567-1"
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* Date of Birth */}
-            <FieldWrapper label="Date of Birth (D.O.B.)">
-              <input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* Status */}
-            <FieldWrapper label="Status">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as StatusType)}
-                style={selectStyle}
-              >
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-              </select>
-            </FieldWrapper>
-
-            {/* Password */}
-            <FieldWrapper label="Password" required>
-              <div
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
+              <Field label="Email Address" required>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Assign a secure password"
-                  style={{ ...inputStyle, paddingRight: 40 }}
+                  className="input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    color: "#E5E7EB",
-                  }}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </FieldWrapper>
+              </Field>
+
+              <Field label="Phone Number">
+                <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 0000000" />
+              </Field>
+
+              <Field label="CNIC Number">
+                <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-1234567-1" />
+              </Field>
+
+              <Field label="Date of Birth (D.O.B.)">
+                <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+              </Field>
+
+              <Field label="Status">
+                <select value={status} onChange={(e) => setStatus(e.target.value as StatusType)} style={selectStyle}>
+                  <option value="active">Active</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </Field>
+
+              <Field label="Password" required>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    className="input"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Assign a secure password"
+                    style={{ paddingRight: 42 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="btn ghost"
+                    style={{
+                      position: "absolute",
+                      right: 8,
+                      height: 34,
+                      width: 38,
+                      padding: 0,
+                      borderRadius: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </Field>
+            </div>
           </div>
-        </div>
 
-        {/* JOB DETAILS CARD */}
-        <div style={sectionCardStyle}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-            Job Details
-          </h3>
+          {/* JOB */}
+          <div style={sectionCard}>
+            <div style={sectionTitle}>Job Details</div>
+            <div style={grid}>
+              <Field label="Role" required>
+                <select value={role} onChange={(e) => setRole(e.target.value)} style={selectStyle}>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {/* Role */}
-            <FieldWrapper label="Role" required>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={selectStyle}
-              >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </FieldWrapper>
+              <Field label="Department">
+                <select value={department} onChange={(e) => setDepartment(e.target.value)} style={selectStyle}>
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d.charAt(0).toUpperCase() + d.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-            {/* Department */}
-            <FieldWrapper label="Department">
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                style={selectStyle}
-              >
-                {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>
-                    {d.charAt(0).toUpperCase() + d.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </FieldWrapper>
+              <Field label="Designation / Title">
+                <input
+                  className="input"
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  placeholder="e.g. Senior Account Manager"
+                />
+              </Field>
 
-            {/* Designation */}
-            <FieldWrapper label="Designation / Title">
-              <input
-                value={designation}
-                onChange={(e) => setDesignation(e.target.value)}
-                placeholder="e.g. Senior Account Manager"
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* Joining Date */}
-            <FieldWrapper label="Joining Date">
-              <input
-                type="date"
-                value={joiningDate}
-                onChange={(e) => setJoiningDate(e.target.value)}
-                style={inputStyle}
-              />
-            </FieldWrapper>
+              <Field label="Joining Date">
+                <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
+              </Field>
+            </div>
           </div>
-        </div>
 
-        {/* PAYROLL CARD */}
-        <div style={sectionCardStyle}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-            Payroll & Targets
-          </h3>
+          {/* PAYROLL */}
+          <div style={sectionCard}>
+            <div style={sectionTitle}>Payroll & Targets</div>
+            <div style={grid}>
+              <Field label="Monthly Salary (PKR)">
+                <input className="input" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="e.g. 150000" />
+              </Field>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {/* Salary */}
-            <FieldWrapper label="Monthly Salary (PKR)">
-              <input
-                value={salary}
-                onChange={(e) => setSalary(e.target.value)}
-                placeholder="e.g. 150000"
-                style={inputStyle}
-              />
-            </FieldWrapper>
+              <Field label="Monthly Target (Amount)">
+                <input
+                  className="input"
+                  value={monthlyTarget}
+                  onChange={(e) => setMonthlyTarget(e.target.value)}
+                  placeholder="e.g. 500000"
+                />
+              </Field>
 
-            {/* Monthly Target */}
-            <FieldWrapper label="Monthly Target (Amount)">
-              <input
-                value={monthlyTarget}
-                onChange={(e) => setMonthlyTarget(e.target.value)}
-                placeholder="e.g. 500000"
-                style={inputStyle}
-              />
-            </FieldWrapper>
-
-            {/* Commission */}
-            <FieldWrapper label="Commission (%)">
-              <input
-                value={commission}
-                onChange={(e) => setCommission(e.target.value)}
-                placeholder="e.g. 5"
-                style={inputStyle}
-              />
-            </FieldWrapper>
+              <Field label="Commission (%)">
+                <input className="input" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="e.g. 5" />
+              </Field>
+            </div>
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn"
-          style={{
-            marginTop: 4,
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? "default" : "pointer",
-          }}
-        >
-          {loading ? "Creating..." : "Create User"}
-        </button>
-      </form>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 6 }}>
+            <button type="submit" disabled={loading} className="btn" style={{ opacity: loading ? 0.7 : 1 }}>
+              {loading ? "Creating..." : "Create User"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
 
-function FieldWrapper({
+function Field({
   label,
   required,
   children,
@@ -422,47 +341,17 @@ function FieldWrapper({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label
         style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color: "#E5E7EB",
+          fontSize: 11,
+          fontWeight: 900,
           textTransform: "uppercase",
-          letterSpacing: 0.5,
+          letterSpacing: "0.08em",
+          color: "var(--muted)",
         }}
       >
         {label}
-        {required && (
-          <span style={{ color: "var(--danger, #EF4444)", marginLeft: 4 }}>
-            *
-          </span>
-        )}
+        {required ? <span style={{ color: "#EF4444", marginLeft: 6 }}>*</span> : null}
       </label>
       {children}
     </div>
   );
 }
-
-const sectionCardStyle: React.CSSProperties = {
-  borderRadius: 20,
-  background: "#3C3C3C",
-  color: "#FFFFFF",
-  padding: 20,
-  border: "1px solid rgba(148,163,184,0.5)",
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid rgba(148,163,184,0.6)",
-  background: "#1F2937",
-  color: "#FFFFFF",
-  fontSize: 14,
-};
-
-const selectStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid rgba(148,163,184,0.6)",
-  background: "#1F2937",
-  color: "#FFFFFF",
-  fontSize: 14,
-};
