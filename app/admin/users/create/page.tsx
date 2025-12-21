@@ -62,6 +62,7 @@ export default function CreateUserPage() {
       const res = await fetch("/api/admin/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
@@ -117,44 +118,35 @@ export default function CreateUserPage() {
     }
   };
 
+  // Master UI shell (matches Key-Accounts)
   const shell: React.CSSProperties = {
     borderRadius: 20,
-    padding: 18,
-    border: "1px solid var(--shell-border)",
-    background: "var(--shell-bg)",
-    boxShadow: "var(--shell-shadow)",
+    padding: 16,
+    border: "1px solid var(--table-border)",
+    background: "var(--table-bg)",
+    boxShadow: "var(--table-shadow)",
   };
 
   const sectionCard: React.CSSProperties = {
     borderRadius: 14,
     padding: 14,
-    background: "var(--card-bg)",
-    border: "1px solid var(--card-border)",
+    background: "rgba(15,23,42,0.02)",
   };
 
   const sectionTitle: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 900,
-    letterSpacing: "0.08em",
+    letterSpacing: "0.06em",
     textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: 12,
+    opacity: 0.75,
+    marginBottom: 10,
+    color: "var(--table-muted)",
   };
 
   const grid: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
     gap: 14,
-  };
-
-  const selectStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid var(--input-border)",
-    background: "var(--input-bg)",
-    color: "inherit",
-    fontSize: 14,
   };
 
   return (
@@ -164,13 +156,13 @@ export default function CreateUserPage() {
           fontSize: 34,
           fontWeight: 900,
           marginBottom: 8,
-          color: "var(--ink)",
+          color: "var(--table-text)",
         }}
       >
         Create User
       </h1>
 
-      <div style={{ marginBottom: 18, color: "var(--muted)" }}>
+      <div style={{ marginBottom: 18, color: "var(--table-muted)" }}>
         Add a new team member and set role, department, payroll and targets.
       </div>
 
@@ -215,7 +207,7 @@ export default function CreateUserPage() {
               </Field>
 
               <Field label="Status">
-                <select value={status} onChange={(e) => setStatus(e.target.value as StatusType)} style={selectStyle}>
+                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as StatusType)}>
                   <option value="active">Active</option>
                   <option value="disabled">Disabled</option>
                 </select>
@@ -260,7 +252,7 @@ export default function CreateUserPage() {
             <div style={sectionTitle}>Job Details</div>
             <div style={grid}>
               <Field label="Role" required>
-                <select value={role} onChange={(e) => setRole(e.target.value)} style={selectStyle}>
+                <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r.value} value={r.value}>
                       {r.label}
@@ -270,7 +262,7 @@ export default function CreateUserPage() {
               </Field>
 
               <Field label="Department">
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} style={selectStyle}>
+                <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
                   {DEPARTMENTS.map((d) => (
                     <option key={d} value={d}>
                       {d.charAt(0).toUpperCase() + d.slice(1)}
@@ -318,7 +310,7 @@ export default function CreateUserPage() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 6 }}>
-            <button type="submit" disabled={loading} className="btn" style={{ opacity: loading ? 0.7 : 1 }}>
+            <button type="submit" disabled={loading} className="btn" style={{ opacity: loading ? 0.7 : 1, borderRadius: 12, fontWeight: 900 }}>
               {loading ? "Creating..." : "Create User"}
             </button>
           </div>
@@ -344,8 +336,9 @@ function Field({
           fontSize: 11,
           fontWeight: 900,
           textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--muted)",
+          letterSpacing: "0.06em",
+          opacity: 0.7,
+          color: "var(--table-muted)",
         }}
       >
         {label}
