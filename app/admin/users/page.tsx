@@ -365,25 +365,7 @@ export default function UsersPage() {
       <div style={{ marginBottom: 16, maxWidth: 520, display: "flex", alignItems: "center", gap: 12 }}>
         <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keyword" />
         <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>{countText}</div>
-
-        {/* Cleaner Add button (icon only) */}
-        <button
-          type="button"
-          onClick={() => router.push("/admin/users/create")}
-          className="btn"
-          title="Add User"
-          style={{
-            marginLeft: "auto",
-            width: 40,
-            height: 40,
-            borderRadius: 999,
-            fontWeight: 900,
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
-          +
-        </button>
+        
       </div>
 
       <div style={tableShellStyle}>
