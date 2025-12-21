@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 type SalesStage =
   | "New Lead"
@@ -91,9 +90,30 @@ function normalizeOrderId(orderId?: string) {
   return `LC-${up}`;
 }
 
+/** OS/Browser theme only */
+function useIsSystemDark() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const read = () => setIsDark(!!mql.matches);
+    read();
+
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
+
 export default function KeyAccountsPage() {
-  // ✅ OS/Browser decides dark vs light (single source of truth)
-  const isDark = useIsDarkMode();
+  const isDark = useIsSystemDark();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,13 +127,22 @@ export default function KeyAccountsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
-  // 🔒 Master UI shell (Key Accounts = source of truth)
+  // ===== MASTER TABLE SHELL (LOCKED) =====
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 12,
     border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
     background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
     boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+  };
+
+  // Stable header: reserve space for sort indicator so the table doesn't shift
+  const sortSlot: React.CSSProperties = {
+    display: "inline-block",
+    width: 14,
+    textAlign: "right",
+    marginLeft: 6,
+    opacity: 0.9,
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -128,12 +157,13 @@ export default function KeyAccountsPage() {
     whiteSpace: "nowrap",
   };
 
+  // Regular weight in body (per your rule)
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
     borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
     color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
-    fontWeight: 500, // ✅ table body is regular (not bold)
+    fontWeight: 500,
   };
 
   useEffect(() => {
@@ -246,7 +276,7 @@ export default function KeyAccountsPage() {
     }
   }
 
-  const sortBadge = (k: SortKey) => (k !== sortKey ? "" : sortDir === "asc" ? " ▲" : " ▼");
+  const sortBadge = (k: SortKey) => (k !== sortKey ? "" : sortDir === "asc" ? "▲" : "▼");
 
   function openDrawer(c: ClientRecord) {
     setSelected(c);
@@ -257,6 +287,18 @@ export default function KeyAccountsPage() {
     setDrawerOpen(false);
     setSelected(null);
   }
+
+  // Row hover + cursor pointer (enterprise)
+  const rowBaseBg = (idx: number) =>
+    isDark
+      ? idx % 2 === 0
+        ? "rgba(255,255,255,0.02)"
+        : "rgba(255,255,255,0.00)"
+      : idx % 2 === 0
+      ? "rgba(15,23,42,0.015)"
+      : "rgba(15,23,42,0.00)";
+
+  const rowHoverBg = isDark ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)";
 
   return (
     <div style={{ width: "100%" }}>
@@ -299,28 +341,28 @@ export default function KeyAccountsPage() {
               <thead>
                 <tr>
                   <th style={headerCellStyle} onClick={() => toggleSort("orderId")}>
-                    Order ID{sortBadge("orderId")}
+                    Order ID <span style={sortSlot}>{sortBadge("orderId")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
-                    Company{sortBadge("companyName")}
+                    Company <span style={sortSlot}>{sortBadge("companyName")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactName")}>
-                    Contact{sortBadge("primaryContactName")}
+                    Contact <span style={sortSlot}>{sortBadge("primaryContactName")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactEmail")}>
-                    Email{sortBadge("primaryContactEmail")}
+                    Email <span style={sortSlot}>{sortBadge("primaryContactEmail")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
-                    Phone{sortBadge("primaryContactPhone")}
+                    Phone <span style={sortSlot}>{sortBadge("primaryContactPhone")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("paymentStatus")}>
-                    Payment{sortBadge("paymentStatus")}
+                    Payment <span style={sortSlot}>{sortBadge("paymentStatus")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("totalPaidUsd")}>
-                    Total Paid{sortBadge("totalPaidUsd")}
+                    Total Paid <span style={sortSlot}>{sortBadge("totalPaidUsd")}</span>
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
-                    Created{sortBadge("createdAt")}
+                    Created <span style={sortSlot}>{sortBadge("createdAt")}</span>
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>Action</th>
                 </tr>
@@ -328,33 +370,34 @@ export default function KeyAccountsPage() {
 
               <tbody>
                 {keyAccountsSorted.map((c, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.02)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
+                  const baseBg = rowBaseBg(idx);
                   return (
-                    <tr key={c.id} style={{ background: rowBg, transition: "background 120ms ease" }}>
+                    <tr
+                      key={c.id}
+                      style={{ background: baseBg, transition: "background 120ms ease", cursor: "pointer" }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = baseBg;
+                      }}
+                      onClick={() => openDrawer(c)}
+                      title="View details"
+                    >
                       <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
-
-                      {/* ✅ regular weight (no bold) */}
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
-
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
                       <td style={cellStyle}>{c.paymentStatus || "-"}</td>
-
-                      {/* ✅ regular weight (no bold) */}
                       <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
-
                       <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
-                          onClick={() => openDrawer(c)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDrawer(c);
+                          }}
                           className="btn ghost"
                           style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
                         >
@@ -370,7 +413,7 @@ export default function KeyAccountsPage() {
         )}
       </div>
 
-      {/* Drawer */}
+      {/* Drawer (MASTER) */}
       {drawerOpen && selected && (
         <div
           style={{
@@ -395,7 +438,6 @@ export default function KeyAccountsPage() {
               background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
               borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
               overflowY: "auto",
-              animation: "lacDrawerIn 240ms cubic-bezier(.2,.85,.25,1)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
@@ -441,19 +483,6 @@ export default function KeyAccountsPage() {
               <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
             </Section>
           </div>
-
-          <style jsx global>{`
-            @keyframes lacDrawerIn {
-              from {
-                transform: translateX(18px);
-                opacity: 0.4;
-              }
-              to {
-                transform: translateX(0);
-                opacity: 1;
-              }
-            }
-          `}</style>
         </div>
       )}
     </div>
