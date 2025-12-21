@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 type SalesStage =
   | "New Lead"
@@ -90,45 +91,8 @@ function normalizeOrderId(orderId?: string) {
   return `LC-${up}`;
 }
 
-/**
- * Works with BOTH:
- * 1) Manual toggle (.dark on html)
- * 2) System dark mode (prefers-color-scheme)
- */
-function useIsDarkMode() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const root = document.documentElement;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const read = () => {
-      const byClass = root.classList.contains("dark");
-      const bySystem = !!mql.matches;
-      setIsDark(byClass || bySystem);
-    };
-
-    read();
-
-    const obs = new MutationObserver(() => read());
-    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
-
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-
-    return () => {
-      obs.disconnect();
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 export default function KeyAccountsPage() {
+  // ✅ OS/Browser decides dark vs light (single source of truth)
   const isDark = useIsDarkMode();
 
   const [loading, setLoading] = useState(true);
@@ -143,6 +107,7 @@ export default function KeyAccountsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
+  // 🔒 Master UI shell (Key Accounts = source of truth)
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 12,
@@ -168,6 +133,7 @@ export default function KeyAccountsPage() {
     borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
     color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
+    fontWeight: 500, // ✅ table body is regular (not bold)
   };
 
   useEffect(() => {
@@ -373,12 +339,18 @@ export default function KeyAccountsPage() {
                   return (
                     <tr key={c.id} style={{ background: rowBg, transition: "background 120ms ease" }}>
                       <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
-                      <td style={{ ...cellStyle, fontWeight: 800, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
+
+                      {/* ✅ regular weight (no bold) */}
+                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
+
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
                       <td style={cellStyle}>{c.paymentStatus || "-"}</td>
-                      <td style={{ ...cellStyle, fontWeight: 900 }}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
+
+                      {/* ✅ regular weight (no bold) */}
+                      <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
+
                       <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
@@ -423,6 +395,7 @@ export default function KeyAccountsPage() {
               background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
               borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
               overflowY: "auto",
+              animation: "lacDrawerIn 240ms cubic-bezier(.2,.85,.25,1)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
@@ -468,6 +441,19 @@ export default function KeyAccountsPage() {
               <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
             </Section>
           </div>
+
+          <style jsx global>{`
+            @keyframes lacDrawerIn {
+              from {
+                transform: translateX(18px);
+                opacity: 0.4;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `}</style>
         </div>
       )}
     </div>
