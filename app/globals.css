@@ -1,222 +1,181 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root{
-  /* LA CREATIVO ERP core palette */
-  --lac-blue: #2563EB;
-  --lac-grey: #3C3C3C;
-  --lac-red:  #EF4444;
 
-  /* Tints (semi-transparent) */
-  --lac-blue-soft:  rgba(37, 99, 235, 0.06);  /* light mode table */
-  --lac-blue-strong: rgba(37, 99, 235, 0.22); /* dark mode drawer */
+/*
+  LA CREATIVO ERP – Unified Design System
+  Source of truth:
+  - Light/Dark is OS/browser driven (prefers-color-scheme)
+  - One font (Inter via next/font in app/layout.tsx)
+*/
 
-  --lac-grey-soft:  rgba(60, 60, 60, 0.06);   /* light mode drawer */
-  --lac-grey-strong: rgba(60, 60, 60, 0.70);  /* dark mode table */
+:root {
+  /* Brand */
+  --lac-blue: #2563eb;
+  --lac-red: #ef4444;
 
-  /* Existing usage hooks */
-  --accent: var(--lac-blue);
-  --danger: var(--lac-red);
+  /* Typography + radius */
+  --radius: 18px;
 
-  /* Table / Drawer tokens (borders & accents use LA CREATIVO blue) */
-  --table-bg: #ffffff;
-  --table-text: var(--lac-grey);
-  --table-muted: rgba(60, 60, 60, 0.65);
-  --table-border: rgba(37, 99, 235, 0.22);
-  --table-row-border: rgba(37, 99, 235, 0.14);
-  --table-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  /* Light tokens */
+  --bg: #f6f7fb;
+  --text: #0f172a;
+  --muted: rgba(15, 23, 42, 0.60);
 
-  --drawer-bg: #ffffff;
-  --drawer-text: var(--lac-grey);
-  --drawer-muted: rgba(60, 60, 60, 0.65);
-  --drawer-border: rgba(37, 99, 235, 0.22);
-  --drawer-shadow: 0 24px 65px rgba(15, 23, 42, 0.18);
-}
-*{box-sizing:border-box;font-family:Inter,system-ui}
-html,body{margin:0}
-body{color:var(--lac-grey)}
-.wrap{display:flex;min-height:100vh;background:var(--lightbg)}
-.dark .wrap{background:linear-gradient(180deg,#081225,#0A1529)}
-.sidebar{width:260px;padding:20px;background:var(--lightcard);border-right:1px solid rgba(0,0,0,.06)}
-.dark .sidebar{background:rgba(12,22,42,.6);backdrop-filter:blur(14px);border-right:1px solid rgba(255,255,255,.06)}
-.brand{color:var(--brand);font-weight:900;font-size:22px}
-.mut{color:var(--mut)}
-.nav button{width:100%;padding:10px 12px;margin:4px 0;border:0;border-radius:12px;background:transparent;color:#475569;font-weight:700;cursor:pointer;text-align:left}
-.dark .nav button{color:#cfd8df}
-.nav button.active{background:rgba(99,102,241,.15)}
-.toggle{border:1px solid rgba(0,0,0,.1);background:transparent;padding:10px 12px;border-radius:12px;font-weight:700;cursor:pointer;color:#475569}
-.dark .toggle{border:1px solid rgba(255,255,255,.2);color:#dfe7ef}
-.content{flex:1;padding:20px}
-.grid{display:grid;gap:14px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media (max-width:1024px){.kpis{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:640px){.kpis{grid-template-columns:1fr}}
-/* LIGHT MODE card – solid white with subtle brand outline */
-.card{
-  background:#ffffff;
-  border-radius: var(--radius);
-  padding:14px;
-  border:1px solid rgba(37,99,235,.22);
-  box-shadow: none; /* remove floating shadow */
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-2: rgba(248, 250, 252, 0.92);
+
+  --border: rgba(15, 23, 42, 0.10);
+
+  --shadow-card: 0 18px 55px rgba(15, 23, 42, 0.08);
+
+  /* Tables */
+  --table-head: rgba(15, 23, 42, 0.65);
+  --table-text: rgba(15, 23, 42, 0.92);
+  --table-row-border: rgba(15, 23, 42, 0.10);
+  --table-row-hover: rgba(37, 99, 235, 0.06);
+
+  /* Drawer */
+  --drawer-overlay: rgba(15, 23, 42, 0.35);
+  --drawer-shell-bg: rgba(255, 255, 255, 0.82);
+  --drawer-shell-border: rgba(15, 23, 42, 0.10);
+
+  --drawer-panel-bg: rgba(255, 255, 255, 0.92);
+  --drawer-panel-border: rgba(15, 23, 42, 0.10);
 }
 
-/* Nested card (drawer/details) – light mode */
-.card .card{
-  background:#ffffff;
-  border-radius:18px;
-  border:1px solid rgba(37,99,235,.25);
-  box-shadow:none;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d12;
+    --text: rgba(255, 255, 255, 0.92);
+    --muted: rgba(255, 255, 255, 0.62);
+
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-2: rgba(255, 255, 255, 0.04);
+
+    --border: rgba(255, 255, 255, 0.10);
+
+    --shadow-card: 0 22px 65px rgba(0, 0, 0, 0.55);
+
+    --table-head: rgba(255, 255, 255, 0.68);
+    --table-text: rgba(255, 255, 255, 0.88);
+    --table-row-border: rgba(255, 255, 255, 0.10);
+    --table-row-hover: rgba(37, 99, 235, 0.16);
+
+    --drawer-overlay: rgba(0, 0, 0, 0.55);
+    --drawer-shell-bg: rgba(10, 12, 18, 0.78);
+    --drawer-shell-border: rgba(255, 255, 255, 0.10);
+
+    --drawer-panel-bg: rgba(255, 255, 255, 0.06);
+    --drawer-panel-border: rgba(255, 255, 255, 0.10);
+  }
 }
 
-/* DARK MODE – outer table card */
-.dark .card {
-  background: var(--lac-grey-strong);              /* grey */
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.70);
+/* Base */
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
 }
 
-/* DARK MODE – inner drawer card */
-.dark .card .card {
-  background: var(--lac-blue-strong);              /* rich blue */
-  border: 1px solid rgba(129, 140, 248, 0.9);
-}
-.h{margin:0 0 8px 0}
-.kpi .v{font-weight:900;font-size:22px}
-.row{display:flex;justify-content:space-between;align-items:center}
-.table{width:100%;border-collapse:collapse}
-.table th,
-.table td{
-  padding: 10px;
-  text-align: left;
-  font-size: 14px;
-  color: var(--lac-grey); /* #3C3C3C */
-  border-bottom: 1px solid rgba(37, 99, 235, 0.18); /* blue tint from #2563EB */
-}
+/* Common utility */
+.mut { color: var(--muted); }
 
-.table th{
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(60, 60, 60, 0.85); /* readable header */
-}
-.badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
-.badge.ok{background:rgba(16,185,129,.15);color:#10B981}
-.badge.warn{background:rgba(245,158,11,.15);color:#D97706}
-.badge.mut{background:rgba(99,102,241,.15);color:#6366F1}
-/* Base blue button – plain, no shadow */
+/* Buttons */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: none;
-  background: var(--accent, #2563eb);
+  background: var(--lac-blue);
+  border: 1px solid rgba(37, 99, 235, 0.28);
   color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 700;
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
-.btn:hover {
-  background: #1d4ed8; /* slightly darker blue on hover */
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-/* Ghost style (e.g. View / Hide) */
-.btn.ghost{
+.btn.ghost {
   background: transparent;
-  border: 1px solid rgba(37, 99, 235, 0.55); /* stronger outline */
-  color: #2563EB; /* blue text */
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
-.btn.ghost:hover{
-  background: rgba(37, 99, 235, 0.06);
+.btn.btn-danger {
+  background: var(--lac-red);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
-/* DANGER button – for Delete, Logout */
-.btn-danger {
-  background: var(--danger);        /* RED #EF4444 */
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+/* Inputs */
+.input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px 14px;
+  border-radius: 14px;
+  outline: none;
 }
 
-.btn-danger:hover {
-  background: #DC2626;
-}
-/* Dark mode overrides for ghost */
-.dark .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
-
-.input{
-  width:100%;
-  padding:10px;
-  border-radius:12px;
-  border:1px solid rgba(37,99,235,.25);
-  background:#ffffff;
-  color:var(--lac-grey);
+/* Cards / Table shells */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
 }
 
-.input:focus{
-  outline:none;
-  border-color: var(--lac-blue);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+/* Tables */
+table {
+  color: var(--table-text);
 }
 
-/* System dark mode (no manual toggle) */
-@media (prefers-color-scheme: dark){
-  body{background:#0B1220;color:#ffffff}
-
-  :root{
-    --table-bg: rgba(12, 22, 42, 0.65);
-    --table-text: rgba(255, 255, 255, 0.92);
-    --table-muted: rgba(255, 255, 255, 0.62);
-    --table-border: rgba(255, 255, 255, 0.16);
-    --table-row-border: rgba(255, 255, 255, 0.12);
-    --table-shadow: 0 20px 50px rgba(0,0,0,0.55);
-  }
-
-  .card{
-    background: rgba(12, 22, 42, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow: 0 18px 45px rgba(0,0,0,0.35);
-  }
-  .card .card{
-    background: rgba(17, 24, 39, 0.65);
-    border: 1px solid rgba(37,99,235,0.30);
-  }
-
-  .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
-  .input{background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.18); color:#fff}
-  .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
+tbody tr:hover {
+  background: var(--table-row-hover);
 }
 
-.dark .input{
-  background: var(--input-bg);
-  border:1px solid var(--input-border);
-  color:#fff;
+/* Drawer (right side) – shared across ERP */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--drawer-overlay);
+  backdrop-filter: blur(6px);
+  z-index: 999;
+  animation: overlayFade 160ms ease-out both;
 }
 
-.dark .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
-.tag{display:inline-block;border-radius:10px;padding:4px 8px;background:rgba(6,182,212,.12);color:#06B6D4;font-weight:700;font-size:12px}
+.drawerShell {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
 
-/* =========================
-   Dark mode hard override (neutral grey)
-   Fixes pages showing "blue" surfaces due to prefers-color-scheme overrides.
-   ========================= */
-.dark{
-  --table-bg: rgba(38,38,38,0.55);
-  --table-border: rgba(90,90,90,0.35);
-  --input-bg: rgba(34,34,34,0.85);
-  --input-border: rgba(90,90,90,0.55);
+  width: min(460px, calc(100vw - 32px));
+  padding: 16px;
+
+  background: var(--drawer-shell-bg);
+  border: 1px solid var(--drawer-shell-border);
+  border-radius: 22px;
+
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  animation: drawerIn 180ms ease-out both;
 }
 
-/* Dropdown menu items (so text doesn't disappear on some browsers) */
-.dark select option{
-  color:#111;
-  background:#fff;
+.drawerPanel {
+  background: var(--drawer-panel-bg);
+  border: 1px solid var(--drawer-panel-border);
+  border-radius: 18px;
+}
+
+/* Animations */
+@keyframes drawerIn {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
