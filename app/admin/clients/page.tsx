@@ -2,24 +2,41 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type SalesStage =
+  | "New Lead"
+  | "Contacted"
+  | "Qualified"
+  | "Proposal Sent"
+  | "Negotiation"
+  | "Closed Won"
+  | "Closed Lost";
+
 type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
+type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
 type ClientRecord = {
   id: string;
 
   companyName: string;
-  primaryContactName: string;
-  primaryContactEmail: string;
-  primaryContactPhone?: string;
-
   website?: string;
   industry?: string;
   country?: string;
   timezone?: string;
 
-  paymentStatus?: PaymentStatus | string;
-  totalPaidUsd: number;
+  primaryContactName: string;
+  primaryContactTitle?: string;
+  primaryContactEmail: string;
+  primaryContactPhone?: string;
 
+  salesStage?: SalesStage | string;
+  paymentStatus?: PaymentStatus | string;
+  retainerStatus?: RetainerStatus | string;
+
+  salesOwner?: string;
+  accountManager?: string;
+  productionOwner?: string;
+
+  totalPaidUsd: number;
   orderId?: string;
 
   createdAt?: string | null;
@@ -72,30 +89,8 @@ function normalizeOrderId(orderId?: string) {
   return `LC-${up}`;
 }
 
-/** OS/Browser theme only */
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const read = () => setIsDark(!!mql.matches);
-    read();
-
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 export default function ClientsPage() {
-  const isDark = useIsSystemDark();
+  const [isDark, setIsDark] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,45 +104,21 @@ export default function ClientsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
-  // ===== MASTER TABLE SHELL (same as Key Accounts) =====
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 12,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
+  // OS-level theme only
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+    };
+  }, []);
 
-  // Stable header: reserve space for sort indicator so the table doesn't shift
-  const sortSlot: React.CSSProperties = {
-    display: "inline-block",
-    width: 14,
-    textAlign: "right",
-    marginLeft: 6,
-    opacity: 0.9,
-  };
-
-  const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
-    cursor: "pointer",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-  };
-
-  // Regular weight in body (per your rule)
-  const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
-    whiteSpace: "nowrap",
-    fontWeight: 500,
-  };
-
+  // Load Clients from API
   useEffect(() => {
     let alive = true;
 
@@ -173,7 +144,7 @@ export default function ClientsPage() {
         setRows(list);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Forbidden");
+        setError(e?.message || "Failed to load clients");
         setRows([]);
       } finally {
         if (!alive) return;
@@ -250,9 +221,8 @@ export default function ClientsPage() {
   }, [filtered, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
-    if (k === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
       setSortKey(k);
       setSortDir(k === "totalPaidUsd" ? "desc" : "asc");
     }
@@ -270,17 +240,44 @@ export default function ClientsPage() {
     setSelected(null);
   }
 
-  // Row hover + cursor pointer (enterprise)
-  const rowBaseBg = (idx: number) =>
-    isDark
-      ? idx % 2 === 0
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(255,255,255,0.00)"
-      : idx % 2 === 0
-      ? "rgba(15,23,42,0.015)"
-      : "rgba(15,23,42,0.00)";
+  // Key-Accounts master table shell
+  const tableShellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 12,
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+  };
 
-  const rowHoverBg = isDark ? "rgba(255,255,255,0.045)" : "rgba(15,23,42,0.035)";
+  const headerCellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    fontSize: 11,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+    cursor: "pointer",
+    userSelect: "none",
+    whiteSpace: "nowrap",
+  };
+
+  const cellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
+    whiteSpace: "nowrap",
+    fontWeight: 400, // IMPORTANT: body text regular (not bold)
+  };
+
+  const headerLabel = (label: string, badge?: string) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <span>{label}</span>
+      {/* reserve space so sorting doesn't shift layout */}
+      <span style={{ width: 14, display: "inline-block", textAlign: "center", opacity: badge ? 1 : 0.35 }}>
+        {badge || "•"}
+      </span>
+    </span>
+  );
 
   return (
     <div style={{ width: "100%" }}>
@@ -296,7 +293,7 @@ export default function ClientsPage() {
       </h1>
 
       <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-        Track every client — payments, ownership, and activity — in one control panel.
+        Track leads and clients — pipeline, payments, ownership, retainers — in one control panel.
       </div>
 
       <div style={{ marginBottom: 16, maxWidth: 360, display: "flex", alignItems: "center", gap: 12 }}>
@@ -319,59 +316,63 @@ export default function ClientsPage() {
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1080 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle} onClick={() => toggleSort("orderId")}>
-                    Order ID <span style={sortSlot}>{sortBadge("orderId")}</span>
+                    {headerLabel("Order ID", sortBadge("orderId"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
-                    Company <span style={sortSlot}>{sortBadge("companyName")}</span>
+                    {headerLabel("Company", sortBadge("companyName"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactName")}>
-                    Contact <span style={sortSlot}>{sortBadge("primaryContactName")}</span>
+                    {headerLabel("Contact", sortBadge("primaryContactName"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactEmail")}>
-                    Email <span style={sortSlot}>{sortBadge("primaryContactEmail")}</span>
+                    {headerLabel("Email", sortBadge("primaryContactEmail"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
-                    Phone <span style={sortSlot}>{sortBadge("primaryContactPhone")}</span>
+                    {headerLabel("Phone", sortBadge("primaryContactPhone"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("paymentStatus")}>
-                    Payment <span style={sortSlot}>{sortBadge("paymentStatus")}</span>
+                    {headerLabel("Payment", sortBadge("paymentStatus"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("totalPaidUsd")}>
-                    Total Paid <span style={sortSlot}>{sortBadge("totalPaidUsd")}</span>
+                    {headerLabel("Total Paid", sortBadge("totalPaidUsd"))}
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
-                    Created <span style={sortSlot}>{sortBadge("createdAt")}</span>
+                    {headerLabel("Created", sortBadge("createdAt"))}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>Action</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
                 </tr>
               </thead>
 
               <tbody>
                 {sorted.map((c, idx) => {
-                  const baseBg = rowBaseBg(idx);
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
+
+                  const hoverBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
+
                   return (
                     <tr
                       key={c.id}
-                      style={{ background: baseBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg;
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLTableRowElement).style.background = baseBg;
-                      }}
+                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
                       onClick={() => openDrawer(c)}
-                      title="View details"
                     >
                       <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
-                      <td style={cellStyle}>{c.paymentStatus || "-"}</td>
+                      <td style={cellStyle}>{(c.paymentStatus as string) || "-"}</td>
                       <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
                       <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
@@ -395,7 +396,7 @@ export default function ClientsPage() {
         )}
       </div>
 
-      {/* Drawer (MASTER – same as Key Accounts) */}
+      {/* Drawer (Key-Accounts master style) */}
       {drawerOpen && selected && (
         <div
           style={{
@@ -451,6 +452,7 @@ export default function ClientsPage() {
 
             <Section title="Contact" isDark={isDark}>
               <Row label="Name" value={selected.primaryContactName || "-"} isDark={isDark} />
+              <Row label="Title" value={selected.primaryContactTitle || "-"} isDark={isDark} />
               <Row label="Email" value={selected.primaryContactEmail || "-"} isDark={isDark} />
               <Row label="Phone" value={selected.primaryContactPhone || "-"} isDark={isDark} />
             </Section>
@@ -458,7 +460,7 @@ export default function ClientsPage() {
             <div style={{ height: 12 }} />
 
             <Section title="Finance" isDark={isDark}>
-              <Row label="Payment Status" value={selected.paymentStatus || "-"} isDark={isDark} />
+              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} isDark={isDark} />
               <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} isDark={isDark} />
               <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
               <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
