@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type SalesStage =
   | "New Lead"
@@ -15,494 +15,380 @@ type SalesStage =
 type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
 type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
-const stageOptions: SalesStage[] = [
-  "New Lead",
-  "Contacted",
-  "Qualified",
-  "Proposal Sent",
-  "Negotiation",
-  "Closed Won",
-  "Closed Lost",
-];
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(false);
 
-const paymentOptions: PaymentStatus[] = ["Unpaid", "Partially Paid", "Paid", "Refunded"];
-const retainerOptions: RetainerStatus[] = ["None", "Active", "Paused", "Cancelled"];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const read = () => {
+      const byClass = root.classList.contains("dark");
+      const bySystem = !!mql.matches;
+      setIsDark(byClass || bySystem);
+    };
+
+    read();
+
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+
+    return () => {
+      obs.disconnect();
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
 
 export default function AddClientPage() {
-  const [saving, setSaving] = useState(false);
-  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const isDark = useIsDarkMode();
+  const router = useRouter();
 
-  const [form, setForm] = useState({
-    // Company
-    companyName: "",
-    website: "",
-    industry: "",
-    country: "",
-    timezone: "",
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // Contact
-    contactName: "",
-    contactTitle: "",
-    contactEmail: "",
-    contactPhone: "",
+  // Company
+  const [companyName, setCompanyName] = useState("");
+  const [website, setWebsite] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [country, setCountry] = useState("");
+  const [timezone, setTimezone] = useState("");
 
-    // Pipeline
-    salesStage: "New Lead" as SalesStage,
-    paymentStatus: "Unpaid" as PaymentStatus,
-    retainerStatus: "None" as RetainerStatus,
+  // Primary Contact
+  const [primaryContactName, setPrimaryContactName] = useState("");
+  const [primaryContactTitle, setPrimaryContactTitle] = useState("");
+  const [primaryContactEmail, setPrimaryContactEmail] = useState("");
+  const [primaryContactPhone, setPrimaryContactPhone] = useState("");
 
-    // Ownership
-    salesOwner: "",
-    accountManager: "",
-    productionOwner: "",
+  // Ownership
+  const [salesOwner, setSalesOwner] = useState("");
+  const [accountManager, setAccountManager] = useState("");
+  const [productionOwner, setProductionOwner] = useState("");
 
-    // Money (USD)
-    totalContractValueUsd: "",
-    totalPaidUsd: "",
-    openBalanceUsd: "",
+  // Pipeline
+  const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
+  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
 
-    // Notes
-    servicesNotes: "",
-  });
+  // Finance (optional initial)
+  const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
 
-  const pageWrap: React.CSSProperties = useMemo(
-    () => ({
-      width: "100%",
-      maxWidth: 1100,
-    }),
-    []
-  );
+  const pageMaxWidth = 1120;
 
-  const titleStyle: React.CSSProperties = useMemo(
-    () => ({
-      fontSize: 34,
-      fontWeight: 900,
-      marginBottom: 8,
-    }),
-    []
-  );
-
-  const subStyle: React.CSSProperties = useMemo(
-    () => ({
-      marginBottom: 18,
-      color: "rgba(15,23,42,0.65)",
-    }),
-    []
-  );
-
-  const cardStyle: React.CSSProperties = useMemo(
+  const shellStyle: React.CSSProperties = useMemo(
     () => ({
       borderRadius: 20,
-      padding: 18,
+      padding: 16,
+      border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+      background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.90)",
+      boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
     }),
-    []
+    [isDark]
   );
 
-  const sectionTitle: React.CSSProperties = useMemo(
+  const sectionStyle: React.CSSProperties = useMemo(
     () => ({
-      fontSize: 12,
-      fontWeight: 900,
-      letterSpacing: "0.08em",
-      textTransform: "uppercase",
-      opacity: 0.75,
-      marginBottom: 12,
+      borderRadius: 16,
+      padding: 14,
+      border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.08)",
+      background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
     }),
-    []
-  );
-
-  const grid: React.CSSProperties = useMemo(
-    () => ({
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-      gap: 14,
-    }),
-    []
-  );
-
-  const gridTight: React.CSSProperties = useMemo(
-    () => ({
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-      gap: 14,
-    }),
-    []
+    [isDark]
   );
 
   const labelStyle: React.CSSProperties = useMemo(
     () => ({
       fontSize: 11,
-      letterSpacing: 0.8,
+      letterSpacing: "0.06em",
       textTransform: "uppercase",
-      fontWeight: 800,
-      opacity: 0.7,
+      fontWeight: 900,
+      color: isDark ? "rgba(226,232,240,0.80)" : "rgba(15,23,42,0.55)",
       marginBottom: 6,
-      display: "block",
     }),
-    []
+    [isDark]
   );
 
-  const helpStyle: React.CSSProperties = useMemo(
+  const helperStyle: React.CSSProperties = useMemo(
     () => ({
+      marginTop: 2,
       fontSize: 12,
-      opacity: 0.7,
-      marginTop: 8,
+      color: isDark ? "rgba(226,232,240,0.65)" : "rgba(15,23,42,0.55)",
     }),
-    []
+    [isDark]
   );
 
-  const row: React.CSSProperties = useMemo(
-    () => ({
-      display: "flex",
-      justifyContent: "flex-end",
-      gap: 10,
-      marginTop: 16,
-    }),
-    []
-  );
+  const titleColor = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
+  const subColor = isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.65)";
 
-  function onChange<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((p) => ({ ...p, [key]: value }));
-    setSavedMsg(null);
-  }
+  const grid2: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  };
+
+  const grid3: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  };
+
+  const grid4: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
+  };
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setSavedMsg(null);
+    setError(null);
 
+    if (!companyName.trim()) return setError("Company Name is required.");
+    if (!primaryContactName.trim()) return setError("Contact Name is required.");
+    if (!primaryContactEmail.trim()) return setError("Contact Email is required.");
+
+    setSubmitting(true);
     try {
-      // Keep your existing API wiring (if already implemented)
-      // If you haven't wired API yet, this stays as a UI-stub and won't break builds.
+      const payload = {
+        companyName: companyName.trim(),
+        website: website.trim(),
+        industry: industry.trim(),
+        country: country.trim(),
+        timezone: timezone.trim(),
+
+        primaryContactName: primaryContactName.trim(),
+        primaryContactTitle: primaryContactTitle.trim(),
+        primaryContactEmail: primaryContactEmail.trim(),
+        primaryContactPhone: primaryContactPhone.trim(),
+
+        salesOwner: salesOwner.trim(),
+        accountManager: accountManager.trim(),
+        productionOwner: productionOwner.trim(),
+
+        salesStage,
+        paymentStatus,
+        retainerStatus,
+
+        totalPaidUsd: Number(String(totalPaidUsd || "0").replace(/,/g, "")) || 0,
+      };
+
       const res = await fetch("/api/admin/clients/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          companyName: form.companyName.trim(),
-          website: form.website.trim(),
-          industry: form.industry.trim(),
-          country: form.country.trim(),
-          timezone: form.timezone.trim(),
-
-          primaryContactName: form.contactName.trim(),
-          primaryContactTitle: form.contactTitle.trim(),
-          primaryContactEmail: form.contactEmail.trim(),
-          primaryContactPhone: form.contactPhone.trim(),
-
-          salesStage: form.salesStage,
-          paymentStatus: form.paymentStatus,
-          retainerStatus: form.retainerStatus,
-
-          salesOwner: form.salesOwner.trim(),
-          accountManager: form.accountManager.trim(),
-          productionOwner: form.productionOwner.trim(),
-
-          totalContractValueUsd: Number(form.totalContractValueUsd || 0),
-          totalPaidUsd: Number(form.totalPaidUsd || 0),
-          openBalanceUsd: Number(form.openBalanceUsd || 0),
-
-          servicesNotes: form.servicesNotes.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => ({}));
+
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Failed to add client");
+        throw new Error(json?.error || res.statusText || "Failed to create client");
       }
 
-      setSavedMsg("Client created successfully.");
-      setForm((p) => ({
-        ...p,
-        companyName: "",
-        website: "",
-        industry: "",
-        country: "",
-        timezone: "",
-        contactName: "",
-        contactTitle: "",
-        contactEmail: "",
-        contactPhone: "",
-        salesStage: "New Lead",
-        paymentStatus: "Unpaid",
-        retainerStatus: "None",
-        salesOwner: "",
-        accountManager: "",
-        productionOwner: "",
-        totalContractValueUsd: "",
-        totalPaidUsd: "",
-        openBalanceUsd: "",
-        servicesNotes: "",
-      }));
+      router.push("/admin/clients");
     } catch (err: any) {
-      setSavedMsg(err?.message || "Something went wrong.");
+      setError(err?.message || "Failed to create client");
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div style={pageWrap}>
-      <h1 style={titleStyle}>Add Client</h1>
-      <div style={subStyle}>
-        Create a new client record and start tracking pipeline, payments and ownership.
+    <div style={{ width: "100%" }}>
+      <div style={{ maxWidth: pageMaxWidth, margin: "0 auto" }}>
+        <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 8, color: titleColor }}>Add Client</h1>
+        <div style={{ marginBottom: 18, color: subColor }}>
+          Create a new client record and start tracking pipeline, payments and ownership.
+        </div>
+
+        <form onSubmit={onSubmit}>
+          <div style={shellStyle}>
+            {error && (
+              <div style={{ marginBottom: 12, color: "#FCA5A5", fontSize: 14, fontWeight: 700 }}>
+                {error}
+              </div>
+            )}
+
+            {/* COMPANY INFORMATION */}
+            <div style={sectionStyle}>
+              <div style={labelStyle}>Company Information</div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={grid4} className="lac-grid-4">
+                <Field label="Company Name *" labelStyle={labelStyle}>
+                  <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                </Field>
+
+                <Field label="Website" labelStyle={labelStyle}>
+                  <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" />
+                </Field>
+
+                <Field label="Industry" labelStyle={labelStyle}>
+                  <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+                </Field>
+
+                <Field label="Country" labelStyle={labelStyle}>
+                  <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
+                </Field>
+              </div>
+
+              <div style={{ height: 12 }} />
+
+              <div style={grid2} className="lac-grid-2">
+                <Field label="Timezone" labelStyle={labelStyle}>
+                  <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="America/New_York" />
+                  <div style={helperStyle}>Keep it short. Don’t stretch the field across the whole page.</div>
+                </Field>
+
+                <Field label="Initial Total Paid (USD)" labelStyle={labelStyle}>
+                  <input className="input" value={totalPaidUsd} onChange={(e) => setTotalPaidUsd(e.target.value)} placeholder="0" />
+                  <div style={helperStyle}>Optional. You can leave it as 0.</div>
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            {/* PRIMARY CONTACT */}
+            <div style={sectionStyle}>
+              <div style={labelStyle}>Primary Contact</div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={grid4} className="lac-grid-4">
+                <Field label="Contact Name *" labelStyle={labelStyle}>
+                  <input className="input" value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} />
+                </Field>
+
+                <Field label="Contact Title" labelStyle={labelStyle}>
+                  <input className="input" value={primaryContactTitle} onChange={(e) => setPrimaryContactTitle(e.target.value)} />
+                </Field>
+
+                <Field label="Contact Email *" labelStyle={labelStyle}>
+                  <input className="input" value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} />
+                </Field>
+
+                <Field label="Contact Phone" labelStyle={labelStyle}>
+                  <input className="input" value={primaryContactPhone} onChange={(e) => setPrimaryContactPhone(e.target.value)} />
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            {/* OWNERSHIP */}
+            <div style={sectionStyle}>
+              <div style={labelStyle}>Ownership</div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={grid3} className="lac-grid-3">
+                <Field label="Sales Owner" labelStyle={labelStyle}>
+                  <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} placeholder="e.g. Chris" />
+                </Field>
+
+                <Field label="Account Manager" labelStyle={labelStyle}>
+                  <input className="input" value={accountManager} onChange={(e) => setAccountManager(e.target.value)} placeholder="e.g. Marc" />
+                </Field>
+
+                <Field label="Production Owner" labelStyle={labelStyle}>
+                  <input className="input" value={productionOwner} onChange={(e) => setProductionOwner(e.target.value)} placeholder="e.g. Jennifer" />
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            {/* PIPELINE */}
+            <div style={sectionStyle}>
+              <div style={labelStyle}>Pipeline</div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={grid3} className="lac-grid-3">
+                <Field label="Sales Stage" labelStyle={labelStyle}>
+                  <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
+                    <option>New Lead</option>
+                    <option>Contacted</option>
+                    <option>Qualified</option>
+                    <option>Proposal Sent</option>
+                    <option>Negotiation</option>
+                    <option>Closed Won</option>
+                    <option>Closed Lost</option>
+                  </select>
+                </Field>
+
+                <Field label="Payment Status" labelStyle={labelStyle}>
+                  <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
+                    <option>Unpaid</option>
+                    <option>Partially Paid</option>
+                    <option>Paid</option>
+                    <option>Refunded</option>
+                  </select>
+                </Field>
+
+                <Field label="Retainer Status" labelStyle={labelStyle}>
+                  <select className="input" value={retainerStatus} onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}>
+                    <option>None</option>
+                    <option>Active</option>
+                    <option>Paused</option>
+                    <option>Cancelled</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height: 16 }} />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" className="btn ghost" onClick={() => router.push("/admin/clients")} style={{ borderRadius: 999 }}>
+                Cancel
+              </button>
+              <button type="submit" className="btn" disabled={submitting} style={{ borderRadius: 999 }}>
+                {submitting ? "Adding..." : "Add Client"}
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
 
-      <form onSubmit={onSubmit} className="card" style={cardStyle}>
-        {/* COMPANY */}
-        <div style={sectionTitle}>Company Information</div>
-        <div style={grid}>
-          <div>
-            <label style={labelStyle}>Company Name *</label>
-            <input
-              className="input"
-              value={form.companyName}
-              onChange={(e) => onChange("companyName", e.target.value)}
-              placeholder="Acme Trading LLC"
-              required
-            />
-          </div>
+      {/* Responsive grid helpers (no Tailwind dependency, keeps it stable) */}
+      <style>{`
+        @media (max-width: 1024px){
+          .lac-grid-4{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          .lac-grid-3{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+        }
+        @media (max-width: 640px){
+          .lac-grid-4,
+          .lac-grid-3,
+          .lac-grid-2{ grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
-          <div>
-            <label style={labelStyle}>Website</label>
-            <input
-              className="input"
-              value={form.website}
-              onChange={(e) => onChange("website", e.target.value)}
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Industry</label>
-            <input
-              className="input"
-              value={form.industry}
-              onChange={(e) => onChange("industry", e.target.value)}
-              placeholder="Construction"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Country</label>
-            <input
-              className="input"
-              value={form.country}
-              onChange={(e) => onChange("country", e.target.value)}
-              placeholder="United States"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Timezone</label>
-            <input
-              className="input"
-              value={form.timezone}
-              onChange={(e) => onChange("timezone", e.target.value)}
-              placeholder="America/New_York"
-            />
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        {/* CONTACT */}
-        <div style={sectionTitle}>Primary Contact</div>
-        <div style={grid}>
-          <div>
-            <label style={labelStyle}>Contact Name *</label>
-            <input
-              className="input"
-              value={form.contactName}
-              onChange={(e) => onChange("contactName", e.target.value)}
-              placeholder="Ali Khan"
-              required
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Contact Title</label>
-            <input
-              className="input"
-              value={form.contactTitle}
-              onChange={(e) => onChange("contactTitle", e.target.value)}
-              placeholder="Owner"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Contact Email *</label>
-            <input
-              className="input"
-              value={form.contactEmail}
-              onChange={(e) => onChange("contactEmail", e.target.value)}
-              placeholder="ali@acmetrading.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Contact Phone</label>
-            <input
-              className="input"
-              value={form.contactPhone}
-              onChange={(e) => onChange("contactPhone", e.target.value)}
-              placeholder="+1 312 555 0199"
-            />
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        {/* PIPELINE */}
-        <div style={sectionTitle}>Pipeline</div>
-        <div style={gridTight}>
-          <div>
-            <label style={labelStyle}>Sales Stage</label>
-            <select
-              className="input"
-              value={form.salesStage}
-              onChange={(e) => onChange("salesStage", e.target.value as SalesStage)}
-            >
-              {stageOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Payment Status</label>
-            <select
-              className="input"
-              value={form.paymentStatus}
-              onChange={(e) => onChange("paymentStatus", e.target.value as PaymentStatus)}
-            >
-              {paymentOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Retainer Status</label>
-            <select
-              className="input"
-              value={form.retainerStatus}
-              onChange={(e) => onChange("retainerStatus", e.target.value as RetainerStatus)}
-            >
-              {retainerOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        {/* OWNERSHIP */}
-        <div style={sectionTitle}>Ownership</div>
-        <div style={grid}>
-          <div>
-            <label style={labelStyle}>Sales Owner</label>
-            <input
-              className="input"
-              value={form.salesOwner}
-              onChange={(e) => onChange("salesOwner", e.target.value)}
-              placeholder="Mansoor (Sales)"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Account Manager</label>
-            <input
-              className="input"
-              value={form.accountManager}
-              onChange={(e) => onChange("accountManager", e.target.value)}
-              placeholder="Sarah (AM)"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Production Owner</label>
-            <input
-              className="input"
-              value={form.productionOwner}
-              onChange={(e) => onChange("productionOwner", e.target.value)}
-              placeholder="Ayesha (Prod)"
-            />
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        {/* MONEY */}
-        <div style={sectionTitle}>Money (USD)</div>
-        <div style={grid}>
-          <div>
-            <label style={labelStyle}>Total Contract Value</label>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={form.totalContractValueUsd}
-              onChange={(e) => onChange("totalContractValueUsd", e.target.value)}
-              placeholder="5500"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Total Paid (Lifetime)</label>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={form.totalPaidUsd}
-              onChange={(e) => onChange("totalPaidUsd", e.target.value)}
-              placeholder="1200"
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Open Balance</label>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={form.openBalanceUsd}
-              onChange={(e) => onChange("openBalanceUsd", e.target.value)}
-              placeholder="1500"
-            />
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        {/* NOTES */}
-        <div style={sectionTitle}>Notes & Services</div>
-        <div>
-          <label style={labelStyle}>Services / Notes</label>
-          <textarea
-            className="input"
-            value={form.servicesNotes}
-            onChange={(e) => onChange("servicesNotes", e.target.value)}
-            placeholder="e.g. Website Design + SEO Retainer. Notes about scope, expectations, assigned production, etc."
-            style={{ minHeight: 110, resize: "vertical" }}
-          />
-          <div style={helpStyle}>Tip: Keep this short. Detailed services will be managed in Projects & Delivery later.</div>
-        </div>
-
-        {savedMsg ? (
-          <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, opacity: 0.85 }}>{savedMsg}</div>
-        ) : null}
-
-        <div style={row}>
-          <button type="submit" className="btn" disabled={saving}>
-            {saving ? "Saving..." : "Add Client"}
-          </button>
-        </div>
-      </form>
+function Field({
+  label,
+  children,
+  labelStyle,
+}: {
+  label: string;
+  children: React.ReactNode;
+  labelStyle: React.CSSProperties;
+}) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={labelStyle}>{label}</div>
+      {children}
     </div>
   );
 }
