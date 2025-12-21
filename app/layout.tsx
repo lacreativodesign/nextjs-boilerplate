@@ -7,11 +7,6 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export const metadata = {
-  title: "LA CREATIVO ERP",
-  description: "Enterprise Portal System",
-};
-
 export default function RootLayout({
   children,
 }: {
@@ -19,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className={inter.className}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
