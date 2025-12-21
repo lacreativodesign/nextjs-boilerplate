@@ -36,7 +36,6 @@ type ClientRecord = {
   productionOwner?: string;
 
   totalPaidUsd: number;
-  orderId?: string;
 
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -46,20 +45,6 @@ type ClientRecord = {
 type ApiResp =
   | { ok: true; clientId?: string }
   | { ok?: false; error?: string };
-
-function normalizeOrderId(orderId?: string) {
-  const v = (orderId || "").trim();
-  if (!v) return "";
-  const up = v.toUpperCase();
-
-  if (up.startsWith("LC-")) return up;
-  if (up.startsWith("ORD-")) return `LC-${up.slice(4)}`;
-
-  const digits = up.replace(/\D/g, "");
-  if (digits) return `LC-${digits.padStart(4, "0")}`;
-
-  return `LC-${up}`;
-}
 
 /**
  * Works with BOTH:
@@ -124,8 +109,8 @@ export default function AddClientPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
   const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
 
-  const [totalPaidUsd, setTotalPaidUsd] = useState<number>(0);
-  const [orderId, setOrderId] = useState("");
+  // ✅ keep value as string so we can avoid number spinner UI entirely
+  const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
 
   const styles = useMemo(() => {
     const pageTitle: React.CSSProperties = {
@@ -224,6 +209,13 @@ export default function AddClientPage() {
     };
   }, [isDark]);
 
+  function toMoneyNumber(v: string) {
+    const cleaned = (v || "").replace(/[^0-9.]/g, "");
+    const n = Number(cleaned || 0);
+    if (!Number.isFinite(n)) return 0;
+    return n;
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -254,8 +246,8 @@ export default function AddClientPage() {
         paymentStatus,
         retainerStatus,
 
-        totalPaidUsd: Number(totalPaidUsd || 0),
-        orderId: normalizeOrderId(orderId) || undefined,
+        // ✅ no spinner UI, still stored as number
+        totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
       const res = await fetch("/api/admin/clients/create", {
@@ -291,8 +283,7 @@ export default function AddClientPage() {
       setPaymentStatus("Unpaid");
       setRetainerStatus("None");
 
-      setTotalPaidUsd(0);
-      setOrderId("");
+      setTotalPaidUsd("0");
     } catch (err: any) {
       setError(err?.message || "Failed to create client");
     } finally {
@@ -350,11 +341,14 @@ export default function AddClientPage() {
 
               <div>
                 <div style={styles.label}>Initial Total Paid (USD)</div>
+                {/* ✅ spinner removed: use text input + numeric keyboard */}
                 <input
                   className="input"
-                  type="number"
-                  value={Number.isFinite(totalPaidUsd) ? String(totalPaidUsd) : "0"}
-                  onChange={(e) => setTotalPaidUsd(Number(e.target.value || 0))}
+                  inputMode="decimal"
+                  pattern="^[0-9]*[.]?[0-9]*$"
+                  value={totalPaidUsd}
+                  onChange={(e) => setTotalPaidUsd(e.target.value)}
+                  placeholder="0"
                 />
                 <div style={styles.help}>Optional. You can leave it as 0.</div>
               </div>
@@ -489,17 +483,6 @@ export default function AddClientPage() {
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
-            </div>
-          </div>
-
-          <div style={{ height: 12 }} />
-
-          {/* Order */}
-          <div style={styles.sectionCard}>
-            <div style={styles.sectionTitle}>Order</div>
-            <div>
-              <div style={styles.label}>Order ID</div>
-              <input className="input" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="LC-0001" />
             </div>
           </div>
 
