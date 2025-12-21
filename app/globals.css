@@ -1,147 +1,110 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root{
+  /* LA CREATIVO ERP core palette */
+  --lac-blue: #2563EB;
+  --lac-grey: #3C3C3C;
+  --lac-red:  #EF4444;
 
-/* =========================
-   LA CREATIVO ERP — GLOBALS
-   Source of Truth: Key-Accounts Master UI
-   Theme: OS/Browser only (no .dark class)
-   Font: Inter
-   ========================= */
+  /* Tints (semi-transparent) */
+  --lac-blue-soft:  rgba(37, 99, 235, 0.06);  /* light mode table */
+  --lac-blue-strong: rgba(37, 99, 235, 0.22); /* dark mode drawer */
 
-:root {
-  --lac-blue: #2563eb;
-  --lac-red: #ef4444;
+  --lac-grey-soft:  rgba(60, 60, 60, 0.06);   /* light mode drawer */
+  --lac-grey-strong: rgba(60, 60, 60, 0.70);  /* dark mode table */
 
-  /* Neutral enterprise ink */
-  --ink: rgba(15, 23, 42, 0.95);
-  --muted: rgba(15, 23, 42, 0.65);
+  /* Existing usage hooks */
+  --accent: var(--lac-blue);
+  --danger: var(--lac-red);
 
-  /* Page surfaces */
-  --page-bg: #ffffff;
-  --app-bg: #f8fafc;
+  /* Table / Drawer tokens (borders & accents use LA CREATIVO blue) */
+  --table-bg: #ffffff;
+  --table-text: var(--lac-grey);
+  --table-muted: rgba(60, 60, 60, 0.65);
+  --table-border: rgba(37, 99, 235, 0.22);
+  --table-row-border: rgba(37, 99, 235, 0.14);
+  --table-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
 
-  /* Shell (Key-Accounts vibe) */
-  --shell-bg: rgba(255, 255, 255, 0.85);
-  --shell-border: rgba(15, 23, 42, 0.1);
-  --shell-shadow: 0 18px 55px rgba(15, 23, 42, 0.1);
-
-  /* Sidebar */
-  --sidebar-bg: rgba(255, 255, 255, 0.92);
-  --sidebar-border: rgba(15, 23, 42, 0.06);
-
-  /* Input */
-  --input-bg: #ffffff;
-  --input-border: rgba(15, 23, 42, 0.12);
-  --input-focus: rgba(37, 99, 235, 0.22);
-
-  /* Buttons */
-  --btn-bg: var(--lac-blue);
-  --btn-bg-hover: #1d4ed8;
-  --btn-ghost-border: rgba(15, 23, 42, 0.12);
-  --btn-ghost-bg-hover: rgba(15, 23, 42, 0.03);
-
-  /* Card */
-  --card-bg: rgba(15, 23, 42, 0.02);
-  --card-border: rgba(15, 23, 42, 0.1);
+  --drawer-bg: #ffffff;
+  --drawer-text: var(--lac-grey);
+  --drawer-muted: rgba(60, 60, 60, 0.65);
+  --drawer-border: rgba(37, 99, 235, 0.22);
+  --drawer-shadow: 0 24px 65px rgba(15, 23, 42, 0.18);
+}
+*{box-sizing:border-box;font-family:Inter,system-ui}
+html,body{margin:0}
+body{color:var(--lac-grey)}
+.wrap{display:flex;min-height:100vh;background:var(--lightbg)}
+.dark .wrap{background:linear-gradient(180deg,#081225,#0A1529)}
+.sidebar{width:260px;padding:20px;background:var(--lightcard);border-right:1px solid rgba(0,0,0,.06)}
+.dark .sidebar{background:rgba(12,22,42,.6);backdrop-filter:blur(14px);border-right:1px solid rgba(255,255,255,.06)}
+.brand{color:var(--brand);font-weight:900;font-size:22px}
+.mut{color:var(--mut)}
+.nav button{width:100%;padding:10px 12px;margin:4px 0;border:0;border-radius:12px;background:transparent;color:#475569;font-weight:700;cursor:pointer;text-align:left}
+.dark .nav button{color:#cfd8df}
+.nav button.active{background:rgba(99,102,241,.15)}
+.toggle{border:1px solid rgba(0,0,0,.1);background:transparent;padding:10px 12px;border-radius:12px;font-weight:700;cursor:pointer;color:#475569}
+.dark .toggle{border:1px solid rgba(255,255,255,.2);color:#dfe7ef}
+.content{flex:1;padding:20px}
+.grid{display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:1024px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.kpis{grid-template-columns:1fr}}
+/* LIGHT MODE card – solid white with subtle brand outline */
+.card{
+  background:#ffffff;
+  border-radius: var(--radius);
+  padding:14px;
+  border:1px solid rgba(37,99,235,.22);
+  box-shadow: none; /* remove floating shadow */
 }
 
-/* Global font + box model */
-* {
-  box-sizing: border-box;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+/* Nested card (drawer/details) – light mode */
+.card .card{
+  background:#ffffff;
+  border-radius:18px;
+  border:1px solid rgba(37,99,235,.25);
+  box-shadow:none;
 }
 
-html,
-body {
-  margin: 0;
-  background: var(--page-bg);
-  color: var(--ink);
+/* DARK MODE – outer table card */
+.dark .card {
+  background: var(--lac-grey-strong);              /* grey */
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.70);
 }
 
-/* Layout (used by App layout) */
-.wrap {
-  display: flex;
-  min-height: 100vh;
-  background: var(--app-bg);
+/* DARK MODE – inner drawer card */
+.dark .card .card {
+  background: var(--lac-blue-strong);              /* rich blue */
+  border: 1px solid rgba(129, 140, 248, 0.9);
 }
-
-.sidebar {
-  width: 260px;
-  padding: 20px;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--sidebar-border);
-}
-
-.content {
-  flex: 1;
-  padding: 20px;
-}
-
-/* Text helpers */
-.brand {
-  font-weight: 900;
-  font-size: 22px;
-}
-
-.mut {
-  color: var(--muted);
-}
-
-/* Navigation buttons */
-.nav button {
-  width: 100%;
-  padding: 10px 12px;
-  margin: 4px 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: rgba(15, 23, 42, 0.72);
-  font-weight: 700;
-  cursor: pointer;
+.h{margin:0 0 8px 0}
+.kpi .v{font-weight:900;font-size:22px}
+.row{display:flex;justify-content:space-between;align-items:center}
+.table{width:100%;border-collapse:collapse}
+.table th,
+.table td{
+  padding: 10px;
   text-align: left;
-}
-.nav button:hover {
-  background: rgba(15, 23, 42, 0.03);
-}
-.nav button.active {
-  background: rgba(37, 99, 235, 0.10);
-  color: rgba(15, 23, 42, 0.88);
+  font-size: 14px;
+  color: var(--lac-grey); /* #3C3C3C */
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18); /* blue tint from #2563EB */
 }
 
-/* Grid helpers */
-.grid {
-  display: grid;
-  gap: 14px;
+.table th{
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(60, 60, 60, 0.85); /* readable header */
 }
-
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-@media (max-width: 1024px) {
-  .kpis {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 640px) {
-  .kpis {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Card (used inside drawers/sections) */
-.card {
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--card-bg);
-}
-
-/* =========================
-   Components — Buttons/Input
-   ========================= */
-
+.badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
+.badge.ok{background:rgba(16,185,129,.15);color:#10B981}
+.badge.warn{background:rgba(245,158,11,.15);color:#D97706}
+.badge.mut{background:rgba(99,102,241,.15);color:#6366F1}
+/* Base blue button – plain, no shadow */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -150,15 +113,15 @@ body {
   padding: 10px 18px;
   border-radius: 8px;
   border: none;
-  background: var(--btn-bg);
+  background: var(--accent, #2563eb);
   color: #fff;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn:hover {
-  background: var(--btn-bg-hover);
+  background: #1d4ed8; /* slightly darker blue on hover */
 }
 
 .btn:disabled {
@@ -166,134 +129,119 @@ body {
   cursor: default;
 }
 
-.btn.ghost {
+/* Ghost style (e.g. View / Hide) */
+.btn.ghost{
   background: transparent;
-  border: 1px solid var(--btn-ghost-border);
-  color: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(37, 99, 235, 0.55); /* stronger outline */
+  color: #2563EB; /* blue text */
 }
 
-.btn.ghost:hover {
-  background: var(--btn-ghost-bg-hover);
+.btn.ghost:hover{
+  background: rgba(37, 99, 235, 0.06);
 }
 
+/* DANGER button – for Delete, Logout */
 .btn-danger {
-  background: rgba(239, 68, 68, 0.92);
+  background: var(--danger);        /* RED #EF4444 */
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
 }
+
 .btn-danger:hover {
-  background: #dc2626;
+  background: #DC2626;
+}
+/* Dark mode overrides for ghost */
+.dark .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
+
+.input{
+  width:100%;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid rgba(37,99,235,.25);
+  background:#ffffff;
+  color:var(--lac-grey);
 }
 
-.input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
+.input:focus{
+  outline:none;
+  border-color: var(--lac-blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+/* ✅ FIX: Select dropdown visibility (dark mode options) */
+select.input{
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+select.input,
+select{
+  color: var(--lac-grey);
+  background: #ffffff;
+}
+
+select option{
+  color: #0F172A;
+  background: #ffffff;
+}
+
+.dark select,
+@media (prefers-color-scheme: dark){
+  select{
+    background: rgba(34,34,34,0.85);
+    color: rgba(255,255,255,0.92);
+    border-color: rgba(90,90,90,0.55);
+  }
+  select option{
+    background: #111827;
+    color: rgba(255,255,255,0.92);
+  }
+}
+
+/* System dark mode (no manual toggle) */
+@media (prefers-color-scheme: dark){
+  body{background:#0B1220;color:#ffffff}
+
+  :root{
+    --table-bg: rgba(12, 22, 42, 0.65);
+    --table-text: rgba(255, 255, 255, 0.92);
+    --table-muted: rgba(255, 255, 255, 0.62);
+    --table-border: rgba(255, 255, 255, 0.16);
+    --table-row-border: rgba(255, 255, 255, 0.12);
+    --table-shadow: 0 20px 50px rgba(0,0,0,0.55);
+  }
+
+  .card{
+    background: rgba(12, 22, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.35);
+  }
+  .card .card{
+    background: rgba(17, 24, 39, 0.65);
+    border: 1px solid rgba(37,99,235,0.30);
+  }
+
+  .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
+  .input{background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.18); color:#fff}
+  .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
+}
+
+.dark .input{
   background: var(--input-bg);
-  color: rgba(15, 23, 42, 0.92);
+  border:1px solid var(--input-border);
+  color:#fff;
 }
 
-.input:focus {
-  outline: none;
-  border-color: rgba(37, 99, 235, 0.55);
-  box-shadow: 0 0 0 3px var(--input-focus);
-}
-
-/* Optional: legacy table class (some pages still use it) */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.table th,
-.table td {
-  padding: 12px 14px;
-  text-align: left;
-  font-size: 14px;
-  border-bottom: 1px dashed rgba(15, 23, 42, 0.10);
-  color: rgba(15, 23, 42, 0.85);
-  font-weight: 400; /* keep body regular */
-}
-.table th {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(15, 23, 42, 0.55);
-  font-weight: 800;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
-}
+.dark .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
+.tag{display:inline-block;border-radius:10px;padding:4px 8px;background:rgba(6,182,212,.12);color:#06B6D4;font-weight:700;font-size:12px}
 
 /* =========================
-   OS DARK MODE (MASTER)
+   Dark mode hard override (neutral grey)
+   Fixes pages showing "blue" surfaces due to prefers-color-scheme overrides.
    ========================= */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: rgba(255, 255, 255, 0.95);
-    --muted: rgba(255, 255, 255, 0.75);
-
-    --page-bg: #0b1220;
-    --app-bg: #0b1220;
-
-    --shell-bg: rgba(38, 38, 38, 0.55);
-    --shell-border: rgba(148, 163, 184, 0.28);
-    --shell-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
-
-    --sidebar-bg: rgba(18, 18, 18, 0.72);
-    --sidebar-border: rgba(255, 255, 255, 0.08);
-
-    --input-bg: rgba(255, 255, 255, 0.04);
-    --input-border: rgba(255, 255, 255, 0.18);
-    --input-focus: rgba(37, 99, 235, 0.22);
-
-    --btn-ghost-border: rgba(255, 255, 255, 0.18);
-    --btn-ghost-bg-hover: rgba(255, 255, 255, 0.06);
-
-    --card-bg: rgba(255, 255, 255, 0.02);
-    --card-border: rgba(255, 255, 255, 0.10);
-  }
-
-  html,
-  body {
-    background: var(--page-bg);
-    color: var(--ink);
-  }
-
-  .wrap {
-    background: var(--app-bg);
-  }
-
-  .sidebar {
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--sidebar-border);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-
-  .nav button {
-    color: rgba(226, 232, 240, 0.78);
-  }
-  .nav button:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .nav button.active {
-    background: rgba(37, 99, 235, 0.14);
-    color: rgba(255, 255, 255, 0.92);
-  }
-
-  .btn.ghost {
-    color: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-  }
-
-  .input {
-    color: rgba(255, 255, 255, 0.92);
-  }
-
-  .table th,
-  .table td {
-    color: rgba(226, 232, 240, 0.88);
-    border-bottom: 1px dashed rgba(148, 163, 184, 0.22);
-  }
-  .table th {
-    color: rgba(226, 232, 240, 0.70);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-  }
+.dark{
+  --table-bg: rgba(38,38,38,0.55);
+  --table-border: rgba(90,90,90,0.35);
+  --input-bg: rgba(34,34,34,0.85);
+  --input-border: rgba(90,90,90,0.55);
 }
