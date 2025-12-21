@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type SalesStage =
   | "New Lead"
@@ -69,7 +69,7 @@ function normalizeOrderId(orderId?: string) {
 function useIsDarkMode() {
   const [isDark, setIsDark] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const root = document.documentElement;
@@ -94,7 +94,7 @@ function useIsDarkMode() {
       // @ts-expect-error older browsers
       mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
     };
-  });
+  }, []);
 
   return isDark;
 }
@@ -125,7 +125,6 @@ export default function AddClientPage() {
   const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
 
   const [totalPaidUsd, setTotalPaidUsd] = useState<number>(0);
-
   const [orderId, setOrderId] = useState("");
 
   const styles = useMemo(() => {
@@ -143,11 +142,13 @@ export default function AddClientPage() {
       lineHeight: 1.5,
     };
 
+    // full-width like Create User (NOT centered)
     const fullWidthWrap: React.CSSProperties = {
       width: "100%",
-      maxWidth: "none", // full-width like Create User
+      maxWidth: "none",
     };
 
+    // KEY-ACCOUNTS master shell
     const formShell: React.CSSProperties = {
       borderRadius: 20,
       padding: 18,
@@ -156,6 +157,7 @@ export default function AddClientPage() {
       boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
     };
 
+    // inner section surfaces MUST be grey in dark mode (not blue)
     const sectionCard: React.CSSProperties = {
       borderRadius: 16,
       padding: 14,
@@ -171,30 +173,6 @@ export default function AddClientPage() {
       opacity: isDark ? 0.8 : 0.72,
       marginBottom: 10,
       color: isDark ? "rgba(226,232,240,0.92)" : "rgba(15,23,42,0.70)",
-    };
-
-    const grid4: React.CSSProperties = {
-      display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gap: 12,
-    };
-
-    const grid3: React.CSSProperties = {
-      display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-      gap: 12,
-    };
-
-    const grid2: React.CSSProperties = {
-      display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-      gap: 12,
-    };
-
-    const grid1: React.CSSProperties = {
-      display: "grid",
-      gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
-      gap: 12,
     };
 
     const label: React.CSSProperties = {
@@ -238,10 +216,6 @@ export default function AddClientPage() {
       formShell,
       sectionCard,
       sectionTitle,
-      grid4,
-      grid3,
-      grid2,
-      grid1,
       label,
       help,
       actions,
@@ -254,18 +228,9 @@ export default function AddClientPage() {
     e.preventDefault();
     setError(null);
 
-    if (!companyName.trim()) {
-      setError("Company name is required.");
-      return;
-    }
-    if (!primaryContactName.trim()) {
-      setError("Primary contact name is required.");
-      return;
-    }
-    if (!primaryContactEmail.trim()) {
-      setError("Primary contact email is required.");
-      return;
-    }
+    if (!companyName.trim()) return setError("Company name is required.");
+    if (!primaryContactName.trim()) return setError("Primary contact name is required.");
+    if (!primaryContactEmail.trim()) return setError("Primary contact email is required.");
 
     setLoading(true);
     try {
@@ -306,7 +271,7 @@ export default function AddClientPage() {
         throw new Error((json as any)?.error || "Failed to create client");
       }
 
-      // reset (keep it simple)
+      // reset
       setCompanyName("");
       setWebsite("");
       setIndustry("");
@@ -350,65 +315,36 @@ export default function AddClientPage() {
           <div style={styles.sectionCard}>
             <div style={styles.sectionTitle}>Company Information</div>
 
-            <div
-              style={{
-                ...styles.grid4,
-              }}
-            >
+            <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
                   Company Name <span style={{ color: "#EF4444" }}>*</span>
                 </div>
-                <input
-                  className="input"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Acme Trading LLC"
-                />
+                <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
               </div>
 
               <div>
                 <div style={styles.label}>Website</div>
-                <input
-                  className="input"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://example.com"
-                />
+                <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} />
               </div>
 
               <div>
                 <div style={styles.label}>Industry</div>
-                <input
-                  className="input"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="Construction"
-                />
+                <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} />
               </div>
 
               <div>
                 <div style={styles.label}>Country</div>
-                <input
-                  className="input"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  placeholder="United States"
-                />
+                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
               </div>
             </div>
 
             <div style={{ height: 12 }} />
 
-            <div style={styles.grid2}>
+            <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Timezone</div>
-                <input
-                  className="input"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  placeholder="America/New_York"
-                />
+                <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
                 <div style={styles.help}>Keep it short. Don’t stretch the field across the whole page.</div>
               </div>
 
@@ -419,7 +355,6 @@ export default function AddClientPage() {
                   type="number"
                   value={Number.isFinite(totalPaidUsd) ? String(totalPaidUsd) : "0"}
                   onChange={(e) => setTotalPaidUsd(Number(e.target.value || 0))}
-                  placeholder="0"
                 />
                 <div style={styles.help}>Optional. You can leave it as 0.</div>
               </div>
@@ -432,7 +367,7 @@ export default function AddClientPage() {
           <div style={styles.sectionCard}>
             <div style={styles.sectionTitle}>Primary Contact</div>
 
-            <div style={styles.grid4}>
+            <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
                   Contact Name <span style={{ color: "#EF4444" }}>*</span>
@@ -441,7 +376,6 @@ export default function AddClientPage() {
                   className="input"
                   value={primaryContactName}
                   onChange={(e) => setPrimaryContactName(e.target.value)}
-                  placeholder="Ali Khan"
                 />
               </div>
 
@@ -451,7 +385,6 @@ export default function AddClientPage() {
                   className="input"
                   value={primaryContactTitle}
                   onChange={(e) => setPrimaryContactTitle(e.target.value)}
-                  placeholder="Owner"
                 />
               </div>
 
@@ -463,7 +396,6 @@ export default function AddClientPage() {
                   className="input"
                   value={primaryContactEmail}
                   onChange={(e) => setPrimaryContactEmail(e.target.value)}
-                  placeholder="ali@acmetrading.com"
                 />
               </div>
 
@@ -473,7 +405,6 @@ export default function AddClientPage() {
                   className="input"
                   value={primaryContactPhone}
                   onChange={(e) => setPrimaryContactPhone(e.target.value)}
-                  placeholder="+1 312 555 0199"
                 />
               </div>
             </div>
@@ -485,15 +416,10 @@ export default function AddClientPage() {
           <div style={styles.sectionCard}>
             <div style={styles.sectionTitle}>Ownership</div>
 
-            <div style={styles.grid3}>
+            <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Sales Owner</div>
-                <input
-                  className="input"
-                  value={salesOwner}
-                  onChange={(e) => setSalesOwner(e.target.value)}
-                  placeholder="e.g. Chris"
-                />
+                <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} />
               </div>
 
               <div>
@@ -502,7 +428,6 @@ export default function AddClientPage() {
                   className="input"
                   value={accountManager}
                   onChange={(e) => setAccountManager(e.target.value)}
-                  placeholder="e.g. Marc"
                 />
               </div>
 
@@ -512,7 +437,6 @@ export default function AddClientPage() {
                   className="input"
                   value={productionOwner}
                   onChange={(e) => setProductionOwner(e.target.value)}
-                  placeholder="e.g. Jennifer"
                 />
               </div>
             </div>
@@ -524,7 +448,7 @@ export default function AddClientPage() {
           <div style={styles.sectionCard}>
             <div style={styles.sectionTitle}>Pipeline</div>
 
-            <div style={styles.grid3}>
+            <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Sales Stage</div>
                 <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
@@ -570,20 +494,12 @@ export default function AddClientPage() {
 
           <div style={{ height: 12 }} />
 
-          {/* Optional: Order */}
+          {/* Order */}
           <div style={styles.sectionCard}>
             <div style={styles.sectionTitle}>Order</div>
-
-            <div style={styles.grid1}>
-              <div>
-                <div style={styles.label}>Order ID</div>
-                <input
-                  className="input"
-                  value={orderId}
-                  onChange={(e) => setOrderId(e.target.value)}
-                  placeholder="LC-0001"
-                />
-              </div>
+            <div>
+              <div style={styles.label}>Order ID</div>
+              <input className="input" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="LC-0001" />
             </div>
           </div>
 
@@ -594,24 +510,6 @@ export default function AddClientPage() {
           </div>
         </form>
       </div>
-
-      <style jsx>{`
-        @media (max-width: 1100px) {
-          .grid4 {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
-          .grid3 {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
-        }
-        @media (max-width: 640px) {
-          .grid4,
-          .grid3,
-          .grid2 {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
