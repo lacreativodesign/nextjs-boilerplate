@@ -167,35 +167,51 @@ body{color:var(--lac-grey)}
   box-shadow: 0 0 0 3px rgba(37,99,235,.12);
 }
 
-/* ✅ FIX: Select dropdown visibility (dark mode options) */
-select.input{
+/* ✅ FIX: Select dropdown visibility (works for OS dark + any legacy .dark usage) */
+select.input {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
 }
 
-select.input,
-select{
+/* Light defaults */
+select,
+select.input {
   color: var(--lac-grey);
   background: #ffffff;
 }
 
-select option{
+select option {
   color: #0F172A;
   background: #ffffff;
 }
 
-.dark select,
-@media (prefers-color-scheme: dark){
-  select{
+/* OS-level dark mode (no manual toggle) */
+@media (prefers-color-scheme: dark) {
+  select,
+  select.input {
     background: rgba(34,34,34,0.85);
     color: rgba(255,255,255,0.92);
     border-color: rgba(90,90,90,0.55);
   }
-  select option{
+
+  select option {
     background: #111827;
     color: rgba(255,255,255,0.92);
   }
+}
+
+/* Legacy/manual .dark support (if any pages still toggle it somewhere) */
+.dark select,
+.dark select.input {
+  background: rgba(34,34,34,0.85);
+  color: rgba(255,255,255,0.92);
+  border-color: rgba(90,90,90,0.55);
+}
+
+.dark select option {
+  background: #111827;
+  color: rgba(255,255,255,0.92);
 }
 
 /* System dark mode (no manual toggle) */
