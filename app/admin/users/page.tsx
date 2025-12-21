@@ -1,97 +1,122 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-
-type SortKey = "name" | "email" | "phone" | "role" | "department" | "createdAt";
-type SortDir = "asc" | "desc";
+import type React from "react";
 
 type UserRecord = {
-  id: string;
+  uid?: string;
+  id?: string;
+  docId?: string;
+  userId?: string;
+  firebaseUid?: string;
+
+  name?: string;
   fullName?: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+
   email?: string;
   phone?: string;
   role?: string;
   department?: string;
-  designation?: string;
 
-  joiningDate?: string | null;
-  monthlySalaryPkr?: number | null;
-  monthlyTargetUsd?: number | null;
-  commissionPercent?: number | null;
+  salary?: number | string;
+  joiningDate?: string;
+  designation?: string;
+  monthlyTarget?: number | string;
+  commission?: number | string;
 
   status?: string;
   cnic?: string;
-  dateOfBirth?: string | null;
+  dob?: string;
 
-  createdAt?: string | null;
-  updatedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+
+  [key: string]: any;
 };
 
-function fmtDate(iso?: string | null) {
+type SortKey = "name" | "email" | "phone" | "role" | "department" | "createdAt";
+type SortDir = "asc" | "desc";
+
+const safeLower = (v: any) => String(v ?? "").toLowerCase();
+
+/** IMPORTANT:
+ *  - NEVER fallback to email as UID.
+ *  - UID must be a Firestore doc id / real uid.
+ */
+const getRowUid = (u: any) =>
+  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || "") as string;
+
+function pickDisplayName(u: UserRecord) {
+  const direct =
+    u.name ||
+    u.fullName ||
+    u.displayName ||
+    [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+
+  if (direct) return direct;
+
+  // Fallback for UI only (NOT for IDs)
+  const email = u.email || "";
+  if (email.includes("@")) return email.split("@")[0];
+  return "-";
+}
+
+function fmtDate(iso?: string) {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("en-US");
 }
 
-function safeText(v: any) {
-  const s = String(v ?? "").trim();
-  return s ? s : "-";
-}
+export default function UsersPage() {
+  const router = useRouter();
 
-function useOsDarkModeOnly() {
   const [isDark, setIsDark] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
-  return isDark;
-}
-
-export default function AdminUsersPage() {
-  const router = useRouter();
-  const isDark = useOsDarkModeOnly();
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [query, setQuery] = useState("");
-  const [rows, setRows] = useState<UserRecord[]>([]);
+  const [search, setSearch] = useState<string>("");
 
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selected, setSelected] = useState<UserRecord | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedUid, setExpandedUid] = useState<string | null>(null);
 
-  // Stop page-level horizontal scroll (prevents sidebar/layout weirdness)
+  // This is what the drawer displays (FULL record from /api/admin/users/[uid])
+  const [drawerUser, setDrawerUser] = useState<UserRecord | null>(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+
+  const [deletingUid, setDeletingUid] = useState<string | null>(null);
+
+  const detailsAbortRef = useRef<AbortController | null>(null);
+
+  // Follow OS theme
   useEffect(() => {
-    const prev = document.body.style.overflowX;
-    document.body.style.overflowX = "hidden";
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
     return () => {
-      document.body.style.overflowX = prev;
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
     };
   }, []);
 
-  // Load users
+  // Load list
   useEffect(() => {
     let alive = true;
 
-    async function load() {
+    async function loadUsers() {
       setLoading(true);
-      setError(null);
+      setError("");
 
       try {
         const res = await fetch("/api/admin/users/list", {
@@ -100,142 +125,113 @@ export default function AdminUsersPage() {
           credentials: "include",
         });
 
-        const json = await res.json().catch(() => null);
+        const json = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-          const msg =
-            (json && (json.error || json.message)) ||
-            res.statusText ||
-            "Failed to load users";
-          throw new Error(msg);
-        }
+        if (!res.ok) throw new Error(json?.error || res.statusText || "Failed to load users");
 
-        const list: UserRecord[] = Array.isArray(json) ? json : Array.isArray(json?.users) ? json.users : [];
+        const data: UserRecord[] = Array.isArray(json?.users) ? json.users : Array.isArray(json) ? json : [];
+        const normalized = (data || [])
+          .map((u) => {
+            const uid = getRowUid(u);
+            return { ...u, uid };
+          })
+          .filter((u) => !!u.uid); // ONLY keep rows that have a real uid/docId
+
         if (!alive) return;
-
-        setRows(list);
+        setUsers(normalized);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Forbidden");
-        setRows([]);
+        setError(e?.message || "Failed to load users");
+        setUsers([]);
       } finally {
         if (!alive) return;
         setLoading(false);
       }
     }
 
-    load();
+    loadUsers();
     return () => {
       alive = false;
     };
   }, []);
 
-  // Filter
+  // Search
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows || [];
+    const term = search.trim().toLowerCase();
+    if (!term) return users;
 
-    return (rows || []).filter((u) => {
+    return users.filter((u) => {
       const hay = [
-        u.fullName,
+        pickDisplayName(u),
         u.email,
         u.phone,
         u.role,
         u.department,
-        u.designation,
-        u.status,
-        u.cnic,
+        fmtDate(u.createdAt),
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
-      return hay.includes(q);
+      return hay.includes(term);
     });
-  }, [rows, query]);
+  }, [users, search]);
 
   // Sort
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
+    const arr = [...filtered];
 
     const getVal = (u: UserRecord) => {
       switch (sortKey) {
         case "name":
-          return (u.fullName || "").toLowerCase();
+          return safeLower(pickDisplayName(u));
         case "email":
-          return (u.email || "").toLowerCase();
+          return safeLower(u.email);
         case "phone":
-          return (u.phone || "").toLowerCase();
+          return safeLower(u.phone);
         case "role":
-          return (u.role || "").toLowerCase();
+          return safeLower(u.role);
         case "department":
-          return (u.department || "").toLowerCase();
-        case "createdAt":
-          return u.createdAt || "";
+          return safeLower(u.department);
+        case "createdAt": {
+          const d = new Date(u.createdAt || "");
+          return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+        }
         default:
           return "";
       }
     };
 
-    const arr = [...(filtered || [])];
-    arr.sort((a, b) => String(getVal(a)).localeCompare(String(getVal(b))) * dir);
+    arr.sort((a, b) => {
+      const av: any = getVal(a);
+      const bv: any = getVal(b);
+
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+
     return arr;
   }, [filtered, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
-    if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
+    if (k === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
       setSortKey(k);
+      // createdAt default desc, rest asc
       setSortDir(k === "createdAt" ? "desc" : "asc");
     }
   }
 
-  const sortBadge = (k: SortKey) => (k !== sortKey ? "" : sortDir === "asc" ? " ▲" : " ▼");
-
-  function openDrawer(u: UserRecord) {
-    setSelected(u);
-    setDrawerOpen(true);
-  }
-
-  function closeDrawer() {
-    setDrawerOpen(false);
-    setSelected(null);
-  }
-
-  async function handleDeleteUser(uid: string) {
-    if (!uid) return;
-    const ok = window.confirm("Delete this user? This cannot be undone.");
-    if (!ok) return;
-
-    try {
-      setDeletingId(uid);
-
-      const res = await fetch(`/api/admin/users/${uid}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to delete user");
-      }
-
-      setRows((prev) => (prev || []).filter((u) => u.id !== uid));
-      if (selected?.id === uid) closeDrawer();
-    } catch (e: any) {
-      alert(e?.message || "Failed to delete user");
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  // ====== KEY-ACCOUNTS MASTER STYLES (TABLE + DRAWER) ======
+  // Key-Accounts-style shell
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 12,
     border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
     background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
     boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    overflow: "hidden",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -248,7 +244,6 @@ export default function AdminUsersPage() {
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
-    fontWeight: 800,
   };
 
   const cellStyle: React.CSSProperties = {
@@ -256,8 +251,98 @@ export default function AdminUsersPage() {
     borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
     color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
-    fontWeight: 500, // IMPORTANT: regular-ish (not bold) for table content
+    fontWeight: 500, // <-- regular font inside table (as you requested)
   };
+
+  const SortArrow = ({ k }: { k: SortKey }) => {
+    const active = k === sortKey;
+    const arrow = sortDir === "asc" ? "▲" : "▼";
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          width: 14, // fixed so layout never shifts
+          marginLeft: 6,
+          opacity: active ? 1 : 0,
+          transform: "translateY(-0.5px)",
+        }}
+      >
+        {arrow}
+      </span>
+    );
+  };
+
+  // Open drawer: fetch FULL user record using your existing /api/admin/users/[uid]
+  async function openDrawerFromRow(row: UserRecord) {
+    const uid = getRowUid(row);
+    if (!uid) return;
+
+    setExpandedUid(uid);
+    setDrawerUser(null);
+    setDrawerLoading(true);
+
+    try {
+      if (detailsAbortRef.current) detailsAbortRef.current.abort();
+      const controller = new AbortController();
+      detailsAbortRef.current = controller;
+
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(uid)}`, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Failed to fetch user details");
+      }
+
+      const json = await res.json().catch(() => ({}));
+      // Your route returns: { uid: requestedUid, ...data }
+      const full: UserRecord = { ...json, uid: json?.uid || uid };
+
+      setDrawerUser(full);
+    } catch (e: any) {
+      // Keep drawer open but show error state
+      setDrawerUser({ uid, email: row.email, role: row.role, department: row.department, name: pickDisplayName(row) });
+      setError(e?.message || "Failed to fetch user details");
+    } finally {
+      setDrawerLoading(false);
+    }
+  }
+
+  function closeDrawer() {
+    setExpandedUid(null);
+    setDrawerUser(null);
+    setDrawerLoading(false);
+  }
+
+  async function deleteUser(uid: string) {
+    if (!uid) return;
+
+    try {
+      setDeletingUid(uid);
+
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(uid)}/delete`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Delete failed");
+
+      setUsers((prev) => prev.filter((u) => getRowUid(u) !== uid));
+      closeDrawer();
+    } catch (e: any) {
+      alert(e?.message || "Delete failed");
+    } finally {
+      setDeletingUid(null);
+    }
+  }
+
+  // Rows
+  const countText = loading ? "Loading..." : `${sorted.length} user(s)`;
 
   return (
     <div style={{ width: "100%" }}>
@@ -276,23 +361,29 @@ export default function AdminUsersPage() {
         Manage team members, roles, departments and performance attributes — in one control panel.
       </div>
 
+      {/* Search + Count + Add (Icon Only) */}
       <div style={{ marginBottom: 16, maxWidth: 520, display: "flex", alignItems: "center", gap: 12 }}>
-        <input
-          className="input"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search keyword"
-        />
+        <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keyword" />
+        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>{countText}</div>
 
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
-          {loading ? "Loading..." : `${sorted.length} user(s)`}
-        </div>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <button className="btn" onClick={() => router.push("/admin/users/create")} style={{ borderRadius: 12, fontWeight: 800 }}>
-            Add User
-          </button>
-        </div>
+        {/* Cleaner Add button (icon only) */}
+        <button
+          type="button"
+          onClick={() => router.push("/admin/users/create")}
+          className="btn"
+          title="Add User"
+          style={{
+            marginLeft: "auto",
+            width: 40,
+            height: 40,
+            borderRadius: 999,
+            fontWeight: 900,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          +
+        </button>
       </div>
 
       <div style={tableShellStyle}>
@@ -301,9 +392,7 @@ export default function AdminUsersPage() {
             Loading users...
           </p>
         ) : error ? (
-          <p style={{ fontSize: 14, color: "#FCA5A5" }}>
-            {error}
-          </p>
+          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
           <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
             No users found.
@@ -314,22 +403,22 @@ export default function AdminUsersPage() {
               <thead>
                 <tr>
                   <th style={headerCellStyle} onClick={() => toggleSort("name")}>
-                    Name{sortBadge("name")}
+                    Name <SortArrow k="name" />
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("email")}>
-                    Email{sortBadge("email")}
+                    Email <SortArrow k="email" />
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("phone")}>
-                    Phone{sortBadge("phone")}
+                    Phone <SortArrow k="phone" />
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("role")}>
-                    Role{sortBadge("role")}
+                    Role <SortArrow k="role" />
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("department")}>
-                    Department{sortBadge("department")}
+                    Department <SortArrow k="department" />
                   </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
-                    Created{sortBadge("createdAt")}
+                    Created <SortArrow k="createdAt" />
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>Action</th>
                 </tr>
@@ -337,25 +426,26 @@ export default function AdminUsersPage() {
 
               <tbody>
                 {sorted.map((u, idx) => {
+                  const uid = getRowUid(u);
                   const rowBg = isDark
                     ? idx % 2 === 0
                       ? "rgba(255,255,255,0.02)"
                       : "rgba(255,255,255,0.00)"
                     : idx % 2 === 0
-                      ? "rgba(15,23,42,0.015)"
-                      : "rgba(15,23,42,0.00)";
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
 
                   return (
-                    <tr key={u.id} style={{ background: rowBg, transition: "background 120ms ease" }}>
-                      <td style={cellStyle}>{safeText(u.fullName)}</td>
-                      <td style={cellStyle}>{safeText(u.email)}</td>
-                      <td style={cellStyle}>{safeText(u.phone)}</td>
-                      <td style={cellStyle}>{safeText(u.role)}</td>
-                      <td style={cellStyle}>{safeText(u.department)}</td>
+                    <tr key={uid} style={{ background: rowBg, transition: "background 120ms ease" }}>
+                      <td style={cellStyle}>{pickDisplayName(u)}</td>
+                      <td style={cellStyle}>{u.email || "-"}</td>
+                      <td style={cellStyle}>{u.phone || "-"}</td>
+                      <td style={cellStyle}>{u.role || "-"}</td>
+                      <td style={cellStyle}>{u.department || "-"}</td>
                       <td style={cellStyle}>{fmtDate(u.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
-                          onClick={() => openDrawer(u)}
+                          onClick={() => openDrawerFromRow(u)}
                           className="btn ghost"
                           style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
                         >
@@ -371,8 +461,8 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* ====== KEY-ACCOUNTS MASTER DRAWER ====== */}
-      {drawerOpen && selected && (
+      {/* Drawer (Key-Accounts master style) */}
+      {expandedUid && (
         <div
           style={{
             position: "fixed",
@@ -401,10 +491,10 @@ export default function AdminUsersPage() {
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
-                  {safeText(selected.fullName)}
+                  {drawerUser ? pickDisplayName(drawerUser) : "User"}
                 </div>
                 <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
-                  {safeText(selected.email)} · {safeText(selected.role)}
+                  {drawerUser?.email || "-"} · {drawerUser?.role || "-"}
                 </div>
               </div>
 
@@ -415,80 +505,79 @@ export default function AdminUsersPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Profile" isDark={isDark}>
-              <Row label="Name" value={safeText(selected.fullName)} isDark={isDark} />
-              <Row label="Email" value={safeText(selected.email)} isDark={isDark} />
-              <Row label="Phone" value={safeText(selected.phone)} isDark={isDark} />
-              <Row label="CNIC" value={safeText(selected.cnic)} isDark={isDark} />
-              <Row label="Date of Birth" value={fmtDate(selected.dateOfBirth)} isDark={isDark} />
-              <Row label="Status" value={safeText(selected.status)} isDark={isDark} />
-            </Section>
+            {drawerLoading ? (
+              <div style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.80)" : "rgba(15,23,42,0.70)" }}>
+                Loading user details...
+              </div>
+            ) : (
+              <>
+                <Section title="Profile" isDark={isDark}>
+                  <Row label="Name" value={drawerUser ? pickDisplayName(drawerUser) : "-"} isDark={isDark} />
+                  <Row label="Email" value={drawerUser?.email || "-"} isDark={isDark} />
+                  <Row label="Phone" value={drawerUser?.phone || "-"} isDark={isDark} />
+                  <Row label="CNIC" value={drawerUser?.cnic || "-"} isDark={isDark} />
+                  <Row label="Date of Birth" value={fmtDate(drawerUser?.dob)} isDark={isDark} />
+                  <Row label="Status" value={drawerUser?.status || "-"} isDark={isDark} />
+                </Section>
 
-            <div style={{ height: 12 }} />
+                <div style={{ height: 12 }} />
 
-            <Section title="Work" isDark={isDark}>
-              <Row label="Designation" value={safeText(selected.designation)} isDark={isDark} />
-              <Row label="Department" value={safeText(selected.department)} isDark={isDark} />
-              <Row label="Role" value={safeText(selected.role)} isDark={isDark} />
-              <Row label="Joining Date" value={fmtDate(selected.joiningDate)} isDark={isDark} />
-            </Section>
+                <Section title="Work" isDark={isDark}>
+                  <Row label="Designation" value={drawerUser?.designation || "-"} isDark={isDark} />
+                  <Row label="Department" value={drawerUser?.department || "-"} isDark={isDark} />
+                  <Row label="Role" value={drawerUser?.role || "-"} isDark={isDark} />
+                  <Row label="Joining Date" value={fmtDate(drawerUser?.joiningDate)} isDark={isDark} />
+                </Section>
 
-            <div style={{ height: 12 }} />
+                <div style={{ height: 12 }} />
 
-            <Section title="Targets & Pay" isDark={isDark}>
-              <Row
-                label="Monthly Salary (PKR)"
-                value={selected.monthlySalaryPkr != null ? String(selected.monthlySalaryPkr) : "-"}
-                isDark={isDark}
-              />
-              <Row
-                label="Monthly Target (USD)"
-                value={selected.monthlyTargetUsd != null ? String(selected.monthlyTargetUsd) : "-"}
-                isDark={isDark}
-              />
-              <Row
-                label="Commission (%)"
-                value={selected.commissionPercent != null ? String(selected.commissionPercent) : "-"}
-                isDark={isDark}
-              />
-            </Section>
+                <Section title="Targets & Pay" isDark={isDark}>
+                  <Row label="Monthly Salary (PKR)" value={String(drawerUser?.salary ?? "-")} isDark={isDark} />
+                  <Row label="Monthly Target (USD)" value={String(drawerUser?.monthlyTarget ?? "-")} isDark={isDark} />
+                  <Row label="Commission (%)" value={String(drawerUser?.commission ?? "-")} isDark={isDark} />
+                </Section>
 
-            <div style={{ height: 12 }} />
+                <div style={{ height: 12 }} />
 
-            <Section title="System" isDark={isDark}>
-              <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
-              <Row label="Updated" value={fmtDate(selected.updatedAt)} isDark={isDark} />
-            </Section>
+                <Section title="System" isDark={isDark}>
+                  <Row label="Created" value={fmtDate(drawerUser?.createdAt)} isDark={isDark} />
+                  <Row label="Updated" value={fmtDate(drawerUser?.updatedAt)} isDark={isDark} />
+                </Section>
 
-            <div style={{ height: 16 }} />
+                <div style={{ height: 14 }} />
 
-            {/* Drawer actions */}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                className="btn"
-                style={{ flex: 1, borderRadius: 12, fontWeight: 800 }}
-                onClick={() => router.push(`/admin/users/${selected.id}/edit`)}
-              >
-                Edit User
-              </button>
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    className="btn"
+                    style={{ flex: 1, borderRadius: 12, fontWeight: 900 }}
+                    onClick={() => {
+                      // This will now work because expandedUid is guaranteed to be a real uid/docId
+                      router.push(`/admin/users/${encodeURIComponent(expandedUid)}/edit`);
+                    }}
+                  >
+                    Edit User
+                  </button>
 
-              <button
-                className="btn"
-                style={{
-                  flex: 1,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  background: "rgba(239,68,68,0.12)",
-                  border: "1px solid rgba(239,68,68,0.35)",
-                  color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
-                }}
-                onClick={() => handleDeleteUser(selected.id)}
-                disabled={deletingId === selected.id}
-                title={deletingId === selected.id ? "Deleting..." : "Delete user"}
-              >
-                {deletingId === selected.id ? "Deleting..." : "Delete User"}
-              </button>
-            </div>
+                  <button
+                    className="btn"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      fontWeight: 900,
+                      background: "rgba(239,68,68,0.12)",
+                      border: "1px solid rgba(239,68,68,0.35)",
+                      color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+                      opacity: deletingUid === expandedUid ? 0.7 : 1,
+                    }}
+                    disabled={deletingUid === expandedUid}
+                    onClick={() => deleteUser(expandedUid)}
+                  >
+                    {deletingUid === expandedUid ? "Deleting..." : "Delete User"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
