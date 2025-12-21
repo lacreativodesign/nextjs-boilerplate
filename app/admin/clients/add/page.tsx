@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type React from "react";
 
 type SalesStage =
   | "New Lead"
@@ -12,239 +11,313 @@ type SalesStage =
   | "Closed Won"
   | "Closed Lost";
 
-type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid";
+type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
 
 export default function AddClientPage() {
-  const [companyName, setCompanyName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [country, setCountry] = useState("");
-  const [timezone, setTimezone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [form, setForm] = useState({
+    companyName: "",
+    website: "",
+    industry: "",
+    country: "",
+    timezone: "",
 
-  const [stage, setStage] = useState<SalesStage>("New Lead");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
+    primaryContactName: "",
+    primaryContactEmail: "",
+    primaryContactPhone: "",
 
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
+    stage: "New Lead" as SalesStage,
+    paymentStatus: "Unpaid" as PaymentStatus,
+  });
 
-  async function handleSubmit(e: React.FormEvent) {
+  const set = (k: keyof typeof form, v: any) => setForm((p) => ({ ...p, [k]: v }));
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSuccess("");
-    setError("");
+    setMsg(null);
 
-    if (!companyName || !contactName || !contactEmail) {
-      setError("Company name, contact name and email are required.");
+    if (!form.companyName.trim()) {
+      setMsg("Company name is required.");
+      return;
+    }
+    if (!form.primaryContactName.trim()) {
+      setMsg("Contact name is required.");
+      return;
+    }
+    if (!form.primaryContactEmail.trim()) {
+      setMsg("Contact email is required.");
       return;
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
 
       const res = await fetch("/api/admin/clients/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          companyName,
-          website,
-          industry,
-          country,
-          timezone,
-          primaryContactName: contactName,
-          primaryContactEmail: contactEmail,
-          primaryContactPhone: contactPhone,
-          stage,
-          paymentStatus,
-        }),
+        body: JSON.stringify(form),
       });
 
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error || "Failed to create client");
+      const json = await res.json().catch(() => ({}));
 
-      setSuccess("Client added successfully.");
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Failed to add client");
+      }
 
-      // Reset form
-      setCompanyName("");
-      setWebsite("");
-      setIndustry("");
-      setCountry("");
-      setTimezone("");
-      setContactName("");
-      setContactEmail("");
-      setContactPhone("");
-      setStage("New Lead");
-      setPaymentStatus("Unpaid");
+      setMsg("Client created successfully.");
+      setForm({
+        companyName: "",
+        website: "",
+        industry: "",
+        country: "",
+        timezone: "",
+
+        primaryContactName: "",
+        primaryContactEmail: "",
+        primaryContactPhone: "",
+
+        stage: "New Lead",
+        paymentStatus: "Unpaid",
+      });
     } catch (err: any) {
-      setError(err?.message || "Failed to create client");
+      setMsg(err?.message || "Something went wrong.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
-  /* ===== MASTER UI STYLES ===== */
-  const shell: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 16,
-    border: "1px solid var(--table-border)",
-    background: "var(--table-bg)",
-    boxShadow: "var(--table-shadow)",
+  // Master UI typography sizing (same “feel” as Key Accounts)
+  const titleStyle: React.CSSProperties = {
+    fontSize: 34,
+    fontWeight: 900,
+    marginBottom: 8,
   };
 
-  const section: React.CSSProperties = {
-    borderRadius: 14,
-    padding: 14,
-    background: "rgba(15,23,42,0.02)",
+  const subStyle: React.CSSProperties = {
+    marginBottom: 18,
+    opacity: 0.75,
+    fontSize: 14,
   };
 
   const sectionTitle: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 900,
-    letterSpacing: "0.06em",
+    letterSpacing: "0.08em",
     textTransform: "uppercase",
     opacity: 0.75,
     marginBottom: 10,
-    color: "var(--table-muted)",
   };
 
-  const grid: React.CSSProperties = {
+  const grid4: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-    gap: 14,
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
   };
+
+  const grid3: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  };
+
+  const grid2: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  };
+
+  const grid1: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 12,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    opacity: 0.75,
+    marginBottom: 6,
+    display: "block",
+  };
+
+  const fieldWrap: React.CSSProperties = { display: "flex", flexDirection: "column" };
 
   return (
     <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: "var(--table-text)",
-        }}
-      >
-        Add Client
-      </h1>
-
-      <div style={{ marginBottom: 18, color: "var(--table-muted)" }}>
+      <h1 style={titleStyle}>Add Client</h1>
+      <div style={subStyle}>
         Create a new client record and start tracking pipeline, payments and ownership.
       </div>
 
-      {success && <div style={{ color: "#22C55E", fontWeight: 700, marginBottom: 12 }}>{success}</div>}
-      {error && <div style={{ color: "#EF4444", fontWeight: 700, marginBottom: 12 }}>{error}</div>}
+      <form onSubmit={onSubmit} className="card" style={{ padding: 18, borderRadius: 20 }}>
+        {/* COMPANY INFORMATION */}
+        <div style={sectionTitle}>Company Information</div>
 
-      <div style={shell}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* COMPANY */}
-          <div style={section}>
-            <div style={sectionTitle}>Company Information</div>
-            <div style={grid}>
-              <Field label="Company Name" required>
-                <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-              </Field>
-
-              <Field label="Website">
-                <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} />
-              </Field>
-
-              <Field label="Industry">
-                <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-              </Field>
-
-              <Field label="Country">
-                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
-              </Field>
-
-              <Field label="Timezone">
-                <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-              </Field>
-            </div>
+        <div style={grid4}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>
+              Company Name <span style={{ color: "var(--danger, #EF4444)" }}>*</span>
+            </label>
+            <input
+              className="input"
+              value={form.companyName}
+              onChange={(e) => set("companyName", e.target.value)}
+              placeholder="Acme Trading LLC"
+            />
           </div>
 
-          {/* CONTACT */}
-          <div style={section}>
-            <div style={sectionTitle}>Primary Contact</div>
-            <div style={grid}>
-              <Field label="Contact Name" required>
-                <input className="input" value={contactName} onChange={(e) => setContactName(e.target.value)} />
-              </Field>
-
-              <Field label="Contact Email" required>
-                <input className="input" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
-              </Field>
-
-              <Field label="Contact Phone">
-                <input className="input" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
-              </Field>
-            </div>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Website</label>
+            <input
+              className="input"
+              value={form.website}
+              onChange={(e) => set("website", e.target.value)}
+              placeholder="https://example.com"
+            />
           </div>
 
-          {/* PIPELINE */}
-          <div style={section}>
-            <div style={sectionTitle}>Pipeline</div>
-            <div style={grid}>
-              <Field label="Sales Stage">
-                <select className="input" value={stage} onChange={(e) => setStage(e.target.value as SalesStage)}>
-                  <option>New Lead</option>
-                  <option>Contacted</option>
-                  <option>Qualified</option>
-                  <option>Proposal Sent</option>
-                  <option>Negotiation</option>
-                  <option>Closed Won</option>
-                  <option>Closed Lost</option>
-                </select>
-              </Field>
-
-              <Field label="Payment Status">
-                <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
-                  <option>Unpaid</option>
-                  <option>Partially Paid</option>
-                  <option>Paid</option>
-                </select>
-              </Field>
-            </div>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Industry</label>
+            <input
+              className="input"
+              value={form.industry}
+              onChange={(e) => set("industry", e.target.value)}
+              placeholder="Construction"
+            />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 6 }}>
-            <button type="submit" disabled={loading} className="btn" style={{ borderRadius: 12, fontWeight: 900 }}>
-              {loading ? "Creating..." : "Add Client"}
-            </button>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Country</label>
+            <input
+              className="input"
+              value={form.country}
+              onChange={(e) => set("country", e.target.value)}
+              placeholder="United States"
+            />
           </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+        </div>
 
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
-        style={{
-          fontSize: 11,
-          fontWeight: 900,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          opacity: 0.7,
-          color: "var(--table-muted)",
-        }}
-      >
-        {label}
-        {required && <span style={{ color: "#EF4444", marginLeft: 6 }}>*</span>}
-      </label>
-      {children}
+        <div style={{ height: 12 }} />
+
+        <div style={grid2}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Timezone</label>
+            <input
+              className="input"
+              value={form.timezone}
+              onChange={(e) => set("timezone", e.target.value)}
+              placeholder="America/New_York"
+            />
+          </div>
+          <div />
+        </div>
+
+        <div style={{ height: 18 }} />
+
+        {/* PRIMARY CONTACT */}
+        <div style={sectionTitle}>Primary Contact</div>
+
+        <div style={grid3}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>
+              Contact Name <span style={{ color: "var(--danger, #EF4444)" }}>*</span>
+            </label>
+            <input
+              className="input"
+              value={form.primaryContactName}
+              onChange={(e) => set("primaryContactName", e.target.value)}
+              placeholder="Ali Khan"
+            />
+          </div>
+
+          <div style={fieldWrap}>
+            <label style={labelStyle}>
+              Contact Email <span style={{ color: "var(--danger, #EF4444)" }}>*</span>
+            </label>
+            <input
+              className="input"
+              value={form.primaryContactEmail}
+              onChange={(e) => set("primaryContactEmail", e.target.value)}
+              placeholder="ali@acmetrading.com"
+            />
+          </div>
+
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Contact Phone</label>
+            <input
+              className="input"
+              value={form.primaryContactPhone}
+              onChange={(e) => set("primaryContactPhone", e.target.value)}
+              placeholder="+1 312 555 0199"
+            />
+          </div>
+        </div>
+
+        <div style={{ height: 18 }} />
+
+        {/* PIPELINE */}
+        <div style={sectionTitle}>Pipeline</div>
+
+        <div style={grid2}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Sales Stage</label>
+            <select
+              className="input"
+              value={form.stage}
+              onChange={(e) => set("stage", e.target.value as SalesStage)}
+            >
+              <option>New Lead</option>
+              <option>Contacted</option>
+              <option>Qualified</option>
+              <option>Proposal Sent</option>
+              <option>Negotiation</option>
+              <option>Closed Won</option>
+              <option>Closed Lost</option>
+            </select>
+          </div>
+
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Payment Status</label>
+            <select
+              className="input"
+              value={form.paymentStatus}
+              onChange={(e) => set("paymentStatus", e.target.value as PaymentStatus)}
+            >
+              <option>Unpaid</option>
+              <option>Partially Paid</option>
+              <option>Paid</option>
+              <option>Refunded</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        {/* Footer actions */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 13, opacity: 0.8 }}>
+            {msg ? msg : " "}
+          </div>
+
+          <button className="btn" type="submit" disabled={saving} style={{ borderRadius: 12, fontWeight: 800 }}>
+            {saving ? "Saving..." : "Add Client"}
+          </button>
+        </div>
+      </form>
+
+      {/* Responsive tweaks */}
+      <style jsx>{`
+        @media (max-width: 1024px) {
+          form :global(.grid4) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+      `}</style>
     </div>
   );
 }
