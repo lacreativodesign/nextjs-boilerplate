@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root{
   /* LA CREATIVO ERP core palette */
   --lac-blue: #2563EB;
@@ -9,7 +10,7 @@
 
   /* Tints (semi-transparent) */
   --lac-blue-soft:  rgba(37, 99, 235, 0.06);  /* light mode table */
-  --lac-blue-strong: rgba(37, 99, 235, 0.22); /* dark mode drawer */
+  --lac-blue-strong: rgba(37, 99, 235, 0.22); /* (kept) */
 
   --lac-grey-soft:  rgba(60, 60, 60, 0.06);   /* light mode drawer */
   --lac-grey-strong: rgba(60, 60, 60, 0.70);  /* dark mode table */
@@ -18,7 +19,7 @@
   --accent: var(--lac-blue);
   --danger: var(--lac-red);
 
-  /* Table / Drawer tokens (borders & accents use LA CREATIVO blue) */
+  /* Table / Drawer tokens */
   --table-bg: #ffffff;
   --table-text: var(--lac-grey);
   --table-muted: rgba(60, 60, 60, 0.65);
@@ -31,7 +32,12 @@
   --drawer-muted: rgba(60, 60, 60, 0.65);
   --drawer-border: rgba(37, 99, 235, 0.22);
   --drawer-shadow: 0 24px 65px rgba(15, 23, 42, 0.18);
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: rgba(37,99,235,.25);
 }
+
 *{box-sizing:border-box;font-family:Inter,system-ui}
 html,body{margin:0}
 body{color:var(--lac-grey)}
@@ -51,13 +57,17 @@ body{color:var(--lac-grey)}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media (max-width:1024px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.kpis{grid-template-columns:1fr}}
+.h{margin:0 0 8px 0}
+.kpi .v{font-weight:900;font-size:22px}
+.row{display:flex;justify-content:space-between;align-items:center}
+
 /* LIGHT MODE card – solid white with subtle brand outline */
 .card{
   background:#ffffff;
-  border-radius: var(--radius);
+  border-radius: 20px;
   padding:14px;
   border:1px solid rgba(37,99,235,.22);
-  box-shadow: none; /* remove floating shadow */
+  box-shadow: none;
 }
 
 /* Nested card (drawer/details) – light mode */
@@ -68,43 +78,38 @@ body{color:var(--lac-grey)}
   box-shadow:none;
 }
 
-/* DARK MODE – outer table card */
+/* DARK MODE – neutral grey (manual .dark) */
 .dark .card {
-  background: var(--lac-grey-strong);              /* grey */
+  background: rgba(38,38,38,0.55);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(148, 163, 184, 0.35);
   box-shadow: 0 30px 80px rgba(2, 6, 23, 0.70);
 }
 
-/* DARK MODE – inner drawer card */
+/* DARK MODE – inner card SHOULD NOT BE BLUE */
 .dark .card .card {
-  background: var(--lac-blue-strong);              /* rich blue */
-  border: 1px solid rgba(129, 140, 248, 0.9);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
-.h{margin:0 0 8px 0}
-.kpi .v{font-weight:900;font-size:22px}
-.row{display:flex;justify-content:space-between;align-items:center}
+
+/* Table */
 .table{width:100%;border-collapse:collapse}
 .table th,
 .table td{
   padding: 10px;
   text-align: left;
   font-size: 14px;
-  color: var(--lac-grey); /* #3C3C3C */
-  border-bottom: 1px solid rgba(37, 99, 235, 0.18); /* blue tint from #2563EB */
+  color: var(--lac-grey);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18);
 }
-
 .table th{
   font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(60, 60, 60, 0.85); /* readable header */
+  color: rgba(60, 60, 60, 0.85);
 }
-.badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
-.badge.ok{background:rgba(16,185,129,.15);color:#10B981}
-.badge.warn{background:rgba(245,158,11,.15);color:#D97706}
-.badge.mut{background:rgba(99,102,241,.15);color:#6366F1}
-/* Base blue button – plain, no shadow */
+
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -119,142 +124,107 @@ body{color:var(--lac-grey)}
   font-weight: 600;
   cursor: pointer;
 }
+.btn:hover { background: #1d4ed8; }
+.btn:disabled { opacity: 0.7; cursor: default; }
 
-.btn:hover {
-  background: #1d4ed8; /* slightly darker blue on hover */
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-/* Ghost style (e.g. View / Hide) */
 .btn.ghost{
   background: transparent;
-  border: 1px solid rgba(37, 99, 235, 0.55); /* stronger outline */
-  color: #2563EB; /* blue text */
+  border: 1px solid rgba(37, 99, 235, 0.55);
+  color: #2563EB;
 }
-
-.btn.ghost:hover{
-  background: rgba(37, 99, 235, 0.06);
-}
-
-/* DANGER button – for Delete, Logout */
-.btn-danger {
-  background: var(--danger);        /* RED #EF4444 */
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
-}
-
-.btn-danger:hover {
-  background: #DC2626;
-}
-/* Dark mode overrides for ghost */
+.btn.ghost:hover{ background: rgba(37, 99, 235, 0.06); }
 .dark .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
 
+.btn-danger {
+  background: var(--danger);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+}
+.btn-danger:hover { background: #DC2626; }
+
+/* Inputs */
 .input{
   width:100%;
-  padding:10px;
+  padding:10px 12px;
   border-radius:12px;
   border:1px solid rgba(37,99,235,.25);
-  background:#ffffff;
-  color:var(--lac-grey);
+  background: var(--input-bg);
+  color: var(--lac-grey);
 }
-
+.input::placeholder{
+  color: rgba(100,116,139,0.95);
+}
 .input:focus{
   outline:none;
   border-color: var(--lac-blue);
   box-shadow: 0 0 0 3px rgba(37,99,235,.12);
 }
 
-/* ✅ FIX: Select dropdown visibility (works for OS dark + any legacy .dark usage) */
-select.input {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+/* Select dropdown – caret icon + readable options */
+select.input{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  padding-right: 42px;
+
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%2394A3B8' d='M5.6 7.6a1 1 0 0 1 1.4 0L10 10.6l3-3a1 1 0 1 1 1.4 1.4l-3.7 3.7a1 1 0 0 1-1.4 0L5.6 9a1 1 0 0 1 0-1.4Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px 18px;
 }
 
-/* Light defaults */
-select,
-select.input {
-  color: var(--lac-grey);
-  background: #ffffff;
-}
-
-select option {
+select option{
   color: #0F172A;
   background: #ffffff;
 }
 
-/* OS-level dark mode (no manual toggle) */
-@media (prefers-color-scheme: dark) {
-  select,
-  select.input {
-    background: rgba(34,34,34,0.85);
-    color: rgba(255,255,255,0.92);
-    border-color: rgba(90,90,90,0.55);
-  }
-
-  select option {
-    background: #111827;
-    color: rgba(255,255,255,0.92);
-  }
-}
-
-/* Legacy/manual .dark support (if any pages still toggle it somewhere) */
-.dark select,
-.dark select.input {
-  background: rgba(34,34,34,0.85);
-  color: rgba(255,255,255,0.92);
-  border-color: rgba(90,90,90,0.55);
-}
-
-.dark select option {
-  background: #111827;
-  color: rgba(255,255,255,0.92);
-}
-
-/* System dark mode (no manual toggle) */
+/* System dark mode (NO manual toggle) – MUST ALSO BE NEUTRAL GREY (NOT BLUE) */
 @media (prefers-color-scheme: dark){
-  body{background:#0B1220;color:#ffffff}
+  body{background:#0b0f14;color:#ffffff}
 
   :root{
-    --table-bg: rgba(12, 22, 42, 0.65);
+    --table-bg: rgba(38,38,38,0.55);
     --table-text: rgba(255, 255, 255, 0.92);
     --table-muted: rgba(255, 255, 255, 0.62);
-    --table-border: rgba(255, 255, 255, 0.16);
-    --table-row-border: rgba(255, 255, 255, 0.12);
+    --table-border: rgba(148, 163, 184, 0.22);
+    --table-row-border: rgba(148, 163, 184, 0.18);
     --table-shadow: 0 20px 50px rgba(0,0,0,0.55);
+
+    --input-bg: rgba(34,34,34,0.85);
+    --input-border: rgba(90,90,90,0.55);
   }
 
   .card{
-    background: rgba(12, 22, 42, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow: 0 18px 45px rgba(0,0,0,0.35);
+    background: rgba(38,38,38,0.55);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.45);
   }
+
   .card .card{
-    background: rgba(17, 24, 39, 0.65);
-    border: 1px solid rgba(37,99,235,0.30);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .input{
+    background: var(--input-bg);
+    border:1px solid var(--input-border);
+    color:#fff;
+  }
+
+  .input::placeholder{
+    color: rgba(226,232,240,0.60);
+  }
+
+  select option{
+    background: #111827;
+    color: rgba(255,255,255,0.92);
   }
 
   .btn.ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
-  .input{background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.18); color:#fff}
   .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
 }
 
-.dark .input{
-  background: var(--input-bg);
-  border:1px solid var(--input-border);
-  color:#fff;
-}
-
-.dark .input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.22)}
-.tag{display:inline-block;border-radius:10px;padding:4px 8px;background:rgba(6,182,212,.12);color:#06B6D4;font-weight:700;font-size:12px}
-
-/* =========================
-   Dark mode hard override (neutral grey)
-   Fixes pages showing "blue" surfaces due to prefers-color-scheme overrides.
-   ========================= */
+/* Hard override tokens when .dark exists */
 .dark{
   --table-bg: rgba(38,38,38,0.55);
   --table-border: rgba(90,90,90,0.35);
