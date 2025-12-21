@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 type SalesStage =
   | "New Lead"
@@ -15,10 +14,62 @@ type SalesStage =
 type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
 type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
+type ClientRecord = {
+  id: string;
+  companyName: string;
+  website?: string;
+  industry?: string;
+  country?: string;
+  timezone?: string;
+
+  primaryContactName: string;
+  primaryContactTitle?: string;
+  primaryContactEmail: string;
+  primaryContactPhone?: string;
+
+  salesStage?: SalesStage | string;
+  paymentStatus?: PaymentStatus | string;
+  retainerStatus?: RetainerStatus | string;
+
+  salesOwner?: string;
+  accountManager?: string;
+  productionOwner?: string;
+
+  totalPaidUsd: number;
+  orderId?: string;
+
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  lastActivity?: string | null;
+};
+
+type ApiResp =
+  | { ok: true; clientId?: string }
+  | { ok?: false; error?: string };
+
+function normalizeOrderId(orderId?: string) {
+  const v = (orderId || "").trim();
+  if (!v) return "";
+  const up = v.toUpperCase();
+
+  if (up.startsWith("LC-")) return up;
+  if (up.startsWith("ORD-")) return `LC-${up.slice(4)}`;
+
+  const digits = up.replace(/\D/g, "");
+  if (digits) return `LC-${digits.padStart(4, "0")}`;
+
+  return `LC-${up}`;
+}
+
+/**
+ * Works with BOTH:
+ * 1) Manual toggle (.dark on html)
+ * 2) System dark mode (prefers-color-scheme)
+ */
 function useIsDarkMode() {
   const [isDark, setIsDark] = useState(false);
 
-  useEffect(() => {
+  useState(() => {
     if (typeof window === "undefined") return;
 
     const root = document.documentElement;
@@ -43,352 +94,524 @@ function useIsDarkMode() {
       // @ts-expect-error older browsers
       mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
     };
-  }, []);
+  });
 
   return isDark;
 }
 
 export default function AddClientPage() {
   const isDark = useIsDarkMode();
-  const router = useRouter();
 
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Company
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [industry, setIndustry] = useState("");
   const [country, setCountry] = useState("");
   const [timezone, setTimezone] = useState("");
 
-  // Primary Contact
   const [primaryContactName, setPrimaryContactName] = useState("");
   const [primaryContactTitle, setPrimaryContactTitle] = useState("");
   const [primaryContactEmail, setPrimaryContactEmail] = useState("");
   const [primaryContactPhone, setPrimaryContactPhone] = useState("");
 
-  // Ownership
   const [salesOwner, setSalesOwner] = useState("");
   const [accountManager, setAccountManager] = useState("");
   const [productionOwner, setProductionOwner] = useState("");
 
-  // Pipeline
   const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
   const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
 
-  // Finance (optional initial)
-  const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
+  const [totalPaidUsd, setTotalPaidUsd] = useState<number>(0);
 
-  const pageMaxWidth = 1120;
+  const [orderId, setOrderId] = useState("");
 
-  const shellStyle: React.CSSProperties = useMemo(
-    () => ({
+  const styles = useMemo(() => {
+    const pageTitle: React.CSSProperties = {
+      fontSize: 34,
+      fontWeight: 900,
+      marginBottom: 8,
+      color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+    };
+
+    const pageSub: React.CSSProperties = {
+      marginBottom: 18,
+      color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.65)",
+      fontSize: 14,
+      lineHeight: 1.5,
+    };
+
+    const fullWidthWrap: React.CSSProperties = {
+      width: "100%",
+      maxWidth: "none", // full-width like Create User
+    };
+
+    const formShell: React.CSSProperties = {
       borderRadius: 20,
-      padding: 16,
+      padding: 18,
       border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-      background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.90)",
+      background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
       boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
-    }),
-    [isDark]
-  );
+    };
 
-  const sectionStyle: React.CSSProperties = useMemo(
-    () => ({
+    const sectionCard: React.CSSProperties = {
       borderRadius: 16,
       padding: 14,
-      border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.08)",
+      border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
       background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-    }),
-    [isDark]
-  );
+    };
 
-  const labelStyle: React.CSSProperties = useMemo(
-    () => ({
+    const sectionTitle: React.CSSProperties = {
+      fontSize: 12,
+      fontWeight: 900,
+      letterSpacing: "0.06em",
+      textTransform: "uppercase",
+      opacity: isDark ? 0.8 : 0.72,
+      marginBottom: 10,
+      color: isDark ? "rgba(226,232,240,0.92)" : "rgba(15,23,42,0.70)",
+    };
+
+    const grid4: React.CSSProperties = {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gap: 12,
+    };
+
+    const grid3: React.CSSProperties = {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: 12,
+    };
+
+    const grid2: React.CSSProperties = {
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 12,
+    };
+
+    const grid1: React.CSSProperties = {
+      display: "grid",
+      gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
+      gap: 12,
+    };
+
+    const label: React.CSSProperties = {
       fontSize: 11,
       letterSpacing: "0.06em",
       textTransform: "uppercase",
       fontWeight: 900,
-      color: isDark ? "rgba(226,232,240,0.80)" : "rgba(15,23,42,0.55)",
       marginBottom: 6,
-    }),
-    [isDark]
-  );
+      color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+    };
 
-  const helperStyle: React.CSSProperties = useMemo(
-    () => ({
-      marginTop: 2,
+    const help: React.CSSProperties = {
       fontSize: 12,
-      color: isDark ? "rgba(226,232,240,0.65)" : "rgba(15,23,42,0.55)",
-    }),
-    [isDark]
-  );
+      marginTop: 6,
+      color: isDark ? "rgba(226,232,240,0.60)" : "rgba(15,23,42,0.55)",
+    };
 
-  const titleColor = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
-  const subColor = isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.65)";
+    const actions: React.CSSProperties = {
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 10,
+      marginTop: 14,
+    };
 
-  const grid2: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 12,
-  };
+    const errorText: React.CSSProperties = {
+      fontSize: 14,
+      color: "#FCA5A5",
+      marginBottom: 12,
+    };
 
-  const grid3: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 12,
-  };
+    const okText: React.CSSProperties = {
+      fontSize: 14,
+      color: isDark ? "rgba(226,232,240,0.85)" : "rgba(15,23,42,0.70)",
+      marginBottom: 12,
+    };
 
-  const grid4: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gap: 12,
-  };
+    return {
+      pageTitle,
+      pageSub,
+      fullWidthWrap,
+      formShell,
+      sectionCard,
+      sectionTitle,
+      grid4,
+      grid3,
+      grid2,
+      grid1,
+      label,
+      help,
+      actions,
+      errorText,
+      okText,
+    };
+  }, [isDark]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!companyName.trim()) return setError("Company Name is required.");
-    if (!primaryContactName.trim()) return setError("Contact Name is required.");
-    if (!primaryContactEmail.trim()) return setError("Contact Email is required.");
+    if (!companyName.trim()) {
+      setError("Company name is required.");
+      return;
+    }
+    if (!primaryContactName.trim()) {
+      setError("Primary contact name is required.");
+      return;
+    }
+    if (!primaryContactEmail.trim()) {
+      setError("Primary contact email is required.");
+      return;
+    }
 
-    setSubmitting(true);
+    setLoading(true);
     try {
-      const payload = {
+      const payload: Partial<ClientRecord> = {
         companyName: companyName.trim(),
-        website: website.trim(),
-        industry: industry.trim(),
-        country: country.trim(),
-        timezone: timezone.trim(),
+        website: website.trim() || undefined,
+        industry: industry.trim() || undefined,
+        country: country.trim() || undefined,
+        timezone: timezone.trim() || undefined,
 
         primaryContactName: primaryContactName.trim(),
-        primaryContactTitle: primaryContactTitle.trim(),
+        primaryContactTitle: primaryContactTitle.trim() || undefined,
         primaryContactEmail: primaryContactEmail.trim(),
-        primaryContactPhone: primaryContactPhone.trim(),
+        primaryContactPhone: primaryContactPhone.trim() || undefined,
 
-        salesOwner: salesOwner.trim(),
-        accountManager: accountManager.trim(),
-        productionOwner: productionOwner.trim(),
+        salesOwner: salesOwner.trim() || undefined,
+        accountManager: accountManager.trim() || undefined,
+        productionOwner: productionOwner.trim() || undefined,
 
         salesStage,
         paymentStatus,
         retainerStatus,
 
-        totalPaidUsd: Number(String(totalPaidUsd || "0").replace(/,/g, "")) || 0,
+        totalPaidUsd: Number(totalPaidUsd || 0),
+        orderId: normalizeOrderId(orderId) || undefined,
       };
 
       const res = await fetch("/api/admin/clients/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json = (await res.json().catch(() => ({}))) as ApiResp;
 
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to create client");
+      if (!res.ok || !("ok" in json) || !json.ok) {
+        throw new Error((json as any)?.error || "Failed to create client");
       }
 
-      router.push("/admin/clients");
+      // reset (keep it simple)
+      setCompanyName("");
+      setWebsite("");
+      setIndustry("");
+      setCountry("");
+      setTimezone("");
+
+      setPrimaryContactName("");
+      setPrimaryContactTitle("");
+      setPrimaryContactEmail("");
+      setPrimaryContactPhone("");
+
+      setSalesOwner("");
+      setAccountManager("");
+      setProductionOwner("");
+
+      setSalesStage("New Lead");
+      setPaymentStatus("Unpaid");
+      setRetainerStatus("None");
+
+      setTotalPaidUsd(0);
+      setOrderId("");
     } catch (err: any) {
       setError(err?.message || "Failed to create client");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ maxWidth: pageMaxWidth, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 8, color: titleColor }}>Add Client</h1>
-        <div style={{ marginBottom: 18, color: subColor }}>
-          Create a new client record and start tracking pipeline, payments and ownership.
-        </div>
+    <div style={styles.fullWidthWrap}>
+      <h1 style={styles.pageTitle}>Add Client</h1>
+      <div style={styles.pageSub}>
+        Create a new client record and start tracking pipeline, payments and ownership.
+      </div>
+
+      <div style={styles.formShell}>
+        {error ? <div style={styles.errorText}>{error}</div> : <div style={styles.okText} />}
 
         <form onSubmit={onSubmit}>
-          <div style={shellStyle}>
-            {error && (
-              <div style={{ marginBottom: 12, color: "#FCA5A5", fontSize: 14, fontWeight: 700 }}>
-                {error}
-              </div>
-            )}
+          {/* Company Information */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Company Information</div>
 
-            {/* COMPANY INFORMATION */}
-            <div style={sectionStyle}>
-              <div style={labelStyle}>Company Information</div>
-
-              <div style={{ height: 10 }} />
-
-              <div style={grid4} className="lac-grid-4">
-                <Field label="Company Name *" labelStyle={labelStyle}>
-                  <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                </Field>
-
-                <Field label="Website" labelStyle={labelStyle}>
-                  <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" />
-                </Field>
-
-                <Field label="Industry" labelStyle={labelStyle}>
-                  <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-                </Field>
-
-                <Field label="Country" labelStyle={labelStyle}>
-                  <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
-                </Field>
+            <div
+              style={{
+                ...styles.grid4,
+              }}
+            >
+              <div>
+                <div style={styles.label}>
+                  Company Name <span style={{ color: "#EF4444" }}>*</span>
+                </div>
+                <input
+                  className="input"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Acme Trading LLC"
+                />
               </div>
 
-              <div style={{ height: 12 }} />
-
-              <div style={grid2} className="lac-grid-2">
-                <Field label="Timezone" labelStyle={labelStyle}>
-                  <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="America/New_York" />
-                  <div style={helperStyle}>Keep it short. Don’t stretch the field across the whole page.</div>
-                </Field>
-
-                <Field label="Initial Total Paid (USD)" labelStyle={labelStyle}>
-                  <input className="input" value={totalPaidUsd} onChange={(e) => setTotalPaidUsd(e.target.value)} placeholder="0" />
-                  <div style={helperStyle}>Optional. You can leave it as 0.</div>
-                </Field>
+              <div>
+                <div style={styles.label}>Website</div>
+                <input
+                  className="input"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://example.com"
+                />
               </div>
-            </div>
 
-            <div style={{ height: 12 }} />
+              <div>
+                <div style={styles.label}>Industry</div>
+                <input
+                  className="input"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  placeholder="Construction"
+                />
+              </div>
 
-            {/* PRIMARY CONTACT */}
-            <div style={sectionStyle}>
-              <div style={labelStyle}>Primary Contact</div>
-
-              <div style={{ height: 10 }} />
-
-              <div style={grid4} className="lac-grid-4">
-                <Field label="Contact Name *" labelStyle={labelStyle}>
-                  <input className="input" value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} />
-                </Field>
-
-                <Field label="Contact Title" labelStyle={labelStyle}>
-                  <input className="input" value={primaryContactTitle} onChange={(e) => setPrimaryContactTitle(e.target.value)} />
-                </Field>
-
-                <Field label="Contact Email *" labelStyle={labelStyle}>
-                  <input className="input" value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} />
-                </Field>
-
-                <Field label="Contact Phone" labelStyle={labelStyle}>
-                  <input className="input" value={primaryContactPhone} onChange={(e) => setPrimaryContactPhone(e.target.value)} />
-                </Field>
+              <div>
+                <div style={styles.label}>Country</div>
+                <input
+                  className="input"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="United States"
+                />
               </div>
             </div>
 
             <div style={{ height: 12 }} />
 
-            {/* OWNERSHIP */}
-            <div style={sectionStyle}>
-              <div style={labelStyle}>Ownership</div>
+            <div style={styles.grid2}>
+              <div>
+                <div style={styles.label}>Timezone</div>
+                <input
+                  className="input"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  placeholder="America/New_York"
+                />
+                <div style={styles.help}>Keep it short. Don’t stretch the field across the whole page.</div>
+              </div>
 
-              <div style={{ height: 10 }} />
-
-              <div style={grid3} className="lac-grid-3">
-                <Field label="Sales Owner" labelStyle={labelStyle}>
-                  <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} placeholder="e.g. Chris" />
-                </Field>
-
-                <Field label="Account Manager" labelStyle={labelStyle}>
-                  <input className="input" value={accountManager} onChange={(e) => setAccountManager(e.target.value)} placeholder="e.g. Marc" />
-                </Field>
-
-                <Field label="Production Owner" labelStyle={labelStyle}>
-                  <input className="input" value={productionOwner} onChange={(e) => setProductionOwner(e.target.value)} placeholder="e.g. Jennifer" />
-                </Field>
+              <div>
+                <div style={styles.label}>Initial Total Paid (USD)</div>
+                <input
+                  className="input"
+                  type="number"
+                  value={Number.isFinite(totalPaidUsd) ? String(totalPaidUsd) : "0"}
+                  onChange={(e) => setTotalPaidUsd(Number(e.target.value || 0))}
+                  placeholder="0"
+                />
+                <div style={styles.help}>Optional. You can leave it as 0.</div>
               </div>
             </div>
+          </div>
 
-            <div style={{ height: 12 }} />
+          <div style={{ height: 12 }} />
 
-            {/* PIPELINE */}
-            <div style={sectionStyle}>
-              <div style={labelStyle}>Pipeline</div>
+          {/* Primary Contact */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Primary Contact</div>
 
-              <div style={{ height: 10 }} />
+            <div style={styles.grid4}>
+              <div>
+                <div style={styles.label}>
+                  Contact Name <span style={{ color: "#EF4444" }}>*</span>
+                </div>
+                <input
+                  className="input"
+                  value={primaryContactName}
+                  onChange={(e) => setPrimaryContactName(e.target.value)}
+                  placeholder="Ali Khan"
+                />
+              </div>
 
-              <div style={grid3} className="lac-grid-3">
-                <Field label="Sales Stage" labelStyle={labelStyle}>
-                  <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
-                    <option>New Lead</option>
-                    <option>Contacted</option>
-                    <option>Qualified</option>
-                    <option>Proposal Sent</option>
-                    <option>Negotiation</option>
-                    <option>Closed Won</option>
-                    <option>Closed Lost</option>
-                  </select>
-                </Field>
+              <div>
+                <div style={styles.label}>Contact Title</div>
+                <input
+                  className="input"
+                  value={primaryContactTitle}
+                  onChange={(e) => setPrimaryContactTitle(e.target.value)}
+                  placeholder="Owner"
+                />
+              </div>
 
-                <Field label="Payment Status" labelStyle={labelStyle}>
-                  <select className="input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
-                    <option>Unpaid</option>
-                    <option>Partially Paid</option>
-                    <option>Paid</option>
-                    <option>Refunded</option>
-                  </select>
-                </Field>
+              <div>
+                <div style={styles.label}>
+                  Contact Email <span style={{ color: "#EF4444" }}>*</span>
+                </div>
+                <input
+                  className="input"
+                  value={primaryContactEmail}
+                  onChange={(e) => setPrimaryContactEmail(e.target.value)}
+                  placeholder="ali@acmetrading.com"
+                />
+              </div>
 
-                <Field label="Retainer Status" labelStyle={labelStyle}>
-                  <select className="input" value={retainerStatus} onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}>
-                    <option>None</option>
-                    <option>Active</option>
-                    <option>Paused</option>
-                    <option>Cancelled</option>
-                  </select>
-                </Field>
+              <div>
+                <div style={styles.label}>Contact Phone</div>
+                <input
+                  className="input"
+                  value={primaryContactPhone}
+                  onChange={(e) => setPrimaryContactPhone(e.target.value)}
+                  placeholder="+1 312 555 0199"
+                />
               </div>
             </div>
+          </div>
 
-            <div style={{ height: 16 }} />
+          <div style={{ height: 12 }} />
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button type="button" className="btn ghost" onClick={() => router.push("/admin/clients")} style={{ borderRadius: 999 }}>
-                Cancel
-              </button>
-              <button type="submit" className="btn" disabled={submitting} style={{ borderRadius: 999 }}>
-                {submitting ? "Adding..." : "Add Client"}
-              </button>
+          {/* Ownership */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Ownership</div>
+
+            <div style={styles.grid3}>
+              <div>
+                <div style={styles.label}>Sales Owner</div>
+                <input
+                  className="input"
+                  value={salesOwner}
+                  onChange={(e) => setSalesOwner(e.target.value)}
+                  placeholder="e.g. Chris"
+                />
+              </div>
+
+              <div>
+                <div style={styles.label}>Account Manager</div>
+                <input
+                  className="input"
+                  value={accountManager}
+                  onChange={(e) => setAccountManager(e.target.value)}
+                  placeholder="e.g. Marc"
+                />
+              </div>
+
+              <div>
+                <div style={styles.label}>Production Owner</div>
+                <input
+                  className="input"
+                  value={productionOwner}
+                  onChange={(e) => setProductionOwner(e.target.value)}
+                  placeholder="e.g. Jennifer"
+                />
+              </div>
             </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          {/* Pipeline */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Pipeline</div>
+
+            <div style={styles.grid3}>
+              <div>
+                <div style={styles.label}>Sales Stage</div>
+                <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
+                  <option value="New Lead">New Lead</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Qualified">Qualified</option>
+                  <option value="Proposal Sent">Proposal Sent</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Closed Won">Closed Won</option>
+                  <option value="Closed Lost">Closed Lost</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={styles.label}>Payment Status</div>
+                <select
+                  className="input"
+                  value={paymentStatus}
+                  onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+                >
+                  <option value="Unpaid">Unpaid</option>
+                  <option value="Partially Paid">Partially Paid</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Refunded">Refunded</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={styles.label}>Retainer Status</div>
+                <select
+                  className="input"
+                  value={retainerStatus}
+                  onChange={(e) => setRetainerStatus(e.target.value as RetainerStatus)}
+                >
+                  <option value="None">None</option>
+                  <option value="Active">Active</option>
+                  <option value="Paused">Paused</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          {/* Optional: Order */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Order</div>
+
+            <div style={styles.grid1}>
+              <div>
+                <div style={styles.label}>Order ID</div>
+                <input
+                  className="input"
+                  value={orderId}
+                  onChange={(e) => setOrderId(e.target.value)}
+                  placeholder="LC-0001"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.actions}>
+            <button className="btn" type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Add Client"}
+            </button>
           </div>
         </form>
       </div>
 
-      {/* Responsive grid helpers (no Tailwind dependency, keeps it stable) */}
-      <style>{`
-        @media (max-width: 1024px){
-          .lac-grid-4{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-          .lac-grid-3{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+      <style jsx>{`
+        @media (max-width: 1100px) {
+          .grid4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .grid3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
         }
-        @media (max-width: 640px){
-          .lac-grid-4,
-          .lac-grid-3,
-          .lac-grid-2{ grid-template-columns: 1fr !important; }
+        @media (max-width: 640px) {
+          .grid4,
+          .grid3,
+          .grid2 {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-  labelStyle,
-}: {
-  label: string;
-  children: React.ReactNode;
-  labelStyle: React.CSSProperties;
-}) {
-  return (
-    <div style={{ minWidth: 0 }}>
-      <div style={labelStyle}>{label}</div>
-      {children}
     </div>
   );
 }
