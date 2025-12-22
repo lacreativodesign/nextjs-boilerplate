@@ -1,411 +1,351 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
-type UserStatus = "active" | "disabled";
+type FormState = {
+  name: string;
+  email: string; // visible but NOT editable
+  phone: string;
+  cnic: string;
+  dob: string;
+  status: "active" | "disabled";
+  role: string;
+  department: string;
+  designation: string;
+  joiningDate: string;
 
-type Role =
-  | "super_admin"
-  | "admin"
-  | "sales_manager"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
+  salary: string; // keep as string in UI, convert to number in API
+  monthlyTarget: string;
+  commission: string;
+};
 
-type Department =
-  | "admin"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
-
-function useIsDarkMode() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const root = document.documentElement;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const read = () => {
-      const byClass = root.classList.contains("dark");
-      const bySystem = !!mql.matches;
-      setIsDark(byClass || bySystem);
-    };
-
-    read();
-
-    const obs = new MutationObserver(() => read());
-    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
-
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-
-    return () => {
-      obs.disconnect();
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
-function isoToDateInput(iso?: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
+function toISODateInput(value: any) {
+  if (!value) return "";
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
+  // yyyy-mm-dd (for <input type="date" />)
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function toNum(v: string) {
-  const n = Number(String(v || "").replace(/,/g, ""));
-  return Number.isFinite(n) ? n : 0;
+function normalizeStatus(v: any): "active" | "disabled" {
+  const s = String(v || "").toLowerCase();
+  return s === "disabled" ? "disabled" : "active";
 }
 
-async function tryRequests(tries: Array<{ url: string; method: string; body?: any }>) {
-  let lastErr: any = null;
-
-  for (const t of tries) {
-    try {
-      const res = await fetch(t.url, {
-        method: t.method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: t.body ? JSON.stringify(t.body) : undefined,
-      });
-
-      const json = await res.json().catch(() => null);
-
-      if (res.ok) return { ok: true, json };
-      lastErr = json?.error || json?.message || res.statusText || "Request failed";
-    } catch (e: any) {
-      lastErr = e?.message || "Network error";
-    }
-  }
-
-  return { ok: false, error: lastErr || "Failed" };
-}
-
-export default function EditUserPage() {
-  const isDark = useIsDarkMode();
+export default function EditUserPage({ params }: { params: { uid: string } }) {
   const router = useRouter();
-  const params = useParams();
-  const uid = String((params as any)?.uid || "");
+  const uid = params?.uid;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState("");
-  const [status, setStatus] = useState<UserStatus>("active");
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    email: "",
+    phone: "",
+    cnic: "",
+    dob: "",
+    status: "active",
+    role: "",
+    department: "",
+    designation: "",
+    joiningDate: "",
+    salary: "",
+    monthlyTarget: "",
+    commission: "",
+  });
 
-  const [role, setRole] = useState<Role>("sales");
-  const [department, setDepartment] = useState<Department>("sales");
-  const [title, setTitle] = useState("");
-  const [joiningDate, setJoiningDate] = useState("");
-
-  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
-  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
-  const [commissionPct, setCommissionPct] = useState("");
-
-  const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
-  const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
-
-  // ✅ Key-Accounts master outer shell (shadow included)
-  const shellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 18,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
-  const roles: Role[] = [
-    "super_admin",
-    "admin",
-    "sales_manager",
-    "sales",
-    "account_manager",
-    "production",
-    "hr",
-    "finance",
-    "client",
-  ];
-
-  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+  const canSubmit = useMemo(() => {
+    // keep it strict but not stupid:
+    // email is required for display (and backend keeps it immutable),
+    // but if email isn't loaded yet, we shouldn't allow save.
+    return (
+      !!uid &&
+      form.name.trim().length > 0 &&
+      form.email.trim().length > 0 &&
+      form.role.trim().length > 0
+    );
+  }, [uid, form.name, form.email, form.role]);
 
   useEffect(() => {
     let alive = true;
 
     async function load() {
-      if (!uid) return;
-
       setLoading(true);
-      setError(null);
+      setErr(null);
+      setOk(null);
 
-      const res = await tryRequests([{ url: `/api/admin/users/${uid}`, method: "GET" }]);
+      try {
+        // ✅ CRITICAL: send cookies, same as your other admin fetches
+        const res = await fetch(`/api/admin/users/${uid}`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
 
-      if (!alive) return;
+        // Your GET route returns plain text on some errors
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = null;
+        }
 
-      if (!res.ok) {
-        setError(String((res as any).error || "Failed to fetch user details."));
+        if (!res.ok) {
+          // If route returned plain text like "Unauthorized"
+          const msg = data?.error || text || res.statusText || "Failed to fetch user details.";
+          throw new Error(msg);
+        }
+
+        // If JSON parsed successfully, use it; else fail
+        if (!data || typeof data !== "object") {
+          throw new Error("Failed to fetch user details.");
+        }
+
+        if (!alive) return;
+
+        setForm({
+          name: String(data?.name || ""),
+          email: String(data?.email || ""),
+          phone: String(data?.phone || ""),
+          cnic: String(data?.cnic || ""),
+          dob: toISODateInput(data?.dob),
+          status: normalizeStatus(data?.status),
+          role: String(data?.role || ""),
+          department: String(data?.department || ""),
+          designation: String(data?.designation || ""),
+          joiningDate: toISODateInput(data?.joiningDate),
+
+          salary: data?.salary !== undefined && data?.salary !== null ? String(data.salary) : "",
+          monthlyTarget:
+            data?.monthlyTarget !== undefined && data?.monthlyTarget !== null ? String(data.monthlyTarget) : "",
+          commission:
+            data?.commission !== undefined && data?.commission !== null ? String(data.commission) : "",
+        });
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message || "Failed to fetch user details.");
+      } finally {
+        if (!alive) return;
         setLoading(false);
-        return;
       }
-
-      const data = (res as any).json || {};
-
-      setFullName(String(data.fullName ?? data.name ?? data.displayName ?? ""));
-      setEmail(String(data.email ?? ""));
-      setPhone(String(data.phone ?? ""));
-      setCnic(String(data.cnic ?? ""));
-      setDob(isoToDateInput(data.dob ?? data.dateOfBirth ?? null));
-      setStatus((String(data.status ?? "active").toLowerCase() as UserStatus) || "active");
-
-      setRole((String(data.role ?? "sales").toLowerCase() as Role) || "sales");
-      setDepartment((String(data.department ?? "sales").toLowerCase() as Department) || "sales");
-      setTitle(String(data.title ?? data.designation ?? ""));
-      setJoiningDate(isoToDateInput(data.joiningDate ?? data.joinDate ?? null));
-
-      setMonthlySalaryPkr(String(data.monthlySalaryPkr ?? data.salaryPkr ?? ""));
-      setMonthlyTargetUsd(String(data.monthlyTargetUsd ?? data.targetUsd ?? ""));
-      setCommissionPct(String(data.commissionPct ?? data.commission ?? ""));
-
-      setLoading(false);
     }
 
-    load();
+    if (uid) load();
+
     return () => {
       alive = false;
     };
   }, [uid]);
 
-  async function onSave(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setOkMsg(null);
+    setErr(null);
+    setOk(null);
 
-    if (!uid || !fullName.trim()) {
-      setError("Please fill required fields.");
+    if (!canSubmit) {
+      setErr("Missing required fields.");
       return;
     }
 
     setSaving(true);
+    try {
+      const payload = {
+        uid,
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        cnic: form.cnic.trim(),
+        dob: form.dob ? new Date(form.dob).toISOString() : "",
+        status: form.status,
+        role: form.role.trim(),
+        department: form.department.trim(),
+        designation: form.designation.trim(),
+        joiningDate: form.joiningDate ? new Date(form.joiningDate).toISOString() : "",
 
-    const payload = {
-      uid,
-      fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      cnic: cnic.trim(),
-      dob: dob ? new Date(dob).toISOString() : null,
-      status,
-      role,
-      department,
-      title: title.trim(),
-      joiningDate: joiningDate ? new Date(joiningDate).toISOString() : null,
-      monthlySalaryPkr: toNum(monthlySalaryPkr),
-      monthlyTargetUsd: toNum(monthlyTargetUsd),
-      commissionPct: toNum(commissionPct),
-    };
+        salary: form.salary === "" ? 0 : Number(form.salary),
+        monthlyTarget: form.monthlyTarget === "" ? 0 : Number(form.monthlyTarget),
+        commission: form.commission === "" ? 0 : Number(form.commission),
+      };
 
-    const res = await tryRequests([
-      { url: `/api/admin/users/update`, method: "POST", body: payload },
-      { url: `/api/admin/users/${uid}`, method: "PATCH", body: payload },
-      { url: `/api/admin/users/${uid}/update`, method: "POST", body: payload },
-    ]);
+      const res = await fetch("/api/admin/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // ✅ CRITICAL
+        body: JSON.stringify(payload),
+      });
 
-    setSaving(false);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || "Failed to update user");
+      }
 
-    if (!res.ok) {
-      setError(String((res as any).error || "Failed to save user."));
-      return;
+      setOk("User updated successfully.");
+      // optional: refresh list data if user goes back
+      router.refresh();
+    } catch (e: any) {
+      setErr(e?.message || "Failed to update user");
+    } finally {
+      setSaving(false);
     }
-
-    setOkMsg("Saved.");
-    setTimeout(() => router.push("/admin/users"), 450);
   }
 
   return (
     <div style={{ width: "100%" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 900, margin: "0 0 8px 0", color: titleCol }}>Edit User</h1>
-      <p style={{ margin: "0 0 18px 0", color: muted, fontSize: 14 }}>Update team member profile, role, department, payroll and targets.</p>
+      <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 8 }}>Edit User</h1>
+      <div style={{ marginBottom: 18, opacity: 0.75 }}>
+        Update profile, work details, payroll and targets. Email is locked.
+      </div>
 
-      <div style={shellStyle}>
+      <div
+        className="card"
+        style={{
+          borderRadius: 20,
+          padding: 16,
+          // ✅ Shadow like Key-Accounts master UI
+          boxShadow: "var(--table-shadow)",
+        }}
+      >
         {loading ? (
-          <div style={{ fontSize: 14, color: muted }}>Loading user...</div>
+          <div style={{ padding: 8, opacity: 0.8 }}>Loading user...</div>
+        ) : err ? (
+          <div style={{ padding: 8, color: "#FCA5A5" }}>{err}</div>
         ) : (
-          <form onSubmit={onSave} style={{ display: "grid", gap: 12 }}>
-            <Section title="Personal Information" isDark={isDark}>
-              <div style={grid6}>
-                <div style={colSpan(2)}>
-                  <Label text="Full Name" required />
-                  <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <form onSubmit={onSubmit} className="grid" style={{ gap: 14 }}>
+            {ok && <div style={{ color: "rgba(16,185,129,0.95)", fontWeight: 700 }}>{ok}</div>}
+
+            <div className="card" style={{ borderRadius: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
+                PROFILE
+              </div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>NAME *</div>
+                  <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
 
-                <div style={colSpan(2)}>
-                  <Label text="Email Address" />
-                  <input className="input" value={email} readOnly style={{ opacity: 0.9, cursor: "not-allowed" }} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>EMAIL (LOCKED)</div>
+                  <input className="input" value={form.email} disabled />
                 </div>
 
-                <div style={colSpan(1)}>
-                  <Label text="Phone Number" />
-                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>PHONE</div>
+                  <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                 </div>
 
-                <div style={colSpan(1)}>
-                  <Label text="CNIC Number" />
-                  <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>CNIC</div>
+                  <input className="input" value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
                 </div>
 
-                <div style={colSpan(2)}>
-                  <Label text="Date of Birth (D.O.B.)" />
-                  <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>DATE OF BIRTH</div>
+                  <input className="input" type="date" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} />
                 </div>
 
-                <div style={colSpan(2)}>
-                  <Label text="Status" />
-                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>STATUS</div>
+                  <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}>
                     <option value="active">Active</option>
                     <option value="disabled">Disabled</option>
                   </select>
                 </div>
               </div>
-            </Section>
+            </div>
 
-            <Section title="Job Details" isDark={isDark}>
-              <div style={grid6}>
-                <div style={colSpan(2)}>
-                  <Label text="Role" />
-                  <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                    {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={colSpan(2)}>
-                  <Label text="Department" />
-                  <select className="input" value={department} onChange={(e) => setDepartment(e.target.value as Department)}>
-                    {departments.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={colSpan(1)}>
-                  <Label text="Designation / Title" />
-                  <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-                </div>
-
-                <div style={colSpan(1)}>
-                  <Label text="Joining Date" />
-                  <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
-                </div>
-              </div>
-            </Section>
-
-            <Section title="Payroll & Targets" isDark={isDark}>
-              <div style={grid6}>
-                <div style={colSpan(2)}>
-                  <Label text="Monthly Salary (PKR)" />
-                  <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} />
-                </div>
-
-                <div style={colSpan(2)}>
-                  <Label text="Monthly Target (USD)" />
-                  <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} />
-                </div>
-
-                <div style={colSpan(2)}>
-                  <Label text="Commission (%)" />
-                  <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} />
-                </div>
-              </div>
-            </Section>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 4 }}>
-              <div style={{ minHeight: 18, fontSize: 13 }}>
-                {error ? <span style={{ color: "#EF4444" }}>{error}</span> : okMsg ? <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span> : null}
+            <div className="card" style={{ borderRadius: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
+                WORK
               </div>
 
-              <div style={{ display: "flex", gap: 10 }}>
-                <button type="button" className="btn ghost" onClick={() => router.push("/admin/users")} style={{ borderRadius: 12 }}>
-                  Cancel
-                </button>
-                <button className="btn" type="submit" disabled={saving || !uid || !fullName.trim()} style={{ borderRadius: 12 }}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
+              <div style={{ height: 10 }} />
+
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>ROLE *</div>
+                  <input className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>DEPARTMENT</div>
+                  <input className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>DESIGNATION</div>
+                  <input className="input" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>JOINING DATE</div>
+                  <input
+                    className="input"
+                    type="date"
+                    value={form.joiningDate}
+                    onChange={(e) => setForm({ ...form, joiningDate: e.target.value })}
+                  />
+                </div>
               </div>
+            </div>
+
+            <div className="card" style={{ borderRadius: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
+                PAYROLL & TARGETS
+              </div>
+
+              <div style={{ height: 10 }} />
+
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>SALARY (PKR)</div>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    value={form.salary}
+                    onChange={(e) => setForm({ ...form, salary: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>MONTHLY TARGET (USD)</div>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    value={form.monthlyTarget}
+                    onChange={(e) => setForm({ ...form, monthlyTarget: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.7 }}>COMMISSION (%)</div>
+                  <input
+                    className="input"
+                    inputMode="decimal"
+                    value={form.commission}
+                    onChange={(e) => setForm({ ...form, commission: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button className="btn" type="submit" disabled={!canSubmit || saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
             </div>
           </form>
         )}
       </div>
-
-      <style jsx>{`
-        @media (max-width: 1100px) {
-          .grid6 {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
-          .grid6 > div {
-            grid-column: span 2 / span 2 !important;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-const grid6: React.CSSProperties = {
-  display: "grid",
-  gap: 12,
-  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-};
-
-const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
-
-function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
-  return (
-    <div
-      className="card"
-      style={{
-        padding: 14,
-        borderRadius: 16,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      <div style={{ marginTop: 10 }}>{children}</div>
-    </div>
-  );
-}
-
-function Label({ text, required }: { text: string; required?: boolean }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75, marginBottom: 6 }}>
-      <span style={{ textTransform: "uppercase" }}>{text}</span>
-      {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
     </div>
   );
 }
