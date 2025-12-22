@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 type UserStatus = "active" | "disabled";
@@ -110,10 +110,10 @@ export default function EditUserPage() {
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState(""); // keep read-only UI if your system wants that
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [dob, setDob] = useState("");
   const [status, setStatus] = useState<UserStatus>("active");
 
   const [role, setRole] = useState<Role>("sales");
@@ -127,6 +127,15 @@ export default function EditUserPage() {
 
   const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
   const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
+
+  // ✅ Key-Accounts master outer shell (shadow included)
+  const shellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 18,
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+  };
 
   const roles: Role[] = [
     "super_admin",
@@ -163,7 +172,6 @@ export default function EditUserPage() {
 
       const data = (res as any).json || {};
 
-      // Map common field variants safely (we are NOT inventing new fields, just reading what exists)
       setFullName(String(data.fullName ?? data.name ?? data.displayName ?? ""));
       setEmail(String(data.email ?? ""));
       setPhone(String(data.phone ?? ""));
@@ -189,18 +197,12 @@ export default function EditUserPage() {
     };
   }, [uid]);
 
-  const canSubmit = useMemo(() => {
-    if (!uid) return false;
-    if (!fullName.trim()) return false;
-    return true;
-  }, [uid, fullName]);
-
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setOkMsg(null);
 
-    if (!canSubmit) {
+    if (!uid || !fullName.trim()) {
       setError("Please fill required fields.");
       return;
     }
@@ -210,7 +212,6 @@ export default function EditUserPage() {
     const payload = {
       uid,
       fullName: fullName.trim(),
-      // keep email included so backend can ignore if immutable
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
       cnic: cnic.trim(),
@@ -242,19 +243,12 @@ export default function EditUserPage() {
     setTimeout(() => router.push("/admin/users"), 450);
   }
 
-  const grid6: React.CSSProperties = {
-    display: "grid",
-    gap: 12,
-    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-  };
-  const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
-
   return (
     <div style={{ width: "100%" }}>
       <h1 style={{ fontSize: 34, fontWeight: 900, margin: "0 0 8px 0", color: titleCol }}>Edit User</h1>
       <p style={{ margin: "0 0 18px 0", color: muted, fontSize: 14 }}>Update team member profile, role, department, payroll and targets.</p>
 
-      <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+      <div style={shellStyle}>
         {loading ? (
           <div style={{ fontSize: 14, color: muted }}>Loading user...</div>
         ) : (
@@ -263,7 +257,7 @@ export default function EditUserPage() {
               <div style={grid6}>
                 <div style={colSpan(2)}>
                   <Label text="Full Name" required />
-                  <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" />
+                  <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
                 </div>
 
                 <div style={colSpan(2)}>
@@ -273,12 +267,12 @@ export default function EditUserPage() {
 
                 <div style={colSpan(1)}>
                   <Label text="Phone Number" />
-                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300..." />
+                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </div>
 
                 <div style={colSpan(1)}>
                   <Label text="CNIC Number" />
-                  <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-..." />
+                  <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} />
                 </div>
 
                 <div style={colSpan(2)}>
@@ -322,7 +316,7 @@ export default function EditUserPage() {
 
                 <div style={colSpan(1)}>
                   <Label text="Designation / Title" />
-                  <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. HR Manager" />
+                  <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
 
                 <div style={colSpan(1)}>
@@ -336,17 +330,17 @@ export default function EditUserPage() {
               <div style={grid6}>
                 <div style={colSpan(2)}>
                   <Label text="Monthly Salary (PKR)" />
-                  <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
+                  <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} />
                 </div>
 
                 <div style={colSpan(2)}>
                   <Label text="Monthly Target (USD)" />
-                  <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} placeholder="e.g. 5000" />
+                  <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} />
                 </div>
 
                 <div style={colSpan(2)}>
                   <Label text="Commission (%)" />
-                  <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} placeholder="e.g. 5" />
+                  <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} />
                 </div>
               </div>
             </Section>
@@ -360,7 +354,7 @@ export default function EditUserPage() {
                 <button type="button" className="btn ghost" onClick={() => router.push("/admin/users")} style={{ borderRadius: 12 }}>
                   Cancel
                 </button>
-                <button className="btn" type="submit" disabled={saving || !canSubmit} style={{ borderRadius: 12 }}>
+                <button className="btn" type="submit" disabled={saving || !uid || !fullName.trim()} style={{ borderRadius: 12 }}>
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
@@ -371,10 +365,10 @@ export default function EditUserPage() {
 
       <style jsx>{`
         @media (max-width: 1100px) {
-          form > :global(.card) > div {
+          .grid6 {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
-          form > :global(.card) > div > div {
+          .grid6 > div {
             grid-column: span 2 / span 2 !important;
           }
         }
@@ -382,6 +376,14 @@ export default function EditUserPage() {
     </div>
   );
 }
+
+const grid6: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+};
+
+const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
 
 function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
   return (
