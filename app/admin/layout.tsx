@@ -18,12 +18,14 @@ import {
   Menu,
   LogOut,
 } from "lucide-react";
-import { auth } from "@/lib/firebaseClient";
-import { signOut } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
+import { signOut, type Auth } from "firebase/auth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [authInstance, setAuthInstance] = useState<Auth | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Always correct URL (prevents Overview from staying highlighted)
   const [realPath, setRealPath] = useState(pathname);
@@ -52,9 +54,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const handleLogout = async () => {
+    if (!authInstance) return;
     try {
       // 1) Sign out from Firebase (RequireAuth listens to this)
-      await signOut(auth);
+      await signOut(authInstance);
     } catch (err) {
       console.error("Firebase signOut error:", err);
     }
@@ -72,6 +75,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // 3) Hard redirect to login
     window.location.href = "/login";
   };
+
+  useEffect(() => {
+    let active = true;
+
+    getFirebaseAuth()
+      .then((instance) => {
+        if (active) {
+          setAuthInstance(instance);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to initialize Firebase auth", err);
+        if (active) {
+          setAuthError(err?.message || "Unable to start authentication.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!authInstance) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100">
+        <p className="text-sm font-medium">
+          {authError || "Loading admin console…"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100 transition-colors">

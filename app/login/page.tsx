@@ -1,11 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
-import { auth, fetchUserRole } from "@/lib/firebaseClient";
+import React, { useEffect, useState } from "react";
+import { type Auth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,15 +11,43 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
+  const [initError, setInitError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    getFirebaseAuth()
+      .then((authInstance) => {
+        if (active) {
+          setFirebaseAuth(authInstance);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to initialize Firebase auth", err);
+        if (active) {
+          setInitError(err?.message || "Unable to load authentication.");
+          setError(err?.message || "Unable to load authentication.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // HANDLE LOGIN (same logic as before, no changes)
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!firebaseAuth) {
+      setError("Authentication is still loading. Please try again.");
+      return;
+    }
     setError("");
     setLoading(true);
 
     try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const uid = userCred.user.uid;
 
       const role = await fetchUserRole(uid);
@@ -54,13 +79,18 @@ export default function LoginPage() {
 
   // FORGOT PASSWORD (unchanged)
   async function handleForgot() {
+    if (!firebaseAuth) {
+      setError("Authentication is still loading. Please try again.");
+      return;
+    }
+
     if (!email) {
       setError("Enter your email first.");
       return;
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(firebaseAuth, email);
       alert("Password reset link has been sent to your email.");
     } catch (err: any) {
       setError(err.message || "Failed to send reset email.");
@@ -80,136 +110,154 @@ export default function LoginPage() {
         fontFamily: "Inter, sans-serif",
       }}
     >
-      <div
-        style={{
-          width: 380,
-          background: "white",
-          borderRadius: 16,
-          padding: "32px 28px",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-        }}
-      >
-        <h1
+      {!firebaseAuth ? (
+        <div
           style={{
+            width: 380,
+            background: "white",
+            borderRadius: 16,
+            padding: "32px 28px",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
             textAlign: "center",
-            fontSize: 22,
-            fontWeight: 700,
-            marginBottom: 20,
-            color: "#111827",
           }}
         >
-          LA CREATIVO ERP Login
-        </h1>
-
-        {error && (
-          <div
+          <p style={{ color: "#4b5563" }}>
+            {initError || "Preparing authentication…"}
+          </p>
+        </div>
+      ) : (
+        <div
+          style={{
+            width: 380,
+            background: "white",
+            borderRadius: 16,
+            padding: "32px 28px",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h1
             style={{
-              background: "#fee2e2",
-              color: "#b91c1c",
-              padding: 10,
-              borderRadius: 8,
-              marginBottom: 16,
-              fontSize: 14,
+              textAlign: "center",
+              fontSize: 22,
+              fontWeight: 700,
+              marginBottom: 20,
+              color: "#111827",
             }}
           >
-            {error}
-          </div>
-        )}
+            LA CREATIVO ERP Login
+          </h1>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              borderRadius: 8,
-              border: "1px solid #d1d5db",
-              marginBottom: 14,
-            }}
-            required
-          />
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#b91c1c",
+                padding: 10,
+                borderRadius: 8,
+                marginBottom: 16,
+                fontSize: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-          <div style={{ position: "relative", marginBottom: 14 }}>
+          <form onSubmit={handleLogin}>
             <input
-              type={showPass ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               style={{
                 width: "100%",
                 padding: "12px 14px",
                 borderRadius: 8,
                 border: "1px solid #d1d5db",
+                marginBottom: 14,
               }}
               required
             />
 
-            <span
-              onClick={() => setShowPass(!showPass)}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <input
+                type={showPass ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                }}
+                required
+              />
+
+              <span
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "#6b7280",
+                }}
+              >
+                {showPass ? "Hide" : "Show"}
+              </span>
+            </div>
+
+            <label
+              style={{ display: "flex", alignItems: "center", marginBottom: 10 }}
+            >
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={() => setRemember(!remember)}
+                style={{ marginRight: 8 }}
+              />
+              <span style={{ fontSize: 14, color: "#4b5563" }}>Remember me</span>
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
               style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                cursor: "pointer",
-                fontSize: 12,
-                color: "#6b7280",
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                backgroundColor: "#06b6d4",
+                color: "white",
+                border: "none",
+                fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1,
               }}
             >
-              {showPass ? "Hide" : "Show"}
-            </span>
-          </div>
-
-          <label
-            style={{ display: "flex", alignItems: "center", marginBottom: 10 }}
-          >
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={() => setRemember(!remember)}
-              style={{ marginRight: 8 }}
-            />
-            <span style={{ fontSize: 14, color: "#4b5563" }}>Remember me</span>
-          </label>
+              {loading ? "Signing in…" : "Login"}
+            </button>
+          </form>
 
           <button
-            type="submit"
-            disabled={loading}
+            onClick={handleForgot}
             style={{
+              marginTop: 14,
               width: "100%",
-              padding: "12px",
-              borderRadius: 8,
-              backgroundColor: "#06b6d4",
-              color: "white",
+              background: "none",
               border: "none",
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.6 : 1,
+              color: "#0284c7",
+              fontSize: 14,
+              cursor: "pointer",
             }}
           >
-            {loading ? "Signing in…" : "Login"}
+            Forgot Password?
           </button>
-        </form>
-
-        <button
-          onClick={handleForgot}
-          style={{
-            marginTop: 14,
-            width: "100%",
-            background: "none",
-            border: "none",
-            color: "#0284c7",
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          Forgot Password?
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
