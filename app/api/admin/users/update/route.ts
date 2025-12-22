@@ -1,130 +1,95 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../_utils";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { getCurrentUser } from "../_utils";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+/**
+ * USERS: Update rules (LOCKED)
+ * - SUPER_ADMIN + ADMIN: full access
+ * - HR: can edit users EXCEPT email, and cannot edit ADMIN/SUPER_ADMIN users
+ * - Email change: only SUPER_ADMIN/ADMIN (also UI keeps email disabled anyway)
+ */
+export async function PUT(req: Request) {
   try {
-    // 1) Get current logged-in user from shared util (same as list/create/etc.)
     const current = await getCurrentUser();
-    if (!current) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!current) return new NextResponse("Unauthorized", { status: 401 });
+
+    const requesterRole = String(current.role || "").toLowerCase();
+    const isAdmin = requesterRole === "admin" || requesterRole === "super_admin";
+    const isHr = requesterRole === "hr";
+
+    if (!isAdmin && !isHr) {
+      return new NextResponse("Forbidden", { status: 403 });
     }
 
-    const currentRole = (current.role || "").toLowerCase();
+    const body = await req.json().catch(() => ({}));
+    const uid = String(body?.uid || "").trim();
+    if (!uid) return new NextResponse("Bad Request: uid required", { status: 400 });
 
-    // Only admin / super_admin (and whatever your isAdminRole allows) can update
-    if (!isAdminRole(currentRole)) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
-      );
+    // Load target user
+    const ref = adminDb.collection("users").doc(uid);
+    const snap = await ref.get();
+
+    if (!snap.exists) return new NextResponse("User not found", { status: 404 });
+
+    const target = snap.data() || {};
+    const targetRole = String(target?.role || "").toLowerCase();
+
+    // HR cannot edit privileged accounts
+    if (isHr && (targetRole === "admin" || targetRole === "super_admin")) {
+      return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // 2) Parse body
-    const body = await req.json();
-    const { uid, ...fields } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
+    // Also keep your existing rule: admin cannot modify super_admin users
+    if (requesterRole === "admin" && targetRole === "super_admin") {
+      return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // 3) Load target user from Firestore
-    const targetSnap = await adminDb.collection("users").doc(uid).get();
-    if (!targetSnap.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    const targetUser = targetSnap.data() || {};
-    const targetRole = (targetUser.role || "").toLowerCase();
+    // Build payload — whitelist only fields you actually store
+    // NOTE: email is intentionally controlled below.
+    const updates: Record<string, any> = {
+      name: body?.name ?? target?.name ?? "",
+      phone: body?.phone ?? target?.phone ?? "",
+      cnic: body?.cnic ?? target?.cnic ?? "",
+      dob: body?.dob ?? target?.dob ?? null,
+      status: body?.status ?? target?.status ?? "active",
 
-    const isSuperAdmin = currentRole === "super_admin";
+      role: body?.role ?? target?.role ?? targetRole,
+      department: body?.department ?? target?.department ?? "",
+      designation: body?.designation ?? target?.designation ?? "",
+      joiningDate: body?.joiningDate ?? target?.joiningDate ?? null,
 
-    // Admin cannot edit super_admin account at all
-    if (!isSuperAdmin && targetRole === "super_admin") {
-      return NextResponse.json(
-        { error: "Admins cannot edit super_admin accounts" },
-        { status: 403 }
-      );
-    }
+      salary: body?.salary ?? target?.salary ?? 0,
+      monthlyTarget: body?.monthlyTarget ?? target?.monthlyTarget ?? 0,
+      commission: body?.commission ?? target?.commission ?? 0,
 
-    // 4) Determine new role (if changing)
-    const requestedRole = fields.role || targetUser.role || "sales";
-    const newRole = String(requestedRole).toLowerCase();
-
-    // Admin cannot assign super_admin role
-    if (!isSuperAdmin && newRole === "super_admin") {
-      return NextResponse.json(
-        { error: "Admins cannot assign super_admin role" },
-        { status: 403 }
-      );
-    }
-
-    // 5) Build clean payload including CNIC + DOB
-    const payload = {
-      name: fields.name ?? targetUser.name ?? "",
-      email: targetUser.email ?? "", // email not edited from UI
-      phone: fields.phone ?? targetUser.phone ?? "",
-      role: newRole,
-      department: fields.department ?? targetUser.department ?? "",
-      designation: fields.designation ?? targetUser.designation ?? "",
-      salary: fields.salary
-        ? Number(fields.salary)
-        : targetUser.salary || 0,
-      monthlyTarget: fields.monthlyTarget
-        ? Number(fields.monthlyTarget)
-        : targetUser.monthlyTarget || 0,
-      commission: fields.commission
-        ? Number(fields.commission)
-        : targetUser.commission || 0,
-      joiningDate: fields.joiningDate ?? targetUser.joiningDate ?? "",
-      cnic: fields.cnic ?? targetUser.cnic ?? "",
-      dob: fields.dob ?? targetUser.dob ?? "",
-      status: fields.status
-        ? String(fields.status).toLowerCase()
-        : targetUser.status || "active",
       updatedAt: new Date().toISOString(),
+      updatedBy: current.uid,
     };
 
-    // 6) Update Firestore
-    await adminDb.collection("users").doc(uid).update(payload);
-
-    // 7) Sync Firebase Auth user (displayName + disabled + claims)
-    try {
-      await adminAuth.updateUser(uid, {
-        disabled: payload.status === "disabled",
-        displayName: payload.name,
-      });
-      await adminAuth.setCustomUserClaims(uid, { role: newRole });
-    } catch (err) {
-      console.error("Failed to sync auth user:", err);
-      // We don't fail the whole request if Auth sync hiccups – it's logged.
+    // Email rules:
+    // - HR can NEVER change email
+    // - ADMIN/SUPER_ADMIN can change email (but UI keeps disabled)
+    // If the UI sends email anyway, we enforce this server-side.
+    if (isAdmin) {
+      // Allow (optional) email update if passed, else keep existing
+      updates.email = body?.email ?? target?.email ?? "";
+    } else {
+      // Force keep existing email
+      updates.email = target?.email ?? "";
     }
 
-    // 8) Optionally log admin activity
-    try {
-      await adminDb.collection("admin_activity").add({
-        action: "update_user",
-        performedBy: current.uid,
-        performedByRole: currentRole,
-        targetUser: {
-          uid,
-          email: targetUser.email || "",
-          oldRole: targetRole,
-          newRole,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error("Failed to log admin activity:", err);
+    // Prevent privilege escalation: nobody can set role to super_admin except super_admin
+    if (String(updates.role || "").toLowerCase() === "super_admin" && requesterRole !== "super_admin") {
+      updates.role = targetRole; // revert
     }
 
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
+    await ref.set(updates, { merge: true });
+
+    return NextResponse.json({ ok: true, uid });
+  } catch (err) {
     console.error("UPDATE USER ERROR:", err);
-    return NextResponse.json(
-      { error: err?.message || "Failed to update user" },
-      { status: 500 }
-    );
+    return new NextResponse("Server error", { status: 500 });
   }
 }
