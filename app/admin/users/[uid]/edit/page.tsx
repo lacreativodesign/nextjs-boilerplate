@@ -58,6 +58,7 @@ export default function EditUserPage() {
   // form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState(""); // shown but should be disabled in UI
+  const [initialEmail, setInitialEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
   const [dob, setDob] = useState(""); // yyyy-mm-dd
@@ -106,7 +107,7 @@ export default function EditUserPage() {
       setError(null);
 
       try {
-        const res = await fetch(`/api /api/admin/users/${uid}`.replace(" ", ""), {
+        const res = await fetch(`/api/admin/users/${uid}`, {
           method: "GET",
           cache: "no-store",
           credentials: "include",
@@ -122,7 +123,9 @@ export default function EditUserPage() {
         if (!alive) return;
 
         setName(String(data?.name || ""));
-        setEmail(String(data?.email || ""));
+        const loadedEmail = String(data?.email || "");
+        setEmail(loadedEmail);
+        setInitialEmail(loadedEmail);
         setPhone(String(data?.phone || ""));
         setCnic(String(data?.cnic || ""));
 
@@ -160,7 +163,9 @@ export default function EditUserPage() {
     // required fields (match your API expectations)
     if (!uid) return setError("Missing user id.");
     if (!name.trim()) return setError("Missing required fields: name");
-    if (!email.trim()) return setError("Missing required fields: email");
+
+    const finalEmail = email.trim() || initialEmail.trim();
+    if (!finalEmail) return setError("Missing required fields: email");
     if (!role.trim()) return setError("Missing required fields: role");
     if (!department.trim()) return setError("Missing required fields: department");
 
@@ -175,7 +180,7 @@ export default function EditUserPage() {
         body: JSON.stringify({
           uid,
           name: name.trim(),
-          email: email.trim(), // email stays same for HR; server will block changes for non-admin anyway
+          email: finalEmail, // email stays same for HR; server will block changes for non-admin anyway
           phone: phone.trim(),
           cnic: cnic.trim(),
           dob: fromInputDate(dob),

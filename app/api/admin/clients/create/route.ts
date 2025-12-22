@@ -14,6 +14,10 @@ function cleanString(v: any) {
   return String(v ?? "").trim();
 }
 
+function normalizeEmail(v: string) {
+  return cleanString(v).toLowerCase();
+}
+
 function toNumber(v: any) {
   const n = Number(String(v ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : 0;
@@ -42,11 +46,35 @@ export async function POST(req: Request) {
   const primaryContactName = cleanString(body?.primaryContactName);
   const primaryContactEmail = cleanString(body?.primaryContactEmail);
   const salesOwner = cleanString(body?.salesOwner);
+  const primaryContactEmailLower = normalizeEmail(primaryContactEmail);
 
   if (!companyName) return NextResponse.json({ ok: false, error: "Company Name is required" }, { status: 400 });
   if (!primaryContactName) return NextResponse.json({ ok: false, error: "Primary Contact Name is required" }, { status: 400 });
   if (!primaryContactEmail) return NextResponse.json({ ok: false, error: "Primary Contact Email is required" }, { status: 400 });
   if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
+
+  // Enforce 1 email per account (ignore deleted clients)
+  const existingByLower = await db
+    .collection("clients")
+    .where("primaryContactEmailLower", "==", primaryContactEmailLower)
+    .limit(1)
+    .get();
+
+  const existingByRaw = await db
+    .collection("clients")
+    .where("primaryContactEmail", "==", primaryContactEmail)
+    .limit(1)
+    .get();
+
+  const duplicate =
+    existingByLower.docs.concat(existingByRaw.docs).find((doc) => {
+      const data = doc.data() || {};
+      return !data.deletedAt;
+    }) || null;
+
+  if (duplicate) {
+    return NextResponse.json({ ok: false, error: "Primary contact email already exists" }, { status: 400 });
+  }
 
   // IMPORTANT: Order ID is ONLY for paid clients. So on create we DO NOT generate it.
   // Payment status defaults to Unpaid unless (optional) admin wants to create as paid via update flow.
@@ -66,6 +94,7 @@ export async function POST(req: Request) {
     primaryContactName,
     primaryContactTitle: cleanString(body?.primaryContactTitle),
     primaryContactEmail,
+    primaryContactEmailLower,
     primaryContactPhone: cleanString(body?.primaryContactPhone),
 
     // Lifecycle
