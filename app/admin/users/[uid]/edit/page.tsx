@@ -1,503 +1,409 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-type StatusType = "active" | "disabled";
+type UserStatus = "active" | "disabled";
 
-const ROLE_OPTIONS = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "admin", label: "Admin" },
-  { value: "sales_manager", label: "Sales Manager" },
-  { value: "sales", label: "Sales" },
-  { value: "am", label: "Account Manager" },
-  { value: "hr", label: "HR" },
-  { value: "finance", label: "Finance" },
-];
+type Role =
+  | "super_admin"
+  | "admin"
+  | "sales_manager"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
 
-const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
+type Department =
+  | "admin"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
+
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const read = () => {
+      const byClass = root.classList.contains("dark");
+      const bySystem = !!mql.matches;
+      setIsDark(byClass || bySystem);
+    };
+
+    read();
+
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+
+    return () => {
+      obs.disconnect();
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
+
+function isoToDateInput(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function toNum(v: string) {
+  const n = Number(String(v || "").replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function tryRequests(tries: Array<{ url: string; method: string; body?: any }>) {
+  let lastErr: any = null;
+
+  for (const t of tries) {
+    try {
+      const res = await fetch(t.url, {
+        method: t.method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: t.body ? JSON.stringify(t.body) : undefined,
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (res.ok) return { ok: true, json };
+      lastErr = json?.error || json?.message || res.statusText || "Request failed";
+    } catch (e: any) {
+      lastErr = e?.message || "Network error";
+    }
+  }
+
+  return { ok: false, error: lastErr || "Failed" };
+}
 
 export default function EditUserPage() {
+  const isDark = useIsDarkMode();
+  const router = useRouter();
   const params = useParams();
-  const uidParam = params?.uid;
-  const uid = Array.isArray(uidParam) ? uidParam[0] : uidParam;
+  const uid = String((params as any)?.uid || "");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
 
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState(""); // keep read-only UI if your system wants that
   const [phone, setPhone] = useState("");
-  const [department, setDepartment] = useState("sales");
-  const [designation, setDesignation] = useState("");
+  const [cnic, setCnic] = useState("");
+  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [status, setStatus] = useState<UserStatus>("active");
+
+  const [role, setRole] = useState<Role>("sales");
+  const [department, setDepartment] = useState<Department>("sales");
+  const [title, setTitle] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
 
-  const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState("");
+  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
+  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
+  const [commissionPct, setCommissionPct] = useState("");
 
-  const [role, setRole] = useState("sales");
-  const [salary, setSalary] = useState("");
-  const [monthlyTarget, setMonthlyTarget] = useState("");
-  const [commission, setCommission] = useState("");
-  const [status, setStatus] = useState<StatusType>("active");
+  const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
+  const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
 
-  const resetMessages = () => {
-    setErrorMsg("");
-    setSuccessMsg("");
-  };
+  const roles: Role[] = [
+    "super_admin",
+    "admin",
+    "sales_manager",
+    "sales",
+    "account_manager",
+    "production",
+    "hr",
+    "finance",
+    "client",
+  ];
+
+  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
 
   useEffect(() => {
-    if (!uid) {
-      setErrorMsg("Invalid user id.");
-      setLoading(false);
-      return;
-    }
+    let alive = true;
 
-    async function loadUser() {
-      try {
-        setLoading(true);
-        setErrorMsg("");
+    async function load() {
+      if (!uid) return;
 
-        const res = await fetch(`/api/admin/users/${uid}`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch user details.");
-        }
+      setLoading(true);
+      setError(null);
 
-        const data = await res.json();
+      const res = await tryRequests([{ url: `/api/admin/users/${uid}`, method: "GET" }]);
 
-        setName(data.name || "");
-        setEmail(data.email || "");
-        setPhone(data.phone || "");
-        setDepartment(data.department || "sales");
-        setDesignation(data.designation || "");
-        setJoiningDate(data.joiningDate || "");
-        setRole(data.role || "sales");
-        setSalary(
-          data.salary !== undefined && data.salary !== null
-            ? String(data.salary)
-            : ""
-        );
-        setMonthlyTarget(
-          data.monthlyTarget !== undefined && data.monthlyTarget !== null
-            ? String(data.monthlyTarget)
-            : ""
-        );
-        setCommission(
-          data.commission !== undefined && data.commission !== null
-            ? String(data.commission)
-            : ""
-        );
-        setStatus((data.status as StatusType) || "active");
-        setCnic(data.cnic || "");
-        setDob(data.dob || "");
-      } catch (err: any) {
-        console.error("Error fetching user:", err);
-        setErrorMsg(err?.message || "Failed to load user.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadUser();
-  }, [uid]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetMessages();
-
-    if (!uid) {
-      setErrorMsg("Invalid user id.");
-      return;
-    }
-
-    if (!name.trim() || !email.trim() || !role) {
-      setErrorMsg("Please fill in name, email, and role.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const res = await fetch(`/api/admin/users/${uid}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          department,
-          designation: designation.trim(),
-          joiningDate: joiningDate || "",
-          role,
-          salary: salary.trim(),
-          monthlyTarget: monthlyTarget.trim(),
-          commission: commission.trim(),
-          status,
-          cnic: cnic.trim(),
-          dob: dob || "",
-        }),
-      });
-
-      const data = await res.json().catch(() => null);
+      if (!alive) return;
 
       if (!res.ok) {
-        const msg = data?.error || "Failed to update user.";
-        throw new Error(msg);
+        setError(String((res as any).error || "Failed to fetch user details."));
+        setLoading(false);
+        return;
       }
 
-      setSuccessMsg("User updated successfully.");
-    } catch (err: any) {
-      console.error("Error updating user:", err);
-      setErrorMsg(err?.message || "Failed to update user.");
-    } finally {
-      setSaving(false);
-    }
-  };
+      const data = (res as any).json || {};
 
-  if (!uid) {
-    return (
-      <div>
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-          Edit User
-        </h2>
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--danger)",
-          }}
-        >
-          Invalid user id.
-        </p>
-      </div>
-    );
+      // Map common field variants safely (we are NOT inventing new fields, just reading what exists)
+      setFullName(String(data.fullName ?? data.name ?? data.displayName ?? ""));
+      setEmail(String(data.email ?? ""));
+      setPhone(String(data.phone ?? ""));
+      setCnic(String(data.cnic ?? ""));
+      setDob(isoToDateInput(data.dob ?? data.dateOfBirth ?? null));
+      setStatus((String(data.status ?? "active").toLowerCase() as UserStatus) || "active");
+
+      setRole((String(data.role ?? "sales").toLowerCase() as Role) || "sales");
+      setDepartment((String(data.department ?? "sales").toLowerCase() as Department) || "sales");
+      setTitle(String(data.title ?? data.designation ?? ""));
+      setJoiningDate(isoToDateInput(data.joiningDate ?? data.joinDate ?? null));
+
+      setMonthlySalaryPkr(String(data.monthlySalaryPkr ?? data.salaryPkr ?? ""));
+      setMonthlyTargetUsd(String(data.monthlyTargetUsd ?? data.targetUsd ?? ""));
+      setCommissionPct(String(data.commissionPct ?? data.commission ?? ""));
+
+      setLoading(false);
+    }
+
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
+
+  const canSubmit = useMemo(() => {
+    if (!uid) return false;
+    if (!fullName.trim()) return false;
+    return true;
+  }, [uid, fullName]);
+
+  async function onSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOkMsg(null);
+
+    if (!canSubmit) {
+      setError("Please fill required fields.");
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      uid,
+      fullName: fullName.trim(),
+      // keep email included so backend can ignore if immutable
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      cnic: cnic.trim(),
+      dob: dob ? new Date(dob).toISOString() : null,
+      status,
+      role,
+      department,
+      title: title.trim(),
+      joiningDate: joiningDate ? new Date(joiningDate).toISOString() : null,
+      monthlySalaryPkr: toNum(monthlySalaryPkr),
+      monthlyTargetUsd: toNum(monthlyTargetUsd),
+      commissionPct: toNum(commissionPct),
+    };
+
+    const res = await tryRequests([
+      { url: `/api/admin/users/update`, method: "POST", body: payload },
+      { url: `/api/admin/users/${uid}`, method: "PATCH", body: payload },
+      { url: `/api/admin/users/${uid}/update`, method: "POST", body: payload },
+    ]);
+
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(String((res as any).error || "Failed to save user."));
+      return;
+    }
+
+    setOkMsg("Saved.");
+    setTimeout(() => router.push("/admin/users"), 450);
   }
 
+  const grid6: React.CSSProperties = {
+    display: "grid",
+    gap: 12,
+    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+  };
+  const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
+
   return (
-    <div>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        Edit User
-      </h2>
-      <p
-        style={{
-          fontSize: 14,
-          color: "var(--mut, #94A3B8)",
-          marginBottom: 16,
-        }}
-      >
-        Update user profile, job details and payroll settings.
-      </p>
+    <div style={{ width: "100%" }}>
+      <h1 style={{ fontSize: 34, fontWeight: 900, margin: "0 0 8px 0", color: titleCol }}>Edit User</h1>
+      <p style={{ margin: "0 0 18px 0", color: muted, fontSize: 14 }}>Update team member profile, role, department, payroll and targets.</p>
 
-      {loading ? (
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--mut, #94A3B8)",
-          }}
-        >
-          Loading user details...
-        </p>
-      ) : (
-        <>
-          {successMsg && (
-            <p
-              style={{
-                fontSize: 14,
-                color: "var(--success)",
-                marginBottom: 8,
-              }}
-            >
-              {successMsg}
-            </p>
-          )}
+      <div className="card" style={{ padding: 16, borderRadius: 18 }}>
+        {loading ? (
+          <div style={{ fontSize: 14, color: muted }}>Loading user...</div>
+        ) : (
+          <form onSubmit={onSave} style={{ display: "grid", gap: 12 }}>
+            <Section title="Personal Information" isDark={isDark}>
+              <div style={grid6}>
+                <div style={colSpan(2)}>
+                  <Label text="Full Name" required />
+                  <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" />
+                </div>
 
-          {errorMsg && (
-            <p
-              style={{
-                fontSize: 14,
-                color: "var(--danger)",
-                marginBottom: 8,
-              }}
-            >
-              {errorMsg}
-            </p>
-          )}
+                <div style={colSpan(2)}>
+                  <Label text="Email Address" />
+                  <input className="input" value={email} readOnly style={{ opacity: 0.9, cursor: "not-allowed" }} />
+                </div>
 
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            {/* PERSONAL INFORMATION CARD */}
-            <div style={sectionCardStyle}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-                Personal Information
-              </h3>
+                <div style={colSpan(1)}>
+                  <Label text="Phone Number" />
+                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300..." />
+                </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                  gap: 16,
-                }}
-              >
-                {/* Name */}
-                <FieldWrapper label="Full Name" required>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="John Doe"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
+                <div style={colSpan(1)}>
+                  <Label text="CNIC Number" />
+                  <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-..." />
+                </div>
 
-                {/* Email */}
-                <FieldWrapper label="Email Address" required>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
+                <div style={colSpan(2)}>
+                  <Label text="Date of Birth (D.O.B.)" />
+                  <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+                </div>
 
-                {/* Phone */}
-                <FieldWrapper label="Phone Number">
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+92 300 0000000"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-
-                {/* CNIC */}
-                <FieldWrapper label="CNIC Number">
-                  <input
-                    value={cnic}
-                    onChange={(e) => setCnic(e.target.value)}
-                    placeholder="42101-1234567-1"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-
-                {/* Date of Birth */}
-                <FieldWrapper label="Date of Birth (D.O.B.)">
-                  <input
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-
-                {/* Status */}
-                <FieldWrapper label="Status">
-                  <select
-                    value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as StatusType)
-                    }
-                    style={selectStyle}
-                  >
+                <div style={colSpan(2)}>
+                  <Label text="Status" />
+                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
                     <option value="active">Active</option>
                     <option value="disabled">Disabled</option>
                   </select>
-                </FieldWrapper>
+                </div>
               </div>
-            </div>
+            </Section>
 
-            {/* JOB DETAILS CARD */}
-            <div style={sectionCardStyle}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-                Job Details
-              </h3>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                  gap: 16,
-                }}
-              >
-                {/* Role */}
-                <FieldWrapper label="Role" required>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    style={selectStyle}
-                  >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
+            <Section title="Job Details" isDark={isDark}>
+              <div style={grid6}>
+                <div style={colSpan(2)}>
+                  <Label text="Role" />
+                  <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                    {roles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
                       </option>
                     ))}
                   </select>
-                </FieldWrapper>
+                </div>
 
-                {/* Department */}
-                <FieldWrapper label="Department">
-                  <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    style={selectStyle}
-                  >
-                    {DEPARTMENTS.map((d) => (
+                <div style={colSpan(2)}>
+                  <Label text="Department" />
+                  <select className="input" value={department} onChange={(e) => setDepartment(e.target.value as Department)}>
+                    {departments.map((d) => (
                       <option key={d} value={d}>
-                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                        {d}
                       </option>
                     ))}
                   </select>
-                </FieldWrapper>
+                </div>
 
-                {/* Designation */}
-                <FieldWrapper label="Designation / Title">
-                  <input
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    placeholder="e.g. Senior Account Manager"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
+                <div style={colSpan(1)}>
+                  <Label text="Designation / Title" />
+                  <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. HR Manager" />
+                </div>
 
-                {/* Joining Date */}
-                <FieldWrapper label="Joining Date">
-                  <input
-                    type="date"
-                    value={joiningDate}
-                    onChange={(e) => setJoiningDate(e.target.value)}
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
+                <div style={colSpan(1)}>
+                  <Label text="Joining Date" />
+                  <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Payroll & Targets" isDark={isDark}>
+              <div style={grid6}>
+                <div style={colSpan(2)}>
+                  <Label text="Monthly Salary (PKR)" />
+                  <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
+                </div>
+
+                <div style={colSpan(2)}>
+                  <Label text="Monthly Target (USD)" />
+                  <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} placeholder="e.g. 5000" />
+                </div>
+
+                <div style={colSpan(2)}>
+                  <Label text="Commission (%)" />
+                  <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} placeholder="e.g. 5" />
+                </div>
+              </div>
+            </Section>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 4 }}>
+              <div style={{ minHeight: 18, fontSize: 13 }}>
+                {error ? <span style={{ color: "#EF4444" }}>{error}</span> : okMsg ? <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span> : null}
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="button" className="btn ghost" onClick={() => router.push("/admin/users")} style={{ borderRadius: 12 }}>
+                  Cancel
+                </button>
+                <button className="btn" type="submit" disabled={saving || !canSubmit} style={{ borderRadius: 12 }}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
               </div>
             </div>
-
-            {/* PAYROLL CARD */}
-            <div style={sectionCardStyle}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-                Payroll & Targets
-              </h3>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-                  gap: 16,
-                }}
-              >
-                {/* Salary */}
-                <FieldWrapper label="Monthly Salary (PKR)">
-                  <input
-                    value={salary}
-                    onChange={(e) => setSalary(e.target.value)}
-                    placeholder="e.g. 150000"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-
-                {/* Monthly Target */}
-                <FieldWrapper label="Monthly Target (Amount)">
-                  <input
-                    value={monthlyTarget}
-                    onChange={(e) => setMonthlyTarget(e.target.value)}
-                    placeholder="e.g. 500000"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-
-                {/* Commission */}
-                <FieldWrapper label="Commission (%)">
-                  <input
-                    value={commission}
-                    onChange={(e) => setCommission(e.target.value)}
-                    placeholder="e.g. 5"
-                    style={inputStyle}
-                  />
-                </FieldWrapper>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn"
-              style={{
-                marginTop: 4,
-                opacity: saving ? 0.7 : 1,
-                cursor: saving ? "default" : "pointer",
-              }}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
           </form>
-        </>
-      )}
-    </div>
-  );
-}
-
-function FieldWrapper({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color: "#E5E7EB",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
-      >
-        {label}
-        {required && (
-          <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
         )}
-      </label>
-      {children}
+      </div>
+
+      <style jsx>{`
+        @media (max-width: 1100px) {
+          form > :global(.card) > div {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          form > :global(.card) > div > div {
+            grid-column: span 2 / span 2 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-const sectionCardStyle: React.CSSProperties = {
-  borderRadius: 20,
-  background: "#3C3C3C",
-  color: "#FFFFFF",
-  padding: 20,
-  border: "1px solid rgba(148,163,184,0.5)",
-};
+function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className="card"
+      style={{
+        padding: 14,
+        borderRadius: 16,
+        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10 }}>{children}</div>
+    </div>
+  );
+}
 
-const inputStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid rgba(148,163,184,0.6)",
-  background: "#1F2937",
-  color: "#FFFFFF",
-  fontSize: 14,
-};
-
-const selectStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid rgba(148,163,184,0.6)",
-  background: "#1F2937",
-  color: "#FFFFFF",
-  fontSize: 14,
-};
+function Label({ text, required }: { text: string; required?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75, marginBottom: 6 }}>
+      <span style={{ textTransform: "uppercase" }}>{text}</span>
+      {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
+    </div>
+  );
+}
