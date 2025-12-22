@@ -100,14 +100,14 @@ export default function CreateUserPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [dob, setDob] = useState("");
   const [status, setStatus] = useState<UserStatus>("active");
   const [password, setPassword] = useState("");
 
   const [role, setRole] = useState<Role>("sales");
   const [department, setDepartment] = useState<Department>("sales");
   const [title, setTitle] = useState("");
-  const [joiningDate, setJoiningDate] = useState(""); // yyyy-mm-dd
+  const [joiningDate, setJoiningDate] = useState("");
 
   const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
   const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
@@ -129,26 +129,13 @@ export default function CreateUserPage() {
     fontSize: 14,
   };
 
-  const formShellStyle: React.CSSProperties = {
-    width: "100%",
-  };
-
-  const grid6: React.CSSProperties = {
-    display: "grid",
-    gap: 12,
-    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-  };
-
-  const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
-
-  const responsiveGrid: React.CSSProperties = {
-    ...grid6,
-  };
-
-  // simple responsive without Tailwind
-  const responsiveWrap: React.CSSProperties = {
-    display: "grid",
-    gap: 12,
+  // ✅ Key-Accounts master outer shell (shadow included)
+  const shellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 18,
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const roles: Role[] = [
@@ -198,7 +185,7 @@ export default function CreateUserPage() {
       monthlySalaryPkr: toNum(monthlySalaryPkr),
       monthlyTargetUsd: toNum(monthlyTargetUsd),
       commissionPct: toNum(commissionPct),
-      password, // backend should hash/create in auth
+      password,
     };
 
     const result = await postWithFallback(["/api/admin/users/create", "/api/admin/users"], payload);
@@ -211,24 +198,18 @@ export default function CreateUserPage() {
     }
 
     setOkMsg("User created successfully.");
-    // bounce back to users list (consistent with your admin flow)
     setTimeout(() => router.push("/admin/users"), 500);
   }
 
   return (
-    <div style={formShellStyle}>
+    <div style={{ width: "100%" }}>
       <h1 style={headerStyle}>Create User</h1>
       <p style={subStyle}>Add a new team member and set role, department, payroll and targets.</p>
 
-      <form onSubmit={onSubmit} className="card" style={{ padding: 16, borderRadius: 18 }}>
-        <div style={responsiveWrap}>
-          {/* PERSONAL INFORMATION */}
+      <form onSubmit={onSubmit} style={shellStyle}>
+        <div style={{ display: "grid", gap: 12 }}>
           <Section title="Personal Information" isDark={isDark}>
-            <div
-              style={{
-                ...responsiveGrid,
-              }}
-            >
+            <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Full Name" required />
                 <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
@@ -269,9 +250,8 @@ export default function CreateUserPage() {
             </div>
           </Section>
 
-          {/* JOB DETAILS */}
           <Section title="Job Details" isDark={isDark}>
-            <div style={responsiveGrid}>
+            <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Role" required />
                 <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
@@ -306,9 +286,8 @@ export default function CreateUserPage() {
             </div>
           </Section>
 
-          {/* PAYROLL & TARGETS */}
           <Section title="Payroll & Targets" isDark={isDark}>
-            <div style={responsiveGrid}>
+            <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Monthly Salary (PKR)" />
                 <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
@@ -326,10 +305,13 @@ export default function CreateUserPage() {
             </div>
           </Section>
 
-          {/* FOOTER */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }}>
             <div style={{ minHeight: 18, fontSize: 13 }}>
-              {error ? <span style={{ color: "#EF4444" }}>{error}</span> : okMsg ? <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span> : null}
+              {error ? (
+                <span style={{ color: "#EF4444" }}>{error}</span>
+              ) : okMsg ? (
+                <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span>
+              ) : null}
             </div>
 
             <button className="btn" type="submit" disabled={saving || !canSubmit} style={{ borderRadius: 12 }}>
@@ -339,16 +321,12 @@ export default function CreateUserPage() {
         </div>
       </form>
 
-      {/* minimal responsive tweak */}
       <style jsx>{`
         @media (max-width: 1100px) {
-          form :global(.input) {
-            width: 100%;
-          }
-          form > div > div {
+          .grid6 {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
-          form > div > div > div {
+          .grid6 > div {
             grid-column: span 2 / span 2 !important;
           }
         }
@@ -356,6 +334,14 @@ export default function CreateUserPage() {
     </div>
   );
 }
+
+const grid6: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+};
+
+const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
 
 function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
   return (
@@ -375,7 +361,18 @@ function Section({ title, isDark, children }: { title: string; isDark: boolean; 
 
 function Label({ text, required }: { text: string; required?: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75, marginBottom: 6 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 11,
+        fontWeight: 900,
+        letterSpacing: "0.06em",
+        opacity: 0.75,
+        marginBottom: 6,
+      }}
+    >
       <span style={{ textTransform: "uppercase" }}>{text}</span>
       {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
     </div>
