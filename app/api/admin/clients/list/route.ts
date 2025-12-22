@@ -30,6 +30,7 @@ type ClientDoc = {
   createdAt?: any;
   updatedAt?: any;
   lastActivity?: any;
+  deletedAt?: any;
 };
 
 function toISO(value: any): string | null {
@@ -47,6 +48,11 @@ function toISO(value: any): string | null {
   return null;
 }
 
+function canViewClients(role: string) {
+  const r = (role || "").toLowerCase();
+  return r === "admin" || r === "super_admin" || r === "sales_manager";
+}
+
 export async function GET() {
   try {
     const me = await getCurrentUser();
@@ -55,44 +61,48 @@ export async function GET() {
     }
 
     const role = (me.role || "").toLowerCase();
-    if (role !== "admin" && role !== "super_admin") {
+    if (!canViewClients(role)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const snap = await db.collection("clients").orderBy("createdAt", "desc").limit(500).get();
 
-    const clients = snap.docs.map((doc) => {
-      const d = (doc.data() || {}) as ClientDoc;
+    const clients = snap.docs
+      .map((doc) => {
+        const d = (doc.data() || {}) as ClientDoc;
 
-      return {
-        id: doc.id,
-        companyName: d.companyName || "",
-        website: d.website || "",
-        industry: d.industry || "",
-        country: d.country || "",
-        timezone: d.timezone || "",
+        if (d.deletedAt) return null;
 
-        primaryContactName: d.primaryContactName || "",
-        primaryContactTitle: d.primaryContactTitle || "",
-        primaryContactEmail: d.primaryContactEmail || "",
-        primaryContactPhone: d.primaryContactPhone || "",
+        return {
+          id: doc.id,
+          companyName: d.companyName || "",
+          website: d.website || "",
+          industry: d.industry || "",
+          country: d.country || "",
+          timezone: d.timezone || "",
 
-        salesStage: d.salesStage || "",
-        paymentStatus: d.paymentStatus || "",
-        retainerStatus: d.retainerStatus || "",
+          primaryContactName: d.primaryContactName || "",
+          primaryContactTitle: d.primaryContactTitle || "",
+          primaryContactEmail: d.primaryContactEmail || "",
+          primaryContactPhone: d.primaryContactPhone || "",
 
-        salesOwner: d.salesOwner || "",
-        accountManager: d.accountManager || "",
-        productionOwner: d.productionOwner || "",
+          salesStage: d.salesStage || "",
+          paymentStatus: d.paymentStatus || "",
+          retainerStatus: d.retainerStatus || "",
 
-        totalPaidUsd: Number(d.totalPaidUsd || 0),
-        orderId: d.orderId || "",
+          salesOwner: d.salesOwner || "",
+          accountManager: d.accountManager || "",
+          productionOwner: d.productionOwner || "",
 
-        createdAt: toISO(d.createdAt),
-        updatedAt: toISO(d.updatedAt),
-        lastActivity: toISO(d.lastActivity),
-      };
-    });
+          totalPaidUsd: Number(d.totalPaidUsd || 0),
+          orderId: d.orderId || "",
+
+          createdAt: toISO(d.createdAt),
+          updatedAt: toISO(d.updatedAt),
+          lastActivity: toISO(d.lastActivity),
+        };
+      })
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
     return NextResponse.json({ ok: true, clients });
   } catch (err: any) {

@@ -28,20 +28,30 @@ export async function POST(req: Request) {
 
     const uid = String(body?.uid || "").trim();
     const name = String(body?.name || "").trim();
-    const email = String(body?.email || "").trim();
-    const role = String(body?.role || "").trim();
-    const department = String(body?.department || "").trim();
+    const requestedEmail = String(body?.email || "").trim();
+    const requestedRole = String(body?.role || "").trim();
+    const requestedDepartment = String(body?.department || "").trim();
 
-    if (!uid || !name || !email || !role || !department) {
+    if (!uid || !name) {
       return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    // Pull existing doc to enforce email restriction
+    // Pull existing doc to enforce email restriction and preserve untouched fields
     const snap = await adminDb.collection("users").doc(uid).get();
     if (!snap.exists) return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
 
     const existing = snap.data() || {};
     const existingEmail = String(existing?.email || "").trim();
+    const existingRole = String(existing?.role || "").trim().toLowerCase();
+    const existingDepartment = String(existing?.department || "").trim();
+
+    const email = requestedEmail || existingEmail;
+    const role = (requestedRole || existingRole || "").toLowerCase();
+    const department = requestedDepartment || existingDepartment;
+
+    if (!email || !role || !department) {
+      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+    }
 
     // ✅ Only admin/super_admin can change email
     const wantsEmailChange = existingEmail && existingEmail.toLowerCase() !== email.toLowerCase();
@@ -49,31 +59,53 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Only Admin / Super Admin can change email." }, { status: 403 });
     }
 
+    // ✅ Admin cannot edit super_admin or assign super_admin role
+    const targetIsSuper = existingRole === "super_admin";
+    const assignsSuper = role === "super_admin";
+    const isSuperAdminRequester = requesterRole === "super_admin";
+
+    if (!isSuperAdminRequester && (targetIsSuper || assignsSuper)) {
+      return NextResponse.json({ ok: false, error: "Admins/HR cannot modify or assign super_admin role." }, { status: 403 });
+    }
+
     // if admin changes email -> update Auth email too
     if (wantsEmailChange && isAdminLike(requesterRole)) {
       await adminAuth.updateUser(uid, { email });
     }
 
+    const normalizeString = (incoming: any, existingValue: any = "") =>
+      incoming !== undefined ? String(incoming || "").trim() : String(existingValue || "").trim();
+
+    const normalizeDate = (incoming: any, existingValue: any = null) =>
+      incoming !== undefined ? incoming ?? null : existingValue ?? null;
+
+    const normalizeNumber = (incoming: any, existingValue: any = null) => {
+      if (incoming === undefined) return existingValue ?? null;
+      if (incoming === null || incoming === "") return null;
+      const num = Number(incoming);
+      return Number.isFinite(num) ? num : existingValue ?? null;
+    };
+
     const updateData = {
       // core
       name,
       email,
-      phone: String(body?.phone || "").trim(),
-      cnic: String(body?.cnic || "").trim(),
-      dob: body?.dob ?? null,
+      phone: normalizeString(body?.phone, existing?.phone),
+      cnic: normalizeString(body?.cnic, existing?.cnic),
+      dob: normalizeDate(body?.dob, existing?.dob),
 
-      status: String(body?.status || "active").toLowerCase(),
-      role: String(role).toLowerCase(),
+      status: normalizeString(body?.status || existing?.status || "active").toLowerCase(),
+      role,
       department,
 
       // ✅ correct key
-      designation: String(body?.designation || "").trim(),
-      joiningDate: body?.joiningDate ?? null,
+      designation: normalizeString(body?.designation, existing?.designation),
+      joiningDate: normalizeDate(body?.joiningDate, existing?.joiningDate),
 
       // numbers (nullable)
-      salary: body?.salary === null || body?.salary === "" ? null : Number(body?.salary),
-      monthlyTarget: body?.monthlyTarget === null || body?.monthlyTarget === "" ? null : Number(body?.monthlyTarget),
-      commission: body?.commission === null || body?.commission === "" ? null : Number(body?.commission),
+      salary: normalizeNumber(body?.salary, existing?.salary),
+      monthlyTarget: normalizeNumber(body?.monthlyTarget, existing?.monthlyTarget),
+      commission: normalizeNumber(body?.commission, existing?.commission),
 
       updatedAt: new Date().toISOString(),
     };

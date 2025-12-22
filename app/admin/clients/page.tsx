@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type SalesStage =
   | "New Lead"
@@ -90,6 +91,7 @@ function normalizeOrderId(orderId?: string) {
 }
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -103,6 +105,7 @@ export default function ClientsPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // OS-level theme only
   useEffect(() => {
@@ -238,6 +241,34 @@ export default function ClientsPage() {
   function closeDrawer() {
     setDrawerOpen(false);
     setSelected(null);
+  }
+
+  async function handleDelete(id: string) {
+    const confirmed = window.confirm("Delete this client? This will archive the record for now.");
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(id);
+      const res = await fetch("/api/admin/clients/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete client");
+
+      setRows((prev) => prev.filter((c) => c.id !== id));
+      if (selected?.id === id) {
+        setSelected(null);
+        setDrawerOpen(false);
+      }
+    } catch (e: any) {
+      alert(e?.message || "Failed to delete client");
+    } finally {
+      setDeletingId((prev) => (prev === id ? null : prev));
+    }
   }
 
   // Key-Accounts master table shell
@@ -376,16 +407,44 @@ export default function ClientsPage() {
                       <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
                       <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDrawer(c);
-                          }}
-                          className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
-                        >
-                          View
-                        </button>
+                        <div style={{ display: "inline-flex", gap: 8 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDrawer(c);
+                            }}
+                            className="btn ghost"
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/clients/${c.id}/edit`);
+                            }}
+                            className="btn ghost"
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(c.id);
+                            }}
+                            className="btn ghost"
+                            disabled={deletingId === c.id}
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: 999,
+                              fontWeight: 800,
+                              opacity: deletingId === c.id ? 0.7 : 1,
+                            }}
+                          >
+                            {deletingId === c.id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -465,6 +524,35 @@ export default function ClientsPage() {
               <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
               <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
             </Section>
+
+            <div style={{ height: 12 }} />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ borderRadius: 12, fontWeight: 800 }}
+                onClick={() => router.push(`/admin/clients/${selected.id}/edit`)}
+              >
+                Edit Client
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={deletingId === selected.id}
+                onClick={() => handleDelete(selected.id)}
+                style={{
+                  borderRadius: 12,
+                  fontWeight: 800,
+                  background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.10)",
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+                  opacity: deletingId === selected.id ? 0.7 : 1,
+                }}
+              >
+                {deletingId === selected.id ? "Deleting..." : "Delete Client"}
+              </button>
+            </div>
           </div>
         </div>
       )}

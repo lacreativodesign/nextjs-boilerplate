@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 function canEditClient(role: string) {
   const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "sales";
+  return r === "super_admin" || r === "admin" || r === "sales_manager";
 }
 
 function canMarkPaid(role: string) {
@@ -17,6 +17,10 @@ function canMarkPaid(role: string) {
 
 function cleanString(v: any) {
   return String(v ?? "").trim();
+}
+
+function normalizeEmail(v: any) {
+  return cleanString(v).toLowerCase();
 }
 
 function toNumber(v: any) {
@@ -85,12 +89,22 @@ export async function PATCH(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
     const existing = (snap.data() || {}) as any;
+    if (existing?.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+
     const existingPayment = normalizeExistingStatus(existing?.paymentStatus);
     const existingOrderId = cleanString(existing?.orderId);
+    const existingEmail = cleanString(existing?.primaryContactEmail);
+    const existingEmailLower = normalizeEmail(existing?.primaryContactEmail);
 
     const requestedPayment = canonicalPaymentStatus(body?.paymentStatus); // null if not included
     const wantsPaidLike = requestedPayment ? isPaidLike(requestedPayment) : false;
     const wasPaidLike = isPaidLike(existingPayment);
+
+    // Primary email is immutable to preserve 1 email per account
+    const incomingEmail = cleanString(body?.primaryContactEmail);
+    if (incomingEmail && incomingEmail.toLowerCase() !== existingEmailLower) {
+      return NextResponse.json({ ok: false, error: "Primary contact email cannot be changed" }, { status: 400 });
+    }
 
     // If they are trying to set paid/partial, only admin/super_admin can do it.
     if (requestedPayment && wantsPaidLike && !canMarkPaid(me.role)) {
@@ -110,7 +124,10 @@ export async function PATCH(req: Request) {
     // Contact
     if (body?.primaryContactName !== undefined) updateData.primaryContactName = cleanString(body.primaryContactName);
     if (body?.primaryContactTitle !== undefined) updateData.primaryContactTitle = cleanString(body.primaryContactTitle);
-    if (body?.primaryContactEmail !== undefined) updateData.primaryContactEmail = cleanString(body.primaryContactEmail);
+    if (body?.primaryContactEmail !== undefined) {
+      updateData.primaryContactEmail = existingEmail;
+      updateData.primaryContactEmailLower = existingEmailLower;
+    }
     if (body?.primaryContactPhone !== undefined) updateData.primaryContactPhone = cleanString(body.primaryContactPhone);
 
     // Lifecycle
@@ -129,6 +146,7 @@ export async function PATCH(req: Request) {
     if (body?.openBalanceUsd !== undefined) updateData.openBalanceUsd = toNumber(body.openBalanceUsd);
 
     if (body?.services !== undefined) updateData.services = cleanString(body.services);
+    updateData.primaryContactEmailLower = existingEmailLower;
 
     // If payment becomes paid/partial AND orderId is missing => generate LC-0001
     // Also: if already paid but missing orderId (edge case), generate it when admin hits update again.
