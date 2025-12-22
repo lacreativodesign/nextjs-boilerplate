@@ -1,350 +1,383 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
-type StatusType = "active" | "disabled";
+type UserStatus = "active" | "disabled";
 
-const ROLE_OPTIONS = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "admin", label: "Admin" },
-  { value: "sales_manager", label: "Sales Manager" },
-  { value: "sales", label: "Sales" },
-  { value: "am", label: "Account Manager" },
-  { value: "hr", label: "HR" },
-  { value: "finance", label: "Finance" },
-];
+type Role =
+  | "super_admin"
+  | "admin"
+  | "sales_manager"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
 
-const DEPARTMENTS = ["sales", "am", "production", "hr", "finance", "admin"];
+type Department =
+  | "admin"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
 
-export default function CreateUserPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("sales");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(false);
 
-  const [phone, setPhone] = useState("");
-  const [department, setDepartment] = useState("sales");
-  const [designation, setDesignation] = useState("");
-  const [joiningDate, setJoiningDate] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState("");
+    const root = document.documentElement;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
-  const [salary, setSalary] = useState("");
-  const [monthlyTarget, setMonthlyTarget] = useState("");
-  const [commission, setCommission] = useState("");
-  const [status, setStatus] = useState<StatusType>("active");
+    const read = () => {
+      const byClass = root.classList.contains("dark");
+      const bySystem = !!mql.matches;
+      setIsDark(byClass || bySystem);
+    };
 
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+    read();
 
-  const resetMessages = () => {
-    setErrorMsg("");
-    setSuccessMsg("");
-  };
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetMessages();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
 
-    if (!name.trim() || !email.trim() || !password.trim() || !role) {
-      setErrorMsg("Please fill in name, email, role and password.");
-      return;
-    }
+    return () => {
+      obs.disconnect();
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
 
+  return isDark;
+}
+
+function toNum(v: string) {
+  const n = Number(String(v || "").replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function postWithFallback(urls: string[], body: any) {
+  let lastErr: any = null;
+
+  for (const url of urls) {
     try {
-      setLoading(true);
-
-      const res = await fetch("/api/admin/users/create", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password: password.trim(),
-          role,
-
-          phone: phone.trim(),
-          department,
-          designation: designation.trim(),
-          joiningDate: joiningDate || "",
-          cnic: cnic.trim(),
-          dob: dob || "",
-
-          salary: salary.trim(),
-          monthlyTarget: monthlyTarget.trim(),
-          commission: commission.trim(),
-
-          status,
-        }),
+        cache: "no-store",
+        body: JSON.stringify(body),
       });
 
-      const data = await res.json().catch(() => null);
+      const json = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        const msg = data?.error || "Failed to create user.";
-        throw new Error(msg);
-      }
-
-      setSuccessMsg("User created successfully.");
-
-      // Reset but keep defaults
-      setName("");
-      setEmail("");
-      setPassword("");
-      setShowPassword(false);
-
-      setPhone("");
-      setDepartment("sales");
-      setDesignation("");
-      setJoiningDate("");
-      setCnic("");
-      setDob("");
-
-      setSalary("");
-      setMonthlyTarget("");
-      setCommission("");
-      setStatus("active");
-    } catch (err: any) {
-      console.error("Error creating user:", err);
-      setErrorMsg(err?.message || "Failed to create user.");
-    } finally {
-      setLoading(false);
+      if (res.ok) return { ok: true, json };
+      lastErr = json?.error || json?.message || res.statusText || "Request failed";
+    } catch (e: any) {
+      lastErr = e?.message || "Network error";
     }
-  };
+  }
 
-  // Master UI shell (matches Key-Accounts)
-  const shell: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 16,
-    border: "1px solid var(--table-border)",
-    background: "var(--table-bg)",
-    boxShadow: "var(--table-shadow)",
-  };
+  return { ok: false, error: lastErr || "Failed" };
+}
 
-  const sectionCard: React.CSSProperties = {
-    borderRadius: 14,
-    padding: 14,
-    background: "rgba(15,23,42,0.02)",
-  };
+export default function CreateUserPage() {
+  const isDark = useIsDarkMode();
+  const router = useRouter();
 
-  const sectionTitle: React.CSSProperties = {
-    fontSize: 12,
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [cnic, setCnic] = useState("");
+  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [status, setStatus] = useState<UserStatus>("active");
+  const [password, setPassword] = useState("");
+
+  const [role, setRole] = useState<Role>("sales");
+  const [department, setDepartment] = useState<Department>("sales");
+  const [title, setTitle] = useState("");
+  const [joiningDate, setJoiningDate] = useState(""); // yyyy-mm-dd
+
+  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
+  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
+  const [commissionPct, setCommissionPct] = useState("");
+
+  const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
+  const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 34,
     fontWeight: 900,
-    letterSpacing: "0.06em",
-    textTransform: "uppercase",
-    opacity: 0.75,
-    marginBottom: 10,
-    color: "var(--table-muted)",
+    margin: "0 0 8px 0",
+    color: titleCol,
   };
 
-  const grid: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-    gap: 14,
+  const subStyle: React.CSSProperties = {
+    margin: "0 0 18px 0",
+    color: muted,
+    fontSize: 14,
   };
+
+  const formShellStyle: React.CSSProperties = {
+    width: "100%",
+  };
+
+  const grid6: React.CSSProperties = {
+    display: "grid",
+    gap: 12,
+    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+  };
+
+  const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
+
+  const responsiveGrid: React.CSSProperties = {
+    ...grid6,
+  };
+
+  // simple responsive without Tailwind
+  const responsiveWrap: React.CSSProperties = {
+    display: "grid",
+    gap: 12,
+  };
+
+  const roles: Role[] = [
+    "super_admin",
+    "admin",
+    "sales_manager",
+    "sales",
+    "account_manager",
+    "production",
+    "hr",
+    "finance",
+    "client",
+  ];
+
+  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+
+  const canSubmit = useMemo(() => {
+    if (!fullName.trim()) return false;
+    if (!email.trim()) return false;
+    if (!password.trim()) return false;
+    return true;
+  }, [fullName, email, password]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOkMsg(null);
+
+    if (!canSubmit) {
+      setError("Please fill required fields (Full Name, Email, Password).");
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      cnic: cnic.trim(),
+      dob: dob ? new Date(dob).toISOString() : null,
+      status,
+      role,
+      department,
+      title: title.trim(),
+      joiningDate: joiningDate ? new Date(joiningDate).toISOString() : null,
+      monthlySalaryPkr: toNum(monthlySalaryPkr),
+      monthlyTargetUsd: toNum(monthlyTargetUsd),
+      commissionPct: toNum(commissionPct),
+      password, // backend should hash/create in auth
+    };
+
+    const result = await postWithFallback(["/api/admin/users/create", "/api/admin/users"], payload);
+
+    setSaving(false);
+
+    if (!result.ok) {
+      setError(String((result as any).error || "Failed to create user"));
+      return;
+    }
+
+    setOkMsg("User created successfully.");
+    // bounce back to users list (consistent with your admin flow)
+    setTimeout(() => router.push("/admin/users"), 500);
+  }
 
   return (
-    <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: "var(--table-text)",
-        }}
-      >
-        Create User
-      </h1>
+    <div style={formShellStyle}>
+      <h1 style={headerStyle}>Create User</h1>
+      <p style={subStyle}>Add a new team member and set role, department, payroll and targets.</p>
 
-      <div style={{ marginBottom: 18, color: "var(--table-muted)" }}>
-        Add a new team member and set role, department, payroll and targets.
-      </div>
+      <form onSubmit={onSubmit} className="card" style={{ padding: 16, borderRadius: 18 }}>
+        <div style={responsiveWrap}>
+          {/* PERSONAL INFORMATION */}
+          <Section title="Personal Information" isDark={isDark}>
+            <div
+              style={{
+                ...responsiveGrid,
+              }}
+            >
+              <div style={colSpan(2)}>
+                <Label text="Full Name" required />
+                <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
+              </div>
 
-      {successMsg ? (
-        <div style={{ marginBottom: 12, fontSize: 14, color: "#22C55E", fontWeight: 700 }}>{successMsg}</div>
-      ) : null}
+              <div style={colSpan(2)}>
+                <Label text="Email Address" required />
+                <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
+              </div>
 
-      {errorMsg ? (
-        <div style={{ marginBottom: 12, fontSize: 14, color: "#EF4444", fontWeight: 700 }}>{errorMsg}</div>
-      ) : null}
-
-      <div style={shell}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* PERSONAL */}
-          <div style={sectionCard}>
-            <div style={sectionTitle}>Personal Information</div>
-            <div style={grid}>
-              <Field label="Full Name" required>
-                <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
-              </Field>
-
-              <Field label="Email Address" required>
-                <input
-                  className="input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                />
-              </Field>
-
-              <Field label="Phone Number">
+              <div style={colSpan(1)}>
+                <Label text="Phone Number" />
                 <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 0000000" />
-              </Field>
+              </div>
 
-              <Field label="CNIC Number">
+              <div style={colSpan(1)}>
+                <Label text="CNIC Number" />
                 <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-1234567-1" />
-              </Field>
+              </div>
 
-              <Field label="Date of Birth (D.O.B.)">
+              <div style={colSpan(2)}>
+                <Label text="Date of Birth (D.O.B.)" />
                 <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-              </Field>
+              </div>
 
-              <Field label="Status">
-                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as StatusType)}>
+              <div style={colSpan(2)}>
+                <Label text="Status" />
+                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
                   <option value="active">Active</option>
                   <option value="disabled">Disabled</option>
                 </select>
-              </Field>
+              </div>
 
-              <Field label="Password" required>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <input
-                    className="input"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Assign a secure password"
-                    style={{ paddingRight: 42 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="btn ghost"
-                    style={{
-                      position: "absolute",
-                      right: 8,
-                      height: 34,
-                      width: 38,
-                      padding: 0,
-                      borderRadius: 12,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </Field>
+              <div style={colSpan(2)}>
+                <Label text="Password" required />
+                <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Assign a secure password" />
+              </div>
             </div>
-          </div>
+          </Section>
 
-          {/* JOB */}
-          <div style={sectionCard}>
-            <div style={sectionTitle}>Job Details</div>
-            <div style={grid}>
-              <Field label="Role" required>
-                <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
+          {/* JOB DETAILS */}
+          <Section title="Job Details" isDark={isDark}>
+            <div style={responsiveGrid}>
+              <div style={colSpan(2)}>
+                <Label text="Role" required />
+                <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
                     </option>
                   ))}
                 </select>
-              </Field>
+              </div>
 
-              <Field label="Department">
-                <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                  {DEPARTMENTS.map((d) => (
+              <div style={colSpan(2)}>
+                <Label text="Department" />
+                <select className="input" value={department} onChange={(e) => setDepartment(e.target.value as Department)}>
+                  {departments.map((d) => (
                     <option key={d} value={d}>
-                      {d.charAt(0).toUpperCase() + d.slice(1)}
+                      {d}
                     </option>
                   ))}
                 </select>
-              </Field>
+              </div>
 
-              <Field label="Designation / Title">
-                <input
-                  className="input"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  placeholder="e.g. Senior Account Manager"
-                />
-              </Field>
+              <div style={colSpan(1)}>
+                <Label text="Designation / Title" />
+                <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Senior Account Manager" />
+              </div>
 
-              <Field label="Joining Date">
+              <div style={colSpan(1)}>
+                <Label text="Joining Date" />
                 <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
-              </Field>
+              </div>
             </div>
-          </div>
+          </Section>
 
-          {/* PAYROLL */}
-          <div style={sectionCard}>
-            <div style={sectionTitle}>Payroll & Targets</div>
-            <div style={grid}>
-              <Field label="Monthly Salary (PKR)">
-                <input className="input" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="e.g. 150000" />
-              </Field>
+          {/* PAYROLL & TARGETS */}
+          <Section title="Payroll & Targets" isDark={isDark}>
+            <div style={responsiveGrid}>
+              <div style={colSpan(2)}>
+                <Label text="Monthly Salary (PKR)" />
+                <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
+              </div>
 
-              <Field label="Monthly Target (Amount)">
-                <input
-                  className="input"
-                  value={monthlyTarget}
-                  onChange={(e) => setMonthlyTarget(e.target.value)}
-                  placeholder="e.g. 500000"
-                />
-              </Field>
+              <div style={colSpan(2)}>
+                <Label text="Monthly Target (USD)" />
+                <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} placeholder="e.g. 5000" />
+              </div>
 
-              <Field label="Commission (%)">
-                <input className="input" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="e.g. 5" />
-              </Field>
+              <div style={colSpan(2)}>
+                <Label text="Commission (%)" />
+                <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} placeholder="e.g. 5" />
+              </div>
             </div>
-          </div>
+          </Section>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 6 }}>
-            <button type="submit" disabled={loading} className="btn" style={{ opacity: loading ? 0.7 : 1, borderRadius: 12, fontWeight: 900 }}>
-              {loading ? "Creating..." : "Create User"}
+          {/* FOOTER */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }}>
+            <div style={{ minHeight: 18, fontSize: 13 }}>
+              {error ? <span style={{ color: "#EF4444" }}>{error}</span> : okMsg ? <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span> : null}
+            </div>
+
+            <button className="btn" type="submit" disabled={saving || !canSubmit} style={{ borderRadius: 12 }}>
+              {saving ? "Creating..." : "Create User"}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
+
+      {/* minimal responsive tweak */}
+      <style jsx>{`
+        @media (max-width: 1100px) {
+          form :global(.input) {
+            width: 100%;
+          }
+          form > div > div {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          form > div > div > div {
+            grid-column: span 2 / span 2 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
+function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
-        style={{
-          fontSize: 11,
-          fontWeight: 900,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          opacity: 0.7,
-          color: "var(--table-muted)",
-        }}
-      >
-        {label}
-        {required ? <span style={{ color: "#EF4444", marginLeft: 6 }}>*</span> : null}
-      </label>
-      {children}
+    <div
+      className="card"
+      style={{
+        padding: 14,
+        borderRadius: 16,
+        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10 }}>{children}</div>
+    </div>
+  );
+}
+
+function Label({ text, required }: { text: string; required?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75, marginBottom: 6 }}>
+      <span style={{ textTransform: "uppercase" }}>{text}</span>
+      {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
     </div>
   );
 }
