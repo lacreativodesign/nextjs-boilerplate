@@ -39,7 +39,7 @@ function getConfig() {
   ].filter(([, v]) => !v);
 
   if (missing.length) {
-    const msg = `Firebase client config missing: ${missing.map(([k]) => k).join(", ")}.`;
+    const msg = `Firebase client configuration is incomplete: ${missing.map(([k]) => k).join(", ")}.`;
     if (isBrowser) {
       throw new Error(msg);
     }
