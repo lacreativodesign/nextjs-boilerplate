@@ -371,9 +371,6 @@ export default function ClientsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("totalPaidUsd")}>
                     {headerLabel("Total Paid", sortBadge("totalPaidUsd"))}
                   </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
-                    {headerLabel("Created", sortBadge("createdAt"))}
-                  </th>
                   <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
                 </tr>
               </thead>
@@ -405,7 +402,6 @@ export default function ClientsPage() {
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
                       <td style={cellStyle}>{(c.paymentStatus as string) || "-"}</td>
                       <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
-                      <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <div style={{ display: "inline-flex", gap: 8 }}>
                           <button
