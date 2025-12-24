@@ -418,32 +418,6 @@ export default function ClientsPage() {
                           >
                             View
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/admin/clients/${c.id}/edit`);
-                            }}
-                            className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(c.id);
-                            }}
-                            className="btn ghost"
-                            disabled={deletingId === c.id}
-                            style={{
-                              padding: "8px 14px",
-                              borderRadius: 999,
-                              fontWeight: 800,
-                              opacity: deletingId === c.id ? 0.7 : 1,
-                            }}
-                          >
-                            {deletingId === c.id ? "Deleting..." : "Delete"}
-                          </button>
                         </div>
                       </td>
                     </tr>
