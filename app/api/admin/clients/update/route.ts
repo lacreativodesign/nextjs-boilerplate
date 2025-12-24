@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
+import { ensureClientPortalAccess } from "@/lib/clientPortal";
 import { getCurrentUser } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -166,6 +167,22 @@ async function handleUpdate(req: Request) {
     updateData.lastActivity = now;
 
     await ref.set(updateData, { merge: true });
+
+    const shouldTriggerPaidInvite =
+      requestedPayment === "Paid" && existingPayment !== "Paid" && !cleanString(existing?.portalUserUid);
+
+    if (shouldTriggerPaidInvite) {
+      const clientData = {
+        ...existing,
+        ...updateData,
+      };
+      await ensureClientPortalAccess({
+        clientId: id,
+        clientData,
+        createdByUid: me.uid,
+        allowExistingInvite: false,
+      });
+    }
 
     return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || "" });
   } catch (err: any) {

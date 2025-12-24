@@ -439,6 +439,10 @@ function UserDrawerContent({
   onDelete: (uid: string) => void;
   onEdit: (uid: string) => void;
 }) {
+  const [inviteStatus, setInviteStatus] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+
   const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
   const formatPKR = (v: any) => {
@@ -458,6 +462,33 @@ function UserDrawerContent({
   };
 
   const uid = getRowId(user);
+
+  const handleInvite = async () => {
+    if (!uid) return;
+    setInviteStatus("");
+    setInviteError("");
+    setInviteLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/create-set-password-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+        credentials: "include",
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Failed to send invite.");
+      }
+
+      setInviteStatus("Invite sent successfully.");
+    } catch (err: any) {
+      setInviteError(err?.message || "Failed to send invite.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   return (
     <>
@@ -498,7 +529,22 @@ function UserDrawerContent({
 
       <div style={{ height: 12 }} />
 
+      {(inviteStatus || inviteError) && (
+        <div style={{ marginBottom: 10, fontSize: 13, color: inviteError ? "#b91c1c" : "#16a34a" }}>
+          {inviteError || inviteStatus}
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button
+          type="button"
+          className="btn"
+          onClick={handleInvite}
+          disabled={inviteLoading}
+          style={{ borderRadius: 12, fontWeight: 500, opacity: inviteLoading ? 0.7 : 1 }}
+        >
+          {inviteLoading ? "Sending..." : "Resend Invite / Reset Password"}
+        </button>
         <button
           type="button"
           className="btn"

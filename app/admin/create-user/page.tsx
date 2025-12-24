@@ -4,12 +4,11 @@ import React, { useState } from "react";
 
 export default function CreateUserPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [role, setRole] = useState("client");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
 
   async function handleCreateUser(e: any) {
     e.preventDefault();
@@ -18,20 +17,20 @@ export default function CreateUserPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/create-user", {
+      const res = await fetch("/api/admin/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, name, role }),
       });
 
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Failed to create user");
 
-      setSuccess("User created successfully!");
+      setSuccess("User created successfully! Password invite sent.");
       setEmail("");
-      setPassword("");
+      setName("");
       setRole("client");
     } catch (err: any) {
       setError(err.message || "Error creating user");
@@ -132,6 +131,23 @@ export default function CreateUserPage() {
         )}
 
         <form onSubmit={handleCreateUser}>
+          {/* Name */}
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Full Name</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              marginTop: 6,
+              marginBottom: 20,
+              borderRadius: 8,
+              border: "1px solid #CBD5E1",
+            }}
+          />
+
           {/* Email */}
           <label style={{ fontSize: 14, fontWeight: 500 }}>Email</label>
           <input
@@ -148,39 +164,6 @@ export default function CreateUserPage() {
               border: "1px solid #CBD5E1",
             }}
           />
-
-          {/* Password */}
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Password</label>
-          <div style={{ position: "relative" }}>
-            <input
-              type={showPass ? "text" : "password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                marginTop: 6,
-                marginBottom: 20,
-                borderRadius: 8,
-                border: "1px solid #CBD5E1",
-              }}
-            />
-            <span
-              onClick={() => setShowPass(!showPass)}
-              style={{
-                position: "absolute",
-                right: 14,
-                top: "50%",
-                transform: "translateY(-50%)",
-                cursor: "pointer",
-                fontSize: 13,
-                color: "#6b7280",
-              }}
-            >
-              {showPass ? "HIDE" : "SHOW"}
-            </span>
-          </div>
 
           {/* Role */}
           <label style={{ fontSize: 14, fontWeight: 500 }}>Role</label>

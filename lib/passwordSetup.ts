@@ -19,8 +19,28 @@ export async function createPasswordSetupToken({
   email: string;
   createdBy?: string | null;
 }) {
-  const token = crypto.randomBytes(32).toString("hex");
   const now = new Date();
+  const invalidationSnapshot = await adminDb
+    .collection(TOKEN_COLLECTION)
+    .where("uid", "==", uid)
+    .where("usedAt", "==", null)
+    .get();
+
+  if (!invalidationSnapshot.empty) {
+    const batch = adminDb.batch();
+    const invalidatedAt = now.toISOString();
+    invalidationSnapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, {
+        usedAt: invalidatedAt,
+        invalidatedAt,
+        invalidatedBy: createdBy || null,
+        invalidationReason: "new_token_created",
+      });
+    });
+    await batch.commit();
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MS);
 
   await adminDb.collection(TOKEN_COLLECTION).doc(token).set({
