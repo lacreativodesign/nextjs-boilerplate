@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../_utils";
+import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
 
 export const runtime = "nodejs";
 
@@ -27,6 +29,7 @@ export async function POST(req: Request) {
 
     const {
       name,
+      fullName,
       email,
       password,
       role,
@@ -42,8 +45,10 @@ export async function POST(req: Request) {
       status,
     } = body;
 
+    const displayName = String(name || fullName || "").trim();
+
     // 4) Validate required fields
-    if (!email || !password || !role || !name) {
+    if (!email || !role || !displayName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -57,7 +62,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const targetRole = (role || "").toLowerCase();
+    const rawRole = (role || "").toLowerCase();
+    const targetRole = rawRole === "am" ? "account_manager" : rawRole;
+    const passwordToUse = String(password || "").trim() || crypto.randomBytes(16).toString("hex");
 
     // 5) Check duplicate email
     const existingUser = await adminAuth
@@ -73,8 +80,8 @@ export async function POST(req: Request) {
     // 6) Create Firebase Auth user
     const userRecord = await adminAuth.createUser({
       email,
-      password,
-      displayName: name,
+      password: passwordToUse,
+      displayName,
       disabled: status === "disabled",
     });
 
@@ -84,23 +91,31 @@ export async function POST(req: Request) {
     // 8) Save user document in Firestore
     await adminDb.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
-      name,
+      name: displayName,
       email,
       role: targetRole,
       phone: phone || "",
       department: department || "",
       designation: designation || "",
-      salary: salary || "",
-      monthlyTarget: monthlyTarget || "",
-      commission: commission || "",
-      joiningDate: joiningDate || "",
+      salary: salary ?? null,
+      monthlyTarget: monthlyTarget ?? null,
+      commission: commission ?? null,
+      joiningDate: joiningDate || null,
       status: status || "active",
       cnic: cnic || "",
-      dob: dob || "",
+      dob: dob || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: current.uid,
     });
+
+    const tokenData = await createPasswordSetupToken({
+      uid: userRecord.uid,
+      email,
+      createdBy: current.uid,
+    });
+
+    const emailResult = await sendSetPasswordEmail({ email, link: tokenData.link });
 
     // 9) Log admin activity
     await adminDb.collection("admin_activity").add({
@@ -119,6 +134,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       uid: userRecord.uid,
+      setPasswordLink: emailResult.sent ? undefined : tokenData.link,
+      emailSent: emailResult.sent,
+      emailError: emailResult.sent ? undefined : emailResult.error,
     });
   } catch (e: any) {
     console.error("Error create user:", e);
@@ -133,7 +151,7 @@ export async function POST(req: Request) {
 function canManageRole(targetRole: string) {
   const r = (targetRole || "").toLowerCase();
   // super_admin / admin allowed to manage all roles except restricting logic already implemented where needed
-  return ["super_admin", "admin", "sales_manager", "sales", "am", "hr", "finance", "production"].includes(
+  return ["super_admin", "admin", "sales_manager", "sales", "account_manager", "hr", "finance", "production"].includes(
     r
   );
 }

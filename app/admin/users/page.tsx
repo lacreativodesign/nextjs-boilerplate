@@ -503,7 +503,7 @@ function UserDrawerContent({
           type="button"
           className="btn"
           onClick={() => onEdit(uid)}
-          style={{ borderRadius: 12, fontWeight: 800 }}
+          style={{ borderRadius: 12, fontWeight: 500 }}
         >
           Edit User
         </button>
@@ -515,7 +515,7 @@ function UserDrawerContent({
           disabled={deleting}
           style={{
             borderRadius: 12,
-            fontWeight: 800,
+            fontWeight: 500,
             background: "rgba(239,68,68,0.12)",
             border: "1px solid rgba(239,68,68,0.35)",
             opacity: deleting ? 0.7 : 1,

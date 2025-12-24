@@ -115,13 +115,13 @@ export async function POST(
       role: newRole,
       department: body.department || "",
       designation: body.designation || "",
-      salary: body.salary ? Number(body.salary) : 0,
-      monthlyTarget: body.monthlyTarget ? Number(body.monthlyTarget) : 0,
-      commission: body.commission ? Number(body.commission) : 0,
-      joiningDate: body.joiningDate || "",
+      salary: body.salary ? Number(body.salary) : null,
+      monthlyTarget: body.monthlyTarget ? Number(body.monthlyTarget) : null,
+      commission: body.commission ? Number(body.commission) : null,
+      joiningDate: body.joiningDate || null,
       status: (body.status || "active").toLowerCase(),
       cnic: body.cnic || "",
-      dob: body.dob || "",
+      dob: body.dob || null,
       updatedAt: new Date().toISOString(),
     };
 

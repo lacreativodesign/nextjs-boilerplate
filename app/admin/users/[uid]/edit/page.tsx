@@ -3,30 +3,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import {
+  INTERNAL_ROLE_OPTIONS,
+  USER_DEPARTMENT_VALUES,
+  type InternalRole,
+  type UserDepartment,
+  getDefaultDepartmentForRole,
+} from "@/lib/userOptions";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Unsubscribe } from "firebase/auth";
 
 type UserStatus = "active" | "disabled";
 
-type Role =
-  | "super_admin"
-  | "admin"
-  | "sales_manager"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
-
-type Department =
-  | "admin"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
+type Role = InternalRole;
+type Department = UserDepartment;
 
 type UserDoc = {
   uid?: string;
@@ -162,19 +152,9 @@ export default function EditUserPage() {
     boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
-  const roles: Role[] = [
-    "super_admin",
-    "admin",
-    "sales_manager",
-    "sales",
-    "account_manager",
-    "production",
-    "hr",
-    "finance",
-    "client",
-  ];
+  const roles: Role[] = [...INTERNAL_ROLE_OPTIONS];
 
-  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+  const departments: Department[] = [...USER_DEPARTMENT_VALUES];
 
   useEffect(() => {
     let unsub: Unsubscribe | null = null;
@@ -238,8 +218,12 @@ export default function EditUserPage() {
         setDob(toInputDate(data?.dob || null));
 
         setStatus((String(data?.status || "active").toLowerCase() as UserStatus) || "active");
-        setRole((String(data?.role || "sales").toLowerCase() as Role) || "sales");
-        setDepartment((String(data?.department || "sales").toLowerCase() as Department) || "sales");
+        const rawRole = String(data?.role || "sales").toLowerCase();
+        const normalizedRole = (rawRole === "am" ? "account_manager" : rawRole) as Role;
+        const loadedRole = normalizedRole || "sales";
+        const loadedDepartment = (String(data?.department || "sales").toLowerCase() as Department) || "sales";
+        setRole(loadedRole);
+        setDepartment(loadedDepartment);
 
         setDesignation(String(data?.designation || ""));
         setJoiningDate(toInputDate(data?.joiningDate || null));
@@ -376,7 +360,16 @@ export default function EditUserPage() {
             <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Role" required />
-                <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                <select
+                  className="input"
+                  value={role}
+                  onChange={(e) => {
+                    const nextRole = e.target.value as Role;
+                    setRole(nextRole);
+                    const nextDepartment = getDefaultDepartmentForRole(nextRole);
+                    if (nextDepartment) setDepartment(nextDepartment);
+                  }}
+                >
                   {roles.map((r) => (
                     <option key={r} value={r}>
                       {r}
