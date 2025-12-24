@@ -290,7 +290,6 @@ export default function ClientsPage() {
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
-    fontWeight: 500,
   };
 
   const cellStyle: React.CSSProperties = {
@@ -348,7 +347,7 @@ export default function ClientsPage() {
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1080 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle} onClick={() => toggleSort("orderId")}>
@@ -403,7 +402,7 @@ export default function ClientsPage() {
                               openDrawer(c);
                             }}
                             className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
                           >
                             View
                           </button>
@@ -541,7 +540,7 @@ function Section({
         background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
@@ -559,8 +558,8 @@ function Row({ label, value, isDark }: { label: string; value: string; isDark: b
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
