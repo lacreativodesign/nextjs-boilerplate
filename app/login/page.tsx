@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { type Auth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { type Auth, signInWithEmailAndPassword } from "firebase/auth";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 
 export default function LoginPage() {
@@ -90,10 +90,20 @@ export default function LoginPage() {
     }
 
     try {
-      await sendPasswordResetEmail(firebaseAuth, email);
-      alert("Password reset link has been sent to your email.");
+      const res = await fetch("/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || "Failed to send reset email.");
+      }
+
+      alert("If an account exists for this email, a reset link has been sent.");
     } catch (err: any) {
-      setError(err.message || "Failed to send reset email.");
+      setError(err?.message || "Failed to send reset email.");
     }
   }
 

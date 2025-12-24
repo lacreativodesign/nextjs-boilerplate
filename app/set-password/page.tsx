@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function SetPasswordPage() {
@@ -38,6 +38,14 @@ function SetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => {
+      window.location.href = "/login";
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [success]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
