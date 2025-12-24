@@ -109,161 +109,78 @@ export default function LoginPage() {
 
   // UI (unchanged)
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f9fafb",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 20,
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
+    <div className="login-root">
       {!firebaseAuth ? (
-        <div
-          style={{
-            width: 380,
-            background: "white",
-            borderRadius: 16,
-            padding: "32px 28px",
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ color: "#4b5563" }}>
-            {initError || "Preparing authentication…"}
-          </p>
+        <div className="login-card login-card--loading">
+          <p className="login-helper">{initError || "Preparing authentication…"}</p>
         </div>
       ) : (
-        <div
-          style={{
-            width: 380,
-            background: "white",
-            borderRadius: 16,
-            padding: "32px 28px",
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h1
-            style={{
-              textAlign: "center",
-              fontSize: 22,
-              fontWeight: 700,
-              marginBottom: 20,
-              color: "#111827",
-            }}
+        <div className="login-card">
+          <div className="login-heading">
+            <p className="login-kicker">LA CREATIVO DASHBOARD</p>
+            <h1 className="login-title">Secure access to your workspace</h1>
+          </div>
+
+          <div
+            className={`login-error ${error ? "is-visible" : ""}`}
+            role="status"
+            aria-live="polite"
           >
-            LA CREATIVO ERP Login
-          </h1>
+            {error || " "}
+          </div>
 
-          {error && (
-            <div
-              style={{
-                background: "#fee2e2",
-                color: "#b91c1c",
-                padding: 10,
-                borderRadius: 8,
-                marginBottom: 16,
-                fontSize: 14,
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 8,
-                border: "1px solid #d1d5db",
-                marginBottom: 14,
-              }}
-              required
-            />
-
-            <div style={{ position: "relative", marginBottom: 14 }}>
+          <form onSubmit={handleLogin} className="login-form">
+            <label className="login-field">
+              <span className="login-label">Email</span>
               <input
-                type={showPass ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                }}
+                type="email"
+                placeholder="name@lacreativo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="login-input"
                 required
               />
-
-              <span
-                onClick={() => setShowPass(!showPass)}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  color: "#6b7280",
-                }}
-              >
-                {showPass ? "Hide" : "Show"}
-              </span>
-            </div>
-
-            <label
-              style={{ display: "flex", alignItems: "center", marginBottom: 10 }}
-            >
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember(!remember)}
-                style={{ marginRight: 8 }}
-              />
-              <span style={{ fontSize: 14, color: "#4b5563" }}>Remember me</span>
             </label>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: 8,
-                backgroundColor: "#06b6d4",
-                color: "white",
-                border: "none",
-                fontWeight: 700,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
+            <label className="login-field">
+              <span className="login-label">Password</span>
+              <div className="login-input-wrap">
+                <input
+                  type={showPass ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="login-input login-input--with-toggle"
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-toggle"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? "Hide password" : "Show password"}
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
+            </label>
+
+            <div className="login-row">
+              <label className="login-check">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={() => setRemember(!remember)}
+                />
+                <span>Remember me</span>
+              </label>
+            </div>
+
+            <button type="submit" disabled={loading} className="login-submit">
               {loading ? "Signing in…" : "Login"}
             </button>
           </form>
 
-          <button
-            onClick={handleForgot}
-            style={{
-              marginTop: 14,
-              width: "100%",
-              background: "none",
-              border: "none",
-              color: "#0284c7",
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={handleForgot} className="login-forgot" type="button">
             Forgot Password?
           </button>
         </div>
