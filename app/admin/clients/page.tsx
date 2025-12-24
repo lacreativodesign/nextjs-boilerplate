@@ -509,7 +509,7 @@ export default function ClientsPage() {
               <button
                 type="button"
                 className="btn"
-                style={{ borderRadius: 12, fontWeight: 800 }}
+                style={{ borderRadius: 12, fontWeight: 500 }}
                 onClick={() => router.push(`/admin/clients/${selected.id}/edit`)}
               >
                 Edit Client
@@ -521,7 +521,7 @@ export default function ClientsPage() {
                 onClick={() => handleDelete(selected.id)}
                 style={{
                   borderRadius: 12,
-                  fontWeight: 800,
+                  fontWeight: 500,
                   background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.10)",
                   border: "1px solid rgba(239,68,68,0.35)",
                   color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",

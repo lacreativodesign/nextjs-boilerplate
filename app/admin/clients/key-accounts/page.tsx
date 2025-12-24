@@ -50,10 +50,7 @@ type SortKey =
   | "companyName"
   | "primaryContactName"
   | "primaryContactEmail"
-  | "primaryContactPhone"
-  | "paymentStatus"
-  | "totalPaidUsd"
-  | "createdAt";
+  | "primaryContactPhone";
 
 type SortDir = "asc" | "desc";
 
@@ -119,8 +116,8 @@ export default function KeyAccountsPage() {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<ClientRecord[]>([]);
 
-  const [sortKey, setSortKey] = useState<SortKey>("totalPaidUsd");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("companyName");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
@@ -242,12 +239,6 @@ export default function KeyAccountsPage() {
           return c.primaryContactEmail || "";
         case "primaryContactPhone":
           return c.primaryContactPhone || "";
-        case "paymentStatus":
-          return c.paymentStatus || "";
-        case "totalPaidUsd":
-          return Number(c.totalPaidUsd || 0);
-        case "createdAt":
-          return c.createdAt || "";
         default:
           return "";
       }
@@ -270,7 +261,7 @@ export default function KeyAccountsPage() {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(k);
-      setSortDir(k === "totalPaidUsd" ? "desc" : "asc");
+      setSortDir("asc");
     }
   }
 
@@ -341,15 +332,6 @@ export default function KeyAccountsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
                     {headerLabel("Phone", sortBadge("primaryContactPhone"))}
                   </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("paymentStatus")}>
-                    {headerLabel("Payment", sortBadge("paymentStatus"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("totalPaidUsd")}>
-                    {headerLabel("Total Paid", sortBadge("totalPaidUsd"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("createdAt")}>
-                    {headerLabel("Created", sortBadge("createdAt"))}
-                  </th>
                   <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
                 </tr>
               </thead>
@@ -380,9 +362,6 @@ export default function KeyAccountsPage() {
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
-                      <td style={cellStyle}>{c.paymentStatus || "-"}</td>
-                      <td style={cellStyle}>{fmtMoney(Number(c.totalPaidUsd || 0))}</td>
-                      <td style={cellStyle}>{fmtDate(c.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
                           onClick={(e) => {

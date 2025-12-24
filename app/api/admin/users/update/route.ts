@@ -46,7 +46,8 @@ export async function POST(req: Request) {
     const existingDepartment = String(existing?.department || "").trim();
 
     const email = requestedEmail || existingEmail;
-    const role = (requestedRole || existingRole || "").toLowerCase();
+    const normalizedRole = (requestedRole || existingRole || "").toLowerCase();
+    const role = normalizedRole === "am" ? "account_manager" : normalizedRole;
     const department = requestedDepartment || existingDepartment;
 
     if (!email || !role || !department) {

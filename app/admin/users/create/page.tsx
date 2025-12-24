@@ -2,28 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  INTERNAL_ROLE_OPTIONS,
+  USER_DEPARTMENT_VALUES,
+  type InternalRole,
+  type UserDepartment,
+  getDefaultDepartmentForRole,
+} from "@/lib/userOptions";
 
 type UserStatus = "active" | "disabled";
 
-type Role =
-  | "super_admin"
-  | "admin"
-  | "sales_manager"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
-
-type Department =
-  | "admin"
-  | "sales"
-  | "account_manager"
-  | "production"
-  | "hr"
-  | "finance"
-  | "client";
+type Role = InternalRole;
+type Department = UserDepartment;
 
 function useIsDarkMode() {
   const [isDark, setIsDark] = useState(false);
@@ -102,7 +92,6 @@ export default function CreateUserPage() {
   const [cnic, setCnic] = useState("");
   const [dob, setDob] = useState("");
   const [status, setStatus] = useState<UserStatus>("active");
-  const [password, setPassword] = useState("");
 
   const [role, setRole] = useState<Role>("sales");
   const [department, setDepartment] = useState<Department>("sales");
@@ -138,26 +127,15 @@ export default function CreateUserPage() {
     boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
-  const roles: Role[] = [
-    "super_admin",
-    "admin",
-    "sales_manager",
-    "sales",
-    "account_manager",
-    "production",
-    "hr",
-    "finance",
-    "client",
-  ];
+  const roles: Role[] = [...INTERNAL_ROLE_OPTIONS];
 
-  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+  const departments: Department[] = [...USER_DEPARTMENT_VALUES];
 
   const canSubmit = useMemo(() => {
     if (!fullName.trim()) return false;
     if (!email.trim()) return false;
-    if (!password.trim()) return false;
     return true;
-  }, [fullName, email, password]);
+  }, [fullName, email]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -165,14 +143,14 @@ export default function CreateUserPage() {
     setOkMsg(null);
 
     if (!canSubmit) {
-      setError("Please fill required fields (Full Name, Email, Password).");
+      setError("Please fill required fields (Full Name, Email).");
       return;
     }
 
     setSaving(true);
 
     const payload = {
-      fullName: fullName.trim(),
+      name: fullName.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
       cnic: cnic.trim(),
@@ -180,12 +158,11 @@ export default function CreateUserPage() {
       status,
       role,
       department,
-      title: title.trim(),
+      designation: title.trim(),
       joiningDate: joiningDate ? new Date(joiningDate).toISOString() : null,
-      monthlySalaryPkr: toNum(monthlySalaryPkr),
-      monthlyTargetUsd: toNum(monthlyTargetUsd),
-      commissionPct: toNum(commissionPct),
-      password,
+      salary: monthlySalaryPkr ? toNum(monthlySalaryPkr) : null,
+      monthlyTarget: monthlyTargetUsd ? toNum(monthlyTargetUsd) : null,
+      commission: commissionPct ? toNum(commissionPct) : null,
     };
 
     const result = await postWithFallback(["/api/admin/users/create", "/api/admin/users"], payload);
@@ -243,10 +220,6 @@ export default function CreateUserPage() {
                 </select>
               </div>
 
-              <div style={colSpan(2)}>
-                <Label text="Password" required />
-                <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Assign a secure password" />
-              </div>
             </div>
           </Section>
 
@@ -254,7 +227,16 @@ export default function CreateUserPage() {
             <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Role" required />
-                <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                <select
+                  className="input"
+                  value={role}
+                  onChange={(e) => {
+                    const nextRole = e.target.value as Role;
+                    setRole(nextRole);
+                    const nextDepartment = getDefaultDepartmentForRole(nextRole);
+                    if (nextDepartment) setDepartment(nextDepartment);
+                  }}
+                >
                   {roles.map((r) => (
                     <option key={r} value={r}>
                       {r}
