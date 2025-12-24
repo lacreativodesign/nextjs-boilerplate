@@ -1,10 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { onAuthStateChanged } from "firebase/auth";
+import type { Unsubscribe } from "firebase/auth";
 
-type Role = "super_admin" | "admin" | "sales_manager" | "sales" | "account_manager" | "production" | "hr" | "finance" | "client";
-type Status = "active" | "disabled";
+type UserStatus = "active" | "disabled";
+
+type Role =
+  | "super_admin"
+  | "admin"
+  | "sales_manager"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
+
+type Department =
+  | "admin"
+  | "sales"
+  | "account_manager"
+  | "production"
+  | "hr"
+  | "finance"
+  | "client";
 
 type UserDoc = {
   uid?: string;
@@ -14,11 +36,11 @@ type UserDoc = {
   cnic?: string;
   dob?: string | null;
 
-  status?: Status | string;
+  status?: UserStatus | string;
   role?: Role | string;
-  department?: string;
+  department?: Department | string;
 
-  designation?: string; // ✅ correct key
+  designation?: string;
   joiningDate?: string | null;
 
   salary?: number | null;
@@ -28,6 +50,39 @@ type UserDoc = {
   createdAt?: string | null;
   updatedAt?: string | null;
 };
+
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const read = () => {
+      const byClass = root.classList.contains("dark");
+      const bySystem = !!mql.matches;
+      setIsDark(byClass || bySystem);
+    };
+
+    read();
+
+    const obs = new MutationObserver(() => read());
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+
+    return () => {
+      obs.disconnect();
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
 
 function toInputDate(iso?: string | null) {
   if (!iso) return "";
@@ -46,55 +101,106 @@ function fromInputDate(v: string) {
   return d.toISOString();
 }
 
+function toNum(v: string) {
+  if (v === "") return null;
+  const n = Number(String(v || "").replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams<{ uid: string }>();
   const uid = params?.uid;
+  const isDark = useIsDarkMode();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
+
   // form state
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState(""); // shown but should be disabled in UI
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [initialEmail, setInitialEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [dob, setDob] = useState("");
 
-  const [status, setStatus] = useState<Status>("active");
+  const [status, setStatus] = useState<UserStatus>("active");
   const [role, setRole] = useState<Role>("sales");
-  const [department, setDepartment] = useState("");
+  const [department, setDepartment] = useState<Department>("sales");
 
-  const [designation, setDesignation] = useState(""); // ✅ fixed
+  const [designation, setDesignation] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
 
-  const [salary, setSalary] = useState("");
-  const [monthlyTarget, setMonthlyTarget] = useState("");
-  const [commission, setCommission] = useState("");
+  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
+  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
+  const [commissionPct, setCommissionPct] = useState("");
 
-  // UI styles (Key-Accounts Master look)
+  const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
+  const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 34,
+    fontWeight: 900,
+    margin: "0 0 8px 0",
+    color: titleCol,
+  };
+
+  const subStyle: React.CSSProperties = {
+    margin: "0 0 18px 0",
+    color: muted,
+    fontSize: 14,
+  };
+
   const shellStyle: React.CSSProperties = {
-    borderRadius: 22,
-    padding: 16,
-    border: "1px solid rgba(148,163,184,0.28)",
-    background: "rgba(38,38,38,0.55)",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+    borderRadius: 20,
+    padding: 18,
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
-  const lightShellStyle: React.CSSProperties = {
-    borderRadius: 22,
-    padding: 16,
-    border: "1px solid rgba(15,23,42,0.10)",
-    background: "rgba(255,255,255,0.85)",
-    boxShadow: "0 18px 55px rgba(15,23,42,0.10)",
-  };
+  const roles: Role[] = [
+    "super_admin",
+    "admin",
+    "sales_manager",
+    "sales",
+    "account_manager",
+    "production",
+    "hr",
+    "finance",
+    "client",
+  ];
 
-  // detect dark (matches your system + manual)
-  const isDark = useMemo(() => {
-    if (typeof document === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
+  const departments: Department[] = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+
+  useEffect(() => {
+    let unsub: Unsubscribe | null = null;
+    let cancelled = false;
+
+    getFirebaseAuth()
+      .then((auth) => {
+        if (cancelled) return;
+        unsub = onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            setCurrentRole(null);
+            return;
+          }
+          const roleValue = await fetchUserRole(user.uid);
+          setCurrentRole(roleValue);
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to load Firebase auth", err);
+        setCurrentRole(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -122,7 +228,7 @@ export default function EditUserPage() {
 
         if (!alive) return;
 
-        setName(String(data?.name || ""));
+        setFullName(String(data?.name || ""));
         const loadedEmail = String(data?.email || "");
         setEmail(loadedEmail);
         setInitialEmail(loadedEmail);
@@ -131,17 +237,16 @@ export default function EditUserPage() {
 
         setDob(toInputDate(data?.dob || null));
 
-        setStatus((String(data?.status || "active").toLowerCase() as Status) || "active");
+        setStatus((String(data?.status || "active").toLowerCase() as UserStatus) || "active");
         setRole((String(data?.role || "sales").toLowerCase() as Role) || "sales");
-        setDepartment(String(data?.department || ""));
+        setDepartment((String(data?.department || "sales").toLowerCase() as Department) || "sales");
 
-        // ✅ correct field mapping
         setDesignation(String(data?.designation || ""));
         setJoiningDate(toInputDate(data?.joiningDate || null));
 
-        setSalary(data?.salary == null ? "" : String(Number(data.salary)));
-        setMonthlyTarget(data?.monthlyTarget == null ? "" : String(Number(data.monthlyTarget)));
-        setCommission(data?.commission == null ? "" : String(Number(data.commission)));
+        setMonthlySalaryPkr(data?.salary == null ? "" : String(Number(data.salary)));
+        setMonthlyTargetUsd(data?.monthlyTarget == null ? "" : String(Number(data.monthlyTarget)));
+        setCommissionPct(data?.commission == null ? "" : String(Number(data.commission)));
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message || "Failed to fetch user details.");
@@ -157,45 +262,45 @@ export default function EditUserPage() {
     };
   }, [uid]);
 
-  async function onSave() {
+  const isEmailLocked = currentRole === "hr";
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
 
-    // required fields (match your API expectations)
     if (!uid) return setError("Missing user id.");
-    if (!name.trim()) return setError("Missing required fields: name");
+    if (!fullName.trim()) return setError("Missing required fields: name");
 
-    const finalEmail = email.trim() || initialEmail.trim();
-    if (!finalEmail) return setError("Missing required fields: email");
+    const emailToSend = (isEmailLocked ? initialEmail : email).trim() || initialEmail.trim();
+    if (!emailToSend) return setError("Missing required fields: email");
     if (!role.trim()) return setError("Missing required fields: role");
     if (!department.trim()) return setError("Missing required fields: department");
 
     setSaving(true);
 
     try {
-      // ✅ IMPORTANT: post to the real route you have: /api/admin/users/update
       const res = await fetch("/api/admin/users/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           uid,
-          name: name.trim(),
-          email: finalEmail, // email stays same for HR; server will block changes for non-admin anyway
+          name: fullName.trim(),
+          email: emailToSend,
           phone: phone.trim(),
           cnic: cnic.trim(),
           dob: fromInputDate(dob),
 
           status,
           role,
-          department: department.trim(),
+          department,
 
-          // ✅ correct key
           designation: designation.trim(),
           joiningDate: fromInputDate(joiningDate),
 
-          salary: salary === "" ? null : Number(salary),
-          monthlyTarget: monthlyTarget === "" ? null : Number(monthlyTarget),
-          commission: commission === "" ? null : Number(commission),
+          salary: toNum(monthlySalaryPkr),
+          monthlyTarget: toNum(monthlyTargetUsd),
+          commission: toNum(commissionPct),
         }),
       });
 
@@ -205,7 +310,6 @@ export default function EditUserPage() {
         throw new Error(json?.error || "Update failed.");
       }
 
-      // back to users list
       router.push("/admin/users");
     } catch (e: any) {
       setError(e?.message || "Update failed.");
@@ -220,116 +324,142 @@ export default function EditUserPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-        }}
-      >
-        Edit User
-      </h1>
+      <h1 style={headerStyle}>Edit User</h1>
+      <p style={subStyle}>Update profile, work details, and targets.</p>
 
-      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-        Update profile, work details, and targets. Email is locked for non-admin roles.
-      </div>
-
-      <div style={isDark ? shellStyle : lightShellStyle}>
-        {error && (
-          <div style={{ marginBottom: 12, color: "#FCA5A5", fontSize: 14 }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{ display: "grid", gap: 14 }}>
-          {/* PERSONAL */}
+      <form onSubmit={onSubmit} style={shellStyle}>
+        <div style={{ display: "grid", gap: 12 }}>
           <Section title="Personal Information" isDark={isDark}>
-            <Field label="Full Name *">
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" />
-            </Field>
+            <div style={grid6} className="grid6">
+              <div style={colSpan(2)}>
+                <Label text="Full Name" required />
+                <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
+              </div>
 
-            <Field label="Email Address *">
-              <input className="input" value={email} disabled placeholder="Email cannot be changed" />
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Email Address" required />
+                <input
+                  className="input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  disabled={isEmailLocked}
+                />
+              </div>
 
-            <Field label="Phone Number">
-              <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 0000000" />
-            </Field>
+              <div style={colSpan(1)}>
+                <Label text="Phone Number" />
+                <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 0000000" />
+              </div>
 
-            <Field label="CNIC Number">
-              <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-1234567-1" />
-            </Field>
+              <div style={colSpan(1)}>
+                <Label text="CNIC Number" />
+                <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-1234567-1" />
+              </div>
 
-            <Field label="Date of Birth (D.O.B.)">
-              <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Date of Birth (D.O.B.)" />
+                <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+              </div>
 
-            <Field label="Status">
-              <select className="input" value={status} onChange={(e) => setStatus(e.target.value as Status)}>
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-              </select>
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Status" />
+                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
+                  <option value="active">Active</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </div>
+            </div>
           </Section>
 
-          {/* JOB */}
           <Section title="Job Details" isDark={isDark}>
-            <Field label="Role *">
-              <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                <option value="super_admin">Super Admin</option>
-                <option value="admin">Admin</option>
-                <option value="sales_manager">Sales Manager</option>
-                <option value="sales">Sales</option>
-                <option value="account_manager">Account Manager</option>
-                <option value="production">Production</option>
-                <option value="hr">HR</option>
-                <option value="finance">Finance</option>
-                <option value="client">Client</option>
-              </select>
-            </Field>
+            <div style={grid6} className="grid6">
+              <div style={colSpan(2)}>
+                <Label text="Role" required />
+                <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <Field label="Department *">
-              <input className="input" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Sales" />
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Department" />
+                <select className="input" value={department} onChange={(e) => setDepartment(e.target.value as Department)}>
+                  {departments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <Field label="Designation / Title">
-              <input className="input" value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. HR Manager" />
-            </Field>
+              <div style={colSpan(1)}>
+                <Label text="Designation / Title" />
+                <input className="input" value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. Senior Account Manager" />
+              </div>
 
-            <Field label="Joining Date">
-              <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
-            </Field>
+              <div style={colSpan(1)}>
+                <Label text="Joining Date" />
+                <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
+              </div>
+            </div>
           </Section>
 
-          {/* PAY */}
           <Section title="Payroll & Targets" isDark={isDark}>
-            <Field label="Monthly Salary (PKR)">
-              <input className="input" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="e.g. 150000" />
-            </Field>
+            <div style={grid6} className="grid6">
+              <div style={colSpan(2)}>
+                <Label text="Monthly Salary (PKR)" />
+                <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
+              </div>
 
-            <Field label="Monthly Target (Amount)">
-              <input className="input" value={monthlyTarget} onChange={(e) => setMonthlyTarget(e.target.value)} placeholder="e.g. 500000" />
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Monthly Target (USD)" />
+                <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} placeholder="e.g. 5000" />
+              </div>
 
-            <Field label="Commission (%)">
-              <input className="input" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="e.g. 5" />
-            </Field>
+              <div style={colSpan(2)}>
+                <Label text="Commission (%)" />
+                <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} placeholder="e.g. 5" />
+              </div>
+            </div>
           </Section>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button className="btn ghost" onClick={() => router.back()} disabled={saving}>
-              Cancel
-            </button>
-            <button className="btn" onClick={onSave} disabled={saving}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }}>
+            <div style={{ minHeight: 18, fontSize: 13 }}>
+              {error ? <span style={{ color: "#EF4444" }}>{error}</span> : null}
+            </div>
+
+            <button className="btn" type="submit" disabled={saving} style={{ borderRadius: 12 }}>
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
-      </div>
+      </form>
+
+      <style jsx>{`
+        @media (max-width: 1100px) {
+          .grid6 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .grid6 > div {
+            grid-column: span 2 / span 2 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
+
+const grid6: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+};
+
+const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
 
 function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
   return (
@@ -337,23 +467,32 @@ function Section({ title, isDark, children }: { title: string; isDark: boolean; 
       className="card"
       style={{
         padding: 14,
-        borderRadius: 14,
+        borderRadius: 16,
         background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>
-        {title}
-      </div>
-      <div style={{ marginTop: 10, display: "grid", gap: 12 }}>{children}</div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10 }}>{children}</div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Label({ text, required }: { text: string; required?: boolean }) {
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      {children}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 11,
+        fontWeight: 900,
+        letterSpacing: "0.06em",
+        opacity: 0.75,
+        marginBottom: 6,
+      }}
+    >
+      <span style={{ textTransform: "uppercase" }}>{text}</span>
+      {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
     </div>
   );
 }

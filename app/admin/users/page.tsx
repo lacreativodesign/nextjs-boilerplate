@@ -28,7 +28,7 @@ type UserRecord = {
   [key: string]: any;
 };
 
-type SortKey = "name" | "email" | "phone" | "department" | "createdAt" | "role";
+type SortKey = "name" | "email" | "phone" | "department" | "status";
 type SortDir = "asc" | "desc";
 
 /** Always get a usable ID no matter what your API returns */
@@ -158,12 +158,14 @@ export default function UsersPage() {
     }
   };
 
-  const getSortValue = (u: UserRecord, key: SortKey) => {
-    if (key === "createdAt") {
-      const d = u.createdAt ? new Date(u.createdAt) : null;
-      return d && !isNaN(d.getTime()) ? d.getTime() : 0;
-    }
+  const normalizeStatus = (value?: string) => {
+    const raw = (value || "").trim().toLowerCase();
+    if (!raw) return "Active";
+    if (raw === "inactive" || raw === "disabled") return "Inactive";
+    return "Active";
+  };
 
+  const getSortValue = (u: UserRecord, key: SortKey) => {
     const field =
       key === "name"
         ? u.name
@@ -171,26 +173,22 @@ export default function UsersPage() {
         ? u.email
         : key === "phone"
         ? u.phone
-        : key === "role"
-        ? u.role
         : key === "department"
         ? u.department
+        : key === "status"
+        ? normalizeStatus(u.status)
         : "";
 
     return (field || "").toString().toLowerCase();
-  };
-
-  const renderDate = (v?: string) => {
-    if (!v) return "-";
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-US");
   };
 
   const filtered = useMemo(() => {
     if (!search.trim()) return users;
     const term = search.trim().toLowerCase();
     return users.filter((u) =>
-      [u.name, u.email, u.phone, u.role, u.department].filter(Boolean).some((v) => String(v).toLowerCase().includes(term))
+      [u.name, u.email, u.phone, u.department, normalizeStatus(u.status)]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(term))
     );
   }, [users, search]);
 
@@ -310,14 +308,11 @@ export default function UsersPage() {
                   <th style={headerCellStyle} onClick={() => handleSort("phone")}>
                     {headerLabel("Phone", sortKey === "phone", sortDir)}
                   </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("role")}>
-                    {headerLabel("Role", sortKey === "role", sortDir)}
-                  </th>
                   <th style={headerCellStyle} onClick={() => handleSort("department")}>
                     {headerLabel("Department", sortKey === "department", sortDir)}
                   </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("createdAt")}>
-                    {headerLabel("Joining / Created", sortKey === "createdAt", sortDir)}
+                  <th style={headerCellStyle} onClick={() => handleSort("status")}>
+                    {headerLabel("Status", sortKey === "status", sortDir)}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
                 </tr>
@@ -349,11 +344,8 @@ export default function UsersPage() {
                       <td style={cellStyle}>{u.name || "-"}</td>
                       <td style={cellStyle}>{u.email || "-"}</td>
                       <td style={cellStyle}>{u.phone || "-"}</td>
-                      <td style={cellStyle}>{(u.role || "-").toString()}</td>
                       <td style={cellStyle}>{u.department || "-"}</td>
-                      <td style={cellStyle}>
-                        {u.joiningDate ? renderDate(u.joiningDate) : u.createdAt ? renderDate(u.createdAt) : "-"}
-                      </td>
+                      <td style={cellStyle}>{normalizeStatus(u.status)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
                         <button
                           type="button"
@@ -362,7 +354,7 @@ export default function UsersPage() {
                             openDrawer(rowId);
                           }}
                           className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
+                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
                         >
                           View
                         </button>
@@ -574,8 +566,8 @@ function Row({ label, value, isDark }: { label: string; value: string; isDark: b
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontWeight: 500, textAlign: "right" }}>{value}</div>
     </div>
   );
 }

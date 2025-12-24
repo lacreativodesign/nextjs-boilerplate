@@ -68,7 +68,7 @@ async function generateNextOrderId(): Promise<string> {
   return `LC-${padded}`;
 }
 
-export async function PATCH(req: Request) {
+async function handleUpdate(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!canEditClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
@@ -171,4 +171,12 @@ export async function PATCH(req: Request) {
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message ?? "Failed to update client" }, { status: 500 });
   }
+}
+
+export async function PATCH(req: Request) {
+  return handleUpdate(req);
+}
+
+export async function POST(req: Request) {
+  return handleUpdate(req);
 }
