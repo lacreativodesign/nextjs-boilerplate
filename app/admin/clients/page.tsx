@@ -402,7 +402,7 @@ export default function ClientsPage() {
                               openDrawer(c);
                             }}
                             className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
                           >
                             View
                           </button>
@@ -489,6 +489,22 @@ export default function ClientsPage() {
 
             <div style={{ height: 12 }} />
 
+            <Section title="Ownership" isDark={isDark}>
+              <Row label="Sales Owner" value={selected.salesOwner || "-"} isDark={isDark} />
+              <Row label="Account Manager" value={selected.accountManager || "-"} isDark={isDark} />
+              <Row label="Production Owner" value={selected.productionOwner || "-"} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 12 }} />
+
+            <Section title="Pipeline" isDark={isDark}>
+              <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} isDark={isDark} />
+              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} isDark={isDark} />
+              <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 12 }} />
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
@@ -558,8 +574,8 @@ function Row({ label, value, isDark }: { label: string; value: string; isDark: b
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontWeight: 500, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
