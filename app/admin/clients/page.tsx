@@ -21,8 +21,17 @@ type ClientRecord = {
   companyName: string;
   website?: string;
   industry?: string;
+  businessType?: string;
   country?: string;
+  city?: string;
   timezone?: string;
+  employeeCountRange?: string | null;
+  yearsInBusinessRange?: string | null;
+
+  segmentServices?: string[];
+  segmentBusinessType?: string | null;
+  segmentIndustry?: string | null;
+  segmentGeo?: string | null;
 
   primaryContactName: string;
   primaryContactTitle?: string;
@@ -106,6 +115,7 @@ export default function ClientsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [segmentMap, setSegmentMap] = useState<Record<string, { name: string; type: string }>>({});
 
   // OS-level theme only
   useEffect(() => {
@@ -156,6 +166,40 @@ export default function ClientsPage() {
     }
 
     load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSegments() {
+      try {
+        const res = await fetch("/api/admin/clients/segments/list", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) return;
+        const segments = Array.isArray(json?.segments) ? json.segments : [];
+
+        const map: Record<string, { name: string; type: string }> = {};
+        segments.forEach((seg: any) => {
+          if (seg?.slug) map[seg.slug] = { name: seg.name || seg.slug, type: seg.type || "" };
+        });
+
+        if (!alive) return;
+        setSegmentMap(map);
+      } catch {
+        if (!alive) return;
+        setSegmentMap({});
+      }
+    }
+
+    loadSegments();
     return () => {
       alive = false;
     };
@@ -402,7 +446,7 @@ export default function ClientsPage() {
                               openDrawer(c);
                             }}
                             className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
                           >
                             View
                           </button>
@@ -454,7 +498,11 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                onClick={closeDrawer}
+                style={{ height: 34, borderRadius: 999, fontWeight: 400 }}
+              >
                 Close
               </button>
             </div>
@@ -465,8 +513,42 @@ export default function ClientsPage() {
               <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} isDark={isDark} />
               <Row label="Website" value={selected.website || "-"} isDark={isDark} />
               <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
+              <Row label="Business Type" value={selected.businessType || "-"} isDark={isDark} />
               <Row label="Country" value={selected.country || "-"} isDark={isDark} />
+              <Row label="City" value={selected.city || "-"} isDark={isDark} />
               <Row label="Timezone" value={selected.timezone || "-"} isDark={isDark} />
+            </Section>
+
+            <div style={{ height: 12 }} />
+
+            <Section title="Profile" isDark={isDark}>
+              <Row
+                label="Services"
+                value={
+                  (selected.segmentServices || [])
+                    .map((slug) => segmentMap[slug]?.name || slug)
+                    .filter(Boolean)
+                    .join(", ") || "-"
+                }
+                isDark={isDark}
+              />
+              <Row
+                label="Segment (Industry)"
+                value={segmentMap[selected.segmentIndustry || ""]?.name || selected.segmentIndustry || "-"}
+                isDark={isDark}
+              />
+              <Row
+                label="Segment (Business)"
+                value={segmentMap[selected.segmentBusinessType || ""]?.name || selected.segmentBusinessType || "-"}
+                isDark={isDark}
+              />
+              <Row
+                label="Segment (Geo)"
+                value={segmentMap[selected.segmentGeo || ""]?.name || selected.segmentGeo || "-"}
+                isDark={isDark}
+              />
+              <Row label="Employee Count" value={selected.employeeCountRange || "-"} isDark={isDark} />
+              <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} isDark={isDark} />
             </Section>
 
             <div style={{ height: 12 }} />
@@ -509,7 +591,7 @@ export default function ClientsPage() {
               <button
                 type="button"
                 className="btn"
-                style={{ borderRadius: 12, fontWeight: 500 }}
+                style={{ borderRadius: 12, fontWeight: 400 }}
                 onClick={() => router.push(`/admin/clients/${selected.id}/edit`)}
               >
                 Edit Client
@@ -521,7 +603,7 @@ export default function ClientsPage() {
                 onClick={() => handleDelete(selected.id)}
                 style={{
                   borderRadius: 12,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.10)",
                   border: "1px solid rgba(239,68,68,0.35)",
                   color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
@@ -556,7 +638,7 @@ function Section({
         background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
@@ -574,8 +656,8 @@ function Row({ label, value, isDark }: { label: string; value: string; isDark: b
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontWeight: 500, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{label}</div>
+      <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
     </div>
   );
 }

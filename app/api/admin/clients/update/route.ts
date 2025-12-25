@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
 import { ensureClientPortalAccess } from "@/lib/clientPortal";
 import { getCurrentUser } from "../../_utils";
+import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -119,8 +120,16 @@ async function handleUpdate(req: Request) {
     if (body?.companyName !== undefined) updateData.companyName = cleanString(body.companyName);
     if (body?.website !== undefined) updateData.website = cleanString(body.website);
     if (body?.industry !== undefined) updateData.industry = cleanString(body.industry);
+    if (body?.businessType !== undefined) updateData.businessType = cleanString(body.businessType);
     if (body?.country !== undefined) updateData.country = cleanString(body.country);
+    if (body?.city !== undefined) updateData.city = cleanString(body.city);
     if (body?.timezone !== undefined) updateData.timezone = cleanString(body.timezone);
+    if (body?.employeeCountRange !== undefined) {
+      updateData.employeeCountRange = cleanString(body.employeeCountRange) || null;
+    }
+    if (body?.yearsInBusinessRange !== undefined) {
+      updateData.yearsInBusinessRange = cleanString(body.yearsInBusinessRange) || null;
+    }
 
     // Contact
     if (body?.primaryContactName !== undefined) updateData.primaryContactName = cleanString(body.primaryContactName);
@@ -146,7 +155,17 @@ async function handleUpdate(req: Request) {
     if (body?.totalPaidUsd !== undefined) updateData.totalPaidUsd = toNumber(body.totalPaidUsd);
     if (body?.openBalanceUsd !== undefined) updateData.openBalanceUsd = toNumber(body.openBalanceUsd);
 
-    if (body?.services !== undefined) updateData.services = cleanString(body.services);
+    if (body?.segmentServices !== undefined) updateData.segmentServices = normalizeSlugArray(body.segmentServices);
+    if (body?.segmentBusinessType !== undefined) {
+      updateData.segmentBusinessType = normalizeOptionalSlug(body.segmentBusinessType);
+    }
+    if (body?.segmentIndustry !== undefined) updateData.segmentIndustry = normalizeOptionalSlug(body.segmentIndustry);
+    if (body?.segmentGeo !== undefined) {
+      updateData.segmentGeo = normalizeOptionalSlug(body.segmentGeo);
+    } else if (body?.country !== undefined) {
+      const derivedGeo = slugify(cleanString(body.country));
+      updateData.segmentGeo = derivedGeo || null;
+    }
     updateData.primaryContactEmailLower = existingEmailLower;
 
     // If payment becomes paid/partial AND orderId is missing => generate LC-0001

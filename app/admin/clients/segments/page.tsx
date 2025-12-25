@@ -1,19 +1,694 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { SegmentDefinition, SegmentType } from "@/lib/segments";
+import { getValueBand, slugify, valueBands } from "@/lib/segments";
+
+const tabOptions: Array<{ label: string; value: SegmentType }> = [
+  { label: "Service", value: "service" },
+  { label: "Value", value: "value" },
+  { label: "Business Type", value: "business_type" },
+  { label: "Industry", value: "industry" },
+  { label: "Geo", value: "geo" },
+];
+
+type ClientRecord = {
+  id: string;
+  companyName?: string;
+  primaryContactName?: string;
+  primaryContactEmail?: string;
+  totalPaidUsd?: number;
+  segmentServices?: string[];
+  segmentBusinessType?: string | null;
+  segmentIndustry?: string | null;
+  segmentGeo?: string | null;
+  country?: string;
+};
+
+type SegmentRow = {
+  id: string;
+  name: string;
+  slug: string;
+  type: SegmentType;
+  isActive: boolean;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+  clientCount: number;
+};
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-US");
+}
+
 export default function ClientSegmentsPage() {
+  const [activeTab, setActiveTab] = useState<SegmentType>("service");
+  const [segments, setSegments] = useState<SegmentDefinition[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [canAdmin, setCanAdmin] = useState(false);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<SegmentRow | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageName, setManageName] = useState("");
+  const [manageActive, setManageActive] = useState(true);
+  const [manageLoading, setManageLoading] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSegments() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [segmentsRes, clientsRes] = await Promise.all([
+          fetch("/api/admin/clients/segments/list", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+          }),
+          fetch("/api/admin/clients/list", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+          }),
+        ]);
+
+        const segmentsJson = await segmentsRes.json().catch(() => ({}));
+        const clientsJson = await clientsRes.json().catch(() => ({}));
+
+        if (!segmentsRes.ok || !segmentsJson?.ok) {
+          throw new Error(segmentsJson?.error || "Failed to load segments");
+        }
+        if (!clientsRes.ok || !clientsJson?.ok) {
+          throw new Error(clientsJson?.error || "Failed to load clients");
+        }
+
+        if (!alive) return;
+        setSegments(Array.isArray(segmentsJson?.segments) ? segmentsJson.segments : []);
+        setClients(Array.isArray(clientsJson?.clients) ? clientsJson.clients : []);
+        setCanAdmin(Boolean(segmentsJson?.canAdmin));
+      } catch (err: any) {
+        if (!alive) return;
+        setError(err?.message || "Failed to load client segments");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    }
+
+    loadSegments();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const segmentsByType = useMemo(() => {
+    const grouped: Record<string, SegmentDefinition[]> = {};
+    segments.forEach((segment) => {
+      if (!grouped[segment.type]) grouped[segment.type] = [];
+      grouped[segment.type].push(segment);
+    });
+    return grouped;
+  }, [segments]);
+
+  const normalizedClients = useMemo(() => {
+    return (clients || []).map((client) => {
+      const geo = client.segmentGeo || slugify(client.country || "");
+      return {
+        ...client,
+        segmentGeo: geo || null,
+        segmentServices: Array.isArray(client.segmentServices) ? client.segmentServices : [],
+        totalPaidUsd: Number(client.totalPaidUsd || 0),
+      };
+    });
+  }, [clients]);
+
+  const segmentRows = useMemo(() => {
+    const rows: SegmentRow[] = [];
+
+    if (activeTab === "value") {
+      valueBands.forEach((band) => {
+        const count = normalizedClients.filter((client) => getValueBand(client.totalPaidUsd || 0).slug === band.slug).length;
+        rows.push({
+          id: `value-${band.slug}`,
+          name: band.name,
+          slug: band.slug,
+          type: "value",
+          isActive: true,
+          updatedAt: null,
+          createdAt: null,
+          clientCount: count,
+        });
+      });
+
+      return rows;
+    }
+
+    const list = segmentsByType[activeTab] || [];
+    list.forEach((segment) => {
+      const count = normalizedClients.filter((client) => {
+        if (activeTab === "service") return client.segmentServices?.includes(segment.slug);
+        if (activeTab === "business_type") return client.segmentBusinessType === segment.slug;
+        if (activeTab === "industry") return client.segmentIndustry === segment.slug;
+        if (activeTab === "geo") return client.segmentGeo === segment.slug;
+        return false;
+      }).length;
+
+      rows.push({
+        id: segment.id,
+        name: segment.name,
+        slug: segment.slug,
+        type: segment.type as SegmentType,
+        isActive: segment.isActive,
+        updatedAt: segment.updatedAt || null,
+        createdAt: segment.createdAt || null,
+        clientCount: count,
+      });
+    });
+
+    return rows;
+  }, [activeTab, normalizedClients, segmentsByType]);
+
+  const kpis = useMemo(() => {
+    const totalSegments = segmentRows.length;
+    const activeSegments = segmentRows.filter((row) => row.isActive).length;
+    const totalClients = normalizedClients.length || 0;
+
+    const coveredClients = normalizedClients.filter((client) => {
+      if (activeTab === "service") return (client.segmentServices || []).length > 0;
+      if (activeTab === "business_type") return Boolean(client.segmentBusinessType);
+      if (activeTab === "industry") return Boolean(client.segmentIndustry);
+      if (activeTab === "geo") return Boolean(client.segmentGeo);
+      return true;
+    }).length;
+
+    const coveredPct = totalClients ? Math.round((coveredClients / totalClients) * 100) : 0;
+    const topSegment = segmentRows.reduce(
+      (top, row) => (row.clientCount > (top?.clientCount || 0) ? row : top),
+      null as SegmentRow | null
+    );
+
+    return {
+      totalSegments,
+      activeSegments,
+      coveredPct,
+      topSegmentName: topSegment?.name || "-",
+    };
+  }, [activeTab, normalizedClients, segmentRows]);
+
+  const drawerClients = useMemo(() => {
+    if (!selectedSegment) return [];
+
+    return normalizedClients.filter((client) => {
+      if (selectedSegment.type === "value") {
+        return getValueBand(client.totalPaidUsd || 0).slug === selectedSegment.slug;
+      }
+      if (selectedSegment.type === "service") return client.segmentServices?.includes(selectedSegment.slug);
+      if (selectedSegment.type === "business_type") return client.segmentBusinessType === selectedSegment.slug;
+      if (selectedSegment.type === "industry") return client.segmentIndustry === selectedSegment.slug;
+      if (selectedSegment.type === "geo") return client.segmentGeo === selectedSegment.slug;
+      return false;
+    });
+  }, [normalizedClients, selectedSegment]);
+
+  const filteredDrawerClients = useMemo(() => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return drawerClients;
+    return drawerClients.filter((client) => {
+      const hay = [client.companyName, client.primaryContactName, client.primaryContactEmail]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [clientSearch, drawerClients]);
+
+  const tableShellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 12,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "rgba(255,255,255,0.85)",
+    boxShadow: "0 18px 55px rgba(15,23,42,0.10)",
+  };
+
+  const headerCellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    fontSize: 11,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "rgba(15,23,42,0.55)",
+    borderBottom: "1px solid rgba(15,23,42,0.10)",
+    whiteSpace: "nowrap",
+  };
+
+  const cellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    borderBottom: "1px dashed rgba(15,23,42,0.10)",
+    color: "rgba(15,23,42,0.85)",
+    whiteSpace: "nowrap",
+    fontWeight: 400,
+  };
+
+  function openDrawer(row: SegmentRow) {
+    setSelectedSegment(row);
+    setClientSearch("");
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setSelectedSegment(null);
+  }
+
+  function openManage() {
+    if (!selectedSegment) return;
+    setManageName(selectedSegment.name);
+    setManageActive(selectedSegment.isActive);
+    setManageOpen(true);
+  }
+
+  async function handleManageSave() {
+    if (!selectedSegment) return;
+    setManageLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/clients/segments/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id: selectedSegment.id,
+          name: manageName.trim(),
+          isActive: manageActive,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Failed to update segment");
+      }
+
+      setSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === selectedSegment.id
+            ? { ...segment, name: manageName.trim(), isActive: manageActive, updatedAt: new Date().toISOString() }
+            : segment
+        )
+      );
+      setSelectedSegment((prev) =>
+        prev
+          ? { ...prev, name: manageName.trim(), isActive: manageActive, updatedAt: new Date().toISOString() }
+          : prev
+      );
+      setManageOpen(false);
+    } catch (err: any) {
+      alert(err?.message || "Failed to update segment");
+    } finally {
+      setManageLoading(false);
+    }
+  }
+
+  async function handleDeleteSegment() {
+    if (!selectedSegment) return;
+    const confirmed = window.confirm("Delete this segment? It will be deactivated.");
+    if (!confirmed) return;
+
+    setManageLoading(true);
+    try {
+      const res = await fetch("/api/admin/clients/segments/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: selectedSegment.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete segment");
+
+      setSegments((prev) =>
+        prev.map((segment) =>
+          segment.id === selectedSegment.id
+            ? { ...segment, isActive: false, updatedAt: new Date().toISOString() }
+            : segment
+        )
+      );
+      setSelectedSegment((prev) =>
+        prev ? { ...prev, isActive: false, updatedAt: new Date().toISOString() } : prev
+      );
+      setManageOpen(false);
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete segment");
+    } finally {
+      setManageLoading(false);
+    }
+  }
+
   return (
-    <div
-      style={{
-        background: "var(--card-bg)",
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        padding: 20,
-      }}
-    >
-      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
+    <div style={{ width: "100%" }}>
+      <h1 style={{ fontSize: 34, fontWeight: 700, marginBottom: 8, color: "rgba(15,23,42,0.95)" }}>
         Client Segments
-      </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder for segmentation categories (retainer, web only, full service).
-      </p>
+      </h1>
+      <div style={{ marginBottom: 18, color: "rgba(15,23,42,0.65)" }}>
+        Manage segmentation definitions and track coverage across your client base.
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+        {tabOptions.map((tab) => {
+          const active = tab.value === activeTab;
+          return (
+            <button
+              key={tab.value}
+              className="btn"
+              onClick={() => setActiveTab(tab.value)}
+              style={{
+                borderRadius: 999,
+                padding: "8px 16px",
+                background: active ? "rgba(59,130,246,0.08)" : "rgba(15,23,42,0.04)",
+                border: active ? "1px solid rgba(59,130,246,0.45)" : "1px solid rgba(15,23,42,0.08)",
+                color: "rgba(15,23,42,0.85)",
+                fontWeight: 400,
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {error ? (
+        <div style={{ marginBottom: 12, color: "#ef4444" }}>{error}</div>
+      ) : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        {[
+          { label: "Total Segments", value: kpis.totalSegments },
+          { label: "Active Segments", value: kpis.activeSegments },
+          { label: "Clients Covered", value: `${kpis.coveredPct}%` },
+          { label: "Top Segment", value: kpis.topSegmentName },
+        ].map((card) => (
+          <div
+            key={card.label}
+            style={{
+              padding: 14,
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.85)",
+              border: "1px solid rgba(15,23,42,0.10)",
+              boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+            }}
+          >
+            <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(15,23,42,0.55)" }}>
+              {card.label}
+            </div>
+            <div style={{ fontSize: 20, marginTop: 6, color: "rgba(15,23,42,0.85)", fontWeight: 500 }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ height: 16 }} />
+
+      <div style={tableShellStyle}>
+        {loading ? (
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>Loading segments...</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 960 }}>
+              <thead>
+                <tr>
+                  <th style={headerCellStyle}>Segment Name</th>
+                  <th style={headerCellStyle}>Type</th>
+                  <th style={headerCellStyle}>Clients</th>
+                  <th style={headerCellStyle}>Status</th>
+                  <th style={headerCellStyle}>Updated</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {segmentRows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={cellStyle}>{row.name}</td>
+                    <td style={cellStyle}>{row.type === "business_type" ? "Business Type" : row.type}</td>
+                    <td style={cellStyle}>{row.clientCount}</td>
+                    <td style={cellStyle}>{row.isActive ? "Active" : "Inactive"}</td>
+                    <td style={cellStyle}>{fmtDate(row.updatedAt || row.createdAt)}</td>
+                    <td style={{ ...cellStyle, textAlign: "right" }}>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
+                        onClick={() => openDrawer(row)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {drawerOpen && selectedSegment && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(15,23,42,0.35)",
+            backdropFilter: "blur(6px)",
+          }}
+          onClick={closeDrawer}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: "min(460px, 92vw)",
+              height: "100%",
+              padding: 18,
+              background: "rgba(255,255,255,0.96)",
+              borderLeft: "1px solid rgba(15,23,42,0.10)",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 500, color: "rgba(15,23,42,0.90)" }}>
+                  {selectedSegment.name}
+                </div>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
+                  {selectedSegment.type}
+                </div>
+              </div>
+
+              <button
+                className="btn ghost"
+                onClick={closeDrawer}
+                style={{ height: 34, borderRadius: 999, fontWeight: 400 }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ height: 14 }} />
+
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 14,
+                background: "rgba(15,23,42,0.02)",
+              }}
+            >
+              <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.75 }}>
+                Segment Details
+              </div>
+              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                {[
+                  { label: "Status", value: selectedSegment.isActive ? "Active" : "Inactive" },
+                  { label: "Slug", value: selectedSegment.slug },
+                  { label: "Created", value: fmtDate(selectedSegment.createdAt) },
+                  { label: "Updated", value: fmtDate(selectedSegment.updatedAt) },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "1px solid rgba(15,23,42,0.10)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{row.label}</div>
+                    <div style={{ fontWeight: 400, textAlign: "right" }}>{row.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 14 }} />
+
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 14,
+                background: "rgba(15,23,42,0.02)",
+              }}
+            >
+              <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.75 }}>
+                Clients in Segment
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <input
+                  className="input"
+                  placeholder="Search clients"
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                />
+              </div>
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                {filteredDrawerClients.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "rgba(15,23,42,0.65)" }}>No clients found.</div>
+                ) : (
+                  filteredDrawerClients.slice(0, 10).map((client) => (
+                    <div
+                      key={client.id}
+                      style={{
+                        padding: 10,
+                        borderRadius: 12,
+                        border: "1px solid rgba(15,23,42,0.10)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 400 }}>{client.companyName || "-"}</div>
+                      <div style={{ fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
+                        {client.primaryContactName || "-"} · {client.primaryContactEmail || "-"}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {filteredDrawerClients.length > 10 ? (
+                  <div style={{ fontSize: 12, color: "rgba(15,23,42,0.55)" }}>
+                    Showing 10 of {filteredDrawerClients.length} clients
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div style={{ height: 14 }} />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ borderRadius: 12, fontWeight: 400 }}
+                onClick={() => {
+                  if (!canAdmin) return;
+                  openManage();
+                }}
+                disabled={!canAdmin}
+              >
+                Manage Segment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manageOpen && selectedSegment && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(15,23,42,0.4)",
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={() => setManageOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 420,
+              margin: "10vh auto",
+              background: "#fff",
+              borderRadius: 16,
+              padding: 18,
+              border: "1px solid rgba(15,23,42,0.12)",
+              boxShadow: "0 20px 45px rgba(15,23,42,0.12)",
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 12 }}>Manage Segment</div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, color: "rgba(15,23,42,0.6)", marginBottom: 6 }}>
+                  Segment Name
+                </div>
+                <input className="input" value={manageName} onChange={(e) => setManageName(e.target.value)} />
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={manageActive}
+                  onChange={(e) => setManageActive(e.target.checked)}
+                />
+                Active segment
+              </label>
+            </div>
+
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ borderRadius: 12, fontWeight: 400 }}
+                onClick={() => setManageOpen(false)}
+              >
+                Cancel
+              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  style={{
+                    borderRadius: 12,
+                    fontWeight: 400,
+                    background: "rgba(239,68,68,0.12)",
+                    border: "1px solid rgba(239,68,68,0.35)",
+                    color: "rgba(15,23,42,0.86)",
+                  }}
+                  onClick={handleDeleteSegment}
+                  disabled={manageLoading}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ borderRadius: 12, fontWeight: 400 }}
+                  onClick={handleManageSave}
+                  disabled={manageLoading}
+                >
+                  {manageLoading ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

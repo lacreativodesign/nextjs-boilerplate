@@ -8,8 +8,17 @@ type ClientDoc = {
   companyName?: string;
   website?: string;
   industry?: string;
+  businessType?: string;
   country?: string;
+  city?: string;
   timezone?: string;
+  employeeCountRange?: string | null;
+  yearsInBusinessRange?: string | null;
+
+  segmentServices?: string[];
+  segmentBusinessType?: string | null;
+  segmentIndustry?: string | null;
+  segmentGeo?: string | null;
 
   primaryContactName?: string;
   primaryContactTitle?: string;
@@ -78,8 +87,17 @@ export async function GET() {
           companyName: d.companyName || "",
           website: d.website || "",
           industry: d.industry || "",
+          businessType: d.businessType || "",
           country: d.country || "",
+          city: d.city || "",
           timezone: d.timezone || "",
+          employeeCountRange: d.employeeCountRange || null,
+          yearsInBusinessRange: d.yearsInBusinessRange || null,
+
+          segmentServices: Array.isArray(d.segmentServices) ? d.segmentServices : [],
+          segmentBusinessType: d.segmentBusinessType || null,
+          segmentIndustry: d.segmentIndustry || null,
+          segmentGeo: d.segmentGeo || null,
 
           primaryContactName: d.primaryContactName || "",
           primaryContactTitle: d.primaryContactTitle || "",

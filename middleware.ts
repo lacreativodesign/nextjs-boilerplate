@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
+  if (req.headers.get("x-middleware-prefetch") === "1") {
+    return NextResponse.next();
+  }
   const token = req.cookies.get("lac_session")?.value;
   const { pathname } = req.nextUrl;
 
