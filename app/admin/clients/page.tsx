@@ -106,9 +106,6 @@ export default function ClientsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [inviteStatus, setInviteStatus] = useState("");
-  const [inviteError, setInviteError] = useState("");
-  const [inviteLoading, setInviteLoading] = useState(false);
 
   // OS-level theme only
   useEffect(() => {
@@ -239,8 +236,6 @@ export default function ClientsPage() {
   function openDrawer(c: ClientRecord) {
     setSelected(c);
     setDrawerOpen(true);
-    setInviteStatus("");
-    setInviteError("");
   }
 
   function closeDrawer() {
@@ -273,36 +268,6 @@ export default function ClientsPage() {
       alert(e?.message || "Failed to delete client");
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));
-    }
-  }
-
-  async function handleInvite(clientId: string) {
-    setInviteStatus("");
-    setInviteError("");
-    setInviteLoading(true);
-
-    try {
-      const res = await fetch("/api/admin/clients/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ clientId }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Failed to send invite.");
-      }
-
-      if (json?.emailSent === false && json?.setPasswordLink) {
-        setInviteStatus(`Invite link generated: ${json.setPasswordLink}`);
-      } else {
-        setInviteStatus("Invite sent successfully.");
-      }
-    } catch (err: any) {
-      setInviteError(err?.message || "Failed to send invite.");
-    } finally {
-      setInviteLoading(false);
     }
   }
 
@@ -540,28 +505,7 @@ export default function ClientsPage() {
 
             <div style={{ height: 12 }} />
 
-            {inviteStatus && (
-              <div style={{ marginBottom: 10, fontSize: 13, color: "#16a34a" }}>{inviteStatus}</div>
-            )}
-            {inviteError && (
-              <div style={{ marginBottom: 10, fontSize: 13, color: "#b91c1c" }}>{inviteError}</div>
-            )}
-
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="btn"
-                disabled={inviteLoading || selected.paymentStatus !== "Paid"}
-                onClick={() => handleInvite(selected.id)}
-                style={{
-                  borderRadius: 12,
-                  fontWeight: 500,
-                  opacity: inviteLoading || selected.paymentStatus !== "Paid" ? 0.6 : 1,
-                  cursor: inviteLoading || selected.paymentStatus !== "Paid" ? "not-allowed" : "pointer",
-                }}
-              >
-                {inviteLoading ? "Sending..." : "Invite Client / Resend Invite"}
-              </button>
               <button
                 type="button"
                 className="btn"
@@ -587,11 +531,6 @@ export default function ClientsPage() {
                 {deletingId === selected.id ? "Deleting..." : "Delete Client"}
               </button>
             </div>
-            {selected.paymentStatus !== "Paid" && (
-              <div style={{ marginTop: 8, fontSize: 12, color: isDark ? "rgba(226,232,240,0.65)" : "#475569" }}>
-                Invite is available once payment status is set to Paid.
-              </div>
-            )}
           </div>
         </div>
       )}

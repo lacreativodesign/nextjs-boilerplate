@@ -110,83 +110,112 @@ export default function LoginPage() {
   // UI (unchanged)
   return (
     <div className="login-root">
-      {!firebaseAuth ? (
-        <div className="login-card login-card--loading">
-          <p className="login-helper">{initError || "Preparing authentication…"}</p>
+      <div className="login-background" aria-hidden="true">
+        <span className="login-glow login-glow--one" />
+        <span className="login-glow login-glow--two" />
+        <span className="login-glow login-glow--three" />
+        <span className="login-grid" />
+      </div>
+      <div className="login-shell">
+        <div className="login-brand-panel">
+          <div className="login-brand-pill">LA CREATIVO</div>
+          <h1 className="login-brand-title">Master UI access for your enterprise workspace.</h1>
+          <p className="login-brand-subtitle">
+            Securely manage operations, clients, and analytics with premium-grade controls built for speed.
+          </p>
+          <div className="login-brand-metrics">
+            <div>
+              <p className="metric-label">Security</p>
+              <p className="metric-value">SOC2 Ready</p>
+            </div>
+            <div>
+              <p className="metric-label">Latency</p>
+              <p className="metric-value">&lt; 80ms</p>
+            </div>
+            <div>
+              <p className="metric-label">Coverage</p>
+              <p className="metric-value">Global</p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="login-card">
-          <div className="login-heading">
-            <p className="login-kicker">LA CREATIVO DASHBOARD</p>
-            <h1 className="login-title">Secure access to your workspace</h1>
+
+        {!firebaseAuth ? (
+          <div className="login-card login-card--loading" aria-live="polite">
+            <div className="loading-shimmer" />
+            <div className="loading-lines">
+              <span />
+              <span />
+              <span />
+            </div>
+            <p className="login-helper">{initError || "Preparing authentication…"}</p>
           </div>
-
-          <div
-            className={`login-error ${error ? "is-visible" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            {error || " "}
-          </div>
-
-          <form onSubmit={handleLogin} className="login-form">
-            <label className="login-field">
-              <span className="login-label">Email</span>
-              <div className="login-input-wrap">
-                <input
-                  type="email"
-                  placeholder="name@lacreativo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="login-input"
-                  required
-                />
-              </div>
-            </label>
-
-            <label className="login-field">
-              <span className="login-label">Password</span>
-              <div className="login-input-wrap">
-                <input
-                  type={showPass ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="login-input login-input--with-toggle"
-                  required
-                />
-                <button
-                  type="button"
-                  className="login-toggle"
-                  onClick={() => setShowPass(!showPass)}
-                  aria-label={showPass ? "Hide password" : "Show password"}
-                >
-                  {showPass ? "Hide" : "Show"}
-                </button>
-              </div>
-            </label>
-
-            <div className="login-row">
-              <label className="login-check">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={() => setRemember(!remember)}
-                />
-                <span>Remember me</span>
-              </label>
+        ) : (
+          <div className="login-card">
+            <div className="login-heading">
+              <p className="login-kicker">LA CREATIVO DASHBOARD</p>
+              <h2 className="login-title">Sign in to continue</h2>
+              <p className="login-subtitle">Use your company credentials to access the enterprise suite.</p>
             </div>
 
-            <button type="submit" disabled={loading} className="login-submit">
-              {loading ? "Signing in…" : "Login"}
-            </button>
-          </form>
+            <div className={`login-error ${error ? "is-visible" : ""}`} role="status" aria-live="polite">
+              {error || " "}
+            </div>
 
-          <button onClick={handleForgot} className="login-forgot" type="button">
-            Forgot Password?
-          </button>
-        </div>
-      )}
+            <form onSubmit={handleLogin} className="login-form">
+              <label className="login-field">
+                <span className="login-label">Email</span>
+                <div className="login-input-wrap">
+                  <input
+                    type="email"
+                    placeholder="name@lacreativo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="login-input"
+                    required
+                  />
+                </div>
+              </label>
+
+              <label className="login-field">
+                <span className="login-label">Password</span>
+                <div className="login-input-wrap">
+                  <input
+                    type={showPass ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="login-input login-input--with-toggle"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="login-toggle"
+                    onClick={() => setShowPass(!showPass)}
+                    aria-label={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </label>
+
+              <div className="login-row">
+                <label className="login-check">
+                  <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
+                  <span>Remember me</span>
+                </label>
+              </div>
+
+              <button type="submit" disabled={loading} className="login-submit">
+                {loading ? "Signing in…" : "Login"}
+              </button>
+            </form>
+
+            <button onClick={handleForgot} className="login-forgot" type="button">
+              Forgot Password?
+            </button>
+          </div>
+        )}
+      </div>
       <style jsx global>{`
         .login-root {
           --bg-start: #f4f6fb;
@@ -205,6 +234,9 @@ export default function LoginPage() {
           --error-text: #b91c1c;
           --shadow: 0 30px 80px rgba(15, 23, 42, 0.15);
           --glow: rgba(59, 130, 246, 0.15);
+          --glass-shadow: 0 28px 70px rgba(15, 23, 42, 0.2);
+          --surface-border: rgba(148, 163, 184, 0.2);
+          --pill-bg: rgba(255, 255, 255, 0.55);
           min-height: 100vh;
           display: flex;
           align-items: center;
@@ -212,9 +244,9 @@ export default function LoginPage() {
           padding: 32px 20px;
           position: relative;
           overflow: hidden;
-          background: radial-gradient(1200px circle at 10% 10%, #ffffff 0%, #eef2ff 40%, transparent 70%),
+          background: radial-gradient(1400px circle at 10% 15%, #ffffff 0%, #eef2ff 38%, transparent 70%),
             linear-gradient(135deg, var(--bg-start), var(--bg-end));
-          animation: login-bg-shift 16s ease-in-out infinite alternate;
+          animation: login-bg-shift 18s ease-in-out infinite alternate;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -235,32 +267,122 @@ export default function LoginPage() {
             --error-text: #fecaca;
             --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
             --glow: rgba(96, 165, 250, 0.18);
+            --glass-shadow: 0 28px 70px rgba(0, 0, 0, 0.6);
+            --surface-border: rgba(148, 163, 184, 0.28);
+            --pill-bg: rgba(15, 23, 42, 0.65);
           }
         }
 
-        .login-root::before,
-        .login-root::after {
-          content: "";
+        .login-background {
           position: absolute;
-          width: 520px;
-          height: 520px;
-          border-radius: 50%;
-          background: radial-gradient(circle, var(--glow) 0%, transparent 60%);
-          filter: blur(10px);
-          opacity: 0.7;
-          animation: login-orbit 18s ease-in-out infinite;
+          inset: 0;
+          overflow: hidden;
           pointer-events: none;
         }
 
-        .login-root::before {
-          top: -120px;
-          right: -140px;
+        .login-glow {
+          position: absolute;
+          width: 480px;
+          height: 480px;
+          border-radius: 50%;
+          background: radial-gradient(circle, var(--glow) 0%, transparent 65%);
+          filter: blur(12px);
+          opacity: 0.75;
+          animation: login-orbit 18s ease-in-out infinite;
         }
 
-        .login-root::after {
-          bottom: -180px;
-          left: -160px;
+        .login-glow--one {
+          top: -160px;
+          right: -120px;
+        }
+
+        .login-glow--two {
+          bottom: -200px;
+          left: -140px;
           animation-delay: -6s;
+        }
+
+        .login-glow--three {
+          top: 20%;
+          left: 55%;
+          width: 360px;
+          height: 360px;
+          opacity: 0.5;
+          animation-delay: -12s;
+        }
+
+        .login-grid {
+          position: absolute;
+          inset: 0;
+          background-image: linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+          background-size: 80px 80px;
+          opacity: 0.12;
+          mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 70%);
+        }
+
+        .login-shell {
+          width: min(1040px, 100%);
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 32px;
+          align-items: center;
+          position: relative;
+          z-index: 1;
+        }
+
+        .login-brand-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          color: var(--text-primary);
+        }
+
+        .login-brand-pill {
+          align-self: flex-start;
+          padding: 6px 14px;
+          border-radius: 999px;
+          background: var(--pill-bg);
+          border: 1px solid var(--surface-border);
+          font-size: 0.7rem;
+          letter-spacing: 0.3em;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          backdrop-filter: blur(12px);
+        }
+
+        .login-brand-title {
+          font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2.5rem);
+          margin: 0;
+          line-height: 1.1;
+        }
+
+        .login-brand-subtitle {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 1rem;
+          max-width: 400px;
+        }
+
+        .login-brand-metrics {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 14px;
+        }
+
+        .metric-label {
+          margin: 0;
+          font-size: 0.72rem;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          color: var(--text-muted);
+        }
+
+        .metric-value {
+          margin: 6px 0 0;
+          font-weight: 600;
+          color: var(--text-primary);
         }
 
         .login-card {
@@ -269,10 +391,9 @@ export default function LoginPage() {
           border-radius: 24px;
           background: var(--card-bg);
           border: 1px solid var(--card-border);
-          box-shadow: var(--shadow);
+          box-shadow: var(--glass-shadow);
           backdrop-filter: blur(18px);
           position: relative;
-          z-index: 1;
           display: flex;
           flex-direction: column;
           gap: 20px;
@@ -282,6 +403,8 @@ export default function LoginPage() {
         .login-card--loading {
           align-items: center;
           text-align: center;
+          min-height: 360px;
+          justify-content: center;
         }
 
         .login-heading {
@@ -299,10 +422,16 @@ export default function LoginPage() {
         }
 
         .login-title {
-          font-size: 1.6rem;
+          font-size: 1.5rem;
           margin: 0;
           color: var(--text-primary);
           line-height: 1.2;
+        }
+
+        .login-subtitle {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 0.95rem;
         }
 
         .login-helper {
@@ -431,8 +560,8 @@ export default function LoginPage() {
         }
 
         .login-submit:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 18px 32px rgba(37, 99, 235, 0.32);
+          transform: translateY(-2px);
+          box-shadow: 0 20px 36px rgba(37, 99, 235, 0.35);
         }
 
         .login-submit:disabled {
@@ -454,6 +583,50 @@ export default function LoginPage() {
 
         .login-forgot:hover {
           text-decoration: underline;
+        }
+
+        .loading-shimmer {
+          width: 100%;
+          height: 8px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.18);
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+
+        .loading-shimmer::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.5), transparent);
+          transform: translateX(-100%);
+          animation: shimmer 1.6s ease-in-out infinite;
+        }
+
+        .loading-lines {
+          width: 100%;
+          display: grid;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .loading-lines span {
+          display: block;
+          height: 12px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.3);
+          overflow: hidden;
+          position: relative;
+        }
+
+        .loading-lines span::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.5), transparent);
+          transform: translateX(-100%);
+          animation: shimmer 1.8s ease-in-out infinite;
         }
 
         @keyframes login-bg-shift {
@@ -485,6 +658,42 @@ export default function LoginPage() {
           100% {
             opacity: 1;
             transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+
+        @media (max-width: 900px) {
+          .login-shell {
+            grid-template-columns: 1fr;
+            text-align: center;
+          }
+
+          .login-brand-panel {
+            align-items: center;
+          }
+
+          .login-brand-pill {
+            align-self: center;
+          }
+
+          .login-brand-subtitle {
+            max-width: 520px;
+          }
+
+          .login-card {
+            margin: 0 auto;
+          }
+
+          .login-forgot {
+            align-self: center;
           }
         }
       `}</style>
