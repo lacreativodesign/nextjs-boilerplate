@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
-  const [initError, setInitError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -26,7 +25,6 @@ export default function LoginPage() {
       .catch((err) => {
         console.error("Failed to initialize Firebase auth", err);
         if (active) {
-          setInitError(err?.message || "Unable to load authentication.");
           setError(err?.message || "Unable to load authentication.");
         }
       });
@@ -153,87 +151,71 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div
-          className={`login-card ${!firebaseAuth ? "login-card--loading" : ""}`}
-          aria-live="polite"
-          aria-busy={!firebaseAuth}
-        >
-          {!firebaseAuth ? (
-            <>
-              <div className="loading-shimmer" />
-              <div className="loading-lines">
-                <span />
-                <span />
-                <span />
+        <div className="login-card" aria-live="polite" aria-busy={!firebaseAuth}>
+          <div className="login-heading">
+            <p className="login-kicker">LA CREATIVO DASHBOARD</p>
+            <h2 className="login-title">Sign in to continue</h2>
+            <p className="login-subtitle">Use your company credentials to access the enterprise suite.</p>
+          </div>
+
+          {error ? (
+            <div className="login-error is-visible" role="status" aria-live="polite">
+              {error}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleLogin} className="login-form">
+            <label className="login-field">
+              <span className="login-label">Email</span>
+              <div className="login-input-wrap">
+                <input
+                  type="email"
+                  placeholder="name@lacreativo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="login-input"
+                  required
+                />
               </div>
-              <p className="login-helper">{initError || "Preparing authentication…"}</p>
-            </>
-          ) : (
-            <>
-              <div className="login-heading">
-                <p className="login-kicker">LA CREATIVO DASHBOARD</p>
-                <h2 className="login-title">Sign in to continue</h2>
-                <p className="login-subtitle">Use your company credentials to access the enterprise suite.</p>
-              </div>
+            </label>
 
-              <div className={`login-error ${error ? "is-visible" : ""}`} role="status" aria-live="polite">
-                {error || " "}
-              </div>
-
-              <form onSubmit={handleLogin} className="login-form">
-                <label className="login-field">
-                  <span className="login-label">Email</span>
-                  <div className="login-input-wrap">
-                    <input
-                      type="email"
-                      placeholder="name@lacreativo.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="login-input"
-                      required
-                    />
-                  </div>
-                </label>
-
-                <label className="login-field">
-                  <span className="login-label">Password</span>
-                  <div className="login-input-wrap">
-                    <input
-                      type={showPass ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="login-input login-input--with-toggle"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="login-toggle"
-                      onClick={() => setShowPass(!showPass)}
-                      aria-label={showPass ? "Hide password" : "Show password"}
-                    >
-                      {showPass ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </label>
-
-                <div className="login-row">
-                  <label className="login-check">
-                    <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
-                    <span>Remember me</span>
-                  </label>
-                </div>
-
-                <button type="submit" disabled={loading} className="login-submit">
-                  {loading ? "Signing in…" : "Login"}
+            <label className="login-field">
+              <span className="login-label">Password</span>
+              <div className="login-input-wrap">
+                <input
+                  type={showPass ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="login-input login-input--with-toggle"
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-toggle"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? "Hide password" : "Show password"}
+                >
+                  {showPass ? "Hide" : "Show"}
                 </button>
-              </form>
+              </div>
+            </label>
 
-              <button onClick={handleForgot} className="login-forgot" type="button">
-                Forgot Password?
-              </button>
-            </>
-          )}
+            <div className="login-row">
+              <label className="login-check">
+                <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
+                <span>Remember me</span>
+              </label>
+            </div>
+
+            <button type="submit" disabled={loading || !firebaseAuth} className="login-submit">
+              {loading ? "Signing in…" : "Login"}
+            </button>
+          </form>
+
+          <button onClick={handleForgot} className="login-forgot" type="button">
+            Forgot Password?
+          </button>
         </div>
       </div>
       <style jsx global>{`
@@ -431,13 +413,6 @@ export default function LoginPage() {
           will-change: transform, opacity;
         }
 
-        .login-card--loading {
-          align-items: center;
-          text-align: center;
-          min-height: 360px;
-          justify-content: center;
-        }
-
         .login-heading {
           display: flex;
           flex-direction: column;
@@ -465,14 +440,7 @@ export default function LoginPage() {
           font-size: 0.95rem;
         }
 
-        .login-helper {
-          color: var(--text-muted);
-          margin: 0;
-          font-size: 0.95rem;
-        }
-
         .login-error {
-          min-height: 22px;
           padding: 10px 12px;
           border-radius: 12px;
           background: transparent;
@@ -615,50 +583,6 @@ export default function LoginPage() {
 
         .login-forgot:hover {
           text-decoration: underline;
-        }
-
-        .loading-shimmer {
-          width: 100%;
-          height: 8px;
-          border-radius: 999px;
-          background: rgba(148, 163, 184, 0.18);
-          position: relative;
-          overflow: hidden;
-          margin-bottom: 20px;
-        }
-
-        .loading-shimmer::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.5), transparent);
-          transform: translateX(-100%);
-          animation: shimmer 1.6s ease-in-out infinite;
-        }
-
-        .loading-lines {
-          width: 100%;
-          display: grid;
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-
-        .loading-lines span {
-          display: block;
-          height: 12px;
-          border-radius: 999px;
-          background: rgba(148, 163, 184, 0.3);
-          overflow: hidden;
-          position: relative;
-        }
-
-        .loading-lines span::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.5), transparent);
-          transform: translateX(-100%);
-          animation: shimmer 1.8s ease-in-out infinite;
         }
 
         .login-input:-webkit-autofill,
