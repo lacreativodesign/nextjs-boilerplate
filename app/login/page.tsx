@@ -237,6 +237,7 @@ export default function LoginPage() {
           --glass-shadow: 0 28px 70px rgba(15, 23, 42, 0.2);
           --surface-border: rgba(148, 163, 184, 0.2);
           --pill-bg: rgba(255, 255, 255, 0.55);
+          --grid-line: rgba(148, 163, 184, 0.12);
           min-height: 100vh;
           display: flex;
           align-items: center;
@@ -251,25 +252,28 @@ export default function LoginPage() {
 
         @media (prefers-color-scheme: dark) {
           .login-root {
-            --bg-start: #0f172a;
-            --bg-end: #020617;
-            --card-bg: rgba(15, 23, 42, 0.72);
-            --card-border: rgba(148, 163, 184, 0.2);
-            --text-primary: #e2e8f0;
-            --text-muted: #94a3b8;
-            --input-bg: rgba(15, 23, 42, 0.6);
-            --input-border: rgba(148, 163, 184, 0.28);
-            --input-text: #e2e8f0;
-            --accent: #60a5fa;
-            --accent-strong: #3b82f6;
-            --accent-glow: rgba(96, 165, 250, 0.32);
+            --bg-start: #141a21;
+            --bg-end: #0b0f14;
+            --card-bg: rgba(24, 30, 38, 0.78);
+            --card-border: rgba(148, 163, 184, 0.16);
+            --text-primary: #e5e7eb;
+            --text-muted: #a1a8b3;
+            --input-bg: rgba(20, 26, 34, 0.7);
+            --input-border: rgba(148, 163, 184, 0.2);
+            --input-text: #e5e7eb;
+            --accent: #8fa3b7;
+            --accent-strong: #74879b;
+            --accent-glow: rgba(148, 163, 184, 0.22);
             --error-bg: rgba(248, 113, 113, 0.2);
             --error-text: #fecaca;
-            --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
-            --glow: rgba(96, 165, 250, 0.18);
-            --glass-shadow: 0 28px 70px rgba(0, 0, 0, 0.6);
-            --surface-border: rgba(148, 163, 184, 0.28);
-            --pill-bg: rgba(15, 23, 42, 0.65);
+            --shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+            --glow: rgba(148, 163, 184, 0.12);
+            --glass-shadow: 0 28px 70px rgba(0, 0, 0, 0.65);
+            --surface-border: rgba(148, 163, 184, 0.18);
+            --pill-bg: rgba(20, 26, 34, 0.65);
+            --grid-line: rgba(148, 163, 184, 0.08);
+            background: radial-gradient(1200px circle at 15% 20%, rgba(255, 255, 255, 0.04) 0%, transparent 55%),
+              linear-gradient(135deg, var(--bg-start), var(--bg-end));
           }
         }
 
@@ -314,8 +318,8 @@ export default function LoginPage() {
         .login-grid {
           position: absolute;
           inset: 0;
-          background-image: linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+          background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+            linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
           background-size: 80px 80px;
           opacity: 0.12;
           mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 70%);
