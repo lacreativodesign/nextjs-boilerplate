@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import type { SegmentDefinition } from "@/lib/segments";
 
 type SalesStage =
   | "New Lead"
@@ -67,8 +68,18 @@ export default function EditClientPage() {
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [industry, setIndustry] = useState("");
+  const [businessType, setBusinessType] = useState("");
   const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
   const [timezone, setTimezone] = useState("");
+  const [employeeCountRange, setEmployeeCountRange] = useState("");
+  const [yearsInBusinessRange, setYearsInBusinessRange] = useState("");
+  const [segmentServices, setSegmentServices] = useState<string[]>([]);
+  const [segmentIndustry, setSegmentIndustry] = useState("");
+  const [segmentBusinessType, setSegmentBusinessType] = useState("");
+  const [segmentGeo, setSegmentGeo] = useState("");
+
+  const [segments, setSegments] = useState<SegmentDefinition[]>([]);
 
   const [primaryContactName, setPrimaryContactName] = useState("");
   const [primaryContactTitle, setPrimaryContactTitle] = useState("");
@@ -86,6 +97,63 @@ export default function EditClientPage() {
 
   // ✅ keep value as string so we can avoid number spinner UI entirely
   const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSegments() {
+      try {
+        const res = await fetch("/api/admin/clients/segments/list", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) return;
+        const list = Array.isArray(json?.segments) ? json.segments : [];
+        if (!alive) return;
+        setSegments(list);
+      } catch {
+        if (!alive) return;
+        setSegments([]);
+      }
+    }
+
+    loadSegments();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const segmentsByType = useMemo(() => {
+    const grouped: Record<string, SegmentDefinition[]> = {};
+    segments.forEach((segment) => {
+      if (!grouped[segment.type]) grouped[segment.type] = [];
+      grouped[segment.type].push(segment);
+    });
+    return grouped;
+  }, [segments]);
+
+  const segmentLookup = useMemo(() => {
+    const map: Record<string, SegmentDefinition> = {};
+    segments.forEach((segment) => {
+      map[segment.slug] = segment;
+    });
+    return map;
+  }, [segments]);
+
+  const employeeRanges = [
+    "1-5",
+    "6-10",
+    "11-25",
+    "26-50",
+    "51-100",
+    "101-250",
+    "251-500",
+    "500+",
+  ];
+
+  const yearsRanges = ["<1", "1-3", "4-7", "8-12", "13-20", "20+"];
 
   const styles = useMemo(() => {
     const pageTitle: React.CSSProperties = {
@@ -216,8 +284,16 @@ export default function EditClientPage() {
         setCompanyName(String(c.companyName || ""));
         setWebsite(String(c.website || ""));
         setIndustry(String(c.industry || ""));
+        setBusinessType(String(c.businessType || ""));
         setCountry(String(c.country || ""));
+        setCity(String(c.city || ""));
         setTimezone(String(c.timezone || ""));
+        setEmployeeCountRange(String(c.employeeCountRange || ""));
+        setYearsInBusinessRange(String(c.yearsInBusinessRange || ""));
+        setSegmentServices(Array.isArray(c.segmentServices) ? c.segmentServices : []);
+        setSegmentIndustry(String(c.segmentIndustry || ""));
+        setSegmentBusinessType(String(c.segmentBusinessType || ""));
+        setSegmentGeo(String(c.segmentGeo || ""));
 
         setPrimaryContactName(String(c.primaryContactName || ""));
         setPrimaryContactTitle(String(c.primaryContactTitle || ""));
@@ -268,9 +344,17 @@ export default function EditClientPage() {
         id,
         companyName: companyName.trim(),
         website: website.trim() || undefined,
-        industry: industry.trim() || undefined,
+        industry: (segmentLookup[segmentIndustry]?.name || industry).trim() || undefined,
+        businessType: (segmentLookup[segmentBusinessType]?.name || businessType).trim() || undefined,
         country: country.trim() || undefined,
+        city: city.trim() || undefined,
         timezone: timezone.trim() || undefined,
+        employeeCountRange: employeeCountRange || undefined,
+        yearsInBusinessRange: yearsInBusinessRange || undefined,
+        segmentServices,
+        segmentIndustry,
+        segmentBusinessType,
+        segmentGeo,
 
         primaryContactName: primaryContactName.trim(),
         primaryContactTitle: primaryContactTitle.trim() || undefined,
@@ -340,13 +424,13 @@ export default function EditClientPage() {
               </div>
 
               <div>
-                <div style={styles.label}>Industry</div>
-                <input className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+                <div style={styles.label}>Country</div>
+                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
               </div>
 
               <div>
-                <div style={styles.label}>Country</div>
-                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
+                <div style={styles.label}>City</div>
+                <input className="input" value={city} onChange={(e) => setCity(e.target.value)} />
               </div>
             </div>
 
@@ -371,6 +455,146 @@ export default function EditClientPage() {
                   placeholder="0"
                 />
                 <div style={styles.help}>Optional. You can leave it as 0.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          {/* Profile & Segments */}
+          <div style={styles.sectionCard}>
+            <div style={styles.sectionTitle}>Profile & Segments</div>
+
+            <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
+              <div>
+                <div style={styles.label}>Industry</div>
+                <select
+                  className="input"
+                  value={segmentIndustry}
+                  onChange={(e) => {
+                    const slug = e.target.value;
+                    setSegmentIndustry(slug);
+                    setIndustry(segmentLookup[slug]?.name || "");
+                  }}
+                >
+                  <option value="">Select Industry</option>
+                  {(segmentsByType.industry || []).map((segment) => (
+                    <option key={segment.id} value={segment.slug}>
+                      {segment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div style={styles.label}>Business Type</div>
+                <select
+                  className="input"
+                  value={segmentBusinessType}
+                  onChange={(e) => {
+                    const slug = e.target.value;
+                    setSegmentBusinessType(slug);
+                    setBusinessType(segmentLookup[slug]?.name || "");
+                  }}
+                >
+                  <option value="">Select Business Type</option>
+                  {(segmentsByType.business_type || []).map((segment) => (
+                    <option key={segment.id} value={segment.slug}>
+                      {segment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div style={styles.label}>Geo Segment</div>
+                <select
+                  className="input"
+                  value={segmentGeo}
+                  onChange={(e) => setSegmentGeo(e.target.value)}
+                >
+                  <option value="">Select Geo</option>
+                  {(segmentsByType.geo || []).map((segment) => (
+                    <option key={segment.id} value={segment.slug}>
+                      {segment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            <div className="grid grid-cols-2 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
+              <div>
+                <div style={styles.label}>Employee Count</div>
+                <select
+                  className="input"
+                  value={employeeCountRange}
+                  onChange={(e) => setEmployeeCountRange(e.target.value)}
+                >
+                  <option value="">Select Range</option>
+                  {employeeRanges.map((range) => (
+                    <option key={range} value={range}>
+                      {range}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div style={styles.label}>Years in Business</div>
+                <select
+                  className="input"
+                  value={yearsInBusinessRange}
+                  onChange={(e) => setYearsInBusinessRange(e.target.value)}
+                >
+                  <option value="">Select Range</option>
+                  {yearsRanges.map((range) => (
+                    <option key={range} value={range}>
+                      {range}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            <div>
+              <div style={styles.label}>Services</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {(segmentsByType.service || []).map((segment) => {
+                  const checked = segmentServices.includes(segment.slug);
+                  return (
+                    <label
+                      key={segment.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(148,163,184,0.35)",
+                        background: checked ? "rgba(59,130,246,0.08)" : "transparent",
+                        fontSize: 12,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setSegmentServices((prev) =>
+                            prev.includes(segment.slug)
+                              ? prev.filter((slug) => slug !== segment.slug)
+                              : [...prev, segment.slug]
+                          );
+                        }}
+                      />
+                      {segment.name}
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

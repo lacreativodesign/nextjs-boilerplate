@@ -27,7 +27,10 @@ export default function ERPLayout({
       production: [{ label: "Production Dashboard", href: "/production" }],
       hr: [{ label: "HR Dashboard", href: "/hr" }],
       finance: [{ label: "Finance Dashboard", href: "/finance" }],
-      client: [{ label: "Client Dashboard", href: "/client" }],
+      client: [
+        { label: "Client Dashboard", href: "/client" },
+        { label: "Profile Settings", href: "/client/settings" },
+      ],
     };
 
   const menuItems = menuItemsByRole[role] || [];

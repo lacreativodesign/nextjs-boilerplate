@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
+import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -87,8 +88,17 @@ export async function POST(req: Request) {
     companyName,
     website: cleanString(body?.website),
     industry: cleanString(body?.industry),
+    businessType: cleanString(body?.businessType),
     country: cleanString(body?.country),
+    city: cleanString(body?.city),
     timezone: cleanString(body?.timezone),
+    employeeCountRange: cleanString(body?.employeeCountRange) || null,
+    yearsInBusinessRange: cleanString(body?.yearsInBusinessRange) || null,
+
+    segmentServices: normalizeSlugArray(body?.segmentServices),
+    segmentBusinessType: normalizeOptionalSlug(body?.segmentBusinessType),
+    segmentIndustry: normalizeOptionalSlug(body?.segmentIndustry),
+    segmentGeo: body?.segmentGeo !== undefined ? normalizeOptionalSlug(body?.segmentGeo) : slugify(cleanString(body?.country)) || null,
 
     // Contact
     primaryContactName,
@@ -113,7 +123,7 @@ export async function POST(req: Request) {
     openBalanceUsd: toNumber(body?.openBalanceUsd),
 
     // Notes
-    services: cleanString(body?.services),
+    services: "",
 
     // Paid account identifier (ONLY generated when paid/partially paid)
     orderId: "",
