@@ -44,6 +44,7 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function ClientSegmentsPage() {
+  const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState<SegmentType>("service");
   const [segments, setSegments] = useState<SegmentDefinition[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
@@ -58,6 +59,20 @@ export default function ClientSegmentsPage() {
   const [manageName, setManageName] = useState("");
   const [manageActive, setManageActive] = useState(true);
   const [manageLoading, setManageLoading] = useState(false);
+
+  // OS-level theme only
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setIsDark(!!mql.matches);
+    onChange();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -233,9 +248,9 @@ export default function ClientSegmentsPage() {
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 12,
-    border: "1px solid rgba(15,23,42,0.10)",
-    background: "rgba(255,255,255,0.85)",
-    boxShadow: "0 18px 55px rgba(15,23,42,0.10)",
+    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -243,15 +258,15 @@ export default function ClientSegmentsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: "rgba(15,23,42,0.55)",
-    borderBottom: "1px solid rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
     whiteSpace: "nowrap",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: "1px dashed rgba(15,23,42,0.10)",
-    color: "rgba(15,23,42,0.85)",
+    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -351,29 +366,32 @@ export default function ClientSegmentsPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 700, marginBottom: 8, color: "rgba(15,23,42,0.95)" }}>
+      <h1
+        style={{
+          fontSize: 34,
+          fontWeight: 900,
+          marginBottom: 8,
+          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+        }}
+      >
         Client Segments
       </h1>
-      <div style={{ marginBottom: 18, color: "rgba(15,23,42,0.65)" }}>
+      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
         Manage segmentation definitions and track coverage across your client base.
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+      <div className="flex gap-2 border-b mb-6" style={{ borderColor: "var(--border)" }}>
         {tabOptions.map((tab) => {
           const active = tab.value === activeTab;
           return (
             <button
               key={tab.value}
-              className="btn"
+              className={`px-4 py-2 text-sm font-semibold rounded-t-md transition-colors ${
+                active
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
               onClick={() => setActiveTab(tab.value)}
-              style={{
-                borderRadius: 999,
-                padding: "8px 16px",
-                background: active ? "rgba(59,130,246,0.08)" : "rgba(15,23,42,0.04)",
-                border: active ? "1px solid rgba(59,130,246,0.45)" : "1px solid rgba(15,23,42,0.08)",
-                color: "rgba(15,23,42,0.85)",
-                fontWeight: 400,
-              }}
             >
               {tab.label}
             </button>
@@ -385,7 +403,14 @@ export default function ClientSegmentsPage() {
         <div style={{ marginBottom: 12, color: "#ef4444" }}>{error}</div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 20,
+          marginBottom: 20,
+        }}
+      >
         {[
           { label: "Total Segments", value: kpis.totalSegments },
           { label: "Active Segments", value: kpis.activeSegments },
@@ -395,28 +420,41 @@ export default function ClientSegmentsPage() {
           <div
             key={card.label}
             style={{
-              padding: 14,
-              borderRadius: 16,
-              background: "rgba(255,255,255,0.85)",
-              border: "1px solid rgba(15,23,42,0.10)",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+              padding: 20,
+              borderRadius: 10,
+              background: "var(--card-bg)",
+              border: "1px solid var(--border)",
             }}
           >
-            <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(15,23,42,0.55)" }}>
+            <div
+              style={{
+                fontSize: 12,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+              }}
+            >
               {card.label}
             </div>
-            <div style={{ fontSize: 20, marginTop: 6, color: "rgba(15,23,42,0.85)", fontWeight: 500 }}>
+            <div
+              style={{
+                fontSize: 22,
+                marginTop: 8,
+                color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.85)",
+                fontWeight: 700,
+              }}
+            >
               {card.value}
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ height: 16 }} />
-
       <div style={tableShellStyle}>
         {loading ? (
-          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>Loading segments...</p>
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+            Loading segments...
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 960 }}>
@@ -431,8 +469,23 @@ export default function ClientSegmentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {segmentRows.map((row) => (
-                  <tr key={row.id}>
+                {segmentRows.map((row, idx) => {
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
+                  const hoverBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
+
+                  return (
+                    <tr
+                      key={row.id}
+                      style={{ background: rowBg, transition: "background 120ms ease" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                    >
                     <td style={cellStyle}>{row.name}</td>
                     <td style={cellStyle}>{row.type === "business_type" ? "Business Type" : row.type}</td>
                     <td style={cellStyle}>{row.clientCount}</td>
@@ -448,7 +501,8 @@ export default function ClientSegmentsPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -461,8 +515,9 @@ export default function ClientSegmentsPage() {
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: "rgba(15,23,42,0.35)",
+            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
           }}
           onClick={closeDrawer}
         >
@@ -475,17 +530,23 @@ export default function ClientSegmentsPage() {
               width: "min(460px, 92vw)",
               height: "100%",
               padding: 18,
-              background: "rgba(255,255,255,0.96)",
-              borderLeft: "1px solid rgba(15,23,42,0.10)",
+              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
+              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
               overflowY: "auto",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 500, color: "rgba(15,23,42,0.90)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
                   {selectedSegment.name}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
+                <div
+                  style={{
+                    opacity: 0.75,
+                    fontSize: 12,
+                    color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                  }}
+                >
                   {selectedSegment.type}
                 </div>
               </div>
@@ -505,10 +566,19 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: "rgba(15,23,42,0.02)",
+                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.02)",
+                border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
               }}
             >
-              <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.75 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  opacity: 0.75,
+                  color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                }}
+              >
                 Segment Details
               </div>
               <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
@@ -523,14 +593,31 @@ export default function ClientSegmentsPage() {
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: "1px solid rgba(15,23,42,0.10)",
+                      border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
                       display: "flex",
                       justifyContent: "space-between",
                       gap: 12,
                     }}
                   >
-                    <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{row.label}</div>
-                    <div style={{ fontWeight: 400, textAlign: "right" }}>{row.value}</div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        opacity: 0.7,
+                        fontWeight: 400,
+                        color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.7)",
+                      }}
+                    >
+                      {row.label}
+                    </div>
+                    <div
+                      style={{
+                        fontWeight: 400,
+                        textAlign: "right",
+                        color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+                      }}
+                    >
+                      {row.value}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -542,10 +629,19 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: "rgba(15,23,42,0.02)",
+                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.02)",
+                border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
               }}
             >
-              <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.75 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  opacity: 0.75,
+                  color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                }}
+              >
                 Clients in Segment
               </div>
               <div style={{ marginTop: 10 }}>
@@ -558,7 +654,14 @@ export default function ClientSegmentsPage() {
               </div>
               <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                 {filteredDrawerClients.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "rgba(15,23,42,0.65)" }}>No clients found.</div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.65)",
+                    }}
+                  >
+                    No clients found.
+                  </div>
                 ) : (
                   filteredDrawerClients.slice(0, 10).map((client) => (
                     <div
@@ -566,21 +669,34 @@ export default function ClientSegmentsPage() {
                       style={{
                         padding: 10,
                         borderRadius: 12,
-                        border: "1px solid rgba(15,23,42,0.10)",
+                        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 4,
                       }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 400 }}>{client.companyName || "-"}</div>
-                      <div style={{ fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 400,
+                          color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+                        }}
+                      >
+                        {client.companyName || "-"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.65)",
+                        }}
+                      >
                         {client.primaryContactName || "-"} · {client.primaryContactEmail || "-"}
                       </div>
                     </div>
                   ))
                 )}
                 {filteredDrawerClients.length > 10 ? (
-                  <div style={{ fontSize: 12, color: "rgba(15,23,42,0.55)" }}>
+                  <div style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.55)" }}>
                     Showing 10 of {filteredDrawerClients.length} clients
                   </div>
                 ) : null}
@@ -613,8 +729,9 @@ export default function ClientSegmentsPage() {
             position: "fixed",
             inset: 0,
             zIndex: 60,
-            background: "rgba(15,23,42,0.4)",
+            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.4)",
             backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
           }}
           onClick={() => setManageOpen(false)}
         >
@@ -623,24 +740,47 @@ export default function ClientSegmentsPage() {
             style={{
               maxWidth: 420,
               margin: "10vh auto",
-              background: "#fff",
+              background: isDark ? "rgba(18,18,18,0.96)" : "#fff",
               borderRadius: 16,
               padding: 18,
-              border: "1px solid rgba(15,23,42,0.12)",
-              boxShadow: "0 20px 45px rgba(15,23,42,0.12)",
+              border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.12)",
+              boxShadow: isDark ? "0 20px 45px rgba(0,0,0,0.5)" : "0 20px 45px rgba(15,23,42,0.12)",
             }}
           >
-            <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 12 }}>Manage Segment</div>
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                marginBottom: 12,
+                color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+              }}
+            >
+              Manage Segment
+            </div>
 
             <div style={{ display: "grid", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 12, color: "rgba(15,23,42,0.6)", marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.6)",
+                    marginBottom: 6,
+                  }}
+                >
                   Segment Name
                 </div>
                 <input className="input" value={manageName} onChange={(e) => setManageName(e.target.value)} />
               </div>
 
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 13,
+                  color: isDark ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)",
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={manageActive}
