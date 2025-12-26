@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type FileCategory = "Draft" | "Revision" | "Final" | "Asset" | "Other";
@@ -527,30 +528,39 @@ export default function GlobalFilesPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="input" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
-          <option value="">All Projects</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.projectName}
-            </option>
-          ))}
-        </select>
-        <select className="input" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="">All Categories</option>
-          {FILE_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-        <select className="input" value={uploaderFilter} onChange={(e) => setUploaderFilter(e.target.value)}>
-          <option value="">Uploaded By</option>
-          {uploaderOptions.map((option) => (
-            <option key={option.uid} value={option.uid}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+        <MasterSelect
+          className="input"
+          value={projectFilter}
+          onChange={setProjectFilter}
+          isDark={isDark}
+          placeholder="All Projects"
+          options={[
+            { label: "All Projects", value: "" },
+            ...projects.map((project) => ({ label: project.projectName, value: project.id })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          isDark={isDark}
+          placeholder="All Categories"
+          options={[
+            { label: "All Categories", value: "" },
+            ...FILE_CATEGORIES.map((category) => ({ label: category, value: category })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={uploaderFilter}
+          onChange={setUploaderFilter}
+          isDark={isDark}
+          placeholder="Uploaded By"
+          options={[
+            { label: "Uploaded By", value: "" },
+            ...uploaderOptions.map((option) => ({ label: option.name, value: option.uid })),
+          ]}
+        />
         <input
           className="input"
           type="date"
@@ -778,28 +788,29 @@ export default function GlobalFilesPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Project</span>
-                <select className="input" value={uploadProjectId} onChange={(e) => setUploadProjectId(e.target.value)}>
-                  <option value="">Select project</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.projectName}
-                    </option>
-                  ))}
-                </select>
+                <MasterSelect
+                  className="input"
+                  value={uploadProjectId}
+                  onChange={setUploadProjectId}
+                  isDark={isDark}
+                  placeholder="Select project"
+                  buttonStyle={{ height: 38, borderRadius: 10 }}
+                  options={[
+                    { label: "Select project", value: "" },
+                    ...projects.map((project) => ({ label: project.projectName, value: project.id })),
+                  ]}
+                />
               </label>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Category</span>
-                <select
+                <MasterSelect
                   className="input"
                   value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value as FileCategory)}
-                >
-                  {FILE_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setUploadCategory(next as FileCategory)}
+                  isDark={isDark}
+                  buttonStyle={{ height: 38, borderRadius: 10 }}
+                  options={FILE_CATEGORIES.map((category) => ({ label: category, value: category }))}
+                />
               </label>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>File</span>
