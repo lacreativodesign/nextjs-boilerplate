@@ -94,6 +94,7 @@ const PIPELINE_STAGES: ProjectStage[] = [
   "Final",
   "Delivered",
 ];
+const CREATE_PIPELINE_STAGES: ProjectStage[] = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 const PRIORITIES: ProjectPriority[] = ["Low", "Normal", "High", "Urgent"];
 
 function useIsSystemDark() {
@@ -234,7 +235,7 @@ export default function AllProjectsPage() {
     projectName: "",
     clientId: "",
     projectType: "Website",
-    stage: "Inquiry",
+    stage: "Kickoff",
     dueDate: "",
     ownerAmUid: "",
     priority: "Normal",
@@ -469,10 +470,10 @@ export default function AllProjectsPage() {
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    padding: 12,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    padding: 14,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -480,8 +481,8 @@ export default function AllProjectsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -490,8 +491,8 @@ export default function AllProjectsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -536,7 +537,7 @@ export default function AllProjectsPage() {
       projectName: "",
       clientId: "",
       projectType: "Website",
-      stage: "Inquiry",
+      stage: "Kickoff",
       dueDate: "",
       ownerAmUid: "",
       priority: "Normal",
@@ -706,21 +707,21 @@ export default function AllProjectsPage() {
             style={{
               padding: "16px 18px",
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.10)",
-              background: isDark ? "rgba(30,41,59,0.30)" : "rgba(255,255,255,0.9)",
-              boxShadow: isDark ? "0 14px 30px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
               transition: "transform 140ms ease, box-shadow 140ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
               (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 18px 36px rgba(0,0,0,0.4)"
+                ? "0 20px 36px rgba(0,0,0,0.4)"
                 : "0 18px 30px rgba(15,23,42,0.12)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
               (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 14px 30px rgba(0,0,0,0.35)"
+                ? "0 14px 28px rgba(0,0,0,0.35)"
                 : "0 12px 24px rgba(15,23,42,0.08)";
             }}
           >
@@ -738,8 +739,9 @@ export default function AllProjectsPage() {
           marginTop: 20,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(30,41,59,0.28)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(148,163,184,0.18)" : "1px solid rgba(15,23,42,0.08)",
+          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(180px, 1fr))",
           gap: 12,
@@ -787,17 +789,21 @@ export default function AllProjectsPage() {
             ...ownerOptions.map((owner) => ({ value: owner.uid, label: owner.name || owner.uid })),
           ]}
         />
+      </div>
+
+      {!loading && sorted.length > 0 && (
         <div
           style={{
+            marginTop: 14,
             fontSize: 12,
-            color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)",
-            justifySelf: "end",
+            color: isDark ? "rgba(226,232,240,0.68)" : "rgba(15,23,42,0.6)",
             textAlign: "right",
+            paddingRight: 6,
           }}
         >
-          {loading ? "Loading..." : `${sorted.length} project(s)`}
+          {sorted.length} projects
         </div>
-      </div>
+      )}
 
       <div style={{ marginTop: 18, ...tableShellStyle }}>
         {loading ? (
@@ -844,9 +850,19 @@ export default function AllProjectsPage() {
             </button>
           </div>
         ) : sorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <div
+            className="card"
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+              background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+              color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.7)",
+              fontSize: 14,
+            }}
+          >
             No projects found.
-          </p>
+          </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1120 }}>
@@ -883,13 +899,13 @@ export default function AllProjectsPage() {
                 {sorted.map((project, idx) => {
                   const rowBg = isDark
                     ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.02)"
+                      ? "rgba(255,255,255,0.015)"
                       : "rgba(255,255,255,0.00)"
                     : idx % 2 === 0
                     ? "rgba(15,23,42,0.015)"
                     : "rgba(15,23,42,0.00)";
 
-                  const hoverBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
+                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
 
                   return (
                     <tr
@@ -976,8 +992,11 @@ export default function AllProjectsPage() {
               width: "min(520px, 92vw)",
               height: "100%",
               padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
+              background: isDark ? "rgba(20,20,20,0.98)" : "rgba(255,255,255,0.96)",
               borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              borderTopLeftRadius: 24,
+              borderBottomLeftRadius: 24,
+              boxShadow: isDark ? "-12px 0 32px rgba(0,0,0,0.45)" : "-12px 0 28px rgba(15,23,42,0.08)",
               overflowY: "auto",
             }}
           >
@@ -1195,8 +1214,11 @@ export default function AllProjectsPage() {
               width: "min(520px, 92vw)",
               height: "100%",
               padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
+              background: isDark ? "rgba(20,20,20,0.98)" : "rgba(255,255,255,0.96)",
               borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              borderTopLeftRadius: 24,
+              borderBottomLeftRadius: 24,
+              boxShadow: isDark ? "-12px 0 32px rgba(0,0,0,0.45)" : "-12px 0 28px rgba(15,23,42,0.08)",
               overflowY: "auto",
             }}
           >
@@ -1273,7 +1295,7 @@ export default function AllProjectsPage() {
                   value={createForm.stage}
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))}
                 >
-                  {PIPELINE_STAGES.map((stage) => (
+                  {CREATE_PIPELINE_STAGES.map((stage) => (
                     <option key={stage} value={stage}>
                       {stage}
                     </option>
@@ -1349,7 +1371,8 @@ function Section({ title, children, isDark }: { title: string; children: React.R
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
+        border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
         display: "grid",
         gap: 12,
       }}
@@ -1464,8 +1487,8 @@ function FilterSelect({
             zIndex: 20,
             padding: 8,
             borderRadius: 12,
-            border: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.08)",
-            background: isDark ? "rgba(17,24,39,0.98)" : "#ffffff",
+            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+            background: isDark ? "rgba(22,22,22,0.98)" : "#ffffff",
             boxShadow: isDark ? "0 20px 40px rgba(0,0,0,0.45)" : "0 18px 30px rgba(15,23,42,0.12)",
             display: "grid",
             gap: 4,
@@ -1494,19 +1517,19 @@ function FilterSelect({
                   border: "none",
                   background: active
                     ? isDark
-                      ? "rgba(59,130,246,0.18)"
+                      ? "rgba(148,163,184,0.20)"
                       : "rgba(37,99,235,0.10)"
                     : "transparent",
                   color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.9)",
                   cursor: "pointer",
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = isDark ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.06)";
+                  event.currentTarget.style.background = isDark ? "rgba(148,163,184,0.16)" : "rgba(15,23,42,0.06)";
                 }}
                 onMouseLeave={(event) => {
                   event.currentTarget.style.background = active
                     ? isDark
-                      ? "rgba(59,130,246,0.18)"
+                      ? "rgba(148,163,184,0.20)"
                       : "rgba(37,99,235,0.10)"
                     : "transparent";
                 }}
