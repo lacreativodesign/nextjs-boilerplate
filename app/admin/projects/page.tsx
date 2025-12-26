@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ProjectStage =
   | "Inquiry"
@@ -50,6 +50,11 @@ type CurrentUser = {
   name?: string;
 };
 
+type ErrorState = {
+  title: string;
+  message: string;
+};
+
 type ClientOption = {
   id: string;
   companyName: string;
@@ -59,6 +64,11 @@ type UserOption = {
   uid: string;
   name?: string;
   role?: string;
+};
+
+type FilterOption = {
+  value: string;
+  label: string;
 };
 
 type SortKey =
@@ -195,7 +205,7 @@ export default function AllProjectsPage() {
   const isDark = useIsSystemDark();
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
 
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -287,7 +297,11 @@ export default function AllProjectsPage() {
         setCurrentUser(json?.currentUser || null);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Failed to load projects");
+        console.error("Failed to load projects:", e);
+        setError({
+          title: "Projects can’t load yet",
+          message: e?.message || "Unable to load projects right now.",
+        });
         setProjects([]);
       } finally {
         if (!alive) return;
@@ -692,13 +706,23 @@ export default function AllProjectsPage() {
             style={{
               padding: "16px 18px",
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(148,163,184,0.20)" : "1px solid rgba(15,23,42,0.10)",
-              background: isDark ? "rgba(30,41,59,0.35)" : "rgba(255,255,255,0.85)",
-              boxShadow: isDark ? "0 12px 32px rgba(0,0,0,0.35)" : "0 16px 30px rgba(15,23,42,0.08)",
-              transition: "transform 120ms ease",
+              border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.10)",
+              background: isDark ? "rgba(30,41,59,0.30)" : "rgba(255,255,255,0.9)",
+              boxShadow: isDark ? "0 14px 30px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+              transition: "transform 140ms ease, box-shadow 140ms ease",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(0)")}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 18px 36px rgba(0,0,0,0.4)"
+                : "0 18px 30px rgba(15,23,42,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 14px 30px rgba(0,0,0,0.35)"
+                : "0 12px 24px rgba(15,23,42,0.08)";
+            }}
           >
             <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
               {card.label}
@@ -709,10 +733,15 @@ export default function AllProjectsPage() {
       </div>
 
       <div
+        className="card"
         style={{
           marginTop: 20,
+          padding: 14,
+          borderRadius: 16,
+          background: isDark ? "rgba(30,41,59,0.28)" : "rgba(255,255,255,0.85)",
+          border: isDark ? "1px solid rgba(148,163,184,0.18)" : "1px solid rgba(15,23,42,0.08)",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(180px, 1fr))",
           gap: 12,
           alignItems: "center",
         }}
@@ -723,40 +752,49 @@ export default function AllProjectsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="select" value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
-          <option value="">All Stages</option>
-          {PIPELINE_STAGES.map((stage) => (
-            <option key={stage} value={stage}>
-              {stage}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">All Types</option>
-          {PROJECT_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-          <option value="">All Priorities</option>
-          {PRIORITIES.map((priority) => (
-            <option key={priority} value={priority}>
-              {priority}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-          <option value="">All Owners</option>
-          <option value="unassigned">Unassigned</option>
-          {ownerOptions.map((owner) => (
-            <option key={owner.uid} value={owner.uid}>
-              {owner.name || owner.uid}
-            </option>
-          ))}
-        </select>
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <FilterSelect
+          value={stageFilter}
+          onChange={setStageFilter}
+          placeholder="All Stages"
+          isDark={isDark}
+          options={[{ value: "", label: "All Stages" }, ...PIPELINE_STAGES.map((stage) => ({ value: stage, label: stage }))]}
+        />
+        <FilterSelect
+          value={typeFilter}
+          onChange={setTypeFilter}
+          placeholder="All Types"
+          isDark={isDark}
+          options={[{ value: "", label: "All Types" }, ...PROJECT_TYPES.map((type) => ({ value: type, label: type }))]}
+        />
+        <FilterSelect
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          placeholder="All Priorities"
+          isDark={isDark}
+          options={[
+            { value: "", label: "All Priorities" },
+            ...PRIORITIES.map((priority) => ({ value: priority, label: priority })),
+          ]}
+        />
+        <FilterSelect
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          placeholder="All Owners"
+          isDark={isDark}
+          options={[
+            { value: "", label: "All Owners" },
+            { value: "unassigned", label: "Unassigned" },
+            ...ownerOptions.map((owner) => ({ value: owner.uid, label: owner.name || owner.uid })),
+          ]}
+        />
+        <div
+          style={{
+            fontSize: 12,
+            color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)",
+            justifySelf: "end",
+            textAlign: "right",
+          }}
+        >
           {loading ? "Loading..." : `${sorted.length} project(s)`}
         </div>
       </div>
@@ -767,7 +805,44 @@ export default function AllProjectsPage() {
             Loading projects...
           </p>
         ) : error ? (
-          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
+          <div
+            className="card"
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
+              background: isDark ? "rgba(127,29,29,0.25)" : "rgba(254,226,226,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
+            </div>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                setLoading(true);
+                refreshList()
+                  .catch((retryError) => {
+                    console.error("Retry failed:", retryError);
+                    setError({
+                      title: "Projects can’t load yet",
+                      message: retryError?.message || "Unable to load projects right now.",
+                    });
+                  })
+                  .finally(() => setLoading(false));
+              }}
+              style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 500 }}
+            >
+              Retry
+            </button>
+          </div>
         ) : sorted.length === 0 ? (
           <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
             No projects found.
@@ -786,10 +861,10 @@ export default function AllProjectsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("projectType")}>
                     {headerLabel("Type", sortBadge("projectType"))}
                   </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("stage")}>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("stage")}>
                     {headerLabel("Stage", sortBadge("stage"))}
                   </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("priority")}>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("priority")}>
                     {headerLabel("Priority", sortBadge("priority"))}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("dueDate")}>
@@ -940,7 +1015,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Type</span>
                 <select
-                  className="select"
+                  className="input"
                   value={editForm.projectType}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, projectType: e.target.value as ProjectType }))
@@ -957,7 +1032,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Stage</span>
                 <select
-                  className="select"
+                  className="input"
                   value={editForm.stage}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))}
                 >
@@ -972,7 +1047,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Priority</span>
                 <select
-                  className="select"
+                  className="input"
                   value={editForm.priority}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, priority: e.target.value as ProjectPriority }))
@@ -993,7 +1068,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Owner (AM)</span>
                 <select
-                  className="select"
+                  className="input"
                   value={editForm.ownerAmUid}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, ownerAmUid: e.target.value }))}
                 >
@@ -1009,7 +1084,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Production Owner</span>
                 <select
-                  className="select"
+                  className="input"
                   value={editForm.productionUid}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, productionUid: e.target.value }))}
                 >
@@ -1160,7 +1235,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Client</span>
                 <select
-                  className="select"
+                  className="input"
                   value={createForm.clientId}
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, clientId: e.target.value }))}
                   required
@@ -1177,7 +1252,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Type</span>
                 <select
-                  className="select"
+                  className="input"
                   value={createForm.projectType}
                   onChange={(e) =>
                     setCreateForm((prev) => ({ ...prev, projectType: e.target.value as ProjectType }))
@@ -1194,7 +1269,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Stage</span>
                 <select
-                  className="select"
+                  className="input"
                   value={createForm.stage}
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))}
                 >
@@ -1209,7 +1284,7 @@ export default function AllProjectsPage() {
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Priority</span>
                 <select
-                  className="select"
+                  className="input"
                   value={createForm.priority}
                   onChange={(e) =>
                     setCreateForm((prev) => ({ ...prev, priority: e.target.value as ProjectPriority }))
@@ -1237,7 +1312,7 @@ export default function AllProjectsPage() {
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, opacity: 0.7 }}>Owner (AM)</span>
                   <select
-                    className="select"
+                    className="input"
                     value={createForm.ownerAmUid}
                     onChange={(e) => setCreateForm((prev) => ({ ...prev, ownerAmUid: e.target.value }))}
                   >
@@ -1299,6 +1374,149 @@ function InfoRow({ label, value, isDark }: { label: string; value: string; isDar
     >
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{label}</div>
       <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  isDark,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: FilterOption[];
+  placeholder: string;
+  isDark: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selected = options.find((option) => option.value === value);
+  const label = selected?.label || placeholder;
+  const isPlaceholder = !value;
+
+  return (
+    <div ref={wrapperRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="input"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setOpen(false);
+          }
+          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          textAlign: "left",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ color: isPlaceholder ? (isDark ? "rgba(226,232,240,0.55)" : "rgba(100,116,139,0.9)") : "inherit" }}>
+          {label}
+        </span>
+        <span
+          aria-hidden
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: isDark ? "rgba(148,163,184,0.9)" : "rgba(100,116,139,0.9)",
+          }}
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          tabIndex={-1}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            width: "100%",
+            zIndex: 20,
+            padding: 8,
+            borderRadius: 12,
+            border: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.08)",
+            background: isDark ? "rgba(17,24,39,0.98)" : "#ffffff",
+            boxShadow: isDark ? "0 20px 40px rgba(0,0,0,0.45)" : "0 18px 30px rgba(15,23,42,0.12)",
+            display: "grid",
+            gap: 4,
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setOpen(false);
+          }}
+        >
+          {options.map((option) => {
+            const active = option.value === value;
+            return (
+              <button
+                key={option.value || option.label}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: active
+                    ? isDark
+                      ? "rgba(59,130,246,0.18)"
+                      : "rgba(37,99,235,0.10)"
+                    : "transparent",
+                  color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.9)",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = isDark ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.06)";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = active
+                    ? isDark
+                      ? "rgba(59,130,246,0.18)"
+                      : "rgba(37,99,235,0.10)"
+                    : "transparent";
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
