@@ -1,5 +1,6 @@
 "use client";
 
+import MasterSelect from "@/components/ui/MasterSelect";
 import { useEffect, useMemo, useState } from "react";
 
 type ChangeRequestType = "Scope Change" | "Revision" | "New Feature" | "Bug Fix" | "Other";
@@ -785,66 +786,67 @@ export default function ChangeRequestsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <select
+          <MasterSelect
             className="input"
             value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-          >
-            <option value="">All Projects</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.projectName || "Untitled"} · {project.clientName || "Client"}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setProjectFilter}
+            isDark={isDark}
+            placeholder="All Projects"
+            options={[
+              { label: "All Projects", value: "" },
+              ...projects.map((project) => ({
+                label: `${project.projectName || "Untitled"} · ${project.clientName || "Client"}`,
+                value: project.id,
+              })),
+            ]}
+          />
+          <MasterSelect
             className="input"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            {CHANGE_REQUEST_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setStatusFilter}
+            isDark={isDark}
+            placeholder="All Statuses"
+            options={[
+              { label: "All Statuses", value: "" },
+              ...CHANGE_REQUEST_STATUSES.map((status) => ({ label: status, value: status })),
+            ]}
+          />
+          <MasterSelect
             className="input"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="">All Types</option>
-            {CHANGE_REQUEST_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setTypeFilter}
+            isDark={isDark}
+            placeholder="All Types"
+            options={[
+              { label: "All Types", value: "" },
+              ...CHANGE_REQUEST_TYPES.map((type) => ({ label: type, value: type })),
+            ]}
+          />
+          <MasterSelect
             className="input"
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-          >
-            <option value="">All Priorities</option>
-            {CHANGE_REQUEST_PRIORITIES.map((priority) => (
-              <option key={priority} value={priority}>
-                {priority}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setPriorityFilter}
+            isDark={isDark}
+            placeholder="All Priorities"
+            options={[
+              { label: "All Priorities", value: "" },
+              ...CHANGE_REQUEST_PRIORITIES.map((priority) => ({ label: priority, value: priority })),
+            ]}
+          />
+          <MasterSelect
             className="input"
             value={assignedFilter}
-            onChange={(e) => setAssignedFilter(e.target.value)}
-          >
-            <option value="">Assigned To</option>
-            {users.map((user) => (
-              <option key={user.uid} value={user.uid}>
-                {user.email || user.uid} {user.role ? `(${user.role})` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setAssignedFilter}
+            isDark={isDark}
+            placeholder="Assigned To"
+            options={[
+              { label: "Assigned To", value: "" },
+              ...users.map((user) => ({
+                label: `${user.email || user.uid}${user.role ? ` (${user.role})` : ""}`,
+                value: user.uid,
+              })),
+            ]}
+          />
         </div>
       </div>
 
@@ -1268,35 +1270,33 @@ export default function ChangeRequestsPage() {
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700 }}>Project</label>
-                  <select
+                  <MasterSelect
                     className="input"
                     value={createProjectId}
-                    onChange={(e) => setCreateProjectId(e.target.value)}
-                    style={{ height: 38, borderRadius: 10 }}
-                  >
-                    <option value="">Select project</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.projectName || "Untitled"} · {project.clientName || "Client"}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setCreateProjectId}
+                    isDark={isDark}
+                    placeholder="Select project"
+                    buttonStyle={{ height: 38, borderRadius: 10 }}
+                    options={[
+                      { label: "Select project", value: "" },
+                      ...projects.map((project) => ({
+                        label: `${project.projectName || "Untitled"} · ${project.clientName || "Client"}`,
+                        value: project.id,
+                      })),
+                    ]}
+                  />
                 </div>
 
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700 }}>Type</label>
-                  <select
+                  <MasterSelect
                     className="input"
                     value={createType}
-                    onChange={(e) => setCreateType(e.target.value as ChangeRequestType)}
-                    style={{ height: 38, borderRadius: 10 }}
-                  >
-                    {CHANGE_REQUEST_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(next) => setCreateType(next as ChangeRequestType)}
+                    isDark={isDark}
+                    buttonStyle={{ height: 38, borderRadius: 10 }}
+                    options={CHANGE_REQUEST_TYPES.map((type) => ({ label: type, value: type }))}
+                  />
                 </div>
 
                 <div style={{ display: "grid", gap: 6 }}>
@@ -1321,18 +1321,14 @@ export default function ChangeRequestsPage() {
 
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700 }}>Priority</label>
-                  <select
+                  <MasterSelect
                     className="input"
                     value={createPriority}
-                    onChange={(e) => setCreatePriority(e.target.value as ChangeRequestPriority)}
-                    style={{ height: 38, borderRadius: 10 }}
-                  >
-                    {CHANGE_REQUEST_PRIORITIES.map((priority) => (
-                      <option key={priority} value={priority}>
-                        {priority}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(next) => setCreatePriority(next as ChangeRequestPriority)}
+                    isDark={isDark}
+                    buttonStyle={{ height: 38, borderRadius: 10 }}
+                    options={CHANGE_REQUEST_PRIORITIES.map((priority) => ({ label: priority, value: priority }))}
+                  />
                 </div>
               </div>
             </Section>
