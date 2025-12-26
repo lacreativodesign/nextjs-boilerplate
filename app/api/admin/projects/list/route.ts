@@ -90,10 +90,6 @@ export async function GET(req: Request) {
 
     let baseQuery: FirebaseFirestore.Query = adminDb.collection("projects").where("isDeleted", "==", false);
 
-    if (stage) baseQuery = baseQuery.where("stage", "==", stage);
-    if (type) baseQuery = baseQuery.where("projectType", "==", type);
-    if (priority) baseQuery = baseQuery.where("priority", "==", priority);
-
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 
     if (role === "account_manager") {
@@ -103,9 +99,7 @@ export async function GET(req: Request) {
       ];
     }
 
-    const snaps = await Promise.all(
-      queries.map((query) => query.orderBy("updatedAt", "desc").limit(500).get())
-    );
+    const snaps = await Promise.all(queries.map((query) => query.limit(500).get()));
 
     const merged = new Map<string, ProjectDoc>();
     snaps.forEach((snap) => {
@@ -146,6 +140,18 @@ export async function GET(req: Request) {
       };
     });
 
+    if (stage) {
+      projects = projects.filter((project) => project.stage === stage);
+    }
+
+    if (type) {
+      projects = projects.filter((project) => project.projectType === type);
+    }
+
+    if (priority) {
+      projects = projects.filter((project) => project.priority === priority);
+    }
+
     if (q) {
       projects = projects.filter((project) => {
         const hay = [project.projectName, project.clientName, project.projectType, project.stage]
@@ -159,6 +165,8 @@ export async function GET(req: Request) {
     if (healthFilter) {
       projects = projects.filter((project) => project.health === healthFilter);
     }
+
+    projects.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
 
     const totals = projects.reduce(
       (acc, project) => {
@@ -183,8 +191,14 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error("projects/list error:", err);
+    const rawMessage = String(err?.message || "");
+    const isIndexError =
+      rawMessage.includes("FAILED_PRECONDITION") ||
+      rawMessage.toLowerCase().includes("index") ||
+      rawMessage.toLowerCase().includes("indexes");
+    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load projects right now.";
     return NextResponse.json(
-      { ok: false, error: err?.message || "Server error" },
+      { ok: false, error: safeMessage, code: isIndexError ? "missing_index" : "unknown_error" },
       { status: 500 }
     );
   }
