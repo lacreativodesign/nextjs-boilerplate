@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { ensureClientAccountActivation } from "@/lib/clientActivation";
+import { queueEmailEvent } from "@/lib/emailEvents";
 import { getCurrentUser } from "../../_utils";
 
 export const runtime = "nodejs";
 
 const PROJECT_TYPES = ["Website", "Branding", "SEO", "Social", "Video", "Other"];
-const PIPELINE_STAGES = [
-  "Inquiry",
-  "Deposit",
-  "Kickoff",
-  "Draft",
-  "Review",
-  "Revisions",
-  "Final",
-  "Delivered",
-];
+const CREATE_PIPELINE_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
 
 function canCreateProject(role: string) {
@@ -58,7 +51,7 @@ export async function POST(req: Request) {
     const projectName = cleanString(body?.projectName);
     const clientId = cleanString(body?.clientId);
     const projectType = cleanString(body?.projectType);
-    const stage = cleanString(body?.stage || "Inquiry");
+    const stage = cleanString(body?.stage || "Kickoff");
 
     if (!projectName) {
       return NextResponse.json({ ok: false, error: "Project name is required" }, { status: 400 });
@@ -69,7 +62,7 @@ export async function POST(req: Request) {
     if (!PROJECT_TYPES.includes(projectType)) {
       return NextResponse.json({ ok: false, error: "Invalid project type" }, { status: 400 });
     }
-    if (!PIPELINE_STAGES.includes(stage)) {
+    if (!CREATE_PIPELINE_STAGES.includes(stage)) {
       return NextResponse.json({ ok: false, error: "Invalid pipeline stage" }, { status: 400 });
     }
 
@@ -123,6 +116,62 @@ export async function POST(req: Request) {
     };
 
     await ref.set(payload, { merge: true });
+
+    const activationResult = await ensureClientAccountActivation({
+      clientId,
+      clientData,
+      createdByUid: me.uid,
+    });
+
+    const emailMetadata = {
+      clientId,
+      projectId: ref.id,
+      requestedByUid: me.uid,
+      requestedByName: cleanString(me.name || me.fullName || me.displayName || ""),
+    };
+
+    const baseEmailData = {
+      clientName: cleanString(clientData.companyName || clientData.name || ""),
+      projectName,
+      projectType,
+      stage,
+      dashboardLoginUrl: activationResult.dashboardLoginUrl,
+      accountActivationRequired: activationResult.activationPrepared,
+    };
+
+    await queueEmailEvent({
+      templateId: "payment_confirmation",
+      to: activationResult.email,
+      data: {
+        ...baseEmailData,
+        totalPaidUsd: payload.totalPaidUsd || 0,
+      },
+      metadata: emailMetadata,
+      sequence: 1,
+    });
+
+    await queueEmailEvent({
+      templateId: "welcome_client",
+      to: activationResult.email,
+      data: {
+        ...baseEmailData,
+        packageLabel: projectType,
+      },
+      metadata: emailMetadata,
+      sequence: 2,
+    });
+
+    await queueEmailEvent({
+      templateId: "account_activation",
+      to: activationResult.email,
+      data: {
+        ...baseEmailData,
+        setPasswordLink: activationResult.setPasswordLink || null,
+        instructions: "TODO: Provide step-by-step onboarding instructions in the template.",
+      },
+      metadata: emailMetadata,
+      sequence: 3,
+    });
 
     return NextResponse.json({
       ok: true,
