@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, doc, getDoc, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 type FirebaseClientConfig = {
   apiKey: string;
@@ -42,6 +43,7 @@ type FirebaseClients = {
   app: FirebaseApp;
   auth: Auth;
   db: Firestore;
+  storage: FirebaseStorage;
 };
 
 let clientsPromise: Promise<FirebaseClients> | null = null;
@@ -58,6 +60,7 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
         app,
         auth: getAuth(app),
         db: getFirestore(app),
+        storage: getStorage(app),
       };
     })().catch((err) => {
       clientsPromise = null;
@@ -76,6 +79,11 @@ export async function getFirebaseAuth(): Promise<Auth> {
 export async function getFirebaseDb(): Promise<Firestore> {
   const { db } = await ensureFirebaseClients();
   return db;
+}
+
+export async function getFirebaseStorage(): Promise<FirebaseStorage> {
+  const { storage } = await ensureFirebaseClients();
+  return storage;
 }
 
 export async function waitForFirebase(): Promise<void> {
