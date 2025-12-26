@@ -256,7 +256,7 @@ export default function ChangeRequestsPage() {
   const isDark = useIsSystemDark();
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
 
   const [rows, setRows] = useState<ChangeRequestRecord[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
@@ -295,10 +295,10 @@ export default function ChangeRequestsPage() {
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    padding: 12,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    padding: 14,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -306,8 +306,8 @@ export default function ChangeRequestsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -315,8 +315,8 @@ export default function ChangeRequestsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -353,8 +353,15 @@ export default function ChangeRequestsPage() {
         setRows(Array.isArray(json?.changeRequests) ? json.changeRequests : []);
         setCurrentUser(json?.currentUser || null);
       } catch (e: any) {
+        console.error("change requests list error:", e);
         if (!alive) return;
-        setError(e?.message || "Forbidden");
+        const message = String(e?.message || "");
+        const isForbidden = message.toLowerCase().includes("forbidden");
+        const isUnauthorized = message.toLowerCase().includes("unauthorized");
+        setError({
+          title: isForbidden || isUnauthorized ? "Access restricted" : "Change requests can’t load yet",
+          message: isForbidden || isUnauthorized ? "You don’t have access to view change requests." : "Please try again in a moment.",
+        });
         setRows([]);
       } finally {
         if (!alive) return;
@@ -723,15 +730,24 @@ export default function ChangeRequestsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Change Requests</h3>
-          <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+          <h1
+            style={{
+              fontSize: 34,
+              fontWeight: 900,
+              marginBottom: 8,
+              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+            }}
+          >
+            Change Requests
+          </h1>
+          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
             Track scope changes, revisions, and new work across projects.
           </p>
         </div>
         {createAllowed && (
-          <button className="btn" onClick={openCreate} style={{ borderRadius: 999, fontWeight: 700 }}>
+          <button className="btn" onClick={openCreate} style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}>
             + Create Change Request
           </button>
         )}
@@ -745,27 +761,34 @@ export default function ChangeRequestsPage() {
       </div>
 
       <div
+        className="card"
         style={{
-          marginTop: 18,
+          marginTop: 20,
           padding: 14,
           borderRadius: 16,
-          border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-          background: isDark ? "rgba(15,23,42,0.25)" : "rgba(248,250,252,0.8)",
+          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
           <input
             className="input"
-            placeholder="Search title or description"
+            placeholder="Search keyword"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           />
           <select
             className="input"
             value={projectFilter}
             onChange={(e) => setProjectFilter(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           >
             <option value="">All Projects</option>
             {projects.map((project) => (
@@ -778,7 +801,6 @@ export default function ChangeRequestsPage() {
             className="input"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           >
             <option value="">All Statuses</option>
             {CHANGE_REQUEST_STATUSES.map((status) => (
@@ -791,7 +813,6 @@ export default function ChangeRequestsPage() {
             className="input"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           >
             <option value="">All Types</option>
             {CHANGE_REQUEST_TYPES.map((type) => (
@@ -804,7 +825,6 @@ export default function ChangeRequestsPage() {
             className="input"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           >
             <option value="">All Priorities</option>
             {CHANGE_REQUEST_PRIORITIES.map((priority) => (
@@ -817,7 +837,6 @@ export default function ChangeRequestsPage() {
             className="input"
             value={assignedFilter}
             onChange={(e) => setAssignedFilter(e.target.value)}
-            style={{ height: 40, borderRadius: 10 }}
           >
             <option value="">Assigned To</option>
             {users.map((user) => (
@@ -831,13 +850,33 @@ export default function ChangeRequestsPage() {
 
       <div style={{ marginTop: 20 }}>
         {loading ? (
-          <div style={{ padding: 30 }}>Loading change requests...</div>
+          <div style={{ padding: 30, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+            Loading change requests...
+          </div>
         ) : error ? (
-          <div style={{ padding: 30, color: "tomato" }}>{error}</div>
+          <div
+            className="card"
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
+              background: isDark ? "rgba(127,29,29,0.25)" : "rgba(254,226,226,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
+            </div>
+          </div>
         ) : (
           <div style={tableShellStyle}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1100 }}>
                 <thead>
                   <tr>
                     <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("title")}>
@@ -877,8 +916,24 @@ export default function ChangeRequestsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row) => (
-                    <tr key={row.id} onClick={() => openDrawer(row)} style={{ cursor: "pointer" }}>
+                  {filteredRows.map((row, idx) => {
+                    const rowBg = isDark
+                      ? idx % 2 === 0
+                        ? "rgba(255,255,255,0.015)"
+                        : "rgba(255,255,255,0.00)"
+                      : idx % 2 === 0
+                      ? "rgba(15,23,42,0.015)"
+                      : "rgba(15,23,42,0.00)";
+                    const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
+
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => openDrawer(row)}
+                        style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
+                        onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                        onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                      >
                       <td style={{ ...cellStyle, textAlign: "left", whiteSpace: "normal" }}>{row.title}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{row.projectName || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{row.type}</td>
@@ -900,19 +955,34 @@ export default function ChangeRequestsPage() {
                             openDrawer(row);
                           }}
                           className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
+                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
                         >
                           View
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {filteredRows.length === 0 && (
-              <div style={{ padding: 20, textAlign: "center", color: "var(--sidebar-text)" }}>No change requests yet.</div>
+              <div
+                className="card"
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                  background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+                  color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.7)",
+                  fontSize: 14,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                No change requests yet.
+              </div>
             )}
           </div>
         )}
@@ -1321,17 +1391,32 @@ export default function ChangeRequestsPage() {
 function KpiCard({ label, value, isDark }: { label: string; value: number; isDark: boolean }) {
   return (
     <div
+      className="card"
       style={{
-        padding: 14,
+        padding: "16px 18px",
         borderRadius: 16,
-        border: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
-        background: isDark ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.8)",
+        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+        background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+        boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+        transition: "transform 140ms ease, box-shadow 140ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 20px 36px rgba(0,0,0,0.4)"
+          : "0 18px 30px rgba(15,23,42,0.12)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 14px 28px rgba(0,0,0,0.35)"
+          : "0 12px 24px rgba(15,23,42,0.08)";
       }}
     >
-      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7 }}>
+      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.65 }}>
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
     </div>
   );
 }
