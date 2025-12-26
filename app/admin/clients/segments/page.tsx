@@ -59,6 +59,8 @@ export default function ClientSegmentsPage() {
   const [manageName, setManageName] = useState("");
   const [manageActive, setManageActive] = useState(true);
   const [manageLoading, setManageLoading] = useState(false);
+  const [sortKey, setSortKey] = useState<"name" | "type" | "clients" | "status" | "updated">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // OS-level theme only
   useEffect(() => {
@@ -191,6 +193,41 @@ export default function ClientSegmentsPage() {
     return rows;
   }, [activeTab, normalizedClients, segmentsByType]);
 
+  const sortedSegmentRows = useMemo(() => {
+    const rows = [...segmentRows];
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    const valueForRow = (row: SegmentRow) => {
+      switch (sortKey) {
+        case "name":
+          return row.name.toLowerCase();
+        case "type":
+          return (row.type === "business_type" ? "Business Type" : row.type).toLowerCase();
+        case "clients":
+          return row.clientCount;
+        case "status":
+          return row.isActive ? 1 : 0;
+        case "updated": {
+          const ts = row.updatedAt || row.createdAt;
+          return ts ? new Date(ts).getTime() : 0;
+        }
+        default:
+          return row.name.toLowerCase();
+      }
+    };
+
+    rows.sort((a, b) => {
+      const aVal = valueForRow(a);
+      const bVal = valueForRow(b);
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return (aVal - bVal) * direction;
+      }
+      return String(aVal).localeCompare(String(bVal)) * direction;
+    });
+
+    return rows;
+  }, [segmentRows, sortDirection, sortKey]);
+
   const kpis = useMemo(() => {
     const totalSegments = segmentRows.length;
     const activeSegments = segmentRows.filter((row) => row.isActive).length;
@@ -261,6 +298,7 @@ export default function ClientSegmentsPage() {
     color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
     borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
     whiteSpace: "nowrap",
+    textAlign: "left",
   };
 
   const cellStyle: React.CSSProperties = {
@@ -270,6 +308,38 @@ export default function ClientSegmentsPage() {
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
+
+  const sortableHeaderButtonStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: "transparent",
+    border: "none",
+    padding: 0,
+    font: "inherit",
+    color: "inherit",
+    cursor: "pointer",
+    textTransform: "inherit",
+    letterSpacing: "inherit",
+  };
+
+  function toggleSort(nextKey: "name" | "type" | "clients" | "status" | "updated") {
+    setSortKey((prevKey) => {
+      if (prevKey === nextKey) {
+        setSortDirection((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
+        return prevKey;
+      }
+      setSortDirection("asc");
+      return nextKey;
+    });
+  }
+
+  function sortIndicator(key: "name" | "type" | "clients" | "status" | "updated") {
+    if (key !== sortKey) return null;
+    return (
+      <span style={{ fontSize: 11, opacity: 0.8 }}>{sortDirection === "asc" ? "▲" : "▼"}</span>
+    );
+  }
 
   function openDrawer(row: SegmentRow) {
     setSelectedSegment(row);
@@ -380,7 +450,7 @@ export default function ClientSegmentsPage() {
         Manage segmentation definitions and track coverage across your client base.
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-full border border-slate-200/70 bg-slate-100/80 p-1 dark:border-slate-700/70 dark:bg-slate-900/60">
+      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-full border border-slate-200/70 bg-slate-100/80 p-1 dark:border-neutral-800/70 dark:bg-neutral-900/70">
         {tabOptions.map((tab) => {
           const active = tab.value === activeTab;
           return (
@@ -388,8 +458,8 @@ export default function ClientSegmentsPage() {
               key={tab.value}
               className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
                 active
-                  ? "border-slate-300/80 bg-white/90 text-slate-900 shadow-sm dark:border-slate-600/80 dark:bg-slate-800 dark:text-slate-100"
-                  : "border-transparent text-slate-600 hover:border-slate-300/60 hover:bg-white/70 dark:text-slate-300 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/60"
+                  ? "border-slate-300/80 bg-white/90 text-slate-900 shadow-sm dark:border-neutral-700/80 dark:bg-neutral-800 dark:text-slate-100"
+                  : "border-transparent text-slate-600 hover:border-slate-300/60 hover:bg-white/70 dark:text-slate-300 dark:hover:border-neutral-700/60 dark:hover:bg-neutral-800/60"
               }`}
               onClick={() => setActiveTab(tab.value)}
             >
@@ -421,9 +491,23 @@ export default function ClientSegmentsPage() {
             key={card.label}
             style={{
               padding: 20,
-              borderRadius: 10,
-              background: "var(--card-bg)",
-              border: "1px solid var(--border)",
+              borderRadius: 14,
+              background: isDark ? "rgba(23,23,23,0.85)" : "rgba(255,255,255,0.92)",
+              border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.08)",
+              boxShadow: isDark ? "0 16px 32px rgba(0,0,0,0.35)" : "0 16px 32px rgba(15,23,42,0.08)",
+              transition: "transform 180ms ease, box-shadow 180ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 20px 40px rgba(0,0,0,0.45)"
+                : "0 20px 40px rgba(15,23,42,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0px)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 16px 32px rgba(0,0,0,0.35)"
+                : "0 16px 32px rgba(15,23,42,0.08)";
             }}
           >
             <div
@@ -460,16 +544,36 @@ export default function ClientSegmentsPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 960 }}>
               <thead>
                 <tr>
-                  <th style={headerCellStyle}>Segment Name</th>
-                  <th style={headerCellStyle}>Type</th>
-                  <th style={headerCellStyle}>Clients</th>
-                  <th style={headerCellStyle}>Status</th>
-                  <th style={headerCellStyle}>Updated</th>
-                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Actions</th>
+                  <th style={headerCellStyle}>
+                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("name")}>
+                      Segment Name {sortIndicator("name")}
+                    </button>
+                  </th>
+                  <th style={headerCellStyle}>
+                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("type")}>
+                      Type {sortIndicator("type")}
+                    </button>
+                  </th>
+                  <th style={headerCellStyle}>
+                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("clients")}>
+                      Clients {sortIndicator("clients")}
+                    </button>
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
+                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("status")}>
+                      Status {sortIndicator("status")}
+                    </button>
+                  </th>
+                  <th style={headerCellStyle}>
+                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("updated")}>
+                      Updated {sortIndicator("updated")}
+                    </button>
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {segmentRows.map((row, idx) => {
+                {sortedSegmentRows.map((row, idx) => {
                   const rowBg = isDark
                     ? idx % 2 === 0
                       ? "rgba(255,255,255,0.02)"
@@ -486,21 +590,23 @@ export default function ClientSegmentsPage() {
                       onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
                       onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
                     >
-                    <td style={cellStyle}>{row.name}</td>
-                    <td style={cellStyle}>{row.type === "business_type" ? "Business Type" : row.type}</td>
-                    <td style={cellStyle}>{row.clientCount}</td>
-                    <td style={cellStyle}>{row.isActive ? "Active" : "Inactive"}</td>
-                    <td style={cellStyle}>{fmtDate(row.updatedAt || row.createdAt)}</td>
-                    <td style={{ ...cellStyle, textAlign: "right" }}>
-                      <button
-                        className="btn ghost"
-                        style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
-                        onClick={() => openDrawer(row)}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{row.name}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>
+                        {row.type === "business_type" ? "Business Type" : row.type}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.clientCount}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.isActive ? "Active" : "Inactive"}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(row.updatedAt || row.createdAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <button
+                          className="btn ghost"
+                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
+                          onClick={() => openDrawer(row)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
