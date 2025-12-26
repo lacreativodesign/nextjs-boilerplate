@@ -47,3 +47,24 @@ export function isSuperAdmin(role: string) {
   const r = (role || "").toLowerCase();
   return r === "super_admin";
 }
+
+export function normalizeRole(role?: string) {
+  return (role || "").toLowerCase();
+}
+
+export function isAdminOrSuper(role: string) {
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin";
+}
+
+export function isSalesManager(role: string) {
+  return normalizeRole(role) === "sales_manager";
+}
+
+export function isAccountManager(role: string) {
+  return normalizeRole(role) === "account_manager";
+}
+
+export function isProduction(role: string) {
+  return normalizeRole(role) === "production";
+}
