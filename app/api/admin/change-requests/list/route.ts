@@ -137,14 +137,7 @@ export async function GET(req: Request) {
       });
     }
 
-    let query: FirebaseFirestore.Query = adminDb
-      .collection("changeRequests")
-      .where("isDeleted", "==", false)
-      .orderBy("updatedAt", "desc");
-
-    if (projectId) {
-      query = query.where("projectId", "==", projectId);
-    }
+    const query: FirebaseFirestore.Query = adminDb.collection("changeRequests").where("isDeleted", "==", false);
 
     const snap = await query.limit(500).get();
 
@@ -185,6 +178,10 @@ export async function GET(req: Request) {
       }
     }
 
+    if (projectId) {
+      changeRequests = changeRequests.filter((item) => item.projectId === projectId);
+    }
+
     if (status && CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])) {
       changeRequests = changeRequests.filter((item) => item.status === status);
     }
@@ -211,7 +208,11 @@ export async function GET(req: Request) {
       });
     }
 
-    changeRequests.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+    changeRequests.sort((a, b) => {
+      const aStamp = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bStamp = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return bStamp - aStamp;
+    });
 
     return NextResponse.json({
       ok: true,
