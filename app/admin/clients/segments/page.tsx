@@ -380,16 +380,16 @@ export default function ClientSegmentsPage() {
         Manage segmentation definitions and track coverage across your client base.
       </div>
 
-      <div className="flex gap-2 border-b mb-6" style={{ borderColor: "var(--border)" }}>
+      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-full border border-slate-200/70 bg-slate-100/80 p-1 dark:border-slate-700/70 dark:bg-slate-900/60">
         {tabOptions.map((tab) => {
           const active = tab.value === activeTab;
           return (
             <button
               key={tab.value}
-              className={`px-4 py-2 text-sm font-semibold rounded-t-md transition-colors ${
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "border-slate-300/80 bg-white/90 text-slate-900 shadow-sm dark:border-slate-600/80 dark:bg-slate-800 dark:text-slate-100"
+                  : "border-transparent text-slate-600 hover:border-slate-300/60 hover:bg-white/70 dark:text-slate-300 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/60"
               }`}
               onClick={() => setActiveTab(tab.value)}
             >
