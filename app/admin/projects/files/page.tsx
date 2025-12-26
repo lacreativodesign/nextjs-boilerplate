@@ -1,20 +1,863 @@
-export default function GlobalFilesPage() {
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+
+type FileCategory = "Draft" | "Revision" | "Final" | "Asset" | "Other";
+
+type FileRecord = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  clientId?: string;
+  clientName?: string;
+  category: FileCategory | string;
+  fileName: string;
+  storagePath: string;
+  downloadUrl: string;
+  size: number;
+  mimeType: string;
+  uploadedByUid: string;
+  uploadedByName: string;
+  uploadedByRole: string;
+  version?: string | number | null;
+  notes?: string | null;
+  isLatest?: boolean;
+  uploadedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+type ProjectOption = {
+  id: string;
+  projectName: string;
+  clientName?: string;
+};
+
+type CurrentUser = {
+  uid: string;
+  role: string;
+  name?: string;
+};
+
+type ErrorState = {
+  title: string;
+  message: string;
+};
+
+type Totals = {
+  total: number;
+  Draft: number;
+  Revision: number;
+  Final: number;
+  Asset: number;
+  Other: number;
+  storage: number;
+};
+
+type SortKey = "fileName" | "projectName" | "category" | "version" | "uploadedBy" | "uploadedAt";
+
+type SortDir = "asc" | "desc";
+
+const FILE_CATEGORIES: FileCategory[] = ["Draft", "Revision", "Final", "Asset", "Other"];
+
+function useIsSystemDark() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const read = () => setIsDark(!!mql.matches);
+    read();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatBytes(value: number) {
+  if (!value) return "0 MB";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = value;
+  let idx = 0;
+  while (size >= 1024 && idx < units.length - 1) {
+    size /= 1024;
+    idx += 1;
+  }
+  return `${size.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+}
+
+function sanitizeFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9_.-]+/g, "_");
+}
+
+function makeFileId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `file_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function canUpload(role?: string) {
+  const r = (role || "").toLowerCase();
+  return ["admin", "super_admin", "sales_manager", "account_manager", "production"].includes(r);
+}
+
+function canDelete(role?: string) {
+  const r = (role || "").toLowerCase();
+  return r === "admin" || r === "super_admin";
+}
+
+function categoryBadge(category: string, isDark: boolean) {
+  const palette: Record<string, { bg: string; text: string; border: string }> = {
+    Draft: {
+      bg: isDark ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.12)",
+      text: isDark ? "#bfdbfe" : "#1d4ed8",
+      border: isDark ? "rgba(59,130,246,0.35)" : "rgba(59,130,246,0.25)",
+    },
+    Revision: {
+      bg: isDark ? "rgba(248,113,113,0.18)" : "rgba(248,113,113,0.16)",
+      text: isDark ? "#fecaca" : "#b91c1c",
+      border: isDark ? "rgba(248,113,113,0.35)" : "rgba(248,113,113,0.25)",
+    },
+    Final: {
+      bg: isDark ? "rgba(34,197,94,0.2)" : "rgba(34,197,94,0.16)",
+      text: isDark ? "#bbf7d0" : "#15803d",
+      border: isDark ? "rgba(34,197,94,0.35)" : "rgba(34,197,94,0.25)",
+    },
+    Asset: {
+      bg: isDark ? "rgba(251,191,36,0.2)" : "rgba(251,191,36,0.16)",
+      text: isDark ? "#fde68a" : "#b45309",
+      border: isDark ? "rgba(251,191,36,0.35)" : "rgba(251,191,36,0.25)",
+    },
+    Other: {
+      bg: isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.16)",
+      text: isDark ? "#e2e8f0" : "#475569",
+      border: isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.25)",
+    },
+  };
+  const theme = palette[category] || palette.Other;
   return (
-    <div
+    <span
       style={{
-        background: "var(--card-bg)",
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        padding: 20,
+        padding: "4px 10px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        background: theme.bg,
+        color: theme.text,
+        border: `1px solid ${theme.border}`,
+        display: "inline-flex",
       }}
     >
-      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-        Global Files
-      </h3>
+      {category}
+    </span>
+  );
+}
 
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-        Placeholder for global file browser (Draft / Revision / Final).
-      </p>
+function AlertCard({ error }: { error: ErrorState }) {
+  return (
+    <div
+      className="card"
+      style={{
+        borderRadius: 14,
+        padding: "14px 16px",
+        border: "1px solid rgba(239,68,68,0.35)",
+        background: "rgba(239,68,68,0.08)",
+        color: "#991b1b",
+        marginTop: 16,
+      }}
+    >
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{error.title}</div>
+      <div style={{ fontSize: 13 }}>{error.message}</div>
+    </div>
+  );
+}
+
+export default function GlobalFilesPage() {
+  const isDark = useIsSystemDark();
+  const [files, setFiles] = useState<FileRecord[]>([]);
+  const [totals, setTotals] = useState<Totals>({ total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 });
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [uploaderFilter, setUploaderFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("uploadedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProjectId, setUploadProjectId] = useState("");
+  const [uploadCategory, setUploadCategory] = useState<FileCategory>("Draft");
+  const [uploadVersion, setUploadVersion] = useState("");
+  const [uploadNotes, setUploadNotes] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const uploaderOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    files.forEach((file) => {
+      if (file.uploadedByUid) {
+        map.set(file.uploadedByUid, file.uploadedByName || file.uploadedByUid);
+      }
+    });
+    return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
+  }, [files]);
+
+  const fetchFiles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      if (projectFilter) params.set("projectId", projectFilter);
+      if (categoryFilter) params.set("category", categoryFilter);
+      if (uploaderFilter) params.set("uploadedBy", uploaderFilter);
+      if (startDate) params.set("start", startDate);
+      if (endDate) params.set("end", endDate);
+
+      const res = await fetch(`/api/admin/files/list?${params.toString()}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Unable to load files.");
+      }
+
+      setFiles(payload.files || []);
+      setTotals(payload.totals || { total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 });
+      setCurrentUser(payload.currentUser || null);
+    } catch (err: any) {
+      setError({ title: "Something went wrong", message: err?.message || "Unable to load files." });
+    } finally {
+      setLoading(false);
+    }
+  }, [query, projectFilter, categoryFilter, uploaderFilter, startDate, endDate]);
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/projects/pipeline", { cache: "no-store", credentials: "include" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        return;
+      }
+      const options = (payload.projects || []).map((project: any) => ({
+        id: project.id,
+        projectName: project.projectName || "Untitled",
+        clientName: project.clientName || "",
+      }));
+      setProjects(options);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  const sortedFiles = useMemo(() => {
+    const items = [...files];
+    items.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      switch (sortKey) {
+        case "fileName":
+          left = a.fileName.toLowerCase();
+          right = b.fileName.toLowerCase();
+          break;
+        case "projectName":
+          left = a.projectName.toLowerCase();
+          right = b.projectName.toLowerCase();
+          break;
+        case "category":
+          left = a.category.toString();
+          right = b.category.toString();
+          break;
+        case "version":
+          left = a.version ? a.version.toString() : "";
+          right = b.version ? b.version.toString() : "";
+          break;
+        case "uploadedBy":
+          left = a.uploadedByName.toLowerCase();
+          right = b.uploadedByName.toLowerCase();
+          break;
+        case "uploadedAt":
+        default:
+          left = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+          right = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+          break;
+      }
+
+      if (left < right) return sortDir === "asc" ? -1 : 1;
+      if (left > right) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return items;
+  }, [files, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir("asc");
+  }
+
+  function resetUploadState() {
+    setUploadProjectId("");
+    setUploadCategory("Draft");
+    setUploadVersion("");
+    setUploadNotes("");
+    setSelectedFile(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) {
+      setUploadError("Please choose a file to upload.");
+      return;
+    }
+    if (!uploadProjectId) {
+      setUploadError("Select a project before uploading.");
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const storage = await getFirebaseStorage();
+      const fileId = makeFileId();
+      const safeName = sanitizeFileName(selectedFile.name);
+      const path = `projects/${uploadProjectId}/${uploadCategory}/${fileId}_${safeName}`;
+      const storageRef = ref(storage, path);
+
+      await uploadBytes(storageRef, selectedFile);
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      const res = await fetch("/api/admin/files/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: fileId,
+          projectId: uploadProjectId,
+          category: uploadCategory,
+          fileName: selectedFile.name,
+          storagePath: path,
+          downloadUrl,
+          size: selectedFile.size,
+          mimeType: selectedFile.type,
+          version: uploadVersion || null,
+          notes: uploadNotes || null,
+        }),
+        cache: "no-store",
+        credentials: "include",
+      });
+
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Upload failed.");
+      }
+
+      setUploadOpen(false);
+      resetUploadState();
+      await fetchFiles();
+    } catch (err: any) {
+      setUploadError(err?.message || "Unable to upload right now.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete(file: FileRecord) {
+    if (!canDelete(currentUser?.role)) return;
+    setDeletingId(file.id);
+    try {
+      const res = await fetch("/api/admin/files/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: file.id }),
+        cache: "no-store",
+        credentials: "include",
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Unable to delete file.");
+      }
+      await fetchFiles();
+    } catch (err: any) {
+      setError({ title: "Delete failed", message: err?.message || "Unable to delete file." });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <div style={{ width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1
+            style={{
+              fontSize: 34,
+              fontWeight: 900,
+              marginBottom: 8,
+              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+            }}
+          >
+            Global Files
+          </h1>
+          <div style={{ color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+            Centralized source of truth for every draft, revision, and final delivery asset.
+          </div>
+        </div>
+
+        {canUpload(currentUser?.role) && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              resetUploadState();
+              setUploadOpen(true);
+            }}
+            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}
+          >
+            + Upload File
+          </button>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          marginTop: 20,
+        }}
+      >
+        {[
+          { label: "Total Files", value: totals.total },
+          { label: "Drafts", value: totals.Draft },
+          { label: "Revisions", value: totals.Revision },
+          { label: "Finals", value: totals.Final },
+          { label: "Storage Used", value: formatBytes(totals.storage) },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="card"
+            style={{
+              padding: "16px 18px",
+              borderRadius: 16,
+              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+              transition: "transform 140ms ease, box-shadow 140ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 20px 36px rgba(0,0,0,0.4)"
+                : "0 18px 30px rgba(15,23,42,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+                ? "0 14px 28px rgba(0,0,0,0.35)"
+                : "0 12px 24px rgba(15,23,42,0.08)";
+            }}
+          >
+            <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+              {card.label}
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{card.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {error && <AlertCard error={error} />}
+
+      <div
+        className="card"
+        style={{
+          marginTop: 20,
+          padding: 14,
+          borderRadius: 16,
+          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          display: "grid",
+          gridTemplateColumns: "minmax(220px, 1.1fr) repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
+        <input
+          className="input"
+          placeholder="Search file name"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select className="input" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+          <option value="">All Projects</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.projectName}
+            </option>
+          ))}
+        </select>
+        <select className="input" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="">All Categories</option>
+          {FILE_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+        <select className="input" value={uploaderFilter} onChange={(e) => setUploaderFilter(e.target.value)}>
+          <option value="">Uploaded By</option>
+          {uploaderOptions.map((option) => (
+            <option key={option.uid} value={option.uid}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+        <input
+          className="input"
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+        <input className="input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            setQuery("");
+            setProjectFilter("");
+            setCategoryFilter("");
+            setUploaderFilter("");
+            setStartDate("");
+            setEndDate("");
+          }}
+          style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
+        >
+          Reset Filters
+        </button>
+      </div>
+
+      <div
+        className="card"
+        style={{
+          marginTop: 20,
+          padding: 0,
+          borderRadius: 18,
+          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
+          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+            <thead>
+              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("fileName")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    File Name {sortKey === "fileName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("projectName")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Project {sortKey === "projectName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("category")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Category {sortKey === "category" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("version")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Version {sortKey === "version" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("uploadedBy")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Uploaded By {sortKey === "uploadedBy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("uploadedAt")}
+                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Uploaded At {sortKey === "uploadedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
+                    Loading files...
+                  </td>
+                </tr>
+              ) : sortedFiles.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
+                    No files found. Upload a file to get started.
+                  </td>
+                </tr>
+              ) : (
+                sortedFiles.map((file) => (
+                  <tr key={file.id} style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(15,23,42,0.06)" }}>
+                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                      <div style={{ fontWeight: 600 }}>{file.fileName}</div>
+                      <div style={{ fontSize: 12, opacity: 0.65 }}>{formatBytes(file.size)}</div>
+                    </td>
+                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                      <div style={{ fontWeight: 600 }}>{file.projectName}</div>
+                      <div style={{ fontSize: 12, opacity: 0.65 }}>{file.clientName || ""}</div>
+                    </td>
+                    <td style={{ padding: "14px 16px", textAlign: "left" }}>{categoryBadge(file.category, isDark)}</td>
+                    <td style={{ padding: "14px 16px", textAlign: "center" }}>{file.version || "-"}</td>
+                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                      <div style={{ fontWeight: 600 }}>{file.uploadedByName || "-"}</div>
+                      <div style={{ fontSize: 12, opacity: 0.65 }}>{file.uploadedByRole || ""}</div>
+                    </td>
+                    <td style={{ padding: "14px 16px", textAlign: "center" }}>{fmtDate(file.uploadedAt)}</td>
+                    <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                        <a
+                          className="btn"
+                          href={file.downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                        >
+                          Download
+                        </a>
+                        {canDelete(currentUser?.role) && (
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => handleDelete(file)}
+                            disabled={deletingId === file.id}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: 999,
+                              fontSize: 12,
+                              background: "rgba(239,68,68,0.12)",
+                              color: "#b91c1c",
+                            }}
+                          >
+                            {deletingId === file.id ? "Deleting..." : "Delete"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {uploadOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: 16,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "min(680px, 100%)",
+              borderRadius: 20,
+              padding: 24,
+              background: isDark ? "rgba(18,18,18,0.98)" : "white",
+              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(15,23,42,0.12)",
+              boxShadow: isDark ? "0 25px 60px rgba(0,0,0,0.45)" : "0 24px 50px rgba(15,23,42,0.2)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Upload Global File</h2>
+                <div style={{ fontSize: 13, opacity: 0.7 }}>Files sync automatically across all projects.</div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setUploadOpen(false);
+                  resetUploadState();
+                }}
+                style={{ borderRadius: 999, padding: "6px 12px", fontSize: 12 }}
+              >
+                Close
+              </button>
+            </div>
+
+            {uploadError && (
+              <div
+                style={{
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  background: "rgba(239,68,68,0.08)",
+                  color: "#b91c1c",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  marginBottom: 12,
+                }}
+              >
+                {uploadError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Project</span>
+                <select className="input" value={uploadProjectId} onChange={(e) => setUploadProjectId(e.target.value)}>
+                  <option value="">Select project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.projectName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Category</span>
+                <select
+                  className="input"
+                  value={uploadCategory}
+                  onChange={(e) => setUploadCategory(e.target.value as FileCategory)}
+                >
+                  {FILE_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>File</span>
+                <input
+                  ref={fileInputRef}
+                  className="input"
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Version (optional)</span>
+                  <input
+                    className="input"
+                    value={uploadVersion}
+                    onChange={(e) => setUploadVersion(e.target.value)}
+                    placeholder="v1, v2..."
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Notes (optional)</span>
+                  <input
+                    className="input"
+                    value={uploadNotes}
+                    onChange={(e) => setUploadNotes(e.target.value)}
+                    placeholder="Optional context"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setUploadOpen(false);
+                  resetUploadState();
+                }}
+                style={{ borderRadius: 999, padding: "10px 16px" }}
+                disabled={uploading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleUpload}
+                style={{ borderRadius: 999, padding: "10px 16px" }}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Upload File"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
