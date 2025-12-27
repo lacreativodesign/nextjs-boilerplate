@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
+
+export const runtime = "nodejs";
+
+export async function POST(req: Request) {
+  try {
+    const access = await requireHrAccess();
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const taskId = String(body?.taskId || "").trim();
+    if (!taskId) {
+      return NextResponse.json({ ok: false, error: "Missing task id" }, { status: 400 });
+    }
+
+    const snap = await adminDb.collection("onboardingTasks").doc(taskId).get();
+    if (!snap.exists) {
+      return NextResponse.json({ ok: false, error: "Task not found" }, { status: 404 });
+    }
+
+    const existing = snap.data() || {};
+    const incomingSteps = Array.isArray(body?.steps) ? body.steps : existing?.steps || [];
+    const updatedSteps = incomingSteps.map((step: any) => ({
+      title: String(step?.title || "").trim(),
+      description: String(step?.description || "").trim(),
+      required: Boolean(step?.required),
+      isDone: Boolean(step?.isDone),
+      doneAt: step?.isDone ? step?.doneAt || new Date().toISOString() : null,
+    }));
+
+    const allDone = updatedSteps.length > 0 && updatedSteps.every((step: any) => step.isDone);
+    const requestedStatus = String(body?.status || existing?.status || "Not Started");
+    const status = allDone ? "Completed" : requestedStatus;
+
+    await adminDb.collection("onboardingTasks").doc(taskId).update({
+      steps: updatedSteps,
+      status,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (status === "Completed" && existing?.status !== "Completed") {
+      await createHrEvent({
+        type: "hr.onboarding_completed",
+        title: "Onboarding completed",
+        description: "Onboarding checklist completed.",
+        entityType: "onboardingTask",
+        entityId: taskId,
+        createdByUid: access.user.uid,
+        createdByName: access.user.name || access.user.email || "Admin",
+        metadata: { userId: existing?.userId || null },
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("HR onboarding tasks update error", err);
+    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+  }
+}
