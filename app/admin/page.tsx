@@ -1,80 +1,317 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { formatDateTime, formatPkr, formatUsd, useInterval } from "@/components/finance/financeUtils";
+import { CardShell, ErrorCard, KpiCard, MiniBarChart } from "./reports/_components/ReportsUI";
+
+type OverviewResponse = {
+  kpis: {
+    revenueThisMonthUsd: number;
+    outstandingArUsd: number;
+    activeProjects: number;
+    overdueProjects: number;
+    qaQueue: number;
+    openChangeRequests: number;
+    payrollDuePkr: number;
+    expensesThisMonthPkr: number;
+    activeEmployees: number;
+    onboardingOpen: number;
+    newHires30: number;
+    totalClients: number;
+    keyAccounts: number;
+    segmentCoveragePct: number;
+    atRiskBlocked: number;
+  };
+  charts: {
+    projectsByStage: Array<{ stage: string; count: number }>;
+    arAging: Array<{ bucket: string; amountUsd: number }>;
+  };
+  tables: {
+    recentActivity: Array<{ id: string; type: string; summary: string; actor: string; createdAt?: string | null }>;
+  };
+};
+
+const emptyOverview: OverviewResponse = {
+  kpis: {
+    revenueThisMonthUsd: 0,
+    outstandingArUsd: 0,
+    activeProjects: 0,
+    overdueProjects: 0,
+    qaQueue: 0,
+    openChangeRequests: 0,
+    payrollDuePkr: 0,
+    expensesThisMonthPkr: 0,
+    activeEmployees: 0,
+    onboardingOpen: 0,
+    newHires30: 0,
+    totalClients: 0,
+    keyAccounts: 0,
+    segmentCoveragePct: 0,
+    atRiskBlocked: 0,
+  },
+  charts: { projectsByStage: [], arAging: [] },
+  tables: { recentActivity: [] },
+};
+
 export default function AdminOverview() {
+  const [overview, setOverview] = useState<OverviewResponse>(emptyOverview);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadOverview = async () => {
+    try {
+      setError(null);
+      const res = await fetch("/api/admin/overview", { cache: "no-store", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (res.status === 403) throw new Error("You do not have access to the admin overview.");
+        if (res.status === 401) throw new Error("Please sign in again to view the overview.");
+        throw new Error(data?.error || "Unable to load admin overview.");
+      }
+      setOverview({
+        kpis: data.kpis,
+        charts: data.charts,
+        tables: data.tables,
+      });
+    } catch (err) {
+      console.error("admin overview load error", err);
+      setError("Unable to load admin overview right now.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOverview();
+  }, []);
+
+  useInterval(loadOverview, 30000);
+
+  const stageRows = useMemo(() => {
+    if (overview.charts.projectsByStage.length) {
+      return overview.charts.projectsByStage.map((row) => ({ label: row.stage, value: row.count }));
+    }
+    return [{ label: "-", value: 0 }];
+  }, [overview.charts.projectsByStage]);
+
+  const arAgingRows = useMemo(() => {
+    if (overview.charts.arAging.length) {
+      return overview.charts.arAging.map((row) => ({ label: row.bucket, value: row.amountUsd }));
+    }
+    return [{ label: "-", value: 0 }];
+  }, [overview.charts.arAging]);
+
+  const activityRows = useMemo(() => overview.tables.recentActivity, [overview.tables.recentActivity]);
+
   return (
-    <div>
-      {/* PAGE TITLE */}
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 20 }}>
-        Overview
-      </h2>
+    <div className="space-y-6">
+      <div>
+        <h2 style={{ fontSize: 26, fontWeight: 700 }}>Overview</h2>
+        <p style={{ fontSize: 16, color: "var(--sidebar-text)", marginTop: 6 }}>
+          Company-wide analytics, KPIs, and recent activity synced in real time.
+        </p>
+      </div>
 
-      <p style={{ fontSize: 16, color: "var(--sidebar-text)", marginBottom: 30 }}>
-        Company-wide analytics, KPIs and recent activity.
-      </p>
+      {error && <ErrorCard message={error} />}
 
-      {/* KPI ROWS */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 20,
-        }}
-      >
-        {[
-          "Total Clients",
-          "Active Projects",
-          "Monthly Revenue",
-          "Pending Payments",
-        ].map((label) => (
-          <div
-            key={label}
-            style={{
-              padding: 20,
-              background: "var(--card-bg)",
-              borderRadius: 10,
-              border: "1px solid var(--border)",
-            }}
-          >
-            <h3 style={{ fontSize: 16, fontWeight: 600 }}>{label}</h3>
-            <p style={{ marginTop: 8, fontSize: 24, fontWeight: 700 }}>0</p>
+      <section>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Executive KPIs</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <KpiCard
+            title="Revenue (This Month, USD)"
+            value={loading ? "—" : formatUsd(overview.kpis.revenueThisMonthUsd)}
+            subtitle="Paid this month"
+          />
+          <KpiCard
+            title="Outstanding AR (USD)"
+            value={loading ? "—" : formatUsd(overview.kpis.outstandingArUsd)}
+            subtitle="Open invoices"
+          />
+          <KpiCard
+            title="Active Projects"
+            value={loading ? "—" : `${overview.kpis.activeProjects}`}
+            subtitle="Not delivered"
+          />
+          <KpiCard
+            title="Overdue Projects"
+            value={loading ? "—" : `${overview.kpis.overdueProjects}`}
+            subtitle="Past due"
+          />
+          <KpiCard title="QA Queue" value={loading ? "—" : `${overview.kpis.qaQueue}`} subtitle="Final stage" />
+          <KpiCard
+            title="Open Change Requests"
+            value={loading ? "—" : `${overview.kpis.openChangeRequests}`}
+            subtitle="Pending approval"
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <CardShell>
+          <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700 }}>Operations Snapshot</div>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Live project flow</div>
           </div>
-        ))}
-      </div>
+          <MiniBarChart rows={stageRows} />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="card" style={{ padding: 14, borderRadius: 12, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>At-Risk / Blocked</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : overview.kpis.atRiskBlocked}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 14, borderRadius: 12, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>QA Queue</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : overview.kpis.qaQueue}
+              </div>
+            </div>
+          </div>
+        </CardShell>
 
-      {/* FUTURE SECTIONS PLACEHOLDERS */}
-      <div
-        style={{
-          marginTop: 40,
-          padding: 20,
-          background: "var(--card-bg)",
-          borderRadius: 10,
-          border: "1px solid var(--border)",
-        }}
-      >
-        <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
-          Reports & Charts (Coming Soon)
-        </h3>
-        <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-          Revenue chart, lead funnel, utilization metrics will be added here.
-        </p>
-      </div>
+        <CardShell>
+          <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700 }}>Finance Snapshot</div>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>AR aging + PKR obligations</div>
+          </div>
+          <MiniBarChart rows={arAgingRows} valueFormatter={(value) => formatUsd(value)} />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="card" style={{ padding: 14, borderRadius: 12, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Payroll Due (PKR)</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : formatPkr(overview.kpis.payrollDuePkr)}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 14, borderRadius: 12, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Expenses This Month (PKR)</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : formatPkr(overview.kpis.expensesThisMonthPkr)}
+              </div>
+            </div>
+          </div>
+        </CardShell>
+      </section>
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 20,
-          background: "var(--card-bg)",
-          borderRadius: 10,
-          border: "1px solid var(--border)",
-        }}
-      >
-        <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
-          Recent Activity
-        </h3>
-        <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-          A timeline of system-wide updates and actions will appear here.
-        </p>
-      </div>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <CardShell>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>People Snapshot</div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Active Employees</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : overview.kpis.activeEmployees}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Open Onboarding</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : overview.kpis.onboardingOpen}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>New Hires (30d)</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>{loading ? "—" : overview.kpis.newHires30}</div>
+            </div>
+          </div>
+        </CardShell>
+
+        <CardShell>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Clients Snapshot</div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Total Clients</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : overview.kpis.totalClients}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Key Accounts (≥ $1,000)</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>{loading ? "—" : overview.kpis.keyAccounts}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Segment Coverage</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>
+                {loading ? "—" : `${overview.kpis.segmentCoveragePct}%`}
+              </div>
+            </div>
+          </div>
+        </CardShell>
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Recent Activity</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+              Live feed across projects, production, finance, and HR.
+            </p>
+          </div>
+          <button className="btn" onClick={loadOverview} style={{ borderRadius: 999 }}>
+            Refresh
+          </button>
+        </div>
+
+        <div className="card" style={{ marginTop: 20, padding: 0, borderRadius: 18, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+              <thead>
+                <tr style={{ background: "rgba(148,163,184,0.15)" }}>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Type</th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Summary</th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Actor</th>
+                  <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: 40 }}>
+                      Loading activity…
+                    </td>
+                  </tr>
+                ) : activityRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: 40 }}>
+                      No activity found.
+                    </td>
+                  </tr>
+                ) : (
+                  activityRows.map((event, idx) => {
+                    const rowBg = idx % 2 === 0 ? "rgba(15,23,42,0.02)" : "transparent";
+                    return (
+                      <tr key={event.id} style={{ background: rowBg }}>
+                        <td style={{ padding: "14px 16px", textAlign: "left" }}>{event.type || "-"}</td>
+                        <td style={{ padding: "14px 16px", textAlign: "left" }}>{event.summary || "-"}</td>
+                        <td style={{ padding: "14px 16px", textAlign: "left" }}>{event.actor || "-"}</td>
+                        <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatDateTime(event.createdAt)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Quick Actions</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Link href="/admin/projects" className="btn" style={{ borderRadius: 12, textAlign: "center" }}>
+            Create Project
+          </Link>
+          <Link href="/admin/finance" className="btn" style={{ borderRadius: 12, textAlign: "center" }}>
+            Create Invoice
+          </Link>
+          <Link href="/admin/hr/onboarding" className="btn" style={{ borderRadius: 12, textAlign: "center" }}>
+            Assign Onboarding
+          </Link>
+          <Link href="/admin/projects/pipeline" className="btn" style={{ borderRadius: 12, textAlign: "center" }}>
+            Open Delivery Pipeline
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
