@@ -16,9 +16,7 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   return (
     <div className="w-full">
       <div className="mb-4">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-          Production
-        </h2>
+        <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 8, color: "var(--text)" }}>Production</h1>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
           Monitor production flow, assignments, and QA approvals.
         </p>

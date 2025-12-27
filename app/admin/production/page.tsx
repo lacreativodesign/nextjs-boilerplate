@@ -66,6 +66,12 @@ export default function ProductionOverviewPage() {
     boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: 700,
+    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.9)",
+  };
+
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
@@ -170,11 +176,11 @@ export default function ProductionOverviewPage() {
       ) : (
         <>
           <section style={{ display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>Overview</div>
+            <div style={sectionTitleStyle}>Overview</div>
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                 gap: 12,
               }}
             >
@@ -190,7 +196,7 @@ export default function ProductionOverviewPage() {
           </section>
 
           <section style={{ display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>My Queue (Top 10)</div>
+            <div style={sectionTitleStyle}>My Queue (Top 10)</div>
             <div style={tableShellStyle}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 720 }}>
@@ -212,23 +218,39 @@ export default function ProductionOverviewPage() {
                         </td>
                       </tr>
                     ) : (
-                      queueRows.map((project) => (
-                        <tr key={project.id}>
-                          <td style={{ ...cellStyle, textAlign: "left" }}>
-                            <div style={{ fontWeight: 600 }}>{project.projectName}</div>
-                            <div style={{ fontSize: 12, opacity: 0.65 }}>{project.productionName || "Unassigned"}</div>
-                          </td>
-                          <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
-                          <td style={{ ...cellStyle, textAlign: "center" }}>{project.stage}</td>
-                          <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.dueDate)}</td>
-                          <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
-                          <td style={{ ...cellStyle, textAlign: "center" }}>
-                            <button className="btn ghost" onClick={() => openDrawer(project)}>
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      queueRows.map((project, idx) => {
+                        const rowBg = isDark
+                          ? idx % 2 === 0
+                            ? "rgba(255,255,255,0.015)"
+                            : "rgba(255,255,255,0.00)"
+                          : idx % 2 === 0
+                          ? "rgba(15,23,42,0.015)"
+                          : "rgba(15,23,42,0.00)";
+                        const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
+
+                        return (
+                          <tr
+                            key={project.id}
+                            style={{ background: rowBg, transition: "background 120ms ease" }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                          >
+                            <td style={{ ...cellStyle, textAlign: "left" }}>
+                              <div style={{ fontWeight: 600 }}>{project.projectName}</div>
+                              <div style={{ fontSize: 12, opacity: 0.65 }}>{project.productionName || "Unassigned"}</div>
+                            </td>
+                            <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
+                            <td style={{ ...cellStyle, textAlign: "center" }}>{project.stage}</td>
+                            <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.dueDate)}</td>
+                            <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
+                            <td style={{ ...cellStyle, textAlign: "center" }}>
+                              <button className="btn ghost" onClick={() => openDrawer(project)}>
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -253,18 +275,32 @@ export default function ProductionOverviewPage() {
 function KpiCard({ label, value, isDark }: { label: string; value: number; isDark: boolean }) {
   return (
     <div
-      className="kpi-card"
+      className="card"
       style={{
-        padding: 16,
+        padding: "16px 18px",
         borderRadius: 16,
         border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-        background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.9)",
-        boxShadow: isDark ? "0 18px 30px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+        boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+        transition: "transform 140ms ease, box-shadow 140ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 20px 36px rgba(0,0,0,0.4)"
+          : "0 18px 30px rgba(15,23,42,0.12)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 14px 28px rgba(0,0,0,0.35)"
+          : "0 12px 24px rgba(15,23,42,0.08)";
       }}
     >
-      <div style={{ fontSize: 12, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
     </div>
   );
 }

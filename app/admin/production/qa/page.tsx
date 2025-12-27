@@ -67,6 +67,12 @@ export default function ProductionQAPage() {
     boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: 700,
+    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.9)",
+  };
+
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
@@ -190,52 +196,56 @@ export default function ProductionQAPage() {
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>QA Filters</div>
+        <div style={sectionTitleStyle}>QA Filters</div>
         <div
+          className="card"
           style={{
+            padding: 14,
+            borderRadius: 16,
+            background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+            boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(170px, 1fr))",
             gap: 12,
+            alignItems: "center",
           }}
         >
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Search</span>
-            <input
-              className="input"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Project, client, owner"
-            />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Project Type</span>
-            <MasterSelect
-              value={typeFilter}
-              onChange={setTypeFilter}
-              options={[{ value: "all", label: "All" }, ...projectTypes.map((type) => ({ value: type, label: type }))]}
-            />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Owner (AM)</span>
-            <MasterSelect
-              value={ownerFilter}
-              onChange={setOwnerFilter}
-              options={[{ value: "", label: "All" }, ...ownerOptions]}
-            />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Production Owner</span>
-            <MasterSelect
-              value={productionFilter}
-              onChange={setProductionFilter}
-              options={[{ value: "", label: "All" }, ...productionUsers]}
-            />
-          </label>
+          <input
+            className="input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search keyword"
+          />
+          <MasterSelect
+            value={typeFilter}
+            onChange={setTypeFilter}
+            placeholder="Project Type"
+            isDark={isDark}
+            options={[
+              { value: "all", label: "All Types" },
+              ...projectTypes.map((type) => ({ value: type, label: type })),
+            ]}
+          />
+          <MasterSelect
+            value={ownerFilter}
+            onChange={setOwnerFilter}
+            placeholder="Owner (AM)"
+            isDark={isDark}
+            options={[{ value: "", label: "All Owners" }, ...ownerOptions]}
+          />
+          <MasterSelect
+            value={productionFilter}
+            onChange={setProductionFilter}
+            placeholder="Production Owner"
+            isDark={isDark}
+            options={[{ value: "", label: "All Production" }, ...productionUsers]}
+          />
         </div>
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>QA KPIs</div>
+        <div style={sectionTitleStyle}>QA KPIs</div>
         <div
           style={{
             display: "grid",
@@ -250,7 +260,7 @@ export default function ProductionQAPage() {
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>QA & Approvals</div>
+        <div style={sectionTitleStyle}>QA & Approvals</div>
         {loading ? (
           <div style={{ fontSize: 14, opacity: 0.7 }}>Loading QA queue…</div>
         ) : error ? (
@@ -277,20 +287,36 @@ export default function ProductionQAPage() {
                       </td>
                     </tr>
                   ) : (
-                    finalProjects.map((project) => (
-                      <tr key={project.id}>
-                        <td style={{ ...cellStyle, textAlign: "left" }}>{project.projectName}</td>
-                        <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
-                        <td style={{ ...cellStyle, textAlign: "left" }}>{project.productionName || "Unassigned"}</td>
-                        <td style={{ ...cellStyle, textAlign: "left" }}>{project.ownerAmName || "Unassigned"}</td>
-                        <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
-                        <td style={{ ...cellStyle, textAlign: "center" }}>
-                          <button className="btn ghost" onClick={() => openDrawer(project)}>
-                            Review
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    finalProjects.map((project, idx) => {
+                      const rowBg = isDark
+                        ? idx % 2 === 0
+                          ? "rgba(255,255,255,0.015)"
+                          : "rgba(255,255,255,0.00)"
+                        : idx % 2 === 0
+                        ? "rgba(15,23,42,0.015)"
+                        : "rgba(15,23,42,0.00)";
+                      const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
+
+                      return (
+                        <tr
+                          key={project.id}
+                          style={{ background: rowBg, transition: "background 120ms ease" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                        >
+                          <td style={{ ...cellStyle, textAlign: "left" }}>{project.projectName}</td>
+                          <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
+                          <td style={{ ...cellStyle, textAlign: "left" }}>{project.productionName || "Unassigned"}</td>
+                          <td style={{ ...cellStyle, textAlign: "left" }}>{project.ownerAmName || "Unassigned"}</td>
+                          <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
+                          <td style={{ ...cellStyle, textAlign: "center" }}>
+                            <button className="btn ghost" onClick={() => openDrawer(project)}>
+                              Review
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -315,17 +341,32 @@ export default function ProductionQAPage() {
 function KpiCard({ label, value, isDark }: { label: string; value: number; isDark: boolean }) {
   return (
     <div
-      className="kpi-card"
+      className="card"
       style={{
-        padding: 16,
+        padding: "16px 18px",
         borderRadius: 16,
         border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-        background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.9)",
-        boxShadow: isDark ? "0 18px 30px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
+        background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+        boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+        transition: "transform 140ms ease, box-shadow 140ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 20px 36px rgba(0,0,0,0.4)"
+          : "0 18px 30px rgba(15,23,42,0.12)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
+          ? "0 14px 28px rgba(0,0,0,0.35)"
+          : "0 12px 24px rgba(15,23,42,0.08)";
       }}
     >
-      <div style={{ fontSize: 12, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
     </div>
   );
 }
