@@ -25,7 +25,7 @@ export default function AdminSidebar() {
     { label: "Clients", icon: UserCog, path: "/admin/clients" },
     { label: "Projects", icon: Briefcase, path: "/admin/projects" },
     { label: "Finance", icon: DollarSign, path: "/admin/finance" },
-    { label: "HR", icon: FileText, path: "/admin/hr" },
+    { label: "HR & Team", icon: FileText, path: "/admin/hr" },
     { label: "Production", icon: PanelsTopLeft, path: "/admin/production" },
     { label: "Sales", icon: BarChart4, path: "/admin/sales" },
     { label: "Sales Manager", icon: BarChart4, path: "/admin/sales-manager" },

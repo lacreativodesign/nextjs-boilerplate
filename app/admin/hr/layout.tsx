@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "Employees", path: "/admin/hr" },
-  { label: "Attendance", path: "/admin/hr/attendance" },
-  { label: "Leave", path: "/admin/hr/leave" },
-  { label: "Payroll", path: "/admin/hr/payroll" },
+  { label: "Overview", path: "/admin/hr" },
+  { label: "Employees", path: "/admin/hr/employees" },
+  { label: "Onboarding", path: "/admin/hr/onboarding" },
   { label: "Performance", path: "/admin/hr/performance" },
+  { label: "Documents", path: "/admin/hr/documents" },
+  { label: "Activity", path: "/admin/hr/activity" },
+  { label: "Settings", path: "/admin/hr/settings" },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
@@ -22,7 +24,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           HR & Team
         </h2>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Employees, attendance, payroll, performance, and leave management.
+          People ops, onboarding, performance, and HR documentation.
         </p>
       </div>
 
