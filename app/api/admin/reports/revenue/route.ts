@@ -1,0 +1,182 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { getMonthKey, getReportSettings, requireAdmin, toISO, toMillis } from "../_utils";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+function parseDate(value: string | null, endOfDay = false) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (endOfDay) {
+    parsed.setHours(23, 59, 59, 999);
+  } else {
+    parsed.setHours(0, 0, 0, 0);
+  }
+  return parsed;
+}
+
+export async function GET(req: Request) {
+  try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    const settings = await getReportSettings();
+    const { searchParams } = new URL(req.url);
+    const dateFrom = parseDate(searchParams.get("dateFrom"));
+    const dateTo = parseDate(searchParams.get("dateTo"), true);
+    const clientId = String(searchParams.get("clientId") || "").trim();
+    const statusFilter = String(searchParams.get("status") || "").trim();
+
+    const [invoiceSnap, paymentSnap] = await Promise.all([
+      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
+    ]);
+
+    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    const filteredInvoices = invoices.filter((inv) => {
+      if (clientId && String(inv.clientId || "") !== clientId) return false;
+      if (statusFilter && String(inv.status || "") !== statusFilter) return false;
+      const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
+      if (!issuedMs) return false;
+      if (dateFrom && issuedMs < dateFrom.getTime()) return false;
+      if (dateTo && issuedMs > dateTo.getTime()) return false;
+      return true;
+    });
+
+    const filteredPayments = payments.filter((payment) => {
+      if (clientId && String(payment.clientId || "") !== clientId) return false;
+      const paidMs = toMillis(payment.paidAt || payment.createdAt);
+      if (!paidMs) return false;
+      if (dateFrom && paidMs < dateFrom.getTime()) return false;
+      if (dateTo && paidMs > dateTo.getTime()) return false;
+      return true;
+    });
+
+    const monthKeys = Array.from(
+      new Set(
+        filteredInvoices
+          .map((inv) => toMillis(inv.issuedAt || inv.createdAt))
+          .filter(Boolean)
+          .map((ms) => getMonthKey(new Date(ms as number)))
+          .concat(
+            filteredPayments
+              .map((pay) => toMillis(pay.paidAt || pay.createdAt))
+              .filter(Boolean)
+              .map((ms) => getMonthKey(new Date(ms as number)))
+          )
+      )
+    ).sort();
+
+    const revenueByMonth = monthKeys.map((key) => ({ label: key, revenueUsd: 0 }));
+    const paymentsByMonth = monthKeys.map((key) => ({ label: key, paymentsUsd: 0 }));
+
+    filteredInvoices.forEach((inv) => {
+      const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
+      if (!issuedMs) return;
+      const key = getMonthKey(new Date(issuedMs));
+      const bucket = revenueByMonth.find((row) => row.label === key);
+      if (!bucket) return;
+      bucket.revenueUsd += Number(inv.amountTotalUsd || 0);
+    });
+
+    filteredPayments.forEach((payment) => {
+      if (String(payment.status || "") !== "Paid") return;
+      const paidMs = toMillis(payment.paidAt || payment.createdAt);
+      if (!paidMs) return;
+      const key = getMonthKey(new Date(paidMs));
+      const bucket = paymentsByMonth.find((row) => row.label === key);
+      if (!bucket) return;
+      bucket.paymentsUsd += Number(payment.amountUsd || 0);
+    });
+
+    const now = new Date();
+    const agingBuckets = settings.arAgingBucketsDays.length ? settings.arAgingBucketsDays : [30, 60, 90];
+    const bucketTotals = agingBuckets.map(() => 0);
+    let bucketOverflow = 0;
+
+    const outstandingInvoices = invoices
+      .filter((inv) => {
+        if (clientId && String(inv.clientId || "") !== clientId) return false;
+        const status = String(inv.status || "");
+        if (["Paid", "Void"].includes(status)) return false;
+        if (statusFilter && status !== statusFilter) return false;
+        return true;
+      })
+      .map((inv) => {
+        const dueMs = toMillis(inv.dueDate);
+        let diffDays = 0;
+        if (dueMs) {
+          diffDays = Math.max(0, Math.floor((now.getTime() - dueMs) / (1000 * 60 * 60 * 24)));
+        }
+        const amount = Number(inv.amountTotalUsd || 0);
+        const bucketIndex = agingBuckets.findIndex((limit) => diffDays <= limit);
+        if (bucketIndex === -1) {
+          bucketOverflow += amount;
+        } else {
+          bucketTotals[bucketIndex] += amount;
+        }
+
+        return {
+          id: inv.id,
+          orderId: inv.orderId || inv.id,
+          clientId: inv.clientId || "",
+          clientName: inv.clientName || "",
+          amountTotalUsd: amount,
+          dueDate: toISO(inv.dueDate),
+          status: inv.status || "Sent",
+          updatedAt: toISO(inv.updatedAt || inv.createdAt),
+        };
+      })
+      .sort((a, b) => {
+        const left = new Date(a.dueDate || 0).getTime();
+        const right = new Date(b.dueDate || 0).getTime();
+        return left - right;
+      });
+
+    const topClientsMap = new Map<string, { clientId: string; clientName: string; totalUsd: number }>();
+    filteredInvoices.forEach((inv) => {
+      if (String(inv.status || "") !== "Paid") return;
+      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      if (!paidMs) return;
+      if (dateFrom && paidMs < dateFrom.getTime()) return;
+      if (dateTo && paidMs > dateTo.getTime()) return;
+      const id = String(inv.clientId || "unknown");
+      const name = String(inv.clientName || "Unknown");
+      const current = topClientsMap.get(id) || { clientId: id, clientName: name, totalUsd: 0 };
+      current.totalUsd += Number(inv.amountTotalUsd || 0);
+      topClientsMap.set(id, current);
+    });
+
+    const topClientsByRevenue = Array.from(topClientsMap.values()).sort((a, b) => b.totalUsd - a.totalUsd).slice(0, 10);
+
+    const arAging = agingBuckets.map((bucket, idx) => ({
+      label: idx === 0 ? `0-${bucket}d` : `${agingBuckets[idx - 1] + 1}-${bucket}d`,
+      amountUsd: bucketTotals[idx],
+    }));
+    arAging.push({ label: `${agingBuckets[agingBuckets.length - 1] + 1}d+`, amountUsd: bucketOverflow });
+
+    return NextResponse.json({
+      ok: true,
+      revenueByMonth,
+      paymentsByMonth,
+      arAging,
+      topClientsByRevenue,
+      outstandingInvoices,
+    });
+  } catch (err: any) {
+    console.error("reports/revenue error:", err);
+    const rawMessage = String(err?.message || "");
+    const isIndexError =
+      rawMessage.includes("FAILED_PRECONDITION") ||
+      rawMessage.toLowerCase().includes("index") ||
+      rawMessage.toLowerCase().includes("indexes");
+    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load revenue reports.";
+    return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
+  }
+}
