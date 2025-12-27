@@ -5,32 +5,19 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import {
   formatDate,
   formatDateTime,
-  formatUsd,
+  formatPkr,
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
-import type { PaymentRecord } from "@/lib/finance/types";
+import type { PayrollRecord } from "@/lib/finance/types";
 
 const STATUS_OPTIONS = [
   "",
-  "Pending",
+  "Draft",
+  "Approved",
   "Paid",
-  "Failed",
-  "Refunded",
 ].map((status) => ({ label: status || "All Statuses", value: status }));
 
-const METHOD_OPTIONS = [
-  "",
-  "Card",
-  "Bank",
-  "Cash",
-  "PayPal",
-  "Wise",
-  "Other",
-].map((method) => ({ label: method || "All Methods", value: method }));
-
-type ClientOption = { id: string; companyName: string };
-
-type SortKey = "id" | "clientName" | "method" | "amountUsd" | "paidAt" | "createdAt" | "status";
+type SortKey = "userName" | "role" | "month" | "baseSalaryPkr" | "total" | "paidAt" | "status";
 
 type SortDir = "asc" | "desc";
 
@@ -38,100 +25,68 @@ type CurrentUser = { uid: string; role: string; name?: string };
 
 type ErrorState = { title: string; message: string };
 
-export default function FinancePaymentsPage() {
+export default function FinancePayrollPage() {
   const isDark = useIsSystemDark();
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [methodFilter, setMethodFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [monthFilter, setMonthFilter] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("month");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+  const [selected, setSelected] = useState<PayrollRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [runMonth, setRunMonth] = useState("");
 
-  const loadPayments = useCallback(async () => {
+  const loadPayroll = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/payments/list", { cache: "no-store" });
+      const res = await fetch("/api/admin/finance/payroll/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load payments.");
+        throw new Error(data?.error || "Unable to load payroll.");
       }
-      setPayments(data.payments || []);
+      setPayroll(data.payroll || []);
       setCurrentUser(data.currentUser || null);
     } catch (err: any) {
-      console.error("Payments load error", err);
-      setError({ title: "Unable to load payments", message: "Please try again in a moment." });
+      console.error("Payroll load error", err);
+      setError({ title: "Unable to load payroll", message: "Please try again in a moment." });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadClients = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setClients(data.clients || []);
-      }
-    } catch (err) {
-      console.error("Failed to load clients", err);
-    }
-  }, []);
-
   useEffect(() => {
-    loadPayments();
-    loadClients();
-  }, [loadPayments, loadClients]);
+    loadPayroll();
+  }, [loadPayroll]);
 
   const canAdmin = useMemo(() => {
     const role = (currentUser?.role || "").toLowerCase();
     return role === "admin" || role === "super_admin";
   }, [currentUser?.role]);
 
-  const filteredPayments = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const start = startDate ? new Date(startDate).getTime() : null;
-    const end = endDate ? new Date(endDate).getTime() : null;
-
-    return payments.filter((payment) => {
-      if (statusFilter && payment.status !== statusFilter) return false;
-      if (methodFilter && payment.method !== methodFilter) return false;
-      if (clientFilter && payment.clientId !== clientFilter) return false;
-      if (q) {
-        const hay = [payment.id, payment.clientName, payment.method, payment.orderId]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      const paidAt = payment.paidAt ? new Date(payment.paidAt).getTime() : null;
-      if (start && (!paidAt || paidAt < start)) return false;
-      if (end && (!paidAt || paidAt > end + 86400000)) return false;
+  const filteredPayroll = useMemo(() => {
+    return payroll.filter((row) => {
+      if (statusFilter && row.status !== statusFilter) return false;
+      if (monthFilter && row.month !== monthFilter) return false;
       return true;
     });
-  }, [payments, query, statusFilter, methodFilter, clientFilter, startDate, endDate]);
+  }, [payroll, statusFilter, monthFilter]);
 
-  const sortedPayments = useMemo(() => {
-    const list = [...filteredPayments];
+  const sortedPayroll = useMemo(() => {
+    const list = [...filteredPayroll];
     list.sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
-      if (sortKey === "amountUsd") return (a.amountUsd - b.amountUsd) * dir;
+      if (sortKey === "baseSalaryPkr") return (a.baseSalaryPkr - b.baseSalaryPkr) * dir;
+      if (sortKey === "total") return (getTotal(a) - getTotal(b)) * dir;
       if (sortKey === "paidAt") return String(a.paidAt || "").localeCompare(String(b.paidAt || "")) * dir;
-      if (sortKey === "createdAt") return String(a.createdAt || "").localeCompare(String(b.createdAt || "")) * dir;
       return String(a[sortKey] || "").localeCompare(String(b[sortKey] || "")) * dir;
     });
     return list;
-  }, [filteredPayments, sortKey, sortDir]);
+  }, [filteredPayroll, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -142,14 +97,14 @@ export default function FinancePaymentsPage() {
     }
   };
 
-  const openDrawer = (payment: PaymentRecord) => {
-    setSelectedPayment(payment);
+  const openDrawer = (row: PayrollRecord) => {
+    setSelected(row);
     setDrawerOpen(true);
   };
 
   const closeDrawer = () => {
     setDrawerOpen(false);
-    setSelectedPayment(null);
+    setSelected(null);
   };
 
   useEffect(() => {
@@ -163,22 +118,44 @@ export default function FinancePaymentsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
-  const handleAction = async (payment: PaymentRecord, action: "mark_paid" | "refund") => {
+  const handleAction = async (row: PayrollRecord, action: "approve" | "mark_paid") => {
     try {
-      setActionLoading(payment.id);
-      const res = await fetch("/api/admin/finance/payments/update", {
+      setActionLoading(row.id);
+      const res = await fetch("/api/admin/finance/payroll/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: payment.id, action }),
+        body: JSON.stringify({ id: row.id, action }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update payment.");
+        throw new Error(data?.error || "Unable to update payroll.");
       }
-      await loadPayments();
+      await loadPayroll();
     } catch (err) {
-      console.error("Payment update error", err);
-      setError({ title: "Unable to update payment", message: "Please try again." });
+      console.error("Payroll update error", err);
+      setError({ title: "Unable to update payroll", message: "Please try again." });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRunPayroll = async () => {
+    if (!runMonth) return;
+    try {
+      setActionLoading("run");
+      const res = await fetch("/api/admin/finance/payroll/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: runMonth }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to run payroll.");
+      }
+      await loadPayroll();
+    } catch (err) {
+      console.error("Payroll run error", err);
+      setError({ title: "Unable to run payroll", message: "Please try again." });
     } finally {
       setActionLoading(null);
     }
@@ -204,40 +181,30 @@ export default function FinancePaymentsPage() {
         </div>
       )}
 
-      <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payments</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
-          USD receipts, methods, and settlement status.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payroll</h3>
+          <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+            PKR salary runs, approvals, and payments.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="input" type="month" value={runMonth} onChange={(e) => setRunMonth(e.target.value)} />
+          <button className="btn" onClick={handleRunPayroll} disabled={!runMonth || actionLoading === "run"} style={{ borderRadius: 999 }}>
+            {actionLoading === "run" ? "Running" : "Run Payroll"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search payment or client"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
         <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
-        <MasterSelect value={methodFilter} onChange={(value) => setMethodFilter(value)} options={METHOD_OPTIONS} />
-        <MasterSelect
-          value={clientFilter}
-          onChange={(value) => setClientFilter(value)}
-          options={[{ label: "All Clients", value: "" }, ...clients.map((c) => ({ label: c.companyName, value: c.id }))]}
-        />
-        <input className="input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <input className="input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <input className="input" type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
         <button
           type="button"
           className="btn"
           onClick={() => {
-            setQuery("");
             setStatusFilter("");
-            setMethodFilter("");
-            setClientFilter("");
-            setStartDate("");
-            setEndDate("");
+            setMonthFilter("");
           }}
           style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
         >
@@ -262,33 +229,33 @@ export default function FinancePaymentsPage() {
             <thead>
               <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("id")} style={headerButtonStyle}>
-                    Payment ID {sortKey === "id" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <button type="button" onClick={() => toggleSort("userName")} style={headerButtonStyle}>
+                    Employee {sortKey === "userName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("clientName")} style={headerButtonStyle}>
-                    Client {sortKey === "clientName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <button type="button" onClick={() => toggleSort("role")} style={headerButtonStyle}>
+                    Role {sortKey === "role" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("method")} style={headerButtonStyle}>
-                    Method {sortKey === "method" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <button type="button" onClick={() => toggleSort("month")} style={headerButtonStyle}>
+                    Month {sortKey === "month" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("amountUsd")} style={headerButtonStyle}>
-                    Amount (USD) {sortKey === "amountUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  <button type="button" onClick={() => toggleSort("baseSalaryPkr")} style={headerButtonStyle}>
+                    Base Salary (PKR) {sortKey === "baseSalaryPkr" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </button>
+                </th>
+                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort("total")} style={headerButtonStyle}>
+                    Total (PKR) {sortKey === "total" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
                   <button type="button" onClick={() => toggleSort("paidAt")} style={headerButtonStyle}>
                     Paid At {sortKey === "paidAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("createdAt")} style={headerButtonStyle}>
-                    Created {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
@@ -303,49 +270,57 @@ export default function FinancePaymentsPage() {
               {loading ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: "center", padding: 40 }}>
-                    Loading payments…
+                    Loading payroll…
                   </td>
                 </tr>
-              ) : sortedPayments.length === 0 ? (
+              ) : sortedPayroll.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: "center", padding: 40 }}>
-                    No payments found.
+                    No payroll entries found.
                   </td>
                 </tr>
               ) : (
-                sortedPayments.map((payment, idx) => {
+                sortedPayroll.map((row, idx) => {
                   const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
                   return (
-                    <tr key={payment.id} style={{ background: rowBg }}>
-                      <td style={{ padding: "14px 16px", textAlign: "left" }}>
-                        <div style={{ fontWeight: 600 }}>{payment.id}</div>
-                        <div style={{ fontSize: 12, opacity: 0.65 }}>{payment.orderId || payment.invoiceId || ""}</div>
-                      </td>
-                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{payment.clientName}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{payment.method}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatUsd(payment.amountUsd)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.paidAt)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.createdAt)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(payment.status, isDark)}</td>
+                    <tr key={row.id} style={{ background: rowBg }}>
+                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{row.userName}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{row.role}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{row.month}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatPkr(row.baseSalaryPkr)}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatPkr(getTotal(row))}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(row.paidAt)}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(row.status, isDark)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>
                         <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                           <button
                             type="button"
                             className="btn ghost"
-                            onClick={() => openDrawer(payment)}
+                            onClick={() => openDrawer(row)}
                             style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
                           >
                             View
                           </button>
-                          {canAdmin && payment.status === "Pending" && (
+                          {canAdmin && row.status === "Draft" && (
                             <button
                               type="button"
                               className="btn"
-                              onClick={() => handleAction(payment, "mark_paid")}
-                              disabled={actionLoading === payment.id}
+                              onClick={() => handleAction(row, "approve")}
+                              disabled={actionLoading === row.id}
                               style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
                             >
-                              {actionLoading === payment.id ? "Updating" : "Mark Paid"}
+                              {actionLoading === row.id ? "Updating" : "Approve"}
+                            </button>
+                          )}
+                          {canAdmin && row.status !== "Paid" && (
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => handleAction(row, "mark_paid")}
+                              disabled={actionLoading === row.id}
+                              style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            >
+                              {actionLoading === row.id ? "Updating" : "Mark Paid"}
                             </button>
                           )}
                         </div>
@@ -359,14 +334,14 @@ export default function FinancePaymentsPage() {
         </div>
       </div>
 
-      {drawerOpen && selectedPayment && (
-        <PaymentDrawer
-          payment={selectedPayment}
+      {drawerOpen && selected && (
+        <PayrollDrawer
+          row={selected}
           isDark={isDark}
           canAdmin={canAdmin}
           onClose={closeDrawer}
           onAction={handleAction}
-          actionLoading={actionLoading === selectedPayment.id}
+          actionLoading={actionLoading === selected.id}
         />
       )}
     </div>
@@ -379,6 +354,10 @@ const headerButtonStyle = {
   fontWeight: 700,
   cursor: "pointer",
 } as const;
+
+function getTotal(row: PayrollRecord) {
+  return Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
+}
 
 function renderStatus(status: string, isDark: boolean) {
   const base = {
@@ -408,21 +387,6 @@ function renderStatus(status: string, isDark: boolean) {
     );
   }
 
-  if (token.includes("failed") || token.includes("refund")) {
-    return (
-      <span
-        style={{
-          ...base,
-          color: isDark ? "#fecaca" : "#b91c1c",
-          background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-          border: "1px solid rgba(239,68,68,0.35)",
-        }}
-      >
-        {status}
-      </span>
-    );
-  }
-
   return (
     <span
       style={{
@@ -437,19 +401,19 @@ function renderStatus(status: string, isDark: boolean) {
   );
 }
 
-function PaymentDrawer({
-  payment,
+function PayrollDrawer({
+  row,
   isDark,
   canAdmin,
   onClose,
   onAction,
   actionLoading,
 }: {
-  payment: PaymentRecord;
+  row: PayrollRecord;
   isDark: boolean;
   canAdmin: boolean;
   onClose: () => void;
-  onAction: (payment: PaymentRecord, action: "mark_paid" | "refund") => void;
+  onAction: (row: PayrollRecord, action: "approve" | "mark_paid") => void;
   actionLoading: boolean;
 }) {
   return (
@@ -480,8 +444,8 @@ function PaymentDrawer({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{payment.id}</div>
-            <div style={{ opacity: 0.7, fontSize: 12 }}>{payment.clientName}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{row.userName}</div>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>{row.month} · {row.role}</div>
           </div>
           <button className="btn ghost" onClick={onClose} style={{ height: 34, borderRadius: 999 }}>
             Close
@@ -491,36 +455,38 @@ function PaymentDrawer({
         <div style={{ height: 16 }} />
 
         <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Payment Summary</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Payroll Summary</div>
           <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
-            <Row label="Status" value={payment.status} />
-            <Row label="Method" value={payment.method} />
-            <Row label="Amount" value={formatUsd(payment.amountUsd)} />
-            <Row label="Paid At" value={formatDateTime(payment.paidAt)} />
-            <Row label="Created" value={formatDateTime(payment.createdAt)} />
+            <Row label="Status" value={row.status} />
+            <Row label="Base Salary" value={formatPkr(row.baseSalaryPkr)} />
+            <Row label="Commission" value={formatPkr(row.commissionPkr || 0)} />
+            <Row label="Total" value={formatPkr(getTotal(row))} />
+            <Row label="Paid At" value={formatDateTime(row.paidAt)} />
           </div>
         </div>
 
         <div style={{ height: 18 }} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {canAdmin && payment.status === "Pending" && (
+          {canAdmin && row.status === "Draft" && (
             <button
               className="btn"
-              onClick={() => onAction(payment, "mark_paid")}
+              onClick={() => onAction(row, "approve")}
+              disabled={actionLoading}
+              style={{ borderRadius: 999 }}
+            >
+              {actionLoading ? "Updating" : "Approve"}
+            </button>
+          )}
+          {canAdmin && row.status !== "Paid" && (
+            <button
+              className="btn"
+              onClick={() => onAction(row, "mark_paid")}
               disabled={actionLoading}
               style={{ borderRadius: 999 }}
             >
               {actionLoading ? "Updating" : "Mark Paid"}
             </button>
           )}
-          <button
-            className="btn ghost"
-            onClick={() => onAction(payment, "refund")}
-            disabled={actionLoading}
-            style={{ borderRadius: 999 }}
-          >
-            Refund (stub)
-          </button>
         </div>
       </div>
     </div>
