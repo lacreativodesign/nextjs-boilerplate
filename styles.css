@@ -378,3 +378,16 @@
 .btn-danger:hover {
   opacity: 0.9;
 }
+
+.kpi-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.dark .kpi-card:hover {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+}
