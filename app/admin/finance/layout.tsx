@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "Invoices", path: "/admin/finance" },
+  { label: "Overview", path: "/admin/finance" },
+  { label: "Invoices", path: "/admin/finance/invoices" },
   { label: "Payments", path: "/admin/finance/payments" },
-  { label: "AR Aging", path: "/admin/finance/ar" },
-  { label: "Estimates", path: "/admin/finance/estimates" },
-  { label: "Retainers", path: "/admin/finance/retainers" },
+  { label: "Payroll", path: "/admin/finance/payroll" },
+  { label: "Reports", path: "/admin/finance/reports" },
+  { label: "Settings", path: "/admin/finance/settings" },
 ];
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
@@ -18,11 +19,9 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   return (
     <div className="w-full">
       <div className="mb-4">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-          Finance & Billing
-        </h2>
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Finance</h2>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Manage invoices, payments, AR, estimates, and retainers.
+          Track revenue, payments, payroll, expenses, and reporting.
         </p>
       </div>
 
