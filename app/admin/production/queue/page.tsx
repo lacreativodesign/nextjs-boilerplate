@@ -363,10 +363,10 @@ export default function ProductionQueuePage() {
             gap: 12,
           }}
         >
-          <KpiCard label="Total in Queue" value={totals.total} isDark={isDark} />
-          <KpiCard label="At Risk" value={totals.atRisk} isDark={isDark} />
-          <KpiCard label="Overdue" value={totals.overdue} isDark={isDark} />
-          <KpiCard label="Due This Week" value={totals.dueWeek} isDark={isDark} />
+          <KpiCard label="Total in Queue" value={totals.total} />
+          <KpiCard label="At Risk" value={totals.atRisk} />
+          <KpiCard label="Overdue" value={totals.overdue} />
+          <KpiCard label="Due This Week" value={totals.dueWeek} />
         </div>
       </section>
 
@@ -474,32 +474,10 @@ export default function ProductionQueuePage() {
   );
 }
 
-function KpiCard({ label, value, isDark }: { label: string; value: number; isDark: boolean }) {
+function KpiCard({ label, value }: { label: string; value: number }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: "16px 18px",
-        borderRadius: 16,
-        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-        background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
-        boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
-        transition: "transform 140ms ease, box-shadow 140ms ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-          ? "0 20px 36px rgba(0,0,0,0.4)"
-          : "0 18px 30px rgba(15,23,42,0.12)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-          ? "0 14px 28px rgba(0,0,0,0.35)"
-          : "0 12px 24px rgba(15,23,42,0.08)";
-      }}
-    >
-      <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+    <div className="card kpi-card" style={{ padding: "16px 18px", borderRadius: 16 }}>
+      <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>
         {label}
       </div>
       <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>

@@ -19,13 +19,13 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
   return (
     <div className="w-full">
       <div className="mb-5">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Reports & Analytics</h2>
-        <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
+        <h2 className="section-title mb-1">Reports & Analytics</h2>
+        <p className="section-subtitle">
           Executive-ready dashboards spanning delivery, production, finance, HR, and client health.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b mb-6" style={{ borderColor: "var(--border)" }}>
+      <div className="tabs-bar">
         {tabs.map((t) => {
           const isActive = pathname === t.path || (pathname.startsWith(t.path + "/") && t.path !== "/admin/reports");
 
@@ -33,16 +33,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
             <Link
               key={t.path}
               href={t.path}
-              className={clsx(
-                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                isActive
-                  ? "text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-              style={{
-                background: isActive ? "var(--primary)" : "transparent",
-                border: isActive ? "1px solid var(--primary)" : "1px solid transparent",
-              }}
+              className={clsx("tab-pill", isActive && "active")}
             >
               {t.label}
             </Link>

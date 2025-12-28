@@ -111,7 +111,7 @@ export default function SalesOverviewPage() {
 
       <div className="kpis" style={{ marginTop: 18 }}>
         {kpiValues.map((kpi) => (
-          <KpiCard key={kpi.label} title={kpi.label} value={loading ? "—" : kpi.value} isDark={isDark} />
+          <KpiCard key={kpi.label} title={kpi.label} value={loading ? "—" : kpi.value} />
         ))}
       </div>
 
@@ -168,29 +168,10 @@ export default function SalesOverviewPage() {
   );
 }
 
-function KpiCard({
-  title,
-  value,
-  isDark,
-}: {
-  title: string;
-  value: string;
-  isDark: boolean;
-}) {
+function KpiCard({ title, value }: { title: string; value: string }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 18,
-        borderRadius: 18,
-        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-        boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-        transition: "transform 120ms ease",
-      }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)")}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(0)")}
-    >
-      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7 }}>{title}</div>
+    <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{title}</div>
       <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
     </div>
   );

@@ -62,37 +62,17 @@ export function KpiCard({
   subtitle?: string;
 }) {
   return (
-    <div
-      className="card kpi-card"
-      style={{
-        padding: 18,
-        borderRadius: 16,
-        border: "1px solid var(--border)",
-        background: "var(--card-bg)",
-        boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sidebar-text)", textTransform: "uppercase" }}>
-        {title}
-      </div>
+    <div className="card kpi-card" style={{ padding: 18, borderRadius: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>{title}</div>
       <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>{value}</div>
-      {subtitle && <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>{subtitle}</div>}
+      {subtitle && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{subtitle}</div>}
     </div>
   );
 }
 
 export function CardShell({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 20,
-        borderRadius: 18,
-        border: "1px solid var(--border)",
-        background: "var(--card-bg)",
-        boxShadow: "0 16px 32px rgba(15,23,42,0.08)",
-      }}
-    >
+    <div className="card" style={{ padding: 20, borderRadius: 18 }}>
       {children}
     </div>
   );
@@ -118,7 +98,7 @@ export function MiniBarChart({
             style={{
               height: 10,
               borderRadius: 999,
-              background: "rgba(148,163,184,0.25)",
+              background: "var(--chart-track)",
               overflow: "hidden",
             }}
           >
@@ -127,7 +107,7 @@ export function MiniBarChart({
                 width: `${Math.round((row.value / max) * 100)}%`,
                 height: "100%",
                 borderRadius: 999,
-                background: "linear-gradient(90deg, rgba(15,23,42,0.7), rgba(15,23,42,0.35))",
+                background: "var(--chart-fill)",
               }}
             />
           </div>

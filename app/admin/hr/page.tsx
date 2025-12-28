@@ -97,12 +97,12 @@ export default function HrOverviewPage() {
       )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <KpiCard title="Total Employees" value={overview.kpis.totalEmployees} subtitle="All active records" isDark={isDark} />
-        <KpiCard title="Active" value={overview.kpis.activeEmployees} subtitle="Currently enabled" isDark={isDark} />
-        <KpiCard title="New Hires (30d)" value={overview.kpis.newHires} subtitle="Last 30 days" isDark={isDark} />
-        <KpiCard title="Open Onboarding" value={overview.kpis.openOnboarding} subtitle="In progress" isDark={isDark} />
-        <KpiCard title="Attendance (7d)" value={overview.kpis.attendance7d} subtitle="Unique employees" isDark={isDark} />
-        <KpiCard title="Documents" value={overview.kpis.documents} subtitle="Active files" isDark={isDark} />
+        <KpiCard title="Total Employees" value={overview.kpis.totalEmployees} subtitle="All active records" />
+        <KpiCard title="Active" value={overview.kpis.activeEmployees} subtitle="Currently enabled" />
+        <KpiCard title="New Hires (30d)" value={overview.kpis.newHires} subtitle="Last 30 days" />
+        <KpiCard title="Open Onboarding" value={overview.kpis.openOnboarding} subtitle="In progress" />
+        <KpiCard title="Attendance (7d)" value={overview.kpis.attendance7d} subtitle="Unique employees" />
+        <KpiCard title="Documents" value={overview.kpis.documents} subtitle="Active files" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -179,42 +179,14 @@ export default function HrOverviewPage() {
   );
 }
 
-function KpiCard({
-  title,
-  value,
-  subtitle,
-  isDark,
-}: {
-  title: string;
-  value: number;
-  subtitle: string;
-  isDark: boolean;
-}) {
+function KpiCard({ title, value, subtitle }: { title: string; value: number; subtitle: string }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 18,
-        borderRadius: 18,
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow =
-          "0 18px 40px rgba(15,23,42,0.08)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-      }}
-    >
-      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "var(--sidebar-text)" }}>
+    <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
+      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "var(--text-muted)" }}>
         {title}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8, color: isDark ? "#f8fafc" : "#0f172a" }}>
-        {value}
-      </div>
-      <div style={{ fontSize: 13, color: "var(--sidebar-text)", marginTop: 4 }}>{subtitle}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{value}</div>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{subtitle}</div>
     </div>
   );
 }

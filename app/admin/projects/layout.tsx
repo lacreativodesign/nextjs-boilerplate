@@ -17,31 +17,15 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
   return (
     <div className="w-full">
       <div className="mb-4">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-          Projects & Delivery
-        </h2>
-        <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Manage all project workflows & delivery stages.
-        </p>
+        <h2 className="section-title mb-1">Projects & Delivery</h2>
+        <p className="section-subtitle">Track delivery timelines, files, and change requests.</p>
       </div>
 
-      <div
-        className="flex gap-2 border-b mb-6"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;
           return (
-            <Link
-              key={t.path}
-              href={t.path}
-              className={clsx(
-                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-            >
+            <Link key={t.path} href={t.path} className={clsx("tab-pill", active && "active")}>
               {t.label}
             </Link>
           );
@@ -51,4 +35,4 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
       <div>{children}</div>
     </div>
   );
-              }
+}

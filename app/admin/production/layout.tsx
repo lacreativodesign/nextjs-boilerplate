@@ -16,30 +16,15 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   return (
     <div className="w-full">
       <div className="mb-4">
-        <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 8, color: "var(--text)" }}>Production</h1>
-        <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Monitor production flow, assignments, and QA approvals.
-        </p>
+        <h2 className="section-title mb-1">Production</h2>
+        <p className="section-subtitle">Monitor workloads, QA approvals, and delivery readiness.</p>
       </div>
 
-      <div
-        className="flex gap-2 border-b mb-6 flex-wrap"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;
           return (
-            <Link
-              key={t.path}
-              href={t.path}
-              className={clsx(
-                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                active
-                  ? "bg-gray-900 text-white dark:bg-gray-200 dark:text-gray-900"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-              style={{ border: active ? "1px solid var(--border)" : "1px solid transparent" }}
-            >
+            <Link key={t.path} href={t.path} className={clsx("tab-pill", active && "active")}>
               {t.label}
             </Link>
           );
