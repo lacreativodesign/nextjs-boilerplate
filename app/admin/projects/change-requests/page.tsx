@@ -294,14 +294,6 @@ export default function ChangeRequestsPage() {
 
   const [attachedFiles, setAttachedFiles] = useState<FileOption[]>([]);
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
@@ -731,21 +723,10 @@ export default function ChangeRequestsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="page-header">
         <div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 900,
-              marginBottom: 8,
-              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-            }}
-          >
-            Change Requests
-          </h1>
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-            Track scope changes, revisions, and new work across projects.
-          </p>
+          <h1 className="page-title">Change Requests</h1>
+          <p className="page-subtitle">Track scope changes, revisions, and new work across projects.</p>
         </div>
         {createAllowed && (
           <button className="btn" onClick={openCreate} style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}>
@@ -754,100 +735,81 @@ export default function ChangeRequestsPage() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 20 }}>
+      <div className="kpis" style={{ marginTop: 20 }}>
         <KpiCard label="Total Requests" value={totals.total} />
         <KpiCard label="Pending Approval" value={totals.pending} />
         <KpiCard label="In Progress" value={totals.inProgress} />
         <KpiCard label="Completed" value={totals.completed} />
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 14,
-          borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <MasterSelect
-            className="input"
-            value={projectFilter}
-            onChange={setProjectFilter}
-            isDark={isDark}
-            placeholder="All Projects"
-            options={[
-              { label: "All Projects", value: "" },
-              ...projects.map((project) => ({
-                label: `${project.projectName || "Untitled"} · ${project.clientName || "Client"}`,
-                value: project.id,
-              })),
-            ]}
-          />
-          <MasterSelect
-            className="input"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            isDark={isDark}
-            placeholder="All Statuses"
-            options={[
-              { label: "All Statuses", value: "" },
-              ...CHANGE_REQUEST_STATUSES.map((status) => ({ label: status, value: status })),
-            ]}
-          />
-          <MasterSelect
-            className="input"
-            value={typeFilter}
-            onChange={setTypeFilter}
-            isDark={isDark}
-            placeholder="All Types"
-            options={[
-              { label: "All Types", value: "" },
-              ...CHANGE_REQUEST_TYPES.map((type) => ({ label: type, value: type })),
-            ]}
-          />
-          <MasterSelect
-            className="input"
-            value={priorityFilter}
-            onChange={setPriorityFilter}
-            isDark={isDark}
-            placeholder="All Priorities"
-            options={[
-              { label: "All Priorities", value: "" },
-              ...CHANGE_REQUEST_PRIORITIES.map((priority) => ({ label: priority, value: priority })),
-            ]}
-          />
-          <MasterSelect
-            className="input"
-            value={assignedFilter}
-            onChange={setAssignedFilter}
-            isDark={isDark}
-            placeholder="Assigned To"
-            options={[
-              { label: "Assigned To", value: "" },
-              ...users.map((user) => ({
-                label: `${user.email || user.uid}${user.role ? ` (${user.role})` : ""}`,
-                value: user.uid,
-              })),
-            ]}
-          />
-        </div>
+      <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
+        <input
+          className="input"
+          placeholder="Search keyword"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <MasterSelect
+          className="input"
+          value={projectFilter}
+          onChange={setProjectFilter}
+          isDark={isDark}
+          placeholder="All Projects"
+          options={[
+            { label: "All Projects", value: "" },
+            ...projects.map((project) => ({
+              label: `${project.projectName || "Untitled"} · ${project.clientName || "Client"}`,
+              value: project.id,
+            })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          isDark={isDark}
+          placeholder="All Statuses"
+          options={[
+            { label: "All Statuses", value: "" },
+            ...CHANGE_REQUEST_STATUSES.map((status) => ({ label: status, value: status })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={typeFilter}
+          onChange={setTypeFilter}
+          isDark={isDark}
+          placeholder="All Types"
+          options={[
+            { label: "All Types", value: "" },
+            ...CHANGE_REQUEST_TYPES.map((type) => ({ label: type, value: type })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          isDark={isDark}
+          placeholder="All Priorities"
+          options={[
+            { label: "All Priorities", value: "" },
+            ...CHANGE_REQUEST_PRIORITIES.map((priority) => ({ label: priority, value: priority })),
+          ]}
+        />
+        <MasterSelect
+          className="input"
+          value={assignedFilter}
+          onChange={setAssignedFilter}
+          isDark={isDark}
+          placeholder="Assigned To"
+          options={[
+            { label: "Assigned To", value: "" },
+            ...users.map((user) => ({
+              label: `${user.email || user.uid}${user.role ? ` (${user.role})` : ""}`,
+              value: user.uid,
+            })),
+          ]}
+        />
       </div>
 
       <div style={{ marginTop: 20 }}>
@@ -876,7 +838,7 @@ export default function ChangeRequestsPage() {
             </div>
           </div>
         ) : (
-          <div style={tableShellStyle}>
+          <div className="table-shell">
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1100 }}>
                 <thead>
@@ -897,13 +859,13 @@ export default function ChangeRequestsPage() {
                       {headerLabel("Priority", sortKey === "priority" ? (sortDir === "asc" ? "↑" : "↓") : undefined)}
                     </th>
                     <th
-                      style={{ ...headerCellStyle, textAlign: "center" }}
+                      style={{ ...headerCellStyle, textAlign: "right" }}
                       onClick={() => toggleSort("estimatedCost")}
                     >
                       {headerLabel("Cost", sortKey === "estimatedCost" ? (sortDir === "asc" ? "↑" : "↓") : undefined)}
                     </th>
                     <th
-                      style={{ ...headerCellStyle, textAlign: "center" }}
+                      style={{ ...headerCellStyle, textAlign: "right" }}
                       onClick={() => toggleSort("estimatedTimelineDays")}
                     >
                       {headerLabel(
@@ -945,8 +907,8 @@ export default function ChangeRequestsPage() {
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <span style={priorityStyles(row.priority, isDark)}>{row.priority}</span>
                       </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{fmtMoney(row.estimatedCost)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(row.estimatedCost)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>
                         {row.estimatedTimelineDays ? `${row.estimatedTimelineDays} days` : "-"}
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(row.updatedAt)}</td>
@@ -991,31 +953,8 @@ export default function ChangeRequestsPage() {
       </div>
 
       {drawerOpen && selected && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeDrawer}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(520px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeDrawer}>
+          <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
@@ -1221,31 +1160,8 @@ export default function ChangeRequestsPage() {
       )}
 
       {createOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeCreate}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(520px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeCreate}>
+          <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>

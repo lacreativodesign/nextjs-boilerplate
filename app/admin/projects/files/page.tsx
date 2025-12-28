@@ -426,19 +426,10 @@ export default function GlobalFilesPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div className="page-header">
         <div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 900,
-              marginBottom: 8,
-              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-            }}
-          >
-            Global Files
-          </h1>
-          <div style={{ color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+          <h1 className="page-title">Global Files</h1>
+          <div className="page-subtitle">
             Centralized source of truth for every draft, revision, and final delivery asset.
           </div>
         </div>
@@ -458,14 +449,7 @@ export default function GlobalFilesPage() {
         )}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
-          marginTop: 20,
-        }}
-      >
+      <div className="kpis" style={{ marginTop: 20 }}>
         {[
           { label: "Total Files", value: totals.total },
           { label: "Drafts", value: totals.Draft },
@@ -475,27 +459,8 @@ export default function GlobalFilesPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: 16,
-              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
-              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
-              transition: "transform 140ms ease, box-shadow 140ms ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 20px 36px rgba(0,0,0,0.4)"
-                : "0 18px 30px rgba(15,23,42,0.12)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 14px 28px rgba(0,0,0,0.35)"
-                : "0 12px 24px rgba(15,23,42,0.08)";
-            }}
+            className="card kpi-card"
+            style={{ padding: "16px 18px" }}
           >
             <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
               {card.label}
@@ -507,24 +472,10 @@ export default function GlobalFilesPage() {
 
       {error && <AlertCard error={error} />}
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 14,
-          borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 1.1fr) repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
-          alignItems: "center",
-        }}
-      >
+      <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
         <input
           className="input"
-          placeholder="Search file name"
+          placeholder="Search keyword"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -585,23 +536,12 @@ export default function GlobalFilesPage() {
         </button>
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell" style={{ marginTop: 20 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+              <tr>
+                <th style={{ textAlign: "left" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("fileName")}
@@ -610,7 +550,7 @@ export default function GlobalFilesPage() {
                     File Name {sortKey === "fileName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "left" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("projectName")}
@@ -619,7 +559,7 @@ export default function GlobalFilesPage() {
                     Project {sortKey === "projectName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "left" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("category")}
@@ -628,7 +568,7 @@ export default function GlobalFilesPage() {
                     Category {sortKey === "category" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "right" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("version")}
@@ -637,7 +577,7 @@ export default function GlobalFilesPage() {
                     Version {sortKey === "version" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "left" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("uploadedBy")}
@@ -646,7 +586,7 @@ export default function GlobalFilesPage() {
                     Uploaded By {sortKey === "uploadedBy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "center" }}>
                   <button
                     type="button"
                     onClick={() => toggleSort("uploadedAt")}
@@ -655,7 +595,7 @@ export default function GlobalFilesPage() {
                     Uploaded At {sortKey === "uploadedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
+                <th style={{ textAlign: "center" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -673,23 +613,23 @@ export default function GlobalFilesPage() {
                 </tr>
               ) : (
                 sortedFiles.map((file) => (
-                  <tr key={file.id} style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(15,23,42,0.06)" }}>
-                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                  <tr key={file.id}>
+                    <td style={{ textAlign: "left" }}>
                       <div style={{ fontWeight: 600 }}>{file.fileName}</div>
                       <div style={{ fontSize: 12, opacity: 0.65 }}>{formatBytes(file.size)}</div>
                     </td>
-                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                    <td style={{ textAlign: "left" }}>
                       <div style={{ fontWeight: 600 }}>{file.projectName}</div>
                       <div style={{ fontSize: 12, opacity: 0.65 }}>{file.clientName || ""}</div>
                     </td>
-                    <td style={{ padding: "14px 16px", textAlign: "left" }}>{categoryBadge(file.category, isDark)}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "center" }}>{file.version || "-"}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                    <td style={{ textAlign: "left" }}>{categoryBadge(file.category, isDark)}</td>
+                    <td style={{ textAlign: "right" }}>{file.version || "-"}</td>
+                    <td style={{ textAlign: "left" }}>
                       <div style={{ fontWeight: 600 }}>{file.uploadedByName || "-"}</div>
                       <div style={{ fontSize: 12, opacity: 0.65 }}>{file.uploadedByRole || ""}</div>
                     </td>
-                    <td style={{ padding: "14px 16px", textAlign: "center" }}>{fmtDate(file.uploadedAt)}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                    <td style={{ textAlign: "center" }}>{fmtDate(file.uploadedAt)}</td>
+                    <td style={{ textAlign: "center" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <a
                           className="btn"
