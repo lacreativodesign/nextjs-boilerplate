@@ -468,14 +468,6 @@ export default function AllProjectsPage() {
 
   const sortBadge = (key: SortKey) => (key !== sortKey ? "" : sortDir === "asc" ? "▲" : "▼");
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
@@ -658,21 +650,10 @@ export default function AllProjectsPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div className="page-header">
         <div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 900,
-              marginBottom: 8,
-              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-            }}
-          >
-            All Projects
-          </h1>
-          <div style={{ color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-            Monitor delivery pipeline, ownership, and priority in one live workspace.
-          </div>
+          <h1 className="page-title">All Projects</h1>
+          <div className="page-subtitle">Monitor delivery pipeline, ownership, and priority in one live workspace.</div>
         </div>
 
         {canCreate(currentUser?.role) && (
@@ -687,14 +668,7 @@ export default function AllProjectsPage() {
         )}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
-          marginTop: 20,
-        }}
-      >
+      <div className="kpis" style={{ marginTop: 20 }}>
         {[
           { label: "Total Projects", value: visibleTotals.total },
           { label: "Overdue", value: visibleTotals.overdue },
@@ -703,27 +677,8 @@ export default function AllProjectsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: 16,
-              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
-              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
-              transition: "transform 140ms ease, box-shadow 140ms ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 20px 36px rgba(0,0,0,0.4)"
-                : "0 18px 30px rgba(15,23,42,0.12)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 14px 28px rgba(0,0,0,0.35)"
-                : "0 12px 24px rgba(15,23,42,0.08)";
-            }}
+            className="card kpi-card"
+            style={{ padding: "16px 18px" }}
           >
             <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
               {card.label}
@@ -733,21 +688,7 @@ export default function AllProjectsPage() {
         ))}
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 14,
-          borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
-          alignItems: "center",
-        }}
-      >
+      <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
         <input
           className="input"
           placeholder="Search keyword"
@@ -805,15 +746,16 @@ export default function AllProjectsPage() {
         </div>
       )}
 
-      <div style={{ marginTop: 18, ...tableShellStyle }}>
+      <div className="table-shell" style={{ marginTop: 18 }}>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ padding: 16, fontSize: 14 }}>
             Loading projects...
           </p>
         ) : error ? (
           <div
             className="card"
             style={{
+              margin: 16,
               padding: 16,
               borderRadius: 16,
               border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
@@ -853,11 +795,9 @@ export default function AllProjectsPage() {
           <div
             className="card"
             style={{
+              margin: 16,
               padding: 16,
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-              background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-              color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.7)",
               fontSize: 14,
             }}
           >
@@ -972,34 +912,8 @@ export default function AllProjectsPage() {
       </div>
 
       {drawerOpen && selected && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeDrawer}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(520px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(20,20,20,0.98)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              borderTopLeftRadius: 24,
-              borderBottomLeftRadius: 24,
-              boxShadow: isDark ? "-12px 0 32px rgba(0,0,0,0.45)" : "-12px 0 28px rgba(15,23,42,0.08)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeDrawer}>
+          <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
@@ -1194,34 +1108,8 @@ export default function AllProjectsPage() {
       )}
 
       {createOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeCreate}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(520px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(20,20,20,0.98)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              borderTopLeftRadius: 24,
-              borderBottomLeftRadius: 24,
-              boxShadow: isDark ? "-12px 0 32px rgba(0,0,0,0.45)" : "-12px 0 28px rgba(15,23,42,0.08)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeCreate}>
+          <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
