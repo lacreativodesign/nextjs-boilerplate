@@ -92,7 +92,7 @@ export default function ProductionActivityPage() {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search project or team member..."
+              placeholder="Search keyword"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 text-sm bg-white dark:bg-neutral-900 text-gray-800 dark:text-neutral-100 w-full sm:w-72"

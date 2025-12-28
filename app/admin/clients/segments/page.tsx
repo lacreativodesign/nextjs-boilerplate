@@ -718,7 +718,7 @@ export default function ClientSegmentsPage() {
               <div style={{ marginTop: 10 }}>
                 <input
                   className="input"
-                  placeholder="Search clients"
+                  placeholder="Search keyword"
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
                 />

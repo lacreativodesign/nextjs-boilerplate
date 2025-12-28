@@ -214,7 +214,7 @@ export default function FinancePaymentsPage() {
       <div className="mt-4 flex flex-wrap gap-3">
         <input
           className="input"
-          placeholder="Search payment or client"
+          placeholder="Search keyword"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={{ minWidth: 220 }}
@@ -276,7 +276,7 @@ export default function FinancePaymentsPage() {
                     Method {sortKey === "method" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
+                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>
                   <button type="button" onClick={() => toggleSort("amountUsd")} style={headerButtonStyle}>
                     Amount (USD) {sortKey === "amountUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -314,16 +314,31 @@ export default function FinancePaymentsPage() {
                 </tr>
               ) : (
                 sortedPayments.map((payment, idx) => {
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+                  const rowBg =
+                    idx % 2 === 0
+                      ? isDark
+                        ? "rgba(255,255,255,0.02)"
+                        : "rgba(15,23,42,0.02)"
+                      : "transparent";
+                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
                   return (
-                    <tr key={payment.id} style={{ background: rowBg }}>
+                    <tr
+                      key={payment.id}
+                      style={{ background: rowBg, transition: "background 120ms ease" }}
+                      onMouseEnter={(event) => {
+                        (event.currentTarget as HTMLTableRowElement).style.background = hoverBg;
+                      }}
+                      onMouseLeave={(event) => {
+                        (event.currentTarget as HTMLTableRowElement).style.background = rowBg;
+                      }}
+                    >
                       <td style={{ padding: "14px 16px", textAlign: "left" }}>
                         <div style={{ fontWeight: 600 }}>{payment.id}</div>
                         <div style={{ fontSize: 12, opacity: 0.65 }}>{payment.orderId || payment.invoiceId || ""}</div>
                       </td>
                       <td style={{ padding: "14px 16px", textAlign: "left" }}>{payment.clientName}</td>
                       <td style={{ padding: "14px 16px", textAlign: "left" }}>{payment.method}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatUsd(payment.amountUsd)}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatUsd(payment.amountUsd)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.paidAt)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.createdAt)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(payment.status, isDark)}</td>

@@ -176,7 +176,7 @@ export default function SalesLeadsPage() {
             </label>
             <input
               type="text"
-              placeholder="Search by name, email, phone, ID, service..."
+              placeholder="Search keyword"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-50 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
