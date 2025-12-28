@@ -106,14 +106,23 @@ body {
 }
 
 .page-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 34px;
+  font-weight: 900;
   letter-spacing: -0.01em;
 }
 
 .page-subtitle {
   font-size: 14px;
   color: var(--text-muted);
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .section-title {

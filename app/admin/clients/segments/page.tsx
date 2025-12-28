@@ -284,10 +284,10 @@ export default function ClientSegmentsPage() {
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    padding: 12,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    padding: 14,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -295,16 +295,16 @@ export default function ClientSegmentsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
     whiteSpace: "nowrap",
     textAlign: "left",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -436,31 +436,18 @@ export default function ClientSegmentsPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-        }}
-      >
-        Client Segments
-      </h1>
-      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+      <h1 className="page-title">Client Segments</h1>
+      <div className="page-subtitle" style={{ marginBottom: 18 }}>
         Manage segmentation definitions and track coverage across your client base.
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-full border border-slate-200/70 bg-slate-100/80 p-1 dark:border-neutral-800/70 dark:bg-neutral-900/70">
+      <div className="tabs-bar">
         {tabOptions.map((tab) => {
           const active = tab.value === activeTab;
           return (
             <button
               key={tab.value}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                active
-                  ? "border-slate-300/80 bg-white/90 text-slate-900 shadow-sm dark:border-neutral-700/80 dark:bg-neutral-800 dark:text-slate-100"
-                  : "border-transparent text-slate-600 hover:border-slate-300/60 hover:bg-white/70 dark:text-slate-300 dark:hover:border-neutral-700/60 dark:hover:bg-neutral-800/60"
-              }`}
+              className={`tab-pill ${active ? "active" : ""}`}
               onClick={() => setActiveTab(tab.value)}
             >
               {tab.label}
@@ -489,25 +476,26 @@ export default function ClientSegmentsPage() {
         ].map((card) => (
           <div
             key={card.label}
+            className="card kpi-card"
             style={{
-              padding: 20,
-              borderRadius: 14,
-              background: isDark ? "rgba(23,23,23,0.85)" : "rgba(255,255,255,0.92)",
-              border: isDark ? "1px solid rgba(148,163,184,0.22)" : "1px solid rgba(15,23,42,0.08)",
-              boxShadow: isDark ? "0 16px 32px rgba(0,0,0,0.35)" : "0 16px 32px rgba(15,23,42,0.08)",
-              transition: "transform 180ms ease, box-shadow 180ms ease",
+              padding: 18,
+              borderRadius: 16,
+              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
+              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+              transition: "transform 160ms ease, box-shadow 160ms ease",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
               (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 20px 40px rgba(0,0,0,0.45)"
-                : "0 20px 40px rgba(15,23,42,0.12)";
+                ? "0 20px 36px rgba(0,0,0,0.4)"
+                : "0 18px 30px rgba(15,23,42,0.12)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0px)";
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
               (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 16px 32px rgba(0,0,0,0.35)"
-                : "0 16px 32px rgba(15,23,42,0.08)";
+                ? "0 14px 28px rgba(0,0,0,0.35)"
+                : "0 12px 24px rgba(15,23,42,0.08)";
             }}
           >
             <div
@@ -554,7 +542,7 @@ export default function ClientSegmentsPage() {
                       Type {sortIndicator("type")}
                     </button>
                   </th>
-                  <th style={headerCellStyle}>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
                     <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("clients")}>
                       Clients {sortIndicator("clients")}
                     </button>
@@ -564,7 +552,7 @@ export default function ClientSegmentsPage() {
                       Status {sortIndicator("status")}
                     </button>
                   </th>
-                  <th style={headerCellStyle}>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
                     <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("updated")}>
                       Updated {sortIndicator("updated")}
                     </button>
@@ -576,12 +564,12 @@ export default function ClientSegmentsPage() {
                 {sortedSegmentRows.map((row, idx) => {
                   const rowBg = isDark
                     ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.02)"
+                      ? "rgba(255,255,255,0.015)"
                       : "rgba(255,255,255,0.00)"
                     : idx % 2 === 0
                     ? "rgba(15,23,42,0.015)"
                     : "rgba(15,23,42,0.00)";
-                  const hoverBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
+                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
 
                   return (
                     <tr
@@ -616,31 +604,8 @@ export default function ClientSegmentsPage() {
       </div>
 
       {drawerOpen && selectedSegment && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeDrawer}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(460px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeDrawer}>
+          <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
