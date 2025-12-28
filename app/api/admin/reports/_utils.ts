@@ -1,15 +1,15 @@
 import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../_utils";
+import { computeHealth, getFinanceSettings, getWorkflowSettings } from "../settings/_utils";
 
 export const runtime = "nodejs";
 
 export const DEFAULT_REPORT_SETTINGS = {
   arAgingBucketsDays: [30, 60, 90],
   keyAccountUsdThreshold: 1000,
-  overdueWarningDays: 7,
+  atRiskAfterDays: 7,
+  overdueAfterDays: 0,
   stageSlaDays: {
-    Deposit: 2,
     Kickoff: 3,
     Draft: 5,
     Review: 5,
@@ -68,35 +68,23 @@ export async function requireAdmin() {
 }
 
 export async function getReportSettings() {
-  const snap = await adminDb.collection("reportSettings").doc("global").get();
-  const data = snap.exists ? snap.data() : {};
-  const buckets = Array.isArray(data?.arAgingBucketsDays) ? data?.arAgingBucketsDays : DEFAULT_REPORT_SETTINGS.arAgingBucketsDays;
-  const stageSlaDays = typeof data?.stageSlaDays === "object" && data?.stageSlaDays ? data.stageSlaDays : {};
+  const [workflowSettings, financeSettings] = await Promise.all([getWorkflowSettings(), getFinanceSettings()]);
+  const buckets = Array.isArray(financeSettings.arBuckets) ? financeSettings.arBuckets : DEFAULT_REPORT_SETTINGS.arAgingBucketsDays;
+  const stageSlaDays = workflowSettings.slaDaysPerStage || {};
 
   return {
     arAgingBucketsDays: buckets.map((value: any) => parseNumber(value, 0)).filter((value: number) => value > 0),
-    keyAccountUsdThreshold: parseNumber(data?.keyAccountUsdThreshold, DEFAULT_REPORT_SETTINGS.keyAccountUsdThreshold),
-    overdueWarningDays: parseNumber(data?.overdueWarningDays, DEFAULT_REPORT_SETTINGS.overdueWarningDays),
+    keyAccountUsdThreshold: DEFAULT_REPORT_SETTINGS.keyAccountUsdThreshold,
+    atRiskAfterDays: parseNumber(workflowSettings.atRiskAfterDays, DEFAULT_REPORT_SETTINGS.atRiskAfterDays),
+    overdueAfterDays: parseNumber(workflowSettings.overdueAfterDays, DEFAULT_REPORT_SETTINGS.overdueAfterDays),
     stageSlaDays: { ...DEFAULT_REPORT_SETTINGS.stageSlaDays, ...stageSlaDays },
+    projectStages: workflowSettings.projectStages || Object.keys(DEFAULT_REPORT_SETTINGS.stageSlaDays),
   };
 }
 
 export function normalizeStage(stage?: string) {
-  const pipeline = ["Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+  const pipeline = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
   return pipeline.includes(stage || "") ? (stage as string) : "Kickoff";
 }
 
-export function computeHealth(dueDate: string | null, overdueWarningDays: number) {
-  if (!dueDate) return "On Track";
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffMs = due.getTime() - startOfToday.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return "Overdue";
-  if (diffDays <= overdueWarningDays) return "At Risk";
-  return "On Track";
-}
+export { computeHealth };

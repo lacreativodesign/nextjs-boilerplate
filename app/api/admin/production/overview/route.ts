@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../_utils";
+import { computeHealth, getWorkflowSettings } from "../../settings/_utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,21 +36,6 @@ function toISO(value: any): string | null {
   if (typeof value?.toDate === "function") return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
-}
-
-function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
-  if (!dueDate) return "On Track";
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffMs = due.getTime() - startOfToday.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return "Overdue";
-  if (diffDays <= 7) return "At Risk";
-  return "On Track";
 }
 
 function normalizeStage(stage?: string) {
@@ -90,13 +76,16 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const snap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const [snap, workflowSettings] = await Promise.all([
+      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
+      getWorkflowSettings(),
+    ]);
 
     const projects = snap.docs.map((doc) => {
       const data = doc.data() as ProjectDoc;
       const stage = normalizeStage(data.stage);
       const dueDate = toISO(data.dueDate);
-      const health = computeHealth(dueDate);
+      const health = computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays);
       return {
         id: doc.id,
         projectName: data.projectName || "",

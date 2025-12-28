@@ -6,7 +6,11 @@ import clsx from "clsx";
 
 const tabs = [
   { label: "General", path: "/admin/settings" },
-  { label: "Email", path: "/admin/settings/email" },
+  { label: "Workflows", path: "/admin/settings/workflows" },
+  { label: "Sales", path: "/admin/settings/sales" },
+  { label: "Finance", path: "/admin/settings/finance" },
+  { label: "Notifications & Email", path: "/admin/settings/notifications" },
+  { label: "Roles & Permissions", path: "/admin/settings/roles" },
   { label: "Integrations", path: "/admin/settings/integrations" },
   { label: "Security", path: "/admin/settings/security" },
 ];
@@ -23,7 +27,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           System Settings
         </h2>
         <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-          Configure system-wide preferences and integrations.
+          Manage global workflows, sales, finance, notifications, and security policies.
         </p>
       </div>
 

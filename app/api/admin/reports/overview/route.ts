@@ -90,7 +90,7 @@ export async function GET() {
       const stage = String(project.stage || "");
       if (stage.toLowerCase() === "delivered") return false;
       const due = toISO(project.dueDate);
-      const health = computeHealth(due, settings.overdueWarningDays);
+      const health = computeHealth(due, settings.atRiskAfterDays, settings.overdueAfterDays);
       return health === "Overdue";
     }).length;
 

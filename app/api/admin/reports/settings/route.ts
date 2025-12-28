@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_REPORT_SETTINGS, getReportSettings, parseNumber, requireAdmin, serverTimestamp } from "../_utils";
+import { DEFAULT_REPORT_SETTINGS, getReportSettings, parseNumber, requireAdmin } from "../_utils";
+import { WORKFLOW_STAGES, logSettingsChange, serverTimestamp } from "../../settings/_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,25 +33,43 @@ export async function POST(req: Request) {
     const arAgingBucketsDays = Array.isArray(body?.arAgingBucketsDays)
       ? body.arAgingBucketsDays.map((value: any) => parseNumber(value, 0)).filter((value: number) => value > 0)
       : DEFAULT_REPORT_SETTINGS.arAgingBucketsDays;
-    const keyAccountUsdThreshold = parseNumber(body?.keyAccountUsdThreshold, DEFAULT_REPORT_SETTINGS.keyAccountUsdThreshold);
-    const overdueWarningDays = parseNumber(body?.overdueWarningDays, DEFAULT_REPORT_SETTINGS.overdueWarningDays);
+    const atRiskAfterDays = parseNumber(body?.atRiskAfterDays, DEFAULT_REPORT_SETTINGS.atRiskAfterDays);
+    const overdueAfterDays = parseNumber(body?.overdueAfterDays, DEFAULT_REPORT_SETTINGS.overdueAfterDays);
     const stageSlaDays =
       typeof body?.stageSlaDays === "object" && body?.stageSlaDays
         ? Object.fromEntries(
-            Object.entries(body.stageSlaDays).map(([key, value]) => [key, parseNumber(value, 0)])
+            Object.entries(body.stageSlaDays)
+              .filter(([key]) => WORKFLOW_STAGES.includes(key as (typeof WORKFLOW_STAGES)[number]))
+              .map(([key, value]) => [key, parseNumber(value, 0)])
           )
         : DEFAULT_REPORT_SETTINGS.stageSlaDays;
 
-    await adminDb.collection("reportSettings").doc("global").set(
-      {
-        arAgingBucketsDays,
-        keyAccountUsdThreshold,
-        overdueWarningDays,
-        stageSlaDays,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await Promise.all([
+      adminDb.collection("settings").doc("finance").set(
+        {
+          arBuckets: arAgingBucketsDays,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.user.uid,
+        },
+        { merge: true }
+      ),
+      adminDb.collection("settings").doc("workflows").set(
+        {
+          slaDaysPerStage: stageSlaDays,
+          atRiskAfterDays,
+          overdueAfterDays,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.user.uid,
+        },
+        { merge: true }
+      ),
+    ]);
+
+    await logSettingsChange({
+      user: auth.user,
+      section: "reports",
+      summary: "Report settings updated via shared workflow/finance controls.",
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
