@@ -1,4 +1,4 @@
-export default function GeneralSettings() {
+export default function AdminSettingsPage() {
   return (
     <div
       style={{
