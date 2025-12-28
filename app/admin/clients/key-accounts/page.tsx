@@ -332,7 +332,9 @@ export default function KeyAccountsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
                     {headerLabel("Phone", sortBadge("primaryContactPhone"))}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
+                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
+                    {headerLabel("Action")}
+                  </th>
                 </tr>
               </thead>
 
@@ -362,17 +364,19 @@ export default function KeyAccountsPage() {
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDrawer(c);
-                          }}
-                          className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 800 }}
-                        >
-                          View
-                        </button>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDrawer(c);
+                            }}
+                            className="btn ghost"
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
+                          >
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
