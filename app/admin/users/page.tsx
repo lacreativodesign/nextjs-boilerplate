@@ -219,13 +219,12 @@ export default function UsersPage() {
     setSelectedUid(null);
   };
 
-  // ===== KEY-ACCOUNTS MASTER UI STYLES =====
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
-    padding: 12,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    padding: 14,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -233,18 +232,19 @@ export default function UsersPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
+    textAlign: "left",
   };
 
   // Regular body text (not bold)
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.88)" : "rgba(15,23,42,0.85)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -261,20 +261,11 @@ export default function UsersPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div className="page-header">
         <div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 900,
-              marginBottom: 8,
-              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-            }}
-          >
-            All Users
-          </h1>
+          <h1 className="page-title">All Users</h1>
 
-          <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+          <div className="page-subtitle" style={{ marginBottom: 18 }}>
             Manage all internal users. Search, sort, and open full HR details in the right-side drawer.
           </div>
         </div>
@@ -283,13 +274,27 @@ export default function UsersPage() {
           type="button"
           className="btn"
           onClick={() => router.push("/admin/users/add")}
-          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}
+          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
         >
           + Create User
         </button>
       </div>
 
-      <div style={{ marginBottom: 16, maxWidth: 360, display: "flex", alignItems: "center", gap: 12 }}>
+      <div
+        className="card"
+        style={{
+          marginBottom: 16,
+          padding: 14,
+          borderRadius: 16,
+          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          display: "grid",
+          gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
         <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keyword" />
         <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
           {loading ? "Loading..." : `${sorted.length} user(s)`}
@@ -339,13 +344,13 @@ export default function UsersPage() {
 
                   const rowBg = isDark
                     ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.02)"
+                      ? "rgba(255,255,255,0.015)"
                       : "rgba(255,255,255,0.00)"
                     : idx % 2 === 0
                     ? "rgba(15,23,42,0.015)"
                     : "rgba(15,23,42,0.00)";
 
-                  const hoverBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
+                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
 
                   return (
                     <tr
@@ -385,33 +390,9 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Drawer (Key-Accounts master style) */}
       {drawerOpen && selectedUser && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-          }}
-          onClick={closeDrawer}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "min(460px, 92vw)",
-              height: "100%",
-              padding: 18,
-              background: isDark ? "rgba(18,18,18,0.96)" : "rgba(255,255,255,0.96)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-              overflowY: "auto",
-            }}
-          >
+        <div className="drawer-overlay" onClick={closeDrawer}>
+          <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
