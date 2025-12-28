@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "Leads", path: "/admin/sales" },
+  { label: "Overview", path: "/admin/sales" },
+  { label: "Leads", path: "/admin/sales/leads" },
   { label: "Pipeline", path: "/admin/sales/pipeline" },
   { label: "Deals", path: "/admin/sales/deals" },
   { label: "Follow-Ups", path: "/admin/sales/follow-ups" },
-  { label: "Sources & Campaigns", path: "/admin/sales/sources" },
+  { label: "Sources & Campaigns", path: "/admin/sales/campaigns" },
 ];
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {

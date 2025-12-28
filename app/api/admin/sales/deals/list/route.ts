@@ -1,0 +1,55 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { requireAdmin, toISO } from "../../_utils";
+
+export const dynamic = "force-dynamic";
+
+type DealDoc = {
+  dealName?: string;
+  clientName?: string;
+  leadName?: string;
+  stage?: string;
+  valueUsd?: number;
+  probability?: number;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  expectedCloseDate?: any;
+  createdAt?: any;
+  updatedAt?: any;
+  isDeleted?: boolean;
+};
+
+export async function GET() {
+  try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    const snap = await adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get();
+
+    const deals = snap.docs.map((doc) => {
+      const data = (doc.data() || {}) as DealDoc;
+      return {
+        id: doc.id,
+        dealName: data.dealName || "",
+        clientName: data.clientName || "",
+        leadName: data.leadName || "",
+        stage: data.stage || "New",
+        valueUsd: Number(data.valueUsd || 0),
+        probability: Number(data.probability || 0),
+        ownerId: data.ownerId || null,
+        ownerName: data.ownerName || null,
+        expectedCloseDate: toISO(data.expectedCloseDate),
+        createdAt: toISO(data.createdAt),
+        updatedAt: toISO(data.updatedAt),
+        isDeleted: Boolean(data.isDeleted),
+      };
+    });
+
+    return NextResponse.json({ ok: true, deals });
+  } catch (err: any) {
+    console.error("sales deals list error:", err);
+    return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });
+  }
+}
