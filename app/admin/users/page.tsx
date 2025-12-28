@@ -261,19 +261,32 @@ export default function UsersPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-        }}
-      >
-        All Users
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1
+            style={{
+              fontSize: 34,
+              fontWeight: 900,
+              marginBottom: 8,
+              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+            }}
+          >
+            All Users
+          </h1>
 
-      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-        Manage all internal users. Search, sort, and open full HR details in the right-side drawer.
+          <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+            Manage all internal users. Search, sort, and open full HR details in the right-side drawer.
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={() => router.push("/admin/users/add")}
+          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}
+        >
+          + Create User
+        </button>
       </div>
 
       <div style={{ marginBottom: 16, maxWidth: 360, display: "flex", alignItems: "center", gap: 12 }}>
@@ -314,7 +327,9 @@ export default function UsersPage() {
                   <th style={headerCellStyle} onClick={() => handleSort("status")}>
                     {headerLabel("Status", sortKey === "status", sortDir)}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
+                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
+                    {headerLabel("Action")}
+                  </th>
                 </tr>
               </thead>
 
@@ -346,18 +361,20 @@ export default function UsersPage() {
                       <td style={cellStyle}>{u.phone || "-"}</td>
                       <td style={cellStyle}>{u.department || "-"}</td>
                       <td style={cellStyle}>{normalizeStatus(u.status)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDrawer(rowId);
-                          }}
-                          className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
-                        >
-                          View
-                        </button>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDrawer(rowId);
+                            }}
+                            className="btn ghost"
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
+                          >
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

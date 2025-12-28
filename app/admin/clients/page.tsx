@@ -356,19 +356,32 @@ export default function ClientsPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <h1
-        style={{
-          fontSize: 34,
-          fontWeight: 900,
-          marginBottom: 8,
-          color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
-        }}
-      >
-        All Clients
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1
+            style={{
+              fontSize: 34,
+              fontWeight: 900,
+              marginBottom: 8,
+              color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+            }}
+          >
+            All Clients
+          </h1>
 
-      <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
-        Track leads and clients — pipeline, payments, ownership, retainers — in one control panel.
+          <div style={{ marginBottom: 18, color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)" }}>
+            Track leads and clients — pipeline, payments, ownership, retainers — in one control panel.
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={() => router.push("/admin/clients/add")}
+          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}
+        >
+          + Add Client
+        </button>
       </div>
 
       <div style={{ marginBottom: 16, maxWidth: 360, display: "flex", alignItems: "center", gap: 12 }}>
@@ -409,7 +422,9 @@ export default function ClientsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
                     {headerLabel("Phone", sortBadge("primaryContactPhone"))}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "right", cursor: "default" }}>{headerLabel("Action")}</th>
+                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
+                    {headerLabel("Action")}
+                  </th>
                 </tr>
               </thead>
 
@@ -438,15 +453,15 @@ export default function ClientsPage() {
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: 8 }}>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openDrawer(c);
                             }}
                             className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
+                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
                           >
                             View
                           </button>
