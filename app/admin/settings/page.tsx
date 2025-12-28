@@ -1,3 +1,4 @@
+codex/add-fully-functional-system-settings-module
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -98,6 +99,9 @@ export default function GeneralSettingsPage() {
     }
   };
 
+
+export default function AdminSettingsPage() {
+ main
   return (
     <div className="space-y-6">
       {error && <SettingsAlert tone=\"error\">{error}</SettingsAlert>}
