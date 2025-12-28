@@ -165,7 +165,15 @@ export default function MasterSelect({
           ...buttonStyle,
         }}
       >
-        <span style={{ color: isPlaceholder ? (darkMode ? "rgba(226,232,240,0.55)" : "rgba(100,116,139,0.9)") : "inherit" }}>
+        <span
+          style={{
+            color: isPlaceholder
+              ? darkMode
+                ? "rgba(226,232,240,0.55)"
+                : "rgba(100,116,139,0.9)"
+              : "inherit",
+          }}
+        >
           {displayLabel}
         </span>
         <span
@@ -187,6 +195,7 @@ export default function MasterSelect({
           role="listbox"
           tabIndex={-1}
           ref={listRef}
+          className="master-select-menu"
           style={{
             position: "absolute",
             left: align === "left" ? 0 : "auto",
@@ -195,9 +204,6 @@ export default function MasterSelect({
             zIndex: 30,
             padding: 8,
             borderRadius: 12,
-            border: darkMode ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-            background: darkMode ? "rgba(20,20,20,0.92)" : "#ffffff",
-            boxShadow: darkMode ? "0 20px 40px rgba(0,0,0,0.45)" : "0 18px 30px rgba(15,23,42,0.12)",
             display: "grid",
             gap: 4,
             maxHeight: MAX_MENU_HEIGHT,
@@ -223,15 +229,14 @@ export default function MasterSelect({
                   setOpen(false);
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
+                className="master-select-option"
                 style={{
                   width: "100%",
                   textAlign: "left",
-                  padding: "8px 10px",
-                  borderRadius: 10,
                   border: "none",
                   background: active
                     ? darkMode
-                      ? "rgba(255,255,255,0.10)"
+                      ? "rgba(255,255,255,0.12)"
                       : "rgba(15,23,42,0.08)"
                     : highlighted
                       ? darkMode

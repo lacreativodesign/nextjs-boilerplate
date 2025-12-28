@@ -11,37 +11,14 @@ type SalesDrawerProps = {
   actions?: React.ReactNode;
 };
 
-export default function SalesDrawer({ title, subtitle, isDark, onClose, children, actions }: SalesDrawerProps) {
+export default function SalesDrawer({ title, subtitle, onClose, children, actions }: SalesDrawerProps) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          width: "min(520px, 96vw)",
-          height: "100%",
-          padding: 18,
-          background: "var(--card-bg)",
-          borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-          overflowY: "auto",
-        }}
-      >
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{title}</div>
-            {subtitle && <div style={{ opacity: 0.7, fontSize: 12 }}>{subtitle}</div>}
+            <div className="drawer-title">{title}</div>
+            {subtitle && <div className="drawer-subtitle">{subtitle}</div>}
           </div>
           <button className="btn ghost" onClick={onClose} style={{ height: 34, borderRadius: 999 }}>
             Close

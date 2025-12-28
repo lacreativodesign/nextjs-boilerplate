@@ -372,40 +372,12 @@ export default function ProductionProjectDrawer({
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          width: "min(560px, 96vw)",
-          height: "100%",
-          padding: 18,
-          background: isDark ? "rgba(18,18,18,0.98)" : "rgba(255,255,255,0.96)",
-          borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-          borderTopLeftRadius: 24,
-          borderBottomLeftRadius: 24,
-          boxShadow: isDark ? "-12px 0 32px rgba(0,0,0,0.45)" : "-12px 0 28px rgba(15,23,42,0.08)",
-          overflowY: "auto",
-        }}
-      >
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="drawer-panel drawer-panel--lg" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
-              {activeProject.projectName}
-            </div>
-            <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+            <div className="drawer-title">{activeProject.projectName}</div>
+            <div className="drawer-subtitle">
               {activeProject.clientName}
               {activeProject.projectType ? ` · ${activeProject.projectType}` : ""}
             </div>

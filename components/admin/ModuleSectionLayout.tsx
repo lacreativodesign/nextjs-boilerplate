@@ -23,33 +23,19 @@ export default function ModuleSectionLayout({
     <div className="w-full">
       {/* TITLE + DESC */}
       <div className="mb-4">
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-          {title}
-        </h2>
-        {description && (
-          <p style={{ fontSize: 15, color: "var(--sidebar-text)" }}>
-            {description}
-          </p>
-        )}
+        <h2 className="section-title mb-1">{title}</h2>
+        {description && <p className="section-subtitle">{description}</p>}
       </div>
 
       {/* BLUE-PILL TABS (LOCKED STYLE) */}
-      <div
-        className="flex gap-2 border-b mb-6"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;
           return (
             <Link
               key={t.path}
               href={t.path}
-              className={clsx(
-                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
+              className={clsx("tab-pill", active && "active")}
             >
               {t.label}
             </Link>
@@ -61,4 +47,4 @@ export default function ModuleSectionLayout({
       <div>{children}</div>
     </div>
   );
-      }
+}

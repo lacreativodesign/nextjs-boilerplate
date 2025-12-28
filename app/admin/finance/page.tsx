@@ -93,26 +93,10 @@ export default function FinanceOverviewPage() {
       <section>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>USD Performance</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <KpiCard title="Total Revenue (This Month)" value={formatUsd(overview.kpisUsd.totalRevenueMonth)} subtitle="Paid invoices" />
+          <KpiCard title="Outstanding Invoices" value={formatUsd(overview.kpisUsd.outstandingInvoices)} subtitle="Sent / overdue" />
+          <KpiCard title="Payments Received" value={formatUsd(overview.kpisUsd.paymentsReceivedMonth)} subtitle="This month" />
           <KpiCard
-            isDark={isDark}
-            title="Total Revenue (This Month)"
-            value={formatUsd(overview.kpisUsd.totalRevenueMonth)}
-            subtitle="Paid invoices"
-          />
-          <KpiCard
-            isDark={isDark}
-            title="Outstanding Invoices"
-            value={formatUsd(overview.kpisUsd.outstandingInvoices)}
-            subtitle="Sent / overdue"
-          />
-          <KpiCard
-            isDark={isDark}
-            title="Payments Received"
-            value={formatUsd(overview.kpisUsd.paymentsReceivedMonth)}
-            subtitle="This month"
-          />
-          <KpiCard
-            isDark={isDark}
             title="AR Aging"
             value={formatUsd(
               overview.kpisUsd.agingBuckets.bucket0to30 +
@@ -128,18 +112,8 @@ export default function FinanceOverviewPage() {
       <section>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>PKR Performance</div>
         <div className="grid gap-4 md:grid-cols-2">
-          <KpiCard
-            isDark={isDark}
-            title="Payroll Due (This Month)"
-            value={formatPkr(overview.kpisPkr.payrollDueMonth)}
-            subtitle="Draft / approved"
-          />
-          <KpiCard
-            isDark={isDark}
-            title="Expenses (This Month)"
-            value={formatPkr(overview.kpisPkr.expensesMonth)}
-            subtitle="Operating spend"
-          />
+          <KpiCard title="Payroll Due (This Month)" value={formatPkr(overview.kpisPkr.payrollDueMonth)} subtitle="Draft / approved" />
+          <KpiCard title="Expenses (This Month)" value={formatPkr(overview.kpisPkr.expensesMonth)} subtitle="Operating spend" />
         </div>
       </section>
 
@@ -269,33 +243,12 @@ export default function FinanceOverviewPage() {
   );
 }
 
-function KpiCard({
-  title,
-  value,
-  subtitle,
-  isDark,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  isDark: boolean;
-}) {
+function KpiCard({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 18,
-        borderRadius: 18,
-        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-        boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-        transition: "transform 120ms ease",
-      }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)")}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.transform = "translateY(0)")}
-    >
-      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7 }}>{title}</div>
+    <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{title}</div>
       <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
-      <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>{subtitle}</div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{subtitle}</div>
     </div>
   );
 }

@@ -6,8 +6,7 @@ import clsx from "clsx";
 
 const tabs = [
   { label: "All Users", path: "/admin/users" },
-  { label: "Create User", path: "/admin/users/create" },
-  { label: "User Roles", path: "/admin/users/roles" },
+  { label: "Roles", path: "/admin/users/roles" },
 ];
 
 export default function UsersLayout({ children }: { children: React.ReactNode }) {
@@ -15,40 +14,23 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="w-full">
-      {/* PAGE TITLE */}
-      <h2 className="text-[26px] font-bold mb-1">User Management</h2>
-      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
-        Manage all users, roles and user activity.
-      </p>
+      <div className="mb-4">
+        <h2 className="section-title mb-1">Users</h2>
+        <p className="section-subtitle">Manage staff access, roles, and onboarding status.</p>
+      </div>
 
-      {/* BLUE PILL TABS */}
-      <div
-        className="flex gap-2 border-b mb-6"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="tabs-bar">
         {tabs.map((t) => {
-          const active =
-            pathname === t.path ||
-            (pathname.startsWith(t.path + "/") && t.path !== "/admin/users");
-
+          const active = pathname === t.path;
           return (
-            <Link
-              key={t.path}
-              href={t.path}
-              className={clsx(
-                "px-4 py-2 text-sm font-semibold rounded-t-md transition-colors",
-                active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-            >
+            <Link key={t.path} href={t.path} className={clsx("tab-pill", active && "active")}>
               {t.label}
             </Link>
           );
         })}
       </div>
 
-      {children}
+      <div>{children}</div>
     </div>
   );
 }
