@@ -6,16 +6,17 @@ import { ErrorCard } from "../_components/ReportsUI";
 type ReportSettings = {
   arAgingBucketsDays: number[];
   keyAccountUsdThreshold: number;
-  overdueWarningDays: number;
+  atRiskAfterDays: number;
+  overdueAfterDays: number;
   stageSlaDays: Record<string, number>;
 };
 
 const DEFAULT_SETTINGS: ReportSettings = {
   arAgingBucketsDays: [30, 60, 90],
   keyAccountUsdThreshold: 1000,
-  overdueWarningDays: 7,
+  atRiskAfterDays: 7,
+  overdueAfterDays: 0,
   stageSlaDays: {
-    Deposit: 2,
     Kickoff: 3,
     Draft: 5,
     Review: 5,
@@ -25,7 +26,7 @@ const DEFAULT_SETTINGS: ReportSettings = {
   },
 };
 
-const PIPELINE_STAGES = ["Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+const PIPELINE_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 
 export default function ReportsSettingsPage() {
   const [settings, setSettings] = useState<ReportSettings>(DEFAULT_SETTINGS);
@@ -158,27 +159,35 @@ export default function ReportsSettingsPage() {
 
           <div className="space-y-3">
             <div style={{ fontWeight: 700 }}>Key Account Threshold (USD)</div>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              value={settings.keyAccountUsdThreshold}
-              onChange={(e) => setSettings((prev) => ({ ...prev, keyAccountUsdThreshold: Number(e.target.value) }))}
-              style={{ width: 200 }}
-            />
-            <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Locked baseline: $1,000.</p>
+            <div className="card" style={{ padding: 12, borderRadius: 12 }}>
+              <div style={{ fontWeight: 700 }}>${settings.keyAccountUsdThreshold}</div>
+              <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Locked baseline for key accounts.</p>
+            </div>
           </div>
 
           <div className="space-y-3">
-            <div style={{ fontWeight: 700 }}>Overdue Warning Days</div>
+            <div style={{ fontWeight: 700 }}>At-Risk Warning Days</div>
             <input
               className="input"
               type="number"
               min={0}
-              value={settings.overdueWarningDays}
-              onChange={(e) => setSettings((prev) => ({ ...prev, overdueWarningDays: Number(e.target.value) }))}
+              value={settings.atRiskAfterDays}
+              onChange={(e) => setSettings((prev) => ({ ...prev, atRiskAfterDays: Number(e.target.value) }))}
               style={{ width: 160 }}
             />
+          </div>
+
+          <div className="space-y-3">
+            <div style={{ fontWeight: 700 }}>Overdue After (Days)</div>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              value={settings.overdueAfterDays}
+              onChange={(e) => setSettings((prev) => ({ ...prev, overdueAfterDays: Number(e.target.value) }))}
+              style={{ width: 160 }}
+            />
+            <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>0 keeps the previous behavior (overdue on due date).</p>
           </div>
 
           <div className="space-y-3">

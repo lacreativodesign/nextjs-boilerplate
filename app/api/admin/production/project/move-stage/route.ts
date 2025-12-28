@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
+import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
 
 export const runtime = "nodejs";
 
@@ -46,21 +47,6 @@ function toISO(value: any): string | null {
   if (typeof value?.toDate === "function") return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
-}
-
-function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
-  if (!dueDate) return "On Track";
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffMs = due.getTime() - startOfToday.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return "Overdue";
-  if (diffDays <= 7) return "At Risk";
-  return "On Track";
 }
 
 function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
@@ -209,7 +195,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const updatedSnap = await ref.get();
+    const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
 
@@ -222,7 +208,7 @@ export async function POST(req: Request) {
         projectType: updated.projectType || "",
         stage: updated.stage || "Kickoff",
         priority: updated.priority || "Normal",
-        health: computeHealth(dueDate),
+        health: computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays),
         ownerAmUid: updated.ownerAmUid ?? null,
         ownerAmName: updated.ownerAmName ?? null,
         productionUid: updated.productionUid ?? updated.productionOwnerId ?? null,

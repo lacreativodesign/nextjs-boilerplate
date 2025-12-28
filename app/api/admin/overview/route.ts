@@ -14,7 +14,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const ACTIVITY_PREFIXES = ["finance.", "project.", "production.", "hr."];
-const PROJECT_STAGES = ["Inquiry", "Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 
 function isClosedStatus(status: string) {
   const normalized = status.toLowerCase();
@@ -146,7 +145,11 @@ export async function GET() {
       return !isClosedStatus(status);
     }).length;
 
-    const projectsByStage = PROJECT_STAGES.map((stage) => ({
+    const workflowStages = Array.isArray(settings.projectStages) && settings.projectStages.length
+      ? settings.projectStages
+      : ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+
+    const projectsByStage = workflowStages.map((stage) => ({
       stage,
       count: projects.filter((project) => String(project.stage || "") === stage).length,
     }));
@@ -168,7 +171,7 @@ export async function GET() {
       }
 
       const dueIso = toISO(project.dueDate);
-      const computed = computeHealth(dueIso, settings.overdueWarningDays);
+      const computed = computeHealth(dueIso, settings.atRiskAfterDays, settings.overdueAfterDays);
       const changeRequestsOpen = openChangeRequestByProject.get(String(project.id || "")) || 0;
       if (computed === "Overdue" || computed === "At Risk" || changeRequestsOpen >= 2) return count + 1;
       return count;

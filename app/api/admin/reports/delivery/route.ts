@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       const dueDate = toISO(data.dueDate);
       const updatedAt = toISO(data.updatedAt || data.createdAt);
       const stage = normalizeStage(data.stage);
-      const health = data.health || computeHealth(dueDate, settings.overdueWarningDays);
+      const health = data.health || computeHealth(dueDate, settings.atRiskAfterDays, settings.overdueAfterDays);
       const stageHistory = normalizeStageHistory(data.stageHistory);
       const owner = data.ownerAmUid || data.ownerId || data.ownerUid || "";
       const ownerName = data.ownerAmName || data.ownerName || "";
