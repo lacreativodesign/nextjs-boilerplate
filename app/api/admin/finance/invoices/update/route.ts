@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
+import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,23 @@ export async function POST(req: Request) {
         updatedAt: serverTimestamp(),
       });
 
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+      await Promise.all(
+        financeIds.map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Invoice sent",
+            body: `Invoice ${orderId || id} sent to ${clientName || "client"}.`,
+            type: "info",
+            entityType: "invoice",
+            entityId: id,
+            deepLink: "/admin/finance/invoices",
+            createdBy: { uid: auth.user.uid, name: actorName },
+          })
+        )
+      );
+
       await createFinanceEvent({
         type: "finance.invoice_sent",
         title: "Invoice sent",
@@ -44,7 +62,7 @@ export async function POST(req: Request) {
         entityType: "invoice",
         entityId: id,
         createdByUid: auth.user.uid,
-        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        createdByName: actorName,
       });
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
@@ -80,6 +98,23 @@ export async function POST(req: Request) {
         );
       }
 
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+      await Promise.all(
+        financeIds.map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Invoice paid",
+            body: `Invoice ${orderId || id} marked paid.`,
+            type: "success",
+            entityType: "invoice",
+            entityId: id,
+            deepLink: "/admin/finance/invoices",
+            createdBy: { uid: auth.user.uid, name: actorName },
+          })
+        )
+      );
+
       await createFinanceEvent({
         type: "finance.invoice_paid",
         title: "Invoice marked paid",
@@ -87,7 +122,7 @@ export async function POST(req: Request) {
         entityType: "invoice",
         entityId: id,
         createdByUid: auth.user.uid,
-        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        createdByName: actorName,
       });
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;

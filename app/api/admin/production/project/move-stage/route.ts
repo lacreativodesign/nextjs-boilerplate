@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
+import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -198,6 +199,85 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
+    const actorName = me.name || me.fullName || me.displayName || "";
+
+    const stageRecipients = new Set<string>();
+    if (updated.ownerAmUid) stageRecipients.add(String(updated.ownerAmUid));
+    if (updated.productionUid || updated.productionOwnerId) {
+      stageRecipients.add(String(updated.productionUid || updated.productionOwnerId || ""));
+    }
+
+    await Promise.all(
+      Array.from(stageRecipients)
+        .filter(Boolean)
+        .map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Project stage updated",
+            body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+            type: "info",
+            entityType: "project",
+            entityId: projectId,
+            deepLink: "/admin/projects",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        )
+    );
+
+    await createNotificationEvent({
+      type: "project.stage_moved",
+      title: "Project stage updated",
+      description: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+      entityType: "project",
+      entityId: projectId,
+      createdByUid: me.uid,
+      createdByName: actorName,
+      metadata: {
+        from: fromStage,
+        to: toStage,
+      },
+    });
+
+    if (eventType === "project.qa_approved" || eventType === "project.qa_rejected") {
+      const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+      const qaRecipients = new Set<string>();
+      if (updated.ownerAmUid) qaRecipients.add(String(updated.ownerAmUid));
+      adminIds.forEach((id) => qaRecipients.add(id));
+
+      await Promise.all(
+        Array.from(qaRecipients)
+          .filter(Boolean)
+          .map((uid) =>
+            createNotification({
+              toUserId: uid,
+              title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+              body:
+                eventType === "project.qa_approved"
+                  ? `${updated.projectName || "Project"} passed QA approval.`
+                  : `${updated.projectName || "Project"} was rejected in QA.`,
+              type: eventType === "project.qa_approved" ? "success" : "warning",
+              entityType: "project",
+              entityId: projectId,
+              deepLink: "/admin/production/qa",
+              createdBy: { uid: me.uid, name: actorName },
+            })
+          )
+      );
+
+      await createNotificationEvent({
+        type: eventType,
+        title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+        description:
+          eventType === "project.qa_approved"
+            ? `${updated.projectName || "Project"} passed QA approval.`
+            : `${updated.projectName || "Project"} was rejected in QA.`,
+        entityType: "project",
+        entityId: projectId,
+        createdByUid: me.uid,
+        createdByName: actorName,
+        metadata: { qaNotes: body?.qaNotes || null },
+      });
+    }
 
     return NextResponse.json({
       ok: true,

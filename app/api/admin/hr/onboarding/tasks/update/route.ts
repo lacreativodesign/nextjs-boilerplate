@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
+import { createHrEvent, createHrNotification, requireHrAccess, serverTimestamp } from "../../../_utils";
 
 export const runtime = "nodejs";
 
@@ -53,6 +53,21 @@ export async function POST(req: Request) {
         createdByName: access.user.name || access.user.email || "Admin",
         metadata: { userId: existing?.userId || null },
       });
+
+      if (existing?.userId) {
+        await createHrNotification({
+          userId: existing.userId,
+          title: "Onboarding completed",
+          message: "Your onboarding checklist is now complete.",
+          type: "hr.onboarding_completed",
+          entityId: taskId,
+          deepLink: "/admin/hr/onboarding",
+          createdBy: {
+            uid: access.user.uid,
+            name: access.user.name || access.user.email || "Admin",
+          },
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });

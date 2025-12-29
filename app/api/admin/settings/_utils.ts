@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createNotification } from "@/lib/notifications";
 import { getCurrentUser, isAdminRole, isSuperAdmin } from "../_utils";
 
 export const runtime = "nodejs";
@@ -224,14 +225,14 @@ export async function logSettingsChange({
     typeof notificationsEnabled === "boolean" ? notificationsEnabled : (await getNotificationSettings()).enableInApp;
 
   if (notifications) {
-    await adminDb.collection("notifications").add({
+    await createNotification({
+      toUserId: user.uid,
       title: "System settings updated",
       body: summary,
-      userId: user.uid,
-      metadata: { section },
-      status: "pending",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      type: "system",
+      entityType: null,
+      entityId: section,
+      createdBy: { uid: user.uid, name: user.name || user.email || null },
     });
   }
 }

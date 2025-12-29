@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
+import { createNotification, createNotificationEvent } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -88,6 +89,42 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() || {};
     const dueDate = toISO(updated.dueDate);
+    const actorName = me.name || me.fullName || me.displayName || "";
+
+    const recipients = new Set<string>();
+    if (productionUid) recipients.add(productionUid);
+    if (updated.ownerAmUid) recipients.add(String(updated.ownerAmUid));
+
+    await Promise.all(
+      Array.from(recipients)
+        .filter(Boolean)
+        .map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Project assigned to production",
+            body: `${updated.projectName || "Project"} has been assigned for production.`,
+            type: "info",
+            entityType: "project",
+            entityId: projectId,
+            deepLink: "/admin/projects",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        )
+    );
+
+    await createNotificationEvent({
+      type: "production.assigned",
+      title: "Project assigned to production",
+      description: `${updated.projectName || "Project"} assigned to production.`,
+      entityType: "project",
+      entityId: projectId,
+      createdByUid: me.uid,
+      createdByName: actorName,
+      metadata: {
+        productionUid: productionUid || null,
+        ownerAmUid: updated.ownerAmUid || null,
+      },
+    });
 
     return NextResponse.json({
       ok: true,

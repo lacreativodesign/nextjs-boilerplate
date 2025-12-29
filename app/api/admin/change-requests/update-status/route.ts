@@ -9,6 +9,7 @@ import {
   isSalesManager,
   normalizeRole,
 } from "../../_utils";
+import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -204,6 +205,50 @@ export async function POST(req: Request) {
         actorRole: role,
       });
     }
+
+    if (!projectData && projectId) {
+      const projectSnap = await adminDb.collection("projects").doc(projectId).get();
+      projectData = projectSnap.exists ? projectSnap.data() || {} : null;
+    }
+
+    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const recipients = new Set<string>();
+    if (data.requestedByUid) recipients.add(String(data.requestedByUid));
+    if (projectData?.ownerAmUid) recipients.add(String(projectData.ownerAmUid));
+    adminIds.forEach((id) => recipients.add(id));
+
+    const actorName = me.name || me.fullName || me.displayName || "";
+    await Promise.all(
+      Array.from(recipients)
+        .filter(Boolean)
+        .map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Change request updated",
+            body: `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`,
+            type: toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info",
+            entityType: "change_request",
+            entityId: changeRequestId,
+            deepLink: "/admin/projects/change-requests",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        )
+    );
+
+    await createNotificationEvent({
+      type: "change_request.status_updated",
+      title: "Change request updated",
+      description: `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`,
+      entityType: "change_request",
+      entityId: changeRequestId,
+      createdByUid: me.uid,
+      createdByName: actorName,
+      metadata: {
+        projectId: data.projectId || "",
+        clientId: data.clientId || "",
+        status: toStatus,
+      },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createNotification } from "@/lib/notifications";
 import { getCurrentUser, isAdminRole } from "../_utils";
 
 export const runtime = "nodejs";
@@ -85,14 +86,14 @@ export async function queueSalesNotification({
   userId?: string;
   metadata?: Record<string, unknown>;
 }) {
-  await adminDb.collection("notifications").add({
+  if (!userId) return;
+  await createNotification({
+    toUserId: userId,
     title,
     body,
-    userId: userId || null,
-    metadata: metadata || {},
-    status: "pending",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    type: "info",
+    entityType: "client",
+    createdBy: null,
   });
 }
 
