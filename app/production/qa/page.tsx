@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import ProductionProjectDrawer, { type ProductionProject } from "@/components/production/ProductionProjectDrawer";
 
-const ACTIVE_STAGES = ["Draft", "Review", "Revisions", "Final"] as const;
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"] as const;
 const HEALTH_OPTIONS = ["On Track", "At Risk", "Overdue"] as const;
 
@@ -13,7 +12,7 @@ type QueuePayload = {
   projects: ProductionProject[];
 };
 
-type SortKey = "projectName" | "clientName" | "stage" | "priority" | "health" | "dueDate" | "updatedAt";
+type SortKey = "projectName" | "clientName" | "priority" | "health" | "dueDate" | "updatedAt";
 
 type SortDir = "asc" | "desc";
 
@@ -52,7 +51,7 @@ function isOverdue(iso?: string | null) {
   return date.getTime() < startOfToday.getTime();
 }
 
-function isDueThisWeek(iso?: string | null) {
+function isDueSoon(iso?: string | null) {
   if (!iso) return false;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return false;
@@ -63,17 +62,14 @@ function isDueThisWeek(iso?: string | null) {
   return diffDays >= 0 && diffDays <= 7;
 }
 
-export default function ProductionQueuePage() {
+export default function ProductionQAPage() {
   const isDark = useIsSystemDark();
   const [projects, setProjects] = useState<ProductionProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
-  const [dueFrom, setDueFrom] = useState("");
-  const [dueTo, setDueTo] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -123,17 +119,17 @@ export default function ProductionQueuePage() {
     </span>
   );
 
-  async function loadQueue(mountedRef?: { current: boolean }) {
+  async function loadQA(mountedRef?: { current: boolean }) {
     const mounted = mountedRef ? mountedRef.current : true;
     if (!mounted) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/production/queue", { credentials: "include", cache: "no-store" });
+      const res = await fetch("/api/production/queue?stage=Final", { credentials: "include", cache: "no-store" });
       const payload = (await res.json()) as QueuePayload;
 
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to load queue.");
+        throw new Error(payload?.error || "Unable to load QA projects.");
       }
 
       if (mountedRef ? mountedRef.current : true) {
@@ -141,7 +137,7 @@ export default function ProductionQueuePage() {
       }
     } catch (err: any) {
       console.error(err);
-      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load queue.");
+      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load QA projects.");
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }
@@ -149,47 +145,29 @@ export default function ProductionQueuePage() {
 
   useEffect(() => {
     const mountedRef = { current: true };
-    void loadQueue(mountedRef);
+    void loadQA(mountedRef);
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  const refreshQueue = () => {
-    void loadQueue();
+  const refreshQA = () => {
+    void loadQA();
   };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return projects.filter((project) => {
-      if (!ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number])) return false;
-      if (stageFilter !== "all" && project.stage !== stageFilter) return false;
+      if (project.stage !== "Final") return false;
       if (priorityFilter !== "all" && project.priority !== priorityFilter) return false;
       if (healthFilter !== "all" && project.health !== healthFilter) return false;
-      if (dueFrom) {
-        const fromDate = new Date(dueFrom);
-        if (!Number.isNaN(fromDate.getTime())) {
-          const due = project.dueDate ? new Date(project.dueDate) : null;
-          if (!due || Number.isNaN(due.getTime()) || due < fromDate) return false;
-        }
-      }
-      if (dueTo) {
-        const toDate = new Date(dueTo);
-        if (!Number.isNaN(toDate.getTime())) {
-          const due = project.dueDate ? new Date(project.dueDate) : null;
-          if (!due || Number.isNaN(due.getTime()) || due > toDate) return false;
-        }
-      }
       if (q) {
-        const hay = [project.projectName, project.clientName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+        const hay = [project.projectName, project.clientName].filter(Boolean).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [projects, search, stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
+  }, [projects, search, priorityFilter, healthFilter]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -199,8 +177,6 @@ export default function ProductionQueuePage() {
           return project.projectName || "";
         case "clientName":
           return project.clientName || "";
-        case "stage":
-          return project.stage || "";
         case "priority":
           return project.priority || "";
         case "health":
@@ -220,12 +196,15 @@ export default function ProductionQueuePage() {
     return filtered.reduce(
       (acc, project) => {
         acc.total += 1;
-        if (project.health === "At Risk") acc.atRisk += 1;
+        if (isDueSoon(project.dueDate)) acc.dueSoon += 1;
         if (isOverdue(project.dueDate)) acc.overdue += 1;
-        if (isDueThisWeek(project.dueDate)) acc.dueWeek += 1;
+        const updated = project.updatedAt ? new Date(project.updatedAt) : null;
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (updated && !Number.isNaN(updated.getTime()) && updated >= startOfToday) acc.updatedToday += 1;
         return acc;
       },
-      { total: 0, atRisk: 0, overdue: 0, dueWeek: 0 }
+      { total: 0, dueSoon: 0, overdue: 0, updatedToday: 0 }
     );
   }, [filtered]);
 
@@ -283,13 +262,6 @@ export default function ProductionQueuePage() {
             placeholder="Search keyword"
           />
           <MasterSelect
-            value={stageFilter}
-            onChange={setStageFilter}
-            placeholder="Stage"
-            isDark={isDark}
-            options={[{ value: "all", label: "All Stages" }, ...ACTIVE_STAGES.map((stage) => ({ value: stage, label: stage }))]}
-          />
-          <MasterSelect
             value={priorityFilter}
             onChange={setPriorityFilter}
             placeholder="Priority"
@@ -303,30 +275,23 @@ export default function ProductionQueuePage() {
             isDark={isDark}
             options={[{ value: "all", label: "All Health" }, ...HEALTH_OPTIONS.map((h) => ({ value: h, label: h }))]}
           />
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontSize: 11, textTransform: "uppercase", opacity: 0.7 }}>Due range</label>
-            <div style={{ display: "grid", gap: 8 }}>
-              <input className="input" type="date" value={dueFrom} onChange={(event) => setDueFrom(event.target.value)} />
-              <input className="input" type="date" value={dueTo} onChange={(event) => setDueTo(event.target.value)} />
-            </div>
-          </div>
         </div>
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={sectionTitleStyle}>Queue KPIs</div>
+        <div style={sectionTitleStyle}>QA KPIs</div>
         <div className="kpis">
-          <KpiCard label="Total Assigned" value={totals.total} />
-          <KpiCard label="At Risk" value={totals.atRisk} />
+          <KpiCard label="In Final" value={totals.total} />
+          <KpiCard label="Due Soon (7d)" value={totals.dueSoon} />
           <KpiCard label="Overdue" value={totals.overdue} />
-          <KpiCard label="Due This Week" value={totals.dueWeek} />
+          <KpiCard label="Updated Today" value={totals.updatedToday} />
         </div>
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={sectionTitleStyle}>My Queue</div>
+        <div style={sectionTitleStyle}>QA Queue</div>
         {loading ? (
-          <div style={{ fontSize: 14, opacity: 0.7 }}>Loading queue…</div>
+          <div style={{ fontSize: 14, opacity: 0.7 }}>Loading QA queue…</div>
         ) : error ? (
           <div style={{ fontSize: 14, color: "#dc2626" }}>{error}</div>
         ) : (
@@ -340,9 +305,6 @@ export default function ProductionQueuePage() {
                     </th>
                     <th style={headerCellStyle} onClick={() => toggleSort("clientName")}>
                       {headerLabel("Client", sortBadge("clientName"))}
-                    </th>
-                    <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("stage")}>
-                      {headerLabel("Stage", sortBadge("stage"))}
                     </th>
                     <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("priority")}>
                       {headerLabel("Priority", sortBadge("priority"))}
@@ -362,8 +324,8 @@ export default function ProductionQueuePage() {
                 <tbody>
                   {sorted.length === 0 ? (
                     <tr>
-                      <td style={{ ...cellStyle, textAlign: "left" }} colSpan={8}>
-                        No projects match these filters.
+                      <td style={{ ...cellStyle, textAlign: "left" }} colSpan={7}>
+                        No QA-ready projects assigned yet.
                       </td>
                     </tr>
                   ) : (
@@ -386,14 +348,13 @@ export default function ProductionQueuePage() {
                         >
                           <td style={{ ...cellStyle, textAlign: "left" }}>{project.projectName}</td>
                           <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
-                          <td style={{ ...cellStyle, textAlign: "center" }}>{project.stage}</td>
                           <td style={{ ...cellStyle, textAlign: "center" }}>{project.priority}</td>
                           <td style={{ ...cellStyle, textAlign: "center" }}>{project.health}</td>
                           <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.dueDate)}</td>
                           <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
                           <td style={{ ...cellStyle, textAlign: "center" }}>
                             <button className="btn ghost" onClick={() => openDrawer(project)}>
-                              View
+                              Review
                             </button>
                           </td>
                         </tr>
@@ -411,9 +372,10 @@ export default function ProductionQueuePage() {
         open={drawerOpen}
         project={selected}
         productionUsers={[]}
+        mode="qa"
         onClose={closeDrawer}
         onProjectUpdated={handleProjectUpdated}
-        onRefresh={refreshQueue}
+        onRefresh={refreshQA}
         role="production"
       />
     </div>
