@@ -20,7 +20,7 @@ export default async function Home() {
     const routes: Record<string, string> = {
       admin: "/admin",
       sales: "/sales",
-      am: "/am",
+      account_manager: "/am",
       hr: "/hr",
       finance: "/finance",
       production: "/production",

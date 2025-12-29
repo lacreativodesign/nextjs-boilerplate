@@ -40,7 +40,7 @@ export default function RequireAuth({ allowed, children }: Props) {
               case "sales":
                 router.replace("/sales");
                 break;
-              case "am":
+              case "account_manager":
                 router.replace("/am");
                 break;
               case "client":

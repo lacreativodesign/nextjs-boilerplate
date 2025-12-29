@@ -1,32 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MasterSelect from "@/components/ui/MasterSelect";
 import AMProjectDrawer, { type AMProject } from "@/components/am/AMProjectDrawer";
 
-type ActivityItem = {
-  id: string;
-  projectId?: string;
-  projectName?: string;
-  clientName?: string;
-  title?: string;
-  description?: string;
-  createdAt?: string | null;
-};
-
-type OverviewPayload = {
-  ok: boolean;
-  kpis: {
-    activeProjects: number;
-    reviewProjects: number;
-    openChangeRequests: number;
-    unreadNotifications: number;
-  };
-  topProjects: AMProject[];
-  recentActivity: ActivityItem[];
-};
+const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
+const PRIORITIES = ["Low", "Normal", "High", "Urgent"] as const;
+const HEALTH_OPTIONS = ["On Track", "At Risk", "Overdue"] as const;
 
 type SortKey = "projectName" | "clientName" | "stage" | "priority" | "health" | "dueDate" | "updatedAt";
 type SortDir = "asc" | "desc";
+
+type ProjectsPayload = {
+  ok: boolean;
+  projects: AMProject[];
+};
 
 function useIsSystemDark() {
   const [isDark, setIsDark] = useState(false);
@@ -54,25 +42,17 @@ function fmtDate(iso?: string | null) {
   return date.toLocaleDateString();
 }
 
-function fmtDateTime(iso?: string | null) {
-  if (!iso) return "-";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-export default function AMOverviewPage() {
+export default function AMProjectsPage() {
   const isDark = useIsSystemDark();
-  const [overview, setOverview] = useState<OverviewPayload["kpis"]>({
-    activeProjects: 0,
-    reviewProjects: 0,
-    openChangeRequests: 0,
-    unreadNotifications: 0,
-  });
   const [projects, setProjects] = useState<AMProject[]>([]);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [healthFilter, setHealthFilter] = useState("all");
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -130,6 +110,80 @@ export default function AMOverviewPage() {
     }
   };
 
+  async function loadProjects(mountedRef?: { current: boolean }) {
+    const mounted = mountedRef ? mountedRef.current : true;
+    if (!mounted) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("q", search.trim());
+      if (stageFilter !== "all") params.set("stage", stageFilter);
+      if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (healthFilter !== "all") params.set("health", healthFilter);
+      if (dueFrom) params.set("dueFrom", dueFrom);
+      if (dueTo) params.set("dueTo", dueTo);
+
+      const res = await fetch(`/api/am/projects/list?${params.toString()}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const payload = (await res.json()) as ProjectsPayload;
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload?.error || "Unable to load projects.");
+      }
+      if (mountedRef ? mountedRef.current : true) {
+        setProjects(payload.projects || []);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load projects.");
+    } finally {
+      if (mountedRef ? mountedRef.current : true) setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const mountedRef = { current: true };
+    void loadProjects(mountedRef);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return projects.filter((project) => {
+      if (q) {
+        const hay = [project.projectName, project.clientName].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (stageFilter !== "all" && project.stage !== stageFilter) return false;
+      if (priorityFilter !== "all" && project.priority !== priorityFilter) return false;
+      if (healthFilter !== "all" && project.health !== healthFilter) return false;
+      if (dueFrom) {
+        const fromDate = new Date(dueFrom);
+        if (!Number.isNaN(fromDate.getTime())) {
+          const due = project.dueDate ? new Date(project.dueDate) : null;
+          if (!due || Number.isNaN(due.getTime()) || due < fromDate) return false;
+        }
+      }
+      if (dueTo) {
+        const toDate = new Date(dueTo);
+        if (!Number.isNaN(toDate.getTime())) {
+          const due = project.dueDate ? new Date(project.dueDate) : null;
+          if (!due || Number.isNaN(due.getTime()) || due > toDate) return false;
+        }
+      }
+      return true;
+    });
+  }, [projects, search, stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
+
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
     const getValue = (project: AMProject) => {
@@ -152,36 +206,21 @@ export default function AMOverviewPage() {
           return project.updatedAt || "";
       }
     };
-    return [...projects].sort((a, b) => String(getValue(a)).localeCompare(String(getValue(b))) * dir);
-  }, [projects, sortDir, sortKey]);
+    return [...filtered].sort((a, b) => String(getValue(a)).localeCompare(String(getValue(b))) * dir);
+  }, [filtered, sortDir, sortKey]);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/am/overview", { credentials: "include", cache: "no-store" });
-        const payload = (await res.json()) as OverviewPayload;
-        if (!res.ok || !payload.ok) {
-          throw new Error(payload?.error || "Unable to load overview.");
-        }
-        if (!active) return;
-        setOverview(payload.kpis);
-        setProjects(payload.topProjects || []);
-        setActivity(payload.recentActivity || []);
-      } catch (err: any) {
-        console.error(err);
-        if (active) setError(err?.message || "Unable to load overview.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (acc, project) => {
+        acc.total += 1;
+        if (project.health === "At Risk") acc.atRisk += 1;
+        if (project.health === "Overdue") acc.overdue += 1;
+        if (project.stage === "Review") acc.inReview += 1;
+        return acc;
+      },
+      { total: 0, atRisk: 0, overdue: 0, inReview: 0 }
+    );
+  }, [filtered]);
 
   const openDrawer = (project: AMProject) => {
     setSelected(project);
@@ -200,19 +239,49 @@ export default function AMOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">Overview</h1>
-        <p className="page-subtitle">Manage assigned projects, client coordination, and delivery oversight.</p>
+        <h1 className="page-title">My Projects</h1>
+        <p className="page-subtitle">Track delivery, client comms, and priorities for your assigned work.</p>
       </div>
 
       <div className="kpis">
-        {[
-          { label: "Active Projects", value: overview.activeProjects },
-          { label: "Projects in Review", value: overview.reviewProjects },
-          { label: "Open Change Requests", value: overview.openChangeRequests },
-          { label: "Unread Notifications", value: overview.unreadNotifications },
-        ].map((item) => (
-          <KpiCard key={item.label} label={item.label} value={loading ? "—" : `${item.value}`} />
-        ))}
+        <KpiCard label="Total Projects" value={totals.total} />
+        <KpiCard label="In Review" value={totals.inReview} />
+        <KpiCard label="At Risk" value={totals.atRisk} />
+        <KpiCard label="Overdue" value={totals.overdue} />
+      </div>
+
+      <div style={tableShellStyle}>
+        <div className="flex flex-wrap items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Assigned Projects</div>
+          <button className="btn ghost" onClick={() => loadProjects()}>
+            Refresh
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <input
+            className="input"
+            placeholder="Search keyword"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <MasterSelect
+            value={stageFilter}
+            onChange={setStageFilter}
+            options={[{ value: "all", label: "All Stages" }, ...STAGES.map((value) => ({ value, label: value }))]}
+          />
+          <MasterSelect
+            value={priorityFilter}
+            onChange={setPriorityFilter}
+            options={[{ value: "all", label: "All Priorities" }, ...PRIORITIES.map((value) => ({ value, label: value }))]}
+          />
+          <MasterSelect
+            value={healthFilter}
+            onChange={setHealthFilter}
+            options={[{ value: "all", label: "All Health" }, ...HEALTH_OPTIONS.map((value) => ({ value, label: value }))]}
+          />
+          <input className="input" type="date" value={dueFrom} onChange={(event) => setDueFrom(event.target.value)} />
+          <input className="input" type="date" value={dueTo} onChange={(event) => setDueTo(event.target.value)} />
+        </div>
       </div>
 
       {error && (
@@ -222,14 +291,8 @@ export default function AMOverviewPage() {
       )}
 
       <div style={tableShellStyle}>
-        <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>My Projects (Top 10)</div>
-          <button className="btn ghost" onClick={() => window.location.reload()}>
-            Refresh
-          </button>
-        </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
             <thead>
               <tr>
                 <th style={headerCellStyle} onClick={() => toggleSort("projectName")}>
@@ -258,7 +321,7 @@ export default function AMOverviewPage() {
             </thead>
             <tbody>
               {sorted.map((project) => (
-                <tr key={project.id} style={{ background: "transparent" }}>
+                <tr key={project.id}>
                   <td style={{ ...cellStyle, textAlign: "left" }}>{project.projectName}</td>
                   <td style={{ ...cellStyle, textAlign: "left" }}>{project.clientName}</td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>{project.stage}</td>
@@ -292,56 +355,12 @@ export default function AMOverviewPage() {
         </div>
       </div>
 
-      <div style={tableShellStyle}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Recent Activity (Top 10)</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
-            <thead>
-              <tr>
-                <th style={headerCellStyle}>Project</th>
-                <th style={headerCellStyle}>Details</th>
-                <th style={{ ...headerCellStyle, textAlign: "center" }}>Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activity.map((item) => (
-                <tr key={item.id}>
-                  <td style={{ ...cellStyle, textAlign: "left" }}>
-                    {item.projectName || "Project"}
-                    <div style={{ fontSize: 12, opacity: 0.65 }}>{item.clientName || ""}</div>
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: "left" }}>
-                    <div style={{ fontWeight: 600 }}>{item.title || "Update"}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{item.description || ""}</div>
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDateTime(item.createdAt)}</td>
-                </tr>
-              ))}
-              {!loading && activity.length === 0 && (
-                <tr>
-                  <td colSpan={3} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
-                    No recent activity yet.
-                  </td>
-                </tr>
-              )}
-              {loading && (
-                <tr>
-                  <td colSpan={3} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
-                    Loading activity...
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <AMProjectDrawer open={drawerOpen} project={selected} onClose={closeDrawer} onProjectUpdated={updateProject} />
     </div>
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="card kpi-card" style={{ padding: 14, borderRadius: 16 }}>
       <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6 }}>{label}</div>
