@@ -60,12 +60,14 @@ type ChangeRequestRecord = {
 };
 
 type DrawerMode = "queue" | "qa";
+type DrawerRole = "admin" | "production";
 
 type Props = {
   open: boolean;
   project: ProductionProject | null;
   productionUsers: ProductionUserOption[];
   mode?: DrawerMode;
+  role?: DrawerRole;
   onClose: () => void;
   onProjectUpdated?: (project: ProductionProject) => void;
   onRefresh?: () => void;
@@ -108,8 +110,8 @@ function buildSafeName(name: string) {
   return name.replace(/\s+/g, "_");
 }
 
-function getAllowedMoves(stage?: string) {
-  const map: Record<string, Stage[]> = {
+function getAllowedMoves(stage?: string, role: DrawerRole = "admin") {
+  const adminMap: Record<string, Stage[]> = {
     Kickoff: ["Draft"],
     Draft: ["Review"],
     Review: ["Revisions", "Draft"],
@@ -117,6 +119,15 @@ function getAllowedMoves(stage?: string) {
     Final: ["Delivered", "Revisions"],
     Delivered: [],
   };
+  const productionMap: Record<string, Stage[]> = {
+    Draft: ["Review"],
+    Review: ["Revisions"],
+    Revisions: ["Final"],
+    Final: [],
+    Kickoff: [],
+    Delivered: [],
+  };
+  const map = role === "production" ? productionMap : adminMap;
   return map[stage || ""] || [];
 }
 
@@ -129,11 +140,13 @@ export default function ProductionProjectDrawer({
   project,
   productionUsers,
   mode = "queue",
+  role = "admin",
   onClose,
   onProjectUpdated,
   onRefresh,
 }: Props) {
   const isDark = useIsSystemDark();
+  const isProductionRole = role === "production";
   const [activeProject, setActiveProject] = useState<ProductionProject | null>(project);
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
@@ -155,8 +168,14 @@ export default function ProductionProjectDrawer({
     if (!open || !project) return;
     setLoadingPanel(true);
     setActionError(null);
+    const filesUrl = isProductionRole
+      ? `/api/production/files/list?projectId=${project.id}`
+      : `/api/admin/production/files/list?projectId=${project.id}`;
+    const changeRequestsUrl = isProductionRole
+      ? `/api/production/change-requests/list?projectId=${project.id}`
+      : `/api/admin/change-requests/list?projectId=${project.id}`;
     Promise.all([
-      fetch(`/api/admin/production/files/list?projectId=${project.id}`, {
+      fetch(filesUrl, {
         credentials: "include",
         cache: "no-store",
       })
@@ -169,7 +188,7 @@ export default function ProductionProjectDrawer({
           console.error(err);
           setFiles([]);
         }),
-      fetch(`/api/admin/change-requests/list?projectId=${project.id}`, {
+      fetch(changeRequestsUrl, {
         credentials: "include",
         cache: "no-store",
       })
@@ -246,18 +265,21 @@ export default function ProductionProjectDrawer({
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/admin/production/project/move-stage", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: activeProject.id,
-          toStage: targetStage,
-          reason: eventType === "project.qa_rejected" ? qaReason.trim() : null,
-          eventType,
-          qaNotes: qaNotes.trim() || null,
-        }),
-      });
+      const res = await fetch(
+        isProductionRole ? "/api/production/project/move-stage" : "/api/admin/production/project/move-stage",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: activeProject.id,
+            toStage: targetStage,
+            reason: eventType === "project.qa_rejected" ? qaReason.trim() : null,
+            eventType,
+            qaNotes: qaNotes.trim() || null,
+          }),
+        }
+      );
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
         throw new Error(payload?.error || "Unable to move stage.");
@@ -275,13 +297,50 @@ export default function ProductionProjectDrawer({
     }
   }
 
+  async function handleQaAction(action: "approve" | "reject") {
+    if (!activeProject) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/production/project/qa", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: activeProject.id,
+          action,
+          qaNotes: qaNotes.trim() || null,
+          note: qaReason.trim() || null,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload?.error || "Unable to update QA status.");
+      }
+      setActiveProject(payload.project);
+      onProjectUpdated?.(payload.project);
+      onRefresh?.();
+      setQaReason("");
+    } catch (err: any) {
+      console.error(err);
+      setActionError(err?.message || "Unable to update QA status.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function refreshFiles() {
     if (!activeProject) return;
     try {
-      const res = await fetch(`/api/admin/production/files/list?projectId=${activeProject.id}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
+      const res = await fetch(
+        isProductionRole
+          ? `/api/production/files/list?projectId=${activeProject.id}`
+          : `/api/admin/production/files/list?projectId=${activeProject.id}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
       const payload = await res.json();
       if (res.ok && payload.ok) {
         setFiles(payload.files || []);
@@ -304,7 +363,7 @@ export default function ProductionProjectDrawer({
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const createRes = await fetch("/api/admin/files/create", {
+      const createRes = await fetch(isProductionRole ? "/api/production/files/upload" : "/api/admin/files/create", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -325,20 +384,22 @@ export default function ProductionProjectDrawer({
         throw new Error(createPayload?.error || "Unable to create file record.");
       }
 
-      await fetch("/api/admin/production/events/create", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "file.uploaded",
-          projectId: activeProject.id,
-          payload: {
-            category: uploadingCategory,
-            fileName: file.name,
-            fileId: createPayload.id,
-          },
-        }),
-      });
+      if (!isProductionRole) {
+        await fetch("/api/admin/production/events/create", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "file.uploaded",
+            projectId: activeProject.id,
+            payload: {
+              category: uploadingCategory,
+              fileName: file.name,
+              fileId: createPayload.id,
+            },
+          }),
+        });
+      }
 
       await refreshFiles();
       onRefresh?.();
@@ -359,7 +420,7 @@ export default function ProductionProjectDrawer({
     }
   }
 
-  const allowedMoves = getAllowedMoves(activeProject.stage);
+  const allowedMoves = getAllowedMoves(activeProject.stage, role);
 
   const headerBadgeStyle: React.CSSProperties = {
     padding: "4px 10px",
@@ -426,24 +487,26 @@ export default function ProductionProjectDrawer({
 
         <Section title="Quick Actions" isDark={isDark}>
           <div style={{ display: "grid", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Assign Production Owner</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <MasterSelect
-                  value={selectedProduction}
-                  onChange={(value) => setSelectedProduction(value)}
-                  options={productionOptions}
-                />
-                <button
-                  className="btn"
-                  style={{ borderRadius: 999, padding: "6px 14px" }}
-                  onClick={handleAssignProduction}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Saving..." : "Update"}
-                </button>
+            {!isProductionRole && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Assign Production Owner</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <MasterSelect
+                    value={selectedProduction}
+                    onChange={(value) => setSelectedProduction(value)}
+                    options={productionOptions}
+                  />
+                  <button
+                    className="btn"
+                    style={{ borderRadius: 999, padding: "6px 14px" }}
+                    onClick={handleAssignProduction}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? "Saving..." : "Update"}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Move Stage</div>
@@ -548,12 +611,14 @@ export default function ProductionProjectDrawer({
                   </div>
                 </div>
               ))}
-              <a
-                href={`/admin/projects/change-requests?projectId=${activeProject.id}`}
-                style={{ fontSize: 12, color: isDark ? "#e2e8f0" : "#1f2937", textDecoration: "underline" }}
-              >
-                View all change requests
-              </a>
+              {!isProductionRole && (
+                <a
+                  href={`/admin/projects/change-requests?projectId=${activeProject.id}`}
+                  style={{ fontSize: 12, color: isDark ? "#e2e8f0" : "#1f2937", textDecoration: "underline" }}
+                >
+                  View all change requests
+                </a>
+              )}
             </div>
           ) : (
             <div style={{ fontSize: 12, opacity: 0.6 }}>No open change requests.</div>
@@ -562,7 +627,7 @@ export default function ProductionProjectDrawer({
 
         <div style={{ height: 12 }} />
 
-        {mode === "qa" && (
+        {(mode === "qa" || (isProductionRole && activeProject.stage === "Final")) && (
           <>
             <Section title="QA Checklist" isDark={isDark}>
               <div style={{ display: "grid", gap: 10, fontSize: 12 }}>
@@ -589,11 +654,15 @@ export default function ProductionProjectDrawer({
                   className="btn"
                   style={{ borderRadius: 999, padding: "8px 16px" }}
                   onClick={() => {
+                    if (isProductionRole) {
+                      void handleQaAction("approve");
+                      return;
+                    }
                     void handleMoveStage("Delivered", "project.qa_approved");
                   }}
                   disabled={actionLoading}
                 >
-                  {actionLoading ? "Processing..." : "Approve & Deliver"}
+                  {actionLoading ? "Processing..." : isProductionRole ? "Approve QA" : "Approve & Deliver"}
                 </button>
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontWeight: 600, fontSize: 12 }}>Reject to Revisions (reason required)</label>
@@ -610,6 +679,10 @@ export default function ProductionProjectDrawer({
                     onClick={() => {
                       if (!qaReason.trim()) {
                         setActionError("Reason is required to reject QA.");
+                        return;
+                      }
+                      if (isProductionRole) {
+                        void handleQaAction("reject");
                         return;
                       }
                       void handleMoveStage("Revisions", "project.qa_rejected");

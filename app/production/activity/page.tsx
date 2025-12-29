@@ -1,196 +1,222 @@
 "use client";
 
-import { useState } from "react";
-import { Clock, Filter, Search, UserCircle2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-type ActivityItem = {
+type ActivityEntry = {
   id: string;
-  project: string;
-  user: string;
-  role: string;
-  action: string;
-  status: "In Progress" | "Completed" | "Delayed";
-  timestamp: string;
+  projectId: string;
+  projectName: string;
+  clientName: string;
+  fromStage?: string;
+  toStage?: string;
+  byName?: string;
+  at?: string | null;
 };
 
-const MOCK_ACTIVITY: ActivityItem[] = [
-  {
-    id: "A-001",
-    project: "Corporate Website Redesign",
-    user: "Ali Raza",
-    role: "Designer",
-    action: "Uploaded Draft homepage-v2.fig",
-    status: "In Progress",
-    timestamp: "2025-02-15 10:24",
-  },
-  {
-    id: "A-002",
-    project: "Brand Identity Kit",
-    user: "Sara Khan",
-    role: "Brand Designer",
-    action: "Marked logo-update-rev2.ai as Final",
-    status: "Completed",
-    timestamp: "2025-02-15 09:02",
-  },
-  {
-    id: "A-003",
-    project: "Social Media Creatives",
-    user: "Imran Ali",
-    role: "Motion Artist",
-    action: "Requested revision on reel-animation-v1.mp4",
-    status: "Delayed",
-    timestamp: "2025-02-14 17:40",
-  },
-  {
-    id: "A-004",
-    project: "E-commerce Landing Page",
-    user: "Fatima Noor",
-    role: "Frontend Dev",
-    action: "Pushed code to production-preview branch",
-    status: "In Progress",
-    timestamp: "2025-02-14 15:10",
-  },
-];
-
-const STATUS_COLORS: Record<ActivityItem["status"], string> = {
-  "In Progress": "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  Completed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  Delayed: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+type OverviewPayload = {
+  ok: boolean;
+  recentActivityTop10: ActivityEntry[];
 };
 
-const STATUS_ICON: Record<ActivityItem["status"], JSX.Element> = {
-  "In Progress": <Clock className="w-3 h-3" />,
-  Completed: <CheckCircle2 className="w-3 h-3" />,
-  Delayed: <AlertTriangle className="w-3 h-3" />,
-};
+function useIsSystemDark() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const read = () => setIsDark(!!mql.matches);
+    read();
+    // @ts-expect-error older browsers
+    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+    return () => {
+      // @ts-expect-error older browsers
+      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+    };
+  }, []);
+
+  return isDark;
+}
+
+function fmtDateTime(iso?: string | null) {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
 
 export default function ProductionActivityPage() {
-  const [statusFilter, setStatusFilter] = useState<"All" | ActivityItem["status"]>("All");
+  const isDark = useIsSystemDark();
+  const [rows, setRows] = useState<ActivityEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const filtered = MOCK_ACTIVITY.filter((item) => {
-    const statusOk = statusFilter === "All" || item.status === statusFilter;
-    const text = (item.project + item.user + item.action).toLowerCase();
-    const searchOk = !search || text.includes(search.toLowerCase());
-    return statusOk && searchOk;
-  });
+  const tableShellStyle: React.CSSProperties = {
+    borderRadius: 20,
+    padding: 14,
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
+    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
+  };
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: 700,
+    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.9)",
+  };
+
+  const headerCellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    fontSize: 11,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    userSelect: "none",
+    whiteSpace: "nowrap",
+    textAlign: "left",
+  };
+
+  const cellStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
+    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    whiteSpace: "nowrap",
+    fontWeight: 400,
+  };
+
+  async function loadActivity(mountedRef?: { current: boolean }) {
+    const mounted = mountedRef ? mountedRef.current : true;
+    if (!mounted) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/production/overview", { credentials: "include", cache: "no-store" });
+      const payload = (await res.json()) as OverviewPayload;
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload?.error || "Unable to load activity.");
+      }
+      if (mountedRef ? mountedRef.current : true) {
+        setRows(payload.recentActivityTop10 || []);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load activity.");
+    } finally {
+      if (mountedRef ? mountedRef.current : true) setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const mountedRef = { current: true };
+    void loadActivity(mountedRef);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((item) => {
+      const hay = [item.projectName, item.clientName, item.byName, item.fromStage, item.toStage]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, search]);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Activity</h1>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">
-            Live view of what the Production team is working on across all projects.
-          </p>
+    <div style={{ display: "grid", gap: 20 }}>
+      <section style={{ display: "grid", gap: 12 }}>
+        <div style={sectionTitleStyle}>Activity</div>
+        <div
+          className="card"
+          style={{
+            padding: 14,
+            borderRadius: 16,
+            background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
+            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+            boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 1.3fr)",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <input
+            className="input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search keyword"
+          />
         </div>
+      </section>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search keyword"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 text-sm bg-white dark:bg-neutral-900 text-gray-800 dark:text-neutral-100 w-full sm:w-72"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
-            <div className="flex gap-1">
-              {["All", "In Progress", "Completed", "Delayed"].map((label) => (
-                <button
-                  key={label}
-                  onClick={() =>
-                    setStatusFilter(label as "All" | ActivityItem["status"])
-                  }
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    statusFilter === label
-                      ? "bg-black text-white dark:bg-white dark:text-black border-black dark:border-white"
-                      : "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300 border-gray-200 dark:border-neutral-700"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+      <section style={{ display: "grid", gap: 12 }}>
+        <div style={sectionTitleStyle}>Recent Activity</div>
+        {loading ? (
+          <div style={{ fontSize: 14, opacity: 0.7 }}>Loading activity…</div>
+        ) : error ? (
+          <div style={{ fontSize: 14, color: "#dc2626" }}>{error}</div>
+        ) : (
+          <div style={tableShellStyle}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <th style={headerCellStyle}>Project</th>
+                    <th style={headerCellStyle}>Update</th>
+                    <th style={{ ...headerCellStyle, textAlign: "center" }}>Stage</th>
+                    <th style={{ ...headerCellStyle, textAlign: "center" }}>When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td style={{ ...cellStyle, textAlign: "left" }} colSpan={4}>
+                        No activity matches your filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((item, idx) => {
+                      const rowBg = isDark
+                        ? idx % 2 === 0
+                          ? "rgba(255,255,255,0.015)"
+                          : "rgba(255,255,255,0.00)"
+                        : idx % 2 === 0
+                        ? "rgba(15,23,42,0.015)"
+                        : "rgba(15,23,42,0.00)";
+                      const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
+                      return (
+                        <tr
+                          key={item.id}
+                          style={{ background: rowBg, transition: "background 120ms ease" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                        >
+                          <td style={{ ...cellStyle, textAlign: "left" }}>
+                            {item.projectName || "Project"}
+                            <div style={{ fontSize: 12, opacity: 0.65 }}>{item.clientName}</div>
+                          </td>
+                          <td style={{ ...cellStyle, textAlign: "left" }}>
+                            {item.byName ? `${item.byName} moved stage` : "Stage updated"}
+                          </td>
+                          <td style={{ ...cellStyle, textAlign: "center" }}>
+                            {item.fromStage || "-"} → {item.toStage || "-"}
+                          </td>
+                          <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDateTime(item.at)}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Timeline card */}
-      <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-sm">
-        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200 dark:border-neutral-800">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-600 dark:text-neutral-300" />
-            <div>
-              <p className="text-sm font-semibold">Production Activity Feed</p>
-              <p className="text-xs text-gray-500 dark:text-neutral-400">
-                Sorted by latest events first.
-              </p>
-            </div>
-          </div>
-          <span className="text-xs text-gray-400 dark:text-neutral-500">
-            (Dummy data for now — later we connect to Firestore logs.)
-          </span>
-        </div>
-
-        <div className="divide-y divide-gray-100 dark:divide-neutral-800">
-          {filtered.length === 0 && (
-            <div className="px-5 py-8 text-sm text-gray-500 dark:text-neutral-400 text-center">
-              No activity matches your filters.
-            </div>
-          )}
-
-          {filtered.map((item) => (
-            <div key={item.id} className="px-5 py-4 flex gap-4">
-              {/* Timeline dot */}
-              <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-black dark:bg-white" />
-                <div className="flex-1 w-px bg-gray-200 dark:bg-neutral-800 mt-1" />
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 space-y-1">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <UserCircle2 className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
-                    <span className="text-sm font-medium">
-                      {item.user}{" "}
-                      <span className="text-xs text-gray-500 dark:text-neutral-400">
-                        ({item.role})
-                      </span>
-                    </span>
-                  </div>
-
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_COLORS[item.status]}`}
-                  >
-                    {STATUS_ICON[item.status]}
-                    {item.status}
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-800 dark:text-neutral-100">
-                  {item.action}
-                </p>
-
-                <p className="text-xs text-gray-500 dark:text-neutral-400">
-                  Project: <span className="font-medium">{item.project}</span>
-                </p>
-
-                <p className="text-xs text-gray-400 dark:text-neutral-500">
-                  {item.timestamp}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        )}
+      </section>
     </div>
   );
-    }
+}
