@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, normalizeRole } from "../_utils";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -74,23 +75,34 @@ export async function createHrNotification({
   title,
   message,
   type,
-  metadata,
+  entityId,
+  deepLink,
+  createdBy,
 }: {
   userId: string;
   title: string;
   message: string;
   type: string;
-  metadata?: Record<string, unknown>;
+  entityId?: string;
+  deepLink?: string;
+  createdBy?: { uid?: string; name?: string };
 }) {
-  await adminDb.collection("notifications").add({
-    userId,
+  const allowedTypes = ["info", "warning", "success", "system"];
+  const normalizedType = allowedTypes.includes(type)
+    ? (type as "info" | "warning" | "success" | "system")
+    : type.includes("completed")
+    ? "success"
+    : "info";
+
+  await createNotification({
+    toUserId: userId,
     title,
-    message,
-    type,
-    metadata: metadata || {},
-    read: false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    body: message,
+    type: normalizedType,
+    entityType: "hr",
+    entityId: entityId || null,
+    deepLink: deepLink || null,
+    createdBy: createdBy || null,
   });
 }
 

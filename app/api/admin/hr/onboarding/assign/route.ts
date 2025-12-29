@@ -75,7 +75,12 @@ export async function POST(req: Request) {
       title: "New onboarding plan",
       message: `A new onboarding checklist has been assigned to you.`,
       type: "hr.onboarding_assigned",
-      metadata: { taskId: ref.id, templateId },
+      entityId: ref.id,
+      deepLink: "/admin/hr/onboarding",
+      createdBy: {
+        uid: access.user.uid,
+        name: access.user.name || access.user.email || "Admin",
+      },
     });
 
     if (userData?.email) {

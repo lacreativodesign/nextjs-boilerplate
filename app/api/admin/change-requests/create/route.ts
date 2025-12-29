@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAccountManager, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
+import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -139,6 +140,43 @@ export async function POST(req: Request) {
       status: "Submitted",
       actorUid: me.uid,
       actorRole: role,
+    });
+
+    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const recipients = new Set<string>();
+    if (project.ownerAmUid) recipients.add(String(project.ownerAmUid));
+    adminIds.forEach((id) => recipients.add(id));
+
+    const actorName = me.name || me.fullName || me.displayName || "";
+    await Promise.all(
+      Array.from(recipients)
+        .filter(Boolean)
+        .map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Change request submitted",
+            body: `${project.projectName || "Project"} has a new change request: ${title}.`,
+            type: "info",
+            entityType: "change_request",
+            entityId: docRef.id,
+            deepLink: "/admin/projects/change-requests",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        )
+    );
+
+    await createNotificationEvent({
+      type: "change_request.created",
+      title: "Change request submitted",
+      description: `${project.projectName || "Project"} received a change request.`,
+      entityType: "change_request",
+      entityId: docRef.id,
+      createdByUid: me.uid,
+      createdByName: actorName,
+      metadata: {
+        projectId,
+        clientId: project.clientId || "",
+      },
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });

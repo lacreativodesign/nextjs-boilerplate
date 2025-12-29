@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
+import { createFinanceEvent, requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
+import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,34 @@ export async function POST(req: Request) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
+    });
+
+    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+
+    await Promise.all(
+      financeIds.map((uid) =>
+        createNotification({
+          toUserId: uid,
+          title: "Invoice created",
+          body: `Invoice ${orderId} created for ${clientName}.`,
+          type: "info",
+          entityType: "invoice",
+          entityId: ref.id,
+          deepLink: "/admin/finance/invoices",
+          createdBy: { uid: auth.user.uid, name: actorName },
+        })
+      )
+    );
+
+    await createFinanceEvent({
+      type: "finance.invoice_created",
+      title: "Invoice created",
+      description: `Invoice ${orderId} created for ${clientName}.`,
+      entityType: "invoice",
+      entityId: ref.id,
+      createdByUid: auth.user.uid,
+      createdByName: actorName,
     });
 
     return NextResponse.json({ ok: true, id: ref.id, orderId });
