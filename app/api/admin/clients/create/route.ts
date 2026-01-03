@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
+import { queueClientActivationInvite } from "@/lib/clientActivation";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,22 @@ export async function POST(req: Request) {
 
   try {
     const ref = await db.collection("clients").add(doc);
+
+    try {
+      await queueClientActivationInvite({
+        clientId: ref.id,
+        clientData: {
+          primaryContactEmail,
+          primaryContactName,
+          companyName,
+        },
+        createdByUid: me.uid,
+        reason: "client_created",
+      });
+    } catch (inviteError) {
+      console.error("client activation invite error:", inviteError);
+    }
+
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message ?? "Failed to create client" }, { status: 500 });

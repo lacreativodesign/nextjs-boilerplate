@@ -109,3 +109,60 @@ export async function ensureClientAccountActivation({
     activationPrepared,
   };
 }
+
+export async function queueClientActivationInvite({
+  clientId,
+  clientData,
+  createdByUid,
+  reason,
+}: {
+  clientId: string;
+  clientData: ClientActivationData;
+  createdByUid?: string | null;
+  reason?: string;
+}) {
+  const email = normalizeEmail(clientData.primaryContactEmail);
+  if (!email) {
+    throw new Error("Primary contact email is required for account activation.");
+  }
+
+  const existingUserSnap = await adminDb
+    .collection("users")
+    .where("clientId", "==", clientId)
+    .where("role", "==", "client")
+    .limit(1)
+    .get();
+
+  if (!existingUserSnap.empty) {
+    return { ok: true, created: false };
+  }
+
+  const activation = await ensureClientAccountActivation({
+    clientId,
+    clientData,
+    createdByUid,
+  });
+
+  if (activation.activationPrepared) {
+    await adminDb.collection("emails").add({
+      to: email,
+      template: "clientActivation",
+      subject: "Activate your LA CREATIVO client account",
+      data: {
+        clientId,
+        companyName: cleanString(clientData.companyName),
+        contactName: cleanString(clientData.primaryContactName),
+        setPasswordLink: activation.setPasswordLink || null,
+        dashboardLoginUrl: activation.dashboardLoginUrl,
+      },
+      metadata: {
+        reason: reason || "client_activation",
+      },
+      status: "pending",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  return { ok: true, created: true };
+}

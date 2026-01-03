@@ -35,6 +35,7 @@ type ClientDoc = {
 
   totalPaidUsd?: number;
   orderId?: string;
+  portalUserUid?: string | null;
 
   createdAt?: any;
   updatedAt?: any;
@@ -114,6 +115,7 @@ export async function GET() {
 
           totalPaidUsd: Number(d.totalPaidUsd || 0),
           orderId: d.orderId || "",
+          portalUserUid: d.portalUserUid || null,
 
           createdAt: toISO(d.createdAt),
           updatedAt: toISO(d.updatedAt),
