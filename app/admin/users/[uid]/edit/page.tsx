@@ -219,8 +219,7 @@ export default function EditUserPage() {
 
         setStatus((String(data?.status || "active").toLowerCase() as UserStatus) || "active");
         const rawRole = String(data?.role || "sales").toLowerCase();
-        const normalizedRole = (rawRole === "am" ? "account_manager" : rawRole) as Role;
-        const loadedRole = normalizedRole || "sales";
+        const loadedRole = (rawRole || "sales") as Role;
         const loadedDepartment = (String(data?.department || "sales").toLowerCase() as Department) || "sales";
         setRole(loadedRole);
         setDepartment(loadedDepartment);

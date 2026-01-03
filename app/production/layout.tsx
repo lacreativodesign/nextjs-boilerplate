@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { Activity, BadgeCheck, Bell, LayoutDashboard, ListChecks, LogOut, Menu } from "lucide-react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
+import RequireAuth from "@/components/RequireAuth";
 
 const navItems = [
   { label: "Overview", path: "/production", icon: LayoutDashboard },
@@ -189,7 +190,8 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="admin-shell flex min-h-screen transition-colors">
+    <RequireAuth allowed={["production"]}>
+      <div className="admin-shell flex min-h-screen transition-colors">
       <aside
         className={clsx(
           "admin-sidebar h-screen sticky top-0 transition-all duration-300",
@@ -298,6 +300,7 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RequireAuth>
   );
 }

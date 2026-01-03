@@ -3,6 +3,7 @@
 
 import React from "react";
 import ERPLayout from "@/components/layouts/ERPLayout";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function FinanceLayout({
   children,
@@ -10,8 +11,10 @@ export default function FinanceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ERPLayout role="finance" title="Finance Dashboard">
-      {children}
-    </ERPLayout>
+    <RequireAuth allowed={["finance"]}>
+      <ERPLayout role="finance" title="Finance Dashboard">
+        {children}
+      </ERPLayout>
+    </RequireAuth>
   );
 }

@@ -91,26 +91,38 @@ export async function POST(req: Request) {
     const dueDate = toISO(updated.dueDate);
     const actorName = me.name || me.fullName || me.displayName || "";
 
-    const recipients = new Set<string>();
-    if (productionUid) recipients.add(productionUid);
-    if (updated.ownerAmUid) recipients.add(String(updated.ownerAmUid));
+    const notifications: Promise<void>[] = [];
+    if (productionUid) {
+      notifications.push(
+        createNotification({
+          toUserId: productionUid,
+          title: "Project assigned to production",
+          body: `${updated.projectName || "Project"} has been assigned for production.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/admin/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
 
-    await Promise.all(
-      Array.from(recipients)
-        .filter(Boolean)
-        .map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: "Project assigned to production",
-            body: `${updated.projectName || "Project"} has been assigned for production.`,
-            type: "info",
-            entityType: "project",
-            entityId: projectId,
-            deepLink: "/admin/projects",
-            createdBy: { uid: me.uid, name: actorName },
-          })
-        )
-    );
+    if (updated.ownerAmUid) {
+      notifications.push(
+        createNotification({
+          toUserId: String(updated.ownerAmUid),
+          title: "Project assigned to production",
+          body: `${updated.projectName || "Project"} has been assigned for production.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/am/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    await Promise.all(notifications);
 
     await createNotificationEvent({
       type: "production.assigned",

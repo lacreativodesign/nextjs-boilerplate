@@ -201,28 +201,39 @@ export async function POST(req: Request) {
     const dueDate = toISO(updated.dueDate);
     const actorName = me.name || me.fullName || me.displayName || "";
 
-    const stageRecipients = new Set<string>();
-    if (updated.ownerAmUid) stageRecipients.add(String(updated.ownerAmUid));
-    if (updated.productionUid || updated.productionOwnerId) {
-      stageRecipients.add(String(updated.productionUid || updated.productionOwnerId || ""));
+    const stageNotifications: Promise<void>[] = [];
+    if (updated.ownerAmUid) {
+      stageNotifications.push(
+        createNotification({
+          toUserId: String(updated.ownerAmUid),
+          title: "Project stage updated",
+          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/am/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
     }
 
-    await Promise.all(
-      Array.from(stageRecipients)
-        .filter(Boolean)
-        .map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: "Project stage updated",
-            body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
-            type: "info",
-            entityType: "project",
-            entityId: projectId,
-            deepLink: "/admin/projects",
-            createdBy: { uid: me.uid, name: actorName },
-          })
-        )
-    );
+    const productionRecipient = updated.productionUid || updated.productionOwnerId;
+    if (productionRecipient) {
+      stageNotifications.push(
+        createNotification({
+          toUserId: String(productionRecipient),
+          title: "Project stage updated",
+          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/admin/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    await Promise.all(stageNotifications);
 
     await createNotificationEvent({
       type: "project.stage_moved",
@@ -240,29 +251,46 @@ export async function POST(req: Request) {
 
     if (eventType === "project.qa_approved" || eventType === "project.qa_rejected") {
       const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
-      const qaRecipients = new Set<string>();
-      if (updated.ownerAmUid) qaRecipients.add(String(updated.ownerAmUid));
-      adminIds.forEach((id) => qaRecipients.add(id));
+      const qaNotifications: Promise<void>[] = [];
 
-      await Promise.all(
-        Array.from(qaRecipients)
-          .filter(Boolean)
-          .map((uid) =>
-            createNotification({
-              toUserId: uid,
-              title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
-              body:
-                eventType === "project.qa_approved"
-                  ? `${updated.projectName || "Project"} passed QA approval.`
-                  : `${updated.projectName || "Project"} was rejected in QA.`,
-              type: eventType === "project.qa_approved" ? "success" : "warning",
-              entityType: "project",
-              entityId: projectId,
-              deepLink: "/admin/production/qa",
-              createdBy: { uid: me.uid, name: actorName },
-            })
-          )
-      );
+      if (updated.ownerAmUid) {
+        qaNotifications.push(
+          createNotification({
+            toUserId: String(updated.ownerAmUid),
+            title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+            body:
+              eventType === "project.qa_approved"
+                ? `${updated.projectName || "Project"} passed QA approval.`
+                : `${updated.projectName || "Project"} was rejected in QA.`,
+            type: eventType === "project.qa_approved" ? "success" : "warning",
+            entityType: "project",
+            entityId: projectId,
+            deepLink: "/am/projects",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        );
+      }
+
+      adminIds.forEach((uid) => {
+        if (!uid) return;
+        qaNotifications.push(
+          createNotification({
+            toUserId: uid,
+            title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+            body:
+              eventType === "project.qa_approved"
+                ? `${updated.projectName || "Project"} passed QA approval.`
+                : `${updated.projectName || "Project"} was rejected in QA.`,
+            type: eventType === "project.qa_approved" ? "success" : "warning",
+            entityType: "project",
+            entityId: projectId,
+            deepLink: "/admin/production/qa",
+            createdBy: { uid: me.uid, name: actorName },
+          })
+        );
+      });
+
+      await Promise.all(qaNotifications);
 
       await createNotificationEvent({
         type: eventType,

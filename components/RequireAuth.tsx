@@ -34,8 +34,12 @@ export default function RequireAuth({ allowed, children }: Props) {
 
           if (!role || !allowed.includes(role)) {
             switch (role) {
+              case "super_admin":
               case "admin":
                 router.replace("/admin");
+                break;
+              case "sales_manager":
+                router.replace("/sales-manager");
                 break;
               case "sales":
                 router.replace("/sales");
@@ -51,6 +55,9 @@ export default function RequireAuth({ allowed, children }: Props) {
                 break;
               case "hr":
                 router.replace("/hr");
+                break;
+              case "finance":
+                router.replace("/finance");
                 break;
               default:
                 router.replace("/login");

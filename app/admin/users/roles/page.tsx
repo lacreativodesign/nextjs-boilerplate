@@ -136,8 +136,7 @@ export default function UserRolesPage() {
 
     users.forEach((u) => {
       const role = (u.role || "").toLowerCase();
-      const normalized = role === "am" ? "account_manager" : role;
-      if (tally[normalized] !== undefined) tally[normalized] += 1;
+      if (tally[role] !== undefined) tally[role] += 1;
     });
 
     return tally;

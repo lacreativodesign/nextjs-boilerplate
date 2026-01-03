@@ -3,6 +3,7 @@
 
 import React from "react";
 import ERPLayout from "@/components/layouts/ERPLayout";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function SalesManagerLayout({
   children,
@@ -10,8 +11,10 @@ export default function SalesManagerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ERPLayout role="sales-manager" title="Sales Manager Dashboard">
-      {children}
-    </ERPLayout>
+    <RequireAuth allowed={["sales_manager"]}>
+      <ERPLayout role="sales-manager" title="Sales Manager Dashboard">
+        {children}
+      </ERPLayout>
+    </RequireAuth>
   );
 }

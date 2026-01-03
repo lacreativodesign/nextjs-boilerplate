@@ -62,8 +62,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const rawRole = (role || "").toLowerCase();
-    const targetRole = rawRole === "am" ? "account_manager" : rawRole;
+    const targetRole = (role || "").toLowerCase();
     const passwordToUse = String(password || "").trim() || crypto.randomBytes(16).toString("hex");
 
     // 5) Check duplicate email
