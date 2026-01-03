@@ -3,7 +3,17 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 export type NotificationType = "info" | "warning" | "success" | "system";
 
-export type NotificationEntityType = "project" | "client" | "invoice" | "payment" | "change_request" | "hr";
+export type NotificationEntityType =
+  | "project"
+  | "client"
+  | "invoice"
+  | "payment"
+  | "change_request"
+  | "hr"
+  | "lead"
+  | "deal"
+  | "follow_up"
+  | "campaign";
 
 export type NotificationPayload = {
   toUserId: string;
