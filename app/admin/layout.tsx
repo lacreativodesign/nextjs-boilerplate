@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
+import RequireAuth from "@/components/RequireAuth";
 
 type NotificationItem = {
   id: string;
@@ -217,7 +218,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="admin-shell flex min-h-screen transition-colors">
+    <RequireAuth allowed={["admin", "super_admin"]}>
+      <div className="admin-shell flex min-h-screen transition-colors">
       {/* SIDEBAR */}
       <aside
         className={clsx(
@@ -339,6 +341,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RequireAuth>
   );
 }

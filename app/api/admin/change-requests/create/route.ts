@@ -143,27 +143,40 @@ export async function POST(req: Request) {
     });
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
-    const recipients = new Set<string>();
-    if (project.ownerAmUid) recipients.add(String(project.ownerAmUid));
-    adminIds.forEach((id) => recipients.add(id));
-
     const actorName = me.name || me.fullName || me.displayName || "";
-    await Promise.all(
-      Array.from(recipients)
-        .filter(Boolean)
-        .map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: "Change request submitted",
-            body: `${project.projectName || "Project"} has a new change request: ${title}.`,
-            type: "info",
-            entityType: "change_request",
-            entityId: docRef.id,
-            deepLink: "/admin/projects/change-requests",
-            createdBy: { uid: me.uid, name: actorName },
-          })
-        )
-    );
+    const notifications: Promise<void>[] = [];
+    if (project.ownerAmUid) {
+      notifications.push(
+        createNotification({
+          toUserId: String(project.ownerAmUid),
+          title: "Change request submitted",
+          body: `${project.projectName || "Project"} has a new change request: ${title}.`,
+          type: "info",
+          entityType: "change_request",
+          entityId: docRef.id,
+          deepLink: "/am/change-requests",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    adminIds.forEach((uid) => {
+      if (!uid) return;
+      notifications.push(
+        createNotification({
+          toUserId: uid,
+          title: "Change request submitted",
+          body: `${project.projectName || "Project"} has a new change request: ${title}.`,
+          type: "info",
+          entityType: "change_request",
+          entityId: docRef.id,
+          deepLink: "/admin/projects/change-requests",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    });
+
+    await Promise.all(notifications);
 
     await createNotificationEvent({
       type: "change_request.created",

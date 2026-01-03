@@ -18,7 +18,9 @@ export default async function Home() {
     const role = (snap.data()?.role || "").toString().toLowerCase();
 
     const routes: Record<string, string> = {
+      super_admin: "/admin",
       admin: "/admin",
+      sales_manager: "/sales-manager",
       sales: "/sales",
       account_manager: "/am",
       hr: "/hr",

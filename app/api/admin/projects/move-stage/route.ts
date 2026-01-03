@@ -192,26 +192,38 @@ export async function POST(req: Request) {
     const updated = updatedSnap.data() || {};
 
     const actorName = me.name || me.fullName || me.displayName || "";
-    const recipients = new Set<string>();
-    if (updated.ownerAmUid) recipients.add(String(updated.ownerAmUid));
-    if (updated.productionUid) recipients.add(String(updated.productionUid));
+    const notifications: Promise<void>[] = [];
+    if (updated.ownerAmUid) {
+      notifications.push(
+        createNotification({
+          toUserId: String(updated.ownerAmUid),
+          title: "Project stage updated",
+          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/am/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
 
-    await Promise.all(
-      Array.from(recipients)
-        .filter(Boolean)
-        .map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: "Project stage updated",
-            body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
-            type: "info",
-            entityType: "project",
-            entityId: projectId,
-            deepLink: "/admin/projects",
-            createdBy: { uid: me.uid, name: actorName },
-          })
-        )
-    );
+    if (updated.productionUid) {
+      notifications.push(
+        createNotification({
+          toUserId: String(updated.productionUid),
+          title: "Project stage updated",
+          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+          type: "info",
+          entityType: "project",
+          entityId: projectId,
+          deepLink: "/admin/projects",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    await Promise.all(notifications);
 
     await createNotificationEvent({
       type: "project.stage_moved",

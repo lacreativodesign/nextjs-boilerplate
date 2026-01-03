@@ -23,7 +23,7 @@ export default function ERPLayout({
         { label: "User Management", href: "/admin/user-management" },
       ],
       sales: [{ label: "Sales Dashboard", href: "/sales" }],
-      am: [{ label: "AM Dashboard", href: "/am" }],
+      account_manager: [{ label: "Account Manager", href: "/am" }],
       production: [{ label: "Production Dashboard", href: "/production" }],
       hr: [{ label: "HR Dashboard", href: "/hr" }],
       finance: [{ label: "Finance Dashboard", href: "/finance" }],

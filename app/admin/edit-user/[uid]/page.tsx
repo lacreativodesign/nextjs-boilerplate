@@ -14,7 +14,16 @@ export default function EditUserPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const ROLES = ["admin", "sales", "am", "production", "hr", "finance", "client"];
+  const ROLES = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+  const ROLE_LABELS: Record<string, string> = {
+    admin: "Admin",
+    sales: "Sales",
+    account_manager: "Account Manager",
+    production: "Production",
+    hr: "HR",
+    finance: "Finance",
+    client: "Client",
+  };
 
   async function loadUser() {
     try {
@@ -151,7 +160,7 @@ export default function EditUserPage() {
                 <option value="">Select role</option>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {r.toUpperCase()}
+                    {ROLE_LABELS[r] || r}
                   </option>
                 ))}
               </select>

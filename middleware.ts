@@ -8,6 +8,13 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get("lac_session")?.value;
   const { pathname } = req.nextUrl;
 
+  if (pathname === "/account_manager" || pathname.startsWith("/account_manager/")) {
+    const rewrittenPath = pathname.replace(/^\/account_manager/, "/am");
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = rewrittenPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   // Public routes: "/" and "/login"
   if (pathname === "/" || pathname.startsWith("/login")) {
     // already signed in? send to root (which handles redirect to correct role)
@@ -42,6 +49,7 @@ export const config = {
   matcher: [
     "/",
     "/login/:path*",
+    "/account_manager/:path*",
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",

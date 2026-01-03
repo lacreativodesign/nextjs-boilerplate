@@ -66,8 +66,20 @@ export default function LoginPage() {
         throw new Error(j?.error || "Session error");
       }
 
-      // Redirect to role dashboard (admin, sales, hr, etc.)
-      window.location.href = `/${role}`;
+      const roleRoutes: Record<string, string> = {
+        super_admin: "/admin",
+        admin: "/admin",
+        sales_manager: "/sales-manager",
+        sales: "/sales",
+        account_manager: "/am",
+        hr: "/hr",
+        finance: "/finance",
+        production: "/production",
+        client: "/client",
+      };
+
+      const destination = roleRoutes[role] || "/login";
+      window.location.href = destination;
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {

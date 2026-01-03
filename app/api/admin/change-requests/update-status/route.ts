@@ -212,28 +212,61 @@ export async function POST(req: Request) {
     }
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
-    const recipients = new Set<string>();
-    if (data.requestedByUid) recipients.add(String(data.requestedByUid));
-    if (projectData?.ownerAmUid) recipients.add(String(projectData.ownerAmUid));
-    adminIds.forEach((id) => recipients.add(id));
-
     const actorName = me.name || me.fullName || me.displayName || "";
-    await Promise.all(
-      Array.from(recipients)
-        .filter(Boolean)
-        .map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: "Change request updated",
-            body: `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`,
-            type: toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info",
-            entityType: "change_request",
-            entityId: changeRequestId,
-            deepLink: "/admin/projects/change-requests",
-            createdBy: { uid: me.uid, name: actorName },
-          })
-        )
-    );
+    const notifications: Promise<void>[] = [];
+    const changeRequestMessage = `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`;
+    const notificationType = toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info";
+    const requestedByRole = String(data.requestedByRole || "").toLowerCase();
+
+    if (data.requestedByUid) {
+      const deepLink =
+        requestedByRole === "account_manager" ? "/am/change-requests" : "/admin/projects/change-requests";
+      notifications.push(
+        createNotification({
+          toUserId: String(data.requestedByUid),
+          title: "Change request updated",
+          body: changeRequestMessage,
+          type: notificationType,
+          entityType: "change_request",
+          entityId: changeRequestId,
+          deepLink,
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    if (projectData?.ownerAmUid) {
+      notifications.push(
+        createNotification({
+          toUserId: String(projectData.ownerAmUid),
+          title: "Change request updated",
+          body: changeRequestMessage,
+          type: notificationType,
+          entityType: "change_request",
+          entityId: changeRequestId,
+          deepLink: "/am/change-requests",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    }
+
+    adminIds.forEach((uid) => {
+      if (!uid) return;
+      notifications.push(
+        createNotification({
+          toUserId: uid,
+          title: "Change request updated",
+          body: changeRequestMessage,
+          type: notificationType,
+          entityType: "change_request",
+          entityId: changeRequestId,
+          deepLink: "/admin/projects/change-requests",
+          createdBy: { uid: me.uid, name: actorName },
+        })
+      );
+    });
+
+    await Promise.all(notifications);
 
     await createNotificationEvent({
       type: "change_request.status_updated",

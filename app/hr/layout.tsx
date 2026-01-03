@@ -3,6 +3,7 @@
 
 import React from "react";
 import ERPLayout from "@/components/layouts/ERPLayout";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function HRLayout({
   children,
@@ -10,8 +11,10 @@ export default function HRLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ERPLayout role="hr" title="HR Dashboard">
-      {children}
-    </ERPLayout>
+    <RequireAuth allowed={["hr"]}>
+      <ERPLayout role="hr" title="HR Dashboard">
+        {children}
+      </ERPLayout>
+    </RequireAuth>
   );
 }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
+import RequireAuth from "@/components/RequireAuth";
 
 const navItems = [
   { label: "Overview", path: "/am", icon: LayoutDashboard },
@@ -221,100 +222,102 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="admin-shell flex min-h-screen transition-colors">
-      <aside
-        className={clsx(
-          "admin-sidebar h-screen sticky top-0 transition-all duration-300",
-          collapsed ? "w-20" : "w-64"
-        )}
-      >
-        <div className="flex items-center justify-between p-4">
-          {!collapsed && <h2 className="text-xl font-bold tracking-tight">ACCOUNT MGR</h2>}
-          <button className="p-2 rounded-md hover:bg-[var(--surface-muted)]" onClick={() => setCollapsed(!collapsed)}>
-            <Menu size={18} />
-          </button>
-        </div>
-        <nav className="flex flex-col gap-1 px-2">
-          {navItems.map((item) => {
-            const active = current === item.path || (item.path !== "/am" && current.startsWith(item.path));
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={clsx(
-                  "sidebar-link flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
-                  active && "active"
-                )}
-              >
-                <span className={clsx("sidebar-link-icon", active && "active")}>
-                  <Icon size={18} />
-                </span>
-                {!collapsed && <span className="font-medium">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      <div className="flex-1 flex flex-col">
-        <header className="admin-header h-16 flex items-center justify-between px-6">
-          <h1 className="text-lg font-semibold">Account Manager Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <button
-              className="notification-bell"
-              onClick={() => {
-                setDrawerOpen(true);
-                fetchNotifications("full");
-              }}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-            </button>
-            <button className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600" onClick={handleLogout}>
-              <LogOut size={16} />
+    <RequireAuth allowed={["account_manager"]}>
+      <div className="admin-shell flex min-h-screen transition-colors">
+        <aside
+          className={clsx(
+            "admin-sidebar h-screen sticky top-0 transition-all duration-300",
+            collapsed ? "w-20" : "w-64"
+          )}
+        >
+          <div className="flex items-center justify-between p-4">
+            {!collapsed && <h2 className="text-xl font-bold tracking-tight">ACCOUNT MANAGER</h2>}
+            <button className="p-2 rounded-md hover:bg-[var(--surface-muted)]" onClick={() => setCollapsed(!collapsed)}>
+              <Menu size={18} />
             </button>
           </div>
-        </header>
+          <nav className="flex flex-col gap-1 px-2">
+            {navItems.map((item) => {
+              const active = current === item.path || (item.path !== "/am" && current.startsWith(item.path));
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={clsx(
+                    "sidebar-link flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
+                    active && "active"
+                  )}
+                >
+                  <span className={clsx("sidebar-link-icon", active && "active")}>
+                    <Icon size={18} />
+                  </span>
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
 
-        <main className="p-6">{children}</main>
-      </div>
-
-      {drawerOpen && (
-        <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
-          <div
-            className="drawer-panel drawer-panel--md notification-drawer"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="notification-drawer__header">
-              <div>
-                <div className="drawer-title">Notifications</div>
-                <div className="drawer-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
-              </div>
-              <button className="btn ghost" onClick={handleMarkAllRead} style={{ height: 34, borderRadius: 999 }}>
-                Mark all read
+        <div className="flex-1 flex flex-col">
+          <header className="admin-header h-16 flex items-center justify-between px-6">
+            <h1 className="text-lg font-semibold">Account Manager Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <button
+                className="notification-bell"
+                onClick={() => {
+                  setDrawerOpen(true);
+                  fetchNotifications("full");
+                }}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+              <button className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600" onClick={handleLogout}>
+                <LogOut size={16} />
               </button>
             </div>
-            <div className="notification-list">
-              {notifications.map((item) => (
-                <button
-                  key={item.id}
-                  className={clsx("notification-row", !item.isRead && "notification-row--unread")}
-                  onClick={() => handleNotificationClick(item)}
-                >
-                  <div className="notification-row__title">{item.title || "Update"}</div>
-                  <div className="notification-row__body">{item.body || "New update available."}</div>
-                  <div className="notification-row__time">{formatTimestamp(item.createdAt)}</div>
+          </header>
+
+          <main className="p-6">{children}</main>
+        </div>
+
+        {drawerOpen && (
+          <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
+            <div
+              className="drawer-panel drawer-panel--md notification-drawer"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="notification-drawer__header">
+                <div>
+                  <div className="drawer-title">Notifications</div>
+                  <div className="drawer-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
+                </div>
+                <button className="btn ghost" onClick={handleMarkAllRead} style={{ height: 34, borderRadius: 999 }}>
+                  Mark all read
                 </button>
-              ))}
-              {notificationsLoading && <div className="notification-empty">Loading notifications...</div>}
-              {!notificationsLoading && notifications.length === 0 && (
-                <div className="notification-empty">You're all caught up. We'll keep watch for updates.</div>
-              )}
+              </div>
+              <div className="notification-list">
+                {notifications.map((item) => (
+                  <button
+                    key={item.id}
+                    className={clsx("notification-row", !item.isRead && "notification-row--unread")}
+                    onClick={() => handleNotificationClick(item)}
+                  >
+                    <div className="notification-row__title">{item.title || "Update"}</div>
+                    <div className="notification-row__body">{item.body || "New update available."}</div>
+                    <div className="notification-row__time">{formatTimestamp(item.createdAt)}</div>
+                  </button>
+                ))}
+                {notificationsLoading && <div className="notification-empty">Loading notifications...</div>}
+                {!notificationsLoading && notifications.length === 0 && (
+                  <div className="notification-empty">You're all caught up. We'll keep watch for updates.</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </RequireAuth>
   );
 }
