@@ -48,6 +48,7 @@ type ClientRecord = {
 
   totalPaidUsd: number;
   orderId?: string;
+  portalUserUid?: string | null;
 
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -115,6 +116,7 @@ export default function ClientsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activationSending, setActivationSending] = useState(false);
   const [segmentMap, setSegmentMap] = useState<Record<string, { name: string; type: string }>>({});
 
   // OS-level theme only
@@ -280,11 +282,34 @@ export default function ClientsPage() {
   function openDrawer(c: ClientRecord) {
     setSelected(c);
     setDrawerOpen(true);
+    setActivationSending(false);
   }
 
   function closeDrawer() {
     setDrawerOpen(false);
     setSelected(null);
+    setActivationSending(false);
+  }
+
+  async function sendActivationInvite() {
+    if (!selected) return;
+    setActivationSending(true);
+    try {
+      const res = await fetch("/api/admin/clients/activation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ clientId: selected.id }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Unable to send activation email.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActivationSending(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -584,6 +609,17 @@ export default function ClientsPage() {
             <div style={{ height: 12 }} />
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              {!selected.portalUserUid && (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  style={{ borderRadius: 12, fontWeight: 400 }}
+                  onClick={sendActivationInvite}
+                  disabled={activationSending}
+                >
+                  {activationSending ? "Sending..." : "Send Client Activation Email"}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn"

@@ -15,6 +15,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
+  if (pathname === "/customer" || pathname.startsWith("/customer/")) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = pathname.replace(/^\/customer/, "/client");
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   // Public routes: "/" and "/login"
   if (pathname === "/" || pathname.startsWith("/login")) {
     // already signed in? send to root (which handles redirect to correct role)
@@ -50,6 +56,7 @@ export const config = {
     "/",
     "/login/:path*",
     "/account_manager/:path*",
+    "/customer/:path*",
     "/admin/:path*",
     "/sales/:path*",
     "/am/:path*",

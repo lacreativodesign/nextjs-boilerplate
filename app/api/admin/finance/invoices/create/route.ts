@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { queueClientActivationInvite } from "@/lib/clientActivation";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export async function POST(req: Request) {
 
     const amountTotalUsd = amountSubtotalUsd + amountTaxUsd;
 
+    const existingInvoiceSnap = await adminDb
+      .collection("invoices")
+      .where("clientId", "==", clientId)
+      .where("isDeleted", "==", false)
+      .limit(1)
+      .get();
+    const isFirstInvoice = existingInvoiceSnap.empty;
+
     const orderId = await generateNextInvoiceId();
     const ref = adminDb.collection("invoices").doc();
 
@@ -102,6 +111,27 @@ export async function POST(req: Request) {
       createdByUid: auth.user.uid,
       createdByName: actorName,
     });
+
+    if (isFirstInvoice) {
+      try {
+        const clientSnap = await adminDb.collection("clients").doc(clientId).get();
+        if (clientSnap.exists && !clientSnap.data()?.deletedAt) {
+          const clientData = clientSnap.data() || {};
+          await queueClientActivationInvite({
+            clientId,
+            clientData: {
+              primaryContactEmail: clientData.primaryContactEmail,
+              primaryContactName: clientData.primaryContactName,
+              companyName: clientData.companyName,
+            },
+            createdByUid: auth.user.uid,
+            reason: "first_invoice_created",
+          });
+        }
+      } catch (inviteError) {
+        console.error("client activation invite error:", inviteError);
+      }
+    }
 
     return NextResponse.json({ ok: true, id: ref.id, orderId });
   } catch (err: any) {
