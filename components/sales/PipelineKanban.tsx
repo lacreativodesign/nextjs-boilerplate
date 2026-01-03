@@ -11,6 +11,8 @@ export type PipelineDeal = {
   valueUsd: number;
   probability: number;
   ownerName?: string | null;
+  leadId?: string | null;
+  updatedAt?: string | null;
 };
 
 type PipelineKanbanProps = {

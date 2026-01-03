@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { canWriteSales, isSales, normalizeStage, requireSalesRead, toISO } from "../../_utils";
+
+export const dynamic = "force-dynamic";
+
+type LeadDoc = {
+  companyName?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  notes?: string;
+  stage?: string;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  lastActivityAt?: any;
+  createdAt?: any;
+  updatedAt?: any;
+  isDeleted?: boolean;
+};
+
+export async function GET() {
+  try {
+    const auth = await requireSalesRead();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    const role = auth.user.role || "";
+    const salesRep = isSales(role);
+
+    const [ownerSnap, createdSnap] = salesRep
+      ? await Promise.all([
+          adminDb.collection("leads").where("isDeleted", "==", false).where("ownerId", "==", auth.user.uid).limit(500).get(),
+          adminDb.collection("leads").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get(),
+        ])
+      : await Promise.all([
+          adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
+          Promise.resolve(null),
+        ]);
+
+    const map = new Map<string, LeadDoc>();
+    ownerSnap.docs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
+    if (createdSnap) {
+      createdSnap.docs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
+    }
+
+    const leads = Array.from(map.entries()).map(([id, data]) => ({
+      id,
+      companyName: String(data.companyName || ""),
+      contactName: String(data.contactName || data.name || ""),
+      contactEmail: String(data.contactEmail || data.email || ""),
+      contactPhone: String(data.contactPhone || data.phone || ""),
+      source: String(data.source || ""),
+      notes: String(data.notes || ""),
+      stage: normalizeStage(data.stage || "New Lead"),
+      ownerId: data.ownerId || null,
+      ownerName: data.ownerName || null,
+      createdBy: data.createdBy || null,
+      updatedBy: data.updatedBy || null,
+      lastActivityAt: toISO(data.lastActivityAt),
+      createdAt: toISO(data.createdAt),
+      updatedAt: toISO(data.updatedAt),
+      isDeleted: Boolean(data.isDeleted),
+    }));
+
+    return NextResponse.json({ ok: true, leads, canCreate: canWriteSales(role) });
+  } catch (err: any) {
+    console.error("sales leads list error:", err);
+    return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
+  }
+}

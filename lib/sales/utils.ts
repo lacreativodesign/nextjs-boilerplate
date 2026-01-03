@@ -1,6 +1,5 @@
-export const LEAD_STAGES = ["New", "Contacted", "Qualified", "Converted", "Unqualified"] as const;
-export const PIPELINE_STAGES = [
-  "New",
+export const LEAD_STAGES = [
+  "New Lead",
   "Contacted",
   "Qualified",
   "Proposal Sent",
@@ -8,6 +7,7 @@ export const PIPELINE_STAGES = [
   "Closed Won",
   "Closed Lost",
 ] as const;
+export const PIPELINE_STAGES = [...LEAD_STAGES] as const;
 export const FOLLOW_UP_TYPES = ["Call", "Email", "Meeting"] as const;
 export const FOLLOW_UP_STATUS = ["Open", "Done", "Overdue"] as const;
 
