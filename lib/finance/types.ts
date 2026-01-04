@@ -40,6 +40,7 @@ export type PaymentRecord = {
   amountUsd: number;
   method: PaymentMethod;
   status: PaymentStatus;
+  notes?: string | null;
   paidAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
