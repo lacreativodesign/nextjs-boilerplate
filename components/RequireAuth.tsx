@@ -35,6 +35,8 @@ export default function RequireAuth({ allowed, children }: Props) {
           if (!role || !allowed.includes(role)) {
             switch (role) {
               case "super_admin":
+                router.replace("/super_admin");
+                break;
               case "admin":
                 router.replace("/admin");
                 break;

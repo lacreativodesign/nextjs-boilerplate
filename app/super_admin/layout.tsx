@@ -1,36 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
-  LayoutDashboard,
-  UserPlus,
-  FolderKanban,
-  Handshake,
-  Target,
-  UsersRound,
-  BarChart3,
-  Menu,
-  LogOut,
+  Activity,
   Bell,
+  Building2,
+  ClipboardCheck,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Shield,
+  Users,
 } from "lucide-react";
+import RequireAuth from "@/components/RequireAuth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
-import RequireAuth from "@/components/RequireAuth";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
-const navItems = [
-  { label: "Overview", path: "/sales-manager", icon: LayoutDashboard },
-  { label: "Leads", path: "/sales-manager/leads", icon: UserPlus },
-  { label: "Pipeline", path: "/sales-manager/pipeline", icon: FolderKanban },
-  { label: "Deals", path: "/sales-manager/deals", icon: Handshake },
-  { label: "Targets", path: "/sales-manager/targets", icon: Target },
-  { label: "Team", path: "/sales-manager/team", icon: UsersRound },
-  { label: "Reports", path: "/sales-manager/reports", icon: BarChart3 },
-];
-
+type TenantOption = { id: string; name: string };
 type NotificationItem = {
   id: string;
   title: string;
@@ -44,7 +34,16 @@ type NotificationItem = {
   priority: string;
 };
 
-export default function SalesManagerLayout({ children }: { children: React.ReactNode }) {
+const navItems = [
+  { label: "Platform Overview", path: "/super_admin", icon: LayoutDashboard },
+  { label: "Tenants", path: "/super_admin/tenants", icon: Building2 },
+  { label: "Users", path: "/super_admin/users", icon: Users },
+  { label: "Audit Log", path: "/super_admin/audit", icon: FileText },
+  { label: "System Health", path: "/super_admin/system-health", icon: Activity },
+  { label: "Migration", path: "/super_admin/migration", icon: ClipboardCheck },
+];
+
+export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -54,46 +53,29 @@ export default function SalesManagerLayout({ children }: { children: React.React
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [realPath, setRealPath] = useState(pathname);
-  const { data: tenantContext, loading: tenantLoading, error: tenantError } = useTenantContext();
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setRealPath(window.location.pathname);
-    }
-  }, [pathname]);
+  const [tenants, setTenants] = useState<TenantOption[]>([]);
+  const [activeTenantId, setActiveTenantId] = useState<string>("");
+  const [activeTenantName, setActiveTenantName] = useState<string>("Platform");
 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
-  const current = normalize(realPath);
-
-  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const current = normalize(pathname);
 
   useEffect(() => {
-    if (tenantLoading) return;
-    if (tenantError === "Tenant suspended" || tenantContext?.tenant?.status === "suspended") {
-      router.replace("/suspended");
-      return;
-    }
-    if (moduleMap.salesManager === false) {
-      router.replace("/module-disabled");
-    }
-  }, [tenantLoading, tenantContext, moduleMap, router]);
+    let active = true;
 
-  const formatTimestamp = (value?: string | null) => {
-    if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const diffMs = Date.now() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / 60000);
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
+    getFirebaseAuth()
+      .then((instance) => {
+        if (active) setAuthInstance(instance);
+      })
+      .catch((err) => {
+        console.error("Failed to initialize Firebase auth", err);
+        if (active) setAuthError(err?.message || "Unable to start authentication.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const fetchNotifications = async (mode: "badge" | "full") => {
     if (mode === "full") {
@@ -183,45 +165,79 @@ export default function SalesManagerLayout({ children }: { children: React.React
   };
 
   useEffect(() => {
+    fetchNotifications("badge");
+    const interval = window.setInterval(() => fetchNotifications("badge"), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
-    getFirebaseAuth()
-      .then((instance) => {
-        if (active) {
-          setAuthInstance(instance);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to initialize Firebase auth", err);
-        if (active) {
-          setAuthError(err?.message || "Unable to start authentication.");
-        }
-      });
+    async function loadTenants() {
+      try {
+        const [tenantsRes, contextRes] = await Promise.all([
+          fetch("/api/super-admin/tenants", { cache: "no-store", credentials: "include" }),
+          fetch("/api/tenant/context", { cache: "no-store", credentials: "include" }),
+        ]);
 
+        const tenantsJson = await tenantsRes.json().catch(() => null);
+        const contextJson = await contextRes.json().catch(() => null);
+
+        if (active && tenantsJson?.ok) {
+          const options = (tenantsJson.tenants || []).map((tenant: any) => ({
+            id: tenant.id,
+            name: tenant.name || tenant.slug || tenant.id,
+          }));
+          setTenants(options);
+        }
+
+        if (active && contextJson?.ok && contextJson?.tenant) {
+          setActiveTenantId(contextJson.tenant.id || "");
+          setActiveTenantName(contextJson.tenant.name || "Platform");
+        }
+      } catch (err) {
+        console.error("Failed to load tenants:", err);
+      }
+    }
+
+    loadTenants();
     return () => {
       active = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-    fetchNotifications("badge");
-    const interval = window.setInterval(() => {
-      fetchNotifications("badge");
-    }, 60000);
-    return () => window.clearInterval(interval);
-  }, [notificationsEnabled]);
+  const activeTenantLabel = useMemo(() => {
+    const match = tenants.find((t) => t.id === activeTenantId);
+    return match?.name || activeTenantName || "Platform";
+  }, [tenants, activeTenantId, activeTenantName]);
+
+  const handleTenantSwitch = async (tenantId: string) => {
+    setActiveTenantId(tenantId);
+    const match = tenants.find((t) => t.id === tenantId);
+    setActiveTenantName(match?.name || tenantId);
+
+    try {
+      await fetch("/api/super-admin/tenant/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tenantId }),
+      });
+    } catch (err) {
+      console.error("Tenant switch error:", err);
+    }
+  };
 
   if (!authInstance) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100">
-        <p className="text-sm font-medium">{authError || "Loading sales manager console…"}</p>
+        <p className="text-sm font-medium">{authError || "Loading platform console…"}</p>
       </div>
     );
   }
 
   return (
-    <RequireAuth allowed={["sales_manager"]}>
+    <RequireAuth allowed={["super_admin"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(
@@ -232,22 +248,12 @@ export default function SalesManagerLayout({ children }: { children: React.React
           <div className="flex items-center justify-between p-4">
             {!collapsed && (
               <div className="flex items-center gap-3">
-                {tenantContext?.tenant?.brand?.logoUrl ? (
-                  <img
-                    src={tenantContext.tenant.brand.logoUrl}
-                    alt={tenantContext.tenant.brand.name || "Tenant logo"}
-                    className="h-10 w-10 rounded-lg object-contain bg-[var(--surface-muted)] p-1"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center text-xs font-semibold">
-                    {(tenantContext?.tenant?.brand?.name || "ERP").slice(0, 2)}
-                  </div>
-                )}
+                <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center">
+                  <Shield size={18} />
+                </div>
                 <div>
-                  <div className="text-sm font-semibold">
-                    {tenantContext?.tenant?.brand?.name || "LA CREATIVO"}
-                  </div>
-                  <div className="text-xs text-[var(--text-muted)]">Sales Manager</div>
+                  <div className="text-sm font-semibold">Bizosto Platform</div>
+                  <div className="text-xs text-[var(--text-muted)]">Super Admin</div>
                 </div>
               </div>
             )}
@@ -263,8 +269,10 @@ export default function SalesManagerLayout({ children }: { children: React.React
             {navItems.map((item) => {
               const Icon = item.icon;
               const itemPath = normalize(item.path);
-              const isOverview = itemPath === "/sales-manager";
-              const active = isOverview ? current === "/sales-manager" : current === itemPath || current.startsWith(itemPath + "/");
+              const isOverview = itemPath === "/super_admin";
+              const active = isOverview
+                ? current === "/super_admin"
+                : current === itemPath || current.startsWith(itemPath + "/");
 
               return (
                 <Link
@@ -285,10 +293,27 @@ export default function SalesManagerLayout({ children }: { children: React.React
 
         <div className="flex-1 flex flex-col">
           <header className="admin-header h-16 flex items-center justify-between px-6">
-            <h1 className="text-lg font-semibold">Sales Manager</h1>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Active Tenant</div>
+              <div className="text-lg font-semibold">{activeTenantLabel}</div>
+            </div>
 
-          <div className="flex items-center gap-3">
-            {notificationsEnabled && (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col text-right">
+                <span className="text-xs text-[var(--text-muted)]">Switch tenant</span>
+                <select
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1 text-sm"
+                  value={activeTenantId}
+                  onChange={(e) => handleTenantSwitch(e.target.value)}
+                >
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 className="notification-bell"
@@ -303,7 +328,6 @@ export default function SalesManagerLayout({ children }: { children: React.React
                 <Bell size={18} />
                 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
               </button>
-            )}
 
               <button onClick={handleLogout} className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600">
                 <LogOut size={18} />
@@ -311,42 +335,36 @@ export default function SalesManagerLayout({ children }: { children: React.React
             </div>
           </header>
 
-          <main className="p-6">{children}</main>
+          <div className="p-6">{children}</div>
         </div>
 
         {drawerOpen && (
-          <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
-            <div className="drawer-panel drawer-panel--md notification-drawer" onClick={(e) => e.stopPropagation()}>
-              <div className="notification-drawer__header">
-                <div>
-                  <div className="drawer-title">Notifications</div>
-                  <div className="drawer-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
-                </div>
-                <button className="btn ghost" onClick={handleMarkAllRead} style={{ height: 34, borderRadius: 999 }}>
-                  Mark all as read
-                </button>
+          <div className="notification-drawer">
+            <div className="notification-drawer-header">
+              <div>
+                <h3 className="text-lg font-semibold">Notifications</h3>
+                <p className="text-sm text-[var(--text-muted)]">Platform alerts and activity.</p>
               </div>
+              <button onClick={handleMarkAllRead} className="text-sm text-[var(--erp-blue)]">
+                Mark all read
+              </button>
+            </div>
 
-              <div className="notification-list">
-                {notifications.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={clsx("notification-row", !item.isRead && "notification-row--unread")}
-                    onClick={() => handleNotificationClick(item)}
-                  >
-                    <div>
-                      <div className="notification-row__title">{item.title || "Update"}</div>
-                      <div className="notification-row__body">{item.body || "New update available."}</div>
-                    </div>
-                    <div className="notification-row__time">{formatTimestamp(item.createdAt)}</div>
-                  </button>
-                ))}
-                {notificationsLoading && <div className="notification-empty">Loading notifications...</div>}
-                {!notificationsLoading && notifications.length === 0 && (
-                  <div className="notification-empty">You're all caught up. We'll keep watch for updates.</div>
-                )}
-              </div>
+            <div className="notification-drawer-body">
+              {notificationsLoading && <div className="text-sm text-[var(--text-muted)]">Loading…</div>}
+              {!notificationsLoading && notifications.length === 0 && (
+                <div className="text-sm text-[var(--text-muted)]">No notifications.</div>
+              )}
+              {notifications.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNotificationClick(item)}
+                  className={clsx("notification-item", item.isRead && "read")}
+                >
+                  <div className="notification-title">{item.title}</div>
+                  <div className="notification-body">{item.body}</div>
+                </button>
+              ))}
             </div>
           </div>
         )}

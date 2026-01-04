@@ -33,6 +33,7 @@ export function middleware(req: NextRequest) {
   // Protected role routes
   const protectedPrefixes = [
     "/admin",
+    "/super_admin",
     "/sales",
     "/sales-manager",
     "/am",
@@ -59,6 +60,7 @@ export const config = {
     "/account_manager/:path*",
     "/customer/:path*",
     "/admin/:path*",
+    "/super_admin/:path*",
     "/sales/:path*",
     "/sales-manager/:path*",
     "/am/:path*",
