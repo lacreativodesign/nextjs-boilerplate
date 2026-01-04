@@ -1,83 +1,101 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { useState } from "react";
+import { useIsSystemDark } from "@/components/finance/financeUtils";
 
-const revenueData = [
-  { month: "Jan", revenue: 12000, expenses: 6500 },
-  { month: "Feb", revenue: 15000, expenses: 7200 },
-  { month: "Mar", revenue: 18000, expenses: 8000 },
-  { month: "Apr", revenue: 22000, expenses: 9000 },
-  { month: "May", revenue: 26000, expenses: 11000 },
-  { month: "Jun", revenue: 24000, expenses: 10500 },
-];
-
-const expenseBreakdown = [
-  { category: "Salaries", amount: 11000 },
-  { category: "Software", amount: 3000 },
-  { category: "Marketing", amount: 3500 },
-  { category: "Office Rent", amount: 2500 },
-  { category: "Misc", amount: 1500 },
+const REPORTS = [
+  {
+    title: "Revenue by Client (USD)",
+    description: "Total paid invoice revenue grouped by client.",
+    endpoint: "/api/finance/reports/revenue-by-client",
+    filename: "finance-revenue-by-client.csv",
+  },
+  {
+    title: "Payments by Month (USD)",
+    description: "Paid payments aggregated by month.",
+    endpoint: "/api/finance/reports/payments-by-month",
+    filename: "finance-payments-by-month.csv",
+  },
+  {
+    title: "Outstanding AR (USD)",
+    description: "Unpaid invoices with due dates and amounts.",
+    endpoint: "/api/finance/reports/outstanding-ar",
+    filename: "finance-outstanding-ar.csv",
+  },
+  {
+    title: "Payroll Totals by Month (PKR)",
+    description: "Monthly payroll totals including commissions.",
+    endpoint: "/api/finance/reports/payroll-by-month",
+    filename: "finance-payroll-by-month.csv",
+  },
+  {
+    title: "Expenses by Category (PKR)",
+    description: "Operating expenses grouped by category.",
+    endpoint: "/api/finance/reports/expenses-by-category",
+    filename: "finance-expenses-by-category.csv",
+  },
 ];
 
 export default function FinanceReportsPage() {
+  const isDark = useIsSystemDark();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleDownload = (endpoint: string) => {
+    const url = new URL(endpoint, window.location.origin);
+    if (startDate) url.searchParams.set("startDate", startDate);
+    if (endDate) url.searchParams.set("endDate", endDate);
+    window.open(url.toString(), "_blank");
+  };
+
   return (
-    <div className="p-6 space-y-10">
-      {/* Header */}
+    <div>
       <div>
-        <h1 className="text-2xl font-bold">Financial Reports</h1>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
-          Revenue, expenses, trend lines, and financial health indicators.
+        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Reports</h3>
+        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+          Export finance data in CSV format. USD revenue and PKR expense reporting.
         </p>
       </div>
 
-      {/* Revenue vs Expenses Chart */}
-      <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">
-          Revenue vs Expenses (Last 6 Months)
-        </h2>
-
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} />
-              <Line type="monotone" dataKey="expenses" stroke="#dc2626" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <input className="input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        <input className="input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <div style={{ fontSize: 12, opacity: 0.65, display: "flex", alignItems: "center" }}>
+          Filters apply to future exports (API ready).
         </div>
       </div>
 
-      {/* Expense Breakdown */}
-      <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Expense Breakdown</h2>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        {REPORTS.map((report) => (
+          <div key={report.title} className="card" style={{ padding: 18, borderRadius: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{report.title}</div>
+            <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>{report.description}</div>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn" onClick={() => handleDownload(report.endpoint)} style={{ borderRadius: 999 }}>
+                Download CSV
+              </button>
+              <span style={{ fontSize: 11, opacity: 0.6, alignSelf: "center" }}>{report.filename}</span>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={expenseBreakdown}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="category" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="amount" fill="#06b6d4" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div
+        className="card"
+        style={{
+          marginTop: 20,
+          padding: 16,
+          borderRadius: 16,
+          background: isDark ? "rgba(30,30,30,0.6)" : "rgba(248,250,252,0.8)",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Export Notes</div>
+        <ul style={{ fontSize: 13, opacity: 0.75, paddingLeft: 18, listStyle: "disc" }}>
+          <li>Revenue and payments are exported in USD.</li>
+          <li>Payroll and expenses are exported in PKR.</li>
+          <li>Exports reflect live Firestore data at download time.</li>
+        </ul>
       </div>
     </div>
   );
-   }
+}
