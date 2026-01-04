@@ -19,6 +19,7 @@ import {
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
 const navItems = [
   { label: "Overview", path: "/hr", icon: LayoutDashboard },
@@ -53,6 +54,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { data: tenantContext, loading: tenantLoading, error: tenantError } = useTenantContext();
   const [realPath, setRealPath] = useState(pathname);
 
   useEffect(() => {
@@ -63,6 +65,20 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
+
+  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
+  const notificationsEnabled = moduleMap.notifications !== false;
+
+  useEffect(() => {
+    if (tenantLoading) return;
+    if (tenantError === "Tenant suspended" || tenantContext?.tenant?.status === "suspended") {
+      router.replace("/suspended");
+      return;
+    }
+    if (moduleMap.humanResource === false) {
+      router.replace("/module-disabled");
+    }
+  }, [tenantLoading, tenantContext, moduleMap, router]);
 
   const formatTimestamp = (value?: string | null) => {
     if (!value) return "";
@@ -193,12 +209,13 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!notificationsEnabled) return;
     fetchNotifications("badge");
     const interval = window.setInterval(() => {
       fetchNotifications("badge");
     }, 60000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [notificationsEnabled]);
 
   if (!authInstance) {
     return (
@@ -218,7 +235,27 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           <div className="flex items-center justify-between p-4">
-            {!collapsed && <h2 className="text-xl font-bold tracking-tight">HR</h2>}
+            {!collapsed && (
+              <div className="flex items-center gap-3">
+                {tenantContext?.tenant?.brand?.logoUrl ? (
+                  <img
+                    src={tenantContext.tenant.brand.logoUrl}
+                    alt={tenantContext.tenant.brand.name || "Tenant logo"}
+                    className="h-10 w-10 rounded-lg object-contain bg-[var(--surface-muted)] p-1"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center text-xs font-semibold">
+                    {(tenantContext?.tenant?.brand?.name || "ERP").slice(0, 2)}
+                  </div>
+                )}
+                <div>
+                  <div className="text-sm font-semibold">
+                    {tenantContext?.tenant?.brand?.name || "LA CREATIVO"}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">HR</div>
+                </div>
+              </div>
+            )}
             <button className="p-2 rounded-md hover:bg-[var(--surface-muted)]" onClick={() => setCollapsed(!collapsed)}>
               <Menu size={18} />
             </button>
@@ -250,19 +287,21 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           <header className="admin-header h-16 flex items-center justify-between px-6">
             <h1 className="text-lg font-semibold">HR Dashboard</h1>
             <div className="flex items-center gap-3">
-              <button
-                className="notification-bell"
-                onClick={() => {
-                  const nextOpen = !drawerOpen;
-                  setDrawerOpen(nextOpen);
-                  if (nextOpen) {
-                    fetchNotifications("full");
-                  }
-                }}
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-              </button>
+              {notificationsEnabled && (
+                <button
+                  className="notification-bell"
+                  onClick={() => {
+                    const nextOpen = !drawerOpen;
+                    setDrawerOpen(nextOpen);
+                    if (nextOpen) {
+                      fetchNotifications("full");
+                    }
+                  }}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                </button>
+              )}
               <button className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600" onClick={handleLogout}>
                 <LogOut size={16} />
               </button>

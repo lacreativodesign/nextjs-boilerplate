@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 
 export type CurrentUser = {
   uid: string;
@@ -26,9 +27,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const data = userDoc.data() || {};
     const role = (data.role as string | undefined)?.toLowerCase() || "sales";
 
+    const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
+
     return {
       uid,
       role,
+      tenantId,
       ...data,
     };
   } catch (err) {

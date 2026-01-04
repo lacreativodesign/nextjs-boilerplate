@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
@@ -22,6 +22,7 @@ import {
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
 type NotificationItem = {
   id: string;
@@ -46,6 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { data: tenantContext, loading: tenantLoading, error: tenantError } = useTenantContext();
 
   // Always correct URL (prevents Overview from staying highlighted)
   const [realPath, setRealPath] = useState(pathname);
@@ -60,18 +62,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const current = normalize(realPath);
 
+  useEffect(() => {
+    if (tenantLoading) return;
+    if (tenantError === "Tenant suspended" || tenantContext?.tenant?.status === "suspended") {
+      router.replace("/suspended");
+      return;
+    }
+
+    const activeItem = navItems.find((item) => current.startsWith(item.path));
+    if (activeItem && moduleMap[activeItem.moduleKey as keyof typeof moduleMap] === false) {
+      router.replace("/module-disabled");
+    }
+  }, [tenantLoading, tenantContext, moduleMap, current, router]);
+
   const navItems = [
-    { label: "Overview", path: "/admin", icon: LayoutDashboard },
-    { label: "Users", path: "/admin/users", icon: Users },
-    { label: "Clients", path: "/admin/clients", icon: Briefcase },
-    { label: "Sales & Pipeline", path: "/admin/sales", icon: TrendingUp },
-    { label: "Projects & Delivery", path: "/admin/projects", icon: FolderKanban },
-    { label: "Production", path: "/admin/production", icon: PackageCheck },
-    { label: "Finance", path: "/admin/finance", icon: Wallet },
-    { label: "HR & Team", path: "/admin/hr", icon: UserCog },
-    { label: "Reports", path: "/admin/reports", icon: BarChart3 },
-    { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
+    { label: "Overview", path: "/admin", icon: LayoutDashboard, moduleKey: "dashboard" },
+    { label: "Users", path: "/admin/users", icon: Users, moduleKey: "users" },
+    { label: "Clients", path: "/admin/clients", icon: Briefcase, moduleKey: "clients" },
+    { label: "Sales & Pipeline", path: "/admin/sales", icon: TrendingUp, moduleKey: "sales" },
+    { label: "Projects & Delivery", path: "/admin/projects", icon: FolderKanban, moduleKey: "accountManager" },
+    { label: "Production", path: "/admin/production", icon: PackageCheck, moduleKey: "production" },
+    { label: "Finance", path: "/admin/finance", icon: Wallet, moduleKey: "finance" },
+    { label: "HR & Team", path: "/admin/hr", icon: UserCog, moduleKey: "humanResource" },
+    { label: "Reports", path: "/admin/reports", icon: BarChart3, moduleKey: "dashboard" },
+    { label: "Settings", path: "/admin/settings", icon: SettingsIcon, moduleKey: "admin" },
   ];
+
+  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
+  const notificationsEnabled = moduleMap.notifications !== false;
+  const filteredNavItems = useMemo(
+    () => navItems.filter((item) => moduleMap[item.moduleKey as keyof typeof moduleMap] !== false),
+    [moduleMap]
+  );
 
   const formatTimestamp = (value?: string | null) => {
     if (!value) return "";
@@ -200,12 +222,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   useEffect(() => {
+    if (!notificationsEnabled) return;
     fetchNotifications("badge");
     const interval = window.setInterval(() => {
       fetchNotifications("badge");
     }, 60000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [notificationsEnabled]);
 
   if (!authInstance) {
     return (
@@ -230,7 +253,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* HEADER */}
         <div className="flex items-center justify-between p-4">
           {!collapsed && (
-            <h2 className="text-xl font-bold tracking-tight">ADMIN</h2>
+            <div className="flex items-center gap-3">
+              {tenantContext?.tenant?.brand?.logoUrl ? (
+                <img
+                  src={tenantContext.tenant.brand.logoUrl}
+                  alt={tenantContext.tenant.brand.name || "Tenant logo"}
+                  className="h-10 w-10 rounded-lg object-contain bg-[var(--surface-muted)] p-1"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center text-xs font-semibold">
+                  {(tenantContext?.tenant?.brand?.name || "ERP").slice(0, 2)}
+                </div>
+              )}
+              <div>
+                <div className="text-sm font-semibold">
+                  {tenantContext?.tenant?.brand?.name || "LA CREATIVO"}
+                </div>
+                <div className="text-xs text-[var(--text-muted)]">Admin Console</div>
+              </div>
+            </div>
           )}
           <button
             className="p-2 rounded-md hover:bg-[var(--surface-muted)]"
@@ -242,7 +283,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* NAVIGATION */}
         <nav className="flex flex-col gap-1 px-2">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const Icon = item.icon;
 
             const itemPath = normalize(item.path);
@@ -277,20 +318,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="text-lg font-semibold">Admin Dashboard</h1>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="notification-bell"
-              onClick={() => {
-                const nextOpen = !drawerOpen;
-                setDrawerOpen(nextOpen);
-                if (nextOpen) {
-                  fetchNotifications("full");
-                }
-              }}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-            </button>
+            {notificationsEnabled && (
+              <button
+                type="button"
+                className="notification-bell"
+                onClick={() => {
+                  const nextOpen = !drawerOpen;
+                  setDrawerOpen(nextOpen);
+                  if (nextOpen) {
+                    fetchNotifications("full");
+                  }
+                }}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+            )}
 
             {/* LOGOUT */}
             <button
