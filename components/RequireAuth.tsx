@@ -33,36 +33,10 @@ export default function RequireAuth({ allowed, children }: Props) {
           const role = await fetchUserRole(user.uid);
 
           if (!role || !allowed.includes(role)) {
-            switch (role) {
-              case "super_admin":
-                router.replace("/super_admin");
-                break;
-              case "admin":
-                router.replace("/admin");
-                break;
-              case "sales_manager":
-                router.replace("/sales-manager");
-                break;
-              case "sales":
-                router.replace("/sales");
-                break;
-              case "account_manager":
-                router.replace("/am");
-                break;
-              case "client":
-                router.replace("/client");
-                break;
-              case "production":
-                router.replace("/production");
-                break;
-              case "hr":
-                router.replace("/hr");
-                break;
-              case "finance":
-                router.replace("/finance");
-                break;
-              default:
-                router.replace("/login");
+            if (!role) {
+              router.replace("/login");
+            } else {
+              router.replace("/forbidden");
             }
             setReady(true);
             return;

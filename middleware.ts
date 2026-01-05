@@ -23,10 +23,6 @@ export function middleware(req: NextRequest) {
 
   // Public routes: "/" and "/login"
   if (pathname === "/" || pathname.startsWith("/login")) {
-    // already signed in? send to root (which handles redirect to correct role)
-    if (token && pathname.startsWith("/login")) {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
     return NextResponse.next();
   }
 
