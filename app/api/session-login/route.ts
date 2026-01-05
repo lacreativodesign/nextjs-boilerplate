@@ -8,7 +8,8 @@ import { getFirestore } from "firebase-admin/firestore";
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
 const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
-const SESSION_DAYS = 5; // keep users signed in for 5 days
+const DEFAULT_SESSION_DAYS = 1;
+const REMEMBER_SESSION_DAYS = 30;
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -16,6 +17,9 @@ let adminDb: FirebaseFirestore.Firestore | null = null;
 // ✅ Initialize Firebase Admin ONLY once
 function getAdmin() {
   if (!adminApp) {
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+      throw new Error("Missing Firebase Admin credentials.");
+    }
     if (!getApps().length) {
       adminApp = initializeApp({
         credential: cert({
@@ -34,7 +38,7 @@ function getAdmin() {
 
 export async function POST(req: Request) {
   try {
-    const { idToken } = await req.json();
+    const { idToken, rememberMe } = await req.json();
     if (!idToken) {
       return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
     }
@@ -67,11 +71,12 @@ export async function POST(req: Request) {
     }
 
     // 3) Create session cookie
-    const expiresIn = SESSION_DAYS * 24 * 60 * 60 * 1000; // ms
+    const expiresIn =
+      (rememberMe ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS) * 24 * 60 * 60 * 1000; // ms
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
     const c = cookies();
-    c.set({
+    const cookieOptions: Parameters<typeof c.set>[0] = {
       name: COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
@@ -79,8 +84,13 @@ export async function POST(req: Request) {
       sameSite: "lax",
       path: "/",
       domain: COOKIE_DOMAIN,
-      maxAge: expiresIn / 1000, // seconds
-    });
+    };
+
+    if (rememberMe) {
+      cookieOptions.maxAge = expiresIn / 1000;
+    }
+
+    c.set(cookieOptions);
 
     // 4) Auto attendance logging (non-blocking)
     try {
@@ -140,4 +150,4 @@ export async function POST(req: Request) {
     console.error("SESSION LOGIN ERROR:", e);
     return NextResponse.json({ error: e?.message || "Session error" }, { status: 400 });
   }
-      }
+}

@@ -37,6 +37,19 @@ type NotificationItem = {
   priority: string;
 };
 
+const navItems = [
+  { label: "Overview", path: "/admin", icon: LayoutDashboard, moduleKey: "dashboard" },
+  { label: "Users", path: "/admin/users", icon: Users, moduleKey: "users" },
+  { label: "Clients", path: "/admin/clients", icon: Briefcase, moduleKey: "clients" },
+  { label: "Sales & Pipeline", path: "/admin/sales", icon: TrendingUp, moduleKey: "sales" },
+  { label: "Projects & Delivery", path: "/admin/projects", icon: FolderKanban, moduleKey: "accountManager" },
+  { label: "Production", path: "/admin/production", icon: PackageCheck, moduleKey: "production" },
+  { label: "Finance", path: "/admin/finance", icon: Wallet, moduleKey: "finance" },
+  { label: "HR & Team", path: "/admin/hr", icon: UserCog, moduleKey: "humanResource" },
+  { label: "Reports", path: "/admin/reports", icon: BarChart3, moduleKey: "dashboard" },
+  { label: "Settings", path: "/admin/settings", icon: SettingsIcon, moduleKey: "admin" },
+];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,6 +75,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const current = normalize(realPath);
 
+  const moduleMap = useMemo(() => tenantContext?.tenant?.modulesEnabled || {}, [tenantContext?.tenant?.modulesEnabled]);
+  const notificationsEnabled = moduleMap.notifications !== false;
+
   useEffect(() => {
     if (tenantLoading) return;
     if (tenantError === "Tenant suspended" || tenantContext?.tenant?.status === "suspended") {
@@ -73,23 +89,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (activeItem && moduleMap[activeItem.moduleKey as keyof typeof moduleMap] === false) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, moduleMap, current, router]);
+  }, [tenantLoading, tenantContext, tenantError, moduleMap, current, router]);
 
-  const navItems = [
-    { label: "Overview", path: "/admin", icon: LayoutDashboard, moduleKey: "dashboard" },
-    { label: "Users", path: "/admin/users", icon: Users, moduleKey: "users" },
-    { label: "Clients", path: "/admin/clients", icon: Briefcase, moduleKey: "clients" },
-    { label: "Sales & Pipeline", path: "/admin/sales", icon: TrendingUp, moduleKey: "sales" },
-    { label: "Projects & Delivery", path: "/admin/projects", icon: FolderKanban, moduleKey: "accountManager" },
-    { label: "Production", path: "/admin/production", icon: PackageCheck, moduleKey: "production" },
-    { label: "Finance", path: "/admin/finance", icon: Wallet, moduleKey: "finance" },
-    { label: "HR & Team", path: "/admin/hr", icon: UserCog, moduleKey: "humanResource" },
-    { label: "Reports", path: "/admin/reports", icon: BarChart3, moduleKey: "dashboard" },
-    { label: "Settings", path: "/admin/settings", icon: SettingsIcon, moduleKey: "admin" },
-  ];
-
-  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
   const filteredNavItems = useMemo(
     () => navItems.filter((item) => moduleMap[item.moduleKey as keyof typeof moduleMap] !== false),
     [moduleMap]

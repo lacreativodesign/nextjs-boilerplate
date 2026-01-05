@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { type Auth, signInWithEmailAndPassword } from "firebase/auth";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { getRoleRoute } from "@/lib/roleRouting";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -58,28 +59,15 @@ export default function LoginPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
+      body: JSON.stringify({ idToken, rememberMe: remember }),
+    });
 
       if (!cookieRes.ok) {
         const j = await cookieRes.json().catch(() => null);
         throw new Error(j?.error || "Session error");
       }
 
-      const roleRoutes: Record<string, string> = {
-        super_admin: "/admin",
-        admin: "/admin",
-        sales_manager: "/sales-manager",
-        sales: "/sales",
-        account_manager: "/am",
-        hr: "/hr",
-        finance: "/finance",
-        production: "/production",
-        client: "/client",
-      };
-
-      const destination = roleRoutes[role] || "/login";
-      window.location.href = destination;
+      window.location.href = getRoleRoute(role);
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
