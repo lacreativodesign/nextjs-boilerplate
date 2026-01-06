@@ -87,6 +87,7 @@ export async function POST(req: Request) {
       stripeCheckoutSessionId: session.id,
       checkoutUrl: session.url || null,
       description: description || null,
+      createdById: auth.user.uid,
       createdByUserId: auth.user.uid,
       createdByRole: auth.user.role || "",
       createdAt: serverTimestamp(),

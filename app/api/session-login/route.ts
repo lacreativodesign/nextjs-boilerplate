@@ -7,9 +7,10 @@ import { getFirestore } from "firebase-admin/firestore";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
-const DEFAULT_SESSION_DAYS = 1;
-const REMEMBER_SESSION_DAYS = 30;
+const MIN_SESSION_MS = 5 * 60 * 1000;
+const MAX_SESSION_MS = 14 * 24 * 60 * 60 * 1000;
+const SHORT_SESSION_MS = 2 * 60 * 60 * 1000;
+const REMEMBER_SESSION_MS = MAX_SESSION_MS;
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -70,23 +71,24 @@ export async function POST(req: Request) {
       console.error("Error reading user role for attendance:", err);
     }
 
-    // 3) Create session cookie
-    const expiresIn =
-      (rememberMe ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS) * 24 * 60 * 60 * 1000; // ms
+    const isRememberMe = rememberMe === true || rememberMe === "true";
+    const requestedDuration = isRememberMe ? REMEMBER_SESSION_MS : SHORT_SESSION_MS;
+    const expiresIn = Math.min(MAX_SESSION_MS, Math.max(MIN_SESSION_MS, Number(requestedDuration)));
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
     const c = cookies();
+    const forwardedProto = req.headers.get("x-forwarded-proto");
+    const isSecure = forwardedProto === "https" || process.env.NODE_ENV === "production";
     const cookieOptions: Parameters<typeof c.set>[0] = {
       name: COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
-      secure: true,
+      secure: isSecure,
       sameSite: "lax",
       path: "/",
-      domain: COOKIE_DOMAIN,
     };
 
-    if (rememberMe) {
+    if (isRememberMe) {
       cookieOptions.maxAge = expiresIn / 1000;
     }
 

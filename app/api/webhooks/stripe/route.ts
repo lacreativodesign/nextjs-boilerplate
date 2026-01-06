@@ -129,7 +129,7 @@ export async function POST(req: Request) {
     ]);
 
     const notificationTargets = new Set([ownerId, ...managerIds, ...adminIds, ...financeIds].filter(Boolean));
-    const message = `Payment received: $${amountUsd.toLocaleString()} — ${companyName || "Lead"}${
+    const message = `Payment received: $${amountUsd.toLocaleString()} — Lead: ${companyName || "Lead"}${
       contactName ? ` (${contactName})` : ""
     }`;
 
@@ -138,9 +138,7 @@ export async function POST(req: Request) {
         const roleLink = managerIds.includes(uid)
           ? `/sales-manager/leads?open=${leadId}`
           : adminIds.includes(uid)
-          ? `/admin/finance/invoices?open=${requestDoc.id}`
-          : financeIds.includes(uid)
-          ? `/finance/invoices?open=${requestDoc.id}`
+          ? `/admin/sales/leads?open=${leadId}`
           : `/sales/leads?open=${leadId}`;
         return createNotification({
           toUserId: uid,

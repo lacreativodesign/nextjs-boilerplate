@@ -28,9 +28,10 @@ export async function GET(req: Request) {
       }
     }
 
+    const tenantId = auth.user.tenantId || "";
     let query: FirebaseFirestore.Query = adminDb
       .collection("emails")
-      .where("tenantId", "==", auth.user.tenantId || "")
+      .where("tenantId", "==", tenantId)
       .where("mailboxUserId", "==", auth.user.uid)
       .orderBy("createdAt", "desc")
       .limit(200);
@@ -38,8 +39,7 @@ export async function GET(req: Request) {
     if (leadId) {
       query = adminDb
         .collection("emails")
-        .where("tenantId", "==", auth.user.tenantId || "")
-        .where("mailboxUserId", "==", auth.user.uid)
+        .where("tenantId", "==", tenantId)
         .where("leadId", "==", leadId)
         .orderBy("createdAt", "desc")
         .limit(200);
@@ -50,6 +50,7 @@ export async function GET(req: Request) {
       const data = doc.data() || {};
       return {
         id: doc.id,
+        leadId: String(data.leadId || ""),
         subject: String(data.subject || ""),
         from: data.from || [],
         to: data.to || [],

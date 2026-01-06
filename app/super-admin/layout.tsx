@@ -35,12 +35,12 @@ type NotificationItem = {
 };
 
 const navItems = [
-  { label: "Platform Overview", path: "/super_admin", icon: LayoutDashboard },
-  { label: "Tenants", path: "/super_admin/tenants", icon: Building2 },
-  { label: "Users", path: "/super_admin/users", icon: Users },
-  { label: "Audit Log", path: "/super_admin/audit", icon: FileText },
-  { label: "System Health", path: "/super_admin/system-health", icon: Activity },
-  { label: "Migration", path: "/super_admin/migration", icon: ClipboardCheck },
+  { label: "Platform Overview", path: "/super-admin", icon: LayoutDashboard },
+  { label: "Tenants", path: "/super-admin/tenants", icon: Building2 },
+  { label: "Users", path: "/super-admin/users", icon: Users },
+  { label: "Audit Log", path: "/super-admin/audit", icon: FileText },
+  { label: "System Health", path: "/super-admin/system-health", icon: Activity },
+  { label: "Migration", path: "/super-admin/migration", icon: ClipboardCheck },
 ];
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -269,9 +269,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             {navItems.map((item) => {
               const Icon = item.icon;
               const itemPath = normalize(item.path);
-              const isOverview = itemPath === "/super_admin";
+              const isOverview = itemPath === "/super-admin";
               const active = isOverview
-                ? current === "/super_admin"
+                ? current === "/super-admin"
                 : current === itemPath || current.startsWith(itemPath + "/");
 
               return (

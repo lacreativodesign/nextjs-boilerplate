@@ -101,6 +101,7 @@ export async function POST(req: Request) {
       id: emailRef.id,
       tenantId,
       mailboxUserId: auth.user.uid,
+      createdById: auth.user.uid,
       emailAccountId: accountId,
       direction: "outbound",
       messageId: mailInfo.messageId || null,

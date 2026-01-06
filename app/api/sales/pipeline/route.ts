@@ -14,37 +14,50 @@ export async function GET() {
     const role = auth.user.role || "";
     const salesRep = isSales(role);
 
-    const dealSnaps = salesRep
+    const tenantId = auth.user.tenantId || "";
+    const leadSnaps = salesRep
       ? await Promise.all([
-          adminDb.collection("deals").where("isDeleted", "==", false).where("ownerId", "==", auth.user.uid).limit(500).get(),
-          adminDb.collection("deals").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get(),
+          adminDb
+            .collection("leads")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("ownerId", "==", auth.user.uid)
+            .limit(500)
+            .get(),
+          adminDb
+            .collection("leads")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("createdById", "==", auth.user.uid)
+            .limit(500)
+            .get(),
         ])
       : await Promise.all([
-          adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+          adminDb.collection("leads").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
           Promise.resolve(null),
         ]);
 
-    const dealsMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
-    dealSnaps.forEach((snap) => {
-      if (snap) snap.docs.forEach((doc) => dealsMap.set(doc.id, doc));
+    const leadMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    leadSnaps.forEach((snap) => {
+      if (snap) snap.docs.forEach((doc) => leadMap.set(doc.id, doc));
     });
 
-    const deals = Array.from(dealsMap.values()).map((doc) => {
+    const deals = Array.from(leadMap.values()).map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        dealName: String(data.dealName || ""),
-        clientName: String(data.clientName || ""),
-        leadId: data.leadId || null,
+        dealName: String(data.companyName || data.contactName || "Lead"),
+        clientName: String(data.companyName || data.contactName || ""),
+        leadId: doc.id,
         stage: normalizeStage(data.stage || "New Lead"),
-        valueUsd: Number(data.valueUsd || data.amountUsd || 0),
+        valueUsd: Number(data.expectedValueUsd || 0),
         probability: Number(data.probability || 0),
         ownerId: data.ownerId || null,
         ownerName: data.ownerName || null,
-        leadName: data.leadName || null,
-        leadEmail: data.leadEmail || null,
-        leadPhone: data.leadPhone || null,
-        expectedCloseDate: toISO(data.expectedCloseDate),
+        leadName: data.contactName || null,
+        leadEmail: data.contactEmail || null,
+        leadPhone: data.contactPhone || null,
+        expectedCloseDate: toISO(data.nextFollowUpAt),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
       };

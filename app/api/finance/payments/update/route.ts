@@ -29,6 +29,8 @@ export async function POST(req: Request) {
     const invoiceId = String(payment.invoiceId || "");
     const clientName = String(payment.clientName || "");
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const leadId = String(payment.leadId || "");
+    const tenantId = String(payment.tenantId || auth.user.tenantId || "");
 
     if (action === "mark_paid") {
       await ref.update({
@@ -48,17 +50,30 @@ export async function POST(req: Request) {
         );
       }
 
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+      const leadSnap = leadId ? await adminDb.collection("leads").doc(leadId).get() : null;
+      const lead = leadSnap?.exists ? leadSnap.data() || {} : {};
+      const companyName = String(lead.companyName || lead.contactName || clientName || "Lead");
+      const amountUsd = Number(payment.amountUsd || 0);
+
+      const [managerIds, adminIds, financeIds] = await Promise.all([
+        getUserIdsByRoles(["sales_manager"], tenantId),
+        getUserIdsByRoles(["admin", "super_admin"], tenantId),
+        getUserIdsByRoles(["finance"], tenantId),
+      ]);
+      const ownerId = String(lead.ownerId || "");
+      const recipientIds = Array.from(new Set([ownerId, ...managerIds, ...adminIds, ...financeIds].filter(Boolean)));
+      const message = `Payment received: $${amountUsd.toLocaleString()} — Lead: ${companyName}`;
+
       await Promise.all(
-        financeIds.map((uid) =>
+        recipientIds.map((uid) =>
           createNotification({
             toUserId: uid,
-            title: "Payment marked paid",
-            body: `Payment ${id} marked paid for ${clientName || "client"}.`,
+            title: "Payment received",
+            body: message,
             type: "success",
             entityType: "payment",
             entityId: id,
-            deepLink: "/finance/payments",
+            deepLink: leadId ? `/sales/leads?open=${leadId}` : \"/sales/leads\",
             createdBy: { uid: auth.user.uid, name: actorName },
           })
         )

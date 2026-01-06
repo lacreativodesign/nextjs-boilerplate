@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
+import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export async function POST(req: Request) {
     const invoiceId = String(payment.invoiceId || "");
     const clientId = String(payment.clientId || "");
     const clientName = String(payment.clientName || "");
+    const leadId = String(payment.leadId || "");
+    const tenantId = String(payment.tenantId || auth.user.tenantId || "");
 
     if (action === "mark_paid") {
       await ref.update({
@@ -46,6 +49,35 @@ export async function POST(req: Request) {
           { merge: true }
         );
       }
+
+      const leadSnap = leadId ? await adminDb.collection("leads").doc(leadId).get() : null;
+      const lead = leadSnap?.exists ? leadSnap.data() || {} : {};
+      const companyName = String(lead.companyName || lead.contactName || clientName || "Lead");
+      const amountUsd = Number(payment.amountUsd || 0);
+      const ownerId = String(lead.ownerId || "");
+
+      const [managerIds, adminIds, financeIds] = await Promise.all([
+        getUserIdsByRoles(["sales_manager"], tenantId),
+        getUserIdsByRoles(["admin", "super_admin"], tenantId),
+        getUserIdsByRoles(["finance"], tenantId),
+      ]);
+      const recipients = Array.from(new Set([ownerId, ...managerIds, ...adminIds, ...financeIds].filter(Boolean)));
+      const message = `Payment received: $${amountUsd.toLocaleString()} — Lead: ${companyName}`;
+
+      await Promise.all(
+        recipients.map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: "Payment received",
+            body: message,
+            type: "success",
+            entityType: "payment",
+            entityId: id,
+            deepLink: leadId ? `/sales/leads?open=${leadId}` : "/sales/leads",
+            createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+          })
+        )
+      );
 
       await createFinanceEvent({
         type: "finance.payment_paid",

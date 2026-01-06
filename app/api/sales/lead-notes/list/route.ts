@@ -42,7 +42,9 @@ export async function GET(req: Request) {
       const data = doc.data() || {};
       return {
         id: doc.id,
+        leadId: String(data.leadId || leadId),
         body: String(data.body || ""),
+        createdById: String(data.createdById || data.authorUserId || ""),
         authorUserId: String(data.authorUserId || ""),
         authorRole: String(data.authorRole || ""),
         authorName: String(data.authorName || ""),

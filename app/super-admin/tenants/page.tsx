@@ -187,7 +187,7 @@ export default function SuperAdminTenantsPage() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       className="text-sm font-semibold text-[var(--erp-blue)]"
-                      href={`/super_admin/tenants/${tenant.id}`}
+                      href={`/super-admin/tenants/${tenant.id}`}
                     >
                       Manage
                     </Link>

@@ -41,11 +41,13 @@ export async function GET(req: Request) {
       const data = doc.data() || {};
       return {
         id: doc.id,
+        leadId: String(data.leadId || leadId),
         amountUsd: Number(data.amountUsd || 0),
         currency: String(data.currency || "USD"),
         status: String(data.status || "draft"),
         checkoutUrl: data.checkoutUrl || null,
         paymentProvider: String(data.paymentProvider || "stripe"),
+        createdById: String(data.createdById || data.createdByUserId || ""),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
       };

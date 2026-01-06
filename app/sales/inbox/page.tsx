@@ -35,12 +35,15 @@ export default function SalesInboxPage() {
       const res = await fetch("/api/sales/email/list", { cache: "no-store", credentials: "include" });
       const data = (await res.json()) as InboxResponse;
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load inbox.");
+        setEmails([]);
+        setError(null);
+        return;
       }
       setEmails(data.emails || []);
     } catch (err: any) {
       console.error("Inbox load error", err);
-      setError({ title: "Unable to load inbox", message: err?.message || "Please try again later." });
+      setEmails([]);
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -132,7 +135,7 @@ export default function SalesInboxPage() {
       <div style={{ marginTop: 20 }}>
         <div style={tableShellStyle}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900, tableLayout: "fixed" }}>
               <thead>
                 <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
                   <th style={headerCellStyle}>Subject</th>

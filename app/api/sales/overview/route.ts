@@ -60,7 +60,14 @@ export async function GET() {
       .limit(1000)
       .get();
 
+    const followUpsSnap = await adminDb
+      .collection("followUps")
+      .where("tenantId", "==", tenantId)
+      .limit(1000)
+      .get();
+
     const paymentRequests = paymentsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
+    const followUps = followUpsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -71,6 +78,11 @@ export async function GET() {
         return leadIds.has(String(request.leadId));
       }
       return true;
+    });
+
+    const scopedFollowUps = followUps.filter((item: any) => {
+      if (!isSalesRep) return true;
+      return String(item.ownerId || "") === auth.user.uid || String(item.createdById || "") === auth.user.uid;
     });
 
     const closedWonPaymentsMtd = scopedPayments.filter((request: any) => {
@@ -89,10 +101,27 @@ export async function GET() {
     const totalLeads = scopedLeads.length;
     const qualified = scopedLeads.filter((lead: any) => String(lead.stage || "") === "Qualified").length;
     const activeDeals = scopedLeads.filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed")).length;
-    const followUpsDueToday = scopedLeads.filter((lead: any) => {
-      const nextFollowUp = toISO(lead.nextFollowUpAt);
-      if (!nextFollowUp) return false;
-      return isSameDay(new Date(nextFollowUp), now);
+    const followUpsDueToday = scopedFollowUps.filter((item: any) => {
+      const dueAt = toISO(item.dueAt);
+      const status = String(item.status || "open").toLowerCase();
+      if (!dueAt || status !== "open") return false;
+      return isSameDay(new Date(dueAt), now);
+    }).length;
+
+    const followUpsOverdue = scopedFollowUps.filter((item: any) => {
+      const dueAt = toISO(item.dueAt);
+      const status = String(item.status || "open").toLowerCase();
+      if (!dueAt || status !== "open") return false;
+      return new Date(dueAt).getTime() < now.getTime() && !isSameDay(new Date(dueAt), now);
+    }).length;
+
+    const completedCutoff = new Date();
+    completedCutoff.setDate(completedCutoff.getDate() - 30);
+    const followUpsCompleted30d = scopedFollowUps.filter((item: any) => {
+      if (String(item.status || "").toLowerCase() !== "done") return false;
+      const doneAt = toISO(item.doneAt || item.updatedAt);
+      if (!doneAt) return false;
+      return new Date(doneAt).getTime() >= completedCutoff.getTime();
     }).length;
     const pipelineValue = scopedLeads
       .filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed"))
@@ -156,6 +185,8 @@ export async function GET() {
         closedWonCount,
         closedWonRevenueMtd,
         followUpsDueToday,
+        followUpsOverdue,
+        followUpsCompleted30d,
         conversionRate,
         aov,
         pipelineValue,

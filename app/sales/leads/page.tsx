@@ -114,6 +114,15 @@ type PaymentRequest = {
   createdAt: string | null;
 };
 
+type FollowUpRecord = {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  status: "open" | "done";
+  createdAt: string | null;
+  doneAt?: string | null;
+};
+
 export default function SalesLeadsPage() {
   const isDark = useIsDarkMode();
   const searchParams = useSearchParams();
@@ -127,7 +136,7 @@ export default function SalesLeadsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
-  const [activeTab, setActiveTab] = useState<"details" | "notes" | "emails" | "payments">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "notes" | "emails" | "payments" | "followups">("details");
   const [form, setForm] = useState<LeadForm>(defaultForm);
   const [actionLoading, setActionLoading] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
@@ -137,6 +146,9 @@ export default function SalesLeadsPage() {
   const [emailForm, setEmailForm] = useState({ to: "", subject: "", bodyText: "" });
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [paymentForm, setPaymentForm] = useState({ amountUsd: "", description: "" });
+  const [followUps, setFollowUps] = useState<FollowUpRecord[]>([]);
+  const [followUpForm, setFollowUpForm] = useState({ title: "", dueAt: "" });
+  const [drawerNotice, setDrawerNotice] = useState<string | null>(null);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -265,17 +277,26 @@ export default function SalesLeadsPage() {
     fontWeight: 400,
   };
 
+  const isFollowUpDisposition = (value: string) => {
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    return normalized === "follow_up_needed";
+  };
+
   const openCreate = () => {
     setDrawerMode("create");
     setActiveTab("details");
     setForm(defaultForm);
     setEmailForm({ to: "", subject: "", bodyText: "" });
+    setNotes([]);
+    setEmails([]);
+    setPayments([]);
+    setFollowUps([]);
+    setFollowUpForm({ title: "", dueAt: "" });
+    setDrawerNotice(null);
     setDrawerOpen(true);
   };
 
-  const openEdit = (lead: LeadRecord) => {
-    setDrawerMode("edit");
-    setActiveTab("details");
+  const applyLeadToForm = useCallback((lead: LeadRecord) => {
     setForm({
       id: lead.id,
       companyName: lead.companyName,
@@ -293,15 +314,53 @@ export default function SalesLeadsPage() {
       lastContactedAt: lead.lastContactedAt ? lead.lastContactedAt.slice(0, 10) : "",
       nextFollowUpAt: lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : "",
     });
+  }, []);
+
+  const loadLeadDetails = useCallback(async (leadId: string) => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/sales/leads/get?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.lead) {
+        applyLeadToForm(data.lead as LeadRecord);
+      }
+    } catch (err) {
+      console.error("Lead details load error", err);
+    }
+  }, [applyLeadToForm]);
+
+  const openEdit = (lead: LeadRecord) => {
+    setDrawerMode("edit");
+    setActiveTab("details");
+    applyLeadToForm(lead);
+    setDrawerNotice(null);
+    setFollowUpForm({ title: "", dueAt: "" });
+    setFollowUps([]);
+    setNotes([]);
+    setEmails([]);
+    setPayments([]);
     setDrawerOpen(true);
+    loadLeadDetails(lead.id);
     loadNotes(lead.id);
     loadEmails(lead.id);
     loadPayments(lead.id);
+    loadFollowUps(lead.id);
     setEmailForm((prev) => ({ ...prev, to: lead.contactEmail || "" }));
   };
 
   const handleSave = async () => {
     try {
+      const requiresFollowUp = isFollowUpDisposition(form.disposition);
+      const hasOpenFollowUp = followUps.some((item) => item.status === "open");
+      if (requiresFollowUp && !followUpForm.dueAt && !hasOpenFollowUp) {
+        setDrawerNotice("Follow-up needed: please schedule a follow-up before saving this lead.");
+        setActiveTab("followups");
+        return;
+      }
+
       setActionLoading(true);
       const endpoint = drawerMode === "create" ? "/api/sales/leads/create" : "/api/sales/leads/update";
       const payload = {
@@ -324,6 +383,10 @@ export default function SalesLeadsPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to save lead.");
+      }
+      const leadId = drawerMode === "create" ? data.id : form.id;
+      if (requiresFollowUp && followUpForm.dueAt && leadId) {
+        await createFollowUp(leadId);
       }
       setDrawerOpen(false);
       await loadLeads();
@@ -428,6 +491,77 @@ export default function SalesLeadsPage() {
     }
   }, []);
 
+  const loadFollowUps = useCallback(async (leadId: string) => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/sales/followups/list?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setFollowUps(data.followUps || []);
+      }
+    } catch (err) {
+      console.error("Follow-ups load error", err);
+    }
+  }, []);
+
+  const createFollowUp = useCallback(
+    async (leadId: string) => {
+      if (!leadId || !followUpForm.dueAt) return;
+      const res = await fetch("/api/sales/followups/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          leadId,
+          title: followUpForm.title,
+          dueAt: followUpForm.dueAt,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to create follow-up.");
+      }
+      setFollowUpForm({ title: "", dueAt: "" });
+      setDrawerNotice(null);
+      await loadFollowUps(leadId);
+    },
+    [followUpForm.dueAt, followUpForm.title, loadFollowUps]
+  );
+
+  const handleAddFollowUp = async () => {
+    if (!form.id) {
+      setDrawerNotice("Save the lead first to create a follow-up.");
+      return;
+    }
+    try {
+      await createFollowUp(form.id);
+    } catch (err) {
+      console.error("Follow-up create error", err);
+    }
+  };
+
+  const handleCompleteFollowUp = async (followUpId: string) => {
+    if (!form.id) return;
+    try {
+      const res = await fetch("/api/sales/followups/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ followUpId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to complete follow-up.");
+      }
+      await loadFollowUps(form.id);
+    } catch (err) {
+      console.error("Follow-up complete error", err);
+    }
+  };
+
   const handlePaymentLink = async () => {
     if (!form.id) return;
     try {
@@ -457,7 +591,19 @@ export default function SalesLeadsPage() {
     { id: "notes", label: "Notes" },
     { id: "emails", label: "Emails" },
     { id: "payments", label: "Payments" },
+    { id: "followups", label: "Follow-Ups" },
   ] as const;
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const requiresFollowUp = isFollowUpDisposition(form.disposition);
+    const hasOpenFollowUp = followUps.some((item) => item.status === "open");
+    if (requiresFollowUp && !followUpForm.dueAt && !hasOpenFollowUp) {
+      setDrawerNotice("Follow-up needed: schedule a follow-up before saving.");
+    } else {
+      setDrawerNotice(null);
+    }
+  }, [drawerOpen, followUps, followUpForm.dueAt, form.disposition]);
 
   return (
     <div className="w-full">
@@ -534,7 +680,7 @@ export default function SalesLeadsPage() {
       <div style={{ marginTop: 20 }}>
         <div style={tableShellStyle}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200, tableLayout: "fixed" }}>
               <thead>
                 <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
                   <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
@@ -634,6 +780,23 @@ export default function SalesLeadsPage() {
             ))}
           </div>
 
+          {drawerNotice && (
+            <div
+              className="card"
+              style={{
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid rgba(234,179,8,0.35)",
+                background: "rgba(253, 230, 138, 0.12)",
+                color: "var(--text-primary)",
+                fontSize: 13,
+                marginBottom: 12,
+              }}
+            >
+              {drawerNotice}
+            </div>
+          )}
+
           {activeTab === "details" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -701,7 +864,13 @@ export default function SalesLeadsPage() {
                 <select
                   className="input mt-2"
                   value={form.disposition}
-                  onChange={(event) => setForm((prev) => ({ ...prev, disposition: event.target.value }))}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setForm((prev) => ({ ...prev, disposition: nextValue }));
+                    if (isFollowUpDisposition(nextValue)) {
+                      setActiveTab("followups");
+                    }
+                  }}
                 >
                   <option value="">Select disposition</option>
                   {LEAD_DISPOSITIONS.map((disposition) => (
@@ -910,6 +1079,64 @@ export default function SalesLeadsPage() {
                         <a className="btn ghost" href={payment.checkoutUrl} target="_blank" rel="noreferrer">
                           Open checkout link
                         </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "followups" && (
+            <div className="grid gap-4">
+              <div className="card" style={{ padding: 14, borderRadius: 14 }}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">Due date & time</label>
+                    <input
+                      className="input mt-2"
+                      type="datetime-local"
+                      value={followUpForm.dueAt}
+                      onChange={(event) => setFollowUpForm((prev) => ({ ...prev, dueAt: event.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">Title (optional)</label>
+                    <input
+                      className="input mt-2"
+                      value={followUpForm.title}
+                      onChange={(event) => setFollowUpForm((prev) => ({ ...prev, title: event.target.value }))}
+                      placeholder="Call, demo prep, proposal follow-up"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <button className="btn" type="button" onClick={handleAddFollowUp}>
+                    Add follow-up
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {followUps.length === 0 && <div className="text-sm text-slate-500">No follow-ups yet.</div>}
+                {followUps.map((item) => (
+                  <div key={item.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
+                      <div>
+                        <strong>{item.title || "Follow-up"}</strong>
+                        <div style={{ color: "var(--text-muted)" }}>
+                          Due: {formatDateTime(item.dueAt)} · Status: {item.status}
+                        </div>
+                        <div style={{ color: "var(--text-muted)" }}>Created: {formatDateTime(item.createdAt)}</div>
+                      </div>
+                      {item.status === "open" && (
+                        <button className="btn ghost" type="button" onClick={() => handleCompleteFollowUp(item.id)}>
+                          Mark done
+                        </button>
+                      )}
+                    </div>
+                    {item.doneAt && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-muted)" }}>
+                        Done: {formatDateTime(item.doneAt)}
                       </div>
                     )}
                   </div>

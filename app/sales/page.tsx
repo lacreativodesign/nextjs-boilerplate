@@ -12,6 +12,8 @@ const KPI_LABELS = [
   { key: "closedWonCount", label: "Closed Won Count" },
   { key: "closedWonRevenueMtd", label: "Closed Won Revenue (MTD)" },
   { key: "followUpsDueToday", label: "Follow-Ups Due Today" },
+  { key: "followUpsOverdue", label: "Follow-Ups Overdue" },
+  { key: "followUpsCompleted30d", label: "Follow-Ups Completed (30d)" },
   { key: "conversionRate", label: "Conversion Rate" },
   { key: "aov", label: "AOV" },
   { key: "pipelineValue", label: "Pipeline Value" },
@@ -27,6 +29,8 @@ type OverviewResponse = {
     closedWonCount: number;
     closedWonRevenueMtd: number;
     followUpsDueToday: number;
+    followUpsOverdue: number;
+    followUpsCompleted30d: number;
     conversionRate: number;
     aov: number;
     pipelineValue: number;
@@ -132,7 +136,7 @@ export default function SalesOverviewPage() {
         </button>
       </div>
 
-      <div className="grid gap-4" style={{ marginTop: 18, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ marginTop: 18 }}>
         {kpiValues.map((kpi) => (
           <div key={kpi.label} className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{kpi.label}</div>
@@ -141,7 +145,7 @@ export default function SalesOverviewPage() {
         ))}
       </div>
 
-      <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <section className="grid gap-4" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Stage</div>
           <div style={{ width: "100%", height: 220 }}>
@@ -186,7 +190,7 @@ export default function SalesOverviewPage() {
       </section>
 
       {target && (
-        <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        <section className="grid gap-4" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>Target Cockpit</div>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Monthly target vs progress</div>
@@ -220,10 +224,6 @@ export default function SalesOverviewPage() {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                 <span>Top Performer (MTD)</span>
                 <strong>{formatUsd(overview?.teamBenchmark.topPerformerRevenueMtd || 0)}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                <span>My Revenue (MTD)</span>
-                <strong>{formatUsd(overview?.teamBenchmark.myRevenueMtd || 0)}</strong>
               </div>
             </div>
           </div>
