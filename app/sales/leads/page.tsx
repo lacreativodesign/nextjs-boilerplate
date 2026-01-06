@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import SalesDrawer from "@/components/sales/SalesDrawer";
-import { formatDateTime } from "@/components/finance/financeUtils";
-import { LEAD_STAGES } from "@/lib/sales/utils";
+import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
+import { LEAD_DISPOSITIONS, LEAD_SOURCES, LEAD_STAGES } from "@/lib/sales/utils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STAGE_OPTIONS = ["All", ...LEAD_STAGES];
+const DISPOSITION_OPTIONS = ["All", ...LEAD_DISPOSITIONS];
 
 type LeadRecord = {
   id: string;
@@ -17,6 +19,13 @@ type LeadRecord = {
   source: string;
   notes: string;
   stage: string;
+  disposition: string;
+  expectedValueUsd: number;
+  packageName: string;
+  interestedServices: string[];
+  probability: number;
+  lastContactedAt?: string | null;
+  nextFollowUpAt?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
   createdAt?: string | null;
@@ -27,7 +36,17 @@ type LeadResponse = { ok: boolean; leads: LeadRecord[]; canCreate?: boolean };
 
 type ErrorState = { title: string; message: string };
 
-type SortKey = "companyName" | "contactName" | "stage" | "source" | "createdAt";
+type SortKey =
+  | "companyName"
+  | "contactName"
+  | "contactEmail"
+  | "contactPhone"
+  | "source"
+  | "stage"
+  | "disposition"
+  | "expectedValueUsd"
+  | "nextFollowUpAt"
+  | "createdAt";
 
 type SortDir = "asc" | "desc";
 
@@ -40,6 +59,13 @@ type LeadForm = {
   source: string;
   notes: string;
   stage: string;
+  disposition: string;
+  expectedValueUsd: number;
+  packageName: string;
+  interestedServices: string;
+  probability: number;
+  lastContactedAt: string;
+  nextFollowUpAt: string;
 };
 
 const defaultForm: LeadForm = {
@@ -47,25 +73,70 @@ const defaultForm: LeadForm = {
   contactName: "",
   contactEmail: "",
   contactPhone: "",
-  source: "",
+  source: LEAD_SOURCES[0],
   notes: "",
   stage: LEAD_STAGES[0],
+  disposition: "",
+  expectedValueUsd: 0,
+  packageName: "",
+  interestedServices: "",
+  probability: 0,
+  lastContactedAt: "",
+  nextFollowUpAt: "",
+};
+
+type NoteRecord = {
+  id: string;
+  body: string;
+  authorName: string;
+  authorRole: string;
+  createdAt: string | null;
+};
+
+type EmailRecord = {
+  id: string;
+  subject: string;
+  from: string[];
+  to: string[];
+  bodyText: string;
+  bodyHtml?: string | null;
+  direction: string;
+  createdAt: string | null;
+  status: string;
+};
+
+type PaymentRequest = {
+  id: string;
+  amountUsd: number;
+  currency: string;
+  status: string;
+  checkoutUrl?: string | null;
+  createdAt: string | null;
 };
 
 export default function SalesLeadsPage() {
   const isDark = useIsDarkMode();
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
+  const [dispositionFilter, setDispositionFilter] = useState("All");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
+  const [activeTab, setActiveTab] = useState<"details" | "notes" | "emails" | "payments">("details");
   const [form, setForm] = useState<LeadForm>(defaultForm);
   const [actionLoading, setActionLoading] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
+  const [notes, setNotes] = useState<NoteRecord[]>([]);
+  const [noteBody, setNoteBody] = useState("");
+  const [emails, setEmails] = useState<EmailRecord[]>([]);
+  const [emailForm, setEmailForm] = useState({ to: "", subject: "", bodyText: "" });
+  const [payments, setPayments] = useState<PaymentRequest[]>([]);
+  const [paymentForm, setPaymentForm] = useState({ amountUsd: "", description: "" });
 
   const loadLeads = useCallback(async () => {
     try {
@@ -78,9 +149,9 @@ export default function SalesLeadsPage() {
       }
       setLeads(data.leads || []);
       setCanCreate(Boolean(data.canCreate));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Leads load error", err);
-      setError({ title: "Unable to load leads", message: "Please try again in a moment." });
+      setError({ title: "Unable to load leads", message: err?.message || "Please try again in a moment." });
     } finally {
       setLoading(false);
     }
@@ -90,15 +161,35 @@ export default function SalesLeadsPage() {
     loadLeads();
   }, [loadLeads]);
 
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || leads.length === 0) return;
+    const lead = leads.find((item) => item.id === openId);
+    if (lead) {
+      openEdit(lead);
+    }
+  }, [searchParams, leads]);
+
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = [...leads];
     if (stageFilter !== "All") {
       list = list.filter((lead) => lead.stage === stageFilter);
     }
+    if (dispositionFilter !== "All") {
+      list = list.filter((lead) => lead.disposition === dispositionFilter);
+    }
     if (q) {
       list = list.filter((lead) => {
-        const hay = [lead.companyName, lead.contactName, lead.contactEmail, lead.contactPhone, lead.source]
+        const hay = [
+          lead.companyName,
+          lead.contactName,
+          lead.contactEmail,
+          lead.contactPhone,
+          lead.source,
+          lead.stage,
+          lead.disposition,
+        ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -106,15 +197,18 @@ export default function SalesLeadsPage() {
       });
     }
     return list;
-  }, [leads, query, stageFilter]);
+  }, [leads, query, stageFilter, dispositionFilter]);
 
   const sortedLeads = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
     const list = [...filteredLeads];
     list.sort((a, b) => {
-      const valA = String(a[sortKey] ?? "");
-      const valB = String(b[sortKey] ?? "");
-      return valA.localeCompare(valB) * dir;
+      const valA = a[sortKey];
+      const valB = b[sortKey];
+      if (typeof valA === "number" && typeof valB === "number") {
+        return (valA - valB) * dir;
+      }
+      return String(valA ?? "").localeCompare(String(valB ?? "")) * dir;
     });
     return list;
   }, [filteredLeads, sortDir, sortKey]);
@@ -173,34 +267,59 @@ export default function SalesLeadsPage() {
 
   const openCreate = () => {
     setDrawerMode("create");
+    setActiveTab("details");
     setForm(defaultForm);
+    setEmailForm({ to: "", subject: "", bodyText: "" });
     setDrawerOpen(true);
   };
 
   const openEdit = (lead: LeadRecord) => {
     setDrawerMode("edit");
+    setActiveTab("details");
     setForm({
       id: lead.id,
       companyName: lead.companyName,
       contactName: lead.contactName,
       contactEmail: lead.contactEmail,
       contactPhone: lead.contactPhone,
-      source: lead.source,
+      source: lead.source || LEAD_SOURCES[0],
       notes: lead.notes || "",
       stage: lead.stage,
+      disposition: lead.disposition || "",
+      expectedValueUsd: lead.expectedValueUsd || 0,
+      packageName: lead.packageName || "",
+      interestedServices: (lead.interestedServices || []).join(", "),
+      probability: lead.probability || 0,
+      lastContactedAt: lead.lastContactedAt ? lead.lastContactedAt.slice(0, 10) : "",
+      nextFollowUpAt: lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : "",
     });
     setDrawerOpen(true);
+    loadNotes(lead.id);
+    loadEmails(lead.id);
+    loadPayments(lead.id);
+    setEmailForm((prev) => ({ ...prev, to: lead.contactEmail || "" }));
   };
 
   const handleSave = async () => {
     try {
       setActionLoading(true);
       const endpoint = drawerMode === "create" ? "/api/sales/leads/create" : "/api/sales/leads/update";
+      const payload = {
+        ...form,
+        expectedValueUsd: Number(form.expectedValueUsd || 0),
+        probability: Number(form.probability || 0),
+        interestedServices: form.interestedServices
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        lastContactedAt: form.lastContactedAt || null,
+        nextFollowUpAt: form.nextFollowUpAt || null,
+      };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -208,13 +327,137 @@ export default function SalesLeadsPage() {
       }
       setDrawerOpen(false);
       await loadLeads();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lead save error", err);
-      setError({ title: "Unable to save lead", message: "Please try again." });
+      setError({ title: "Unable to save lead", message: err?.message || "Please try again." });
     } finally {
       setActionLoading(false);
     }
   };
+
+  const loadNotes = useCallback(async (leadId: string) => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/sales/lead-notes/list?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setNotes(data.notes || []);
+      }
+    } catch (err) {
+      console.error("Notes load error", err);
+    }
+  }, []);
+
+  const handleAddNote = async () => {
+    if (!form.id || !noteBody.trim()) return;
+    try {
+      const res = await fetch("/api/sales/lead-notes/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ leadId: form.id, body: noteBody }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to add note.");
+      }
+      setNoteBody("");
+      await loadNotes(form.id);
+    } catch (err) {
+      console.error("Note save error", err);
+    }
+  };
+
+  const loadEmails = useCallback(async (leadId: string) => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/sales/email/list?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setEmails(data.emails || []);
+      }
+    } catch (err) {
+      console.error("Email load error", err);
+    }
+  }, []);
+
+  const handleSendEmail = async () => {
+    if (!form.id) return;
+    try {
+      const res = await fetch("/api/sales/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          leadId: form.id,
+          to: emailForm.to,
+          subject: emailForm.subject,
+          bodyText: emailForm.bodyText,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to send email.");
+      }
+      setEmailForm({ to: "", subject: "", bodyText: "" });
+      await loadEmails(form.id);
+    } catch (err) {
+      console.error("Email send error", err);
+    }
+  };
+
+  const loadPayments = useCallback(async (leadId: string) => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/sales/payments/list?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setPayments(data.requests || []);
+      }
+    } catch (err) {
+      console.error("Payments load error", err);
+    }
+  }, []);
+
+  const handlePaymentLink = async () => {
+    if (!form.id) return;
+    try {
+      const res = await fetch("/api/sales/payments/create-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          leadId: form.id,
+          amountUsd: Number(paymentForm.amountUsd || 0),
+          description: paymentForm.description,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to create payment link.");
+      }
+      setPaymentForm({ amountUsd: "", description: "" });
+      await loadPayments(form.id);
+    } catch (err) {
+      console.error("Payment link error", err);
+    }
+  };
+
+  const drawerTabs = [
+    { id: "details", label: "Details" },
+    { id: "notes", label: "Notes" },
+    { id: "emails", label: "Emails" },
+    { id: "payments", label: "Payments" },
+  ] as const;
 
   return (
     <div className="w-full">
@@ -251,7 +494,7 @@ export default function SalesLeadsPage() {
       </div>
 
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
-        <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr_0.5fr]">
+        <div className="grid gap-4 md:grid-cols-[1.2fr_0.5fr_0.5fr]">
           <div>
             <label className="text-xs font-semibold text-slate-500">Search</label>
             <input
@@ -263,11 +506,7 @@ export default function SalesLeadsPage() {
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500">Stage</label>
-            <select
-              value={stageFilter}
-              onChange={(event) => setStageFilter(event.target.value)}
-              className="input mt-2"
-            >
+            <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value)} className="input mt-2">
               {STAGE_OPTIONS.map((stage) => (
                 <option key={stage} value={stage}>
                   {stage === "All" ? "All stages" : stage}
@@ -276,15 +515,18 @@ export default function SalesLeadsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Sort</label>
-            <div className="mt-2 flex gap-2 flex-wrap">
-              <button className="btn ghost" onClick={() => toggleSort("createdAt")}>
-                Newest {sortBadge("createdAt")}
-              </button>
-              <button className="btn ghost" onClick={() => toggleSort("companyName")}>
-                Company {sortBadge("companyName")}
-              </button>
-            </div>
+            <label className="text-xs font-semibold text-slate-500">Disposition</label>
+            <select
+              value={dispositionFilter}
+              onChange={(event) => setDispositionFilter(event.target.value)}
+              className="input mt-2"
+            >
+              {DISPOSITION_OPTIONS.map((disposition) => (
+                <option key={disposition} value={disposition}>
+                  {disposition === "All" ? "All dispositions" : disposition}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -292,7 +534,7 @@ export default function SalesLeadsPage() {
       <div style={{ marginTop: 20 }}>
         <div style={tableShellStyle}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
               <thead>
                 <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
                   <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
@@ -301,13 +543,26 @@ export default function SalesLeadsPage() {
                   <th style={headerCellStyle} onClick={() => toggleSort("contactName")}>
                     {headerLabel("Contact", sortBadge("contactName"))}
                   </th>
-                  <th style={headerCellStyle}>Email</th>
-                  <th style={headerCellStyle}>Phone</th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("contactEmail")}>
+                    {headerLabel("Email", sortBadge("contactEmail"))}
+                  </th>
+                  <th style={headerCellStyle} onClick={() => toggleSort("contactPhone")}>
+                    {headerLabel("Phone", sortBadge("contactPhone"))}
+                  </th>
                   <th style={headerCellStyle} onClick={() => toggleSort("source")}>
                     {headerLabel("Source", sortBadge("source"))}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("stage")}>
+                  <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("stage")}>
                     {headerLabel("Stage", sortBadge("stage"))}
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("disposition")}>
+                    {headerLabel("Disposition", sortBadge("disposition"))}
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }} onClick={() => toggleSort("expectedValueUsd")}>
+                    {headerLabel("Expected Value", sortBadge("expectedValueUsd"))}
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("nextFollowUpAt")}>
+                    {headerLabel("Next Follow-Up", sortBadge("nextFollowUpAt"))}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("createdAt")}>
                     {headerLabel("Created", sortBadge("createdAt"))}
@@ -318,13 +573,13 @@ export default function SalesLeadsPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={11} style={{ padding: 24, textAlign: "center" }}>
                       Loading leads...
                     </td>
                   </tr>
                 ) : sortedLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={11} style={{ padding: 24, textAlign: "center" }}>
                       No leads found.
                     </td>
                   </tr>
@@ -336,8 +591,11 @@ export default function SalesLeadsPage() {
                       <td style={cellStyle}>{lead.contactEmail || "-"}</td>
                       <td style={cellStyle}>{lead.contactPhone || "-"}</td>
                       <td style={cellStyle}>{lead.source || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{lead.stage}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{formatDateTime(lead.createdAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{lead.stage}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{lead.disposition || "-"}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{formatUsd(lead.expectedValueUsd || 0)}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(lead.nextFollowUpAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(lead.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <button className="btn ghost" onClick={() => openEdit(lead)} style={{ borderRadius: 999 }}>
                           View
@@ -363,71 +621,302 @@ export default function SalesLeadsPage() {
             </button>
           }
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Company</label>
-              <input
-                className="input mt-2"
-                value={form.companyName}
-                onChange={(event) => setForm((prev) => ({ ...prev, companyName: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Contact Name</label>
-              <input
-                className="input mt-2"
-                value={form.contactName}
-                onChange={(event) => setForm((prev) => ({ ...prev, contactName: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Contact Email</label>
-              <input
-                className="input mt-2"
-                value={form.contactEmail}
-                onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Contact Phone</label>
-              <input
-                className="input mt-2"
-                value={form.contactPhone}
-                onChange={(event) => setForm((prev) => ({ ...prev, contactPhone: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Source</label>
-              <input
-                className="input mt-2"
-                value={form.source}
-                onChange={(event) => setForm((prev) => ({ ...prev, source: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Stage</label>
-              <select
-                className="input mt-2"
-                value={form.stage}
-                onChange={(event) => setForm((prev) => ({ ...prev, stage: event.target.value }))}
+          <div className="tabs-bar" style={{ marginBottom: 16 }}>
+            {drawerTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`tab-pill ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
               >
-                {LEAD_STAGES.map((stage) => (
-                  <option key={stage} value={stage}>
-                    {stage}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-slate-500">Notes</label>
-              <textarea
-                className="input mt-2"
-                rows={4}
-                value={form.notes}
-                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-              />
-            </div>
+                {tab.label}
+              </button>
+            ))}
           </div>
+
+          {activeTab === "details" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Company</label>
+                <input
+                  className="input mt-2"
+                  value={form.companyName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, companyName: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Contact Name</label>
+                <input
+                  className="input mt-2"
+                  value={form.contactName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, contactName: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Contact Email</label>
+                <input
+                  className="input mt-2"
+                  value={form.contactEmail}
+                  onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Contact Phone</label>
+                <input
+                  className="input mt-2"
+                  value={form.contactPhone}
+                  onChange={(event) => setForm((prev) => ({ ...prev, contactPhone: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Source</label>
+                <select
+                  className="input mt-2"
+                  value={form.source}
+                  onChange={(event) => setForm((prev) => ({ ...prev, source: event.target.value }))}
+                >
+                  {LEAD_SOURCES.map((source) => (
+                    <option key={source} value={source}>
+                      {source}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Stage</label>
+                <select
+                  className="input mt-2"
+                  value={form.stage}
+                  onChange={(event) => setForm((prev) => ({ ...prev, stage: event.target.value }))}
+                >
+                  {LEAD_STAGES.map((stage) => (
+                    <option key={stage} value={stage}>
+                      {stage}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Disposition</label>
+                <select
+                  className="input mt-2"
+                  value={form.disposition}
+                  onChange={(event) => setForm((prev) => ({ ...prev, disposition: event.target.value }))}
+                >
+                  <option value="">Select disposition</option>
+                  {LEAD_DISPOSITIONS.map((disposition) => (
+                    <option key={disposition} value={disposition}>
+                      {disposition}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Expected Value (USD)</label>
+                <input
+                  className="input mt-2"
+                  type="number"
+                  min={0}
+                  value={form.expectedValueUsd}
+                  onChange={(event) => setForm((prev) => ({ ...prev, expectedValueUsd: Number(event.target.value) }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Package</label>
+                <input
+                  className="input mt-2"
+                  value={form.packageName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, packageName: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Interested Services</label>
+                <input
+                  className="input mt-2"
+                  value={form.interestedServices}
+                  onChange={(event) => setForm((prev) => ({ ...prev, interestedServices: event.target.value }))}
+                  placeholder="Design, Branding, SEO"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Probability (0-100)</label>
+                <input
+                  className="input mt-2"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={form.probability}
+                  onChange={(event) => setForm((prev) => ({ ...prev, probability: Number(event.target.value) }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Last Contacted</label>
+                <input
+                  className="input mt-2"
+                  type="date"
+                  value={form.lastContactedAt}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lastContactedAt: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Next Follow-Up</label>
+                <input
+                  className="input mt-2"
+                  type="date"
+                  value={form.nextFollowUpAt}
+                  onChange={(event) => setForm((prev) => ({ ...prev, nextFollowUpAt: event.target.value }))}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-slate-500">Notes</label>
+                <textarea
+                  className="input mt-2"
+                  rows={4}
+                  value={form.notes}
+                  onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === "notes" && (
+            <div className="grid gap-4">
+              <div className="card" style={{ padding: 14, borderRadius: 14 }}>
+                <label className="text-xs font-semibold text-slate-500">Add note</label>
+                <textarea
+                  className="input mt-2"
+                  rows={3}
+                  value={noteBody}
+                  onChange={(event) => setNoteBody(event.target.value)}
+                />
+                <div className="mt-3">
+                  <button className="btn" type="button" onClick={handleAddNote}>
+                    Add note
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {notes.length === 0 && <div className="text-sm text-slate-500">No notes yet.</div>}
+                {notes.map((note) => (
+                  <div key={note.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      {note.authorName || "Sales"} · {note.authorRole || ""} · {formatDateTime(note.createdAt)}
+                    </div>
+                    <div style={{ marginTop: 6 }}>{note.body}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "emails" && (
+            <div className="grid gap-4">
+              <div className="card" style={{ padding: 14, borderRadius: 14 }}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">To</label>
+                    <input
+                      className="input mt-2"
+                      value={emailForm.to}
+                      onChange={(event) => setEmailForm((prev) => ({ ...prev, to: event.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">Subject</label>
+                    <input
+                      className="input mt-2"
+                      value={emailForm.subject}
+                      onChange={(event) => setEmailForm((prev) => ({ ...prev, subject: event.target.value }))}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-500">Message</label>
+                    <textarea
+                      className="input mt-2"
+                      rows={4}
+                      value={emailForm.bodyText}
+                      onChange={(event) => setEmailForm((prev) => ({ ...prev, bodyText: event.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <button className="btn" type="button" onClick={handleSendEmail}>
+                    Send email
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {emails.length === 0 && <div className="text-sm text-slate-500">No emails logged yet.</div>}
+                {emails.map((email) => (
+                  <div key={email.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
+                      <div>
+                        <strong>{email.subject || "(no subject)"}</strong>
+                        <div style={{ color: "var(--text-muted)" }}>
+                          {email.direction === "outbound" ? "Sent to" : "From"} {email.direction === "outbound" ? email.to?.[0] : email.from?.[0]}
+                        </div>
+                      </div>
+                      <div style={{ color: "var(--text-muted)" }}>{formatDateTime(email.createdAt)}</div>
+                    </div>
+                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{email.bodyText}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "payments" && (
+            <div className="grid gap-4">
+              <div className="card" style={{ padding: 14, borderRadius: 14 }}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">Amount (USD)</label>
+                    <input
+                      className="input mt-2"
+                      type="number"
+                      min={0}
+                      value={paymentForm.amountUsd}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, amountUsd: event.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500">Description</label>
+                    <input
+                      className="input mt-2"
+                      value={paymentForm.description}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, description: event.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <button className="btn" type="button" onClick={handlePaymentLink}>
+                    Send payment link
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {payments.length === 0 && <div className="text-sm text-slate-500">No payment requests yet.</div>}
+                {payments.map((payment) => (
+                  <div key={payment.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <div>
+                        <strong>{formatUsd(payment.amountUsd)}</strong>
+                        <div style={{ color: "var(--text-muted)" }}>Status: {payment.status}</div>
+                      </div>
+                      <div style={{ color: "var(--text-muted)" }}>{formatDateTime(payment.createdAt)}</div>
+                    </div>
+                    {payment.checkoutUrl && (
+                      <div style={{ marginTop: 8 }}>
+                        <a className="btn ghost" href={payment.checkoutUrl} target="_blank" rel="noreferrer">
+                          Open checkout link
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </SalesDrawer>
       )}
     </div>

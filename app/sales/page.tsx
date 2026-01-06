@@ -1,15 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
+import { BarChart, Bar, LineChart, Line, Pie, PieChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatUsd } from "@/components/finance/financeUtils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const KPI_LABELS = [
   { key: "totalLeads", label: "Total Leads" },
+  { key: "qualified", label: "Qualified" },
   { key: "activeDeals", label: "Active Deals" },
-  { key: "pipelineValue", label: "Pipeline Value (USD)" },
-  { key: "closedWonMonth", label: "Closed Won (This Month)" },
-  { key: "conversionRate", label: "Conversion Rate %" },
+  { key: "closedWonCount", label: "Closed Won Count" },
+  { key: "closedWonRevenueMtd", label: "Closed Won Revenue (MTD)" },
+  { key: "followUpsDueToday", label: "Follow-Ups Due Today" },
+  { key: "conversionRate", label: "Conversion Rate" },
+  { key: "aov", label: "AOV" },
+  { key: "pipelineValue", label: "Pipeline Value" },
 ];
 
 type OverviewResponse = {
@@ -17,17 +22,35 @@ type OverviewResponse = {
   canCreate: boolean;
   kpis: {
     totalLeads: number;
+    qualified: number;
     activeDeals: number;
-    pipelineValue: number;
-    closedWonMonth: number;
+    closedWonCount: number;
+    closedWonRevenueMtd: number;
+    followUpsDueToday: number;
     conversionRate: number;
+    aov: number;
+    pipelineValue: number;
   };
-  pipelineStages: Array<{ stage: string; count: number; value: number }>;
-  topOwners: Array<{ ownerName: string; deals: number; value: number }>;
-  recentActivity: Array<{ id: string; title: string; description: string; createdAt: string | null }>;
+  charts: {
+    leadsByStage: Array<{ stage: string; count: number }>;
+    leadsByDisposition: Array<{ disposition: string; count: number }>;
+    closedWonRevenueByDay: Array<{ day: string; value: number }>;
+  };
+  targets: {
+    targetUsdMonthly: number;
+    monthToDateRevenueUsd: number;
+    remainingTargetUsd: number;
+    requiredPerDayUsd: number;
+  };
+  teamBenchmark: {
+    topPerformerRevenueMtd: number;
+    myRevenueMtd: number;
+  };
 };
 
 type ErrorState = { title: string; message: string };
+
+const DONUT_COLORS = ["#2563eb", "#60a5fa", "#22c55e", "#f97316", "#e11d48", "#14b8a6", "#a855f7"];
 
 export default function SalesOverviewPage() {
   const isDark = useIsDarkMode();
@@ -45,11 +68,11 @@ export default function SalesOverviewPage() {
         throw new Error(data?.error || "Unable to load sales overview.");
       }
       setOverview(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Sales overview error", err);
       setError({
         title: "Unable to load overview",
-        message: "Please refresh or try again later.",
+        message: err?.message || "Please refresh or try again later.",
       });
     } finally {
       setLoading(false);
@@ -64,7 +87,7 @@ export default function SalesOverviewPage() {
     if (!overview) return [];
     return KPI_LABELS.map((item) => {
       const raw = overview.kpis[item.key as keyof OverviewResponse["kpis"]] ?? 0;
-      if (item.key === "pipelineValue") {
+      if (item.key === "pipelineValue" || item.key === "closedWonRevenueMtd" || item.key === "aov") {
         return { label: item.label, value: formatUsd(raw as number) };
       }
       if (item.key === "conversionRate") {
@@ -74,9 +97,8 @@ export default function SalesOverviewPage() {
     });
   }, [overview]);
 
-  const pipelineStages = overview?.pipelineStages || [];
-  const topOwners = overview?.topOwners || [];
-  const recentActivity = overview?.recentActivity || [];
+  const target = overview?.targets || null;
+  const progressPct = target?.targetUsdMonthly ? (target.monthToDateRevenueUsd / target.targetUsdMonthly) * 100 : 0;
 
   return (
     <div className="w-full">
@@ -110,64 +132,103 @@ export default function SalesOverviewPage() {
         </button>
       </div>
 
-      <div className="kpis" style={{ marginTop: 18 }}>
+      <div className="grid gap-4" style={{ marginTop: 18, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         {kpiValues.map((kpi) => (
-          <KpiCard key={kpi.label} title={kpi.label} value={loading ? "—" : kpi.value} />
+          <div key={kpi.label} className="card" style={{ padding: 18, borderRadius: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{kpi.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{loading ? "—" : kpi.value}</div>
+          </div>
         ))}
       </div>
 
       <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Pipeline by Stage</div>
-          <div className="space-y-3">
-            {pipelineStages.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>No pipeline stages available.</div>}
-            {pipelineStages.map((stage) => (
-              <div key={stage.stage} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                <span>{stage.stage}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {stage.count} · {formatUsd(stage.value)}
-                </span>
-              </div>
-            ))}
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Stage</div>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={overview?.charts.leadsByStage || []} dataKey="count" nameKey="stage" innerRadius={60} outerRadius={90}>
+                  {(overview?.charts.leadsByStage || []).map((entry, index) => (
+                    <Cell key={`cell-${entry.stage}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => value} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Top Sales Owners</div>
-          <div className="space-y-3">
-            {topOwners.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>No owners available.</div>}
-            {topOwners.map((owner) => (
-              <div key={owner.ownerName} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                <span>{owner.ownerName || "Unassigned"}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {owner.deals} · {formatUsd(owner.value)}
-                </span>
-              </div>
-            ))}
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Disposition (30d)</div>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer>
+              <BarChart data={overview?.charts.leadsByDisposition || []}>
+                <XAxis dataKey="disposition" hide />
+                <YAxis />
+                <Tooltip formatter={(value: number) => value} />
+                <Bar dataKey="count" fill={isDark ? "#60a5fa" : "#2563eb"} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Recent Sales Activity</div>
-          <div className="space-y-3">
-            {recentActivity.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>No recent activity found.</div>}
-            {recentActivity.map((item) => (
-              <div key={item.id} style={{ display: "grid", gap: 4, fontSize: 13 }}>
-                <div style={{ fontWeight: 600 }}>{item.title}</div>
-                <div style={{ opacity: 0.75 }}>{item.description}</div>
-                <div style={{ fontSize: 12, opacity: 0.6 }}>{formatDateTime(item.createdAt)}</div>
-              </div>
-            ))}
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Closed Won Revenue (MTD)</div>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer>
+              <LineChart data={overview?.charts.closedWonRevenueByDay || []}>
+                <XAxis dataKey="day" hide />
+                <YAxis />
+                <Tooltip formatter={(value: number) => formatUsd(value)} />
+                <Line type="monotone" dataKey="value" stroke={isDark ? "#22c55e" : "#16a34a"} strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </section>
-    </div>
-  );
-}
 
-function KpiCard({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      {target && (
+        <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Target Cockpit</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Monthly target vs progress</div>
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <span>Target</span>
+                <strong>{formatUsd(target.targetUsdMonthly)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 6 }}>
+                <span>MTD Revenue</span>
+                <strong>{formatUsd(target.monthToDateRevenueUsd)}</strong>
+              </div>
+              <div style={{ height: 10, borderRadius: 999, background: "var(--chart-track)", marginTop: 12 }}>
+                <div
+                  style={{
+                    height: "100%",
+                    borderRadius: 999,
+                    width: `${Math.min(progressPct, 100)}%`,
+                    background: "var(--chart-fill)",
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 12, marginTop: 10, color: "var(--text-muted)" }}>
+                Remaining: {formatUsd(target.remainingTargetUsd)} · Required per day: {formatUsd(target.requiredPerDayUsd)}
+              </div>
+            </div>
+          </div>
+          <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+            <div style={{ fontWeight: 700, marginBottom: 12 }}>Team Benchmark</div>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <span>Top Performer (MTD)</span>
+                <strong>{formatUsd(overview?.teamBenchmark.topPerformerRevenueMtd || 0)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <span>My Revenue (MTD)</span>
+                <strong>{formatUsd(overview?.teamBenchmark.myRevenueMtd || 0)}</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

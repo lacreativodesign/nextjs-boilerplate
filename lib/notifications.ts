@@ -8,6 +8,7 @@ export type NotificationEntityType =
   | "client"
   | "invoice"
   | "payment"
+  | "email"
   | "change_request"
   | "hr"
   | "lead"
@@ -81,9 +82,13 @@ export async function createNotificationEvent({
   });
 }
 
-export async function getUserIdsByRoles(roles: string[]) {
+export async function getUserIdsByRoles(roles: string[], tenantId?: string | null) {
   if (!roles.length) return [];
-  const snap = await adminDb.collection("users").where("role", "in", roles).get();
+  let query: FirebaseFirestore.Query = adminDb.collection("users").where("role", "in", roles);
+  if (tenantId) {
+    query = query.where("tenantId", "==", tenantId);
+  }
+  const snap = await query.get();
   return snap.docs.map((doc) => doc.id);
 }
 

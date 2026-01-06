@@ -6,6 +6,7 @@ import {
   getWatcherUserIds,
   notifyUsers,
   normalizeStage,
+  parseNumber,
   parseString,
   requireSalesRead,
   nowIso,
@@ -36,12 +37,17 @@ export async function POST(req: Request) {
 
     const existing = snapshot.data() || {};
     const role = auth.user.role || "";
+    const tenantId = auth.user.tenantId || "";
     const canWrite = await requireSalesWrite();
     if (!canWrite.ok) {
       return NextResponse.json({ ok: false, error: canWrite.error }, { status: canWrite.status });
     }
 
-    const isOwner = existing.ownerId === auth.user.uid || existing.createdBy === auth.user.uid;
+    if (existing.tenantId && existing.tenantId !== tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    const isOwner = existing.ownerId === auth.user.uid;
     if (role === "sales" && !isOwner) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -53,16 +59,35 @@ export async function POST(req: Request) {
     const contactPhone = parseString(body.contactPhone, existing.contactPhone || existing.phone || "");
     const source = parseString(body.source, existing.source || "");
     const notes = parseString(body.notes, existing.notes || "");
+    const disposition = parseString(body.disposition, existing.disposition || "");
+    const expectedValueUsd = parseNumber(body.expectedValueUsd, Number(existing.expectedValueUsd || 0));
+    const packageName = parseString(body.packageName, existing.packageName || "");
+    const interestedServices = Array.isArray(body.interestedServices)
+      ? body.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      : Array.isArray(existing.interestedServices)
+      ? existing.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      : [];
+    const probability = parseNumber(body.probability, Number(existing.probability || 0));
+
+    const parseIso = (value: any, fallback?: any) => {
+      if (!value) return fallback ?? null;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return fallback ?? null;
+      return date.toISOString();
+    };
+    const lastContactedAt = parseIso(body.lastContactedAt, existing.lastContactedAt || null);
+    const nextFollowUpAt = parseIso(body.nextFollowUpAt, existing.nextFollowUpAt || null);
 
     let ownerId = existing.ownerId || null;
     let ownerName = existing.ownerName || "";
 
-    if (canWrite.ok && body.ownerId !== undefined && role === "sales_manager") {
+    if (canWrite.ok && body.ownerId !== undefined && (role === "sales_manager" || role === "admin" || role === "super_admin")) {
       const nextOwnerId = parseString(body.ownerId, "");
       ownerId = nextOwnerId || null;
       ownerName = ownerId ? await getUserNameById(ownerId) : "";
     }
 
+    const stageChanged = String(existing.stage || "") !== stage;
     const now = nowIso();
     const updates: Record<string, any> = {
       companyName,
@@ -72,6 +97,13 @@ export async function POST(req: Request) {
       source,
       notes,
       stage,
+      disposition,
+      expectedValueUsd,
+      packageName,
+      interestedServices,
+      probability,
+      lastContactedAt,
+      nextFollowUpAt,
       ownerId,
       ownerName,
       lastActivityAt: now,
@@ -100,8 +132,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const stageChanged = String(existing.stage || "") !== stage;
-
     await createSalesEvent({
       type: stageChanged ? "lead_stage_changed" : "lead_updated",
       title: stageChanged ? "Lead stage updated" : "Lead updated",
@@ -115,7 +145,7 @@ export async function POST(req: Request) {
       metadata: { stage, ownerId, ownerName },
     });
 
-    const watchers = await getWatcherUserIds();
+    const watchers = await getWatcherUserIds(tenantId);
     await notifyUsers({
       userIds: [ownerId, ...watchers],
       title: stageChanged ? "Lead stage moved" : "Lead updated",
