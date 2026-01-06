@@ -11,12 +11,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = auth.user.tenantId || "";
     const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("leads").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
       adminDb
         .collection("events")
-        .where("entityType", "in", ["lead", "deal", "follow_up"])
+        .where("entityType", "in", ["lead", "deal", "follow_up", "payment_request"])
         .limit(200)
         .get(),
     ]);

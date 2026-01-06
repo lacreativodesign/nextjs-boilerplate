@@ -132,7 +132,7 @@ export default function SalesOverviewPage() {
         </button>
       </div>
 
-      <div className="grid gap-4" style={{ marginTop: 18, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ marginTop: 18 }}>
         {kpiValues.map((kpi) => (
           <div key={kpi.label} className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{kpi.label}</div>
@@ -141,7 +141,7 @@ export default function SalesOverviewPage() {
         ))}
       </div>
 
-      <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3" style={{ marginTop: 24 }}>
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Stage</div>
           <div style={{ width: "100%", height: 220 }}>
@@ -186,7 +186,7 @@ export default function SalesOverviewPage() {
       </section>
 
       {target && (
-        <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        <section className="grid gap-6 md:grid-cols-2" style={{ marginTop: 24 }}>
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>Target Cockpit</div>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Monthly target vs progress</div>

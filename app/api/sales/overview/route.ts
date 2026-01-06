@@ -96,7 +96,7 @@ export async function GET() {
     }).length;
     const pipelineValue = scopedLeads
       .filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed"))
-      .reduce((sum: number, lead: any) => sum + Number(lead.expectedValueUsd || 0), 0);
+      .reduce((sum: number, lead: any) => sum + Number(lead.valueUsd ?? lead.expectedValueUsd ?? 0), 0);
     const conversionRate = totalLeads ? (closedWonCount / totalLeads) * 100 : 0;
     const aov = closedWonCount ? closedWonRevenueMtd / closedWonCount : 0;
 

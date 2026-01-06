@@ -10,6 +10,7 @@ type TeamMember = {
   email: string;
   leadsAssigned: number;
   dealsAssigned: number;
+  paymentRequests: number;
   closedWon: number;
   closedLost: number;
   revenueWon: number;
@@ -125,14 +126,15 @@ export default function SalesManagerTeamPage() {
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1120 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle}>Rep</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Leads</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Deals</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Closed Won</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Closed Lost</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Leads</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Deals</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Payment Requests</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Closed Won</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Closed Lost</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Revenue Won</th>
                 </tr>
               </thead>
@@ -158,10 +160,11 @@ export default function SalesManagerTeamPage() {
                         <div style={{ fontWeight: 700 }}>{row.name}</div>
                         <div style={{ fontSize: 12, opacity: 0.7 }}>{row.email}</div>
                       </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.leadsAssigned}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.dealsAssigned}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.closedWon}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.closedLost}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{row.leadsAssigned}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{row.dealsAssigned}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{row.paymentRequests}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{row.closedWon}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{row.closedLost}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{formatUsd(row.revenueWon)}</td>
                     </tr>
                   );

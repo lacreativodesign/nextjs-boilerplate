@@ -9,8 +9,8 @@ import {
   parseNumber,
   parseString,
   requireSalesRead,
-  nowIso,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -58,16 +58,16 @@ export async function POST(req: Request) {
     const contactEmail = parseString(body.contactEmail, existing.contactEmail || existing.email || "");
     const contactPhone = parseString(body.contactPhone, existing.contactPhone || existing.phone || "");
     const source = parseString(body.source, existing.source || "");
-    const notes = parseString(body.notes, existing.notes || "");
     const disposition = parseString(body.disposition, existing.disposition || "");
-    const expectedValueUsd = parseNumber(body.expectedValueUsd, Number(existing.expectedValueUsd || 0));
-    const packageName = parseString(body.packageName, existing.packageName || "");
-    const interestedServices = Array.isArray(body.interestedServices)
-      ? body.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+    const valueUsd = parseNumber(body.valueUsd, Number(existing.valueUsd ?? existing.expectedValueUsd ?? 0));
+    const packageLabel = parseString(body.packageLabel, existing.packageLabel || existing.packageName || "");
+    const services = Array.isArray(body.services)
+      ? body.services.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      : Array.isArray(existing.services)
+      ? existing.services.map((item: any) => parseString(item, "").trim()).filter(Boolean)
       : Array.isArray(existing.interestedServices)
       ? existing.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
       : [];
-    const probability = parseNumber(body.probability, Number(existing.probability || 0));
 
     const parseIso = (value: any, fallback?: any) => {
       if (!value) return fallback ?? null;
@@ -88,26 +88,23 @@ export async function POST(req: Request) {
     }
 
     const stageChanged = String(existing.stage || "") !== stage;
-    const now = nowIso();
     const updates: Record<string, any> = {
       companyName,
       contactName,
       contactEmail,
       contactPhone,
       source,
-      notes,
       stage,
       disposition,
-      expectedValueUsd,
-      packageName,
-      interestedServices,
-      probability,
+      valueUsd,
+      packageLabel,
+      services,
       lastContactedAt,
       nextFollowUpAt,
       ownerId,
       ownerName,
-      lastActivityAt: now,
-      updatedAt: now,
+      lastActivityAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
     };
 
@@ -122,7 +119,7 @@ export async function POST(req: Request) {
             doc.ref,
             {
               stage,
-              updatedAt: now,
+              updatedAt: serverTimestamp(),
               updatedBy: auth.user.uid,
             },
             { merge: true }

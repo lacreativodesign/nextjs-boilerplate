@@ -1,7 +1,15 @@
+import admin from "firebase-admin";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { parseNumber, parseString, requireSalesWrite, serverTimestamp, userLabel } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import {
+  createSalesEvent,
+  parseNumber,
+  parseString,
+  requireSalesWrite,
+  serverTimestamp,
+  userLabel,
+} from "../../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,14 +26,14 @@ async function createStripeCheckoutSession({
   cancelUrl,
   amountUsd,
   customerEmail,
-  description,
+  packageLabel,
 }: {
   secretKey: string;
   successUrl: string;
   cancelUrl: string;
   amountUsd: number;
   customerEmail?: string | null;
-  description: string;
+  packageLabel: string;
 }) {
   const params = new URLSearchParams();
   params.append("mode", "payment");
@@ -37,7 +45,7 @@ async function createStripeCheckoutSession({
   params.append("line_items[0][quantity]", "1");
   params.append("line_items[0][price_data][currency]", "usd");
   params.append("line_items[0][price_data][unit_amount]", String(Math.round(amountUsd * 100)));
-  params.append("line_items[0][price_data][product_data][name]", description);
+  params.append("line_items[0][price_data][product_data][name]", packageLabel);
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
@@ -66,7 +74,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const leadId = parseString(body.leadId, "");
     const amountUsd = parseNumber(body.amountUsd, 0);
-    const description = parseString(body.description, "").trim();
+    const packageLabel = parseString(body.packageLabel, "").trim();
+    const services = Array.isArray(body.services)
+      ? body.services.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      : [];
 
     if (!leadId) {
       return NextResponse.json({ ok: false, error: "Lead is required." }, { status: 400 });
@@ -90,15 +101,17 @@ export async function POST(req: Request) {
 
     const stripeConfig = await getStripeConfig(tenantId);
     const stripeEnabled = Boolean(stripeConfig?.enabled && stripeConfig?.secretKey);
-    const origin = new URL(req.url).origin;
-    const successUrl = `${origin}/sales/leads?payment=success`;
-    const cancelUrl = `${origin}/sales/leads?payment=cancel`;
+    let status: "sent" | "draft" = stripeEnabled ? "sent" : "draft";
 
     let stripeSessionId: string | null = null;
-    let checkoutUrl: string | null = null;
-    let status: "sent" | "draft" = stripeEnabled ? "sent" : "draft";
+    let stripeCheckoutUrl: string | null = null;
     let notice: string | null = null;
+
     if (stripeEnabled) {
+      const origin = new URL(req.url).origin;
+      const successUrl = `${origin}/sales/leads?payment=success`;
+      const cancelUrl = `${origin}/sales/leads?payment=cancel`;
+      const label = packageLabel || `Payment for ${lead.companyName || lead.contactName || "Lead"}`;
       try {
         const session = await createStripeCheckoutSession({
           secretKey: String(stripeConfig.secretKey),
@@ -106,10 +119,10 @@ export async function POST(req: Request) {
           cancelUrl,
           amountUsd,
           customerEmail: lead.contactEmail || lead.email || null,
-          description: description || `Payment for ${lead.companyName || lead.contactName || "Lead"}`,
+          packageLabel: label,
         });
         stripeSessionId = session.id;
-        checkoutUrl = session.url || null;
+        stripeCheckoutUrl = session.url || null;
       } catch (err) {
         console.error("Stripe session error:", err);
         status = "draft";
@@ -123,41 +136,81 @@ export async function POST(req: Request) {
       tenantId,
       leadId,
       createdById: auth.user.uid,
-      packageLabel: description,
-      services: [],
+      packageLabel,
+      services,
       amountUsd,
       currency: "USD",
       status,
       provider: "stripe",
+      stripeCheckoutUrl,
       stripeSessionId,
-      stripeCheckoutUrl: checkoutUrl,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      paidAt: null,
     });
 
+    await adminDb
+      .collection("leads")
+      .doc(leadId)
+      .set(
+        {
+          paymentRequestsCount: admin.firestore.FieldValue.increment(1),
+          lastActivityAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
     const salesName = userLabel(auth.user);
-    const [adminIds, financeIds] = await Promise.all([
+    await createSalesEvent({
+      type: stripeEnabled ? "payment_request_sent" : "payment_request_created",
+      title: stripeEnabled ? "Payment request sent" : "Payment request created",
+      description: `${salesName} created a payment request for $${amountUsd.toLocaleString()}.`,
+      entityType: "payment",
+      entityId: requestRef.id,
+      createdByUid: auth.user.uid,
+      createdByName: salesName,
+      metadata: { leadId },
+    });
+
+    const [managerIds, adminIds, financeIds] = await Promise.all([
+      getUserIdsByRoles(["sales_manager"], tenantId),
       getUserIdsByRoles(["admin", "super_admin"], tenantId),
       getUserIdsByRoles(["finance"], tenantId),
     ]);
+    const ownerId = String(lead.ownerId || "");
+    const notifyTargets = Array.from(new Set([ownerId, ...managerIds, ...adminIds, ...financeIds].filter(Boolean)));
+
     await Promise.all(
-      [...adminIds, ...financeIds].map((uid) =>
+      notifyTargets.map((uid) =>
         createNotification({
           toUserId: uid,
-          title: status === "sent" ? "Payment link sent" : "Payment request created",
-          body: `Payment request created by ${salesName} — $${amountUsd.toLocaleString()}`,
+          title: stripeEnabled ? "Payment request sent" : "Payment request created",
+          body: `${salesName} created a payment request for $${amountUsd.toLocaleString()}.`,
           type: "info",
-          entityType: "invoice",
+          entityType: "payment",
           entityId: requestRef.id,
-          deepLink: adminIds.includes(uid) ? "/admin/finance/invoices" : "/finance/invoices",
+          deepLink: managerIds.includes(uid)
+            ? `/sales-manager/leads?open=${leadId}`
+            : adminIds.includes(uid)
+            ? `/admin/finance/invoices?open=${requestRef.id}`
+            : financeIds.includes(uid)
+            ? `/finance/invoices?open=${requestRef.id}`
+            : `/sales/leads?open=${leadId}`,
           createdBy: { uid: auth.user.uid, name: salesName },
         })
       )
     );
 
-    return NextResponse.json({ ok: true, id: requestRef.id, checkoutUrl, notice });
+    return NextResponse.json({
+      ok: true,
+      id: requestRef.id,
+      status,
+      stripeCheckoutUrl,
+      notice: notice || (stripeEnabled ? null : "Stripe not configured. Payment request saved as draft."),
+    });
   } catch (err) {
-    console.error("sales payment link error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to create payment link." }, { status: 500 });
+    console.error("sales payment request create error:", err);
+    return NextResponse.json({ ok: false, error: "Unable to create payment request." }, { status: 500 });
   }
 }

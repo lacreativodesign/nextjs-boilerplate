@@ -11,10 +11,15 @@ type LeadDoc = {
   contactEmail?: string;
   contactPhone?: string;
   disposition?: string;
+  valueUsd?: number;
+  packageLabel?: string;
+  services?: string[];
+  notesCount?: number;
+  emailsCount?: number;
+  paymentRequestsCount?: number;
   expectedValueUsd?: number;
   packageName?: string;
   interestedServices?: string[];
-  probability?: number;
   lastContactedAt?: any;
   nextFollowUpAt?: any;
   name?: string;
@@ -79,14 +84,16 @@ export async function GET() {
       contactEmail: String(data.contactEmail || data.email || ""),
       contactPhone: String(data.contactPhone || data.phone || ""),
       disposition: String(data.disposition || ""),
-      expectedValueUsd: Number(data.expectedValueUsd || 0),
-      packageName: String(data.packageName || ""),
-      interestedServices: Array.isArray(data.interestedServices) ? data.interestedServices.map(String) : [],
-      probability: Number(data.probability || 0),
+      valueUsd: Number(data.valueUsd ?? data.expectedValueUsd ?? 0),
+      packageLabel: String(data.packageLabel || data.packageName || ""),
+      services: Array.isArray(data.services)
+        ? data.services.map(String)
+        : Array.isArray(data.interestedServices)
+        ? data.interestedServices.map(String)
+        : [],
       lastContactedAt: toISO(data.lastContactedAt),
       nextFollowUpAt: toISO(data.nextFollowUpAt),
       source: String(data.source || ""),
-      notes: String(data.notes || ""),
       stage: normalizeStage(data.stage || "New Lead"),
       ownerId: data.ownerId || null,
       ownerName: data.ownerName || null,
@@ -95,6 +102,9 @@ export async function GET() {
       lastActivityAt: toISO(data.lastActivityAt),
       createdAt: toISO(data.createdAt),
       updatedAt: toISO(data.updatedAt),
+      notesCount: Number(data.notesCount || 0),
+      emailsCount: Number(data.emailsCount || 0),
+      paymentRequestsCount: Number(data.paymentRequestsCount || 0),
       isDeleted: Boolean(data.isDeleted),
     }));
 

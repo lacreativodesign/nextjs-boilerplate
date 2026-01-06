@@ -8,10 +8,12 @@ import { useIsDarkMode } from "@/lib/useIsDarkMode";
 type EmailRecord = {
   id: string;
   subject: string;
-  from: string[];
+  from: string;
   to: string[];
   bodyText: string;
-  direction: string;
+  bodyHtml?: string | null;
+  signatureHtml?: string | null;
+  direction: "outbound" | "inbound";
   createdAt: string | null;
   status: string;
 };
@@ -32,7 +34,7 @@ export default function SalesInboxPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/sales/email/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/sales/emails/list", { cache: "no-store", credentials: "include" });
       const data = (await res.json()) as InboxResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load inbox.");
@@ -54,7 +56,7 @@ export default function SalesInboxPage() {
     const q = query.trim().toLowerCase();
     if (!q) return emails;
     return emails.filter((email) => {
-      const hay = [email.subject, email.from?.[0], email.to?.[0], email.bodyText].filter(Boolean).join(" ").toLowerCase();
+      const hay = [email.subject, email.from, email.to?.[0], email.bodyText].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
   }, [emails, query]);
@@ -160,7 +162,7 @@ export default function SalesInboxPage() {
                     <tr key={email.id}>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{email.subject || "(no subject)"}</td>
                       <td style={cellStyle}>
-                        {email.direction === "outbound" ? email.to?.[0] : email.from?.[0]}
+                        {email.direction === "outbound" ? email.to?.[0] : email.from}
                       </td>
                       <td style={cellStyle}>{email.direction}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(email.createdAt)}</td>
@@ -182,7 +184,7 @@ export default function SalesInboxPage() {
         <SalesDrawer title={selected.subject || "Email"} subtitle={selected.direction} onClose={() => setSelected(null)}>
           <div className="grid gap-2 text-sm">
             <div>
-              <strong>From:</strong> {selected.from?.[0] || "-"}
+              <strong>From:</strong> {selected.from || "-"}
             </div>
             <div>
               <strong>To:</strong> {selected.to?.[0] || "-"}
@@ -191,7 +193,14 @@ export default function SalesInboxPage() {
               <strong>Received:</strong> {formatDateTime(selected.createdAt)}
             </div>
           </div>
-          <div style={{ marginTop: 16, whiteSpace: "pre-wrap" }}>{selected.bodyText}</div>
+          {selected.bodyHtml ? (
+            <div style={{ marginTop: 16 }} dangerouslySetInnerHTML={{ __html: selected.bodyHtml }} />
+          ) : (
+            <div style={{ marginTop: 16, whiteSpace: "pre-wrap" }}>{selected.bodyText}</div>
+          )}
+          {selected.signatureHtml && (
+            <div style={{ marginTop: 16, color: "var(--text-muted)" }} dangerouslySetInnerHTML={{ __html: selected.signatureHtml }} />
+          )}
         </SalesDrawer>
       )}
     </div>

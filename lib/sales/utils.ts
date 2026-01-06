@@ -11,12 +11,14 @@ export const LEAD_DISPOSITIONS = [
   "No Contact",
   "Not Answering",
   "Voicemail Left",
-  "Call Back Scheduled",
+  "Follow-up Scheduled",
   "Not Interested",
-  "Wrong Number",
-  "Bad Timing",
-  "Email Sent",
-  "Follow-Up Needed",
+  "Interested",
+  "Qualified",
+  "Proposal Sent",
+  "Negotiation",
+  "Won",
+  "Lost",
 ] as const;
 export const LEAD_SOURCES = ["Website", "Manual", "Referral", "Other"] as const;
 export const PIPELINE_STAGES = [...LEAD_STAGES] as const;

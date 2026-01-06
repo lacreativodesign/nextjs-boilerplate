@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { toISO } from "../../sales/_utils";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,16 +43,17 @@ export async function POST(req: Request) {
 
     const body = await req.text();
     const configs = await loadStripeConfigs();
-    let matchedEvent: Stripe.Event | null = null;
+    let matchedEvent: any | null = null;
     let matchedConfig: StripeConfig | null = null;
 
     for (const config of configs) {
       try {
-        const stripe = new Stripe(config.secretKey, { apiVersion: "2024-06-20" });
-        const event = stripe.webhooks.constructEvent(body, signature, config.webhookSecret);
-        matchedEvent = event;
-        matchedConfig = config;
-        break;
+        const verified = verifyStripeEvent(body, signature, config.webhookSecret);
+        if (verified) {
+          matchedEvent = verified;
+          matchedConfig = config;
+          break;
+        }
       } catch (err) {
         continue;
       }
@@ -66,11 +67,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, received: true });
     }
 
-    const eventObject = matchedEvent.data.object as Stripe.Checkout.Session | Stripe.PaymentIntent;
+    const eventObject = matchedEvent?.data?.object || {};
     const sessionId =
-      "id" in eventObject && matchedEvent.type === "checkout.session.completed" ? eventObject.id : null;
+      matchedEvent.type === "checkout.session.completed" && typeof eventObject.id === "string" ? eventObject.id : null;
     const paymentIntentId =
-      "id" in eventObject && matchedEvent.type === "payment_intent.succeeded" ? eventObject.id : null;
+      matchedEvent.type === "payment_intent.succeeded" && typeof eventObject.id === "string" ? eventObject.id : null;
 
     if (!sessionId && !paymentIntentId) {
       return NextResponse.json({ ok: true, received: true });
@@ -79,12 +80,16 @@ export async function POST(req: Request) {
     const requestSnap = sessionId
       ? await adminDb
           .collection("paymentRequests")
-          .where("stripeCheckoutSessionId", "==", sessionId)
+          .where("stripeSessionId", "==", sessionId)
           .limit(1)
           .get()
       : null;
+    const legacySnap =
+      sessionId && requestSnap?.empty
+        ? await adminDb.collection("paymentRequests").where("stripeCheckoutSessionId", "==", sessionId).limit(1).get()
+        : null;
 
-    const requestDoc = requestSnap?.docs?.[0];
+    const requestDoc = requestSnap?.docs?.[0] || legacySnap?.docs?.[0];
     if (!requestDoc) {
       return NextResponse.json({ ok: true, received: true });
     }
@@ -173,5 +178,27 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("stripe webhook error:", err);
     return NextResponse.json({ ok: false, error: "Webhook error." }, { status: 500 });
+  }
+}
+
+function verifyStripeEvent(payload: string, signatureHeader: string, secret: string) {
+  const elements = signatureHeader.split(",").map((part) => part.trim());
+  const timestampPart = elements.find((part) => part.startsWith("t="));
+  const signatureParts = elements.filter((part) => part.startsWith("v1="));
+  if (!timestampPart || signatureParts.length === 0) return null;
+
+  const timestamp = timestampPart.split("=")[1];
+  if (!timestamp) return null;
+
+  const signedPayload = `${timestamp}.${payload}`;
+  const expected = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
+  const signatures = signatureParts.map((part) => part.split("=")[1]).filter(Boolean);
+
+  if (!signatures.includes(expected)) return null;
+
+  try {
+    return JSON.parse(payload);
+  } catch (err) {
+    return null;
   }
 }

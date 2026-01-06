@@ -1,15 +1,65 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 
 export default function SalesProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [signatureHtml, setSignatureHtml] = useState("");
+  const [signatureLoading, setSignatureLoading] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadSignature() {
+      setSignatureLoading(true);
+      try {
+        const res = await fetch("/api/users/profile", { cache: "no-store", credentials: "include" });
+        const json = await res.json();
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || "Unable to load signature.");
+        }
+        if (active) {
+          setSignatureHtml(String(json?.profile?.emailSignatureHtml || ""));
+        }
+      } catch (err: any) {
+        if (active) setError(err?.message || "Unable to load signature.");
+      } finally {
+        if (active) setSignatureLoading(false);
+      }
+    }
+
+    loadSignature();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSignatureSave = async (e: FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/users/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ emailSignatureHtml: signatureHtml }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Unable to save signature.");
+      }
+      setMessage("Email signature saved.");
+    } catch (err: any) {
+      setError(err?.message || "Unable to save signature.");
+    }
+  };
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,6 +247,43 @@ export default function SalesProfilePage() {
             className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
           >
             Update Password
+          </button>
+        </form>
+      </section>
+
+      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Email Signature</h2>
+        <p className="text-sm text-gray-500 dark:text-neutral-400">
+          Add a signature that will be appended to outbound emails from Sales.
+        </p>
+
+        <form onSubmit={handleSignatureSave} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Signature (HTML or plain text)</label>
+            <textarea
+              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              rows={4}
+              value={signatureHtml}
+              onChange={(e) => setSignatureHtml(e.target.value)}
+              placeholder="Thanks,&#10;Jane Doe&#10;Sales Manager"
+              disabled={signatureLoading}
+            />
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Preview</div>
+            <div
+              className="mt-2 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700 p-3 text-sm"
+              dangerouslySetInnerHTML={{
+                __html: signatureHtml ? signatureHtml.replace(/\n/g, "<br/>") : "<span>No signature yet.</span>",
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+            disabled={signatureLoading}
+          >
+            {signatureLoading ? "Saving..." : "Save Signature"}
           </button>
         </form>
       </section>

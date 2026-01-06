@@ -17,13 +17,11 @@ type LeadRecord = {
   contactEmail: string;
   contactPhone: string;
   source: string;
-  notes: string;
   stage: string;
   disposition: string;
-  expectedValueUsd: number;
-  packageName: string;
-  interestedServices: string[];
-  probability: number;
+  valueUsd: number;
+  packageLabel: string;
+  services: string[];
   lastContactedAt?: string | null;
   nextFollowUpAt?: string | null;
   ownerId?: string | null;
@@ -44,7 +42,8 @@ type SortKey =
   | "source"
   | "stage"
   | "disposition"
-  | "expectedValueUsd"
+  | "valueUsd"
+  | "packageLabel"
   | "nextFollowUpAt"
   | "createdAt";
 
@@ -57,13 +56,11 @@ type LeadForm = {
   contactEmail: string;
   contactPhone: string;
   source: string;
-  notes: string;
   stage: string;
   disposition: string;
-  expectedValueUsd: number;
-  packageName: string;
-  interestedServices: string;
-  probability: number;
+  valueUsd: number;
+  packageLabel: string;
+  services: string;
   lastContactedAt: string;
   nextFollowUpAt: string;
 };
@@ -74,13 +71,11 @@ const defaultForm: LeadForm = {
   contactEmail: "",
   contactPhone: "",
   source: LEAD_SOURCES[0],
-  notes: "",
   stage: LEAD_STAGES[0],
   disposition: "",
-  expectedValueUsd: 0,
-  packageName: "",
-  interestedServices: "",
-  probability: 0,
+  valueUsd: 0,
+  packageLabel: "",
+  services: "",
   lastContactedAt: "",
   nextFollowUpAt: "",
 };
@@ -89,29 +84,33 @@ type NoteRecord = {
   id: string;
   body: string;
   authorName: string;
-  authorRole: string;
   createdAt: string | null;
 };
 
 type EmailRecord = {
   id: string;
   subject: string;
-  from: string[];
+  from: string;
   to: string[];
   bodyText: string;
   bodyHtml?: string | null;
-  direction: string;
+  signatureHtml?: string | null;
+  direction: "outbound" | "inbound";
   createdAt: string | null;
   status: string;
 };
 
 type PaymentRequest = {
   id: string;
+  packageLabel: string;
+  services: string[];
   amountUsd: number;
   currency: string;
   status: string;
-  checkoutUrl?: string | null;
+  provider: string;
+  stripeCheckoutUrl?: string | null;
   createdAt: string | null;
+  updatedAt: string | null;
 };
 
 export default function SalesLeadsPage() {
@@ -136,7 +135,8 @@ export default function SalesLeadsPage() {
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   const [emailForm, setEmailForm] = useState({ to: "", subject: "", bodyText: "" });
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
-  const [paymentForm, setPaymentForm] = useState({ amountUsd: "", description: "" });
+  const [paymentForm, setPaymentForm] = useState({ amountUsd: "", packageLabel: "", services: "" });
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -189,6 +189,8 @@ export default function SalesLeadsPage() {
           lead.source,
           lead.stage,
           lead.disposition,
+          lead.packageLabel,
+          (lead.services || []).join(", "),
         ]
           .filter(Boolean)
           .join(" ")
@@ -270,6 +272,8 @@ export default function SalesLeadsPage() {
     setActiveTab("details");
     setForm(defaultForm);
     setEmailForm({ to: "", subject: "", bodyText: "" });
+    setPaymentForm({ amountUsd: "", packageLabel: "", services: "" });
+    setPaymentNotice(null);
     setDrawerOpen(true);
   };
 
@@ -283,13 +287,11 @@ export default function SalesLeadsPage() {
       contactEmail: lead.contactEmail,
       contactPhone: lead.contactPhone,
       source: lead.source || LEAD_SOURCES[0],
-      notes: lead.notes || "",
       stage: lead.stage,
       disposition: lead.disposition || "",
-      expectedValueUsd: lead.expectedValueUsd || 0,
-      packageName: lead.packageName || "",
-      interestedServices: (lead.interestedServices || []).join(", "),
-      probability: lead.probability || 0,
+      valueUsd: lead.valueUsd || 0,
+      packageLabel: lead.packageLabel || "",
+      services: (lead.services || []).join(", "),
       lastContactedAt: lead.lastContactedAt ? lead.lastContactedAt.slice(0, 10) : "",
       nextFollowUpAt: lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : "",
     });
@@ -298,6 +300,8 @@ export default function SalesLeadsPage() {
     loadEmails(lead.id);
     loadPayments(lead.id);
     setEmailForm((prev) => ({ ...prev, to: lead.contactEmail || "" }));
+    setPaymentForm({ amountUsd: "", packageLabel: lead.packageLabel || "", services: (lead.services || []).join(", ") });
+    setPaymentNotice(null);
   };
 
   const handleSave = async () => {
@@ -306,9 +310,8 @@ export default function SalesLeadsPage() {
       const endpoint = drawerMode === "create" ? "/api/sales/leads/create" : "/api/sales/leads/update";
       const payload = {
         ...form,
-        expectedValueUsd: Number(form.expectedValueUsd || 0),
-        probability: Number(form.probability || 0),
-        interestedServices: form.interestedServices
+        valueUsd: Number(form.valueUsd || 0),
+        services: form.services
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
@@ -338,7 +341,7 @@ export default function SalesLeadsPage() {
   const loadNotes = useCallback(async (leadId: string) => {
     if (!leadId) return;
     try {
-      const res = await fetch(`/api/sales/lead-notes/list?leadId=${encodeURIComponent(leadId)}`, {
+      const res = await fetch(`/api/sales/leads/notes/list?leadId=${encodeURIComponent(leadId)}`, {
         cache: "no-store",
         credentials: "include",
       });
@@ -353,8 +356,16 @@ export default function SalesLeadsPage() {
 
   const handleAddNote = async () => {
     if (!form.id || !noteBody.trim()) return;
+    const optimisticId = `note-${Date.now()}`;
+    const optimisticNote: NoteRecord = {
+      id: optimisticId,
+      body: noteBody.trim(),
+      authorName: "You",
+      createdAt: new Date().toISOString(),
+    };
+    setNotes((prev) => [optimisticNote, ...prev]);
     try {
-      const res = await fetch("/api/sales/lead-notes/create", {
+      const res = await fetch("/api/sales/leads/notes/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -368,13 +379,14 @@ export default function SalesLeadsPage() {
       await loadNotes(form.id);
     } catch (err) {
       console.error("Note save error", err);
+      setNotes((prev) => prev.filter((note) => note.id !== optimisticId));
     }
   };
 
   const loadEmails = useCallback(async (leadId: string) => {
     if (!leadId) return;
     try {
-      const res = await fetch(`/api/sales/email/list?leadId=${encodeURIComponent(leadId)}`, {
+      const res = await fetch(`/api/sales/emails/list?leadId=${encodeURIComponent(leadId)}`, {
         cache: "no-store",
         credentials: "include",
       });
@@ -389,8 +401,20 @@ export default function SalesLeadsPage() {
 
   const handleSendEmail = async () => {
     if (!form.id) return;
+    const optimisticId = `email-${Date.now()}`;
+    const optimisticEmail: EmailRecord = {
+      id: optimisticId,
+      subject: emailForm.subject,
+      from: "Me",
+      to: emailForm.to ? [emailForm.to] : [],
+      bodyText: emailForm.bodyText,
+      direction: "outbound",
+      createdAt: new Date().toISOString(),
+      status: "queued",
+    };
+    setEmails((prev) => [optimisticEmail, ...prev]);
     try {
-      const res = await fetch("/api/sales/email/send", {
+      const res = await fetch("/api/sales/emails/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -409,13 +433,14 @@ export default function SalesLeadsPage() {
       await loadEmails(form.id);
     } catch (err) {
       console.error("Email send error", err);
+      setEmails((prev) => prev.filter((email) => email.id !== optimisticId));
     }
   };
 
   const loadPayments = useCallback(async (leadId: string) => {
     if (!leadId) return;
     try {
-      const res = await fetch(`/api/sales/payments/list?leadId=${encodeURIComponent(leadId)}`, {
+      const res = await fetch(`/api/sales/payment-requests/list?leadId=${encodeURIComponent(leadId)}`, {
         cache: "no-store",
         credentials: "include",
       });
@@ -431,21 +456,29 @@ export default function SalesLeadsPage() {
   const handlePaymentLink = async () => {
     if (!form.id) return;
     try {
-      const res = await fetch("/api/sales/payments/create-link", {
+      setPaymentNotice(null);
+      const res = await fetch("/api/sales/payment-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           leadId: form.id,
           amountUsd: Number(paymentForm.amountUsd || 0),
-          description: paymentForm.description,
+          packageLabel: paymentForm.packageLabel,
+          services: paymentForm.services
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to create payment link.");
       }
-      setPaymentForm({ amountUsd: "", description: "" });
+      if (data?.notice) {
+        setPaymentNotice(String(data.notice));
+      }
+      setPaymentForm({ amountUsd: "", packageLabel: paymentForm.packageLabel, services: paymentForm.services });
       await loadPayments(form.id);
     } catch (err) {
       console.error("Payment link error", err);
@@ -558,8 +591,11 @@ export default function SalesLeadsPage() {
                   <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("disposition")}>
                     {headerLabel("Disposition", sortBadge("disposition"))}
                   </th>
-                  <th style={{ ...headerCellStyle, textAlign: "right" }} onClick={() => toggleSort("expectedValueUsd")}>
-                    {headerLabel("Expected Value", sortBadge("expectedValueUsd"))}
+                  <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("packageLabel")}>
+                    {headerLabel("Package", sortBadge("packageLabel"))}
+                  </th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }} onClick={() => toggleSort("valueUsd")}>
+                    {headerLabel("Value (USD)", sortBadge("valueUsd"))}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("nextFollowUpAt")}>
                     {headerLabel("Next Follow-Up", sortBadge("nextFollowUpAt"))}
@@ -573,13 +609,13 @@ export default function SalesLeadsPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={12} style={{ padding: 24, textAlign: "center" }}>
                       Loading leads...
                     </td>
                   </tr>
                 ) : sortedLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={11} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={12} style={{ padding: 24, textAlign: "center" }}>
                       No leads found.
                     </td>
                   </tr>
@@ -593,7 +629,8 @@ export default function SalesLeadsPage() {
                       <td style={cellStyle}>{lead.source || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{lead.stage}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{lead.disposition || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{formatUsd(lead.expectedValueUsd || 0)}</td>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>{lead.packageLabel || "-"}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{formatUsd(lead.valueUsd || 0)}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(lead.nextFollowUpAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(lead.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -712,41 +749,30 @@ export default function SalesLeadsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Expected Value (USD)</label>
+                <label className="text-xs font-semibold text-slate-500">Value (USD)</label>
                 <input
                   className="input mt-2"
                   type="number"
                   min={0}
-                  value={form.expectedValueUsd}
-                  onChange={(event) => setForm((prev) => ({ ...prev, expectedValueUsd: Number(event.target.value) }))}
+                  value={form.valueUsd}
+                  onChange={(event) => setForm((prev) => ({ ...prev, valueUsd: Number(event.target.value) }))}
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Package</label>
+                <label className="text-xs font-semibold text-slate-500">Package Label</label>
                 <input
                   className="input mt-2"
-                  value={form.packageName}
-                  onChange={(event) => setForm((prev) => ({ ...prev, packageName: event.target.value }))}
+                  value={form.packageLabel}
+                  onChange={(event) => setForm((prev) => ({ ...prev, packageLabel: event.target.value }))}
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Interested Services</label>
+                <label className="text-xs font-semibold text-slate-500">Services</label>
                 <input
                   className="input mt-2"
-                  value={form.interestedServices}
-                  onChange={(event) => setForm((prev) => ({ ...prev, interestedServices: event.target.value }))}
+                  value={form.services}
+                  onChange={(event) => setForm((prev) => ({ ...prev, services: event.target.value }))}
                   placeholder="Design, Branding, SEO"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500">Probability (0-100)</label>
-                <input
-                  className="input mt-2"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={form.probability}
-                  onChange={(event) => setForm((prev) => ({ ...prev, probability: Number(event.target.value) }))}
                 />
               </div>
               <div>
@@ -765,15 +791,6 @@ export default function SalesLeadsPage() {
                   type="date"
                   value={form.nextFollowUpAt}
                   onChange={(event) => setForm((prev) => ({ ...prev, nextFollowUpAt: event.target.value }))}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-xs font-semibold text-slate-500">Notes</label>
-                <textarea
-                  className="input mt-2"
-                  rows={4}
-                  value={form.notes}
-                  onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                 />
               </div>
             </div>
@@ -800,7 +817,7 @@ export default function SalesLeadsPage() {
                 {notes.map((note) => (
                   <div key={note.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {note.authorName || "Sales"} · {note.authorRole || ""} · {formatDateTime(note.createdAt)}
+                      {note.authorName || "Sales"} · {formatDateTime(note.createdAt)}
                     </div>
                     <div style={{ marginTop: 6 }}>{note.body}</div>
                   </div>
@@ -853,12 +870,21 @@ export default function SalesLeadsPage() {
                       <div>
                         <strong>{email.subject || "(no subject)"}</strong>
                         <div style={{ color: "var(--text-muted)" }}>
-                          {email.direction === "outbound" ? "Sent to" : "From"} {email.direction === "outbound" ? email.to?.[0] : email.from?.[0]}
+                          {email.direction === "outbound" ? "Sent to" : "From"} {email.direction === "outbound" ? email.to?.[0] : email.from || "-"}
                         </div>
                       </div>
-                      <div style={{ color: "var(--text-muted)" }}>{formatDateTime(email.createdAt)}</div>
+                      <div style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <div>{formatDateTime(email.createdAt)}</div>
+                        <div>Status: {email.status}</div>
+                      </div>
                     </div>
                     <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{email.bodyText}</div>
+                    {email.signatureHtml && (
+                      <div
+                        style={{ marginTop: 12, color: "var(--text-muted)" }}
+                        dangerouslySetInnerHTML={{ __html: email.signatureHtml }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -880,19 +906,29 @@ export default function SalesLeadsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500">Description</label>
+                    <label className="text-xs font-semibold text-slate-500">Package Label</label>
                     <input
                       className="input mt-2"
-                      value={paymentForm.description}
-                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, description: event.target.value }))}
+                      value={paymentForm.packageLabel}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, packageLabel: event.target.value }))}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-500">Services</label>
+                    <input
+                      className="input mt-2"
+                      value={paymentForm.services}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, services: event.target.value }))}
+                      placeholder="Design, Development, SEO"
                     />
                   </div>
                 </div>
                 <div className="mt-3">
                   <button className="btn" type="button" onClick={handlePaymentLink}>
-                    Send payment link
+                    Create payment link
                   </button>
                 </div>
+                {paymentNotice && <div className="mt-3 text-xs text-amber-600">{paymentNotice}</div>}
               </div>
               <div className="grid gap-3">
                 {payments.length === 0 && <div className="text-sm text-slate-500">No payment requests yet.</div>}
@@ -901,13 +937,20 @@ export default function SalesLeadsPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                       <div>
                         <strong>{formatUsd(payment.amountUsd)}</strong>
-                        <div style={{ color: "var(--text-muted)" }}>Status: {payment.status}</div>
+                        <div style={{ color: "var(--text-muted)" }}>
+                          {payment.packageLabel ? `${payment.packageLabel} · ` : ""}Status: {payment.status}
+                        </div>
                       </div>
                       <div style={{ color: "var(--text-muted)" }}>{formatDateTime(payment.createdAt)}</div>
                     </div>
-                    {payment.checkoutUrl && (
+                    {payment.services?.length ? (
+                      <div style={{ marginTop: 6, color: "var(--text-muted)", fontSize: 12 }}>
+                        Services: {payment.services.join(", ")}
+                      </div>
+                    ) : null}
+                    {payment.stripeCheckoutUrl && (
                       <div style={{ marginTop: 8 }}>
-                        <a className="btn ghost" href={payment.checkoutUrl} target="_blank" rel="noreferrer">
+                        <a className="btn ghost" href={payment.stripeCheckoutUrl} target="_blank" rel="noreferrer">
                           Open checkout link
                         </a>
                       </div>

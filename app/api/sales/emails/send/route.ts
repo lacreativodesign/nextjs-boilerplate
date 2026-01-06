@@ -1,3 +1,4 @@
+import admin from "firebase-admin";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
@@ -30,10 +31,10 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const leadId = parseString(body.leadId, "");
-    const to = parseString(body.to, "");
-    const subject = parseString(body.subject, "");
-    const bodyText = parseString(body.bodyText, "");
-    const bodyHtml = parseString(body.bodyHtml, "");
+    const to = parseString(body.to, "").trim();
+    const subject = parseString(body.subject, "").trim();
+    const bodyText = parseString(body.bodyText, "").trim();
+    const bodyHtml = parseString(body.bodyHtml, "").trim();
 
     if (!to || !subject || (!bodyText && !bodyHtml)) {
       return NextResponse.json({ ok: false, error: "Recipient, subject, and body are required." }, { status: 400 });
@@ -53,10 +54,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
     }
+
     const userSnap = await adminDb.collection("users").doc(auth.user.uid).get();
     const userData = userSnap.exists ? userSnap.data() || {} : {};
     const signatureHtml = parseString(userData.emailSignatureHtml, "").trim();
     const signatureText = signatureHtml ? stripHtml(signatureHtml) : "";
+
     const combinedBodyText = bodyText
       ? `${bodyText}${signatureText ? `\n\n${signatureText}` : ""}`
       : signatureText;
@@ -70,27 +73,39 @@ export async function POST(req: Request) {
     await emailRef.set({
       id: emailRef.id,
       tenantId,
+      leadId: leadId || null,
       mailboxUserId: auth.user.uid,
       direction: "outbound",
-      subject,
-      from: String(auth.user.email || userData.email || ""),
       to: [to],
+      from: String(auth.user.email || userData.email || ""),
+      subject,
       bodyText: combinedBodyText,
       bodyHtml: combinedBodyHtml,
       signatureHtml: signatureHtml || null,
-      leadId: leadId || null,
-      clientId: null,
       status: "queued",
       provider: "manual",
       createdAt: serverTimestamp(),
     });
 
     if (leadId) {
-      const senderName = userLabel(auth.user);
+      await adminDb
+        .collection("leads")
+        .doc(leadId)
+        .set(
+          {
+            emailsCount: admin.firestore.FieldValue.increment(1),
+            lastActivityAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+    }
+
+    const senderName = userLabel(auth.user);
+    if (leadId) {
       const leadSnap = await adminDb.collection("leads").doc(leadId).get();
       const lead = leadSnap.exists ? leadSnap.data() || {} : {};
       const ownerId = String(lead.ownerId || "");
-
       await createSalesEvent({
         type: "lead_email_queued",
         title: "Email queued",
