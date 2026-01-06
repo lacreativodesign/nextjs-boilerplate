@@ -2,6 +2,8 @@ export const USER_ROLE_VALUES = [
   "super_admin",
   "admin",
   "sales_manager",
+  "am_manager",
+  "production_manager",
   "sales",
   "account_manager",
   "production",
@@ -16,6 +18,8 @@ export const INTERNAL_ROLE_OPTIONS = [
   "super_admin",
   "admin",
   "sales_manager",
+  "am_manager",
+  "production_manager",
   "sales",
   "account_manager",
   "production",
@@ -32,6 +36,8 @@ export const USER_DEPARTMENT_VALUES = [
   "production",
   "hr",
   "finance",
+  "am_manager",
+  "production_manager",
 ] as const;
 
 export type UserDepartment = (typeof USER_DEPARTMENT_VALUES)[number];
@@ -40,6 +46,8 @@ const DEFAULT_DEPARTMENT_BY_ROLE: Record<InternalRole, UserDepartment> = {
   super_admin: "admin",
   admin: "admin",
   sales_manager: "sales",
+  am_manager: "am_manager",
+  production_manager: "production_manager",
   sales: "sales",
   account_manager: "account_manager",
   production: "production",

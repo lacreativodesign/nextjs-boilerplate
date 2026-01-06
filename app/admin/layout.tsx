@@ -23,6 +23,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { ROUTE_ROLE_ACCESS } from "@/lib/auth/roles";
 
 type NotificationItem = {
   id: string;
@@ -242,7 +243,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <RequireAuth allowed={["admin", "super_admin"]}>
+    <RequireAuth allowed={ROUTE_ROLE_ACCESS["/admin"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
       {/* SIDEBAR */}
       <aside

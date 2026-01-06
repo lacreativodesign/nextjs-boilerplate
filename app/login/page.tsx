@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { type Auth, signInWithEmailAndPassword } from "firebase/auth";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { useRouter } from "next/navigation";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { getRoleRoute } from "@/lib/roleRouting";
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     let active = true;
@@ -35,6 +37,27 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/tenant/context", { cache: "no-store", credentials: "include" });
+        const data = await res.json().catch(() => null);
+        if (active && res.ok && data?.ok && data?.user?.role) {
+          router.replace(getRoleRoute(data.user.role));
+        }
+      } catch (err) {
+        console.error("Session check failed", err);
+      }
+    }
+
+    checkSession();
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   // HANDLE LOGIN (same logic as before, no changes)
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,11 +70,6 @@ export default function LoginPage() {
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-      const uid = userCred.user.uid;
-
-      const role = await fetchUserRole(uid);
-      if (!role) throw new Error("No role assigned");
-
       const idToken = await userCred.user.getIdToken(true);
 
       // Send to server to make secure cookie
@@ -62,12 +80,14 @@ export default function LoginPage() {
       body: JSON.stringify({ idToken, rememberMe: remember }),
     });
 
+      const cookieJson = await cookieRes.json().catch(() => null);
       if (!cookieRes.ok) {
-        const j = await cookieRes.json().catch(() => null);
+        const j = cookieJson;
         throw new Error(j?.error || "Session error");
       }
 
-      window.location.href = getRoleRoute(role);
+      const destination = cookieJson?.redirect || getRoleRoute(cookieJson?.role);
+      window.location.href = destination;
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {

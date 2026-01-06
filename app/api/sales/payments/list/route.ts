@@ -42,12 +42,15 @@ export async function GET(req: Request) {
       return {
         id: doc.id,
         amountUsd: Number(data.amountUsd || 0),
+        amountUSD: Number(data.amountUSD || data.amountUsd || 0),
         currency: String(data.currency || "USD"),
-        status: String(data.status || "draft"),
+        status: String(data.status || "unpaid"),
+        packageName: String(data.packageName || data.description || ""),
         checkoutUrl: data.checkoutUrl || null,
         paymentProvider: String(data.paymentProvider || "stripe"),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
+        paidAt: toISO(data.paidAt),
       };
     });
 

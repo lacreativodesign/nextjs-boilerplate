@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { parseString, requireSalesWrite, serverTimestamp } from "../../_utils";
 
@@ -44,56 +43,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
     }
-    const mailboxSnap = await adminDb
-      .collection("userMailboxes")
-      .where("tenantId", "==", tenantId)
-      .where("userId", "==", auth.user.uid)
-      .where("enabled", "==", true)
-      .limit(1)
-      .get();
+    const userSignature = String(auth.user.emailSignature || "").trim();
+    const signatureUsed = userSignature;
+    const renderedText = bodyText ? `${bodyText}${signatureUsed ? `\n\n${signatureUsed}` : ""}` : "";
+    const renderedHtml = bodyHtml ? `${bodyHtml}${signatureUsed ? `<br/><br/>${signatureUsed}` : ""}` : "";
 
-    if (mailboxSnap.empty) {
-      return NextResponse.json({ ok: false, error: "Mailbox not configured." }, { status: 400 });
-    }
-
-    const mailbox = mailboxSnap.docs[0].data() || {};
-    const accountId = String(mailbox.emailAccountId || "");
-    if (!accountId) {
-      return NextResponse.json({ ok: false, error: "Mailbox account missing." }, { status: 400 });
-    }
-
-    const accountSnap = await adminDb.collection("emailAccounts").doc(accountId).get();
-    if (!accountSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Email account not found." }, { status: 404 });
-    }
-
-    const account = accountSnap.data() || {};
-    if (!account.enabled) {
-      return NextResponse.json({ ok: false, error: "Email account disabled." }, { status: 400 });
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: String(account.smtpHost || ""),
-      port: Number(account.smtpPort || 587),
-      secure: Boolean(account.smtpSecure),
-      auth: {
-        user: String(account.username || ""),
-        pass: String(account.passwordEncrypted || ""),
-      },
-    });
-
-    const fromName = mailbox.fromName || auth.user.name || auth.user.displayName || "";
-    const fromAddress = account.username;
-    const signature = mailbox.signature ? `\n\n${mailbox.signature}` : "";
-
-    const mailInfo = await transporter.sendMail({
-      from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
-      to,
-      subject,
-      text: bodyText ? `${bodyText}${signature}` : undefined,
-      html: bodyHtml ? `${bodyHtml}${signature}` : undefined,
-    });
-
+    const fromAddress = String(auth.user.email || "");
     const threadKey = normalizeThreadKey(subject, [fromAddress, to]);
 
     const emailRef = adminDb.collection("emails").doc();
@@ -101,9 +56,9 @@ export async function POST(req: Request) {
       id: emailRef.id,
       tenantId,
       mailboxUserId: auth.user.uid,
-      emailAccountId: accountId,
+      emailAccountId: null,
       direction: "outbound",
-      messageId: mailInfo.messageId || null,
+      messageId: null,
       threadKey,
       subject,
       from: [fromAddress],
@@ -111,15 +66,17 @@ export async function POST(req: Request) {
       cc: [],
       bodyText,
       bodyHtml: bodyHtml || null,
+      renderedBody: renderedText || renderedHtml || bodyText || bodyHtml || "",
+      signatureUsed: signatureUsed || null,
       leadId: leadId || null,
       clientId: null,
-      status: "sent",
+      status: "queued",
       createdAt: serverTimestamp(),
       receivedAt: null,
       isRead: true,
     });
 
-    return NextResponse.json({ ok: true, id: emailRef.id });
+    return NextResponse.json({ ok: true, id: emailRef.id, status: "queued" });
   } catch (err) {
     console.error("sales email send error:", err);
     return NextResponse.json({ ok: false, error: "Unable to send email." }, { status: 500 });

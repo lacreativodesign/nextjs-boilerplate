@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { parseNumber, parseString, requireSalesWrite, serverTimestamp, userLabel } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-async function getStripeConfig(tenantId: string) {
-  const snap = await adminDb.collection("tenants").doc(tenantId).collection("integrations").doc("stripe").get();
-  if (!snap.exists) return null;
-  return snap.data() || null;
-}
 
 export async function POST(req: Request) {
   try {
@@ -45,35 +38,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const stripeConfig = await getStripeConfig(tenantId);
-    if (!stripeConfig?.enabled || !stripeConfig?.secretKey) {
-      return NextResponse.json({ ok: false, error: "Stripe is not configured for this tenant." }, { status: 400 });
-    }
-
-    const stripe = new Stripe(String(stripeConfig.secretKey), { apiVersion: "2024-06-20" });
-    const origin = new URL(req.url).origin;
-    const successUrl = `${origin}/sales/leads?payment=success`;
-    const cancelUrl = `${origin}/sales/leads?payment=cancel`;
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: lead.contactEmail || lead.email || undefined,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "usd",
-            unit_amount: Math.round(amountUsd * 100),
-            product_data: {
-              name: description || `Payment for ${lead.companyName || lead.contactName || "Lead"}`,
-            },
-          },
-        },
-      ],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-    });
-
     const requestRef = adminDb.collection("paymentRequests").doc();
     await requestRef.set({
       id: requestRef.id,
@@ -81,12 +45,14 @@ export async function POST(req: Request) {
       leadId,
       clientId: lead.clientId || null,
       amountUsd,
+      amountUSD: amountUsd,
       currency: "USD",
-      status: "sent",
-      paymentProvider: "stripe",
-      stripeCheckoutSessionId: session.id,
-      checkoutUrl: session.url || null,
+      status: "unpaid",
+      paymentProvider: "manual",
+      stripeCheckoutSessionId: null,
+      checkoutUrl: null,
       description: description || null,
+      packageName: description || lead.packageName || null,
       createdByUserId: auth.user.uid,
       createdByRole: auth.user.role || "",
       createdAt: serverTimestamp(),
@@ -113,7 +79,7 @@ export async function POST(req: Request) {
       )
     );
 
-    return NextResponse.json({ ok: true, id: requestRef.id, checkoutUrl: session.url });
+    return NextResponse.json({ ok: true, id: requestRef.id, checkoutUrl: null });
   } catch (err) {
     console.error("sales payment link error:", err);
     return NextResponse.json({ ok: false, error: "Unable to create payment link." }, { status: 500 });

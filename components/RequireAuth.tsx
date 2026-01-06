@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
-import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import type { Unsubscribe } from "firebase/auth";
 
 type Props = {
   allowed: string[];
@@ -17,44 +14,39 @@ export default function RequireAuth({ allowed, children }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    let unsub: Unsubscribe | null = null;
     let cancelled = false;
 
-    getFirebaseAuth()
-      .then((auth) => {
-        if (cancelled) return;
-        unsub = onAuthStateChanged(auth, async (user) => {
-          if (!user) {
-            router.replace("/login");
-            setReady(true);
-            return;
-          }
+    async function checkAccess() {
+      try {
+        const res = await fetch("/api/tenant/context", { cache: "no-store", credentials: "include" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          router.replace("/login");
+          return;
+        }
 
-          const role = await fetchUserRole(user.uid);
+        const role = String(data?.user?.role || "").toLowerCase();
+        if (!role || !allowed.includes(role)) {
+          router.replace("/forbidden");
+          return;
+        }
 
-          if (!role || !allowed.includes(role)) {
-            if (!role) {
-              router.replace("/login");
-            } else {
-              router.replace("/forbidden");
-            }
-            setReady(true);
-            return;
-          }
-
+        if (!cancelled) {
           setOk(true);
-          setReady(true);
-        });
-      })
-      .catch((err) => {
-        console.error("Failed to load Firebase auth", err);
+        }
+      } catch (err) {
+        console.error("RequireAuth access check failed", err);
         router.replace("/login");
-        setReady(true);
-      });
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
+      }
+    }
 
+    checkAccess();
     return () => {
       cancelled = true;
-      if (unsub) unsub();
     };
   }, [allowed, router]);
 

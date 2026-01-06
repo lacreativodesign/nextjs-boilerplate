@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 
 export default function SalesProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [signature, setSignature] = useState("");
+  const [signatureLoading, setSignatureLoading] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -19,6 +21,50 @@ export default function SalesProfilePage() {
     setAvatarPreview(url);
     setMessage("Profile picture updated (local preview only).");
     setError(null);
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSignature() {
+      try {
+        const res = await fetch("/api/sales/profile", { cache: "no-store", credentials: "include" });
+        const data = await res.json().catch(() => null);
+        if (active && res.ok && data?.ok) {
+          setSignature(String(data?.user?.emailSignature || ""));
+        }
+      } catch (err) {
+        console.error("Failed to load email signature", err);
+      }
+    }
+
+    loadSignature();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSignatureSave = async () => {
+    setMessage(null);
+    setError(null);
+    setSignatureLoading(true);
+    try {
+      const res = await fetch("/api/sales/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ emailSignature: signature }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Unable to save signature.");
+      }
+      setMessage("Email signature updated.");
+    } catch (err: any) {
+      setError(err?.message || "Unable to save signature.");
+    } finally {
+      setSignatureLoading(false);
+    }
   };
 
   const handlePasswordSubmit = (e: FormEvent) => {
@@ -148,6 +194,28 @@ export default function SalesProfilePage() {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Email Signature</h2>
+        <p className="text-sm text-gray-500 dark:text-neutral-400">
+          This signature will be appended to outbound emails and queued messages.
+        </p>
+        <textarea
+          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+          rows={4}
+          value={signature}
+          onChange={(e) => setSignature(e.target.value)}
+          placeholder="Best regards,\nYour Name"
+        />
+        <button
+          type="button"
+          className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+          onClick={handleSignatureSave}
+          disabled={signatureLoading}
+        >
+          {signatureLoading ? "Saving..." : "Save Signature"}
+        </button>
       </section>
 
       {/* Change Password */}

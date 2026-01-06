@@ -20,6 +20,7 @@ import { signOut, type Auth } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { ROUTE_ROLE_ACCESS } from "@/lib/auth/roles";
 
 const navItems = [
   { label: "Overview", path: "/sales", icon: LayoutDashboard },
@@ -223,7 +224,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <RequireAuth allowed={["sales", "sales_manager", "admin", "super_admin"]}>
+    <RequireAuth allowed={ROUTE_ROLE_ACCESS["/sales"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(

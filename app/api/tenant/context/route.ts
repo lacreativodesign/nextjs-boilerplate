@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       user: {
         uid: user.uid,
@@ -33,6 +33,17 @@ export async function GET(req: NextRequest) {
           }
         : null,
     });
+    const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+    res.cookies.set({
+      name: "lac_role",
+      value: user.role || "",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+    return res;
   } catch (err: any) {
     const message = err?.message || "Unauthorized";
     const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 400;

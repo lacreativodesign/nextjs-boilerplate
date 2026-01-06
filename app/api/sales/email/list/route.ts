@@ -57,11 +57,14 @@ export async function GET(req: Request) {
         direction: String(data.direction || ""),
         bodyText: String(data.bodyText || ""),
         bodyHtml: data.bodyHtml || null,
+        renderedBody: data.renderedBody || null,
+        signatureUsed: data.signatureUsed || null,
         threadKey: String(data.threadKey || ""),
         isRead: Boolean(data.isRead),
         status: String(data.status || ""),
         createdAt: toISO(data.createdAt),
         receivedAt: toISO(data.receivedAt),
+        sentAt: toISO(data.sentAt),
       };
     });
 

@@ -9,6 +9,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { ROUTE_ROLE_ACCESS } from "@/lib/auth/roles";
 
 const navItems = [
   { label: "Overview", path: "/production", icon: LayoutDashboard },
@@ -207,7 +208,7 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <RequireAuth allowed={["production"]}>
+    <RequireAuth allowed={ROUTE_ROLE_ACCESS["/production"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
       <aside
         className={clsx(

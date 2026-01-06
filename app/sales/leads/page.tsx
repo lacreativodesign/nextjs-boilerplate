@@ -100,6 +100,8 @@ type EmailRecord = {
   to: string[];
   bodyText: string;
   bodyHtml?: string | null;
+  renderedBody?: string | null;
+  signatureUsed?: string | null;
   direction: string;
   createdAt: string | null;
   status: string;
@@ -108,10 +110,13 @@ type EmailRecord = {
 type PaymentRequest = {
   id: string;
   amountUsd: number;
+  amountUSD?: number;
   currency: string;
   status: string;
+  packageName?: string | null;
   checkoutUrl?: string | null;
   createdAt: string | null;
+  paidAt?: string | null;
 };
 
 export default function SalesLeadsPage() {
@@ -353,21 +358,31 @@ export default function SalesLeadsPage() {
 
   const handleAddNote = async () => {
     if (!form.id || !noteBody.trim()) return;
+    const optimisticNote = {
+      id: `temp-${Date.now()}`,
+      body: noteBody.trim(),
+      authorName: "You",
+      authorRole: "",
+      createdAt: new Date().toISOString(),
+    };
+    setNotes((prev) => [optimisticNote, ...prev]);
+    const bodyPayload = noteBody;
+    setNoteBody("");
     try {
       const res = await fetch("/api/sales/lead-notes/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ leadId: form.id, body: noteBody }),
+        body: JSON.stringify({ leadId: form.id, body: bodyPayload }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to add note.");
       }
-      setNoteBody("");
       await loadNotes(form.id);
     } catch (err) {
       console.error("Note save error", err);
+      setNotes((prev) => prev.filter((note) => note.id !== optimisticNote.id));
     }
   };
 
@@ -389,6 +404,17 @@ export default function SalesLeadsPage() {
 
   const handleSendEmail = async () => {
     if (!form.id) return;
+    const optimisticEmail: EmailRecord = {
+      id: `temp-${Date.now()}`,
+      subject: emailForm.subject,
+      from: [],
+      to: emailForm.to ? [emailForm.to] : [],
+      bodyText: emailForm.bodyText,
+      direction: "outbound",
+      createdAt: new Date().toISOString(),
+      status: "queued",
+    };
+    setEmails((prev) => [optimisticEmail, ...prev]);
     try {
       const res = await fetch("/api/sales/email/send", {
         method: "POST",
@@ -409,6 +435,7 @@ export default function SalesLeadsPage() {
       await loadEmails(form.id);
     } catch (err) {
       console.error("Email send error", err);
+      setEmails((prev) => prev.filter((email) => email.id !== optimisticEmail.id));
     }
   };
 
@@ -430,6 +457,18 @@ export default function SalesLeadsPage() {
 
   const handlePaymentLink = async () => {
     if (!form.id) return;
+    const amountValue = Number(paymentForm.amountUsd || 0);
+    const optimisticPayment: PaymentRequest = {
+      id: `temp-${Date.now()}`,
+      amountUsd: amountValue,
+      amountUSD: amountValue,
+      currency: "USD",
+      status: "unpaid",
+      packageName: paymentForm.description,
+      createdAt: new Date().toISOString(),
+      paidAt: null,
+    };
+    setPayments((prev) => [optimisticPayment, ...prev]);
     try {
       const res = await fetch("/api/sales/payments/create-link", {
         method: "POST",
@@ -437,7 +476,7 @@ export default function SalesLeadsPage() {
         credentials: "include",
         body: JSON.stringify({
           leadId: form.id,
-          amountUsd: Number(paymentForm.amountUsd || 0),
+          amountUsd: amountValue,
           description: paymentForm.description,
         }),
       });
@@ -449,6 +488,7 @@ export default function SalesLeadsPage() {
       await loadPayments(form.id);
     } catch (err) {
       console.error("Payment link error", err);
+      setPayments((prev) => prev.filter((payment) => payment.id !== optimisticPayment.id));
     }
   };
 
@@ -855,10 +895,11 @@ export default function SalesLeadsPage() {
                         <div style={{ color: "var(--text-muted)" }}>
                           {email.direction === "outbound" ? "Sent to" : "From"} {email.direction === "outbound" ? email.to?.[0] : email.from?.[0]}
                         </div>
+                        <div style={{ color: "var(--text-muted)" }}>Status: {email.status}</div>
                       </div>
                       <div style={{ color: "var(--text-muted)" }}>{formatDateTime(email.createdAt)}</div>
                     </div>
-                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{email.bodyText}</div>
+                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{email.renderedBody || email.bodyText}</div>
                   </div>
                 ))}
               </div>
@@ -880,7 +921,7 @@ export default function SalesLeadsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500">Description</label>
+                    <label className="text-xs font-semibold text-slate-500">Package / Description</label>
                     <input
                       className="input mt-2"
                       value={paymentForm.description}
@@ -900,7 +941,10 @@ export default function SalesLeadsPage() {
                   <div key={payment.id} className="card" style={{ padding: 14, borderRadius: 14 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                       <div>
-                        <strong>{formatUsd(payment.amountUsd)}</strong>
+                        <strong>{formatUsd(payment.amountUsd || payment.amountUSD || 0)}</strong>
+                        <div style={{ color: "var(--text-muted)" }}>
+                          {payment.packageName ? payment.packageName : "Payment request"}
+                        </div>
                         <div style={{ color: "var(--text-muted)" }}>Status: {payment.status}</div>
                       </div>
                       <div style={{ color: "var(--text-muted)" }}>{formatDateTime(payment.createdAt)}</div>

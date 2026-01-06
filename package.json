@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "qa": "node scripts/qa-smoke.mjs"
+    "qa": "node scripts/qa-smoke.mjs",
+    "qa:smoke": "node scripts/qa-smoke.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",

@@ -11,6 +11,7 @@ type EmailRecord = {
   from: string[];
   to: string[];
   bodyText: string;
+  renderedBody?: string | null;
   direction: string;
   createdAt: string | null;
   status: string;
@@ -138,6 +139,7 @@ export default function SalesInboxPage() {
                   <th style={headerCellStyle}>Subject</th>
                   <th style={headerCellStyle}>From / To</th>
                   <th style={headerCellStyle}>Direction</th>
+                  <th style={headerCellStyle}>Status</th>
                   <th style={{ ...headerCellStyle, textAlign: "left" }}>Received</th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>Actions</th>
                 </tr>
@@ -145,13 +147,13 @@ export default function SalesInboxPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
                       Loading inbox...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: "center" }}>
+                    <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
                       No emails found.
                     </td>
                   </tr>
@@ -163,6 +165,7 @@ export default function SalesInboxPage() {
                         {email.direction === "outbound" ? email.to?.[0] : email.from?.[0]}
                       </td>
                       <td style={cellStyle}>{email.direction}</td>
+                      <td style={cellStyle}>{email.status}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{formatDateTime(email.createdAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <button className="btn ghost" onClick={() => setSelected(email)}>
@@ -191,7 +194,9 @@ export default function SalesInboxPage() {
               <strong>Received:</strong> {formatDateTime(selected.createdAt)}
             </div>
           </div>
-          <div style={{ marginTop: 16, whiteSpace: "pre-wrap" }}>{selected.bodyText}</div>
+          <div style={{ marginTop: 16, whiteSpace: "pre-wrap" }}>
+            {selected.renderedBody || selected.bodyText}
+          </div>
         </SalesDrawer>
       )}
     </div>

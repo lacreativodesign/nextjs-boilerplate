@@ -18,6 +18,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { ROUTE_ROLE_ACCESS } from "@/lib/auth/roles";
 
 const navItems = [
   { label: "Overview", path: "/am", icon: LayoutDashboard },
@@ -239,7 +240,7 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <RequireAuth allowed={["account_manager"]}>
+    <RequireAuth allowed={ROUTE_ROLE_ACCESS["/am"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(

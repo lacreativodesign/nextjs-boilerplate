@@ -29,7 +29,7 @@ export default function ERPLayout({
       finance: [{ label: "Finance Dashboard", href: "/finance" }],
       client: [
         { label: "Client Dashboard", href: "/client" },
-        { label: "Profile Settings", href: "/client/settings" },
+        { label: "Profile Settings", href: "/client/profile" },
       ],
     };
 
@@ -132,4 +132,4 @@ export default function ERPLayout({
       </main>
     </div>
   );
-    }
+}

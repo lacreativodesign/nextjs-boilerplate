@@ -4,12 +4,14 @@ import { cookies } from "next/headers";
 import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getDashboardRouteForRole } from "@/lib/auth/roles";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
+const ROLE_COOKIE_NAME = "lac_role";
 const DEFAULT_SESSION_DAYS = 1;
 const REMEMBER_SESSION_DAYS = 30;
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -76,21 +78,40 @@ export async function POST(req: Request) {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
     const c = cookies();
+    const secure = process.env.NODE_ENV === "production";
     const cookieOptions: Parameters<typeof c.set>[0] = {
       name: COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
-      secure: true,
+      secure,
       sameSite: "lax",
       path: "/",
-      domain: COOKIE_DOMAIN,
     };
+
+    if (COOKIE_DOMAIN) {
+      cookieOptions.domain = COOKIE_DOMAIN;
+    }
 
     if (rememberMe) {
       cookieOptions.maxAge = expiresIn / 1000;
     }
 
     c.set(cookieOptions);
+    const roleCookie: Parameters<typeof c.set>[0] = {
+      name: ROLE_COOKIE_NAME,
+      value: role,
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+    };
+    if (COOKIE_DOMAIN) {
+      roleCookie.domain = COOKIE_DOMAIN;
+    }
+    if (rememberMe) {
+      roleCookie.maxAge = expiresIn / 1000;
+    }
+    c.set(roleCookie);
 
     // 4) Auto attendance logging (non-blocking)
     try {
@@ -145,7 +166,7 @@ export async function POST(req: Request) {
     }
 
     // 5) Done
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, role, redirect: getDashboardRouteForRole(role) });
   } catch (e: any) {
     console.error("SESSION LOGIN ERROR:", e);
     return NextResponse.json({ error: e?.message || "Session error" }, { status: 400 });
