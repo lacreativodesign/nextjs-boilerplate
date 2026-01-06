@@ -11,15 +11,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb
+      .collection("leads")
+      .where("tenantId", "==", auth.user.tenantId || "")
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
 
     const leads = snap.docs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        name: String(data.name || ""),
-        email: String(data.email || ""),
-        phone: String(data.phone || ""),
+        name: String(data.companyName || data.name || ""),
+        email: String(data.contactEmail || data.email || ""),
+        phone: String(data.contactPhone || data.phone || ""),
         source: String(data.source || ""),
         stage: String(data.stage || "New Lead"),
         ownerId: data.ownerId || null,

@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  Mail,
   Megaphone,
   Menu,
   UserPlus,
@@ -23,6 +24,7 @@ import { useTenantContext } from "@/lib/tenant/useTenantContext";
 const navItems = [
   { label: "Overview", path: "/sales", icon: LayoutDashboard },
   { label: "Leads", path: "/sales/leads", icon: UserPlus },
+  { label: "Inbox", path: "/sales/inbox", icon: Mail },
   { label: "Pipeline", path: "/sales/pipeline", icon: FolderKanban },
   { label: "Deals", path: "/sales/deals", icon: Handshake },
   { label: "Follow-Ups", path: "/sales/follow-ups", icon: ListChecks },

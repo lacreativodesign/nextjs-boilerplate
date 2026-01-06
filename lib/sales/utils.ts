@@ -7,6 +7,18 @@ export const LEAD_STAGES = [
   "Closed Won",
   "Closed Lost",
 ] as const;
+export const LEAD_DISPOSITIONS = [
+  "No Contact",
+  "Not Answering",
+  "Voicemail Left",
+  "Call Back Scheduled",
+  "Not Interested",
+  "Wrong Number",
+  "Bad Timing",
+  "Email Sent",
+  "Follow-Up Needed",
+] as const;
+export const LEAD_SOURCES = ["Website", "Manual", "Referral", "Other"] as const;
 export const PIPELINE_STAGES = [...LEAD_STAGES] as const;
 export const FOLLOW_UP_TYPES = ["Call", "Email", "Meeting"] as const;
 export const FOLLOW_UP_STATUS = ["Open", "Done", "Overdue"] as const;

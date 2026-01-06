@@ -34,15 +34,18 @@ export async function POST(req: Request) {
         throw new Error("Lead not found");
       }
       const data = snap.data() || {};
+      if (data.tenantId && data.tenantId !== auth.user.tenantId) {
+        throw new Error("Forbidden");
+      }
       const prevOwnerId = data.ownerId || null;
 
       const updates: Record<string, any> = {
         updatedAt: serverTimestamp(),
       };
 
-      if (payload.name !== undefined) updates.name = parseString(payload.name, "");
-      if (payload.email !== undefined) updates.email = parseString(payload.email, "");
-      if (payload.phone !== undefined) updates.phone = parseString(payload.phone, "");
+      if (payload.name !== undefined) updates.companyName = parseString(payload.name, "");
+      if (payload.email !== undefined) updates.contactEmail = parseString(payload.email, "");
+      if (payload.phone !== undefined) updates.contactPhone = parseString(payload.phone, "");
       if (payload.source !== undefined) updates.source = parseString(payload.source, "");
       if (payload.stage !== undefined) updates.stage = parseString(payload.stage, "New Lead");
 

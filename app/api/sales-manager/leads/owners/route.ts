@@ -11,7 +11,11 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("users").where("role", "==", "sales").get();
+    const snap = await adminDb
+      .collection("users")
+      .where("tenantId", "==", auth.user.tenantId || "")
+      .where("role", "==", "sales")
+      .get();
     const owners = snap.docs.map((doc) => {
       const data = doc.data() || {};
       return {

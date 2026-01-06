@@ -5,10 +5,18 @@ import { canWriteSales, isSales, normalizeStage, requireSalesRead, toISO } from 
 export const dynamic = "force-dynamic";
 
 type LeadDoc = {
+  tenantId?: string;
   companyName?: string;
   contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
+  disposition?: string;
+  expectedValueUsd?: number;
+  packageName?: string;
+  interestedServices?: string[];
+  probability?: number;
+  lastContactedAt?: any;
+  nextFollowUpAt?: any;
   name?: string;
   email?: string;
   phone?: string;
@@ -34,14 +42,27 @@ export async function GET() {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
+    const tenantId = auth.user.tenantId || "";
 
     const [ownerSnap, createdSnap] = salesRep
       ? await Promise.all([
-          adminDb.collection("leads").where("isDeleted", "==", false).where("ownerId", "==", auth.user.uid).limit(500).get(),
-          adminDb.collection("leads").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get(),
+          adminDb
+            .collection("leads")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("ownerId", "==", auth.user.uid)
+            .limit(500)
+            .get(),
+          adminDb
+            .collection("leads")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("createdById", "==", auth.user.uid)
+            .limit(500)
+            .get(),
         ])
       : await Promise.all([
-          adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
+          adminDb.collection("leads").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
           Promise.resolve(null),
         ]);
 
@@ -57,6 +78,13 @@ export async function GET() {
       contactName: String(data.contactName || data.name || ""),
       contactEmail: String(data.contactEmail || data.email || ""),
       contactPhone: String(data.contactPhone || data.phone || ""),
+      disposition: String(data.disposition || ""),
+      expectedValueUsd: Number(data.expectedValueUsd || 0),
+      packageName: String(data.packageName || ""),
+      interestedServices: Array.isArray(data.interestedServices) ? data.interestedServices.map(String) : [],
+      probability: Number(data.probability || 0),
+      lastContactedAt: toISO(data.lastContactedAt),
+      nextFollowUpAt: toISO(data.nextFollowUpAt),
       source: String(data.source || ""),
       notes: String(data.notes || ""),
       stage: normalizeStage(data.stage || "New Lead"),

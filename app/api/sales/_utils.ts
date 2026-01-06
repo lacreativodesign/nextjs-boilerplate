@@ -49,7 +49,7 @@ export function canReadSales(role?: string) {
 }
 
 export function canWriteSales(role?: string) {
-  return isSales(role) || isSalesManager(role || "");
+  return isSales(role) || isSalesManager(role || "") || isAdminOrSuper(role || "");
 }
 
 export async function requireSalesRead() {
@@ -144,8 +144,8 @@ export async function notifyUsers({
   );
 }
 
-export async function getWatcherUserIds() {
-  const ids = await getUserIdsByRoles(["admin", "super_admin", "sales_manager"]);
+export async function getWatcherUserIds(tenantId?: string | null) {
+  const ids = await getUserIdsByRoles(["admin", "super_admin", "sales_manager"], tenantId);
   return ids;
 }
 
