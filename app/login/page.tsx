@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { type Auth, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  type Auth,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  setPersistence,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 
 export default function LoginPage() {
@@ -45,6 +51,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      await setPersistence(firebaseAuth, remember ? browserLocalPersistence : browserSessionPersistence);
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const uid = userCred.user.uid;
 
@@ -58,7 +65,7 @@ export default function LoginPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, remember }),
       });
 
       if (!cookieRes.ok) {
@@ -67,7 +74,7 @@ export default function LoginPage() {
       }
 
       const roleRoutes: Record<string, string> = {
-        super_admin: "/admin",
+        super_admin: "/super_admin",
         admin: "/admin",
         sales_manager: "/sales-manager",
         sales: "/sales",
@@ -218,6 +225,7 @@ export default function LoginPage() {
                 <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
                 <span>Remember me</span>
               </label>
+              <div className="login-hint">Stay signed in on this device</div>
             </div>
 
             <button type="submit" disabled={loading || !firebaseAuth} className="login-submit">
@@ -556,6 +564,12 @@ export default function LoginPage() {
           accent-color: var(--accent);
           width: 16px;
           height: 16px;
+        }
+
+        .login-hint {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          opacity: 0.85;
         }
 
         .login-submit {

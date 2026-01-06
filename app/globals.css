@@ -402,6 +402,15 @@ select option {
   overflow-y: auto;
   border-top-left-radius: 22px;
   border-bottom-left-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.drawer-panel > * {
+  min-width: 0;
 }
 
 .drawer-panel--sm {

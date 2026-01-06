@@ -9,6 +9,8 @@ import { getFirestore } from "firebase-admin/firestore";
 const COOKIE_NAME = "lac_session";
 const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
 const SESSION_DAYS = 5; // keep users signed in for 5 days
+const REMEMBER_ME_DAYS = 30;
+const SESSION_HOURS = 12;
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -34,7 +36,7 @@ function getAdmin() {
 
 export async function POST(req: Request) {
   try {
-    const { idToken } = await req.json();
+    const { idToken, remember } = await req.json();
     if (!idToken) {
       return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
     }
@@ -67,7 +69,9 @@ export async function POST(req: Request) {
     }
 
     // 3) Create session cookie
-    const expiresIn = SESSION_DAYS * 24 * 60 * 60 * 1000; // ms
+    const expiresIn = remember
+      ? REMEMBER_ME_DAYS * 24 * 60 * 60 * 1000
+      : SESSION_HOURS * 60 * 60 * 1000; // ms
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
     const c = cookies();
@@ -78,8 +82,8 @@ export async function POST(req: Request) {
       secure: true,
       sameSite: "lax",
       path: "/",
-      domain: COOKIE_DOMAIN,
-      maxAge: expiresIn / 1000, // seconds
+      ...(process.env.NODE_ENV === "production" ? { domain: COOKIE_DOMAIN } : {}),
+      ...(remember ? { maxAge: expiresIn / 1000 } : {}),
     });
 
     // 4) Auto attendance logging (non-blocking)
@@ -140,4 +144,4 @@ export async function POST(req: Request) {
     console.error("SESSION LOGIN ERROR:", e);
     return NextResponse.json({ error: e?.message || "Session error" }, { status: 400 });
   }
-      }
+}

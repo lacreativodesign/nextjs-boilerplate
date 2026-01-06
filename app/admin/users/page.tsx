@@ -69,6 +69,7 @@ export default function UsersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [resettingUid, setResettingUid] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -147,6 +148,35 @@ export default function UsersPage() {
       alert("Error deleting user");
     } finally {
       setDeletingUid((prev) => (prev === uid ? null : prev));
+    }
+  };
+
+  const handleSendPasswordReset = async (user: UserRecord) => {
+    const uid = getRowId(user);
+    const email = String(user.email || "").trim();
+    if (!uid && !email) {
+      alert("User email is missing.");
+      return;
+    }
+
+    try {
+      setResettingUid(uid || email);
+      const res = await fetch("/api/admin/users/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ uid: uid || undefined, email: email || undefined }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Unable to send password reset.");
+      }
+      const link = json?.resetLink;
+      alert(link ? `Password reset link:\n${link}` : "Password reset link queued.");
+    } catch (err: any) {
+      alert(err?.message || "Unable to send password reset.");
+    } finally {
+      setResettingUid(null);
     }
   };
 
@@ -329,7 +359,7 @@ export default function UsersPage() {
                   <th style={headerCellStyle} onClick={() => handleSort("department")}>
                     {headerLabel("Department", sortKey === "department", sortDir)}
                   </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("status")}>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => handleSort("status")}>
                     {headerLabel("Status", sortKey === "status", sortDir)}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
@@ -365,7 +395,7 @@ export default function UsersPage() {
                       <td style={cellStyle}>{u.email || "-"}</td>
                       <td style={cellStyle}>{u.phone || "-"}</td>
                       <td style={cellStyle}>{u.department || "-"}</td>
-                      <td style={cellStyle}>{normalizeStatus(u.status)}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>{normalizeStatus(u.status)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <div style={{ display: "flex", justifyContent: "center" }}>
                           <button
@@ -414,8 +444,10 @@ export default function UsersPage() {
               user={selectedUser}
               isDark={isDark}
               deleting={deletingUid === getRowId(selectedUser)}
+              resetting={resettingUid === (getRowId(selectedUser) || selectedUser.email)}
               onDelete={(id) => handleDelete(id)}
               onEdit={(id) => router.push(`/admin/users/${id}/edit`)}
+              onSendPasswordReset={(user) => handleSendPasswordReset(user)}
             />
           </div>
         </div>
@@ -428,14 +460,18 @@ function UserDrawerContent({
   user,
   isDark,
   deleting,
+  resetting,
   onDelete,
   onEdit,
+  onSendPasswordReset,
 }: {
   user: UserRecord;
   isDark: boolean;
   deleting: boolean;
+  resetting: boolean;
   onDelete: (uid: string) => void;
   onEdit: (uid: string) => void;
+  onSendPasswordReset: (user: UserRecord) => void;
 }) {
   const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
@@ -504,6 +540,16 @@ function UserDrawerContent({
           style={{ borderRadius: 12, fontWeight: 500 }}
         >
           Edit User
+        </button>
+
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => onSendPasswordReset(user)}
+          disabled={resetting}
+          style={{ borderRadius: 12, fontWeight: 500 }}
+        >
+          {resetting ? "Sending..." : "Send Password Reset"}
         </button>
 
         <button
