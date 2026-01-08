@@ -23,6 +23,7 @@ type LeadDoc = {
   source?: string;
   notes?: string;
   stage?: string;
+  status?: string;
   ownerId?: string | null;
   ownerName?: string | null;
   createdBy?: string | null;
@@ -88,6 +89,7 @@ export async function GET() {
       source: String(data.source || ""),
       notes: String(data.notes || ""),
       stage: normalizeStage(data.stage || "New Lead"),
+      status: String(data.status || ""),
       ownerId: data.ownerId || null,
       ownerName: data.ownerName || null,
       createdBy: data.createdBy || null,

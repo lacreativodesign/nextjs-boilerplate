@@ -4,9 +4,10 @@ import {
   createSalesEvent,
   getWatcherUserIds,
   notifyUsers,
-  nowIso,
   parseString,
   requireSalesWrite,
+  serverTimestamp,
+  toISO,
   userLabel,
 } from "../../_utils";
 
@@ -32,20 +33,36 @@ export async function POST(req: Request) {
     }
 
     const existing = snapshot.data() || {};
+    if (existing.tenantId && existing.tenantId !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     const isOwner = existing.assignedTo === auth.user.uid || existing.createdBy === auth.user.uid;
     if (auth.user.role === "sales" && !isOwner) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const status = parseString(payload.status, existing.status || "Open");
-    const dueDate = parseString(payload.dueDate, "");
+    const dueDateRaw = parseString(payload.dueDate, "").trim();
+    let dueDateIso = toISO(existing.dueDate) || "";
+    if (dueDateRaw) {
+      if (!dueDateRaw.includes("T")) {
+        return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+      }
+      const dueDateObj = new Date(dueDateRaw);
+      if (Number.isNaN(dueDateObj.getTime())) {
+        return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+      }
+      dueDateIso = dueDateObj.toISOString();
+    }
+    if (!dueDateIso) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
 
-    const now = nowIso();
     await docRef.set(
       {
         status,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : existing.dueDate || null,
-        updatedAt: now,
+        dueDate: dueDateIso,
+        updatedAt: serverTimestamp(),
         updatedBy: auth.user.uid,
       },
       { merge: true }

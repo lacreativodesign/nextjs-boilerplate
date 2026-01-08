@@ -25,7 +25,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("followUps").where("isDeleted", "==", false).limit(500).get();
+    const tenantId = auth.user.tenantId || "";
+    const snap = await adminDb
+      .collection("followUps")
+      .where("tenantId", "==", tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
 
     const followUps = snap.docs.map((doc) => {
       const data = (doc.data() || {}) as FollowUpDoc;

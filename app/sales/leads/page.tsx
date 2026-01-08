@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
-import { LEAD_DISPOSITIONS, LEAD_SOURCES, LEAD_STAGES } from "@/lib/sales/utils";
+import { LEAD_DISPOSITIONS, LEAD_SOURCES, LEAD_STAGES, toInputDateTime } from "@/lib/sales/utils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STAGE_OPTIONS = ["All", ...LEAD_STAGES];
@@ -270,6 +270,11 @@ export default function SalesLeadsPage() {
     setActiveTab("details");
     setForm(defaultForm);
     setEmailForm({ to: "", subject: "", bodyText: "" });
+    setNotes([]);
+    setNoteBody("");
+    setEmails([]);
+    setPayments([]);
+    setPaymentForm({ amountUsd: "", description: "" });
     setDrawerOpen(true);
   };
 
@@ -291,7 +296,7 @@ export default function SalesLeadsPage() {
       interestedServices: (lead.interestedServices || []).join(", "),
       probability: lead.probability || 0,
       lastContactedAt: lead.lastContactedAt ? lead.lastContactedAt.slice(0, 10) : "",
-      nextFollowUpAt: lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : "",
+      nextFollowUpAt: toInputDateTime(lead.nextFollowUpAt),
     });
     setDrawerOpen(true);
     loadNotes(lead.id);
@@ -301,6 +306,11 @@ export default function SalesLeadsPage() {
   };
 
   const handleSave = async () => {
+    const needsFollowUp = form.disposition.trim().toLowerCase() === "follow-up needed";
+    if (needsFollowUp && !form.nextFollowUpAt) {
+      setError({ title: "Follow-up required", message: "Select a follow-up date and time before saving." });
+      return;
+    }
     try {
       setActionLoading(true);
       const endpoint = drawerMode === "create" ? "/api/sales/leads/create" : "/api/sales/leads/update";
@@ -326,6 +336,7 @@ export default function SalesLeadsPage() {
         throw new Error(data?.error || "Unable to save lead.");
       }
       setDrawerOpen(false);
+      setError(null);
       await loadLeads();
     } catch (err: any) {
       console.error("Lead save error", err);
@@ -759,10 +770,10 @@ export default function SalesLeadsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Next Follow-Up</label>
+                <label className="text-xs font-semibold text-slate-500">Next Follow-Up (Date & Time)</label>
                 <input
                   className="input mt-2"
-                  type="date"
+                  type="datetime-local"
                   value={form.nextFollowUpAt}
                   onChange={(event) => setForm((prev) => ({ ...prev, nextFollowUpAt: event.target.value }))}
                 />

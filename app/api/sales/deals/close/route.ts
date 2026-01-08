@@ -4,10 +4,10 @@ import {
   createSalesEvent,
   getWatcherUserIds,
   isSales,
-  nowIso,
   notifyUsers,
   parseString,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -42,7 +42,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const now = nowIso();
     const stage = status === "Won" ? "Closed Won" : "Closed Lost";
     const existingStage = String(data.stage || "");
     const alreadyClosed = existingStage.toLowerCase().includes("closed");
@@ -52,8 +51,8 @@ export async function POST(req: Request) {
         {
           status,
           stage,
-          closedAt: now,
-          updatedAt: now,
+          closedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           updatedBy: auth.user.uid,
         },
         { merge: true }
@@ -97,8 +96,8 @@ export async function POST(req: Request) {
         },
         createdByUid: auth.user.uid,
         createdByName: userLabel(auth.user),
-        createdAt: now,
-        updatedAt: now,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }
 

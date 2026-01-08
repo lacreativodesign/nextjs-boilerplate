@@ -223,7 +223,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <RequireAuth allowed={["sales", "sales_manager", "admin", "super_admin"]}>
+    <RequireAuth allowed={["sales"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(
