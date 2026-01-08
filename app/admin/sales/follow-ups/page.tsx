@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
-import { formatDate, formatDateTime } from "@/components/finance/financeUtils";
-import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDate } from "@/lib/sales/utils";
+import { formatDateTime } from "@/components/finance/financeUtils";
+import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from "@/lib/sales/utils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const TYPE_OPTIONS = [{ label: "All Types", value: "" }, ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))];
@@ -136,7 +136,7 @@ export default function SalesFollowUpsPage() {
       relatedType: item.relatedType,
       relatedName: item.relatedName,
       type: item.type,
-      dueDate: toInputDate(item.dueDate),
+      dueDate: toInputDateTime(item.dueDate),
       ownerId: item.ownerId || "",
       ownerName: item.ownerName || "",
       status: item.status,
@@ -154,6 +154,10 @@ export default function SalesFollowUpsPage() {
   };
 
   const handleSave = async () => {
+    if (!form.dueDate) {
+      setError({ title: "Due date required", message: "Follow-ups require both date and time." });
+      return;
+    }
     try {
       setActionLoading("save");
       const endpoint = drawerMode === "create" ? "/api/admin/sales/follow-ups/create" : "/api/admin/sales/follow-ups/update";
@@ -170,6 +174,7 @@ export default function SalesFollowUpsPage() {
         throw new Error(data?.error || "Unable to save follow-up.");
       }
       setDrawerOpen(false);
+      setError(null);
       await loadFollowUps();
     } catch (err) {
       console.error("Follow-up save error", err);
@@ -323,7 +328,7 @@ export default function SalesFollowUpsPage() {
                     <tr key={item.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
                       <td style={{ padding: "14px 16px", fontWeight: 600 }}>{item.relatedName}</td>
                       <td style={{ padding: "14px 16px" }}>{item.type}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatDate(item.dueDate)}</td>
+                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatDateTime(item.dueDate)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "right" }}>{item.ownerName || "Unassigned"}</td>
                       <td style={{ padding: "14px 16px", textAlign: "right" }}>
                         {overdue ? "Overdue" : item.status}
@@ -408,10 +413,10 @@ export default function SalesFollowUpsPage() {
                 />
               </div>
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Due Date</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Due Date & Time</span>
                 <input
                   className="input"
-                  type="date"
+                  type="datetime-local"
                   value={form.dueDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
                 />

@@ -9,8 +9,8 @@ import {
   parseNumber,
   parseString,
   requireSalesRead,
-  nowIso,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -71,12 +71,31 @@ export async function POST(req: Request) {
 
     const parseIso = (value: any, fallback?: any) => {
       if (!value) return fallback ?? null;
-      const date = new Date(value);
+      const raw = String(value).trim();
+      const date = new Date(raw);
       if (Number.isNaN(date.getTime())) return fallback ?? null;
       return date.toISOString();
     };
     const lastContactedAt = parseIso(body.lastContactedAt, existing.lastContactedAt || null);
     const nextFollowUpAt = parseIso(body.nextFollowUpAt, existing.nextFollowUpAt || null);
+
+    const toLeadStatus = (stageValue: string) => {
+      const normalized = stageValue.toLowerCase();
+      if (normalized.includes("closed won")) return "won";
+      if (normalized.includes("closed lost")) return "lost";
+      return "open";
+    };
+
+    const needsFollowUp = disposition.trim().toLowerCase() === "follow-up needed";
+    if (needsFollowUp && !body.nextFollowUpAt && !existing.nextFollowUpAt) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    if (body.nextFollowUpAt && !String(body.nextFollowUpAt).includes("T")) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    if (body.nextFollowUpAt && !nextFollowUpAt) {
+      return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+    }
 
     let ownerId = existing.ownerId || null;
     let ownerName = existing.ownerName || "";
@@ -88,7 +107,6 @@ export async function POST(req: Request) {
     }
 
     const stageChanged = String(existing.stage || "") !== stage;
-    const now = nowIso();
     const updates: Record<string, any> = {
       companyName,
       contactName,
@@ -97,6 +115,7 @@ export async function POST(req: Request) {
       source,
       notes,
       stage,
+      status: toLeadStatus(stage),
       disposition,
       expectedValueUsd,
       packageName,
@@ -106,8 +125,8 @@ export async function POST(req: Request) {
       nextFollowUpAt,
       ownerId,
       ownerName,
-      lastActivityAt: now,
-      updatedAt: now,
+      lastActivityAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
     };
 
@@ -122,7 +141,7 @@ export async function POST(req: Request) {
             doc.ref,
             {
               stage,
-              updatedAt: now,
+              updatedAt: serverTimestamp(),
               updatedBy: auth.user.uid,
             },
             { merge: true }

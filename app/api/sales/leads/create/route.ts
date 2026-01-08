@@ -7,8 +7,8 @@ import {
   notifyUsers,
   parseNumber,
   parseString,
-  nowIso,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -23,9 +23,17 @@ export async function POST(req: Request) {
 
     const parseIso = (value: any) => {
       if (!value) return null;
-      const date = new Date(value);
+      const raw = String(value).trim();
+      const date = new Date(raw);
       if (Number.isNaN(date.getTime())) return null;
       return date.toISOString();
+    };
+
+    const toLeadStatus = (stageValue: string) => {
+      const normalized = stageValue.toLowerCase();
+      if (normalized.includes("closed won")) return "won";
+      if (normalized.includes("closed lost")) return "lost";
+      return "open";
     };
 
     const payload = await req.json();
@@ -46,11 +54,21 @@ export async function POST(req: Request) {
     const lastContactedAt = parseIso(payload.lastContactedAt);
     const nextFollowUpAt = parseIso(payload.nextFollowUpAt);
 
+    const needsFollowUp = disposition.trim().toLowerCase() === "follow-up needed";
+    if (needsFollowUp && !payload.nextFollowUpAt) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    if (payload.nextFollowUpAt && !String(payload.nextFollowUpAt).includes("T")) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    if (payload.nextFollowUpAt && !nextFollowUpAt) {
+      return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+    }
+
     const requestedOwnerId = parseString(payload.ownerId, "");
     const ownerId = requestedOwnerId && auth.user.role === "sales_manager" ? requestedOwnerId : auth.user.uid;
     const ownerName = ownerId ? await getUserNameById(ownerId) : "";
 
-    const now = nowIso();
     const tenantId = auth.user.tenantId || "";
     const docRef = await adminDb.collection("leads").add({
       tenantId,
@@ -61,6 +79,7 @@ export async function POST(req: Request) {
       source,
       notes,
       stage,
+      status: toLeadStatus(stage),
       disposition,
       expectedValueUsd,
       packageName,
@@ -70,10 +89,10 @@ export async function POST(req: Request) {
       nextFollowUpAt,
       ownerId,
       ownerName: ownerName || userLabel(auth.user),
-      lastActivityAt: now,
+      lastActivityAt: serverTimestamp(),
       isDeleted: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       createdById: auth.user.uid,
       createdBy: auth.user.uid,
       updatedBy: auth.user.uid,

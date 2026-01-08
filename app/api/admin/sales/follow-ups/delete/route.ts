@@ -17,7 +17,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing follow-up id." }, { status: 400 });
     }
 
-    await adminDb.collection("followUps").doc(id).set(
+    const docRef = adminDb.collection("followUps").doc(id);
+    const snapshot = await docRef.get();
+    if (!snapshot.exists) {
+      return NextResponse.json({ ok: false, error: "Follow-up not found." }, { status: 404 });
+    }
+    const existing = snapshot.data() || {};
+    if (existing.tenantId && existing.tenantId !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    await docRef.set(
       {
         isDeleted: true,
         updatedAt: serverTimestamp(),

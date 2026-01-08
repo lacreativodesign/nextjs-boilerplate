@@ -5,9 +5,9 @@ import {
   getUserNameById,
   getWatcherUserIds,
   notifyUsers,
-  nowIso,
   parseString,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -25,27 +25,36 @@ export async function POST(req: Request) {
     const relatedName = parseString(payload.relatedName, "");
     const relatedId = parseString(payload.relatedId, "") || null;
     const type = parseString(payload.type, "Call");
-    const dueDate = parseString(payload.dueDate, "");
+    const dueDateRaw = parseString(payload.dueDate, "").trim();
     const status = parseString(payload.status, "Open");
+
+    if (!dueDateRaw || !dueDateRaw.includes("T")) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    const dueDateObj = new Date(dueDateRaw);
+    if (Number.isNaN(dueDateObj.getTime())) {
+      return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+    }
 
     const requestedAssignee = parseString(payload.assignedTo, "");
     const assignedTo = auth.user.role === "sales_manager" && requestedAssignee ? requestedAssignee : auth.user.uid;
     const ownerName = assignedTo ? await getUserNameById(assignedTo) : userLabel(auth.user);
 
-    const now = nowIso();
+    const tenantId = auth.user.tenantId || "";
     const docRef = await adminDb.collection("followUps").add({
+      tenantId,
       relatedType,
       relatedName,
       relatedId,
       type,
-      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      dueDate: dueDateObj.toISOString(),
       status,
       assignedTo,
       ownerId: assignedTo,
       ownerName,
       isDeleted: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       createdBy: auth.user.uid,
       updatedBy: auth.user.uid,
     });
@@ -64,7 +73,7 @@ export async function POST(req: Request) {
     await notifyUsers({
       userIds: [assignedTo, ...watchers],
       title: "Follow-up created",
-      body: `${relatedName || "Follow-up"} scheduled for ${dueDate || "upcoming"}.`,
+      body: `${relatedName || "Follow-up"} scheduled for ${dueDateObj.toISOString()}.`,
       deepLink: "/sales/follow-ups",
       entityType: "follow_up",
       entityId: docRef.id,

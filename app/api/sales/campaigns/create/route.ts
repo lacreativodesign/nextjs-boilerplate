@@ -4,9 +4,9 @@ import {
   createSalesEvent,
   getWatcherUserIds,
   notifyUsers,
-  nowIso,
   parseString,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -24,15 +24,14 @@ export async function POST(req: Request) {
     const channel = parseString(payload.channel, "");
     const status = parseString(payload.status, "Active");
 
-    const now = nowIso();
     const docRef = await adminDb.collection("campaigns").add({
       name,
       channel,
       status,
       metrics: payload.metrics || null,
       isDeleted: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       createdBy: auth.user.uid,
       updatedBy: auth.user.uid,
     });

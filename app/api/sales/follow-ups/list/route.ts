@@ -30,13 +30,26 @@ export async function GET() {
     const role = auth.user.role || "";
     const salesRep = isSales(role);
 
+    const tenantId = auth.user.tenantId || "";
     const snaps = salesRep
       ? await Promise.all([
-          adminDb.collection("followUps").where("isDeleted", "==", false).where("assignedTo", "==", auth.user.uid).limit(500).get(),
-          adminDb.collection("followUps").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get(),
+          adminDb
+            .collection("followUps")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("assignedTo", "==", auth.user.uid)
+            .limit(500)
+            .get(),
+          adminDb
+            .collection("followUps")
+            .where("tenantId", "==", tenantId)
+            .where("isDeleted", "==", false)
+            .where("createdBy", "==", auth.user.uid)
+            .limit(500)
+            .get(),
         ])
       : await Promise.all([
-          adminDb.collection("followUps").where("isDeleted", "==", false).limit(500).get(),
+          adminDb.collection("followUps").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
           Promise.resolve(null),
         ]);
 

@@ -4,9 +4,9 @@ import {
   createSalesEvent,
   getWatcherUserIds,
   notifyUsers,
-  nowIso,
   parseString,
   requireSalesWrite,
+  serverTimestamp,
   userLabel,
 } from "../../_utils";
 
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         channel,
         status,
         metrics: payload.metrics || existing.metrics || null,
-        updatedAt: nowIso(),
+        updatedAt: serverTimestamp(),
         updatedBy: auth.user.uid,
       },
       { merge: true }

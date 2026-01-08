@@ -16,17 +16,26 @@ export async function POST(req: Request) {
     const relatedId = parseString(payload.relatedId, "") || null;
     const relatedName = parseString(payload.relatedName, "");
     const type = parseString(payload.type, "Call");
-    const dueDate = payload.dueDate || null;
+    const dueDateRaw = parseString(payload.dueDate, "").trim();
     const ownerId = parseString(payload.ownerId, "") || null;
     const ownerName = parseString(payload.ownerName, "") || null;
     const status = parseString(payload.status, "Open");
 
+    if (!dueDateRaw || !dueDateRaw.includes("T")) {
+      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    }
+    const dueDateObj = new Date(dueDateRaw);
+    if (Number.isNaN(dueDateObj.getTime())) {
+      return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+    }
+
     const docRef = await adminDb.collection("followUps").add({
+      tenantId: auth.user.tenantId || "",
       relatedType,
       relatedId,
       relatedName,
       type,
-      dueDate: dueDate ? new Date(dueDate) : null,
+      dueDate: dueDateObj.toISOString(),
       ownerId,
       ownerName,
       status,

@@ -41,6 +41,13 @@ export function toInputDate(iso?: string | null) {
   return d.toISOString().slice(0, 10);
 }
 
+export function toInputDateTime(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 16);
+}
+
 export function isOverdue(iso?: string | null) {
   if (!iso) return false;
   const d = new Date(iso);

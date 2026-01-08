@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
-import { formatDate } from "@/components/finance/financeUtils";
-import { FOLLOW_UP_STATUS, FOLLOW_UP_TYPES, isOverdue, toInputDate } from "@/lib/sales/utils";
+import { formatDateTime } from "@/components/finance/financeUtils";
+import { FOLLOW_UP_STATUS, FOLLOW_UP_TYPES, isOverdue, toInputDateTime } from "@/lib/sales/utils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const TYPE_OPTIONS = ["All", ...FOLLOW_UP_TYPES];
@@ -179,13 +179,17 @@ export default function SalesFollowUpsPage() {
       relatedName: item.relatedName,
       relatedId: item.relatedId || null,
       type: item.type,
-      dueDate: toInputDate(item.dueDate),
+      dueDate: toInputDateTime(item.dueDate),
       status: item.status,
     });
     setDrawerOpen(true);
   };
 
   const handleSave = async () => {
+    if (!form.dueDate) {
+      setError({ title: "Due date required", message: "Follow-ups require both date and time." });
+      return;
+    }
     try {
       setActionLoading(true);
       const endpoint = drawerMode === "create" ? "/api/sales/follow-ups/create" : "/api/sales/follow-ups/update";
@@ -203,6 +207,7 @@ export default function SalesFollowUpsPage() {
         throw new Error(data?.error || "Unable to save follow-up.");
       }
       setDrawerOpen(false);
+      setError(null);
       await loadFollowUps();
     } catch (err) {
       console.error("Follow-up save error", err);
@@ -321,7 +326,7 @@ export default function SalesFollowUpsPage() {
                     {headerLabel("Type", sortBadge("type"))}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "left" }} onClick={() => toggleSort("dueDate")}>
-                    {headerLabel("Due", sortBadge("dueDate"))}
+                    {headerLabel("Due Date", sortBadge("dueDate"))}
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("status")}>
                     {headerLabel("Status", sortBadge("status"))}
@@ -348,7 +353,9 @@ export default function SalesFollowUpsPage() {
                       <td style={cellStyle}>{item.relatedName || "-"}</td>
                       <td style={cellStyle}>{item.type}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span className={isOverdue(item.dueDate) ? "text-red-500" : ""}>{formatDate(item.dueDate)}</span>
+                        <span className={isOverdue(item.dueDate) ? "text-red-500" : ""}>
+                          {formatDateTime(item.dueDate)}
+                        </span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{item.status}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -423,10 +430,10 @@ export default function SalesFollowUpsPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Due Date</label>
+              <label className="text-xs font-semibold text-slate-500">Due Date & Time</label>
               <input
                 className="input mt-2"
-                type="date"
+                type="datetime-local"
                 value={form.dueDate}
                 onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
               />
