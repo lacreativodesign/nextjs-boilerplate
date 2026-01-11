@@ -101,39 +101,72 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "invalid_api_key" }, { status: 401 });
     }
 
-    const leadRef = adminDb.collection(`tenants/${tenantId}/leads`).doc();
-    const notificationsRef = adminDb.collection(`tenants/${tenantId}/notifications`).doc();
-    const adminNotificationsRef = adminDb.collection(`tenants/${tenantId}/notifications`).doc();
+    const leadRef = adminDb.collection("leads").doc();
+
+    const leadSource = "Website";
+    const status = "New";
 
     const leadData = {
-      fullName,
+      tenantId,
+      name: fullName,
       email,
       phone: normalizeOptionalString(body.phone),
-      company: normalizeOptionalString(body.company),
+      companyName: normalizeOptionalString(body.company),
+      contactName: fullName,
+      contactEmail: email,
+      contactPhone: normalizeOptionalString(body.phone),
       teamSize: normalizeOptionalString(body.teamSize),
       serviceType: normalizeOptionalString(body.serviceType),
-      message,
-      source: normalizeOptionalString(body.source) || "website",
-      status: "new",
-      ownerRole: "sales_manager",
+      notes: message,
+      source: leadSource,
+      status,
+      stage: "New Lead",
+      isDeleted: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const notificationBase = {
-      type: "lead_new",
-      title: "New lead submitted",
-      body: `${fullName} from ${leadData.company || "Unknown company"} submitted a lead.`,
-      leadRef: leadRef.path,
-      createdAt: FieldValue.serverTimestamp(),
-      read: false,
-    };
+    const notificationTitle = "New website lead";
+    const notificationMessage = `${fullName} submitted a demo request`;
+    const notificationTimestamp = FieldValue.serverTimestamp();
 
-    const batch = adminDb.batch();
-    batch.set(leadRef, leadData);
-    batch.set(notificationsRef, { ...notificationBase, targetRoles: ["sales_manager"] });
-    batch.set(adminNotificationsRef, { ...notificationBase, targetRoles: ["admin"] });
-    await batch.commit();
+    const usersSnap = await adminDb
+      .collection("users")
+      .where("tenantId", "==", tenantId)
+      .where("role", "in", ["admin", "sales_manager"])
+      .get();
+
+    const notificationsBatch = adminDb.batch();
+    notificationsBatch.set(leadRef, leadData);
+
+    usersSnap.docs.forEach((doc) => {
+      const data = doc.data() || {};
+      const role = String(data.role || "");
+      const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales-manager/leads?open=${leadRef.id}`;
+      const notificationRef = adminDb.collection("notifications").doc();
+
+      notificationsBatch.set(notificationRef, {
+        id: notificationRef.id,
+        toUserId: doc.id,
+        title: notificationTitle,
+        body: notificationMessage,
+        message: notificationMessage,
+        type: "new_lead",
+        entityType: "lead",
+        entityId: leadRef.id,
+        deepLink,
+        source: "website",
+        tenantId,
+        leadId: leadRef.id,
+        isRead: false,
+        createdAt: notificationTimestamp,
+        updatedAt: notificationTimestamp,
+        createdBy: null,
+        priority: "normal",
+      });
+    });
+
+    await notificationsBatch.commit();
 
     return NextResponse.json({ ok: true, leadId: leadRef.id }, { status: 200 });
   } catch (error) {
