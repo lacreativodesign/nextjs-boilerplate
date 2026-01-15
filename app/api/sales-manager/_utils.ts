@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
-import { getCurrentUser, isSalesManager } from "../admin/_utils";
+import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
 
 export const runtime = "nodejs";
 
@@ -41,7 +41,7 @@ export async function requireSalesManager() {
   if (!me) {
     return { ok: false as const, status: 401, error: "Unauthorized" };
   }
-  if (!isSalesManager(me.role)) {
+  if (!isSalesManager(me.role) && !isAdminOrSuper(me.role)) {
     return { ok: false as const, status: 403, error: "Forbidden" };
   }
   return { ok: true as const, user: me };
@@ -56,6 +56,7 @@ export async function createSalesEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -65,6 +66,7 @@ export async function createSalesEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await createNotificationEvent({
     type,
@@ -75,6 +77,7 @@ export async function createSalesEvent({
     createdByUid,
     createdByName,
     metadata,
+    tenantId: tenantId || null,
   });
 }
 
@@ -86,6 +89,7 @@ export async function notifyUsers({
   entityType,
   entityId,
   createdBy,
+  tenantId,
 }: {
   userIds: string[];
   title: string;
@@ -94,6 +98,7 @@ export async function notifyUsers({
   entityType?: string | null;
   entityId?: string | null;
   createdBy?: { uid?: string | null; name?: string | null } | null;
+  tenantId?: string | null;
 }) {
   const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
   await Promise.all(
@@ -107,13 +112,14 @@ export async function notifyUsers({
         entityId: entityId || null,
         deepLink: deepLink || null,
         createdBy: createdBy || null,
+        tenantId: tenantId || null,
       })
     )
   );
 }
 
-export async function getAdminUserIds() {
-  const ids = await getUserIdsByRoles(["admin", "super_admin"]);
+export async function getAdminUserIds(tenantId?: string | null) {
+  const ids = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
   return ids;
 }
 

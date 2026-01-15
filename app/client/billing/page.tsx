@@ -27,6 +27,24 @@ type InvoiceDetail = {
   notes: string | null;
 };
 
+type PaymentRecord = {
+  id: string;
+  status: string;
+  amountUsd: number;
+  method: string;
+  paidAt: string | null;
+  createdAt: string | null;
+  orderId?: string | null;
+};
+
+type ChangeRequestRecord = {
+  id: string;
+  title: string;
+  status: string;
+  estimatedCost: number | null;
+  estimatedTimelineDays: number | null;
+};
+
 function useIsSystemDark() {
   const [isDark, setIsDark] = useState(false);
 
@@ -68,6 +86,8 @@ function fmtDate(iso?: string | null) {
 export default function ClientBillingPage() {
   const isDark = useIsSystemDark();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -100,11 +120,19 @@ export default function ClientBillingPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" });
-        const payload = await res.json();
-        if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoices.");
+        const [invoiceRes, paymentRes, changeRequestRes] = await Promise.all([
+          fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
+          fetch("/api/client/billing/payments/list", { credentials: "include", cache: "no-store" }),
+          fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" }),
+        ]);
+        const payload = await invoiceRes.json();
+        const paymentPayload = await paymentRes.json();
+        const changeRequestPayload = await changeRequestRes.json();
+        if (!invoiceRes.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoices.");
         if (!alive) return;
         setInvoices(payload.invoices || []);
+        setPayments(paymentPayload?.payments || []);
+        setChangeRequests(changeRequestPayload?.changeRequests || []);
       } catch (err: any) {
         if (!alive) return;
         setError(err?.message || "Unable to load invoices.");
@@ -148,6 +176,42 @@ export default function ClientBillingPage() {
       <div>
         <h1 className="page-title">Billing</h1>
         <p className="page-subtitle">View invoice status, outstanding balances, and payment history.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="card p-4">
+          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Outstanding Balance</div>
+          <div className="mt-2 text-2xl font-semibold">
+            {fmtMoney(
+              invoices.reduce((sum, invoice) => {
+                if (["Paid", "Void"].includes(invoice.status)) return sum;
+                return sum + Number(invoice.amountUsd || 0);
+              }, 0)
+            )}
+          </div>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Open invoices requiring payment</p>
+        </div>
+        <div className="card p-4 md:col-span-2">
+          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Pending approvals</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="card p-3">
+              <div className="text-xs text-[var(--text-muted)]">Change requests</div>
+              <div className="mt-1 text-lg font-semibold">
+                {changeRequests.filter((request) => [\"Submitted\", \"In Review\"].includes(request.status)).length}
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Awaiting your decision</p>
+            </div>
+            <div className="card p-3">
+              <div className="text-xs text-[var(--text-muted)]">Invoices due</div>
+              <div className="mt-1 text-lg font-semibold">
+                {
+                  invoices.filter((invoice) => !["Paid", "Void"].includes(invoice.status)).length
+                }
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Pending payments</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="card p-4">
@@ -202,6 +266,51 @@ export default function ClientBillingPage() {
                           View
                         </button>
                       </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card table-shell">
+        <div className="p-4 border-b border-slate-200/40">
+          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Payments</div>
+        </div>
+        {loading ? (
+          <div className="p-4 text-sm text-[var(--text-muted)]">Loading payments...</div>
+        ) : payments.length === 0 ? (
+          <div className="p-4 text-sm text-[var(--text-muted)]">No payments found.</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ minWidth: 760 }}>
+              <thead>
+                <tr>
+                  <th style={headerCellStyle}>Status</th>
+                  <th style={headerCellStyle}>Method</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Amount</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Paid</th>
+                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((payment, idx) => {
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.015)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
+                  return (
+                    <tr key={payment.id} style={{ background: rowBg }}>
+                      <td style={cellStyle}>{payment.status}</td>
+                      <td style={cellStyle}>{payment.method}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(payment.amountUsd)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.paidAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.createdAt)}</td>
                     </tr>
                   );
                 })}

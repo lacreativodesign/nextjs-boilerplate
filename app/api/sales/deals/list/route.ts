@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { isSales, normalizeStage, requireSalesRead, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export async function GET() {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
+    const tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
 
     const leadSnaps = salesRep
       ? await Promise.all([
@@ -26,7 +28,14 @@ export async function GET() {
 
     const leadIds = new Set<string>();
     leadSnaps.forEach((snap) => {
-      if (snap) snap.docs.forEach((doc) => leadIds.add(doc.id));
+      if (!snap) return;
+      snap.docs.forEach((doc) => {
+        const data = doc.data() || {};
+        const leadTenant = String(data.tenantId || DEFAULT_TENANT_ID);
+        if (leadTenant === tenantId) {
+          leadIds.add(doc.id);
+        }
+      });
     });
 
     const dealSnaps = salesRep
@@ -44,18 +53,37 @@ export async function GET() {
       if (snap) snap.docs.forEach((doc) => dealsMap.set(doc.id, doc));
     });
 
+    const matchesTenant = (doc: Record<string, any>) =>
+      String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);
+
     const deals = Array.from(dealsMap.values())
       .map((doc) => {
         const data = doc.data() || {};
+        const listPriceUsd = Number(data.listPriceUsd || data.valueUsd || data.amountUsd || 0);
+        const discountPct = Number(data.discountPct || 0);
+        const discountUsd = Number(data.discountUsd || (listPriceUsd * discountPct) / 100 || 0);
+        const finalPriceUsd = Number(data.finalPriceUsd || listPriceUsd - discountUsd || 0);
+        const discountApproved = Boolean(data.discountApproved);
+        const discountStatus = String(
+          data.discountStatus || (discountPct > 0 ? (discountApproved ? "approved" : "pending") : "none")
+        );
         return {
           id: doc.id,
+          tenantId: data.tenantId || DEFAULT_TENANT_ID,
           dealName: String(data.dealName || ""),
           clientName: String(data.clientName || ""),
           leadName: String(data.leadName || ""),
           leadId: data.leadId || null,
           stage: normalizeStage(data.stage || "New Lead"),
           status: String(data.status || "Open"),
-          valueUsd: Number(data.valueUsd || data.amountUsd || 0),
+          valueUsd: Number(data.finalPriceUsd || data.valueUsd || data.amountUsd || 0),
+          listPriceUsd,
+          discountPct,
+          discountUsd,
+          finalPriceUsd,
+          discountReason: data.discountReason || null,
+          discountApproved,
+          discountStatus,
           probability: Number(data.probability || 0),
           ownerId: data.ownerId || null,
           ownerName: data.ownerName || null,
@@ -65,6 +93,7 @@ export async function GET() {
           updatedAt: toISO(data.updatedAt),
         };
       })
+      .filter((deal) => matchesTenant(deal as Record<string, any>))
       .filter((deal) => {
         if (!salesRep) return true;
         if (deal.ownerId === auth.user.uid) return true;

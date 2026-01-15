@@ -10,6 +10,7 @@ type FinanceSettings = {
   arBuckets: number[];
   payrollApprovalRequired: boolean;
   lockPastMonths: boolean;
+  fxPkrPerUsd: number;
   updatedAt?: string | null;
   updatedBy?: string | null;
 };
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: FinanceSettings = {
   arBuckets: [30, 60, 90],
   payrollApprovalRequired: false,
   lockPastMonths: false,
+  fxPkrPerUsd: 280,
 };
 
 export default function FinanceSettingsPage() {
@@ -118,7 +120,7 @@ export default function FinanceSettingsPage() {
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 
       {!canEdit && !loading && (
-        <SettingsAlert tone="info">Only Super Admins can edit finance settings. You have view-only access.</SettingsAlert>
+        <SettingsAlert tone="info">Admins and Super Admins can edit finance settings. You have view-only access.</SettingsAlert>
       )}
 
       <section className="card" style={{ padding: 20, borderRadius: 18 }}>
@@ -159,6 +161,22 @@ export default function FinanceSettingsPage() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <label className="space-y-2">
+            <span style={{ fontSize: 13, fontWeight: 600 }}>FX Rate (PKR per 1 USD)</span>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              value={settings.fxPkrPerUsd}
+              onChange={(e) => setSettings((prev) => ({ ...prev, fxPkrPerUsd: Number(e.target.value) }))}
+              disabled={disabled}
+              style={{ appearance: "textfield" }}
+            />
+            <span className="text-xs text-[var(--text-muted)]">
+              Used to normalize PKR expenses into USD for Profit reporting.
+            </span>
+          </label>
+
           <div className="space-y-2">
             <div style={{ fontWeight: 700 }}>Payment Methods</div>
             <div className="flex flex-wrap gap-2">

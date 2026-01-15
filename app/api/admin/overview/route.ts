@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import {
   computeHealth,
   getMonthKey,
@@ -9,6 +10,7 @@ import {
   toISO,
   toMillis,
 } from "../reports/_utils";
+import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from "../settings/_utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,10 +53,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const settings = await getReportSettings();
+    const tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
+    const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings()]);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
+    const startYearMs = new Date(now.getFullYear(), 0, 1).getTime();
     const currentMonthKey = getMonthKey(now);
+    const fxPkrPerUsdRaw = Number(financeSettings.fxPkrPerUsd || DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd);
+    const fxPkrPerUsd = fxPkrPerUsdRaw > 0 ? fxPkrPerUsdRaw : DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd;
 
     const [
       projectSnap,
@@ -100,21 +106,35 @@ export async function GET() {
         ? events
         : (await adminDb.collection("events").limit(500).get()).docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
+    const matchesTenant = (doc: Record<string, any>) =>
+      String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);
+
+    const scopedProjects = projects.filter(matchesTenant);
+    const scopedChangeRequests = changeRequests.filter(matchesTenant);
+    const scopedInvoices = invoices.filter(matchesTenant);
+    const scopedPayments = payments.filter(matchesTenant);
+    const scopedPayroll = payroll.filter(matchesTenant);
+    const scopedExpenses = expenses.filter(matchesTenant);
+    const scopedUsers = users.filter(matchesTenant);
+    const scopedOnboardingTasks = onboardingTasks.filter(matchesTenant);
+    const scopedClients = clients.filter(matchesTenant);
+    const scopedEvents = safeEvents.filter(matchesTenant);
+
     const paidInvoiceIds = new Set(
-      payments
+      scopedPayments
         .filter((payment) => String(payment.status || "") === "Paid")
         .map((payment) => String(payment.invoiceId || ""))
         .filter(Boolean)
     );
 
-    const paymentsThisMonth = payments.reduce((sum, payment) => {
+    const paymentsThisMonth = scopedPayments.reduce((sum, payment) => {
       if (String(payment.status || "") !== "Paid") return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
     }, 0);
 
-    const invoiceFallbackRevenue = invoices.reduce((sum, invoice) => {
+    const invoiceFallbackRevenue = scopedInvoices.reduce((sum, invoice) => {
       if (String(invoice.status || "") !== "Paid") return sum;
       const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
@@ -124,22 +144,37 @@ export async function GET() {
 
     const revenueThisMonthUsd = paymentsThisMonth + invoiceFallbackRevenue;
 
-    const outstandingArUsd = invoices.reduce((sum, invoice) => {
+    const revenueYtdUsd =
+      scopedPayments.reduce((sum, payment) => {
+        if (String(payment.status || "") !== "Paid") return sum;
+        const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
+        if (!paidMs || paidMs < startYearMs) return sum;
+        return sum + Number(payment.amountUsd || 0);
+      }, 0) +
+      scopedInvoices.reduce((sum, invoice) => {
+        if (String(invoice.status || "") !== "Paid") return sum;
+        const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
+        if (!paidMs || paidMs < startYearMs) return sum;
+        if (paidInvoiceIds.has(String(invoice.id || ""))) return sum;
+        return sum + Number(invoice.amountTotalUsd || 0);
+      }, 0);
+
+    const outstandingArUsd = scopedInvoices.reduce((sum, invoice) => {
       const status = String(invoice.status || "");
       if (["Paid", "Void"].includes(status)) return sum;
       return sum + Number(invoice.amountTotalUsd || 0);
     }, 0);
 
-    const activeProjects = projects.filter((project) => String(project.stage || "").toLowerCase() !== "delivered").length;
-    const overdueProjects = projects.filter((project) => {
+    const activeProjects = scopedProjects.filter((project) => String(project.stage || "").toLowerCase() !== "delivered").length;
+    const overdueProjects = scopedProjects.filter((project) => {
       const stage = String(project.stage || "").toLowerCase();
       if (stage === "delivered") return false;
       const dueMs = toMillis(project.dueDate);
       return Boolean(dueMs && dueMs < now.getTime());
     }).length;
-    const qaQueue = projects.filter((project) => String(project.stage || "").toLowerCase() === "final").length;
+    const qaQueue = scopedProjects.filter((project) => String(project.stage || "").toLowerCase() === "final").length;
 
-    const openChangeRequests = changeRequests.filter((req) => {
+    const openChangeRequests = scopedChangeRequests.filter((req) => {
       const status = String(req.status || "");
       if (!status) return true;
       return !isClosedStatus(status);
@@ -151,11 +186,11 @@ export async function GET() {
 
     const projectsByStage = workflowStages.map((stage) => ({
       stage,
-      count: projects.filter((project) => String(project.stage || "") === stage).length,
+      count: scopedProjects.filter((project) => String(project.stage || "") === stage).length,
     }));
 
     const openChangeRequestByProject = new Map<string, number>();
-    changeRequests.forEach((req) => {
+    scopedChangeRequests.forEach((req) => {
       const status = String(req.status || "");
       if (status && isClosedStatus(status)) return;
       const projectId = String(req.projectId || "");
@@ -163,7 +198,7 @@ export async function GET() {
       openChangeRequestByProject.set(projectId, (openChangeRequestByProject.get(projectId) || 0) + 1);
     });
 
-    const atRiskBlocked = projects.reduce((count, project) => {
+    const atRiskBlocked = scopedProjects.reduce((count, project) => {
       const health = String(project.health || "").toLowerCase();
       if (health) {
         if (health.includes("at risk") || health.includes("blocked") || health.includes("overdue")) return count + 1;
@@ -177,7 +212,7 @@ export async function GET() {
       return count;
     }, 0);
 
-    const arAgingBuckets = invoices.reduce(
+    const arAgingBuckets = scopedInvoices.reduce(
       (acc, invoice) => {
         const status = String(invoice.status || "");
         if (["Paid", "Void"].includes(status)) return acc;
@@ -197,33 +232,55 @@ export async function GET() {
       { bucket0to30: 0, bucket31to60: 0, bucket61to90: 0, bucket90plus: 0 }
     );
 
-    const payrollDuePkr = payroll.reduce((sum, row) => {
+    const payrollDuePkr = scopedPayroll.reduce((sum, row) => {
       const status = String(row.status || "Draft");
       if (!["Draft", "Approved"].includes(status)) return sum;
       if (String(row.month || "") !== currentMonthKey) return sum;
       return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
     }, 0);
 
-    const expensesThisMonthPkr = expenses.reduce((sum, row) => {
+    const payrollYtdPkr = scopedPayroll.reduce((sum, row) => {
+      const status = String(row.status || "Draft");
+      if (!["Draft", "Approved"].includes(status)) return sum;
+      const monthKey = String(row.month || "");
+      if (!monthKey.startsWith(`${now.getFullYear()}-`)) return sum;
+      return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
+    }, 0);
+
+    const expensesThisMonthPkr = scopedExpenses.reduce((sum, row) => {
       const expenseMs = toMillis(row.expenseDate || row.createdAt);
       if (!expenseMs || expenseMs < startMs) return sum;
       return sum + Number(row.amountPkr || 0);
     }, 0);
 
-    const activeEmployees = users.filter((user) => isActiveUser(user)).length;
-    const onboardingOpen = onboardingTasks.filter((task) => String(task.status || "").toLowerCase() !== "completed").length;
-    const newHires30 = users.filter((user) => {
+    const expensesYtdPkr = scopedExpenses.reduce((sum, row) => {
+      const expenseMs = toMillis(row.expenseDate || row.createdAt);
+      if (!expenseMs || expenseMs < startYearMs) return sum;
+      return sum + Number(row.amountPkr || 0);
+    }, 0);
+
+    const expensesThisMonthUsdNormalized = (payrollDuePkr + expensesThisMonthPkr) / fxPkrPerUsd;
+    const expensesYtdUsdNormalized = (payrollYtdPkr + expensesYtdPkr) / fxPkrPerUsd;
+    const netProfitThisMonthUsd = revenueThisMonthUsd - expensesThisMonthUsdNormalized;
+    const netProfitYtdUsd = revenueYtdUsd - expensesYtdUsdNormalized;
+    const profitMarginPct = revenueThisMonthUsd
+      ? Math.max(0, Math.min(100, Math.round((netProfitThisMonthUsd / revenueThisMonthUsd) * 100)))
+      : 0;
+
+    const activeEmployees = scopedUsers.filter((user) => isActiveUser(user)).length;
+    const onboardingOpen = scopedOnboardingTasks.filter((task) => String(task.status || "").toLowerCase() !== "completed").length;
+    const newHires30 = scopedUsers.filter((user) => {
       const createdMs = toMillis(user.createdAt || user.joiningDate || user.updatedAt);
       if (!createdMs) return false;
       return createdMs >= now.getTime() - 30 * 24 * 60 * 60 * 1000;
     }).length;
 
-    const totalClients = clients.length;
-    const keyAccounts = clients.filter((client) => isKeyAccount(client)).length;
-    const segmentCoverageCount = clients.filter((client) => hasSegmentCoverage(client)).length;
+    const totalClients = scopedClients.length;
+    const keyAccounts = scopedClients.filter((client) => isKeyAccount(client)).length;
+    const segmentCoverageCount = scopedClients.filter((client) => hasSegmentCoverage(client)).length;
     const segmentCoveragePct = totalClients ? Math.round((segmentCoverageCount / totalClients) * 100) : 0;
 
-    const recentActivity = safeEvents
+    const recentActivity = scopedEvents
       .map((event) => ({
         id: event.id,
         type: String(event.type || ""),
@@ -243,6 +300,12 @@ export async function GET() {
       ok: true,
       kpis: {
         revenueThisMonthUsd,
+        revenueYtdUsd,
+        expensesThisMonthUsdNormalized,
+        expensesYtdUsdNormalized,
+        netProfitThisMonthUsd,
+        netProfitYtdUsd,
+        profitMarginPct,
         outstandingArUsd,
         activeProjects,
         overdueProjects,

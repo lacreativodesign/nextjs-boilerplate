@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { logEvent } from "@/lib/audit";
 import {
   arrayUnion,
-  createSalesEvent,
   getAdminUserIds,
   notifyUsers,
   parseBoolean,
@@ -31,7 +32,14 @@ export async function POST(req: Request) {
     let prevStage = "";
     let nextStage = "";
     let ownerId: string | null = null;
+    let createdByUid: string | null = null;
     let closedWonPaid = false;
+    let discountDecision: "approved" | "rejected" | null = null;
+    let discountPct = 0;
+    let listPriceUsd = 0;
+    let finalPriceUsd = 0;
+    let dealName = "";
+    let tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
@@ -39,11 +47,21 @@ export async function POST(req: Request) {
         throw new Error("Deal not found");
       }
       const data = snap.data() || {};
+      tenantId = String(data.tenantId || tenantId || DEFAULT_TENANT_ID);
+      if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
+        throw new Error("Forbidden");
+      }
       prevStage = parseString(data.stage, "New Lead");
       nextStage = payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
       ownerId = parseString(payload.ownerId ?? data.ownerId, "") || null;
+      createdByUid = parseString(data.createdBy, "") || null;
+      dealName = parseString(data.dealName, "") || parseString(data.leadName, "");
+      discountPct = parseNumber(data.discountPct, 0);
+      listPriceUsd = parseNumber(data.listPriceUsd || data.valueUsd || data.amountUsd, 0);
+      finalPriceUsd = parseNumber(data.finalPriceUsd, listPriceUsd - (listPriceUsd * discountPct) / 100);
       const updates: Record<string, any> = {
         updatedAt: serverTimestamp(),
+        tenantId,
       };
 
       if (payload.dealName !== undefined) updates.dealName = parseString(payload.dealName, "");
@@ -56,7 +74,34 @@ export async function POST(req: Request) {
         updates.expectedCloseDate = payload.expectedCloseDate ? new Date(payload.expectedCloseDate) : null;
       }
       if (payload.notes !== undefined) updates.notes = parseString(payload.notes, "");
-      if (payload.discountApproved !== undefined) updates.discountApproved = parseBoolean(payload.discountApproved, false);
+
+      const actionRaw = parseString(payload.discountAction, "");
+      const discountAction =
+        actionRaw || (payload.discountApproved === true ? "approve" : payload.discountApproved === false ? "reject" : "");
+      if (discountAction) {
+        const currentStatus = parseString(data.discountStatus, discountPct > 0 ? "pending" : "none");
+        if (currentStatus !== "pending") {
+          throw new Error("Discount approval is not pending.");
+        }
+        if (discountAction === "approve") {
+          updates.discountApproved = true;
+          updates.discountStatus = "approved";
+          updates.discountApprovedAt = serverTimestamp();
+          updates.discountApprovedByUid = auth.user.uid;
+          updates.discountApprovedByName = auth.user.name || auth.user.fullName || "";
+          discountDecision = "approved";
+        }
+        if (discountAction === "reject") {
+          updates.discountApproved = false;
+          updates.discountStatus = "rejected";
+          updates.discountApprovedAt = serverTimestamp();
+          updates.discountApprovedByUid = auth.user.uid;
+          updates.discountApprovedByName = auth.user.name || auth.user.fullName || "";
+          discountDecision = "rejected";
+        }
+      } else if (payload.discountApproved !== undefined) {
+        updates.discountApproved = parseBoolean(payload.discountApproved, false);
+      }
 
       if (nextStage !== prevStage) {
         updates.stage = nextStage;
@@ -94,14 +139,14 @@ export async function POST(req: Request) {
       : "Deal updated";
     const stageDescription = stageChanged ? `Deal ${id} moved to ${nextStage}` : `Deal ${id} updated`;
 
-    await createSalesEvent({
+    await logEvent({
+      tenantId,
       type: stageChanged ? "deal_stage_change" : "deal_updated",
       title: stageTitle,
       description: stageDescription,
       entityType: "deal",
       entityId: id,
-      createdByUid: auth.user.uid,
-      createdByName,
+      actor: { uid: auth.user.uid, name: createdByName },
       metadata: stageChanged ? { stage: nextStage } : undefined,
     });
 
@@ -114,6 +159,7 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales-manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
+        tenantId,
       });
     }
 
@@ -126,11 +172,12 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales-manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
+        tenantId,
       });
     }
 
     if (nextStage === "Closed Won" && closedWonPaid) {
-      const adminIds = await getAdminUserIds();
+      const adminIds = await getAdminUserIds(tenantId);
       await notifyUsers({
         userIds: adminIds,
         title: "Paid deal closed won",
@@ -139,12 +186,51 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales-manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
+        tenantId,
       });
+    }
+
+    if (discountDecision) {
+      const discountTitle =
+        discountDecision === "approved" ? "Discount approved" : "Discount rejected";
+      const discountType =
+        discountDecision === "approved" ? "sales.discount.approved" : "sales.discount.rejected";
+      await logEvent({
+        tenantId,
+        type: discountType,
+        title: discountTitle,
+        description: `${dealName || "Deal"} discount ${discountDecision}.`,
+        entityType: "deal",
+        entityId: id,
+        actor: { uid: auth.user.uid, name: createdByName },
+        metadata: { discountPct, listPriceUsd, finalPriceUsd },
+      });
+
+      const notifyTargets = Array.from(new Set([ownerId, createdByUid].filter(Boolean))) as string[];
+      if (notifyTargets.length) {
+        await notifyUsers({
+          userIds: notifyTargets,
+          title: discountTitle,
+          body: `${dealName || "Deal"} discount was ${discountDecision}.`,
+          entityType: "deal",
+          entityId: id,
+          deepLink: "/sales/deals",
+          createdBy: { uid: auth.user.uid, name: createdByName },
+          tenantId,
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("sales manager deal update error:", err);
+    const message = String(err?.message || "");
+    if (message.toLowerCase().includes("forbidden")) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+    if (message.toLowerCase().includes("discount approval")) {
+      return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    }
     return NextResponse.json({ ok: false, error: "Unable to update deal." }, { status: 500 });
   }
 }

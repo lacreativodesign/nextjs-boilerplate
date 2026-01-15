@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 
 export type SessionUser = {
   uid: string;
   role: string;
   clientId?: string;
+  tenantId?: string;
   [key: string]: any;
 };
 
@@ -67,11 +69,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const data = userDoc.data() || {};
     const role = (data.role as string | undefined)?.toLowerCase() || "client";
     const clientId = await resolveClientId(uid, data);
+    const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
     return {
       uid,
       role,
       clientId,
+      tenantId,
       ...data,
     } as SessionUser;
   } catch (err) {
@@ -104,5 +108,5 @@ export async function requireClient() {
   if (!clientId) {
     return { ok: false as const, status: 404, error: "Client profile not found" };
   }
-  return { ok: true as const, user: me, clientId };
+  return { ok: true as const, user: me, clientId, tenantId: me.tenantId || DEFAULT_TENANT_ID };
 }

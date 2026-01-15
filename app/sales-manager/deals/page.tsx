@@ -20,12 +20,23 @@ type DealRecord = {
   clientName: string;
   stage: string;
   valueUsd: number;
+  listPriceUsd?: number;
+  discountPct?: number;
+  discountUsd?: number;
+  finalPriceUsd?: number;
+  discountReason?: string | null;
   probability: number;
   ownerId: string | null;
   ownerName: string | null;
   expectedCloseDate: string | null;
   notes?: string | null;
   discountApproved?: boolean;
+  discountStatus?: string;
+  discountRequestedAt?: string | null;
+  discountApprovedAt?: string | null;
+  discountRequestedByUid?: string | null;
+  discountApprovedByUid?: string | null;
+  discountApprovedByName?: string | null;
   clientId?: string | null;
   projectId?: string | null;
   paymentStatus?: string | null;
@@ -45,7 +56,6 @@ type DealFormState = {
   probability: string;
   expectedCloseDate: string;
   notes: string;
-  discountApproved: boolean;
 };
 
 export default function SalesManagerDealsPage() {
@@ -57,6 +67,7 @@ export default function SalesManagerDealsPage() {
   const [selected, setSelected] = useState<DealRecord | null>(null);
   const [formState, setFormState] = useState<DealFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -131,7 +142,6 @@ export default function SalesManagerDealsPage() {
       probability: Number(deal.probability || 0).toString(),
       expectedCloseDate: toInputDate(deal.expectedCloseDate),
       notes: deal.notes || "",
-      discountApproved: Boolean(deal.discountApproved),
     });
     setDrawerOpen(true);
   };
@@ -140,6 +150,7 @@ export default function SalesManagerDealsPage() {
     setDrawerOpen(false);
     setSelected(null);
     setFormState(null);
+    setApprovalLoading(false);
   };
 
   const handleSave = async () => {
@@ -158,7 +169,6 @@ export default function SalesManagerDealsPage() {
           probability: Number(formState.probability || 0),
           expectedCloseDate: formState.expectedCloseDate || null,
           notes: formState.notes,
-          discountApproved: formState.discountApproved,
         }),
       });
       const json = await res.json();
@@ -178,7 +188,6 @@ export default function SalesManagerDealsPage() {
                 probability: Number(formState.probability || 0),
                 expectedCloseDate: formState.expectedCloseDate || null,
                 notes: formState.notes,
-                discountApproved: formState.discountApproved,
               }
             : deal
         )
@@ -188,6 +197,50 @@ export default function SalesManagerDealsPage() {
       console.error("Deal update failed", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDiscountDecision = async (action: "approve" | "reject") => {
+    if (!selected) return;
+    setApprovalLoading(true);
+    try {
+      const res = await fetch("/api/sales-manager/deals/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selected.id, discountAction: action }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json?.error || "Unable to update discount.");
+      }
+      setRows((prev) =>
+        prev.map((deal) =>
+          deal.id === selected.id
+            ? {
+                ...deal,
+                discountStatus: action === "approve" ? "approved" : "rejected",
+                discountApproved: action === "approve",
+                discountApprovedAt: new Date().toISOString(),
+                discountApprovedByName: "You",
+              }
+            : deal
+        )
+      );
+      setSelected((prev) =>
+        prev
+          ? {
+              ...prev,
+              discountStatus: action === "approve" ? "approved" : "rejected",
+              discountApproved: action === "approve",
+              discountApprovedAt: new Date().toISOString(),
+              discountApprovedByName: "You",
+            }
+          : prev
+      );
+    } catch (err) {
+      console.error("Discount approval failed", err);
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -238,6 +291,7 @@ export default function SalesManagerDealsPage() {
                   <th style={headerCellStyle}>Client</th>
                   <th style={headerCellStyle}>Stage</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Value</th>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Discount</th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>Probability</th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>Owner</th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>Updated</th>
@@ -267,6 +321,9 @@ export default function SalesManagerDealsPage() {
                       <td style={cellStyle}>{deal.clientName || "-"}</td>
                       <td style={cellStyle}>{deal.stage || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{formatUsd(deal.valueUsd)}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        {deal.discountStatus ? deal.discountStatus.replaceAll("_", " ") : "None"}
+                      </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{deal.probability}%</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{deal.ownerName || "Unassigned"}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{formatDate(deal.updatedAt)}</td>
@@ -377,15 +434,43 @@ export default function SalesManagerDealsPage() {
                 value={formState.notes}
                 onChange={(e) => setFormState({ ...formState, notes: e.target.value })}
               />
+            </Section>
 
-              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600 }}>
-                <input
-                  type="checkbox"
-                  checked={formState.discountApproved}
-                  onChange={(e) => setFormState({ ...formState, discountApproved: e.target.checked })}
-                />
-                Discount / special pricing approved
-              </label>
+            <div style={{ height: 12 }} />
+
+            <Section title="Discount Approval" isDark={isDark}>
+              <InfoRow label="List Price" value={formatUsd(selected.listPriceUsd || selected.valueUsd)} isDark={isDark} />
+              <InfoRow label="Discount %" value={`${Number(selected.discountPct || 0)}%`} isDark={isDark} />
+              <InfoRow label="Final Price" value={formatUsd(selected.finalPriceUsd || selected.valueUsd)} isDark={isDark} />
+              <InfoRow label="Status" value={selected.discountStatus || "none"} isDark={isDark} />
+              {selected.discountReason && (
+                <InfoRow label="Reason" value={selected.discountReason} isDark={isDark} />
+              )}
+              <InfoRow
+                label="Requested At"
+                value={formatDate(selected.discountRequestedAt)}
+                isDark={isDark}
+              />
+              <InfoRow
+                label="Approved By"
+                value={selected.discountApprovedByName || selected.discountApprovedByUid || "—"}
+                isDark={isDark}
+              />
+              <InfoRow label="Approved At" value={formatDate(selected.discountApprovedAt)} isDark={isDark} />
+              {selected.discountStatus === "pending" && (
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button
+                    className="btn ghost"
+                    onClick={() => handleDiscountDecision("reject")}
+                    disabled={approvalLoading}
+                  >
+                    Reject
+                  </button>
+                  <button className="btn" onClick={() => handleDiscountDecision("approve")} disabled={approvalLoading}>
+                    Approve
+                  </button>
+                </div>
+              )}
             </Section>
 
             <div style={{ height: 12 }} />
