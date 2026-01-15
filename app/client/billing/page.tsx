@@ -30,35 +30,19 @@ type InvoiceDetail = {
 
 type PaymentRecord = {
   id: string;
-
-  status: string;
-  amountUsd: number;
-  method: string;
-  paidAt: string | null;
-  createdAt: string | null;
-  orderId?: string | null;
-
   orderId?: string | null;
   status?: string | null;
   amountUsd?: number | null;
   paidAt?: string | null;
   createdAt?: string | null;
-
 };
 
 type ChangeRequestRecord = {
   id: string;
-
-  title: string;
-  status: string;
-  estimatedCost: number | null;
-  estimatedTimelineDays: number | null;
-
   title?: string | null;
   status?: string | null;
   costUsd?: number | null;
   createdAt?: string | null;
-
 };
 
 function useIsSystemDark() {
@@ -110,8 +94,6 @@ export default function ClientBillingPage() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
 
-
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,46 +129,23 @@ export default function ClientBillingPage() {
       setError(null);
 
       try {
-
- codex/implement-sprint-1-changes-in-nextjs-boilerplate
-        const [invoiceRes, paymentRes, changeRequestRes] = await Promise.all([
-
-        // Use allSettled so one missing route doesn't kill the whole page
         const [invResS, payResS, crResS] = await Promise.allSettled([
-
           fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/billing/payments/list", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" }),
         ]);
 
-        const payload = await invoiceRes.json();
-        const paymentPayload = await paymentRes.json();
-        const changeRequestPayload = await changeRequestRes.json();
-        if (!invoiceRes.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoices.");
-
-        const res = await fetch("/api/client/billing/invoices/list", {
-          credentials: "include",
-          cache: "no-store",
-        });
-        const payload = await res.json();
-        if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoices.");
- 
-        if (!alive) return;
-        setInvoices(payload.invoices || []);
-        setPayments(paymentPayload?.payments || []);
-        setChangeRequests(changeRequestPayload?.changeRequests || []);
-
-
         if (!alive) return;
 
-        // Invoices (required)
+        // Invoices are required
         if (invResS.status !== "fulfilled") throw new Error("Unable to load invoices.");
         const invRes = invResS.value;
         const invPayload = await invRes.json();
         if (!invRes.ok || !invPayload?.ok) throw new Error(invPayload?.error || "Unable to load invoices.");
+
         const invList: InvoiceRecord[] = invPayload?.invoices || [];
 
-        // Payments (optional)
+        // Payments are optional
         let payList: PaymentRecord[] = [];
         if (payResS.status === "fulfilled") {
           const payRes = payResS.value;
@@ -198,7 +157,7 @@ export default function ClientBillingPage() {
           }
         }
 
-        // Change Requests (optional)
+        // Change requests are optional
         let crList: ChangeRequestRecord[] = [];
         if (crResS.status === "fulfilled") {
           const crRes = crResS.value;
@@ -213,7 +172,6 @@ export default function ClientBillingPage() {
         setInvoices(invList);
         setPayments(payList);
         setChangeRequests(crList);
-
       } catch (err: any) {
         if (!alive) return;
         setError(err?.message || "Unable to load billing.");
@@ -235,18 +193,22 @@ export default function ClientBillingPage() {
 
     const pendingApprovals = changeRequests.filter((cr) => {
       const st = safeLower(cr.status);
-      // flexible: "pending_client", "client_pending", "pending", etc.
       return st.includes("pending") && (st.includes("client") || st === "pending");
     }).length;
 
     const paidInvoices = invoices.filter((i) => safeLower(i.status) === "paid").length;
 
-    return {
-      outstandingUsd,
-      pendingApprovals,
-      paidInvoices,
-    };
+    return { outstandingUsd, pendingApprovals, paidInvoices };
   }, [invoices, changeRequests]);
+
+  const filteredInvoices = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return invoices;
+    return invoices.filter((invoice) => {
+      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [invoices, search]);
 
   const openDrawer = async (invoice: InvoiceRecord) => {
     setDrawerOpen(true);
@@ -254,7 +216,12 @@ export default function ClientBillingPage() {
     setDetail(null);
 
     try {
-      
+      const res = await fetch(`/api/client/billing/invoices/get?id=${invoice.id}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoice.");
       setDetail(payload.invoice || null);
     } catch (err) {
       console.error(err);
@@ -268,15 +235,6 @@ export default function ClientBillingPage() {
     setDetail(null);
   };
 
-  const filteredInvoices = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return invoices;
-    return invoices.filter((invoice) => {
-      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [invoices, search]);
-
   return (
     <div className="space-y-6">
       <div>
@@ -284,7 +242,6 @@ export default function ClientBillingPage() {
         <p className="page-subtitle">View invoice status, outstanding balances, and payment history.</p>
       </div>
 
-      {/* Top Widgets */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-4">
           <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Outstanding Balance</div>
@@ -310,47 +267,15 @@ export default function ClientBillingPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="card p-4">
-          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Outstanding Balance</div>
-          <div className="mt-2 text-2xl font-semibold">
-            {fmtMoney(
-              invoices.reduce((sum, invoice) => {
-                if (["Paid", "Void"].includes(invoice.status)) return sum;
-                return sum + Number(invoice.amountUsd || 0);
-              }, 0)
-            )}
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Open invoices requiring payment</p>
-        </div>
-        <div className="card p-4 md:col-span-2">
-          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Pending approvals</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="card p-3">
-              <div className="text-xs text-[var(--text-muted)]">Change requests</div>
-              <div className="mt-1 text-lg font-semibold">
-                {changeRequests.filter((request) => [\"Submitted\", \"In Review\"].includes(request.status)).length}
-              </div>
-              <p className="text-xs text-[var(--text-muted)] mt-1">Awaiting your decision</p>
-            </div>
-            <div className="card p-3">
-              <div className="text-xs text-[var(--text-muted)]">Invoices due</div>
-              <div className="mt-1 text-lg font-semibold">
-                {
-                  invoices.filter((invoice) => !["Paid", "Void"].includes(invoice.status)).length
-                }
-              </div>
-              <p className="text-xs text-[var(--text-muted)] mt-1">Pending payments</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="card p-4">
-        <input className="input" placeholder="Search invoice keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Search invoice keyword"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {/* Invoices */}
       <div className="card table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading invoices...</div>
@@ -401,24 +326,6 @@ export default function ClientBillingPage() {
         )}
       </div>
 
-
-      <div className="card table-shell">
-        <div className="p-4 border-b border-slate-200/40">
-          <div className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">Payments</div>
-        </div>
-        {loading ? (
-          <div className="p-4 text-sm text-[var(--text-muted)]">Loading payments...</div>
-        ) : payments.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--text-muted)]">No payments found.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ minWidth: 760 }}>
-              <thead>
-                <tr>
-                  <th style={headerCellStyle}>Status</th>
-                  <th style={headerCellStyle}>Method</th>
-
-      {/* Payments (optional display if present) */}
       {payments.length > 0 && (
         <div className="card table-shell">
           <div className="p-4">
@@ -430,18 +337,13 @@ export default function ClientBillingPage() {
                 <tr>
                   <th style={headerCellStyle}>Order</th>
                   <th style={headerCellStyle}>Status</th>
-
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Amount</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Paid</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Created</th>
                 </tr>
               </thead>
               <tbody>
-
-                {payments.map((payment, idx) => {
-
                 {payments.slice(0, 50).map((p, idx) => {
-
                   const rowBg = isDark
                     ? idx % 2 === 0
                       ? "rgba(255,255,255,0.015)"
@@ -450,36 +352,20 @@ export default function ClientBillingPage() {
                     ? "rgba(15,23,42,0.015)"
                     : "rgba(15,23,42,0.00)";
                   return (
-
-                    <tr key={payment.id} style={{ background: rowBg }}>
-                      <td style={cellStyle}>{payment.status}</td>
-                      <td style={cellStyle}>{payment.method}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(payment.amountUsd)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.paidAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.createdAt)}</td>
-
                     <tr key={p.id} style={{ background: rowBg }}>
                       <td style={cellStyle}>{p.orderId || "-"}</td>
                       <td style={cellStyle}>{p.status || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(Number(p.amountUsd || 0))}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.paidAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.createdAt)}</td>
-
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-
-        )}
-      </div>
-
-
         </div>
       )}
-
-      {/* Drawer */}
 
       {drawerOpen && (
         <div className="drawer-overlay" onClick={closeDrawer}>
