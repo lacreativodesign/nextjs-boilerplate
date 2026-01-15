@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser, isAdminRole, isSuperAdmin } from "../_utils";
 
@@ -37,6 +38,7 @@ export const DEFAULT_FINANCE_SETTINGS = {
   arBuckets: [30, 60, 90],
   payrollApprovalRequired: false,
   lockPastMonths: false,
+  fxPkrPerUsd: 280,
 };
 
 export const DEFAULT_SYSTEM_SETTINGS = {
@@ -152,6 +154,7 @@ export async function getFinanceSettings() {
     arBuckets: parseNumberArray(data?.arBuckets, DEFAULT_FINANCE_SETTINGS.arBuckets),
     payrollApprovalRequired: parseBoolean(data?.payrollApprovalRequired, DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired),
     lockPastMonths: parseBoolean(data?.lockPastMonths, DEFAULT_FINANCE_SETTINGS.lockPastMonths),
+    fxPkrPerUsd: parseNumber(data?.fxPkrPerUsd, DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd),
     updatedAt: toISO(data?.updatedAt),
     updatedBy: data?.updatedBy || null,
   };
@@ -194,7 +197,7 @@ export async function logSettingsChange({
   summary,
   notificationsEnabled,
 }: {
-  user: { uid: string; role: string; name?: string; email?: string };
+  user: { uid: string; role: string; name?: string; email?: string; tenantId?: string };
   section: string;
   summary: string;
   notificationsEnabled?: boolean;
@@ -206,6 +209,7 @@ export async function logSettingsChange({
     performedBy: user.uid,
     performedByRole: user.role,
     timestamp: new Date().toISOString(),
+    tenantId: user.tenantId || DEFAULT_TENANT_ID,
   });
 
   await adminDb.collection("events").add({
@@ -219,6 +223,7 @@ export async function logSettingsChange({
     createdByName: user.name || user.email || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    tenantId: user.tenantId || DEFAULT_TENANT_ID,
   });
 
   const notifications =
@@ -233,6 +238,7 @@ export async function logSettingsChange({
       entityType: null,
       entityId: section,
       createdBy: { uid: user.uid, name: user.name || user.email || null },
+      tenantId: user.tenantId || DEFAULT_TENANT_ID,
     });
   }
 }

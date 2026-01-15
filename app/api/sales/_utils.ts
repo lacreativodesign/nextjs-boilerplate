@@ -88,6 +88,7 @@ export async function createSalesEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -97,6 +98,7 @@ export async function createSalesEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await createNotificationEvent({
     type,
@@ -107,6 +109,7 @@ export async function createSalesEvent({
     createdByUid,
     createdByName,
     metadata,
+    tenantId: tenantId || null,
   });
 }
 
@@ -118,6 +121,7 @@ export async function notifyUsers({
   entityType,
   entityId,
   createdBy,
+  tenantId,
 }: {
   userIds: string[];
   title: string;
@@ -126,6 +130,7 @@ export async function notifyUsers({
   entityType?: string | null;
   entityId?: string | null;
   createdBy?: { uid?: string | null; name?: string | null } | null;
+  tenantId?: string | null;
 }) {
   const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
   await Promise.all(
@@ -139,6 +144,7 @@ export async function notifyUsers({
         entityId: entityId || null,
         deepLink: deepLink || null,
         createdBy: createdBy || null,
+        tenantId: tenantId || null,
       })
     )
   );

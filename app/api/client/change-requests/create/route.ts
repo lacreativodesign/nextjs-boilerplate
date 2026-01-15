@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { logEvent } from "@/lib/audit";
 import { requireClient } from "../../_utils";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
     const body = await req.json().catch(() => ({}));
     const projectId = cleanString(body?.projectId);
     const type = cleanString(body?.type);
@@ -56,6 +59,9 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() || {};
+    if (String(project.tenantId || DEFAULT_TENANT_ID) !== String(tenantId)) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (String(project.clientId || "") !== auth.clientId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -86,6 +92,7 @@ export async function POST(req: Request) {
       updatedAt: serverNow,
       completedAt: null,
       isDeleted: false,
+      tenantId,
       statusHistory: [
         {
           from: "",
@@ -111,11 +118,12 @@ export async function POST(req: Request) {
           entityId: docRef.id,
           deepLink: "/am/change-requests",
           createdBy: { uid: auth.user.uid, name: actorName },
+          tenantId,
         })
       );
     }
 
-    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
     adminIds.forEach((uid) => {
       notifications.push(
         createNotification({
@@ -127,20 +135,21 @@ export async function POST(req: Request) {
           entityId: docRef.id,
           deepLink: "/admin/projects/change-requests",
           createdBy: { uid: auth.user.uid, name: actorName },
+          tenantId,
         })
       );
     });
 
     await Promise.all(notifications);
 
-    await createNotificationEvent({
+    await logEvent({
+      tenantId,
       type: "change_request.client_created",
       title: "Client change request",
       description: `${project.projectName || "Project"} received a client change request.`,
       entityType: "change_request",
       entityId: docRef.id,
-      createdByUid: auth.user.uid,
-      createdByName: actorName,
+      actor: { uid: auth.user.uid, name: actorName },
       metadata: {
         projectId,
         clientId: auth.clientId,

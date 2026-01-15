@@ -16,6 +16,13 @@ type DealRecord = {
   stage: string;
   status: string;
   valueUsd: number;
+  listPriceUsd?: number;
+  discountPct?: number;
+  discountUsd?: number;
+  finalPriceUsd?: number;
+  discountReason?: string | null;
+  discountApproved?: boolean;
+  discountStatus?: string;
   probability: number;
   ownerId?: string | null;
   ownerName?: string | null;
@@ -43,6 +50,10 @@ export default function SalesDealsPage() {
   const [selected, setSelected] = useState<DealRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [discountPct, setDiscountPct] = useState(0);
+  const [discountReason, setDiscountReason] = useState("");
+  const [discountSaving, setDiscountSaving] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
 
   const loadDeals = useCallback(async () => {
     try {
@@ -65,6 +76,16 @@ export default function SalesDealsPage() {
   useEffect(() => {
     loadDeals();
   }, [loadDeals]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const match = deals.find((deal) => deal.id === selected.id);
+    if (match) {
+      setSelected(match);
+      setDiscountPct(match.discountPct ?? 0);
+      setDiscountReason(match.discountReason || "");
+    }
+  }, [deals, selected?.id]);
 
   const filteredDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -150,6 +171,9 @@ export default function SalesDealsPage() {
   const openDrawer = (deal: DealRecord) => {
     setSelected(deal);
     setDrawerOpen(true);
+    setDiscountPct(deal.discountPct ?? 0);
+    setDiscountReason(deal.discountReason || "");
+    setDiscountError(null);
   };
 
   const closeDeal = async (deal: DealRecord, status: "Won" | "Lost") => {
@@ -172,6 +196,65 @@ export default function SalesDealsPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const saveDiscount = async () => {
+    if (!selected) return;
+    try {
+      setDiscountSaving(true);
+      setDiscountError(null);
+      const res = await fetch("/api/sales/deals/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id: selected.id,
+          discountPct,
+          discountReason,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to update discount.");
+      }
+      await loadDeals();
+    } catch (err: any) {
+      console.error("Discount update error", err);
+      setDiscountError(err?.message || "Unable to update discount.");
+    } finally {
+      setDiscountSaving(false);
+    }
+  };
+
+  const discountStatusLabel = (deal: DealRecord) => {
+    const status = (deal.discountStatus || "none").toLowerCase();
+    if (status === "auto_approved") return "Auto-approved";
+    if (status === "pending") return "Pending approval";
+    if (status === "approved") return "Approved";
+    if (status === "rejected") return "Rejected";
+    return "None";
+  };
+
+  const discountStatusTone = (deal: DealRecord) => {
+    const status = (deal.discountStatus || "none").toLowerCase();
+    if (status === "pending") return { background: "rgba(251,191,36,0.15)", color: "#b45309" };
+    if (status === "approved" || status === "auto_approved") return { background: "rgba(34,197,94,0.15)", color: "#15803d" };
+    if (status === "rejected") return { background: "rgba(248,113,113,0.15)", color: "#b91c1c" };
+    return { background: "rgba(148,163,184,0.15)", color: "var(--text-muted)" };
+  };
+
+  const isDiscountBlocked = (deal: DealRecord) => {
+    const status = (deal.discountStatus || "none").toLowerCase();
+    const pct = Number(deal.discountPct || 0);
+    if (status === "pending" || status === "rejected") return true;
+    if (pct > 20 && !deal.discountApproved) return true;
+    return false;
+  };
+
+  const previewFinalPrice = (deal: DealRecord, pct: number) => {
+    const listPrice = Number(deal.listPriceUsd ?? deal.valueUsd ?? 0);
+    const discountUsd = (listPrice * pct) / 100;
+    return Math.max(listPrice - discountUsd, 0);
   };
 
   return (
@@ -286,7 +369,7 @@ export default function SalesDealsPage() {
                           <button
                             className="btn"
                             onClick={() => closeDeal(deal, "Won")}
-                            disabled={actionLoading === deal.id + "Won"}
+                            disabled={actionLoading === deal.id + "Won" || isDiscountBlocked(deal)}
                             style={{ borderRadius: 999 }}
                           >
                             {actionLoading === deal.id + "Won" ? "Closing" : "Closed Won"}
@@ -336,6 +419,67 @@ export default function SalesDealsPage() {
             <div className="flex justify-between">
               <span className="text-slate-500">Expected Close</span>
               <span>{formatDate(selected.expectedCloseDate)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500">Discount Status</span>
+              <span
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  ...discountStatusTone(selected),
+                }}
+              >
+                {discountStatusLabel(selected)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-slate-200/40 pt-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Discount Controls</div>
+            {discountError && <div className="mt-2 text-xs text-red-400">{discountError}</div>}
+            <div className="mt-3 grid gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">List Price (USD)</span>
+                <span>{formatUsd(selected.listPriceUsd ?? selected.valueUsd)}</span>
+              </div>
+              <label className="grid gap-2">
+                <span className="text-slate-500">Discount %</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={80}
+                  value={discountPct}
+                  onChange={(e) => setDiscountPct(Number(e.target.value))}
+                />
+              </label>
+              {discountPct > 0 && (
+                <label className="grid gap-2">
+                  <span className="text-slate-500">Reason</span>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={discountReason}
+                    onChange={(e) => setDiscountReason(e.target.value)}
+                  />
+                </label>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">Final Price</span>
+                <span>{formatUsd(previewFinalPrice(selected, discountPct))}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                className="btn"
+                onClick={saveDiscount}
+                disabled={discountSaving || (discountPct > 0 && !discountReason.trim())}
+                style={{ borderRadius: 999 }}
+              >
+                {discountSaving ? "Saving..." : "Save Discount"}
+              </button>
             </div>
           </div>
         </SalesDrawer>

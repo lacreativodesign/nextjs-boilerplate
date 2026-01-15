@@ -26,6 +26,7 @@ export type NotificationPayload = {
   deepLink?: string | null;
   createdBy?: { uid?: string | null; name?: string | null } | null;
   priority?: "low" | "normal" | "high";
+  tenantId?: string | null;
 };
 
 export async function createNotification(payload: NotificationPayload) {
@@ -46,6 +47,7 @@ export async function createNotification(payload: NotificationPayload) {
     updatedAt: now,
     createdBy: payload.createdBy || null,
     priority: payload.priority || "normal",
+    tenantId: payload.tenantId || null,
   });
 }
 
@@ -58,6 +60,7 @@ export async function createNotificationEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -67,6 +70,7 @@ export async function createNotificationEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection("events").add({
     type,
@@ -79,6 +83,7 @@ export async function createNotificationEvent({
     createdByName: createdByName || null,
     createdAt: nowTimestamp(),
     updatedAt: nowTimestamp(),
+    tenantId: tenantId || null,
   });
 }
 

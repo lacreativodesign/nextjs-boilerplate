@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -26,10 +27,15 @@ type ChangeRequestDoc = {
   description?: string;
   status?: string;
   priority?: string;
+  estimatedCost?: number | null;
+  estimatedTimelineDays?: number | null;
+  approvedAt?: any;
+  approvedByUid?: string | null;
   createdAt?: any;
   updatedAt?: any;
   completedAt?: any;
   isDeleted?: boolean;
+  tenantId?: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -39,6 +45,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
     const { searchParams } = new URL(req.url);
     const status = String(searchParams.get("status") || "").trim();
     const type = String(searchParams.get("type") || "").trim();
@@ -52,24 +59,31 @@ export async function GET(req: NextRequest) {
       .limit(500)
       .get();
 
-    let changeRequests = snap.docs.map((doc) => {
-      const data = doc.data() as ChangeRequestDoc;
-      return {
-        id: doc.id,
-        projectId: data.projectId || "",
-        projectName: data.projectName || "",
-        clientId: data.clientId || "",
-        clientName: data.clientName || "",
-        type: data.type || "Other",
-        title: data.title || "",
-        description: data.description || "",
-        status: data.status || "Submitted",
-        priority: data.priority || "Medium",
-        createdAt: toISO(data.createdAt),
-        updatedAt: toISO(data.updatedAt),
-        completedAt: toISO(data.completedAt),
-      };
-    });
+    let changeRequests = snap.docs
+      .map((doc) => {
+        const data = doc.data() as ChangeRequestDoc;
+        return {
+          id: doc.id,
+          tenantId: data.tenantId || DEFAULT_TENANT_ID,
+          projectId: data.projectId || "",
+          projectName: data.projectName || "",
+          clientId: data.clientId || "",
+          clientName: data.clientName || "",
+          type: data.type || "Other",
+          title: data.title || "",
+          description: data.description || "",
+          status: data.status || "Submitted",
+          priority: data.priority || "Medium",
+          estimatedCost: data.estimatedCost ?? null,
+          estimatedTimelineDays: data.estimatedTimelineDays ?? null,
+          approvedAt: toISO(data.approvedAt),
+          approvedByUid: data.approvedByUid || null,
+          createdAt: toISO(data.createdAt),
+          updatedAt: toISO(data.updatedAt),
+          completedAt: toISO(data.completedAt),
+        };
+      })
+      .filter((item) => String((item as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
 
     if (status && CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])) {
       changeRequests = changeRequests.filter((item) => item.status === status);

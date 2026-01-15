@@ -8,6 +8,12 @@ import { CardShell, ErrorCard, KpiCard, MiniBarChart } from "./reports/_componen
 type OverviewResponse = {
   kpis: {
     revenueThisMonthUsd: number;
+    revenueYtdUsd: number;
+    expensesThisMonthUsdNormalized: number;
+    expensesYtdUsdNormalized: number;
+    netProfitThisMonthUsd: number;
+    netProfitYtdUsd: number;
+    profitMarginPct: number;
     outstandingArUsd: number;
     activeProjects: number;
     overdueProjects: number;
@@ -35,6 +41,12 @@ type OverviewResponse = {
 const emptyOverview: OverviewResponse = {
   kpis: {
     revenueThisMonthUsd: 0,
+    revenueYtdUsd: 0,
+    expensesThisMonthUsdNormalized: 0,
+    expensesYtdUsdNormalized: 0,
+    netProfitThisMonthUsd: 0,
+    netProfitYtdUsd: 0,
+    profitMarginPct: 0,
     outstandingArUsd: 0,
     activeProjects: 0,
     overdueProjects: 0,
@@ -103,6 +115,7 @@ export default function AdminOverview() {
   }, [overview.charts.arAging]);
 
   const activityRows = useMemo(() => overview.tables.recentActivity, [overview.tables.recentActivity]);
+  const profitWarning = overview.kpis.netProfitThisMonthUsd < 0;
 
   return (
     <div className="space-y-6">
@@ -114,6 +127,34 @@ export default function AdminOverview() {
       </div>
 
       {error && <ErrorCard message={error} />}
+
+      <section>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Revenue vs Expense</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            title="Revenue (USD)"
+            value={loading ? "—" : formatUsd(overview.kpis.revenueThisMonthUsd)}
+            subtitle={loading ? "—" : `YTD ${formatUsd(overview.kpis.revenueYtdUsd)}`}
+          />
+          <KpiCard
+            title="Expenses (USD)"
+            value={loading ? "—" : formatUsd(overview.kpis.expensesThisMonthUsdNormalized)}
+            subtitle={loading ? "—" : `YTD ${formatUsd(overview.kpis.expensesYtdUsdNormalized)}`}
+          />
+          <KpiCard
+            title="Net Profit (USD)"
+            value={loading ? "—" : formatUsd(overview.kpis.netProfitThisMonthUsd)}
+            subtitle={loading ? "—" : `YTD ${formatUsd(overview.kpis.netProfitYtdUsd)}`}
+            tone={profitWarning ? "warning" : undefined}
+          />
+          <KpiCard
+            title="Profit Margin % (MTD)"
+            value={loading ? "—" : `${overview.kpis.profitMarginPct}%`}
+            subtitle="Margin on month-to-date revenue"
+            tone={profitWarning ? "warning" : undefined}
+          />
+        </div>
+      </section>
 
       <section>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Executive KPIs</div>

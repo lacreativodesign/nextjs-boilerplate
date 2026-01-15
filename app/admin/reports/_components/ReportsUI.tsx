@@ -56,13 +56,23 @@ export function KpiCard({
   title,
   value,
   subtitle,
+  tone,
 }: {
   title: string;
   value: string;
   subtitle?: string;
+  tone?: "warning";
 }) {
   return (
-    <div className="card kpi-card" style={{ padding: 18, borderRadius: 16 }}>
+    <div
+      className="card kpi-card"
+      style={{
+        padding: 18,
+        borderRadius: 16,
+        border: tone === "warning" ? "1px solid rgba(248,113,113,0.25)" : undefined,
+        background: tone === "warning" ? "rgba(248,113,113,0.06)" : undefined,
+      }}
+    >
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>{title}</div>
       <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>{value}</div>
       {subtitle && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{subtitle}</div>}

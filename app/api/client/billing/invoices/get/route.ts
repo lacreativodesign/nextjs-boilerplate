@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,10 @@ export async function GET(req: NextRequest) {
     }
 
     const data = (snap.data() || {}) as InvoiceDoc;
+    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    if (String((data as Record<string, any>).tenantId || DEFAULT_TENANT_ID) !== tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (String(data.clientId || "") !== auth.clientId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

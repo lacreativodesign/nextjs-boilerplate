@@ -14,6 +14,10 @@ type ChangeRequestRecord = {
   description: string;
   status: string;
   priority: string;
+  estimatedCost?: number | null;
+  estimatedTimelineDays?: number | null;
+  approvedAt?: string | null;
+  approvedByUid?: string | null;
   createdAt: string | null;
 };
 
@@ -63,6 +67,7 @@ export default function ClientChangeRequestsPage() {
     priority: CHANGE_REQUEST_PRIORITIES[1],
   });
   const [actionLoading, setActionLoading] = useState(false);
+  const [decisionLoading, setDecisionLoading] = useState(false);
 
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
@@ -173,6 +178,26 @@ export default function ClientChangeRequestsPage() {
     }
   };
 
+  const handleDecision = async (request: ChangeRequestRecord, decision: "approve" | "reject") => {
+    setDecisionLoading(true);
+    try {
+      const res = await fetch("/api/client/change-requests/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ changeRequestId: request.id, decision }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload?.error || "Unable to update change request.");
+      await loadChangeRequests();
+      closeDrawer();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDecisionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -261,10 +286,47 @@ export default function ClientChangeRequestsPage() {
               <div className="mt-3 grid gap-3">
                 <Row label="Status" value={selected.status} />
                 <Row label="Priority" value={selected.priority} />
+                <Row
+                  label="Estimated Cost"
+                  value={
+                    selected.estimatedCost !== null && selected.estimatedCost !== undefined
+                      ? `$${selected.estimatedCost.toLocaleString()}`
+                      : "Pending"
+                  }
+                />
+                <Row
+                  label="Timeline Impact"
+                  value={
+                    selected.estimatedTimelineDays !== null && selected.estimatedTimelineDays !== undefined
+                      ? `${selected.estimatedTimelineDays} days`
+                      : "Pending"
+                  }
+                />
                 <Row label="Created" value={fmtDate(selected.createdAt)} />
               </div>
               <div className="mt-3 text-sm">{selected.description}</div>
             </div>
+
+            {["Submitted", "In Review"].includes(selected.status) && (
+              <div className="card p-4 mt-3">
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Your decision</div>
+                <p className="text-sm mt-2 text-[var(--text-muted)]">
+                  Approve to move forward or reject if you need more changes.
+                </p>
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    className="btn ghost"
+                    onClick={() => handleDecision(selected, "reject")}
+                    disabled={decisionLoading}
+                  >
+                    Reject
+                  </button>
+                  <button className="btn" onClick={() => handleDecision(selected, "approve")} disabled={decisionLoading}>
+                    Approve
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

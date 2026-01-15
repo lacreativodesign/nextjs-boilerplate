@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { logEvent } from "@/lib/audit";
 import {
-  createSalesEvent,
   getWatcherUserIds,
   isSales,
   notifyUsers,
@@ -35,11 +36,26 @@ export async function POST(req: Request) {
     }
 
     const data = snapshot.data() || {};
+    const tenantId = String(data.tenantId || auth.user.tenantId || DEFAULT_TENANT_ID);
     const role = auth.user.role || "";
     const isOwner = data.ownerId === auth.user.uid || data.createdBy === auth.user.uid;
 
     if (isSales(role) && !isOwner) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    const discountPct = Number(data.discountPct || 0);
+    const discountStatus = String(data.discountStatus || (discountPct > 0 ? "pending" : "none"));
+    const discountApproved = Boolean(data.discountApproved);
+    if (discountStatus === "pending" || (discountPct > 20 && !discountApproved) || discountStatus === "rejected") {
+      return NextResponse.json(
+        { ok: false, error: "Discount approval required before closing this deal." },
+        { status: 400 }
+      );
     }
 
     const stage = status === "Won" ? "Closed Won" : "Closed Lost";
@@ -54,6 +70,7 @@ export async function POST(req: Request) {
           closedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           updatedBy: auth.user.uid,
+          tenantId,
         },
         { merge: true }
       );
@@ -61,18 +78,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, status: "noop" });
     }
 
-    await createSalesEvent({
+    await logEvent({
+      tenantId,
       type: status === "Won" ? "deal_closed_won" : "deal_closed_lost",
       title: status === "Won" ? "Deal closed won" : "Deal closed lost",
       description: `${data.dealName || data.leadName || "Deal"} marked ${stage}.`,
       entityType: "deal",
       entityId: id,
-      createdByUid: auth.user.uid,
-      createdByName: userLabel(auth.user),
+      actor: { uid: auth.user.uid, name: userLabel(auth.user) },
       metadata: { stage, status },
     });
 
-    const watchers = await getWatcherUserIds();
+    const watchers = await getWatcherUserIds(tenantId);
     await notifyUsers({
       userIds: [data.ownerId, ...watchers].filter(Boolean),
       title: status === "Won" ? "Deal won" : "Deal lost",
@@ -81,6 +98,7 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: id,
       createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
+      tenantId,
     });
 
     if (status === "Won") {
@@ -98,6 +116,7 @@ export async function POST(req: Request) {
         createdByName: userLabel(auth.user),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        tenantId,
       });
     }
 
