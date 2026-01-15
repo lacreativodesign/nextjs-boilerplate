@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 
 type InvoiceRecord = {
   id: string;
@@ -75,7 +76,7 @@ export default function ClientBillingPage() {
   const [detail, setDetail] = useState<InvoiceDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const headerCellStyle: React.CSSProperties = {
+  const headerCellStyle: CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
@@ -86,7 +87,7 @@ export default function ClientBillingPage() {
     textAlign: "left",
   };
 
-  const cellStyle: React.CSSProperties = {
+  const cellStyle: CSSProperties = {
     padding: "12px 14px",
     borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
     color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
@@ -100,7 +101,10 @@ export default function ClientBillingPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" });
+        const res = await fetch("/api/client/billing/invoices/list", {
+          credentials: "include",
+          cache: "no-store",
+        });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load invoices.");
         if (!alive) return;
@@ -147,11 +151,18 @@ export default function ClientBillingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Billing</h1>
-        <p className="page-subtitle">View invoice status, outstanding balances, and payment history.</p>
+        <p className="page-subtitle">
+          View invoice status, outstanding balances, and payment history.
+        </p>
       </div>
 
       <div className="card p-4">
-        <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Search keyword"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="card table-shell">
@@ -192,19 +203,29 @@ export default function ClientBillingPage() {
                       : "rgba(15,23,42,0.00)";
                     return (
                       <tr key={invoice.id} style={{ background: rowBg }}>
-                      <td style={cellStyle}>{invoice.orderId || "-"}</td>
-                      <td style={cellStyle}>{invoice.status || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(invoice.amountUsd || 0)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(invoice.dueDate)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(invoice.createdAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <button className="btn ghost" style={{ borderRadius: 999 }} onClick={() => openDrawer(invoice)}>
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        <td style={cellStyle}>{invoice.orderId || "-"}</td>
+                        <td style={cellStyle}>{invoice.status || "-"}</td>
+                        <td style={{ ...cellStyle, textAlign: "right" }}>
+                          {fmtMoney(invoice.amountUsd || 0)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: "right" }}>
+                          {fmtDate(invoice.dueDate)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: "right" }}>
+                          {fmtDate(invoice.createdAt)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: "center" }}>
+                          <button
+                            className="btn ghost"
+                            style={{ borderRadius: 999 }}
+                            onClick={() => openDrawer(invoice)}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -218,59 +239,81 @@ export default function ClientBillingPage() {
               <div className="text-sm text-[var(--text-muted)]">Loading invoice...</div>
             ) : (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div className="flex justify-between gap-3">
                   <div>
-                    <div style={{ fontSize: 20, fontWeight: 800 }}>Invoice {detail.orderId}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>Status · {detail.status}</div>
+                    <div className="text-xl font-extrabold">
+                      Invoice {detail.orderId}
+                    </div>
+                    <div className="text-xs opacity-70">
+                      Status · {detail.status}
+                    </div>
                   </div>
-                  <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
+                  <button
+                    className="btn ghost"
+                    onClick={closeDrawer}
+                    style={{ height: 34, borderRadius: 999 }}
+                  >
                     Close
                   </button>
                 </div>
 
-                <div style={{ height: 16 }} />
+                <div className="h-4" />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Summary</div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                    Summary
+                  </div>
                   <div className="mt-3 grid gap-3">
                     <Row label="Subtotal" value={fmtMoney(detail.amountSubtotalUsd)} />
                     <Row label="Tax" value={fmtMoney(detail.amountTaxUsd)} />
                     <Row label="Total" value={fmtMoney(detail.amountTotalUsd)} />
                     <Row label="Due Date" value={fmtDate(detail.dueDate)} />
                     <Row label="Issued" value={fmtDate(detail.issuedAt)} />
-                    <Row label="Paid" value={detail.paidAt ? fmtDate(detail.paidAt) : "Payment Pending"} />
+                    <Row
+                      label="Paid"
+                      value={detail.paidAt ? fmtDate(detail.paidAt) : "Payment Pending"}
+                    />
                   </div>
                 </div>
 
-                <div style={{ height: 12 }} />
+                <div className="h-3" />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Line Items</div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                    Line Items
+                  </div>
                   <div className="mt-3 grid gap-2">
                     {detail.lineItems.length ? (
                       detail.lineItems.map((item, index) => (
-                        <div key={`${item.name || "item"}-${index}`} className="flex items-center justify-between text-sm">
+                        <div
+                          key={`${item.name || "item"}-${index}`}
+                          className="flex items-center justify-between text-sm"
+                        >
                           <div>
-                            <div style={{ fontWeight: 600 }}>{item.name || "Item"}</div>
-                            <div style={{ fontSize: 12, opacity: 0.7 }}>
-                              Qty {item.qty || 1} · {fmtMoney(Number(item.unitPriceUsd || 0))}
+                            <div className="font-semibold">{item.name || "Item"}</div>
+                            <div className="text-xs opacity-70">
+                              Qty {item.qty || 1} · {fmtMoney(item.unitPriceUsd || 0)}
                             </div>
                           </div>
-                          <div style={{ fontWeight: 600 }}>
-                            {fmtMoney(Number(item.qty || 1) * Number(item.unitPriceUsd || 0))}
+                          <div className="font-semibold">
+                            {fmtMoney((item.qty || 1) * (item.unitPriceUsd || 0))}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-[var(--text-muted)]">No line items provided.</div>
+                      <div className="text-sm text-[var(--text-muted)]">
+                        No line items provided.
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div style={{ height: 12 }} />
+                <div className="h-3" />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Payment</div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                    Payment
+                  </div>
                   <p className="text-sm mt-2 text-[var(--text-muted)]">
                     {detail.status?.toLowerCase() === "paid"
                       ? "Payment received. Receipt details will be emailed to you."
@@ -289,7 +332,9 @@ export default function ClientBillingPage() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">{label}</span>
+      <span className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+        {label}
+      </span>
       <span className="text-sm font-semibold">{value}</span>
     </div>
   );
