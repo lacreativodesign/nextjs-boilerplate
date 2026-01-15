@@ -38,7 +38,7 @@ function formatDate(value?: string | null) {
 function resolveEntityRoute(entityType?: string | null) {
   if (!entityType) return null;
   const normalized = entityType.toLowerCase();
-  if (normalized === "deal") return "/sales-manager/deals";
+  if (normalized === "deal") return "/sales_manager/deals";
   if (normalized === "change_request") return "/admin/projects/change-requests";
   if (normalized === "invoice") return "/admin/finance/invoices";
   if (normalized === "payment") return "/admin/finance/payments";

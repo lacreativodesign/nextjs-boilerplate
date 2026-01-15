@@ -25,7 +25,7 @@ export {
 const ROLE_ROUTES: Record<string, string> = {
   super_admin: "/admin",
   admin: "/admin",
-  sales_manager: "/sales-manager",
+  sales_manager: "/sales_manager",
   sales: "/sales",
   production_manager: "/production_manager",
   am_manager: "/am_manager",

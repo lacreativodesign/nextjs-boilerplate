@@ -295,7 +295,7 @@ export default function ClientsPage() {
     if (!selected) return;
     setActivationSending(true);
     try {
-      const res = await fetch("/api/admin/clients/activation", {
+      const res = await fetch("/api/admin/clients/send-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       body: `Deal ${id} moved from ${prevStage} to ${stage}.`,
       entityType: "deal",
       entityId: id,
-      deepLink: "/sales-manager/pipeline",
+      deepLink: "/sales_manager/pipeline",
       createdBy: { uid: auth.user.uid, name: createdByName },
     });
 
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} marked ${stage}.`,
         entityType: "deal",
         entityId: id,
-        deepLink: "/sales-manager/deals",
+        deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
       });
     }

@@ -18,6 +18,7 @@ type NotificationRecord = {
   createdAt: string | null;
   createdBy: Record<string, unknown> | null;
   priority: string;
+  metadata?: Record<string, unknown> | null;
   createdAtMs: number;
 };
 
@@ -48,6 +49,7 @@ function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): No
     createdAt: createdAtDate ? createdAtDate.toISOString() : null,
     createdBy: (data.createdBy as Record<string, unknown>) || null,
     priority: String(data.priority || "normal"),
+    metadata: (data.metadata as Record<string, unknown>) || null,
     createdAtMs: createdAtDate ? createdAtDate.getTime() : 0,
   };
 }
@@ -60,8 +62,16 @@ function buildTenantQueries(query: FirebaseFirestore.Query, tenantId: string) {
   return queries;
 }
 
-async function getNotifications(uid: string, tenantId: string, unreadOnly: boolean) {
+function isApprovalNotification(item: NotificationRecord) {
+  const entityType = String(item.entityType || "").toLowerCase();
+  if (["approval", "change_request"].includes(entityType)) return true;
+  const hay = `${item.title} ${item.body}`.toLowerCase();
+  return hay.includes("approval");
+}
+
+async function getNotifications(uid: string, tenantId: string, filter: string, limit: number) {
   const queries: FirebaseFirestore.Query[] = [];
+  const unreadOnly = filter === "unread";
 
   const baseQueries = [
     adminDb.collection("notifications").where("toUserId", "==", uid),
@@ -98,8 +108,11 @@ async function getNotifications(uid: string, tenantId: string, unreadOnly: boole
     });
   });
 
-  const merged = Array.from(map.values()).sort((a, b) => b.createdAtMs - a.createdAtMs);
-  return merged.slice(0, 50).map(({ createdAtMs, ...rest }) => rest);
+  let merged = Array.from(map.values()).sort((a, b) => b.createdAtMs - a.createdAtMs);
+  if (filter === "approvals") {
+    merged = merged.filter((item) => isApprovalNotification(item));
+  }
+  return merged.slice(0, limit).map(({ createdAtMs, ...rest }) => rest);
 }
 
 async function getUnreadCount(uid: string, tenantId: string) {
@@ -134,9 +147,12 @@ export async function GET(req: NextRequest) {
     }
 
     const unreadOnly = req.nextUrl.searchParams.get("unreadOnly") === "true";
+    const filter = String(req.nextUrl.searchParams.get("filter") || (unreadOnly ? "unread" : "all"));
+    const limitRaw = Number(req.nextUrl.searchParams.get("limit") || 50);
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
     const tenantId = normalizeTenantId(me.tenantId);
     const [notifications, unreadCount] = await Promise.all([
-      getNotifications(me.uid, tenantId, unreadOnly),
+      getNotifications(me.uid, tenantId, filter, limit),
       getUnreadCount(me.uid, tenantId),
     ]);
 

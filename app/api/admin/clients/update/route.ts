@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
-import { ensureClientPortalAccess } from "@/lib/clientPortal";
+import { createClientInvite } from "@/lib/clientInvites";
+import { createProjectFromDeal } from "@/lib/projects";
+import { generateNextOrderId } from "@/lib/orderIds";
+import { logEvent } from "@/lib/audit";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 
@@ -51,29 +56,28 @@ function normalizeExistingStatus(v: any): "Unpaid" | "Partially Paid" | "Paid" {
   return "Unpaid";
 }
 
-async function generateNextOrderId(): Promise<string> {
-  // Uses your existing counter:
-  // Collection: "Order IDs"
-  // Document:  "counter"
-  // Field:     seq (number)
-  const counterRef = db.collection("Order IDs").doc("counter");
-
-  const next = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(counterRef);
-    const current = Number((snap.data() || {})?.seq ?? 0);
-    const newSeq = current + 1;
-    tx.set(counterRef, { seq: newSeq }, { merge: true });
-    return newSeq;
+async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
+  const queries = [query.where("tenantId", "==", tenantId)];
+  if (tenantId === DEFAULT_TENANT_ID) {
+    queries.push(query.where("tenantId", "==", null));
+  }
+  const snapshots = await Promise.all(queries.map((q) => q.get()));
+  const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+  snapshots.forEach((snap) => {
+    snap.docs.forEach((doc) => {
+      if (docTenantId(doc.data()) === tenantId) {
+        map.set(doc.id, doc);
+      }
+    });
   });
-
-  const padded = String(next).padStart(4, "0");
-  return `LC-${padded}`;
+  return Array.from(map.values());
 }
 
 async function handleUpdate(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!canEditClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  const tenantId = normalizeTenantId(me.tenantId);
 
   let body: any = null;
   try {
@@ -91,6 +95,9 @@ async function handleUpdate(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
     const existing = (snap.data() || {}) as any;
+    if (docTenantId(existing) !== tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (existing?.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
     const existingPayment = normalizeExistingStatus(existing?.paymentStatus);
@@ -167,6 +174,7 @@ async function handleUpdate(req: Request) {
       updateData.segmentGeo = derivedGeo || null;
     }
     updateData.primaryContactEmailLower = existingEmailLower;
+    updateData.tenantId = tenantId;
 
     // If payment becomes paid/partial AND orderId is missing => generate LC-0001
     // Also: if already paid but missing orderId (edge case), generate it when admin hits update again.
@@ -187,20 +195,72 @@ async function handleUpdate(req: Request) {
 
     await ref.set(updateData, { merge: true });
 
-    const shouldTriggerPaidInvite =
-      requestedPayment === "Paid" && existingPayment !== "Paid" && !cleanString(existing?.portalUserUid);
+    const becomesPaid = requestedPayment === "Paid" && existingPayment !== "Paid";
+    if (becomesPaid) {
+      const dealDocs = await queryWithTenant(
+        db.collection("deals").where("clientId", "==", id).orderBy("createdAt", "desc").limit(1),
+        tenantId
+      );
+      const dealDoc = dealDocs[0] || null;
+      const dealData = dealDoc?.data() || {};
 
-    if (shouldTriggerPaidInvite) {
-      const clientData = {
-        ...existing,
-        ...updateData,
-      };
-      await ensureClientPortalAccess({
-        clientId: id,
-        clientData,
-        createdByUid: me.uid,
-        allowExistingInvite: false,
-      });
+      if (dealDoc && !dealData.orderId) {
+        const nextOrderId = newOrderId || (await generateNextOrderId());
+        await dealDoc.ref.set({ orderId: nextOrderId, updatedAt: now }, { merge: true });
+      }
+
+      if (dealDoc) {
+        await createProjectFromDeal({
+          tenantId,
+          deal: { id: dealDoc.id, ...dealData },
+          client: { id, ...existing, ...updateData },
+          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+        });
+
+        await logEvent({
+          tenantId,
+          type: "deal.paid_marked",
+          title: "Deal marked paid",
+          description: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
+          entityType: "deal",
+          entityId: dealDoc.id,
+          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+        });
+      }
+
+      const email = cleanString(existing?.primaryContactEmail || updateData.primaryContactEmail);
+      if (email && !cleanString(existing?.portalUserUid)) {
+        await createClientInvite({
+          tenantId,
+          email,
+          clientId: id,
+          createdByUid: me.uid,
+        });
+
+        await ref.set(
+          {
+            portalInviteSentAt: now,
+            updatedAt: now,
+          },
+          { merge: true }
+        );
+
+        const notifyIds = await getUserIdsByRoles(["admin", "super_admin", "am_manager"], tenantId);
+        await Promise.all(
+          notifyIds.map((uid) =>
+            createNotification({
+              toUserId: uid,
+              title: "Client portal invite queued",
+              body: `${email} will receive a portal activation email.`,
+              entityType: "client",
+              entityId: id,
+              deepLink: "/admin/clients",
+              tenantId,
+              createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
+            })
+          )
+        );
+      }
     }
 
     return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || "" });

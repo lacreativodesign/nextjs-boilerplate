@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { canWriteSales, isSales, normalizeStage, requireSalesRead, toISO } from "../../_utils";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { canWriteSales, isSales, requireSalesRead, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,10 @@ type LeadDoc = {
   contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
+  company?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
   disposition?: string;
   expectedValueUsd?: number;
   packageName?: string;
@@ -17,13 +22,11 @@ type LeadDoc = {
   probability?: number;
   lastContactedAt?: any;
   nextFollowUpAt?: any;
-  name?: string;
-  email?: string;
-  phone?: string;
   source?: string;
   notes?: string;
-  stage?: string;
   status?: string;
+  stage?: string;
+  ownerUid?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
   createdBy?: string | null;
@@ -34,6 +37,23 @@ type LeadDoc = {
   isDeleted?: boolean;
 };
 
+async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
+  const queries = [query.where("tenantId", "==", tenantId)];
+  if (tenantId === DEFAULT_TENANT_ID) {
+    queries.push(query.where("tenantId", "==", null));
+  }
+  const snapshots = await Promise.all(queries.map((q) => q.get()));
+  const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+  snapshots.forEach((snap) => {
+    snap.docs.forEach((doc) => {
+      if (docTenantId(doc.data()) === tenantId) {
+        map.set(doc.id, doc);
+      }
+    });
+  });
+  return Array.from(map.values());
+}
+
 export async function GET() {
   try {
     const auth = await requireSalesRead();
@@ -43,39 +63,37 @@ export async function GET() {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
-    const tenantId = auth.user.tenantId || "";
+    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
 
-    const [ownerSnap, createdSnap] = salesRep
+    const [ownerDocs, createdDocs, unassignedDocs] = salesRep
       ? await Promise.all([
-          adminDb
-            .collection("leads")
-            .where("tenantId", "==", tenantId)
-            .where("isDeleted", "==", false)
-            .where("ownerId", "==", auth.user.uid)
-            .limit(500)
-            .get(),
-          adminDb
-            .collection("leads")
-            .where("tenantId", "==", tenantId)
-            .where("isDeleted", "==", false)
-            .where("createdById", "==", auth.user.uid)
-            .limit(500)
-            .get(),
+          queryWithTenant(
+            adminDb.collection("leads").where("isDeleted", "==", false).where("ownerUid", "==", auth.user.uid).limit(500),
+            tenantId
+          ),
+          queryWithTenant(
+            adminDb.collection("leads").where("isDeleted", "==", false).where("createdById", "==", auth.user.uid).limit(500),
+            tenantId
+          ),
+          queryWithTenant(
+            adminDb.collection("leads").where("isDeleted", "==", false).where("ownerUid", "==", null).limit(200),
+            tenantId
+          ),
         ])
       : await Promise.all([
-          adminDb.collection("leads").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
-          Promise.resolve(null),
+          queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
+          Promise.resolve([]),
+          Promise.resolve([]),
         ]);
 
     const map = new Map<string, LeadDoc>();
-    ownerSnap.docs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
-    if (createdSnap) {
-      createdSnap.docs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
-    }
+    ownerDocs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
+    createdDocs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
+    unassignedDocs.forEach((doc) => map.set(doc.id, doc.data() as LeadDoc));
 
     const leads = Array.from(map.entries()).map(([id, data]) => ({
       id,
-      companyName: String(data.companyName || ""),
+      companyName: String(data.companyName || data.company || ""),
       contactName: String(data.contactName || data.name || ""),
       contactEmail: String(data.contactEmail || data.email || ""),
       contactPhone: String(data.contactPhone || data.phone || ""),
@@ -88,9 +106,9 @@ export async function GET() {
       nextFollowUpAt: toISO(data.nextFollowUpAt),
       source: String(data.source || ""),
       notes: String(data.notes || ""),
-      stage: normalizeStage(data.stage || "New Lead"),
-      status: String(data.status || ""),
-      ownerId: data.ownerId || null,
+      status: String(data.status || "new"),
+      stage: String(data.stage || ""),
+      ownerId: data.ownerUid || data.ownerId || null,
       ownerName: data.ownerName || null,
       createdBy: data.createdBy || null,
       updatedBy: data.updatedBy || null,

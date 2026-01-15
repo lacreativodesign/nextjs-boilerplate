@@ -157,7 +157,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} moved to ${nextStage}.`,
         entityType: "deal",
         entityId: id,
-        deepLink: "/sales-manager/deals",
+        deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
         tenantId,
       });
@@ -170,7 +170,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} marked ${nextStage}.`,
         entityType: "deal",
         entityId: id,
-        deepLink: "/sales-manager/deals",
+        deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
         tenantId,
       });
@@ -184,7 +184,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} closed won and marked paid. Review admin workflow.`,
         entityType: "deal",
         entityId: id,
-        deepLink: "/sales-manager/deals",
+        deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
         tenantId,
       });
