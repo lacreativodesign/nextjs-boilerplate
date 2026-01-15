@@ -1,15 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-
-/**
- * Accept Invite Page
- * - Client-only
- * - Suspense-safe
- * - No static export
- * - No server hooks
- */
 
 function AcceptInviteClient() {
   const searchParams = useSearchParams();
@@ -28,22 +20,18 @@ function AcceptInviteClient() {
 
     async function validateInvite() {
       if (!token) {
-        setError("Invalid or missing invite token.");
+        setError("Missing invite token.");
         setLoading(false);
         return;
       }
 
       try {
-        const res = await fetch(
-          `/api/client/invites/validate?token=${encodeURIComponent(token)}`,
-          { cache: "no-store" }
-        );
-
+        const res = await fetch(`/api/client/invites/validate?token=${encodeURIComponent(token)}`, {
+          cache: "no-store",
+        });
         const data = await res.json();
 
-        if (!res.ok || !data?.ok) {
-          throw new Error(data?.error || "Invite link is invalid or expired.");
-        }
+        if (!res.ok || !data?.ok) throw new Error(data?.error || "Invite is invalid or expired.");
 
         if (!alive) return;
         setEmail(data.email || "");
@@ -63,14 +51,18 @@ function AcceptInviteClient() {
   }, [token]);
 
   const submit = async () => {
+    setError(null);
+
+    if (!token) {
+      setError("Missing invite token.");
+      return;
+    }
     if (!password || password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
     }
 
     setSubmitting(true);
-    setError(null);
-
     try {
       const res = await fetch("/api/client/invites/complete", {
         method: "POST",
@@ -79,10 +71,7 @@ function AcceptInviteClient() {
       });
 
       const data = await res.json();
-
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Unable to complete invite.");
-      }
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to complete invite.");
 
       router.replace("/client");
     } catch (err: any) {
@@ -93,11 +82,7 @@ function AcceptInviteClient() {
   };
 
   if (loading) {
-    return (
-      <div className="p-6 text-sm text-[var(--text-muted)]">
-        Validating invitation…
-      </div>
-    );
+    return <div className="p-6 text-sm text-[var(--text-muted)]">Validating invitation…</div>;
   }
 
   if (error) {
@@ -113,23 +98,17 @@ function AcceptInviteClient() {
     <div className="p-6 max-w-md space-y-4">
       <div>
         <h1 className="text-xl font-bold">Activate Your Account</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Create a password to access your client portal.
-        </p>
+        <p className="text-sm text-[var(--text-muted)]">Create a password to access your client portal.</p>
       </div>
 
       <div className="card p-4 space-y-3">
         <div>
-          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">
-            Email
-          </label>
+          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">Email</label>
           <input className="input mt-1" value={email} disabled />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">
-            Password
-          </label>
+          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">Password</label>
           <input
             className="input mt-1"
             type="password"
@@ -141,11 +120,7 @@ function AcceptInviteClient() {
 
         {error && <div className="text-sm text-red-400">{error}</div>}
 
-        <button
-          className="btn primary w-full"
-          disabled={submitting}
-          onClick={submit}
-        >
+        <button className="btn primary w-full" disabled={submitting} onClick={submit}>
           {submitting ? "Activating…" : "Activate Account"}
         </button>
       </div>
@@ -155,13 +130,7 @@ function AcceptInviteClient() {
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="p-6 text-sm text-[var(--text-muted)]">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="p-6 text-sm text-[var(--text-muted)]">Loading…</div>}>
       <AcceptInviteClient />
     </Suspense>
   );
