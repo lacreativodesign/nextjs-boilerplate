@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireProductionManagerOrAdmin } from "../../admin/_utils";
+import { getWorkflowSettings } from "../../admin/settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,10 +41,11 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const docs = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
-    );
+    const [docs, workflowSettings, eventsSnap] = await Promise.all([
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      getWorkflowSettings(),
+      queryWithTenant(adminDb.collection("events").orderBy("createdAt", "desc").limit(200), tenantId),
+    ]);
 
     const now = new Date();
     let openProjects = 0;
@@ -50,6 +53,7 @@ export async function GET() {
     let revisionsInProgress = 0;
     let overdueItems = 0;
 
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
     const queue = docs
       .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
       .sort((a, b) => {
@@ -66,6 +70,13 @@ export async function GET() {
         updatedAt: toISO(data.updatedAt || data.createdAt),
       }));
 
+    let deliveredCount = 0;
+    let deliveredOnTime = 0;
+    let deliveryDaysSum = 0;
+    let slaOverdueCount = 0;
+    const agingBuckets = { "0-2": 0, "3-7": 0, "7+": 0 };
+    const workloadByOwner = new Map<string, number>();
+
     docs.forEach((doc) => {
       const data = doc.data() || {};
       const stage = String(data.stage || "").toLowerCase();
@@ -80,7 +91,48 @@ export async function GET() {
           overdueItems += 1;
         }
       }
+
+      const slaFields = computeSlaFields({
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        stage: String(data.stage || ""),
+        stageHistory: data.stageHistory || [],
+        slaDaysTotal,
+      });
+
+      if (String(data.stage || "") === "Delivered") {
+        deliveredCount += 1;
+        if (!slaFields.isOverdue) deliveredOnTime += 1;
+        if (typeof slaFields.activeDays === "number") deliveryDaysSum += slaFields.activeDays;
+      } else if (slaFields.isOverdue) {
+        slaOverdueCount += 1;
+        if (slaFields.daysOverdue <= 2) agingBuckets["0-2"] += 1;
+        else if (slaFields.daysOverdue <= 7) agingBuckets["3-7"] += 1;
+        else agingBuckets["7+"] += 1;
+      }
+
+      const owner = String(data.productionName || data.productionOwnerName || "Unassigned");
+      if (!isClosed) workloadByOwner.set(owner, (workloadByOwner.get(owner) || 0) + 1);
     });
+
+    const escalations = eventsSnap
+      .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
+      .filter(({ data }) => String(data.type || "").toLowerCase().includes("escalation"))
+      .slice(0, 6)
+      .map(({ id, data }) => ({
+        id,
+        title: String(data.title || "Escalation"),
+        description: String(data.description || ""),
+        createdAt: toISO(data.createdAt),
+      }));
+
+    const teamWorkload = Array.from(workloadByOwner.entries())
+      .map(([name, activeProjects]) => ({ name, activeProjects }))
+      .sort((a, b) => b.activeProjects - a.activeProjects)
+      .slice(0, 6);
+
+    const onTimePct = deliveredCount ? Math.round((deliveredOnTime / deliveredCount) * 100) : 0;
+    const avgDeliveryDays = deliveredCount ? Number((deliveryDaysSum / deliveredCount).toFixed(1)) : 0;
 
     return NextResponse.json({
       ok: true,
@@ -91,6 +143,14 @@ export async function GET() {
         overdueItems,
       },
       queue,
+      sla: {
+        onTimePct,
+        avgDeliveryDays,
+        overdueCount: slaOverdueCount,
+        agingBuckets,
+      },
+      teamWorkload,
+      escalations,
     });
   } catch (err: any) {
     console.error("production-manager overview error:", err);

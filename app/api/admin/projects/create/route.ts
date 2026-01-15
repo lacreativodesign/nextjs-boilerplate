@@ -4,6 +4,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { ensureClientAccountActivation } from "@/lib/clientActivation";
 import { queueEmailEvent } from "@/lib/emailEvents";
 import { getCurrentUser } from "../../_utils";
+import { getWorkflowSettings } from "../../settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -88,6 +90,17 @@ export async function POST(req: Request) {
     ]);
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const nowDate = new Date();
+    const workflowSettings = await getWorkflowSettings();
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaFields = computeSlaFields({
+      createdAt: nowDate,
+      updatedAt: nowDate,
+      stage,
+      stageHistory: [],
+      slaDaysTotal,
+      now: nowDate,
+    });
     const ref = adminDb.collection("projects").doc();
 
     const payload = {
@@ -113,6 +126,9 @@ export async function POST(req: Request) {
       createdAt: now,
       updatedAt: now,
       lastActivityAt: now,
+      slaDueAt: slaFields.slaDueAt ? admin.firestore.Timestamp.fromDate(slaFields.slaDueAt) : null,
+      isOverdue: slaFields.isOverdue,
+      daysOverdue: slaFields.daysOverdue,
     };
 
     await ref.set(payload, { merge: true });

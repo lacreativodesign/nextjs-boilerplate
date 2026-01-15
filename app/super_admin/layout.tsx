@@ -23,6 +23,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 type TenantOption = { id: string; name: string };
 const navItems = [
   { label: "Platform Overview", path: "/super_admin", icon: LayoutDashboard },
+  { label: "Reports", path: "/super_admin/reports", icon: FileText },
   { label: "Tenants", path: "/super_admin/tenants", icon: Building2 },
   { label: "Users", path: "/super_admin/users", icon: Users },
   { label: "Activity", path: "/super_admin/activity", icon: FileText },

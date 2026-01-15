@@ -33,6 +33,8 @@ type OverviewResponse = {
   pipelineStages: Array<{ stage: string; count: number; value: number }>;
   topReps: Array<{ ownerName: string; wonRevenue: number; wonCount: number; avgDiscountPct: number }>;
   recentActivity: Array<{ id: string; title: string; description: string; createdAt: string | null }>;
+  slaRisksCount: number;
+  escalations: Array<{ id: string; title: string; description: string; createdAt: string | null }>;
 };
 
 type ErrorState = { title: string; message: string };
@@ -40,6 +42,7 @@ type ErrorState = { title: string; message: string };
 export default function SalesManagerOverview() {
   const isDark = useIsDarkMode();
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
 
@@ -68,6 +71,27 @@ export default function SalesManagerOverview() {
     loadOverview();
   }, [loadOverview]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadApprovals() {
+      try {
+        const res = await fetch("/api/approvals/list", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) return;
+        const pending = Array.isArray(data.approvals)
+          ? data.approvals.filter((item: any) => item.status === "pending").length
+          : 0;
+        if (active) setPendingApprovals(pending);
+      } catch (err) {
+        console.warn("Failed to load approvals", err);
+      }
+    }
+    loadApprovals();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const kpiValues = useMemo(() => {
     if (!overview) return [];
     return KPI_LABELS.map((item) => {
@@ -93,6 +117,8 @@ export default function SalesManagerOverview() {
   const pipelineStages = overview?.pipelineStages || [];
   const topReps = overview?.topReps || [];
   const recentActivity = overview?.recentActivity || [];
+  const escalations = overview?.escalations || [];
+  const slaRisksCount = overview?.slaRisksCount || 0;
 
   return (
     <div className="w-full">
@@ -214,6 +240,55 @@ export default function SalesManagerOverview() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <section
+        className="grid"
+        style={{
+          marginTop: 18,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+        }}
+      >
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>SLA Risks</div>
+          <div className="text-2xl font-semibold">{loading ? "—" : slaRisksCount}</div>
+          <div className="text-xs text-[var(--text-muted)] mt-2">Projects currently overdue on SLA.</div>
+        </div>
+
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Pending Approvals</div>
+          <div className="text-2xl font-semibold">{loading ? "—" : pendingApprovals}</div>
+          <div className="text-xs text-[var(--text-muted)] mt-2">Discounts and exceptions awaiting review.</div>
+        </div>
+
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Escalation Alerts</div>
+          <div className="space-y-3 text-sm">
+            {escalations.length === 0 && <div className="text-xs text-[var(--text-muted)]">No escalations logged.</div>}
+            {escalations.map((item) => (
+              <div key={item.id}>
+                <div className="font-semibold">{item.title}</div>
+                <div className="text-xs text-[var(--text-muted)]">{item.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="card" style={{ padding: 18, borderRadius: 18, marginTop: 18 }}>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>Quick Actions</div>
+        <div className="flex flex-wrap gap-3">
+          <a className="btn" href="/sales-manager/deals" style={{ borderRadius: 999 }}>
+            Review deals
+          </a>
+          <a className="btn ghost" href="/sales-manager/approvals" style={{ borderRadius: 999 }}>
+            Approvals
+          </a>
+          <a className="btn ghost" href="/sales-manager/reports" style={{ borderRadius: 999 }}>
+            Sales reports
+          </a>
         </div>
       </div>
     </div>

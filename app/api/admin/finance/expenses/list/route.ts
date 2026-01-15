@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../../_utils";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,12 @@ type ExpenseDoc = {
   vendor?: string;
   currency?: string;
   amountPkr?: number;
+  amountUsd?: number;
   expenseDate?: any;
+  month?: number;
+  year?: number;
+  createdByUid?: string | null;
+  tenantId?: string | null;
   status?: string;
   notes?: string | null;
   createdAt?: any;
@@ -24,17 +30,35 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("expenses").where("isDeleted", "==", false).limit(500).get();
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const queries = [adminDb.collection("expenses").where("isDeleted", "==", false).where("tenantId", "==", tenantId)];
+    if (tenantId === DEFAULT_TENANT_ID) {
+      queries.push(adminDb.collection("expenses").where("isDeleted", "==", false).where("tenantId", "==", null));
+    }
+    const snapshots = await Promise.all(queries.map((query) => query.limit(500).get()));
+    const docs = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    snapshots.forEach((snap) => {
+      snap.docs.forEach((doc) => {
+        if (docTenantId(doc.data()) === tenantId) {
+          docs.set(doc.id, doc);
+        }
+      });
+    });
 
-    const expenses = snap.docs.map((doc) => {
+    const expenses = Array.from(docs.values()).map((doc) => {
       const data = (doc.data() || {}) as ExpenseDoc;
       return {
         id: doc.id,
+        tenantId: data.tenantId || DEFAULT_TENANT_ID,
         category: data.category || "",
         vendor: data.vendor || "",
         currency: data.currency || "PKR",
         amountPkr: Number(data.amountPkr || 0),
+        amountUsd: Number(data.amountUsd || 0),
         expenseDate: toISO(data.expenseDate),
+        month: Number(data.month || 0),
+        year: Number(data.year || 0),
+        createdByUid: data.createdByUid || null,
         status: data.status || "Recorded",
         notes: data.notes || null,
         createdAt: toISO(data.createdAt),

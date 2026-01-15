@@ -10,6 +10,8 @@ import {
   normalizeRole,
 } from "../../_utils";
 import { createNotification, createNotificationEvent } from "@/lib/notifications";
+import { getWorkflowSettings } from "../../settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -144,6 +146,7 @@ export async function POST(req: Request) {
     }
 
     const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
     const stageHistory = Array.isArray(data.stageHistory) ? [...data.stageHistory] : [];
@@ -158,12 +161,26 @@ export async function POST(req: Request) {
     const stageTimestamps = cloneStageTimestamps(data.stageTimestamps);
     stageTimestamps[toStage] = now;
 
+    const workflowSettings = await getWorkflowSettings();
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaFields = computeSlaFields({
+      createdAt: data.createdAt,
+      updatedAt: nowDate,
+      stage: toStage,
+      stageHistory,
+      slaDaysTotal,
+      now: nowDate,
+    });
+
     const updateData: Record<string, any> = {
       stage: toStage,
       stageHistory,
       stageTimestamps,
       lastActivityAt: serverNow,
       updatedAt: serverNow,
+      slaDueAt: slaFields.slaDueAt ? admin.firestore.Timestamp.fromDate(slaFields.slaDueAt) : null,
+      isOverdue: slaFields.isOverdue,
+      daysOverdue: slaFields.daysOverdue,
     };
 
     await ref.set(updateData, { merge: true });

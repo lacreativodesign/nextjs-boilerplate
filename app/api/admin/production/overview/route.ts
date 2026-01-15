@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -81,11 +82,19 @@ export async function GET() {
       getWorkflowSettings(),
     ]);
 
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
     const projects = snap.docs.map((doc) => {
       const data = doc.data() as ProjectDoc;
       const stage = normalizeStage(data.stage);
       const dueDate = toISO(data.dueDate);
       const health = computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays);
+      const slaFields = computeSlaFields({
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        stage,
+        stageHistory: data.stageHistory || [],
+        slaDaysTotal,
+      });
       return {
         id: doc.id,
         projectName: data.projectName || "",
@@ -102,8 +111,18 @@ export async function GET() {
         updatedAt: toISO(data.updatedAt),
         createdAt: toISO(data.createdAt),
         stageHistory: normalizeStageHistory(data.stageHistory),
+        slaDueAt: slaFields.slaDueAt ? slaFields.slaDueAt.toISOString() : null,
+        isOverdue: slaFields.isOverdue,
+        daysOverdue: slaFields.daysOverdue,
+        activeDays: slaFields.activeDays,
       };
     });
+
+    let deliveredCount = 0;
+    let deliveredOnTime = 0;
+    let deliveryDaysSum = 0;
+    let slaOverdueCount = 0;
+    const agingBuckets = { "0-2": 0, "3-7": 0, "7+": 0 };
 
     const kpis = projects.reduce(
       (acc, project) => {
@@ -117,10 +136,24 @@ export async function GET() {
         if (project.health === "At Risk") acc.atRisk += 1;
         if (project.health === "Overdue") acc.overdue += 1;
         if (project.stage === "Delivered" && getDeliveredWithin(project)) acc.delivered7 += 1;
+
+        if (project.stage === "Delivered") {
+          deliveredCount += 1;
+          if (!project.isOverdue) deliveredOnTime += 1;
+          if (typeof project.activeDays === "number") deliveryDaysSum += project.activeDays;
+        } else if (project.isOverdue) {
+          slaOverdueCount += 1;
+          if (project.daysOverdue <= 2) agingBuckets["0-2"] += 1;
+          else if (project.daysOverdue <= 7) agingBuckets["3-7"] += 1;
+          else agingBuckets["7+"] += 1;
+        }
         return acc;
       },
       { assigned: 0, draft: 0, review: 0, revisions: 0, final: 0, atRisk: 0, overdue: 0, delivered7: 0 }
     );
+
+    const onTimePct = deliveredCount ? Math.round((deliveredOnTime / deliveredCount) * 100) : 0;
+    const avgDeliveryDays = deliveredCount ? Number((deliveryDaysSum / deliveredCount).toFixed(1)) : 0;
 
     const myQueue = projects
       .filter(
@@ -130,7 +163,18 @@ export async function GET() {
       .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
       .slice(0, 10);
 
-    return NextResponse.json({ ok: true, projects, kpis, myQueue });
+    return NextResponse.json({
+      ok: true,
+      projects,
+      kpis,
+      myQueue,
+      sla: {
+        onTimePct,
+        avgDeliveryDays,
+        overdueCount: slaOverdueCount,
+        agingBuckets,
+      },
+    });
   } catch (err: any) {
     console.error("production/overview error:", err);
     const rawMessage = String(err?.message || "");

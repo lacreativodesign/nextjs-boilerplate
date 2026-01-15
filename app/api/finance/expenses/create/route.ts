@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseNumber, parseString, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from "../../admin/settings/_utils";
+import { normalizeTenantId } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,9 @@ export async function POST(req: Request) {
     const auth = await requireFinance();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+    if (String(auth.user.role || "").toLowerCase() === "finance") {
+      return NextResponse.json({ ok: false, error: "Read-only access." }, { status: 403 });
     }
 
     const body = await req.json();
@@ -20,23 +25,37 @@ export async function POST(req: Request) {
     const status = parseString(body?.status || "Recorded").trim();
     const notes = parseString(body?.notes).trim();
 
-    if (!category || !vendor) {
-      return NextResponse.json({ ok: false, error: "Category and vendor are required." }, { status: 400 });
+    if (!category) {
+      return NextResponse.json({ ok: false, error: "Category is required." }, { status: 400 });
     }
 
     if (!amountPkr) {
       return NextResponse.json({ ok: false, error: "Amount is required." }, { status: 400 });
     }
 
+    const financeSettings = await getFinanceSettings();
+    const fxPkrPerUsdRaw = Number(financeSettings.fxPkrPerUsd || DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd);
+    const fxPkrPerUsd = fxPkrPerUsdRaw > 0 ? fxPkrPerUsdRaw : DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd;
+
+    const parsedExpenseDate = expenseDate ? new Date(expenseDate) : new Date();
+    const expenseMonth = parsedExpenseDate.getMonth() + 1;
+    const expenseYear = parsedExpenseDate.getFullYear();
+    const amountUsd = fxPkrPerUsd ? amountPkr / fxPkrPerUsd : 0;
+
     const ref = adminDb.collection("expenses").doc();
     await ref.set({
+      tenantId: normalizeTenantId(auth.user.tenantId),
       category,
-      vendor,
+      vendor: vendor || null,
       currency: "PKR",
       amountPkr,
+      amountUsd,
       expenseDate: expenseDate ? new Date(expenseDate) : null,
+      month: expenseMonth,
+      year: expenseYear,
       status: status || "Recorded",
       notes: notes || null,
+      createdByUid: auth.user.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,

@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 import { computeHealth, getWorkflowSettings } from "../../../admin/settings/_utils";
 import { getProductionUser, isAssignedToProduction, toISO } from "../../_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -128,6 +129,7 @@ export async function POST(req: Request) {
     }
 
     const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
     const stageHistory = Array.isArray(data.stageHistory) ? [...data.stageHistory] : [];
@@ -143,6 +145,17 @@ export async function POST(req: Request) {
     const stageTimestamps = { ...(data.stageTimestamps || {}) };
     stageTimestamps[toStage] = now;
 
+    const workflowSettings = await getWorkflowSettings();
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaFields = computeSlaFields({
+      createdAt: data.createdAt,
+      updatedAt: nowDate,
+      stage: toStage,
+      stageHistory,
+      slaDaysTotal,
+      now: nowDate,
+    });
+
     await ref.set(
       {
         stage: toStage,
@@ -150,6 +163,9 @@ export async function POST(req: Request) {
         stageTimestamps,
         updatedAt: serverNow,
         lastActivityAt: serverNow,
+        slaDueAt: slaFields.slaDueAt ? admin.firestore.Timestamp.fromDate(slaFields.slaDueAt) : null,
+        isOverdue: slaFields.isOverdue,
+        daysOverdue: slaFields.daysOverdue,
       },
       { merge: true }
     );
@@ -165,7 +181,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
+    const [updatedSnap, refreshedWorkflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
     const actorName = me.name || me.fullName || me.displayName || "";
@@ -215,7 +231,11 @@ export async function POST(req: Request) {
         projectType: updated.projectType || "",
         stage: updated.stage || "Draft",
         priority: updated.priority || "Normal",
-        health: computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays),
+        health: computeHealth(
+          dueDate,
+          refreshedWorkflowSettings.atRiskAfterDays,
+          refreshedWorkflowSettings.overdueAfterDays
+        ),
         ownerAmUid: updated.ownerAmUid ?? null,
         ownerAmName: updated.ownerAmName ?? null,
         productionUid: updated.productionUid ?? updated.productionOwnerId ?? null,

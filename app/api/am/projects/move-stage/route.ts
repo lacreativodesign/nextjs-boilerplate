@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 import { computeHealth, getWorkflowSettings } from "../../../admin/settings/_utils";
 import { getAmUser, isOwnedByAm, toISO } from "../../_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
     }
 
     const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
     const stageHistory = Array.isArray(data.stageHistory) ? [...data.stageHistory] : [];
     stageHistory.push({
@@ -85,17 +87,31 @@ export async function POST(req: Request) {
     const stageTimestamps = { ...(data.stageTimestamps || {}) };
     stageTimestamps[toStage] = now;
 
+    const workflowSettings = await getWorkflowSettings();
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaFields = computeSlaFields({
+      createdAt: (data as any).createdAt,
+      updatedAt: nowDate,
+      stage: toStage,
+      stageHistory,
+      slaDaysTotal,
+      now: nowDate,
+    });
+
     await ref.set(
       {
         stage: toStage,
         stageHistory,
         stageTimestamps,
         updatedAt: serverNow,
+        slaDueAt: slaFields.slaDueAt ? admin.firestore.Timestamp.fromDate(slaFields.slaDueAt) : null,
+        isOverdue: slaFields.isOverdue,
+        daysOverdue: slaFields.daysOverdue,
       },
       { merge: true }
     );
 
-    const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
+    const updatedSnap = await ref.get();
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO((updated as any)?.dueDate);
     const health = computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays);

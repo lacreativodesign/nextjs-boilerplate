@@ -19,10 +19,12 @@ type OverviewResponse = {
   ok: boolean;
   health: HealthStats;
   escalations: EscalationItem[];
+  teamWorkload: Array<{ name: string; activeProjects: number }>;
 };
 
 export default function AmManagerOverview() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +50,34 @@ export default function AmManagerOverview() {
     loadOverview();
   }, [loadOverview]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadApprovals() {
+      try {
+        const res = await fetch("/api/approvals/list", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) return;
+        const pending = Array.isArray(data.approvals)
+          ? data.approvals.filter((item: any) => item.status === "pending").length
+          : 0;
+        if (active) setPendingApprovals(pending);
+      } catch (err) {
+        console.warn("Failed to load approvals", err);
+      }
+    }
+    loadApprovals();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const health = overview?.health || {
     activeClients: 0,
     projectsAtRisk: 0,
     changeRequestsMtd: 0,
   };
   const escalations = overview?.escalations || [];
+  const teamWorkload = overview?.teamWorkload || [];
 
   return (
     <div className="w-full">
@@ -130,6 +154,49 @@ export default function AmManagerOverview() {
           </div>
         </div>
       </div>
+
+      <section
+        className="grid"
+        style={{
+          marginTop: 18,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+        }}
+      >
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Team Workload</div>
+          <div className="space-y-3 text-sm">
+            {teamWorkload.length === 0 && <div className="text-xs text-[var(--text-muted)]">No workload data.</div>}
+            {teamWorkload.map((row) => (
+              <div key={row.name} className="flex justify-between">
+                <span>{row.name}</span>
+                <span className="font-semibold">{row.activeProjects}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Pending Approvals</div>
+          <div className="text-2xl font-semibold">{loading ? "—" : pendingApprovals}</div>
+          <div className="text-xs text-[var(--text-muted)] mt-2">Requests awaiting review across teams.</div>
+        </div>
+
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Quick Actions</div>
+          <div className="flex flex-wrap gap-3">
+            <a className="btn" href="/am/clients" style={{ borderRadius: 999 }}>
+              Client portfolio
+            </a>
+            <a className="btn ghost" href="/am/projects" style={{ borderRadius: 999 }}>
+              Project pipeline
+            </a>
+            <a className="btn ghost" href="/am/change-requests" style={{ borderRadius: 999 }}>
+              Change requests
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

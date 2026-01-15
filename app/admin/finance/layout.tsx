@@ -9,6 +9,7 @@ const tabs = [
   { label: "Invoices", path: "/admin/finance/invoices" },
   { label: "Payments", path: "/admin/finance/payments" },
   { label: "Payroll", path: "/admin/finance/payroll" },
+  { label: "Expenses", path: "/admin/finance/expenses" },
   { label: "Reports", path: "/admin/finance/reports" },
   { label: "Settings", path: "/admin/finance/settings" },
 ];

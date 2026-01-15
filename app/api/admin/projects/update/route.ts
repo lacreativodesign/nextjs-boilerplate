@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
+import { getWorkflowSettings } from "../../settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -134,6 +136,21 @@ export async function POST(req: Request) {
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const nowDate = new Date();
+    const workflowSettings = await getWorkflowSettings();
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaFields = computeSlaFields({
+      createdAt: data.createdAt,
+      updatedAt: nowDate,
+      stage: updateData.stage || data.stage || "Kickoff",
+      stageHistory: data.stageHistory || [],
+      slaDaysTotal,
+      now: nowDate,
+    });
+
+    updateData.slaDueAt = slaFields.slaDueAt ? admin.firestore.Timestamp.fromDate(slaFields.slaDueAt) : null;
+    updateData.isOverdue = slaFields.isOverdue;
+    updateData.daysOverdue = slaFields.daysOverdue;
     updateData.updatedAt = now;
     updateData.lastActivityAt = now;
 

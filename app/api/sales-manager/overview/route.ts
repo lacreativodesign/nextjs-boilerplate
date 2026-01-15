@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireSalesManager, toISO } from "../_utils";
+import { getWorkflowSettings } from "../../admin/settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +32,16 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
+    const [leadsSnap, dealsSnap, eventsSnap, allEventsSnap, projectsSnap, workflowSettings] = await Promise.all([
       queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(
         adminDb.collection("events").where("entityType", "in", ["lead", "deal", "follow_up"]).limit(200),
         tenantId
       ),
+      queryWithTenant(adminDb.collection("events").orderBy("createdAt", "desc").limit(200), tenantId),
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      getWorkflowSettings(),
     ]);
 
     const leads = leadsSnap.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
@@ -141,6 +146,30 @@ export async function GET() {
       .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
       .slice(0, 6);
 
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const slaRisksCount = projectsSnap.reduce((count, doc) => {
+      const data = doc.data() || {};
+      const slaFields = computeSlaFields({
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        stage: String(data.stage || ""),
+        stageHistory: data.stageHistory || [],
+        slaDaysTotal,
+      });
+      return slaFields.isOverdue ? count + 1 : count;
+    }, 0);
+
+    const escalations = allEventsSnap
+      .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
+      .filter(({ data }) => String(data.type || "").toLowerCase().includes("escalation"))
+      .slice(0, 6)
+      .map(({ id, data }) => ({
+        id,
+        title: String(data.title || "Escalation"),
+        description: String(data.description || ""),
+        createdAt: toISO(data.createdAt),
+      }));
+
     return NextResponse.json({
       ok: true,
       kpis: {
@@ -156,6 +185,8 @@ export async function GET() {
       pipelineStages: Array.from(stageMap.values()),
       topReps,
       recentActivity,
+      slaRisksCount,
+      escalations,
     });
   } catch (err: any) {
     console.error("sales manager overview error:", err);

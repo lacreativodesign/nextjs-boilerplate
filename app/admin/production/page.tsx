@@ -13,6 +13,12 @@ type OverviewPayload = {
   projects: ProductionProject[];
   kpis: Record<string, number>;
   myQueue: ProductionProject[];
+  sla: {
+    onTimePct: number;
+    avgDeliveryDays: number;
+    overdueCount: number;
+    agingBuckets: { "0-2": number; "3-7": number; "7+": number };
+  };
 };
 
 type UserRecord = {
@@ -52,6 +58,7 @@ export default function ProductionOverviewPage() {
   const [projects, setProjects] = useState<ProductionProject[]>([]);
   const [kpis, setKpis] = useState<Record<string, number>>({});
   const [myQueue, setMyQueue] = useState<ProductionProject[]>([]);
+  const [sla, setSla] = useState<OverviewPayload["sla"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -113,6 +120,7 @@ export default function ProductionOverviewPage() {
         setProjects(overviewPayload.projects || []);
         setKpis(overviewPayload.kpis || {});
         setMyQueue(overviewPayload.myQueue || []);
+        setSla(overviewPayload.sla || null);
         const users = (usersPayload?.users || []) as UserRecord[];
         const options = users
           .filter((user) => (user.role || "").toLowerCase() === "production")
@@ -196,6 +204,33 @@ export default function ProductionOverviewPage() {
           </section>
 
           <section style={{ display: "grid", gap: 12 }}>
+            <div style={sectionTitleStyle}>SLA Intelligence</div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+              }}
+            >
+              <KpiCard label="On-time delivery %" value={sla ? `${sla.onTimePct}%` : "—"} />
+              <KpiCard label="Avg delivery (days)" value={sla ? sla.avgDeliveryDays : "—"} />
+              <KpiCard label="Overdue projects" value={sla ? sla.overdueCount : "—"} />
+              <KpiCard
+                label="Aging 0-2 days"
+                value={sla ? sla.agingBuckets["0-2"] : "—"}
+              />
+              <KpiCard
+                label="Aging 3-7 days"
+                value={sla ? sla.agingBuckets["3-7"] : "—"}
+              />
+              <KpiCard
+                label="Aging 7+ days"
+                value={sla ? sla.agingBuckets["7+"] : "—"}
+              />
+            </div>
+          </section>
+
+          <section style={{ display: "grid", gap: 12 }}>
             <div style={sectionTitleStyle}>My Queue (Top 10)</div>
             <div style={tableShellStyle}>
               <div style={{ overflowX: "auto" }}>
@@ -272,7 +307,7 @@ export default function ProductionOverviewPage() {
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: number }) {
+function KpiCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="card kpi-card" style={{ padding: "16px 18px", borderRadius: 16 }}>
       <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>

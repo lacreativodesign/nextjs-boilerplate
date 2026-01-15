@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireAmManagerOrAdmin } from "../../admin/_utils";
+import { getWorkflowSettings } from "../../admin/settings/_utils";
+import { computeSlaFields, getSlaTotalDays } from "@/lib/sla";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,10 +41,10 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const projects = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
-    );
+    const [projects, workflowSettings] = await Promise.all([
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      getWorkflowSettings(),
+    ]);
 
     const ownedProjects = projects.filter(
       (doc) => String(doc.data()?.ownerAmUid || "") === auth.user.uid
@@ -83,6 +85,9 @@ export async function GET() {
       }
     });
 
+    const slaDaysTotal = getSlaTotalDays(workflowSettings.slaDaysPerStage);
+    const workloadByOwner = new Map<string, number>();
+
     scopedProjects.forEach((doc) => {
       const data = doc.data() || {};
       const status = String(data.status || "").toLowerCase();
@@ -90,6 +95,18 @@ export async function GET() {
       if (status.includes("stalled") || health.includes("at risk") || health.includes("overdue")) {
         atRiskProjects.add(doc.id);
       }
+
+      const slaFields = computeSlaFields({
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        stage: String(data.stage || ""),
+        stageHistory: data.stageHistory || [],
+        slaDaysTotal,
+      });
+      if (slaFields.isOverdue) atRiskProjects.add(doc.id);
+
+      const owner = String(data.ownerAmName || "Unassigned");
+      workloadByOwner.set(owner, (workloadByOwner.get(owner) || 0) + 1);
     });
 
     const events = await queryWithTenant(
@@ -107,6 +124,11 @@ export async function GET() {
         createdAt: toISO(data.createdAt),
       }));
 
+    const teamWorkload = Array.from(workloadByOwner.entries())
+      .map(([name, activeProjects]) => ({ name, activeProjects }))
+      .sort((a, b) => b.activeProjects - a.activeProjects)
+      .slice(0, 6);
+
     return NextResponse.json({
       ok: true,
       health: {
@@ -115,6 +137,7 @@ export async function GET() {
         changeRequestsMtd,
       },
       escalations,
+      teamWorkload,
     });
   } catch (err: any) {
     console.error("am-manager overview error:", err);

@@ -7,6 +7,7 @@ import clsx from "clsx";
 const tabs = [
   { label: "Overview", path: "/admin/reports" },
   { label: "Revenue & AR", path: "/admin/reports/revenue" },
+  { label: "Financial Reports", path: "/admin/reports/finance" },
   { label: "Delivery Performance", path: "/admin/reports/delivery" },
   { label: "Production Analytics", path: "/admin/reports/production" },
   { label: "Client Insights", path: "/admin/reports/clients" },
