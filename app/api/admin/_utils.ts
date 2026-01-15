@@ -72,3 +72,55 @@ export function isAccountManager(role: string) {
 export function isProduction(role: string) {
   return normalizeRole(role) === "production";
 }
+
+export function isProductionManager(role: string) {
+  return normalizeRole(role) === "production_manager";
+}
+
+export function isAmManager(role: string) {
+  return normalizeRole(role) === "am_manager";
+}
+
+export async function requireAdminOrSuperAdmin() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { ok: false as const, status: 401, error: "Unauthorized" };
+  }
+  if (!isAdminOrSuper(me.role)) {
+    return { ok: false as const, status: 403, error: "Forbidden" };
+  }
+  return { ok: true as const, user: me };
+}
+
+export async function requireSalesManagerOrAdmin() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { ok: false as const, status: 401, error: "Unauthorized" };
+  }
+  if (!isSalesManager(me.role) && !isAdminOrSuper(me.role)) {
+    return { ok: false as const, status: 403, error: "Forbidden" };
+  }
+  return { ok: true as const, user: me };
+}
+
+export async function requireProductionManagerOrAdmin() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { ok: false as const, status: 401, error: "Unauthorized" };
+  }
+  if (!isProductionManager(me.role) && !isAdminOrSuper(me.role)) {
+    return { ok: false as const, status: 403, error: "Forbidden" };
+  }
+  return { ok: true as const, user: me };
+}
+
+export async function requireAmManagerOrAdmin() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { ok: false as const, status: 401, error: "Unauthorized" };
+  }
+  if (!isAmManager(me.role) && !isAdminOrSuper(me.role)) {
+    return { ok: false as const, status: 403, error: "Forbidden" };
+  }
+  return { ok: true as const, user: me };
+}

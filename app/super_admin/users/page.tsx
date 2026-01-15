@@ -118,6 +118,8 @@ export default function SuperAdminUsersPage() {
             <option value="admin">admin</option>
             <option value="sales">sales</option>
             <option value="sales_manager">sales_manager</option>
+            <option value="production_manager">production_manager</option>
+            <option value="am_manager">am_manager</option>
             <option value="account_manager">account_manager</option>
             <option value="production">production</option>
             <option value="finance">finance</option>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -26,8 +27,9 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
-    const ownerId = String(data.toUserId || data.userId || "");
-    if (!ownerId || ownerId !== me.uid) {
+    const ownerId = String(data.toUserId || data.toUid || data.userId || "");
+    const tenantId = normalizeTenantId(me.tenantId);
+    if (!ownerId || ownerId !== me.uid || docTenantId(data) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 

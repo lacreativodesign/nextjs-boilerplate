@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireSalesManager, toISO } from "../_utils";
 
 export const dynamic = "force-dynamic";
+
+async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
+  const queries = [query.where("tenantId", "==", tenantId)];
+  if (tenantId === DEFAULT_TENANT_ID) {
+    queries.push(query.where("tenantId", "==", null));
+  }
+  const snapshots = await Promise.all(queries.map((q) => q.get()));
+  const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+  snapshots.forEach((snap) => {
+    snap.docs.forEach((doc) => {
+      if (docTenantId(doc.data()) === tenantId) {
+        map.set(doc.id, doc);
+      }
+    });
+  });
+  return Array.from(map.values());
+}
 
 export async function GET() {
   try {
@@ -11,18 +29,18 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
-      adminDb
-        .collection("events")
-        .where("entityType", "in", ["lead", "deal", "follow_up"])
-        .limit(200)
-        .get(),
+      queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(
+        adminDb.collection("events").where("entityType", "in", ["lead", "deal", "follow_up"]).limit(200),
+        tenantId
+      ),
     ]);
 
-    const leads = leadsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
-    const deals = dealsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
+    const leads = leadsSnap.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
+    const deals = dealsSnap.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -47,7 +65,25 @@ export async function GET() {
       return closed >= startOfMonth;
     });
 
-    const revenueClosed = closedWonMonth.reduce((sum: number, deal: any) => sum + Number(deal.valueUsd || 0), 0);
+    const revenueClosed = closedWonMonth.reduce(
+      (sum: number, deal: any) => sum + Number(deal.finalPriceUsd || deal.valueUsd || 0),
+      0
+    );
+
+    const dealsCreatedMtd = deals.filter((deal: any) => {
+      const createdAt = toISO(deal.createdAt || deal.updatedAt);
+      if (!createdAt) return false;
+      const created = new Date(createdAt);
+      return created >= startOfMonth;
+    }).length;
+
+    const discountPending = deals.filter(
+      (deal: any) => String(deal.discountStatus || "").toLowerCase() === "pending"
+    );
+    const discountDeals = deals.filter((deal: any) => Number(deal.discountPct || 0) > 0);
+    const avgDiscountPct = discountDeals.length
+      ? discountDeals.reduce((sum: number, deal: any) => sum + Number(deal.discountPct || 0), 0) / discountDeals.length
+      : 0;
 
     const stageMap = new Map<string, { stage: string; count: number; value: number }>();
     deals.forEach((deal: any) => {
@@ -58,15 +94,26 @@ export async function GET() {
       stageMap.set(stage, entry);
     });
 
-    const ownerMap = new Map<string, { ownerName: string; deals: number; value: number; wins: number; total: number }>();
+    const ownerMap = new Map<
+      string,
+      { ownerName: string; wonRevenue: number; wonCount: number; discountSum: number; discountCount: number }
+    >();
     deals.forEach((deal: any) => {
+      if (String(deal.stage || "") !== "Closed Won") return;
       const ownerName = String(deal.ownerName || "Unassigned");
-      const entry = ownerMap.get(ownerName) || { ownerName, deals: 0, value: 0, wins: 0, total: 0 };
-      entry.deals += 1;
-      entry.total += 1;
-      entry.value += Number(deal.valueUsd || 0);
-      if (String(deal.stage || "") === "Closed Won") {
-        entry.wins += 1;
+      const entry = ownerMap.get(ownerName) || {
+        ownerName,
+        wonRevenue: 0,
+        wonCount: 0,
+        discountSum: 0,
+        discountCount: 0,
+      };
+      entry.wonCount += 1;
+      entry.wonRevenue += Number(deal.finalPriceUsd || deal.valueUsd || 0);
+      const discountPct = Number(deal.discountPct || 0);
+      if (discountPct > 0) {
+        entry.discountSum += discountPct;
+        entry.discountCount += 1;
       }
       ownerMap.set(ownerName, entry);
     });
@@ -74,14 +121,14 @@ export async function GET() {
     const topReps = Array.from(ownerMap.values())
       .map((rep) => ({
         ownerName: rep.ownerName,
-        deals: rep.deals,
-        value: rep.value,
-        winRate: rep.total ? (rep.wins / rep.total) * 100 : 0,
+        wonRevenue: rep.wonRevenue,
+        wonCount: rep.wonCount,
+        avgDiscountPct: rep.discountCount ? rep.discountSum / rep.discountCount : 0,
       }))
-      .sort((a, b) => b.value - a.value)
+      .sort((a, b) => b.wonRevenue - a.wonRevenue)
       .slice(0, 5);
 
-    const recentActivity = eventsSnap.docs
+    const recentActivity = eventsSnap
       .map((doc) => {
         const data = doc.data() || {};
         return {
@@ -102,6 +149,9 @@ export async function GET() {
         activeDeals,
         closedWonMonth: closedWonMonth.length,
         revenueClosed,
+        dealsCreatedMtd,
+        discountPendingCount: discountPending.length,
+        avgDiscountPct,
       },
       pipelineStages: Array.from(stageMap.values()),
       topReps,

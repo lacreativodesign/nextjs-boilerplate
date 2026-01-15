@@ -8,8 +8,14 @@ const KPI_LABELS = [
   { key: "newLeads30d", label: "New Leads (30d)" },
   { key: "qualifiedLeads", label: "Qualified Leads" },
   { key: "activeDeals", label: "Active Deals" },
-  { key: "closedWonMonth", label: "Closed Won (This Month)" },
-  { key: "revenueClosed", label: "Revenue Closed (USD)" },
+];
+
+const TEAM_METRICS = [
+  { key: "dealsCreatedMtd", label: "Deals Created (MTD)" },
+  { key: "closedWonMonth", label: "Closed Won (MTD)" },
+  { key: "revenueClosed", label: "Revenue MTD (USD)" },
+  { key: "discountPendingCount", label: "Pending Discounts" },
+  { key: "avgDiscountPct", label: "Avg Discount (%)" },
 ];
 
 type OverviewResponse = {
@@ -20,9 +26,12 @@ type OverviewResponse = {
     activeDeals: number;
     closedWonMonth: number;
     revenueClosed: number;
+    dealsCreatedMtd: number;
+    discountPendingCount: number;
+    avgDiscountPct: number;
   };
   pipelineStages: Array<{ stage: string; count: number; value: number }>;
-  topReps: Array<{ ownerName: string; deals: number; value: number; winRate: number }>;
+  topReps: Array<{ ownerName: string; wonRevenue: number; wonCount: number; avgDiscountPct: number }>;
   recentActivity: Array<{ id: string; title: string; description: string; createdAt: string | null }>;
 };
 
@@ -63,8 +72,19 @@ export default function SalesManagerOverview() {
     if (!overview) return [];
     return KPI_LABELS.map((item) => {
       const raw = overview.kpis[item.key as keyof OverviewResponse["kpis"]] ?? 0;
+      return { label: item.label, value: String(raw) };
+    });
+  }, [overview]);
+
+  const teamMetrics = useMemo(() => {
+    if (!overview) return [];
+    return TEAM_METRICS.map((item) => {
+      const raw = overview.kpis[item.key as keyof OverviewResponse["kpis"]] ?? 0;
       if (item.key === "revenueClosed") {
         return { label: item.label, value: formatUsd(raw as number) };
+      }
+      if (item.key === "avgDiscountPct") {
+        return { label: item.label, value: `${Number(raw).toFixed(1)}%` };
       }
       return { label: item.label, value: String(raw) };
     });
@@ -121,6 +141,18 @@ export default function SalesManagerOverview() {
         }}
       >
         <div className="card" style={{ padding: 18, borderRadius: 18 }}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Team Performance</div>
+          <div className="space-y-3">
+            {teamMetrics.map((kpi) => (
+              <div key={kpi.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <span>{kpi.label}</span>
+                <span style={{ fontWeight: 600 }}>{loading ? "—" : kpi.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Pipeline Snapshot</div>
           <div className="space-y-3">
             {pipelineStages.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>No pipeline stages available.</div>}
@@ -129,21 +161,6 @@ export default function SalesManagerOverview() {
                 <span>{stage.stage}</span>
                 <span style={{ fontWeight: 600 }}>
                   {stage.count} · {formatUsd(stage.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Top Reps by Performance</div>
-          <div className="space-y-3">
-            {topReps.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>No rep performance data available.</div>}
-            {topReps.map((rep) => (
-              <div key={rep.ownerName} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                <span>{rep.ownerName || "Unassigned"}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {rep.deals} · {formatUsd(rep.value)} · {rep.winRate.toFixed(0)}%
                 </span>
               </div>
             ))}
@@ -164,6 +181,41 @@ export default function SalesManagerOverview() {
           </div>
         </div>
       </section>
+
+      <div className="card" style={{ padding: 18, borderRadius: 18, marginTop: 18 }}>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>Top reps</div>
+        <div className="table-shell">
+          <div style={{ overflowX: "auto" }}>
+            <table className="table" style={{ minWidth: 640 }}>
+              <thead>
+                <tr>
+                  <th>Rep</th>
+                  <th className="text-right">Won revenue</th>
+                  <th className="text-right">Won count</th>
+                  <th className="text-right">Avg discount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topReps.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-sm text-[var(--text-muted)]">
+                      No rep performance data available.
+                    </td>
+                  </tr>
+                )}
+                {topReps.map((rep) => (
+                  <tr key={rep.ownerName}>
+                    <td>{rep.ownerName || "Unassigned"}</td>
+                    <td className="text-right">{formatUsd(rep.wonRevenue)}</td>
+                    <td className="text-right">{rep.wonCount}</td>
+                    <td className="text-right">{rep.avgDiscountPct.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

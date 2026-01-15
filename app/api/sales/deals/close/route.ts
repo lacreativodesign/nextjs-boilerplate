@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     if (discountStatus === "pending" || (discountPct > 20 && !discountApproved) || discountStatus === "rejected") {
       return NextResponse.json(
         { ok: false, error: "Discount approval required before closing this deal." },
-        { status: 400 }
+        { status: 403 }
       );
     }
 
