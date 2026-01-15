@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId, normalizeTenantId, DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -51,26 +52,47 @@ function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): No
   };
 }
 
-async function getNotifications(uid: string, unreadOnly: boolean) {
+function buildTenantQueries(query: FirebaseFirestore.Query, tenantId: string) {
+  const queries = [query.where("tenantId", "==", tenantId)];
+  if (tenantId === DEFAULT_TENANT_ID) {
+    queries.push(query.where("tenantId", "==", null));
+  }
+  return queries;
+}
+
+async function getNotifications(uid: string, tenantId: string, unreadOnly: boolean) {
   const queries: FirebaseFirestore.Query[] = [];
 
-  let newQuery: FirebaseFirestore.Query = adminDb.collection("notifications").where("toUserId", "==", uid);
-  let legacyQuery: FirebaseFirestore.Query = adminDb.collection("notifications").where("userId", "==", uid);
+  const baseQueries = [
+    adminDb.collection("notifications").where("toUserId", "==", uid),
+    adminDb.collection("notifications").where("toUid", "==", uid),
+  ];
+  const legacyBase = adminDb.collection("notifications").where("userId", "==", uid);
 
+  baseQueries.forEach((base) => {
+    let scoped = base;
+    if (unreadOnly) {
+      scoped = scoped.where("isRead", "==", false);
+    }
+    buildTenantQueries(scoped, tenantId).forEach((query) => {
+      queries.push(query.orderBy("createdAt", "desc").limit(50));
+    });
+  });
+
+  let legacyQuery = legacyBase;
   if (unreadOnly) {
-    newQuery = newQuery.where("isRead", "==", false);
     legacyQuery = legacyQuery.where("read", "==", false);
   }
-
-  queries.push(newQuery.orderBy("createdAt", "desc").limit(50));
-  queries.push(legacyQuery.orderBy("createdAt", "desc").limit(50));
+  buildTenantQueries(legacyQuery, tenantId).forEach((query) => {
+    queries.push(query.orderBy("createdAt", "desc").limit(50));
+  });
 
   const snapshots = await Promise.all(queries.map((query) => query.get()));
   const map = new Map<string, NotificationRecord>();
 
   snapshots.forEach((snap) => {
     snap.docs.forEach((doc) => {
-      if (!map.has(doc.id)) {
+      if (!map.has(doc.id) && docTenantId(doc.data()) === tenantId) {
         map.set(doc.id, normalizeNotification(doc));
       }
     });
@@ -80,15 +102,27 @@ async function getNotifications(uid: string, unreadOnly: boolean) {
   return merged.slice(0, 50).map(({ createdAtMs, ...rest }) => rest);
 }
 
-async function getUnreadCount(uid: string) {
-  const [newSnap, legacySnap] = await Promise.all([
-    adminDb.collection("notifications").where("toUserId", "==", uid).where("isRead", "==", false).get(),
-    adminDb.collection("notifications").where("userId", "==", uid).where("read", "==", false).get(),
-  ]);
+async function getUnreadCount(uid: string, tenantId: string) {
+  const queries: FirebaseFirestore.Query[] = [];
+  const baseQueries = [
+    adminDb.collection("notifications").where("toUserId", "==", uid).where("isRead", "==", false),
+    adminDb.collection("notifications").where("toUid", "==", uid).where("isRead", "==", false),
+    adminDb.collection("notifications").where("userId", "==", uid).where("read", "==", false),
+  ];
 
+  baseQueries.forEach((base) => {
+    buildTenantQueries(base, tenantId).forEach((query) => queries.push(query));
+  });
+
+  const snapshots = await Promise.all(queries.map((query) => query.get()));
   const ids = new Set<string>();
-  newSnap.docs.forEach((doc) => ids.add(doc.id));
-  legacySnap.docs.forEach((doc) => ids.add(doc.id));
+  snapshots.forEach((snap) => {
+    snap.docs.forEach((doc) => {
+      if (docTenantId(doc.data()) === tenantId) {
+        ids.add(doc.id);
+      }
+    });
+  });
   return ids.size;
 }
 
@@ -100,9 +134,10 @@ export async function GET(req: NextRequest) {
     }
 
     const unreadOnly = req.nextUrl.searchParams.get("unreadOnly") === "true";
+    const tenantId = normalizeTenantId(me.tenantId);
     const [notifications, unreadCount] = await Promise.all([
-      getNotifications(me.uid, unreadOnly),
-      getUnreadCount(me.uid),
+      getNotifications(me.uid, tenantId, unreadOnly),
+      getUnreadCount(me.uid, tenantId),
     ]);
 
     return NextResponse.json({ ok: true, notifications, unreadCount });

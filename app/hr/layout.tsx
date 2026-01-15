@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
-  Bell,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -20,6 +19,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
   { label: "Overview", path: "/hr", icon: LayoutDashboard },
@@ -31,29 +31,12 @@ const navItems = [
   { label: "Settings", path: "/hr/settings", icon: Settings },
 ];
 
-type NotificationItem = {
-  id: string;
-  title: string;
-  body: string;
-  type: "info" | "warning" | "success" | "system";
-  entityType: string | null;
-  entityId: string | null;
-  deepLink: string | null;
-  isRead: boolean;
-  createdAt: string | null;
-  priority: string;
-};
-
 export default function HRLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [authInstance, setAuthInstance] = useState<Auth | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const { data: tenantContext, loading: tenantLoading, error: tenantError } = useTenantContext();
   const [realPath, setRealPath] = useState(pathname);
 
@@ -79,93 +62,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       router.replace("/module-disabled");
     }
   }, [tenantLoading, tenantContext, moduleMap, router]);
-
-  const formatTimestamp = (value?: string | null) => {
-    if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const diffMs = Date.now() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / 60000);
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const fetchNotifications = async (mode: "badge" | "full") => {
-    if (mode === "full") {
-      setNotificationsLoading(true);
-    }
-
-    try {
-      const res = await fetch(`/api/notifications/list${mode === "badge" ? "?unreadOnly=true" : ""}`,
-        {
-          cache: "no-store",
-          credentials: "include",
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        console.error("Notification fetch error:", data?.error || res.statusText);
-        return;
-      }
-
-      if (Array.isArray(data?.notifications) && mode === "full") {
-        setNotifications(data.notifications);
-      }
-
-      if (typeof data?.unreadCount === "number") {
-        setUnreadCount(data.unreadCount);
-      }
-    } catch (err) {
-      console.error("Notification fetch error:", err);
-    } finally {
-      if (mode === "full") {
-        setNotificationsLoading(false);
-      }
-    }
-  };
-
-  const handleNotificationClick = async (item: NotificationItem) => {
-    try {
-      await fetch("/api/notifications/mark-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id: item.id }),
-      });
-    } catch (err) {
-      console.error("Notification mark read error:", err);
-    }
-
-    setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
-    setUnreadCount((prev) => Math.max(prev - (item.isRead ? 0 : 1), 0));
-    setDrawerOpen(false);
-
-    if (item.deepLink) {
-      router.push(item.deepLink);
-      return;
-    }
-
-    router.push("/hr");
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await fetch("/api/notifications/mark-all-read", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (err) {
-      console.error("Notification mark all read error:", err);
-    } finally {
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    }
-  };
 
   const handleLogout = async () => {
     if (!authInstance) return;
@@ -207,15 +103,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-    fetchNotifications("badge");
-    const interval = window.setInterval(() => {
-      fetchNotifications("badge");
-    }, 60000);
-    return () => window.clearInterval(interval);
-  }, [notificationsEnabled]);
 
   if (!authInstance) {
     return (
@@ -287,21 +174,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           <header className="admin-header h-16 flex items-center justify-between px-6">
             <h1 className="text-lg font-semibold">HR Dashboard</h1>
             <div className="flex items-center gap-3">
-              {notificationsEnabled && (
-                <button
-                  className="notification-bell"
-                  onClick={() => {
-                    const nextOpen = !drawerOpen;
-                    setDrawerOpen(nextOpen);
-                    if (nextOpen) {
-                      fetchNotifications("full");
-                    }
-                  }}
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-                </button>
-              )}
+              <NotificationBell enabled={notificationsEnabled} />
               <button className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600" onClick={handleLogout}>
                 <LogOut size={16} />
               </button>
@@ -311,41 +184,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           <main className="p-6">{children}</main>
         </div>
 
-        {drawerOpen && (
-          <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
-            <div
-              className="drawer-panel drawer-panel--md notification-drawer"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="notification-drawer__header">
-                <div>
-                  <div className="drawer-title">Notifications</div>
-                  <div className="drawer-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
-                </div>
-                <button className="btn ghost" onClick={handleMarkAllRead} style={{ height: 34, borderRadius: 999 }}>
-                  Mark all read
-                </button>
-              </div>
-              <div className="notification-list">
-                {notifications.map((item) => (
-                  <button
-                    key={item.id}
-                    className={clsx("notification-row", !item.isRead && "notification-row--unread")}
-                    onClick={() => handleNotificationClick(item)}
-                  >
-                    <div className="notification-row__title">{item.title || "Update"}</div>
-                    <div className="notification-row__body">{item.body || "New update available."}</div>
-                    <div className="notification-row__time">{formatTimestamp(item.createdAt)}</div>
-                  </button>
-                ))}
-                {notificationsLoading && <div className="notification-empty">Loading notifications...</div>}
-                {!notificationsLoading && notifications.length === 0 && (
-                  <div className="notification-empty">You're all caught up. We'll keep watch for updates.</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </RequireAuth>
   );

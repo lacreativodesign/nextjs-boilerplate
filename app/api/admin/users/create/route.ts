@@ -150,7 +150,16 @@ export async function POST(req: Request) {
 function canManageRole(targetRole: string) {
   const r = (targetRole || "").toLowerCase();
   // super_admin / admin allowed to manage all roles except restricting logic already implemented where needed
-  return ["super_admin", "admin", "sales_manager", "sales", "account_manager", "hr", "finance", "production"].includes(
-    r
-  );
+  return [
+    "super_admin",
+    "admin",
+    "sales_manager",
+    "production_manager",
+    "am_manager",
+    "sales",
+    "account_manager",
+    "hr",
+    "finance",
+    "production",
+  ].includes(r);
 }

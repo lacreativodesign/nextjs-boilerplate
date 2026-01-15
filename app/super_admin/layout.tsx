@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
   Activity,
-  Bell,
   Building2,
   ClipboardCheck,
   FileText,
@@ -19,26 +18,14 @@ import {
 import RequireAuth from "@/components/RequireAuth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 type TenantOption = { id: string; name: string };
-type NotificationItem = {
-  id: string;
-  title: string;
-  body: string;
-  type: "info" | "warning" | "success" | "system";
-  entityType: string | null;
-  entityId: string | null;
-  deepLink: string | null;
-  isRead: boolean;
-  createdAt: string | null;
-  priority: string;
-};
-
 const navItems = [
   { label: "Platform Overview", path: "/super_admin", icon: LayoutDashboard },
   { label: "Tenants", path: "/super_admin/tenants", icon: Building2 },
   { label: "Users", path: "/super_admin/users", icon: Users },
-  { label: "Audit Log", path: "/super_admin/audit", icon: FileText },
+  { label: "Activity", path: "/super_admin/activity", icon: FileText },
   { label: "System Health", path: "/super_admin/system-health", icon: Activity },
   { label: "Migration", path: "/super_admin/migration", icon: ClipboardCheck },
 ];
@@ -49,10 +36,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [collapsed, setCollapsed] = useState(false);
   const [authInstance, setAuthInstance] = useState<Auth | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [activeTenantId, setActiveTenantId] = useState<string>("");
   const [activeTenantName, setActiveTenantName] = useState<string>("Platform");
@@ -77,73 +60,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     };
   }, []);
 
-  const fetchNotifications = async (mode: "badge" | "full") => {
-    if (mode === "full") {
-      setNotificationsLoading(true);
-    }
-
-    try {
-      const res = await fetch(`/api/notifications/list${mode === "badge" ? "?unreadOnly=true" : ""}`, {
-        cache: "no-store",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        console.error("Notification fetch error:", data?.error || res.statusText);
-        return;
-      }
-
-      if (Array.isArray(data?.notifications) && mode === "full") {
-        setNotifications(data.notifications);
-      }
-
-      if (typeof data?.unreadCount === "number") {
-        setUnreadCount(data.unreadCount);
-      }
-    } catch (err) {
-      console.error("Notification fetch error:", err);
-    } finally {
-      if (mode === "full") {
-        setNotificationsLoading(false);
-      }
-    }
-  };
-
-  const handleNotificationClick = async (item: NotificationItem) => {
-    try {
-      await fetch("/api/notifications/mark-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id: item.id }),
-      });
-    } catch (err) {
-      console.error("Notification mark read error:", err);
-    }
-
-    setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
-    setUnreadCount((prev) => Math.max(prev - (item.isRead ? 0 : 1), 0));
-    setDrawerOpen(false);
-
-    if (item.deepLink) {
-      router.push(item.deepLink);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await fetch("/api/notifications/mark-all-read", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (err) {
-      console.error("Notification mark all read error:", err);
-    } finally {
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    }
-  };
-
   const handleLogout = async () => {
     if (!authInstance) return;
     try {
@@ -163,12 +79,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
     window.location.href = "/login";
   };
-
-  useEffect(() => {
-    fetchNotifications("badge");
-    const interval = window.setInterval(() => fetchNotifications("badge"), 60000);
-    return () => window.clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -314,20 +224,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 </select>
               </div>
 
-              <button
-                type="button"
-                className="notification-bell"
-                onClick={() => {
-                  const nextOpen = !drawerOpen;
-                  setDrawerOpen(nextOpen);
-                  if (nextOpen) {
-                    fetchNotifications("full");
-                  }
-                }}
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-              </button>
+              <NotificationBell />
 
               <button onClick={handleLogout} className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600">
                 <LogOut size={18} />
@@ -338,36 +235,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <div className="p-6">{children}</div>
         </div>
 
-        {drawerOpen && (
-          <div className="notification-drawer">
-            <div className="notification-drawer-header">
-              <div>
-                <h3 className="text-lg font-semibold">Notifications</h3>
-                <p className="text-sm text-[var(--text-muted)]">Platform alerts and activity.</p>
-              </div>
-              <button onClick={handleMarkAllRead} className="text-sm text-[var(--erp-blue)]">
-                Mark all read
-              </button>
-            </div>
-
-            <div className="notification-drawer-body">
-              {notificationsLoading && <div className="text-sm text-[var(--text-muted)]">Loading…</div>}
-              {!notificationsLoading && notifications.length === 0 && (
-                <div className="text-sm text-[var(--text-muted)]">No notifications.</div>
-              )}
-              {notifications.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleNotificationClick(item)}
-                  className={clsx("notification-item", item.isRead && "read")}
-                >
-                  <div className="notification-title">{item.title}</div>
-                  <div className="notification-body">{item.body}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </RequireAuth>
   );

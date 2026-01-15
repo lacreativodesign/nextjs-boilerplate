@@ -15,6 +15,13 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
+  if (pathname === "/sales_manager" || pathname.startsWith("/sales_manager/")) {
+    const rewrittenPath = pathname.replace(/^\/sales_manager/, "/sales-manager");
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = rewrittenPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   if (pathname === "/customer" || pathname.startsWith("/customer/")) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = pathname.replace(/^\/customer/, "/client");
@@ -32,9 +39,12 @@ export function middleware(req: NextRequest) {
     "/super_admin",
     "/sales",
     "/sales-manager",
+    "/sales_manager",
     "/am",
+    "/am_manager",
     "/finance",
     "/production",
+    "/production_manager",
     "/hr",
     "/client",
   ];
@@ -59,9 +69,12 @@ export const config = {
     "/super_admin/:path*",
     "/sales/:path*",
     "/sales-manager/:path*",
+    "/sales_manager/:path*",
     "/am/:path*",
+    "/am_manager/:path*",
     "/finance/:path*",
     "/production/:path*",
+    "/production_manager/:path*",
     "/hr/:path*",
     "/client/:path*",
   ],
