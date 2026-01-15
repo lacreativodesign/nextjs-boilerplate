@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
 type InvoiceRecord = {
@@ -30,20 +30,35 @@ type InvoiceDetail = {
 
 type PaymentRecord = {
   id: string;
+
   status: string;
   amountUsd: number;
   method: string;
   paidAt: string | null;
   createdAt: string | null;
   orderId?: string | null;
+
+  orderId?: string | null;
+  status?: string | null;
+  amountUsd?: number | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+
 };
 
 type ChangeRequestRecord = {
   id: string;
+
   title: string;
   status: string;
   estimatedCost: number | null;
   estimatedTimelineDays: number | null;
+
+  title?: string | null;
+  status?: string | null;
+  costUsd?: number | null;
+  createdAt?: string | null;
+
 };
 
 function useIsSystemDark() {
@@ -84,13 +99,22 @@ function fmtDate(iso?: string | null) {
   return date.toLocaleDateString();
 }
 
+function safeLower(s?: string | null) {
+  return String(s || "").toLowerCase().trim();
+}
+
 export default function ClientBillingPage() {
   const isDark = useIsSystemDark();
+
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
+
+
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detail, setDetail] = useState<InvoiceDetail | null>(null);
@@ -117,16 +141,24 @@ export default function ClientBillingPage() {
 
   useEffect(() => {
     let alive = true;
+
     async function load() {
       setLoading(true);
       setError(null);
+
       try {
+
  codex/implement-sprint-1-changes-in-nextjs-boilerplate
         const [invoiceRes, paymentRes, changeRequestRes] = await Promise.all([
+
+        // Use allSettled so one missing route doesn't kill the whole page
+        const [invResS, payResS, crResS] = await Promise.allSettled([
+
           fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/billing/payments/list", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" }),
         ]);
+
         const payload = await invoiceRes.json();
         const paymentPayload = await paymentRes.json();
         const changeRequestPayload = await changeRequestRes.json();
@@ -143,24 +175,84 @@ export default function ClientBillingPage() {
         setInvoices(payload.invoices || []);
         setPayments(paymentPayload?.payments || []);
         setChangeRequests(changeRequestPayload?.changeRequests || []);
+
+
+        if (!alive) return;
+
+        // Invoices (required)
+        if (invResS.status !== "fulfilled") throw new Error("Unable to load invoices.");
+        const invRes = invResS.value;
+        const invPayload = await invRes.json();
+        if (!invRes.ok || !invPayload?.ok) throw new Error(invPayload?.error || "Unable to load invoices.");
+        const invList: InvoiceRecord[] = invPayload?.invoices || [];
+
+        // Payments (optional)
+        let payList: PaymentRecord[] = [];
+        if (payResS.status === "fulfilled") {
+          const payRes = payResS.value;
+          try {
+            const payPayload = await payRes.json();
+            if (payRes.ok && payPayload?.ok) payList = payPayload?.payments || [];
+          } catch {
+            // ignore
+          }
+        }
+
+        // Change Requests (optional)
+        let crList: ChangeRequestRecord[] = [];
+        if (crResS.status === "fulfilled") {
+          const crRes = crResS.value;
+          try {
+            const crPayload = await crRes.json();
+            if (crRes.ok && crPayload?.ok) crList = crPayload?.requests || crPayload?.changeRequests || [];
+          } catch {
+            // ignore
+          }
+        }
+
+        setInvoices(invList);
+        setPayments(payList);
+        setChangeRequests(crList);
+
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Unable to load invoices.");
+        setError(err?.message || "Unable to load billing.");
       } finally {
         if (!alive) return;
         setLoading(false);
       }
     }
+
     load();
     return () => {
       alive = false;
     };
   }, []);
 
+  const stats = useMemo(() => {
+    const unpaid = invoices.filter((i) => safeLower(i.status) !== "paid");
+    const outstandingUsd = unpaid.reduce((sum, i) => sum + Number(i.amountUsd || 0), 0);
+
+    const pendingApprovals = changeRequests.filter((cr) => {
+      const st = safeLower(cr.status);
+      // flexible: "pending_client", "client_pending", "pending", etc.
+      return st.includes("pending") && (st.includes("client") || st === "pending");
+    }).length;
+
+    const paidInvoices = invoices.filter((i) => safeLower(i.status) === "paid").length;
+
+    return {
+      outstandingUsd,
+      pendingApprovals,
+      paidInvoices,
+    };
+  }, [invoices, changeRequests]);
+
   const openDrawer = async (invoice: InvoiceRecord) => {
     setDrawerOpen(true);
     setDetailLoading(true);
     setDetail(null);
+
     try {
       
       setDetail(payload.invoice || null);
@@ -176,13 +268,46 @@ export default function ClientBillingPage() {
     setDetail(null);
   };
 
+  const filteredInvoices = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return invoices;
+    return invoices.filter((invoice) => {
+      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [invoices, search]);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Billing</h1>
-        <p className="page-subtitle">
-          View invoice status, outstanding balances, and payment history.
-        </p>
+        <p className="page-subtitle">View invoice status, outstanding balances, and payment history.</p>
+      </div>
+
+      {/* Top Widgets */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="card p-4">
+          <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Outstanding Balance</div>
+          <div className="mt-2 text-2xl font-extrabold">{fmtMoney(stats.outstandingUsd)}</div>
+          <div className="mt-1 text-sm text-[var(--text-muted)]">Unpaid invoices total</div>
+        </div>
+
+        <div className="card p-4">
+          <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Pending Approvals</div>
+          <div className="mt-2 text-2xl font-extrabold">{stats.pendingApprovals}</div>
+          <div className="mt-1 text-sm text-[var(--text-muted)]">Change requests waiting on you</div>
+          <div className="mt-3">
+            <a className="btn ghost" href="/client/change-requests" style={{ borderRadius: 999 }}>
+              Review
+            </a>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Paid Invoices</div>
+          <div className="mt-2 text-2xl font-extrabold">{stats.paidInvoices}</div>
+          <div className="mt-1 text-sm text-[var(--text-muted)]">All-time paid count</div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -222,20 +347,16 @@ export default function ClientBillingPage() {
       </div>
 
       <div className="card p-4">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <input className="input" placeholder="Search invoice keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
+      {/* Invoices */}
       <div className="card table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading invoices...</div>
         ) : error ? (
           <div className="p-4 text-sm text-red-400">{error}</div>
-        ) : invoices.length === 0 ? (
+        ) : filteredInvoices.length === 0 ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">No invoices found.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -251,51 +372,35 @@ export default function ClientBillingPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices
-                  .filter((invoice) => {
-                    const q = search.trim().toLowerCase();
-                    if (!q) return true;
-                    const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
-                    return hay.includes(q);
-                  })
-                  .map((invoice, idx) => {
-                    const rowBg = isDark
-                      ? idx % 2 === 0
-                        ? "rgba(255,255,255,0.015)"
-                        : "rgba(255,255,255,0.00)"
-                      : idx % 2 === 0
-                      ? "rgba(15,23,42,0.015)"
-                      : "rgba(15,23,42,0.00)";
-                    return (
-                      <tr key={invoice.id} style={{ background: rowBg }}>
-                        <td style={cellStyle}>{invoice.orderId || "-"}</td>
-                        <td style={cellStyle}>{invoice.status || "-"}</td>
-                        <td style={{ ...cellStyle, textAlign: "right" }}>
-                          {fmtMoney(invoice.amountUsd || 0)}
-                        </td>
-                        <td style={{ ...cellStyle, textAlign: "right" }}>
-                          {fmtDate(invoice.dueDate)}
-                        </td>
-                        <td style={{ ...cellStyle, textAlign: "right" }}>
-                          {fmtDate(invoice.createdAt)}
-                        </td>
-                        <td style={{ ...cellStyle, textAlign: "center" }}>
-                          <button
-                            className="btn ghost"
-                            style={{ borderRadius: 999 }}
-                            onClick={() => openDrawer(invoice)}
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                {filteredInvoices.map((invoice, idx) => {
+                  const rowBg = isDark
+                    ? idx % 2 === 0
+                      ? "rgba(255,255,255,0.015)"
+                      : "rgba(255,255,255,0.00)"
+                    : idx % 2 === 0
+                    ? "rgba(15,23,42,0.015)"
+                    : "rgba(15,23,42,0.00)";
+                  return (
+                    <tr key={invoice.id} style={{ background: rowBg }}>
+                      <td style={cellStyle}>{invoice.orderId || "-"}</td>
+                      <td style={cellStyle}>{invoice.status || "-"}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(invoice.amountUsd || 0)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(invoice.dueDate)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(invoice.createdAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <button className="btn ghost" style={{ borderRadius: 999 }} onClick={() => openDrawer(invoice)}>
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
 
       <div className="card table-shell">
         <div className="p-4 border-b border-slate-200/40">
@@ -312,13 +417,31 @@ export default function ClientBillingPage() {
                 <tr>
                   <th style={headerCellStyle}>Status</th>
                   <th style={headerCellStyle}>Method</th>
+
+      {/* Payments (optional display if present) */}
+      {payments.length > 0 && (
+        <div className="card table-shell">
+          <div className="p-4">
+            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Payment History</div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ minWidth: 860 }}>
+              <thead>
+                <tr>
+                  <th style={headerCellStyle}>Order</th>
+                  <th style={headerCellStyle}>Status</th>
+
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Amount</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Paid</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Created</th>
                 </tr>
               </thead>
               <tbody>
+
                 {payments.map((payment, idx) => {
+
+                {payments.slice(0, 50).map((p, idx) => {
+
                   const rowBg = isDark
                     ? idx % 2 === 0
                       ? "rgba(255,255,255,0.015)"
@@ -327,20 +450,36 @@ export default function ClientBillingPage() {
                     ? "rgba(15,23,42,0.015)"
                     : "rgba(15,23,42,0.00)";
                   return (
+
                     <tr key={payment.id} style={{ background: rowBg }}>
                       <td style={cellStyle}>{payment.status}</td>
                       <td style={cellStyle}>{payment.method}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(payment.amountUsd)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.paidAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(payment.createdAt)}</td>
+
+                    <tr key={p.id} style={{ background: rowBg }}>
+                      <td style={cellStyle}>{p.orderId || "-"}</td>
+                      <td style={cellStyle}>{p.status || "-"}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(Number(p.amountUsd || 0))}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.paidAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.createdAt)}</td>
+
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
         )}
       </div>
+
+
+        </div>
+      )}
+
+      {/* Drawer */}
 
       {drawerOpen && (
         <div className="drawer-overlay" onClick={closeDrawer}>
@@ -349,83 +488,61 @@ export default function ClientBillingPage() {
               <div className="text-sm text-[var(--text-muted)]">Loading invoice...</div>
             ) : (
               <>
-                <div className="flex justify-between gap-3">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div>
-                    <div className="text-xl font-extrabold">
-                      Invoice {detail.orderId}
-                    </div>
-                    <div className="text-xs opacity-70">
-                      Status · {detail.status}
-                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800 }}>Invoice {detail.orderId}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Status · {detail.status}</div>
                   </div>
-                  <button
-                    className="btn ghost"
-                    onClick={closeDrawer}
-                    style={{ height: 34, borderRadius: 999 }}
-                  >
+                  <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
                     Close
                   </button>
                 </div>
 
-                <div className="h-4" />
+                <div style={{ height: 16 }} />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                    Summary
-                  </div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Summary</div>
                   <div className="mt-3 grid gap-3">
                     <Row label="Subtotal" value={fmtMoney(detail.amountSubtotalUsd)} />
                     <Row label="Tax" value={fmtMoney(detail.amountTaxUsd)} />
                     <Row label="Total" value={fmtMoney(detail.amountTotalUsd)} />
                     <Row label="Due Date" value={fmtDate(detail.dueDate)} />
                     <Row label="Issued" value={fmtDate(detail.issuedAt)} />
-                    <Row
-                      label="Paid"
-                      value={detail.paidAt ? fmtDate(detail.paidAt) : "Payment Pending"}
-                    />
+                    <Row label="Paid" value={detail.paidAt ? fmtDate(detail.paidAt) : "Payment Pending"} />
                   </div>
                 </div>
 
-                <div className="h-3" />
+                <div style={{ height: 12 }} />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                    Line Items
-                  </div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Line Items</div>
                   <div className="mt-3 grid gap-2">
-                    {detail.lineItems.length ? (
+                    {detail.lineItems?.length ? (
                       detail.lineItems.map((item, index) => (
-                        <div
-                          key={`${item.name || "item"}-${index}`}
-                          className="flex items-center justify-between text-sm"
-                        >
+                        <div key={`${item.name || "item"}-${index}`} className="flex items-center justify-between text-sm">
                           <div>
-                            <div className="font-semibold">{item.name || "Item"}</div>
-                            <div className="text-xs opacity-70">
-                              Qty {item.qty || 1} · {fmtMoney(item.unitPriceUsd || 0)}
+                            <div style={{ fontWeight: 600 }}>{item.name || "Item"}</div>
+                            <div style={{ fontSize: 12, opacity: 0.7 }}>
+                              Qty {item.qty || 1} · {fmtMoney(Number(item.unitPriceUsd || 0))}
                             </div>
                           </div>
-                          <div className="font-semibold">
-                            {fmtMoney((item.qty || 1) * (item.unitPriceUsd || 0))}
+                          <div style={{ fontWeight: 600 }}>
+                            {fmtMoney(Number(item.qty || 1) * Number(item.unitPriceUsd || 0))}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-[var(--text-muted)]">
-                        No line items provided.
-                      </div>
+                      <div className="text-sm text-[var(--text-muted)]">No line items provided.</div>
                     )}
                   </div>
                 </div>
 
-                <div className="h-3" />
+                <div style={{ height: 12 }} />
 
                 <div className="card p-4">
-                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                    Payment
-                  </div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Payment</div>
                   <p className="text-sm mt-2 text-[var(--text-muted)]">
-                    {detail.status?.toLowerCase() === "paid"
+                    {safeLower(detail.status) === "paid"
                       ? "Payment received. Receipt details will be emailed to you."
                       : "Payment Pending — our team will follow up with next steps."}
                   </p>
@@ -442,9 +559,7 @@ export default function ClientBillingPage() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
-        {label}
-      </span>
+      <span className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">{label}</span>
       <span className="text-sm font-semibold">{value}</span>
     </div>
   );
