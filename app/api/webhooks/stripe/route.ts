@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     await Promise.all(
       Array.from(notificationTargets).map((uid) => {
         const roleLink = managerIds.includes(uid)
-          ? `/sales-manager/leads?open=${leadId}`
+          ? `/sales_manager/leads?open=${leadId}`
           : adminIds.includes(uid)
           ? `/admin/finance/invoices?open=${requestDoc.id}`
           : financeIds.includes(uid)

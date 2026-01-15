@@ -146,7 +146,7 @@ export async function POST(req: Request) {
         userIds: watcherIds,
         title: "Discount approval needed",
         body: `${actorName} requested ${discountPct}% discount on deal ${data.dealName || data.leadName || "Deal"}.`,
-        deepLink: "/sales-manager/deals",
+        deepLink: "/sales_manager/deals",
         entityType: "deal",
         entityId: id,
         createdBy: { uid: auth.user.uid, name: actorName },

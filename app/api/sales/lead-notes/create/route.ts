@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/audit";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { parseString, requireSalesWrite, serverTimestamp, userLabel } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -23,23 +25,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
     }
     const lead = leadSnap.data() || {};
-    if (lead.tenantId && lead.tenantId !== auth.user.tenantId) {
+    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    if (docTenantId(lead) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
-    if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid) {
+    if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid && lead.ownerUid !== auth.user.uid) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const ref = adminDb.collection("leadNotes").doc();
     await ref.set({
       id: ref.id,
-      tenantId: auth.user.tenantId || "",
+      tenantId,
       leadId,
       authorUserId: auth.user.uid,
       authorRole: auth.user.role || "",
       authorName: userLabel(auth.user),
       body: noteBody,
       createdAt: serverTimestamp(),
+    });
+
+    await logEvent({
+      tenantId,
+      type: "lead.note_added",
+      title: "Lead note added",
+      description: `Note added to lead ${leadId}.`,
+      entityType: "lead",
+      entityId: leadId,
+      actor: { uid: auth.user.uid, name: userLabel(auth.user) },
+      metadata: { noteId: ref.id },
     });
 
     return NextResponse.json({ ok: true, id: ref.id });

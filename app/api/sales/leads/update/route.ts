@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
   getUserNameById,
   getWatcherUserIds,
   notifyUsers,
-  normalizeStage,
   parseNumber,
   parseString,
   requireSalesRead,
@@ -37,26 +37,25 @@ export async function POST(req: Request) {
 
     const existing = snapshot.data() || {};
     const role = auth.user.role || "";
-    const tenantId = auth.user.tenantId || "";
+    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
     const canWrite = await requireSalesWrite();
     if (!canWrite.ok) {
       return NextResponse.json({ ok: false, error: canWrite.error }, { status: canWrite.status });
     }
 
-    if (existing.tenantId && existing.tenantId !== tenantId) {
+    if (docTenantId(existing) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const isOwner = existing.ownerId === auth.user.uid;
+    const isOwner = existing.ownerUid === auth.user.uid || existing.ownerId === auth.user.uid;
     if (role === "sales" && !isOwner) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const stage = normalizeStage(parseString(body.stage, existing.stage || "New Lead"));
-    const companyName = parseString(body.companyName, existing.companyName || "");
-    const contactName = parseString(body.contactName, existing.contactName || existing.name || "");
-    const contactEmail = parseString(body.contactEmail, existing.contactEmail || existing.email || "");
-    const contactPhone = parseString(body.contactPhone, existing.contactPhone || existing.phone || "");
+    const companyName = parseString(body.companyName || body.company, existing.companyName || existing.company || "");
+    const contactName = parseString(body.contactName || body.name, existing.contactName || existing.name || "");
+    const contactEmail = parseString(body.contactEmail || body.email, existing.contactEmail || existing.email || "");
+    const contactPhone = parseString(body.contactPhone || body.phone, existing.contactPhone || existing.phone || "");
     const source = parseString(body.source, existing.source || "");
     const notes = parseString(body.notes, existing.notes || "");
     const disposition = parseString(body.disposition, existing.disposition || "");
@@ -68,6 +67,41 @@ export async function POST(req: Request) {
       ? existing.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
       : [];
     const probability = parseNumber(body.probability, Number(existing.probability || 0));
+    const rawStatusInput = parseString(body.status || body.stage, existing.status || "new").toLowerCase();
+    const statusInput = rawStatusInput
+      .replace(/\s+/g, "_")
+      .replace("new_lead", "new")
+      .replace("proposal_sent", "proposal_sent")
+      .replace("closed_won", "closed_won")
+      .replace("closed_lost", "closed_lost");
+    const allowedStatuses = [
+      "new",
+      "contacted",
+      "qualified",
+      "proposal_sent",
+      "negotiation",
+      "closed_won",
+      "closed_lost",
+    ];
+    const status = allowedStatuses.includes(statusInput) ? statusInput : "new";
+    const statusToStage = (value: string) => {
+      switch (value) {
+        case "contacted":
+          return "Contacted";
+        case "qualified":
+          return "Qualified";
+        case "proposal_sent":
+          return "Proposal Sent";
+        case "negotiation":
+          return "Negotiation";
+        case "closed_won":
+          return "Closed Won";
+        case "closed_lost":
+          return "Closed Lost";
+        default:
+          return "New Lead";
+      }
+    };
 
     const parseIso = (value: any, fallback?: any) => {
       if (!value) return fallback ?? null;
@@ -78,13 +112,6 @@ export async function POST(req: Request) {
     };
     const lastContactedAt = parseIso(body.lastContactedAt, existing.lastContactedAt || null);
     const nextFollowUpAt = parseIso(body.nextFollowUpAt, existing.nextFollowUpAt || null);
-
-    const toLeadStatus = (stageValue: string) => {
-      const normalized = stageValue.toLowerCase();
-      if (normalized.includes("closed won")) return "won";
-      if (normalized.includes("closed lost")) return "lost";
-      return "open";
-    };
 
     const needsFollowUp = disposition.trim().toLowerCase() === "follow-up needed";
     if (needsFollowUp && !body.nextFollowUpAt && !existing.nextFollowUpAt) {
@@ -97,25 +124,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
     }
 
-    let ownerId = existing.ownerId || null;
+    let ownerId = existing.ownerUid || existing.ownerId || null;
     let ownerName = existing.ownerName || "";
 
-    if (canWrite.ok && body.ownerId !== undefined && (role === "sales_manager" || role === "admin" || role === "super_admin")) {
-      const nextOwnerId = parseString(body.ownerId, "");
+    if (
+      canWrite.ok &&
+      body.ownerUid !== undefined &&
+      (role === "sales_manager" || role === "admin" || role === "super_admin")
+    ) {
+      const nextOwnerId = parseString(body.ownerUid || body.ownerId, "");
       ownerId = nextOwnerId || null;
       ownerName = ownerId ? await getUserNameById(ownerId) : "";
     }
 
-    const stageChanged = String(existing.stage || "") !== stage;
+    const assignmentChanged = String(existing.ownerUid || existing.ownerId || "") !== String(ownerId || "");
+    const statusChanged = String(existing.status || "new") !== status;
     const updates: Record<string, any> = {
+      tenantId,
+      company: companyName,
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone,
       companyName,
       contactName,
       contactEmail,
       contactPhone,
       source,
       notes,
-      stage,
-      status: toLeadStatus(stage),
+      status,
+      stage: statusToStage(status),
       disposition,
       expectedValueUsd,
       packageName,
@@ -123,6 +160,7 @@ export async function POST(req: Request) {
       probability,
       lastContactedAt,
       nextFollowUpAt,
+      ownerUid: ownerId,
       ownerId,
       ownerName,
       lastActivityAt: serverTimestamp(),
@@ -132,49 +170,36 @@ export async function POST(req: Request) {
 
     await docRef.set(updates, { merge: true });
 
-    if (stageChanged) {
-      const dealsSnap = await adminDb.collection("deals").where("leadId", "==", id).limit(500).get();
-      if (!dealsSnap.empty) {
-        const batch = adminDb.batch();
-        dealsSnap.docs.forEach((doc) => {
-          batch.set(
-            doc.ref,
-            {
-              stage,
-              updatedAt: serverTimestamp(),
-              updatedBy: auth.user.uid,
-            },
-            { merge: true }
-          );
-        });
-        await batch.commit();
-      }
-    }
-
     await createSalesEvent({
-      type: stageChanged ? "lead_stage_changed" : "lead_updated",
-      title: stageChanged ? "Lead stage updated" : "Lead updated",
-      description: stageChanged
-        ? `${contactName || companyName || "Lead"} moved to ${stage}.`
+      type: assignmentChanged ? "lead.assigned" : statusChanged ? "lead.status_changed" : "lead.updated",
+      title: assignmentChanged ? "Lead assigned" : statusChanged ? "Lead status updated" : "Lead updated",
+      description: assignmentChanged
+        ? `${contactName || companyName || "Lead"} assigned to ${ownerName || "rep"}.`
+        : statusChanged
+        ? `${contactName || companyName || "Lead"} moved to ${status}.`
         : `${contactName || companyName || "Lead"} updated`,
       entityType: "lead",
       entityId: id,
       createdByUid: auth.user.uid,
       createdByName: userLabel(auth.user),
-      metadata: { stage, ownerId, ownerName },
+      metadata: { status, ownerId, ownerName },
+      tenantId,
     });
 
     const watchers = await getWatcherUserIds(tenantId);
     await notifyUsers({
       userIds: [ownerId, ...watchers],
-      title: stageChanged ? "Lead stage moved" : "Lead updated",
-      body: stageChanged
-        ? `${contactName || companyName || "Lead"} moved to ${stage}.`
+      title: assignmentChanged ? "Lead assigned" : statusChanged ? "Lead status updated" : "Lead updated",
+      body: assignmentChanged
+        ? `${contactName || companyName || "Lead"} assigned to ${ownerName || "rep"}.`
+        : statusChanged
+        ? `${contactName || companyName || "Lead"} moved to ${status}.`
         : `${contactName || companyName || "Lead"} was updated.`,
-      deepLink: "/sales/pipeline",
+      deepLink: "/sales/leads",
       entityType: "lead",
       entityId: id,
       createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
+      tenantId,
     });
 
     return NextResponse.json({ ok: true });

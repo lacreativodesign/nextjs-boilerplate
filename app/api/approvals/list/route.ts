@@ -87,7 +87,7 @@ export async function GET() {
           requestedByName: String(data.discountRequestedByName || data.ownerName || ""),
           entityType: "deal",
           entityId: doc.id,
-          deepLink: "/sales-manager/deals",
+          deepLink: "/sales_manager/deals",
           meta: {
             discountPct: data.discountPct ?? 0,
             listPriceUsd: data.listPriceUsd ?? data.valueUsd ?? 0,

@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     usersSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const role = String(data.role || "");
-      const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales-manager/leads?open=${leadRef.id}`;
+      const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales_manager/leads?open=${leadRef.id}`;
       const notificationRef = adminDb.collection("notifications").doc();
 
       notificationsBatch.set(notificationRef, {

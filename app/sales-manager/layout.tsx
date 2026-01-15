@@ -22,14 +22,14 @@ import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
-  { label: "Overview", path: "/sales-manager", icon: LayoutDashboard },
-  { label: "Leads", path: "/sales-manager/leads", icon: UserPlus },
-  { label: "Pipeline", path: "/sales-manager/pipeline", icon: FolderKanban },
-  { label: "Deals", path: "/sales-manager/deals", icon: Handshake },
-  { label: "Targets", path: "/sales-manager/targets", icon: Target },
-  { label: "Approvals", path: "/sales-manager/approvals", icon: Target },
-  { label: "Team", path: "/sales-manager/team", icon: UsersRound },
-  { label: "Reports", path: "/sales-manager/reports", icon: BarChart3 },
+  { label: "Overview", path: "/sales_manager", icon: LayoutDashboard },
+  { label: "Leads", path: "/sales_manager/leads", icon: UserPlus },
+  { label: "Pipeline", path: "/sales_manager/pipeline", icon: FolderKanban },
+  { label: "Deals", path: "/sales_manager/deals", icon: Handshake },
+  { label: "Targets", path: "/sales_manager/targets", icon: Target },
+  { label: "Approvals", path: "/sales_manager/approvals", icon: Target },
+  { label: "Team", path: "/sales_manager/team", icon: UsersRound },
+  { label: "Reports", path: "/sales_manager/reports", icon: BarChart3 },
 ];
 
 export default function SalesManagerLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +48,7 @@ export default function SalesManagerLayout({ children }: { children: React.React
   }, [pathname]);
 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
-  const current = normalize(realPath);
+  const current = normalize(realPath).replace("/sales-manager", "/sales_manager");
 
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
   const notificationsEnabled = moduleMap.notifications !== false;
@@ -156,8 +156,8 @@ export default function SalesManagerLayout({ children }: { children: React.React
             {navItems.map((item) => {
               const Icon = item.icon;
               const itemPath = normalize(item.path);
-              const isOverview = itemPath === "/sales-manager";
-              const active = isOverview ? current === "/sales-manager" : current === itemPath || current.startsWith(itemPath + "/");
+              const isOverview = itemPath === "/sales_manager";
+              const active = isOverview ? current === "/sales_manager" : current === itemPath || current.startsWith(itemPath + "/");
 
               return (
                 <Link

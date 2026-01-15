@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       body: `Lead ${id} converted to deal ${dealRef.id}.`,
       entityType: "deal",
       entityId: dealRef.id,
-      deepLink: "/sales-manager/deals",
+      deepLink: "/sales_manager/deals",
       createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || "" },
     });
 

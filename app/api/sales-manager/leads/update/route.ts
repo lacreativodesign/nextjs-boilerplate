@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         body: `Lead ${id} assigned to ${assignedUserName || "sales rep"}.`,
         entityType: "lead",
         entityId: id,
-        deepLink: "/sales-manager/leads",
+        deepLink: "/sales_manager/leads",
         createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || "" },
       });
 

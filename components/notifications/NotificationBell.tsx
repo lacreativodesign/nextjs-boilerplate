@@ -16,6 +16,7 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "approvals" | "mentions">("all");
 
   const formatTimestamp = useMemo(
     () => (value?: string | null) => {
@@ -35,13 +36,22 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
     []
   );
 
-  const fetchNotifications = async (mode: "badge" | "full") => {
+  const fetchNotifications = async (mode: "badge" | "full", filterOverride?: "all" | "unread" | "approvals" | "mentions") => {
     if (mode === "full") {
       setNotificationsLoading(true);
     }
 
     try {
-      const res = await fetch(`/api/notifications/list${mode === "badge" ? "?unreadOnly=true" : ""}`, {
+      const filter = filterOverride || activeFilter;
+      const params = new URLSearchParams();
+      if (mode === "badge") {
+        params.set("filter", "unread");
+      } else {
+        params.set("filter", filter);
+        params.set("limit", "50");
+      }
+      const query = params.toString();
+      const res = await fetch(`/api/notifications/list${query ? `?${query}` : ""}`, {
         cache: "no-store",
         credentials: "include",
       });
@@ -67,7 +77,7 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
     }
   };
 
-  const handleNotificationClick = async (item: NotificationItem) => {
+  const handleMarkRead = async (item: NotificationItem) => {
     try {
       await fetch("/api/notifications/mark-read", {
         method: "POST",
@@ -81,10 +91,13 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
 
     setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
     setUnreadCount((prev) => Math.max(prev - (item.isRead ? 0 : 1), 0));
-    setDrawerOpen(false);
+  };
 
+  const handleOpen = async (item: NotificationItem) => {
+    await handleMarkRead(item);
     if (item.deepLink) {
       router.push(item.deepLink);
+      setDrawerOpen(false);
     }
   };
 
@@ -136,8 +149,14 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
         loading={notificationsLoading}
         onClose={() => setDrawerOpen(false)}
         onMarkAllRead={handleMarkAllRead}
-        onSelect={handleNotificationClick}
+        onOpen={handleOpen}
+        onMarkRead={handleMarkRead}
         formatTimestamp={formatTimestamp}
+        activeFilter={activeFilter}
+        onFilterChange={(filter) => {
+          setActiveFilter(filter);
+          fetchNotifications("full", filter);
+        }}
       />
     </>
   );

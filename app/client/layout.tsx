@@ -94,6 +94,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     };
   }, []);
 
+  if (realPath.startsWith("/client/accept-invite")) {
+    return <>{children}</>;
+  }
+
   if (!authInstance) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0f0f11] text-gray-900 dark:text-gray-100">
