@@ -129,7 +129,6 @@ export default function ClientBillingPage() {
       setError(null);
 
       try {
-        // Use allSettled so one missing route doesn't kill the whole page
         const [invResS, payResS, crResS] = await Promise.allSettled([
           fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/billing/payments/list", { credentials: "include", cache: "no-store" }),
@@ -138,14 +137,15 @@ export default function ClientBillingPage() {
 
         if (!alive) return;
 
-        // Invoices (required)
+        // Invoices are required
         if (invResS.status !== "fulfilled") throw new Error("Unable to load invoices.");
         const invRes = invResS.value;
         const invPayload = await invRes.json();
         if (!invRes.ok || !invPayload?.ok) throw new Error(invPayload?.error || "Unable to load invoices.");
+
         const invList: InvoiceRecord[] = invPayload?.invoices || [];
 
-        // Payments (optional)
+        // Payments are optional
         let payList: PaymentRecord[] = [];
         if (payResS.status === "fulfilled") {
           const payRes = payResS.value;
@@ -157,7 +157,7 @@ export default function ClientBillingPage() {
           }
         }
 
-        // Change Requests (optional)
+        // Change requests are optional
         let crList: ChangeRequestRecord[] = [];
         if (crResS.status === "fulfilled") {
           const crRes = crResS.value;
@@ -193,18 +193,22 @@ export default function ClientBillingPage() {
 
     const pendingApprovals = changeRequests.filter((cr) => {
       const st = safeLower(cr.status);
-      // flexible: "pending_client", "client_pending", "pending", etc.
       return st.includes("pending") && (st.includes("client") || st === "pending");
     }).length;
 
     const paidInvoices = invoices.filter((i) => safeLower(i.status) === "paid").length;
 
-    return {
-      outstandingUsd,
-      pendingApprovals,
-      paidInvoices,
-    };
+    return { outstandingUsd, pendingApprovals, paidInvoices };
   }, [invoices, changeRequests]);
+
+  const filteredInvoices = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return invoices;
+    return invoices.filter((invoice) => {
+      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [invoices, search]);
 
   const openDrawer = async (invoice: InvoiceRecord) => {
     setDrawerOpen(true);
@@ -231,15 +235,6 @@ export default function ClientBillingPage() {
     setDetail(null);
   };
 
-  const filteredInvoices = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return invoices;
-    return invoices.filter((invoice) => {
-      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [invoices, search]);
-
   return (
     <div className="space-y-6">
       <div>
@@ -247,7 +242,6 @@ export default function ClientBillingPage() {
         <p className="page-subtitle">View invoice status, outstanding balances, and payment history.</p>
       </div>
 
-      {/* Top Widgets */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-4">
           <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Outstanding Balance</div>
@@ -274,10 +268,14 @@ export default function ClientBillingPage() {
       </div>
 
       <div className="card p-4">
-        <input className="input" placeholder="Search invoice keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Search invoice keyword"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {/* Invoices */}
       <div className="card table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading invoices...</div>
@@ -328,7 +326,6 @@ export default function ClientBillingPage() {
         )}
       </div>
 
-      {/* Payments (optional display if present) */}
       {payments.length > 0 && (
         <div className="card table-shell">
           <div className="p-4">
@@ -370,7 +367,6 @@ export default function ClientBillingPage() {
         </div>
       )}
 
-      {/* Drawer */}
       {drawerOpen && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
