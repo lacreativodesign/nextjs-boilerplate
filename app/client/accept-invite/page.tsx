@@ -1,10 +1,15 @@
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+
+/**
+ * Accept Invite Page
+ * - Client-only
+ * - Suspense-safe
+ * - No static export
+ * - No server hooks
+ */
 
 function AcceptInviteClient() {
   const searchParams = useSearchParams();
@@ -14,14 +19,14 @@ function AcceptInviteClient() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let alive = true;
 
-    async function validate() {
+    async function validateInvite() {
       if (!token) {
         setError("Invalid or missing invite token.");
         setLoading(false);
@@ -29,9 +34,11 @@ function AcceptInviteClient() {
       }
 
       try {
-        const res = await fetch(`/api/client/invites/validate?token=${encodeURIComponent(token)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/client/invites/validate?token=${encodeURIComponent(token)}`,
+          { cache: "no-store" }
+        );
+
         const data = await res.json();
 
         if (!res.ok || !data?.ok) {
@@ -39,7 +46,7 @@ function AcceptInviteClient() {
         }
 
         if (!alive) return;
-        setEmail(data.email || null);
+        setEmail(data.email || "");
       } catch (err: any) {
         if (!alive) return;
         setError(err?.message || "Unable to validate invite.");
@@ -49,7 +56,7 @@ function AcceptInviteClient() {
       }
     }
 
-    validate();
+    validateInvite();
     return () => {
       alive = false;
     };
@@ -72,6 +79,7 @@ function AcceptInviteClient() {
       });
 
       const data = await res.json();
+
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || "Unable to complete invite.");
       }
@@ -85,7 +93,11 @@ function AcceptInviteClient() {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-[var(--text-muted)]">Validating invitation…</div>;
+    return (
+      <div className="p-6 text-sm text-[var(--text-muted)]">
+        Validating invitation…
+      </div>
+    );
   }
 
   if (error) {
@@ -111,7 +123,7 @@ function AcceptInviteClient() {
           <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">
             Email
           </label>
-          <input className="input mt-1" value={email || ""} disabled />
+          <input className="input mt-1" value={email} disabled />
         </div>
 
         <div>
@@ -143,7 +155,13 @@ function AcceptInviteClient() {
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-[var(--text-muted)]">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-[var(--text-muted)]">
+          Loading…
+        </div>
+      }
+    >
       <AcceptInviteClient />
     </Suspense>
   );
