@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebaseAdmin";
-import { getCurrentUser } from "../../_utils";
+import { getCurrentUser, normalizeRole } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +59,8 @@ function toISO(value: any): string | null {
 }
 
 function canViewClients(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 export async function GET() {
@@ -70,7 +70,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = (me.role || "").toLowerCase();
+    const role = normalizeRole(me.role);
     if (!canViewClients(role)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

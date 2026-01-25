@@ -6,6 +6,7 @@ import ProductionProjectDrawer, {
   type ProductionProject,
   type ProductionUserOption,
 } from "@/components/production/ProductionProjectDrawer";
+import { normalizeRole } from "@/lib/roleRouting";
 
 type QueuePayload = {
   ok: boolean;
@@ -114,10 +115,10 @@ export default function ProductionQAPage() {
         setProjects(queuePayload.projects || []);
         const users = (usersPayload?.users || []) as UserRecord[];
         const production = users
-          .filter((user) => (user.role || "").toLowerCase() === "production")
+          .filter((user) => normalizeRole(user.role) === "production")
           .map((user) => ({ value: user.uid, label: user.name || user.uid }));
         const owners = users
-          .filter((user) => ["account_manager", "admin", "super_admin"].includes((user.role || "").toLowerCase()))
+          .filter((user) => ["am", "admin", "super_admin"].includes(normalizeRole(user.role)))
           .map((user) => ({ value: user.uid, label: user.name || user.uid }));
         setProductionUsers(production);
         setOwnerOptions(owners);

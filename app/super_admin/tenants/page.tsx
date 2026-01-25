@@ -44,7 +44,7 @@ export default function SuperAdminTenantsPage() {
   const [saving, setSaving] = useState(false);
 
   const loadTenants = async () => {
-    const res = await fetch("/api/super-admin/tenants", { cache: "no-store", credentials: "include" });
+    const res = await fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
       setTenants(json.tenants || []);
@@ -71,7 +71,7 @@ export default function SuperAdminTenantsPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await fetch("/api/super-admin/tenants", {
+      await fetch("/api/super_admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

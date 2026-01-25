@@ -107,7 +107,7 @@ export async function POST(req: Request) {
       mimeType,
       uploadedByUid: me.uid,
       uploadedByName: cleanString(me.name || me.fullName || me.displayName || ""),
-      uploadedByRole: "account_manager",
+      uploadedByRole: "am",
       version,
       notes,
       isLatest: true,

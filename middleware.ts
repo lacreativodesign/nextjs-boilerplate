@@ -15,10 +15,27 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
-  if (pathname === "/sales_manager" || pathname.startsWith("/sales_manager/")) {
-    const rewrittenPath = pathname.replace(/^\/sales_manager/, "/sales-manager");
+  if (pathname === "/sales-manager" || pathname.startsWith("/sales-manager/")) {
     const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = rewrittenPath;
+    redirectUrl.pathname = pathname.replace(/^\/sales-manager/, "/sales_manager");
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/super-admin" || pathname.startsWith("/super-admin/")) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = pathname.replace(/^\/super-admin/, "/super_admin");
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/am-manager" || pathname.startsWith("/am-manager/")) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = pathname.replace(/^\/am-manager/, "/am_manager");
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/production-manager" || pathname.startsWith("/production-manager/")) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = pathname.replace(/^\/production-manager/, "/production_manager");
     return NextResponse.redirect(redirectUrl, 308);
   }
 
@@ -37,14 +54,13 @@ export function middleware(req: NextRequest) {
   const protectedPrefixes = [
     "/admin",
     "/super_admin",
-    "/sales",
-    "/sales-manager",
     "/sales_manager",
-    "/am",
+    "/sales",
     "/am_manager",
-    "/finance",
-    "/production",
+    "/am",
     "/production_manager",
+    "/production",
+    "/finance",
     "/hr",
     "/client",
   ];
@@ -66,14 +82,17 @@ export const config = {
     "/account_manager/:path*",
     "/customer/:path*",
     "/admin/:path*",
+    "/super-admin/:path*",
     "/super_admin/:path*",
     "/sales/:path*",
     "/sales-manager/:path*",
     "/sales_manager/:path*",
     "/am/:path*",
+    "/am-manager/:path*",
     "/am_manager/:path*",
     "/finance/:path*",
     "/production/:path*",
+    "/production-manager/:path*",
     "/production_manager/:path*",
     "/hr/:path*",
     "/client/:path*",

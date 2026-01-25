@@ -2,6 +2,7 @@
 
 import MasterSelect from "@/components/ui/MasterSelect";
 import { useEffect, useMemo, useState } from "react";
+import { normalizeRole } from "@/lib/roleRouting";
 
 type ChangeRequestType = "Scope Change" | "Revision" | "New Feature" | "Bug Fix" | "Other";
 
@@ -229,27 +230,27 @@ function priorityStyles(priority: string, isDark: boolean) {
 }
 
 function canCreate(role?: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function canApproveOrReject(role?: string) {
-  const r = (role || "").toLowerCase();
+  const r = normalizeRole(role);
   return r === "admin" || r === "super_admin" || r === "sales_manager";
 }
 
 function canMoveExecution(role?: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "account_manager" || r === "production";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "am" || r === "production";
 }
 
 function canMoveToReview(role?: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function canEditCommercial(role?: string) {
-  const r = (role || "").toLowerCase();
+  const r = normalizeRole(role);
   return r === "admin" || r === "super_admin" || r === "sales_manager";
 }
 

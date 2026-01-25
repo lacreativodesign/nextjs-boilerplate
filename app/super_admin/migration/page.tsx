@@ -11,7 +11,7 @@ export default function SuperAdminMigrationPage() {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/super-admin/migration", {
+      const res = await fetch("/api/super_admin/migration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

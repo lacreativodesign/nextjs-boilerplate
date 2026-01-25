@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { normalizeRole } from "@/lib/roleRouting";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final"] as const;
 const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
@@ -524,7 +525,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No messages yet.</div>
               )}
               {messages.map((message) => {
-                const isMe = message.senderRole === "account_manager";
+                const isMe = normalizeRole(message.senderRole) === "am";
                 return (
                   <div
                     key={message.id}

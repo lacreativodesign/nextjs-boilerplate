@@ -107,7 +107,7 @@ export async function POST(req: Request) {
       status: "Submitted",
       priority,
       requestedByUid: me.uid,
-      requestedByRole: "account_manager",
+      requestedByRole: "am",
       assignedToUid: null,
       assignedToRole: null,
       estimatedCost: null,
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
           from: "",
           to: "Submitted",
           byUid: me.uid,
-          byRole: "account_manager",
+          byRole: "am",
           at: now,
           note: "Change request submitted",
         },
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       clientId: project.clientId || "",
       status: "Submitted",
       actorUid: me.uid,
-      actorRole: "account_manager",
+      actorRole: "am",
     });
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin", "sales_manager"]);

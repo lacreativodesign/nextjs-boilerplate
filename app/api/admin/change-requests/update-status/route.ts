@@ -216,11 +216,11 @@ export async function POST(req: Request) {
     const notifications: Promise<void>[] = [];
     const changeRequestMessage = `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`;
     const notificationType = toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info";
-    const requestedByRole = String(data.requestedByRole || "").toLowerCase();
+    const requestedByRole = normalizeRole(String(data.requestedByRole || ""));
 
     if (data.requestedByUid) {
       const deepLink =
-        requestedByRole === "account_manager" ? "/am/change-requests" : "/admin/projects/change-requests";
+        requestedByRole === "am" ? "/am/change-requests" : "/admin/projects/change-requests";
       notifications.push(
         createNotification({
           toUserId: String(data.requestedByUid),

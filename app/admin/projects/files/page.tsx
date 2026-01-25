@@ -2,6 +2,7 @@
 
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { normalizeRole } from "@/lib/roleRouting";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
@@ -112,8 +113,8 @@ function makeFileId() {
 }
 
 function canUpload(role?: string) {
-  const r = (role || "").toLowerCase();
-  return ["admin", "super_admin", "sales_manager", "account_manager", "production"].includes(r);
+  const r = normalizeRole(role);
+  return ["admin", "super_admin", "sales_manager", "am", "production"].includes(r);
 }
 
 function canDelete(role?: string) {

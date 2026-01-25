@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { normalizeRole } from "@/lib/roleRouting";
 
 type ProjectStage =
   | "Inquiry"
@@ -190,10 +191,6 @@ function getStatusStyles(label: string, isDark: boolean) {
   };
 }
 
-function normalizeRole(role?: string) {
-  return (role || "").toLowerCase();
-}
-
 function canViewOwners(role?: string) {
   const r = normalizeRole(role);
   return r === "admin" || r === "super_admin" || r === "sales_manager";
@@ -214,7 +211,7 @@ function isSalesManager(role?: string) {
 }
 
 function isAccountManager(role?: string) {
-  return normalizeRole(role) === "account_manager";
+  return normalizeRole(role) === "am";
 }
 
 function isProduction(role?: string) {
@@ -278,12 +275,12 @@ export default function DeliveryPipelinePage() {
   const [movingProjectId, setMovingProjectId] = useState<string | null>(null);
 
   const ownerOptions = useMemo(() => {
-    const ams = users.filter((u) => (u.role || "").toLowerCase() === "account_manager");
+    const ams = users.filter((u) => normalizeRole(u.role) === "am");
     return ams.length ? ams : [];
   }, [users]);
 
   const productionOptions = useMemo(() => {
-    const prod = users.filter((u) => (u.role || "").toLowerCase() === "production");
+    const prod = users.filter((u) => normalizeRole(u.role) === "production");
     return prod.length ? prod : [];
   }, [users]);
 

@@ -30,7 +30,7 @@ export default function AmManagerOverview() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/am-manager/overview", { cache: "no-store" });
+      const res = await fetch("/api/am_manager/overview", { cache: "no-store" });
       const data = (await res.json()) as OverviewResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load overview.");

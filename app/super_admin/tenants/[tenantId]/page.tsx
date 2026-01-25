@@ -41,7 +41,7 @@ export default function TenantDetailPage() {
   const [savingStatus, setSavingStatus] = useState(false);
 
   const loadTenant = async () => {
-    const res = await fetch(`/api/super-admin/tenants/${tenantId}`, {
+    const res = await fetch(`/api/super_admin/tenants/${tenantId}`, {
       cache: "no-store",
       credentials: "include",
     });
@@ -73,7 +73,7 @@ export default function TenantDetailPage() {
         logoUrl = await getDownloadURL(storageRef);
       }
 
-      await fetch(`/api/super-admin/tenants/${tenant.id}/branding`, {
+      await fetch(`/api/super_admin/tenants/${tenant.id}/branding`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -93,7 +93,7 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingModules(true);
     try {
-      await fetch(`/api/super-admin/tenants/${tenant.id}/modules`, {
+      await fetch(`/api/super_admin/tenants/${tenant.id}/modules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -109,7 +109,7 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingStatus(true);
     try {
-      await fetch(`/api/super-admin/tenants/${tenant.id}`, {
+      await fetch(`/api/super_admin/tenants/${tenant.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

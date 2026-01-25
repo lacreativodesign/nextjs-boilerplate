@@ -14,11 +14,25 @@ export default function EditUserPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const ROLES = ["admin", "sales", "account_manager", "production", "hr", "finance", "client"];
+  const ROLES = [
+    "admin",
+    "sales",
+    "sales_manager",
+    "am_manager",
+    "am",
+    "production_manager",
+    "production",
+    "hr",
+    "finance",
+    "client",
+  ];
   const ROLE_LABELS: Record<string, string> = {
     admin: "Admin",
     sales: "Sales",
-    account_manager: "Account Manager",
+    sales_manager: "Sales Manager",
+    am_manager: "Account Manager (Manager)",
+    am: "Account Manager",
+    production_manager: "Production Manager",
     production: "Production",
     hr: "HR",
     finance: "Finance",

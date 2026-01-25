@@ -30,8 +30,8 @@ export default function SuperAdminUsersPage() {
 
   const loadData = async () => {
     const [usersRes, tenantsRes] = await Promise.all([
-      fetch("/api/super-admin/users", { cache: "no-store", credentials: "include" }),
-      fetch("/api/super-admin/tenants", { cache: "no-store", credentials: "include" }),
+      fetch("/api/super_admin/users", { cache: "no-store", credentials: "include" }),
+      fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" }),
     ]);
     const usersJson = await usersRes.json().catch(() => null);
     const tenantsJson = await tenantsRes.json().catch(() => null);
@@ -71,7 +71,7 @@ export default function SuperAdminUsersPage() {
     if (!form.displayName || !form.email || !form.tenantId) return;
     setSaving(true);
     try {
-      await fetch("/api/super-admin/users", {
+      await fetch("/api/super_admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -120,7 +120,7 @@ export default function SuperAdminUsersPage() {
             <option value="sales_manager">sales_manager</option>
             <option value="production_manager">production_manager</option>
             <option value="am_manager">am_manager</option>
-            <option value="account_manager">account_manager</option>
+            <option value="am">am</option>
             <option value="production">production</option>
             <option value="finance">finance</option>
             <option value="hr">hr</option>

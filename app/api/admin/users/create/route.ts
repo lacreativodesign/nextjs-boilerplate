@@ -157,7 +157,7 @@ function canManageRole(targetRole: string) {
     "production_manager",
     "am_manager",
     "sales",
-    "account_manager",
+    "am",
     "hr",
     "finance",
     "production",

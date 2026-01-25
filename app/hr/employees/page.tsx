@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { useIsSystemDark } from "@/components/finance/financeUtils";
+import { normalizeRole } from "@/lib/roleRouting";
 import {
   INTERNAL_ROLE_OPTIONS,
   USER_DEPARTMENT_VALUES,
@@ -635,8 +636,4 @@ function getSortValue(user: UserRecord, key: SortKey) {
     default:
       return "";
   }
-}
-
-function normalizeRole(value?: string | null) {
-  return String(value || "").toLowerCase();
 }

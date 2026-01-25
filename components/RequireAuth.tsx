@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { normalizeRole } from "@/lib/roleRouting";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import type { Unsubscribe } from "firebase/auth";
@@ -30,7 +31,7 @@ export default function RequireAuth({ allowed, children }: Props) {
             return;
           }
 
-          const role = await fetchUserRole(user.uid);
+          const role = normalizeRole(await fetchUserRole(user.uid));
 
           if (!role || !allowed.includes(role)) {
             if (!role) {

@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       from: fromStatus,
       to: toStatus,
       byUid: me.uid,
-      byRole: "account_manager",
+      byRole: "am",
       at: now,
       note: note || undefined,
     });

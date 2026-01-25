@@ -4,6 +4,7 @@ import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { generateNextOrderId } from "@/lib/orderIds";
+import { normalizeRole } from "@/lib/roleRouting";
 
 const DEFAULT_KICKOFF_CHECKLIST = [
   { key: "welcome_call", label: "Schedule welcome call", done: false },
@@ -30,9 +31,9 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 }
 
 function resolveProjectDeepLink(role: string) {
-  const normalized = String(role || "").toLowerCase();
+  const normalized = normalizeRole(role);
   if (normalized === "production_manager" || normalized === "production") return "/production/projects";
-  if (normalized === "am_manager" || normalized === "account_manager") return "/am/projects";
+  if (normalized === "am_manager" || normalized === "am") return "/am/projects";
   if (normalized === "client") return "/client/projects";
   return "/admin/projects";
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { computeHealth, getWorkflowSettings } from "../../admin/settings/_utils";
+import { computeHealth, getWorkflowSettings } from "@/app/api/admin/settings/_utils";
 import { getAmUser, isOwnedByAm, toISO } from "../_utils";
 
 export const dynamic = "force-dynamic";

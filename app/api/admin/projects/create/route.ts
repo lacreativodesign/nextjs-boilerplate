@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { ensureClientAccountActivation } from "@/lib/clientActivation";
 import { queueEmailEvent } from "@/lib/emailEvents";
-import { getCurrentUser } from "../../_utils";
+import { getCurrentUser, normalizeRole } from "../../_utils";
 
 export const runtime = "nodejs";
 
@@ -12,8 +12,8 @@ const CREATE_PIPELINE_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Fina
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
 
 function canCreateProject(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function cleanString(value: any) {

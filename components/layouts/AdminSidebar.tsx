@@ -29,7 +29,7 @@ export default function AdminSidebar() {
     { label: "Production", icon: PanelsTopLeft, path: "/admin/production" },
     { label: "Leads", icon: BarChart4, path: "/admin/leads" },
     { label: "Sales", icon: BarChart4, path: "/admin/sales" },
-    { label: "Sales Manager", icon: BarChart4, path: "/admin/sales-manager" },
+    { label: "Sales Manager", icon: BarChart4, path: "/sales_manager" },
     { label: "Reports", icon: FileText, path: "/admin/reports" },
     { label: "Settings", icon: Settings, path: "/admin/settings" },
   ];

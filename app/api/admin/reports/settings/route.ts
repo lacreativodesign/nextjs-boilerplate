@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_REPORT_SETTINGS, getReportSettings, parseNumber, requireAdmin } from "../_utils";
-import { WORKFLOW_STAGES, logSettingsChange, serverTimestamp } from "../../settings/_utils";
+import { WORKFLOW_STAGES, logSettingsChange, serverTimestamp } from "@/app/api/admin/settings/_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

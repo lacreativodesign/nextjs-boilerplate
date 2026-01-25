@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
-import { computeHealth, getWorkflowSettings } from "../../../admin/settings/_utils";
+import { computeHealth, getWorkflowSettings } from "../@/app/api/admin/settings/_utils";
 import { getProductionUser, isAssignedToProduction, toISO } from "../../_utils";
 
 export const runtime = "nodejs";

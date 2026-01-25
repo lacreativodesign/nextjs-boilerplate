@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser } from "../../_utils";
+import { getCurrentUser, normalizeRole } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,8 +50,8 @@ function toISO(value: any): string | null {
 }
 
 function canViewProjects(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  const r = normalizeRole(role);
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = (me.role || "").toLowerCase();
+    const role = normalizeRole(me.role);
     if (!canViewProjects(role)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
 
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 
-    if (role === "account_manager") {
+    if (role === "am") {
       queries = [
         baseQuery.where("ownerAmUid", "==", me.uid),
         baseQuery.where("ownerAmUid", "==", null).where("createdByUid", "==", me.uid),
