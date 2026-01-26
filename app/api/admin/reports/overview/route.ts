@@ -70,13 +70,13 @@ export async function GET() {
 
     const outstandingArTotal = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (["paid", "void"].includes(status)) return sum;
+      if (!["issued", "partially_paid"].includes(status)) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const overdueInvoicesCount = invoices.reduce((count, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (["paid", "void"].includes(status)) return count;
+      if (!["issued", "partially_paid"].includes(status)) return count;
       const dueMs = toMillis(inv.dueDate);
       if (!dueMs) return count;
       return dueMs < now.getTime() ? count + 1 : count;

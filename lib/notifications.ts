@@ -82,19 +82,23 @@ export async function createNotificationEvent({
   metadata?: Record<string, unknown>;
   tenantId?: string | null;
 }) {
-  await adminDb.collection("events").add({
-    type,
-    title,
-    description,
-    entityType: entityType || null,
-    entityId: entityId || null,
-    metadata: metadata || {},
-    createdByUid: createdByUid || null,
-    createdByName: createdByName || null,
-    createdAt: nowTimestamp(),
-    updatedAt: nowTimestamp(),
-    tenantId: tenantId || null,
-  });
+  try {
+    await adminDb.collection("events").add({
+      type,
+      title,
+      description,
+      entityType: entityType || null,
+      entityId: entityId || null,
+      metadata: metadata || {},
+      createdByUid: createdByUid || null,
+      createdByName: createdByName || null,
+      createdAt: nowTimestamp(),
+      updatedAt: nowTimestamp(),
+      tenantId: tenantId || null,
+    });
+  } catch (error) {
+    console.error("notification event create error:", error);
+  }
 }
 
 export async function getUserIdsByRoles(roles: string[], tenantId?: string | null) {

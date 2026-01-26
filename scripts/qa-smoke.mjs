@@ -5,11 +5,22 @@ const checks = [
   { path: "/", name: "root redirect", expectRedirect: "/login" },
   { path: "/admin", name: "admin protected", expectRedirect: "/login" },
   { path: "/am", name: "am protected", expectRedirect: "/login" },
+  { path: "/sales_manager", name: "sales manager protected", expectRedirect: "/login" },
+  { path: "/super_admin", name: "super admin protected", expectRedirect: "/login" },
+  { path: "/am_manager", name: "am manager protected", expectRedirect: "/login" },
+  { path: "/production_manager", name: "production manager protected", expectRedirect: "/login" },
   { path: "/account_manager", name: "legacy account_manager", expectRedirect: "/am", expectStatus: 308 },
   { path: "/customer", name: "legacy customer", expectRedirect: "/client", expectStatus: 308 },
   { path: "/forbidden", name: "forbidden page", expectStatus: 200 },
   { path: "/module-disabled", name: "module-disabled page", expectStatus: 200 },
   { path: "/suspended", name: "suspended page", expectStatus: 200 },
+];
+
+const apiChecks = [
+  { path: "/api/notifications/list", name: "notifications list", allow: [200, 401, 403] },
+  { path: "/api/admin/overview", name: "admin overview", allow: [200, 401, 403] },
+  { path: "/api/admin/reports/overview", name: "reports overview", allow: [200, 401, 403] },
+  { path: "/api/super_admin/system-health", name: "system health", allow: [200, 401, 403] },
 ];
 
 async function fetchOnce(path) {
@@ -43,6 +54,13 @@ async function checkStatus(path, expectedStatus) {
   }
 }
 
+async function checkAllowedStatus(path, allowedStatuses) {
+  const { res } = await fetchOnce(path);
+  if (!allowedStatuses.includes(res.status)) {
+    throw new Error(`${path} expected status ${allowedStatuses.join("/")} but got ${res.status}.`);
+  }
+}
+
 async function run() {
   console.log(`QA smoke against ${baseUrl}`);
 
@@ -54,6 +72,11 @@ async function run() {
       await checkStatus(check.path, check.expectStatus ?? 200);
       console.log(`✓ ${check.name} (${check.path}) status ok`);
     }
+  }
+
+  for (const check of apiChecks) {
+    await checkAllowedStatus(check.path, check.allow);
+    console.log(`✓ ${check.name} (${check.path}) status ok`);
   }
 }
 

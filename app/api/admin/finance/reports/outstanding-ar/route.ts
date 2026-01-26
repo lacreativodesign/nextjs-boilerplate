@@ -22,7 +22,7 @@ export async function GET() {
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const normalizedStatus = normalizeInvoiceStatus(data.status);
-      if (["paid", "void"].includes(normalizedStatus)) return;
+      if (!["issued", "partially_paid"].includes(normalizedStatus)) return;
       rows.push([
         String(data.orderId || doc.id),
         String(data.clientName || ""),

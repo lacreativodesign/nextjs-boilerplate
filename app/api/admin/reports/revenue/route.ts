@@ -109,7 +109,7 @@ export async function GET(req: Request) {
       .filter((inv) => {
         if (clientId && String(inv.clientId || "") !== clientId) return false;
         const status = normalizeInvoiceStatus(inv.status);
-        if (["paid", "void"].includes(status)) return false;
+        if (!["issued", "partially_paid"].includes(status)) return false;
         if (normalizedStatusFilter && status !== normalizedStatusFilter) return false;
         return true;
       })

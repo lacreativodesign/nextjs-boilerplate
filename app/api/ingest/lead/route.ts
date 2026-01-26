@@ -136,37 +136,44 @@ export async function POST(req: Request) {
       .where("role", "in", ["admin", "sales_manager"])
       .get();
 
-    const notificationsBatch = adminDb.batch();
-    notificationsBatch.set(leadRef, leadData);
+    await leadRef.set(leadData);
 
-    usersSnap.docs.forEach((doc) => {
-      const data = doc.data() || {};
-      const role = String(data.role || "");
-      const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales_manager/leads?open=${leadRef.id}`;
-      const notificationRef = adminDb.collection("notifications").doc();
+    try {
+      const notificationsBatch = adminDb.batch();
 
-      notificationsBatch.set(notificationRef, {
-        id: notificationRef.id,
-        toUserId: doc.id,
-        title: notificationTitle,
-        body: notificationMessage,
-        message: notificationMessage,
-        type: "new_lead",
-        entityType: "lead",
-        entityId: leadRef.id,
-        deepLink,
-        source: "website",
-        tenantId,
-        leadId: leadRef.id,
-        isRead: false,
-        createdAt: notificationTimestamp,
-        updatedAt: notificationTimestamp,
-        createdBy: null,
-        priority: "normal",
+      usersSnap.docs.forEach((doc) => {
+        const data = doc.data() || {};
+        const role = String(data.role || "");
+        const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales_manager/leads?open=${leadRef.id}`;
+        const notificationRef = adminDb.collection("notifications").doc();
+
+        notificationsBatch.set(notificationRef, {
+          id: notificationRef.id,
+          toUserId: doc.id,
+          title: notificationTitle,
+          body: notificationMessage,
+          message: notificationMessage,
+          type: "new_lead",
+          entityType: "lead",
+          entityId: leadRef.id,
+          deepLink,
+          source: "website",
+          tenantId,
+          roleTarget: role || "user",
+          leadId: leadRef.id,
+          isRead: false,
+          read: false,
+          createdAt: notificationTimestamp,
+          updatedAt: notificationTimestamp,
+          createdBy: null,
+          priority: "normal",
+        });
       });
-    });
 
-    await notificationsBatch.commit();
+      await notificationsBatch.commit();
+    } catch (notifyError) {
+      console.error("Lead ingest notifications error:", notifyError);
+    }
 
     return NextResponse.json({ ok: true, leadId: leadRef.id }, { status: 200 });
   } catch (error) {

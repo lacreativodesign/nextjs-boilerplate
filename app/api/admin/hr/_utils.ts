@@ -119,14 +119,18 @@ export async function queueHrEmail({
   data?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }) {
-  await adminDb.collection("emails").add({
-    to,
-    subject,
-    template,
-    data: data || {},
-    metadata: metadata || {},
-    status: "pending",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  try {
+    await adminDb.collection("emails").add({
+      to,
+      subject,
+      template,
+      data: data || {},
+      metadata: metadata || {},
+      status: "pending",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("queue HR email error:", error);
+  }
 }
