@@ -20,6 +20,7 @@ export type NotificationPayload = {
   toUserId: string;
   title: string;
   body: string;
+  message?: string;
   type?: NotificationType;
   entityType?: NotificationEntityType | null;
   entityId?: string | null;
@@ -27,28 +28,37 @@ export type NotificationPayload = {
   createdBy?: { uid?: string | null; name?: string | null } | null;
   priority?: "low" | "normal" | "high";
   tenantId?: string | null;
+  roleTarget?: string | null;
 };
 
 export async function createNotification(payload: NotificationPayload) {
-  const ref = adminDb.collection("notifications").doc();
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  try {
+    const ref = adminDb.collection("notifications").doc();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const message = payload.message ?? payload.body;
 
-  await ref.set({
-    id: ref.id,
-    toUserId: payload.toUserId,
-    title: payload.title,
-    body: payload.body,
-    type: payload.type || "info",
-    entityType: payload.entityType || null,
-    entityId: payload.entityId || null,
-    deepLink: payload.deepLink || null,
-    isRead: false,
-    createdAt: now,
-    updatedAt: now,
-    createdBy: payload.createdBy || null,
-    priority: payload.priority || "normal",
-    tenantId: payload.tenantId || null,
-  });
+    await ref.set({
+      id: ref.id,
+      toUserId: payload.toUserId,
+      title: payload.title,
+      body: payload.body,
+      message,
+      type: payload.type || "info",
+      entityType: payload.entityType || null,
+      entityId: payload.entityId || null,
+      deepLink: payload.deepLink || null,
+      isRead: false,
+      read: false,
+      roleTarget: payload.roleTarget ?? "user",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: payload.createdBy || null,
+      priority: payload.priority || "normal",
+      tenantId: payload.tenantId || null,
+    });
+  } catch (error) {
+    console.error("notification create error:", error);
+  }
 }
 
 export async function createNotificationEvent({

@@ -174,6 +174,10 @@ export async function POST(req: Request) {
       updatedAt: serverNow,
     };
 
+    if (toStage === "Delivered") {
+      updateData.deliveredAt = serverNow;
+    }
+
     await ref.set(updateData, { merge: true });
 
     try {
@@ -212,6 +216,8 @@ export async function POST(req: Request) {
           entityId: projectId,
           deepLink: "/am/projects",
           createdBy: { uid: me.uid, name: actorName },
+          roleTarget: "am",
+          tenantId: updated.tenantId || null,
         })
       );
     }
@@ -227,11 +233,37 @@ export async function POST(req: Request) {
           entityId: projectId,
           deepLink: "/admin/projects",
           createdBy: { uid: me.uid, name: actorName },
+          roleTarget: "production",
+          tenantId: updated.tenantId || null,
         })
       );
     }
 
     await Promise.all(notifications);
+
+    if (toStage === "Delivered" && updated.clientId) {
+      try {
+        const clientSnap = await adminDb.collection("clients").doc(String(updated.clientId)).get();
+        const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
+        const portalUid = String(clientData.portalUserUid || "");
+        if (portalUid) {
+          await createNotification({
+            toUserId: portalUid,
+            title: "Project delivered",
+            body: `${updated.projectName || "Project"} has been delivered.`,
+            type: "success",
+            entityType: "project",
+            entityId: projectId,
+            deepLink: "/client/projects",
+            createdBy: { uid: me.uid, name: actorName },
+            roleTarget: "client",
+            tenantId: updated.tenantId || null,
+          });
+        }
+      } catch (notifyError) {
+        console.error("client delivery notification error:", notifyError);
+      }
+    }
 
     await createNotificationEvent({
       type: "project.stage_moved",

@@ -60,6 +60,8 @@ export async function POST(req: Request) {
             entityId: id,
             deepLink: "/admin/finance/invoices",
             createdBy: { uid: auth.user.uid, name: actorName },
+            roleTarget: "finance",
+            tenantId: auth.user.tenantId || null,
           })
         )
       );
@@ -77,11 +79,13 @@ export async function POST(req: Request) {
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
       if (email) {
-        await queueFinanceEmail({
+        queueFinanceEmail({
           to: email,
           template: "invoice_sent",
           subject: "Your invoice is ready",
           data: { invoiceId: id, orderId, clientName },
+        }).catch((error) => {
+          console.error("invoice email queue error:", error);
         });
       }
 
@@ -142,6 +146,8 @@ export async function POST(req: Request) {
             entityId: id,
             deepLink: "/admin/finance/invoices",
             createdBy: { uid: auth.user.uid, name: actorName },
+            roleTarget: "finance",
+            tenantId: auth.user.tenantId || null,
           })
         )
       );
@@ -185,11 +191,13 @@ export async function POST(req: Request) {
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
       if (email) {
-        await queueFinanceEmail({
+        queueFinanceEmail({
           to: email,
           template: "payment_received",
           subject: "Payment received",
           data: { invoiceId: id, orderId, clientName },
+        }).catch((error) => {
+          console.error("payment email queue error:", error);
         });
       }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { createFinanceEvent, parseString, requireFinance, serverTimestamp } from "../../_utils";
+import { createFinanceEvent, parseString, queueFinanceEmail, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
 
     const payment = snap.data() || {};
     const invoiceId = String(payment.invoiceId || "");
+    const clientId = String(payment.clientId || "");
     const clientName = String(payment.clientName || "");
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
 
@@ -150,6 +151,8 @@ export async function POST(req: Request) {
             entityId: id,
             deepLink: "/finance/payments",
             createdBy: { uid: auth.user.uid, name: actorName },
+            roleTarget: "finance",
+            tenantId: auth.user.tenantId || null,
           })
         )
       );
@@ -177,6 +180,19 @@ export async function POST(req: Request) {
         console.error("audit log error:", auditError);
       }
 
+      const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
+      const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
+      if (email) {
+        queueFinanceEmail({
+          to: email,
+          template: "payment_received",
+          subject: "Payment received",
+          data: { paymentId: id, invoiceId },
+        }).catch((error) => {
+          console.error("payment email queue error:", error);
+        });
+      }
+
       return NextResponse.json({ ok: true });
     }
 
@@ -199,6 +215,8 @@ export async function POST(req: Request) {
             entityId: id,
             deepLink: "/finance/payments",
             createdBy: { uid: auth.user.uid, name: actorName },
+            roleTarget: "finance",
+            tenantId: auth.user.tenantId || null,
           })
         )
       );

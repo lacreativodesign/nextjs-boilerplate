@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
 import { createProjectFromDeal } from "@/lib/projects";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
+import { createNotification, getUserIdsByRoles } from "../notifications";
 
 export async function maybeAutoCreateProjectFromInvoice({
   invoiceId,
@@ -66,6 +67,28 @@ export async function maybeAutoCreateProjectFromInvoice({
     actor: actor || null,
     metadata: { invoiceId, clientId, dealId: dealId || null },
   });
+
+  try {
+    const notifyIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], tenantId || null);
+    await Promise.all(
+      notifyIds.map((uid) =>
+        createNotification({
+          toUserId: uid,
+          title: "Project auto-created",
+          body: `Project created from paid invoice ${invoiceData.orderId || invoiceId}.`,
+          type: "success",
+          entityType: "project",
+          entityId: created.id,
+          deepLink: "/admin/projects",
+          createdBy: actor || null,
+          tenantId: tenantId || null,
+          roleTarget: "finance",
+        })
+      )
+    );
+  } catch (notifyError) {
+    console.error("project auto-create notification error:", notifyError);
+  }
 
   return created;
 }
