@@ -25,6 +25,9 @@ type ChangeRequestRecord = {
   description: string;
   status: string;
   priority: string;
+  approvalStatus?: string | null;
+  approvalId?: string | null;
+  requiresApproval?: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
@@ -85,6 +88,7 @@ export default function AMChangeRequestsPage() {
   const [createType, setCreateType] = useState(CHANGE_REQUEST_TYPES[0]);
   const [createPriority, setCreatePriority] = useState(CHANGE_REQUEST_PRIORITIES[1]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState(false);
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
@@ -220,6 +224,48 @@ export default function AMChangeRequestsPage() {
     }
   };
 
+  const requestApproval = async () => {
+    if (!selected) return;
+    setApprovalLoading(true);
+    try {
+      const res = await fetch("/api/approvals/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: "change_request",
+          entityType: "project",
+          entityId: selected.projectId,
+          requestedData: {
+            changeRequestId: selected.id,
+            title: selected.title,
+            type: selected.type,
+          },
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload?.error || "Unable to request approval.");
+      }
+      setSelected((prev) => (prev ? { ...prev, approvalStatus: "pending" } : prev));
+      setChangeRequests((prev) =>
+        prev.map((item) => (item.id === selected.id ? { ...item, approvalStatus: "pending" } : item))
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const approvalBadge = (status?: string | null) => {
+    const normalized = (status || "").toLowerCase();
+    if (normalized === "pending") return { label: "Pending", tone: "rgba(251,191,36,0.15)", color: "#b45309" };
+    if (normalized === "approved") return { label: "Approved", tone: "rgba(34,197,94,0.15)", color: "#15803d" };
+    if (normalized === "rejected") return { label: "Rejected", tone: "rgba(248,113,113,0.15)", color: "#b91c1c" };
+    return { label: "Not required", tone: "rgba(148,163,184,0.15)", color: "var(--text-muted)" };
+  };
+
   const handleCreate = async () => {
     if (!createProjectId.trim() || !createTitle.trim() || !createDescription.trim()) return;
     setActionLoading(true);
@@ -319,6 +365,7 @@ export default function AMChangeRequestsPage() {
                 <th style={{ ...headerCellStyle, textAlign: "center" }}>{headerLabel("Type")}</th>
                 <th style={headerCellStyle}>{headerLabel("Title")}</th>
                 <th style={{ ...headerCellStyle, textAlign: "center" }}>{headerLabel("Status")}</th>
+                <th style={{ ...headerCellStyle, textAlign: "center" }}>{headerLabel("Approval")}</th>
                 <th style={{ ...headerCellStyle, textAlign: "center" }}>{headerLabel("Priority")}</th>
                 <th style={{ ...headerCellStyle, textAlign: "center" }}>{headerLabel("Updated")}</th>
                 <th style={{ ...headerCellStyle, textAlign: "center" }}>Actions</th>
@@ -332,6 +379,20 @@ export default function AMChangeRequestsPage() {
                   <td style={{ ...cellStyle, textAlign: "center" }}>{cr.type}</td>
                   <td style={{ ...cellStyle, textAlign: "left" }}>{cr.title}</td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>{cr.status}</td>
+                  <td style={{ ...cellStyle, textAlign: "center" }}>
+                    <span
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: approvalBadge(cr.approvalStatus).tone,
+                        color: approvalBadge(cr.approvalStatus).color,
+                      }}
+                    >
+                      {approvalBadge(cr.approvalStatus).label}
+                    </span>
+                  </td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>{cr.priority}</td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(cr.updatedAt || cr.createdAt)}</td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -343,14 +404,14 @@ export default function AMChangeRequestsPage() {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
+                  <td colSpan={9} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
                     No change requests found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={8} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
+                  <td colSpan={9} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
                     Loading change requests...
                   </td>
                 </tr>
@@ -376,13 +437,20 @@ export default function AMChangeRequestsPage() {
                 <div style={{ fontSize: 13 }}>Status: {selected.status}</div>
                 <div style={{ fontSize: 13 }}>Priority: {selected.priority}</div>
                 <div style={{ fontSize: 13 }}>Type: {selected.type}</div>
+                <div style={{ fontSize: 13 }}>
+                  Approval: {approvalBadge(selected.approvalStatus).label}
+                </div>
                 <div style={{ fontSize: 13 }}>Created: {fmtDateTime(selected.createdAt)}</div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   className="btn"
                   onClick={() => handleStatusUpdate("In Progress")}
-                  disabled={actionLoading || selected.status !== "Approved"}
+                  disabled={
+                    actionLoading ||
+                    selected.status !== "Approved" ||
+                    (selected.requiresApproval && selected.approvalStatus !== "approved")
+                  }
                 >
                   Mark In Progress
                 </button>
@@ -393,6 +461,11 @@ export default function AMChangeRequestsPage() {
                 >
                   Mark Completed
                 </button>
+                {selected.requiresApproval && selected.approvalStatus !== "pending" && (
+                  <button className="btn ghost" onClick={requestApproval} disabled={approvalLoading}>
+                    {approvalLoading ? "Requesting..." : "Request Approval"}
+                  </button>
+                )}
               </div>
             </div>
             <div style={{ marginTop: 18 }}>

@@ -39,6 +39,8 @@ type ChangeRequestDoc = {
   assignedToRole?: string | null;
   estimatedCost?: number | null;
   estimatedTimelineDays?: number | null;
+  approvalStatus?: string | null;
+  approvalId?: string | null;
   approvedAt?: any;
   approvedByUid?: string | null;
   attachedFileIds?: string[];
@@ -48,6 +50,14 @@ type ChangeRequestDoc = {
   isDeleted?: boolean;
   statusHistory?: any[];
 };
+
+function requiresApproval(data: ChangeRequestDoc) {
+  const type = String(data.type || "");
+  const impactsScope = type === "Scope Change";
+  const impactsTimeline = typeof data.estimatedTimelineDays === "number" && data.estimatedTimelineDays > 0;
+  const impactsCost = typeof data.estimatedCost === "number" && data.estimatedCost > 0;
+  return impactsScope || impactsTimeline || impactsCost;
+}
 
 export async function GET(req: Request) {
   try {
@@ -96,6 +106,9 @@ export async function GET(req: Request) {
         assignedToRole: data.assignedToRole ?? null,
         estimatedCost: typeof data.estimatedCost === "number" ? data.estimatedCost : null,
         estimatedTimelineDays: typeof data.estimatedTimelineDays === "number" ? data.estimatedTimelineDays : null,
+        approvalStatus: data.approvalStatus || null,
+        approvalId: data.approvalId || null,
+        requiresApproval: requiresApproval(data),
         approvedAt: toISO(data.approvedAt),
         approvedByUid: data.approvedByUid || null,
         attachedFileIds: Array.isArray(data.attachedFileIds) ? data.attachedFileIds : [],

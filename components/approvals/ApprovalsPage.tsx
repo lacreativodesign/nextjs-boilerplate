@@ -5,15 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type ApprovalItem = {
   id: string;
   tenantId: string;
-  kind: "discount" | "change_request" | "payment_exception";
+  type: "discount" | "change_request" | "production_override";
   title: string;
   status: "pending" | "approved" | "rejected";
   requestedAt: string;
-  requestedByName?: string;
+  requestedBy?: { uid?: string; role?: string } | null;
   entityType: string;
   entityId: string;
-  deepLink: string;
-  meta: Record<string, unknown>;
+  requestedData: Record<string, unknown>;
 };
 
 type ApprovalsResponse = {
@@ -44,7 +43,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/approvals/list", { cache: "no-store" });
+      const res = await fetch("/api/approvals/pending", { cache: "no-store" });
       const data = (await res.json()) as ApprovalsResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load approvals.");
@@ -70,10 +69,10 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
   const resolveApproval = async (item: ApprovalItem, action: "approve" | "reject") => {
     try {
       setActionLoading(true);
-      const res = await fetch("/api/approvals/resolve", {
+      const res = await fetch(action === "approve" ? "/api/approvals/approve" : "/api/approvals/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, kind: item.kind, action }),
+        body: JSON.stringify({ id: item.id }),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
@@ -140,11 +139,11 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               )}
               {!loading &&
                 approvals.map((item) => (
-                  <tr key={`${item.kind}-${item.id}`}>
-                    <td>{item.kind.replace("_", " ")}</td>
+                  <tr key={`${item.type}-${item.id}`}>
+                    <td>{item.type.replace("_", " ")}</td>
                     <td>{item.title || "—"}</td>
                     <td>{formatDate(item.requestedAt)}</td>
-                    <td>{item.requestedByName || "—"}</td>
+                    <td>{item.requestedBy?.uid || item.requestedBy?.role || "—"}</td>
                     <td>{item.status}</td>
                     <td>
                       <button className="btn ghost" onClick={() => setSelected(item)}>
@@ -164,7 +163,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
           <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
             <div className="drawer-title">Approval details</div>
             <div className="drawer-subtitle" style={{ marginTop: 4 }}>
-              {selected.kind.replace("_", " ")}
+              {selected.type.replace("_", " ")}
             </div>
             <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
               <div>
@@ -177,7 +176,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Requested by</div>
-                <div>{selected.requestedByName || "—"}</div>
+                <div>{selected.requestedBy?.uid || selected.requestedBy?.role || "—"}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Entity</div>
@@ -187,11 +186,11 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Details</div>
-                {Object.keys(selected.meta || {}).length === 0 ? (
+                {Object.keys(selected.requestedData || {}).length === 0 ? (
                   <div className="text-sm text-[var(--text-muted)]">No additional details.</div>
                 ) : (
                   <div className="space-y-2">
-                    {Object.entries(selected.meta).map(([key, value]) => (
+                    {Object.entries(selected.requestedData).map(([key, value]) => (
                       <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                         <span className="text-xs text-[var(--text-muted)]">{key}</span>
                         <span className="text-sm">{String(value)}</span>
@@ -207,11 +206,6 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
                 <button className="btn btn-danger" disabled={actionLoading} onClick={() => resolveApproval(selected, "reject")}>
                   Reject
                 </button>
-                {selected.deepLink && (
-                  <a className="btn ghost" href={selected.deepLink}>
-                    Open record
-                  </a>
-                )}
               </div>
             </div>
           </div>

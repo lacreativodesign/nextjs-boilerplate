@@ -12,8 +12,12 @@ const TERMINAL_STATUSES = ["Rejected", "Completed"] as const;
 type ChangeRequestDoc = {
   projectId?: string;
   status?: string;
+  type?: string;
+  estimatedCost?: number | null;
+  estimatedTimelineDays?: number | null;
   statusHistory?: any[];
   requestedByUid?: string;
+  approvalStatus?: string | null;
   isDeleted?: boolean;
 };
 
@@ -42,6 +46,14 @@ function canTransition(fromStatus: string, toStatus: string) {
   if (fromStatus === "In Progress") return toStatus === "Completed";
 
   return false;
+}
+
+function requiresApproval(data: ChangeRequestDoc) {
+  const changeType = String(data?.type || "");
+  const impactsScope = changeType === "Scope Change";
+  const impactsTimeline = typeof data?.estimatedTimelineDays === "number" && data.estimatedTimelineDays > 0;
+  const impactsCost = typeof data?.estimatedCost === "number" && data.estimatedCost > 0;
+  return impactsScope || impactsTimeline || impactsCost;
 }
 
 export async function POST(req: Request) {
@@ -76,6 +88,12 @@ export async function POST(req: Request) {
 
     if (!canTransition(fromStatus, toStatus)) {
       return NextResponse.json({ ok: false, error: "Invalid status transition." }, { status: 400 });
+    }
+
+    if ((toStatus === "In Progress" || toStatus === "Completed") && requiresApproval(data)) {
+      if (String(data.approvalStatus || "").toLowerCase() !== "approved") {
+        return NextResponse.json({ ok: false, error: "Change request approval required." }, { status: 403 });
+      }
     }
 
     if (!data.projectId) {

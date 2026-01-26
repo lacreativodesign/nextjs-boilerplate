@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { logEvent } from "@/lib/audit";
 import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
 
 export const runtime = "nodejs";
@@ -48,6 +50,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Change request not found." }, { status: 404 });
     }
 
+    const data = snap.data() || {};
+    const impactsTimeline = typeof estimatedTimelineDays === "number" && estimatedTimelineDays > 0;
+    const impactsCost = typeof estimatedCost === "number" && estimatedCost > 0;
+    const requiresApproval = impactsTimeline || impactsCost;
+    const approvalNeeded = requiresApproval && data.approvalStatus !== "approved" && data.approvalStatus !== "pending";
+
     await ref.set(
       {
         estimatedCost,
@@ -56,6 +64,59 @@ export async function POST(req: Request) {
       },
       { merge: true }
     );
+
+    if (approvalNeeded) {
+      const tenantId = String(data.tenantId || me.tenantId || DEFAULT_TENANT_ID);
+      const approvalRef = adminDb.collection("approvals").doc();
+      await approvalRef.set({
+        tenantId,
+        type: "change_request",
+        entityType: "project",
+        entityId: data.projectId || "",
+        requestedBy: {
+          uid: me.uid,
+          role,
+        },
+        requestedData: {
+          changeRequestId,
+          projectId: data.projectId || "",
+          projectName: data.projectName || "",
+          title: data.title || "",
+          type: data.type || "",
+          estimatedCost,
+          estimatedTimelineDays,
+        },
+        status: "pending",
+        approvalChain: [{ role: "am_manager" }],
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await ref.set(
+        {
+          approvalStatus: "pending",
+          approvalId: approvalRef.id,
+          approvalRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
+          approvalRequestedByUid: me.uid,
+        },
+        { merge: true }
+      );
+
+      await logEvent({
+        tenantId,
+        type: "change_request.approval.requested",
+        title: "Change request approval requested",
+        description: `${data.title || "Change request"} requires manager approval.`,
+        entityType: "change_request",
+        entityId: changeRequestId,
+        actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+        metadata: {
+          projectId: data.projectId || "",
+          estimatedCost,
+          estimatedTimelineDays,
+        },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

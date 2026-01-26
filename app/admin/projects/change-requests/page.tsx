@@ -41,6 +41,9 @@ type ChangeRequestRecord = {
   assignedToRole?: string | null;
   estimatedCost?: number | null;
   estimatedTimelineDays?: number | null;
+  approvalStatus?: string | null;
+  approvalId?: string | null;
+  requiresApproval?: boolean;
   approvedAt?: string | null;
   approvedByUid?: string | null;
   attachedFileIds: string[];
@@ -189,6 +192,35 @@ function statusStyles(status: string, isDark: boolean) {
   };
 }
 
+function approvalStyles(status?: string | null) {
+  const base = {
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 90,
+  } as const;
+  const token = String(status || "").toLowerCase();
+  if (token === "pending") {
+    return { ...base, background: "rgba(251,191,36,0.15)", color: "#b45309", border: "1px solid rgba(245,158,11,0.35)" };
+  }
+  if (token === "approved") {
+    return { ...base, background: "rgba(34,197,94,0.15)", color: "#15803d", border: "1px solid rgba(34,197,94,0.30)" };
+  }
+  if (token === "rejected") {
+    return { ...base, background: "rgba(248,113,113,0.15)", color: "#b91c1c", border: "1px solid rgba(239,68,68,0.35)" };
+  }
+  return { ...base, background: "rgba(148,163,184,0.15)", color: "var(--text-muted)", border: "1px solid rgba(148,163,184,0.25)" };
+}
+
+function approvalLabel(status?: string | null) {
+  if (!status) return "Not required";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function priorityStyles(priority: string, isDark: boolean) {
   const base = {
     padding: "4px 10px",
@@ -235,7 +267,7 @@ function canCreate(role?: string) {
 
 function canApproveOrReject(role?: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager";
+  return r === "admin" || r === "super_admin";
 }
 
 function canMoveExecution(role?: string) {
@@ -855,6 +887,7 @@ export default function ChangeRequestsPage() {
                     <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("status")}>
                       {headerLabel("Status", sortKey === "status" ? (sortDir === "asc" ? "↑" : "↓") : undefined)}
                     </th>
+                    <th style={{ ...headerCellStyle, textAlign: "center" }}>Approval</th>
                     <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("priority")}>
                       {headerLabel("Priority", sortKey === "priority" ? (sortDir === "asc" ? "↑" : "↓") : undefined)}
                     </th>
@@ -903,6 +936,11 @@ export default function ChangeRequestsPage() {
                       <td style={{ ...cellStyle, textAlign: "center" }}>{row.type}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <span style={statusStyles(row.status, isDark)}>{row.status}</span>
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        <span style={approvalStyles(row.approvalStatus)}>
+                          {approvalLabel(row.approvalStatus)}
+                        </span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <span style={priorityStyles(row.priority, isDark)}>{row.priority}</span>
@@ -978,6 +1016,7 @@ export default function ChangeRequestsPage() {
             <Section title="Overview" isDark={isDark}>
               <Row label="Type" value={selected.type || "-"} isDark={isDark} />
               <Row label="Status" value={selected.status || "-"} isDark={isDark} />
+              <Row label="Approval" value={approvalLabel(selected.approvalStatus)} isDark={isDark} />
               <Row label="Priority" value={selected.priority || "-"} isDark={isDark} />
               <Row label="Requested By" value={selected.requestedByRole || "-"} isDark={isDark} />
             </Section>
@@ -1134,6 +1173,7 @@ export default function ChangeRequestsPage() {
                       className="btn"
                       onClick={() => handleStatusUpdate("In Progress")}
                       style={{ borderRadius: 999, fontWeight: 700 }}
+                      disabled={selected.requiresApproval && selected.approvalStatus !== "approved"}
                     >
                       Move to In Progress
                     </button>

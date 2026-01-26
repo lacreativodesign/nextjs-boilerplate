@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import {
+  getSalesSettings,
   getWatcherUserIds,
   isSales,
   notifyUsers,
@@ -63,6 +65,19 @@ export async function POST(req: Request) {
     const listPriceUsd = Number(data.listPriceUsd || data.valueUsd || data.amountUsd || 0);
     const discountUsd = Number(((listPriceUsd * discountPct) / 100).toFixed(2));
     const finalPriceUsd = Number(Math.max(listPriceUsd - discountUsd, 0).toFixed(2));
+    const { discountApprovalThresholdPct } = await getSalesSettings();
+    const approvalThreshold = Number(discountApprovalThresholdPct ?? 0);
+
+    const approvalsRef = adminDb.collection("approvals");
+    const existingApprovalSnap = await approvalsRef
+      .where("tenantId", "==", tenantId)
+      .where("type", "==", "discount")
+      .where("entityId", "==", id)
+      .where("status", "==", "pending")
+      .limit(1)
+      .get();
+    const existingApprovalDoc = existingApprovalSnap.docs[0] || null;
+    const requiresApproval = discountPct > approvalThreshold;
 
     const updates: Record<string, any> = {
       listPriceUsd,
@@ -84,7 +99,11 @@ export async function POST(req: Request) {
       updates.discountApprovedAt = null;
       updates.discountApprovedByUid = null;
       updates.discountApprovedByName = null;
-    } else if (discountPct <= 20) {
+      updates.discountApprovalId = null;
+      updates.discountApprovedPct = 0;
+      updates.discountApprovedUsd = 0;
+      updates.discountApprovedFinalPriceUsd = listPriceUsd;
+    } else if (!requiresApproval) {
       updates.discountApproved = true;
       updates.discountStatus = "auto_approved";
       updates.discountRequestedAt = serverTimestamp();
@@ -92,6 +111,10 @@ export async function POST(req: Request) {
       updates.discountApprovedAt = serverTimestamp();
       updates.discountApprovedByUid = auth.user.uid;
       updates.discountApprovedByName = actorName;
+      updates.discountApprovalId = null;
+      updates.discountApprovedPct = discountPct;
+      updates.discountApprovedUsd = discountUsd;
+      updates.discountApprovedFinalPriceUsd = finalPriceUsd;
     } else {
       updates.discountApproved = false;
       updates.discountStatus = "pending";
@@ -100,11 +123,89 @@ export async function POST(req: Request) {
       updates.discountApprovedAt = null;
       updates.discountApprovedByUid = null;
       updates.discountApprovedByName = null;
+      updates.discountApprovedPct = null;
+      updates.discountApprovedUsd = null;
+      updates.discountApprovedFinalPriceUsd = null;
     }
 
-    await dealRef.set(updates, { merge: true });
+    const batch = adminDb.batch();
+    let approvalId: string | null = null;
 
-    if (discountPct > 0 && discountPct <= 20) {
+    if (requiresApproval) {
+      if (existingApprovalDoc) {
+        approvalId = existingApprovalDoc.id;
+        batch.set(
+          existingApprovalDoc.ref,
+          {
+            requestedData: {
+              discountPct,
+              discountUsd,
+              finalPriceUsd,
+              listPriceUsd,
+              dealName: data.dealName || data.leadName || "",
+              reason: discountReason,
+            },
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } else {
+        const approvalRef = approvalsRef.doc();
+        approvalId = approvalRef.id;
+        batch.set(approvalRef, {
+          tenantId,
+          type: "discount",
+          entityType: "deal",
+          entityId: id,
+          requestedBy: {
+            uid: auth.user.uid,
+            role: role || "sales",
+          },
+          requestedData: {
+            discountPct,
+            discountUsd,
+            finalPriceUsd,
+            listPriceUsd,
+            dealName: data.dealName || data.leadName || "",
+            reason: discountReason,
+          },
+          status: "pending",
+          approvalChain: [{ role: "sales_manager" }],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    if (!requiresApproval && existingApprovalDoc) {
+      batch.set(
+        existingApprovalDoc.ref,
+        {
+          status: "rejected",
+          approvalChain: [
+            ...(Array.isArray(existingApprovalDoc.data()?.approvalChain)
+              ? existingApprovalDoc.data()?.approvalChain
+              : []),
+            {
+              role: role || "sales",
+              uid: auth.user.uid,
+              decision: "rejected",
+              note: "Discount adjusted below approval threshold.",
+              decidedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+          ],
+          finalDecisionBy: { uid: auth.user.uid, role: role || "sales" },
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+
+    updates.discountApprovalId = approvalId;
+    batch.set(dealRef, updates, { merge: true });
+    await batch.commit();
+
+    if (discountPct > 0 && !requiresApproval) {
       await logEvent({
         tenantId,
         type: "sales.discount.auto_approved",
@@ -129,7 +230,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (discountPct > 20) {
+    if (requiresApproval) {
       await logEvent({
         tenantId,
         type: "sales.discount.requested",
@@ -138,7 +239,16 @@ export async function POST(req: Request) {
         entityType: "deal",
         entityId: id,
         actor: { uid: auth.user.uid, name: actorName },
-        metadata: { discountPct, listPriceUsd, finalPriceUsd },
+        metadata: {
+          before: {
+            discountPct: Number(data.discountPct || 0),
+            finalPriceUsd: Number(data.finalPriceUsd || data.valueUsd || 0),
+          },
+          after: {
+            discountPct,
+            finalPriceUsd,
+          },
+        },
       });
 
       const watcherIds = await getWatcherUserIds(tenantId);
