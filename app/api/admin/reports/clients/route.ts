@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getReportSettings, requireAdmin, toISO, toMillis } from "../_utils";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
+import { normalizeInvoiceStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
     });
 
     const invoiceTotalsByClient = invoices.reduce((acc, inv) => {
-      if (String(inv.status || "") !== "Paid") return acc;
+      if (normalizeInvoiceStatus(inv.status) !== "paid") return acc;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (dateFrom && (!paidMs || paidMs < dateFrom.getTime())) return acc;
       if (dateTo && (!paidMs || paidMs > dateTo.getTime())) return acc;

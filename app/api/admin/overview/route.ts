@@ -11,6 +11,7 @@ import {
   toMillis,
 } from "../reports/_utils";
 import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from "../settings/_utils";
+import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -122,20 +123,20 @@ export async function GET() {
 
     const paidInvoiceIds = new Set(
       scopedPayments
-        .filter((payment) => String(payment.status || "") === "Paid")
+        .filter((payment) => normalizePaymentStatus(payment.status) === "succeeded")
         .map((payment) => String(payment.invoiceId || ""))
         .filter(Boolean)
     );
 
     const paymentsThisMonth = scopedPayments.reduce((sum, payment) => {
-      if (String(payment.status || "") !== "Paid") return sum;
+      if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
     }, 0);
 
     const invoiceFallbackRevenue = scopedInvoices.reduce((sum, invoice) => {
-      if (String(invoice.status || "") !== "Paid") return sum;
+      if (normalizeInvoiceStatus(invoice.status) !== "paid") return sum;
       const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       if (paidInvoiceIds.has(String(invoice.id || ""))) return sum;
@@ -146,13 +147,13 @@ export async function GET() {
 
     const revenueYtdUsd =
       scopedPayments.reduce((sum, payment) => {
-        if (String(payment.status || "") !== "Paid") return sum;
+        if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
         const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
         if (!paidMs || paidMs < startYearMs) return sum;
         return sum + Number(payment.amountUsd || 0);
       }, 0) +
       scopedInvoices.reduce((sum, invoice) => {
-        if (String(invoice.status || "") !== "Paid") return sum;
+        if (normalizeInvoiceStatus(invoice.status) !== "paid") return sum;
         const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
         if (!paidMs || paidMs < startYearMs) return sum;
         if (paidInvoiceIds.has(String(invoice.id || ""))) return sum;
@@ -160,8 +161,8 @@ export async function GET() {
       }, 0);
 
     const outstandingArUsd = scopedInvoices.reduce((sum, invoice) => {
-      const status = String(invoice.status || "");
-      if (["Paid", "Void"].includes(status)) return sum;
+      const status = normalizeInvoiceStatus(invoice.status);
+      if (["paid", "void"].includes(status)) return sum;
       return sum + Number(invoice.amountTotalUsd || 0);
     }, 0);
 
@@ -214,8 +215,8 @@ export async function GET() {
 
     const arAgingBuckets = scopedInvoices.reduce(
       (acc, invoice) => {
-        const status = String(invoice.status || "");
-        if (["Paid", "Void"].includes(status)) return acc;
+        const status = normalizeInvoiceStatus(invoice.status);
+        if (["paid", "void"].includes(status)) return acc;
         const dueMs = toMillis(invoice.dueDate);
         const value = Number(invoice.amountTotalUsd || 0);
         if (!dueMs) {

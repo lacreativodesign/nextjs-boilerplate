@@ -3,6 +3,13 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
+import {
+  computeBalanceDue,
+  computeInvoiceStatus,
+  normalizeInvoiceStatus,
+  normalizePaymentStatus,
+} from "@/lib/finance/status";
+import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,21 +45,96 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
 
-      await ref.update({
-        status: "Paid",
-        paidAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      let invoiceStatusBefore = "";
+      let invoiceStatusAfter = "";
+      let invoiceSnapshotData: Record<string, any> | null = null;
+      let invoiceTenantId: string | null = null;
+      let paymentAlreadySucceeded = false;
 
-      if (invoiceId) {
-        await adminDb.collection("invoices").doc(invoiceId).set(
-          {
-            status: "Paid",
+      try {
+        await adminDb.runTransaction(async (tx) => {
+          const paymentSnap = await tx.get(ref);
+          if (!paymentSnap.exists) {
+            throw new Error("Payment not found.");
+          }
+
+          const paymentData = paymentSnap.data() || {};
+          const currentPaymentStatus = normalizePaymentStatus(paymentData.status);
+          if (currentPaymentStatus === "succeeded") {
+            paymentAlreadySucceeded = true;
+            return;
+          }
+
+          tx.update(ref, {
+            status: "succeeded",
             paidAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
+          });
+
+          if (!invoiceId) {
+            return;
+          }
+
+          const invoiceRef = adminDb.collection("invoices").doc(invoiceId);
+          const invoiceSnap = await tx.get(invoiceRef);
+          if (!invoiceSnap.exists) {
+            return;
+          }
+
+          const invoice = invoiceSnap.data() || {};
+          const invoiceStatus = normalizeInvoiceStatus(invoice.status);
+          invoiceStatusBefore = invoiceStatus;
+          invoiceTenantId = String(invoice.tenantId || auth.user.tenantId || "");
+          if (invoiceStatus === "void") {
+            throw new Error("Void invoices cannot accept payments.");
+          }
+
+          const amountTotal = Number(invoice.amountTotalUsd || 0);
+          const existingPaid = Number(invoice.totalPaid || 0);
+          const paymentAmount = Number(paymentData.amountUsd || 0);
+          const nextPaid = existingPaid + paymentAmount;
+          const nextStatus = computeInvoiceStatus({
+            currentStatus: invoice.status,
+            totalPaid: nextPaid,
+            totalAmount: amountTotal,
+          });
+          const balanceDue = computeBalanceDue(amountTotal, nextPaid);
+
+          invoiceStatusAfter = nextStatus;
+          invoiceSnapshotData = { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus };
+
+          tx.set(
+            invoiceRef,
+            {
+              totalPaid: nextPaid,
+              balanceDue,
+              status: nextStatus,
+              paidAt: nextStatus === "paid" ? serverTimestamp() : invoice.paidAt || null,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        });
+      } catch (updateError) {
+        console.error("finance/payments update transaction error:", updateError);
+        return NextResponse.json({ ok: false, error: "Unable to update payment." }, { status: 500 });
+      }
+
+      if (!paymentAlreadySucceeded && invoiceId && invoiceStatusAfter === "paid" && invoiceStatusBefore !== "paid" && invoiceSnapshotData) {
+        try {
+          await maybeAutoCreateProjectFromInvoice({
+            invoiceId,
+            invoiceData: invoiceSnapshotData,
+            tenantId: invoiceTenantId,
+            actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+          });
+        } catch (autoCreateError) {
+          console.error("project auto-create error:", autoCreateError);
+        }
+      }
+
+      if (paymentAlreadySucceeded) {
+        return NextResponse.json({ ok: true });
       }
 
       await createFinanceEvent({
@@ -94,7 +176,7 @@ export async function POST(req: Request) {
 
     if (action === "refund") {
       await ref.update({
-        status: "Refunded",
+        status: "refunded",
         updatedAt: serverTimestamp(),
       });
 

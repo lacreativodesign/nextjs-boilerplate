@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireFinance, toISO } from "../_utils";
+import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 
@@ -44,31 +45,31 @@ export async function GET() {
     const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
-      const status = String(inv.status || "");
-      if (status !== "Paid") return sum;
+      const status = normalizeInvoiceStatus(inv.status);
+      if (status !== "paid") return sum;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const paymentsReceivedMonth = payments.reduce((sum, payment) => {
-      if (String(payment.status || "") !== "Paid") return sum;
+      if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
     }, 0);
 
     const outstandingInvoices = invoices.reduce((sum, inv) => {
-      const status = String(inv.status || "");
-      if (["Paid", "Void"].includes(status)) return sum;
+      const status = normalizeInvoiceStatus(inv.status);
+      if (["paid", "void"].includes(status)) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const nowMs = now.getTime();
     const agingBuckets = invoices.reduce(
       (acc, inv) => {
-        const status = String(inv.status || "");
-        if (["Paid", "Void"].includes(status)) return acc;
+        const status = normalizeInvoiceStatus(inv.status);
+        if (["paid", "void"].includes(status)) return acc;
         const dueMs = toMillis(inv.dueDate);
         if (!dueMs) {
           acc.bucket0to30 += Number(inv.amountTotalUsd || 0);
@@ -105,15 +106,17 @@ export async function GET() {
     const revenueSeries = seriesMonths.map((key) => ({ label: key, invoices: 0, payments: 0 }));
 
     invoices.forEach((inv) => {
-      const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
-      if (!issuedMs) return;
-      const key = getMonthKey(new Date(issuedMs));
+      if (normalizeInvoiceStatus(inv.status) !== "paid") return;
+      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      if (!paidMs) return;
+      const key = getMonthKey(new Date(paidMs));
       const bucket = revenueSeries.find((row) => row.label === key);
       if (!bucket) return;
       bucket.invoices += Number(inv.amountTotalUsd || 0);
     });
 
     payments.forEach((pay) => {
+      if (normalizePaymentStatus(pay.status) !== "succeeded") return;
       const paidMs = toMillis(pay.paidAt || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getMonthKey, requireAdmin, toMillis } from "../../_utils";
+import { normalizePaymentStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,7 +22,7 @@ export async function GET() {
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
-      if (String(data.status || "") !== "Paid") return;
+      if (normalizePaymentStatus(data.status) !== "succeeded") return;
       const paidMs = toMillis(data.paidAt || data.updatedAt || data.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));

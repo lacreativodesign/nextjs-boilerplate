@@ -10,6 +10,13 @@ import {
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import {
+  computeBalanceDue,
+  computeInvoiceStatus,
+  normalizeInvoiceStatus,
+  parseInvoiceStatus,
+} from "@/lib/finance/status";
+import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +53,25 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
 
+      const currentStatus = normalizeInvoiceStatus(invoice.status);
+      if (currentStatus === "void") {
+        return NextResponse.json({ ok: false, error: "Void invoices cannot be marked paid." }, { status: 400 });
+      }
+
+      const amountTotal = Number(invoice.amountTotalUsd || 0);
+      const nextPaid = amountTotal;
+      const nextStatus = computeInvoiceStatus({
+        currentStatus: invoice.status,
+        totalPaid: nextPaid,
+        totalAmount: amountTotal,
+      });
+      const balanceDue = computeBalanceDue(amountTotal, nextPaid);
+
       await ref.update({
-        status: "Paid",
-        paidAt: serverTimestamp(),
+        status: nextStatus,
+        totalPaid: nextPaid,
+        balanceDue,
+        paidAt: nextStatus === "paid" ? serverTimestamp() : invoice.paidAt || null,
         updatedAt: serverTimestamp(),
       });
 
@@ -56,7 +79,7 @@ export async function POST(req: Request) {
       if (paymentId) {
         await adminDb.collection("payments").doc(paymentId).set(
           {
-            status: "Paid",
+            status: "succeeded",
             paidAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
@@ -104,6 +127,19 @@ export async function POST(req: Request) {
         console.error("audit log error:", auditError);
       }
 
+      if (nextStatus === "paid") {
+        try {
+          await maybeAutoCreateProjectFromInvoice({
+            invoiceId: id,
+            invoiceData: { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus },
+            tenantId: String(invoice.tenantId || auth.user.tenantId || ""),
+            actor: { uid: auth.user.uid, name: actorName },
+          });
+        } catch (autoCreateError) {
+          console.error("project auto-create error:", autoCreateError);
+        }
+      }
+
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
       if (email) {
@@ -115,6 +151,24 @@ export async function POST(req: Request) {
         });
       }
 
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "update_status") {
+      const requested = parseInvoiceStatus(body?.status);
+      if (!requested) {
+        return NextResponse.json({ ok: false, error: "Invalid status." }, { status: 400 });
+      }
+      if (requested === "paid") {
+        return NextResponse.json({ ok: false, error: "Use mark_paid to record payments." }, { status: 400 });
+      }
+      if (requested === "void" && normalizeInvoiceStatus(invoice.status) === "paid") {
+        return NextResponse.json({ ok: false, error: "Paid invoices cannot be voided." }, { status: 400 });
+      }
+      await ref.update({
+        status: requested,
+        updatedAt: serverTimestamp(),
+      });
       return NextResponse.json({ ok: true });
     }
 

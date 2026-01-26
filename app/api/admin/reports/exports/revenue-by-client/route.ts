@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toMillis } from "../../_utils";
+import { normalizeInvoiceStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
-      if (String(data.status || "") !== "Paid") return;
+      if (normalizeInvoiceStatus(data.status) !== "paid") return;
       const paidMs = toMillis(data.paidAt || data.updatedAt || data.createdAt);
       if (dateFrom && (!paidMs || paidMs < dateFrom.getTime())) return;
       if (dateTo && (!paidMs || paidMs > dateTo.getTime())) return;

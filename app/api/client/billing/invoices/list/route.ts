@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
+import { toInvoiceStatusLabel } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,7 +44,7 @@ export async function GET() {
           id: doc.id,
           tenantId: data.tenantId || DEFAULT_TENANT_ID,
           orderId: data.orderId || "",
-          status: data.status || "Draft",
+          status: toInvoiceStatusLabel(data.status),
           amountUsd: Number(data.amountTotalUsd || 0),
           dueDate: toISO(data.dueDate),
           createdAt: toISO(data.createdAt || data.issuedAt),

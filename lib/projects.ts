@@ -48,11 +48,13 @@ export async function createProjectFromDeal({
   deal,
   client,
   actor,
+  stageOverride,
 }: {
   tenantId?: string | null;
   deal: Record<string, any>;
   client: Record<string, any> | null;
   actor?: { uid?: string | null; name?: string | null } | null;
+  stageOverride?: string | null;
 }) {
   const scopedTenantId = normalizeTenantId(tenantId || deal?.tenantId || client?.tenantId);
   const dealId = String(deal?.id || deal?.dealId || "");
@@ -82,6 +84,7 @@ export async function createProjectFromDeal({
 
   const projectRef = adminDb.collection("projects").doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
+  const stage = stageOverride || "Inquiry";
 
   await projectRef.set({
     tenantId: scopedTenantId,
@@ -92,7 +95,7 @@ export async function createProjectFromDeal({
     title: projectName,
     clientName,
     status: "active",
-    stage: "Inquiry",
+    stage,
     ownerAmUid,
     ownerAmName,
     assignedAmUid: ownerAmUid,
