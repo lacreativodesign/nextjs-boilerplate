@@ -230,7 +230,7 @@ function priorityStyles(priority: string, isDark: boolean) {
 
 function canCreate(role?: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function canApproveOrReject(role?: string) {
@@ -240,12 +240,12 @@ function canApproveOrReject(role?: string) {
 
 function canMoveExecution(role?: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "account_manager" || r === "production";
+  return r === "admin" || r === "super_admin" || r === "am" || r === "production";
 }
 
 function canMoveToReview(role?: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function canEditCommercial(role?: string) {

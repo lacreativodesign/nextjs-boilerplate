@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
-import { createHrEvent, isAdminLike, isHrRole } from "@/app/api/hr/_utils";
+import { getCurrentUser, normalizeRole } from "../../../admin/_utils";
+import { createHrEvent, isAdminLike, isHrRole } from "../../_utils";
 
 export const runtime = "nodejs";
 

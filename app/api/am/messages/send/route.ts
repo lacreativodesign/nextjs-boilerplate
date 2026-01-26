@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       id: messageRef.id,
       projectId,
       senderId: me.uid,
-      senderRole: "account_manager",
+      senderRole: "am",
       senderName,
       body: messageBody,
       createdAt: now,

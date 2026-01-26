@@ -220,7 +220,7 @@ export async function POST(req: Request) {
 
     if (data.requestedByUid) {
       const deepLink =
-        requestedByRole === "account_manager" ? "/am/change-requests" : "/admin/projects/change-requests";
+        requestedByRole === "am" ? "/am/change-requests" : "/admin/projects/change-requests";
       notifications.push(
         createNotification({
           toUserId: String(data.requestedByUid),

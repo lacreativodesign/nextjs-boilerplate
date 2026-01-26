@@ -194,7 +194,7 @@ function getStatusStyles(label: string, isDark: boolean) {
 
 function canCreate(role?: string) {
   const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "account_manager";
+  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "am";
 }
 
 function isAdmin(role?: string) {
@@ -254,9 +254,9 @@ export default function AllProjectsPage() {
   });
 
   const ownerOptions = useMemo(() => {
-    const ams = users.filter((u) => (u.role || "").toLowerCase() === "account_manager");
+    const ams = users.filter((u) => (u.role || "").toLowerCase() === "am");
     if (ams.length) return ams;
-    if (currentUser?.role?.toLowerCase() === "account_manager") {
+    if (currentUser?.role?.toLowerCase() === "am") {
       return [{ uid: currentUser.uid, name: currentUser.name, role: currentUser.role }];
     }
     return [];

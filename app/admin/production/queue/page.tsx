@@ -159,7 +159,7 @@ export default function ProductionQueuePage() {
           .filter((user) => (user.role || "").toLowerCase() === "production")
           .map((user) => ({ value: user.uid, label: user.name || user.uid }));
         const owners = users
-          .filter((user) => ["account_manager", "admin", "super_admin"].includes((user.role || "").toLowerCase()))
+          .filter((user) => ["am", "admin", "super_admin"].includes((user.role || "").toLowerCase()))
           .map((user) => ({ value: user.uid, label: user.name || user.uid }));
         setProductionUsers(production);
         setOwnerOptions(owners);

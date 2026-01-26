@@ -166,7 +166,7 @@ export default function EditUserPage() {
         <option value="sales_manager">Sales Manager</option>
         <option value="production_manager">Production Manager</option>
         <option value="am_manager">AM Manager</option>
-        <option value="account_manager">Account Manager</option>
+        <option value="am">Account Manager</option>
         <option value="sales">Sales</option>
         <option value="hr">HR</option>
         <option value="production">Production</option>

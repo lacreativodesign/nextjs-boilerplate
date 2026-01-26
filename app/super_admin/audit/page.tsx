@@ -21,7 +21,7 @@ export default function SuperAdminAuditPage() {
 
     async function load() {
       const params = tenantFilter ? `?tenantId=${encodeURIComponent(tenantFilter)}` : "";
-      const res = await fetch(`/api/super-admin/audit${params}`, { cache: "no-store", credentials: "include" });
+      const res = await fetch(`/api/super_admin/audit${params}`, { cache: "no-store", credentials: "include" });
       const json = await res.json().catch(() => null);
       if (active && json?.ok) {
         setLogs(json.logs || []);

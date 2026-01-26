@@ -113,7 +113,7 @@ function makeFileId() {
 
 function canUpload(role?: string) {
   const r = (role || "").toLowerCase();
-  return ["admin", "super_admin", "sales_manager", "account_manager", "production"].includes(r);
+  return ["admin", "super_admin", "sales_manager", "am", "production"].includes(r);
 }
 
 function canDelete(role?: string) {

@@ -182,7 +182,7 @@ export default function CreateUserPage() {
           >
             <option value="admin">Admin</option>
             <option value="sales">Sales</option>
-            <option value="account_manager">Account Manager</option>
+            <option value="am">Account Manager</option>
             <option value="production">Production</option>
             <option value="hr">HR</option>
             <option value="finance">Finance</option>

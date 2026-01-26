@@ -32,7 +32,7 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 function resolveProjectDeepLink(role: string) {
   const normalized = String(role || "").toLowerCase();
   if (normalized === "production_manager" || normalized === "production") return "/production/projects";
-  if (normalized === "am_manager" || normalized === "account_manager") return "/am/projects";
+  if (normalized === "am_manager" || normalized === "am") return "/am/projects";
   if (normalized === "client") return "/client/projects";
   return "/admin/projects";
 }

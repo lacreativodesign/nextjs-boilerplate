@@ -1,86 +1,43 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../../../admin/_utils";
+import { requireSalesManager, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
-type LeadDoc = {
-  tenantId?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  status?: string;
-  ownerUid?: string | null;
-  ownerName?: string | null;
-  source?: string;
-  createdAt?: any;
-  updatedAt?: any;
-};
-
-function toISO(value: any): string | null {
-  if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
-  if (value instanceof Date) return value.toISOString();
-  return null;
-}
-
-async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
-  if (tenantId === DEFAULT_TENANT_ID) {
-    queries.push(query.where("tenantId", "==", null));
-  }
-  const snapshots = await Promise.all(queries.map((q) => q.get()));
-  const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
-  snapshots.forEach((snap) => {
-    snap.docs.forEach((doc) => {
-      if (docTenantId(doc.data()) === tenantId) {
-        map.set(doc.id, doc);
-      }
-    });
-  });
-  return Array.from(map.values());
-}
-
 export async function GET() {
   try {
-    const me = await getCurrentUser();
-    if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    const auth = await requireSalesManager();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    if (!isSalesManager(me.role) && !isAdminOrSuper(me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
+    const snap = await adminDb
+      .collection("leads")
+      .where("tenantId", "==", auth.user.tenantId || "")
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
 
-    const tenantId = normalizeTenantId(me.tenantId);
-    const docs = await queryWithTenant(
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500),
-      tenantId
-    );
-
-    const leads = docs.map((doc) => {
-      const data = doc.data() as LeadDoc;
+    const leads = snap.docs.map((doc) => {
+      const data = doc.data() || {};
       return {
         id: doc.id,
-        name: String(data.name || ""),
-        email: String(data.email || ""),
-        phone: String(data.phone || ""),
-        company: String(data.company || ""),
-        status: String(data.status || "new"),
-        ownerUid: data.ownerUid || null,
-        ownerName: data.ownerName || null,
+        name: String(data.companyName || data.name || ""),
+        email: String(data.contactEmail || data.email || ""),
+        phone: String(data.contactPhone || data.phone || ""),
         source: String(data.source || ""),
+        stage: String(data.stage || "New Lead"),
+        ownerId: data.ownerId || null,
+        ownerName: data.ownerName || null,
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
+        isDeleted: Boolean(data.isDeleted),
       };
     });
 
     return NextResponse.json({ ok: true, leads });
   } catch (err: any) {
-    console.error("sales_manager leads list error:", err);
+    console.error("sales manager leads list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
   }
 }

@@ -86,7 +86,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     async function loadTenants() {
       try {
         const [tenantsRes, contextRes] = await Promise.all([
-          fetch("/api/super-admin/tenants", { cache: "no-store", credentials: "include" }),
+          fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" }),
           fetch("/api/tenant/context", { cache: "no-store", credentials: "include" }),
         ]);
 
@@ -127,7 +127,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     setActiveTenantName(match?.name || tenantId);
 
     try {
-      await fetch("/api/super-admin/tenant/switch", {
+      await fetch("/api/super_admin/tenant/switch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

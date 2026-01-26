@@ -214,7 +214,7 @@ function isSalesManager(role?: string) {
 }
 
 function isAccountManager(role?: string) {
-  return normalizeRole(role) === "account_manager";
+  return normalizeRole(role) === "am";
 }
 
 function isProduction(role?: string) {
@@ -278,7 +278,7 @@ export default function DeliveryPipelinePage() {
   const [movingProjectId, setMovingProjectId] = useState<string | null>(null);
 
   const ownerOptions = useMemo(() => {
-    const ams = users.filter((u) => (u.role || "").toLowerCase() === "account_manager");
+    const ams = users.filter((u) => (u.role || "").toLowerCase() === "am");
     return ams.length ? ams : [];
   }, [users]);
 

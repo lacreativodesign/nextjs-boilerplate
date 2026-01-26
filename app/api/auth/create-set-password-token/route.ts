@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
-import { getCurrentUser, isAdminRole } from "@/app/api/admin/_utils";
+import { getCurrentUser, isAdminRole } from "../../admin/_utils";
 
 export const runtime = "nodejs";
 

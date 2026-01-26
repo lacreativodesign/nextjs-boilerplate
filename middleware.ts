@@ -15,8 +15,29 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
-  if (pathname === "/sales_manager" || pathname.startsWith("/sales_manager/")) {
-    const rewrittenPath = pathname.replace(/^\/sales_manager/, "/sales-manager");
+  if (pathname === "/sales-manager" || pathname.startsWith("/sales-manager/")) {
+    const rewrittenPath = pathname.replace(/^\/sales-manager/, "/sales_manager");
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = rewrittenPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/super-admin" || pathname.startsWith("/super-admin/")) {
+    const rewrittenPath = pathname.replace(/^\/super-admin/, "/super_admin");
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = rewrittenPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/am-manager" || pathname.startsWith("/am-manager/")) {
+    const rewrittenPath = pathname.replace(/^\/am-manager/, "/am_manager");
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = rewrittenPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (pathname === "/production-manager" || pathname.startsWith("/production-manager/")) {
+    const rewrittenPath = pathname.replace(/^\/production-manager/, "/production_manager");
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = rewrittenPath;
     return NextResponse.redirect(redirectUrl, 308);
@@ -38,7 +59,6 @@ export function middleware(req: NextRequest) {
     "/admin",
     "/super_admin",
     "/sales",
-    "/sales-manager",
     "/sales_manager",
     "/am",
     "/am_manager",
@@ -67,13 +87,16 @@ export const config = {
     "/customer/:path*",
     "/admin/:path*",
     "/super_admin/:path*",
+    "/super-admin/:path*",
     "/sales/:path*",
     "/sales-manager/:path*",
     "/sales_manager/:path*",
     "/am/:path*",
     "/am_manager/:path*",
+    "/am-manager/:path*",
     "/finance/:path*",
     "/production/:path*",
+    "/production-manager/:path*",
     "/production_manager/:path*",
     "/hr/:path*",
     "/client/:path*",
