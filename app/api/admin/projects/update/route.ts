@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import { createNotification } from "../../../../../lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -155,6 +156,46 @@ export async function POST(req: Request) {
     await ref.set(updateData, { merge: true });
 
     if (assignmentChanged) {
+      const projectName = updateData.projectName || data.projectName || "Project";
+      const actorName = me.name || me.fullName || "";
+      const notifications: Promise<void>[] = [];
+
+      if (nextOwnerAmUid && nextOwnerAmUid !== data.ownerAmUid) {
+        notifications.push(
+          createNotification({
+            toUserId: String(nextOwnerAmUid),
+            title: "Project assigned",
+            body: `${projectName} assigned to you as account manager.`,
+            type: "info",
+            entityType: "project",
+            entityId: id,
+            deepLink: "/am/projects",
+            createdBy: { uid: me.uid, name: actorName },
+            roleTarget: "am",
+            tenantId: data.tenantId || null,
+          })
+        );
+      }
+
+      if (nextProductionUid && nextProductionUid !== data.productionUid) {
+        notifications.push(
+          createNotification({
+            toUserId: String(nextProductionUid),
+            title: "Project assigned",
+            body: `${projectName} assigned to you for production.`,
+            type: "info",
+            entityType: "project",
+            entityId: id,
+            deepLink: "/production/queue",
+            createdBy: { uid: me.uid, name: actorName },
+            roleTarget: "production",
+            tenantId: data.tenantId || null,
+          })
+        );
+      }
+
+      await Promise.all(notifications);
+
       try {
         await logEvent({
           type: "project.assigned",

@@ -4,6 +4,7 @@ import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { generateNextOrderId } from "@/lib/orderIds";
+import { queueEmailEvent } from "./emailEvents";
 
 const DEFAULT_KICKOFF_CHECKLIST = [
   { key: "welcome_call", label: "Schedule welcome call", done: false },
@@ -137,9 +138,35 @@ export async function createProjectFromDeal({
         deepLink: resolveProjectDeepLink(role),
         createdBy: actor || null,
         tenantId: scopedTenantId,
+        roleTarget: role || "user",
       });
     })
   );
+
+  if (stage === "Kickoff") {
+    const kickoffEmail = String(
+      client?.primaryContactEmail || client?.primaryContactEmailLower || client?.email || ""
+    ).trim();
+    if (kickoffEmail) {
+      queueEmailEvent({
+        templateId: "project_kickoff",
+        to: kickoffEmail,
+        data: {
+          clientName,
+          projectName,
+          orderId,
+          stage,
+        },
+        metadata: {
+          projectId: projectRef.id,
+          clientId,
+          tenantId: scopedTenantId,
+        },
+      }).catch((error) => {
+        console.error("kickoff email queue error:", error);
+      });
+    }
+  }
 
   return { id: projectRef.id, data: { orderId, clientName, projectName } };
 }

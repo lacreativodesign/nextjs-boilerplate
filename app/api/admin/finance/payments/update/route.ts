@@ -10,6 +10,7 @@ import {
   normalizePaymentStatus,
 } from "@/lib/finance/status";
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
+import { createNotification, getUserIdsByRoles } from "../../../../../../lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -160,14 +161,38 @@ export async function POST(req: Request) {
         console.error("audit log error:", auditError);
       }
 
+      try {
+        const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+        await Promise.all(
+          financeIds.map((uid) =>
+            createNotification({
+              toUserId: uid,
+              title: "Payment received",
+              body: `Payment ${id} marked paid for ${clientName || "client"}.`,
+              type: "success",
+              entityType: "payment",
+              entityId: id,
+              deepLink: "/admin/finance/payments",
+              createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+              roleTarget: "finance",
+              tenantId: auth.user.tenantId || null,
+            })
+          )
+        );
+      } catch (notifyError) {
+        console.error("payment notification error:", notifyError);
+      }
+
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
       if (email) {
-        await queueFinanceEmail({
+        queueFinanceEmail({
           to: email,
           template: "payment_received",
           subject: "Payment received",
           data: { paymentId: id, invoiceId },
+        }).catch((error) => {
+          console.error("payment email queue error:", error);
         });
       }
 

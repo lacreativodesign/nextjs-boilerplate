@@ -111,6 +111,7 @@ export async function POST(req: Request) {
           entityId: projectId,
           deepLink: "/admin/projects",
           createdBy: { uid: me.uid, name: actorName },
+          roleTarget: "production",
         })
       );
     }
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
           entityId: projectId,
           deepLink: "/am/projects",
           createdBy: { uid: me.uid, name: actorName },
+          roleTarget: "am",
         })
       );
     }
