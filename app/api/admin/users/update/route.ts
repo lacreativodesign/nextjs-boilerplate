@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../_utils";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 
 export const runtime = "nodejs";
 

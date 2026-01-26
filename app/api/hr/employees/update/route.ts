@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, normalizeRole } from "../../../admin/_utils";
 import { createHrEvent, isAdminLike, isHrRole } from "../../_utils";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../lib/permissions";
 
 export const runtime = "nodejs";
 

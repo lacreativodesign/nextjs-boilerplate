@@ -9,7 +9,7 @@ import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant"
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 

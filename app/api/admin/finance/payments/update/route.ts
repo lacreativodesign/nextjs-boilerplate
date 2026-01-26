@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 import {
   computeBalanceDue,
   computeInvoiceStatus,

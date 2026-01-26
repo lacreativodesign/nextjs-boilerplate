@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../_utils";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 
 export const runtime = "nodejs";
 

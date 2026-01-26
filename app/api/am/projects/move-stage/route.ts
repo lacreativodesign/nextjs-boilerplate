@@ -5,7 +5,7 @@ import { createNotification, createNotificationEvent, getUserIdsByRoles } from "
 import { computeHealth, getWorkflowSettings } from "../../../admin/_shared";
 import { getAmUser, isOwnedByAm, toISO } from "../../_utils";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../lib/permissions";
 
 export const runtime = "nodejs";
 

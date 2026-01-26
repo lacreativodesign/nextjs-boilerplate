@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 
 const COOKIE_NAME = "lac_session";
 const COOKIE_DOMAIN = ".lacreativo.com";

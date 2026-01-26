@@ -11,7 +11,7 @@ import {
 } from "../../_utils";
 import { createNotification, createNotificationEvent } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { assertPermission, Permission } from "../../../lib/permissions";
 
 export const runtime = "nodejs";
 
