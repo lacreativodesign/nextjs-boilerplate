@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../../_utils";
+import { normalizeInvoiceStatus, toInvoiceStatusLabel } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,14 @@ export async function GET() {
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
-      const status = String(data.status || "");
-      if (["Paid", "Void"].includes(status)) return;
+      const normalizedStatus = normalizeInvoiceStatus(data.status);
+      if (["paid", "void"].includes(normalizedStatus)) return;
       rows.push([
         String(data.orderId || doc.id),
         String(data.clientName || ""),
         Number(data.amountTotalUsd || 0).toFixed(2),
         toISO(data.dueDate) || "",
-        status || "",
+        toInvoiceStatusLabel(normalizedStatus),
       ]);
     });
 

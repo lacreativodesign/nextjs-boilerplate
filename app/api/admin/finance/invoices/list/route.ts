@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../../_utils";
+import { toInvoiceStatusLabel } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function GET() {
         amountSubtotalUsd: Number(data.amountSubtotalUsd || 0),
         amountTaxUsd: Number(data.amountTaxUsd || 0),
         amountTotalUsd: Number(data.amountTotalUsd || 0),
-        status: data.status || "Draft",
+        status: toInvoiceStatusLabel(data.status),
         dueDate: toISO(data.dueDate),
         issuedAt: toISO(data.issuedAt),
         paidAt: toISO(data.paidAt),

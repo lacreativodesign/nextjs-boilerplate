@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getMonthKey, getReportSettings, requireAdmin, toISO, toMillis } from "../_utils";
+import { normalizeInvoiceStatus, normalizePaymentStatus, parseInvoiceStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
     const dateTo = parseDate(searchParams.get("dateTo"), true);
     const clientId = String(searchParams.get("clientId") || "").trim();
     const statusFilter = String(searchParams.get("status") || "").trim();
+    const normalizedStatusFilter = statusFilter ? parseInvoiceStatus(statusFilter) : null;
 
     const [invoiceSnap, paymentSnap] = await Promise.all([
       adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
@@ -41,7 +43,7 @@ export async function GET(req: Request) {
 
     const filteredInvoices = invoices.filter((inv) => {
       if (clientId && String(inv.clientId || "") !== clientId) return false;
-      if (statusFilter && String(inv.status || "") !== statusFilter) return false;
+      if (normalizedStatusFilter && normalizeInvoiceStatus(inv.status) !== normalizedStatusFilter) return false;
       const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
       if (!issuedMs) return false;
       if (dateFrom && issuedMs < dateFrom.getTime()) return false;
@@ -58,14 +60,17 @@ export async function GET(req: Request) {
       return true;
     });
 
+    const paidInvoices = filteredInvoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "paid");
+
     const monthKeys = Array.from(
       new Set(
-        filteredInvoices
-          .map((inv) => toMillis(inv.issuedAt || inv.createdAt))
+        paidInvoices
+          .map((inv) => toMillis(inv.paidAt || inv.updatedAt || inv.createdAt))
           .filter(Boolean)
           .map((ms) => getMonthKey(new Date(ms as number)))
           .concat(
             filteredPayments
+              .filter((pay) => normalizePaymentStatus(pay.status) === "succeeded")
               .map((pay) => toMillis(pay.paidAt || pay.createdAt))
               .filter(Boolean)
               .map((ms) => getMonthKey(new Date(ms as number)))
@@ -76,17 +81,17 @@ export async function GET(req: Request) {
     const revenueByMonth = monthKeys.map((key) => ({ label: key, revenueUsd: 0 }));
     const paymentsByMonth = monthKeys.map((key) => ({ label: key, paymentsUsd: 0 }));
 
-    filteredInvoices.forEach((inv) => {
-      const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
-      if (!issuedMs) return;
-      const key = getMonthKey(new Date(issuedMs));
+    paidInvoices.forEach((inv) => {
+      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      if (!paidMs) return;
+      const key = getMonthKey(new Date(paidMs));
       const bucket = revenueByMonth.find((row) => row.label === key);
       if (!bucket) return;
       bucket.revenueUsd += Number(inv.amountTotalUsd || 0);
     });
 
     filteredPayments.forEach((payment) => {
-      if (String(payment.status || "") !== "Paid") return;
+      if (normalizePaymentStatus(payment.status) !== "succeeded") return;
       const paidMs = toMillis(payment.paidAt || payment.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -103,9 +108,9 @@ export async function GET(req: Request) {
     const outstandingInvoices = invoices
       .filter((inv) => {
         if (clientId && String(inv.clientId || "") !== clientId) return false;
-        const status = String(inv.status || "");
-        if (["Paid", "Void"].includes(status)) return false;
-        if (statusFilter && status !== statusFilter) return false;
+        const status = normalizeInvoiceStatus(inv.status);
+        if (["paid", "void"].includes(status)) return false;
+        if (normalizedStatusFilter && status !== normalizedStatusFilter) return false;
         return true;
       })
       .map((inv) => {
@@ -141,7 +146,7 @@ export async function GET(req: Request) {
 
     const topClientsMap = new Map<string, { clientId: string; clientName: string; totalUsd: number }>();
     filteredInvoices.forEach((inv) => {
-      if (String(inv.status || "") !== "Paid") return;
+      if (normalizeInvoiceStatus(inv.status) !== "paid") return;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs) return;
       if (dateFrom && paidMs < dateFrom.getTime()) return;
