@@ -29,7 +29,7 @@ const ROLE_ROUTES: Record<string, string> = {
   sales: "/sales",
   production_manager: "/production_manager",
   am_manager: "/am_manager",
-  account_manager: "/am",
+  am: "/am",
   hr: "/hr",
   finance: "/finance",
   production: "/production",

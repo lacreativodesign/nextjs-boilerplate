@@ -32,7 +32,7 @@ export default function ProductionManagerOverview() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/production-manager/overview", { cache: "no-store" });
+      const res = await fetch("/api/production_manager/overview", { cache: "no-store" });
       const data = (await res.json()) as OverviewResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load overview.");

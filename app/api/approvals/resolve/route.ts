@@ -12,7 +12,7 @@ import {
   isSalesManager,
   normalizeRole,
 } from "../../admin/_utils";
-import { notifyUsers } from "../../sales-manager/_utils";
+import { notifyUsers } from "../../sales_manager/_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

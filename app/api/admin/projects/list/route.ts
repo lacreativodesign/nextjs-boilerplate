@@ -51,7 +51,7 @@ function toISO(value: any): string | null {
 
 function canViewProjects(role: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
 
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 
-    if (role === "account_manager") {
+    if (role === "am") {
       queries = [
         baseQuery.where("ownerAmUid", "==", me.uid),
         baseQuery.where("ownerAmUid", "==", null).where("createdByUid", "==", me.uid),

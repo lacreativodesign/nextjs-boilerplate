@@ -60,7 +60,7 @@ function toISO(value: any): string | null {
 
 function canViewClients(role: string) {
   const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "account_manager";
+  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
 export async function GET() {

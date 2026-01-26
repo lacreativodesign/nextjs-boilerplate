@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "@/app/api/admin/_utils";
+import { getCurrentUser, isAdminRole } from "../../_utils";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
 
 export const runtime = "nodejs";

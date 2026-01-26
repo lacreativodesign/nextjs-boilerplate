@@ -18,8 +18,8 @@ export default function SuperAdminOverviewPage() {
 
     async function load() {
       const [tenantRes, healthRes] = await Promise.all([
-        fetch("/api/super-admin/tenants", { cache: "no-store", credentials: "include" }),
-        fetch("/api/super-admin/system-health", { cache: "no-store", credentials: "include" }),
+        fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" }),
+        fetch("/api/super_admin/system-health", { cache: "no-store", credentials: "include" }),
       ]);
 
       const tenantJson = await tenantRes.json().catch(() => null);

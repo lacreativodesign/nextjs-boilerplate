@@ -110,7 +110,7 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <RequireAuth allowed={["account_manager"]}>
+    <RequireAuth allowed={["am"]}>
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(

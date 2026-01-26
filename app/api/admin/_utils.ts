@@ -25,7 +25,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     if (!userDoc.exists) return null;
 
     const data = userDoc.data() || {};
-    const role = (data.role as string | undefined)?.toLowerCase() || "sales";
+    const role = normalizeRole((data.role as string | undefined) || "sales");
 
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
@@ -53,7 +53,10 @@ export function isSuperAdmin(role: string) {
 }
 
 export function normalizeRole(role?: string) {
-  return (role || "").toLowerCase();
+  return (role || "")
+    .toLowerCase()
+    .replace(/-/g, "_")
+    .replace(/^account_manager$/, "am");
 }
 
 export function isAdminOrSuper(role: string) {
@@ -66,7 +69,7 @@ export function isSalesManager(role: string) {
 }
 
 export function isAccountManager(role: string) {
-  return normalizeRole(role) === "account_manager";
+  return normalizeRole(role) === "am";
 }
 
 export function isProduction(role: string) {

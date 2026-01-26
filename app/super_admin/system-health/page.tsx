@@ -18,7 +18,7 @@ export default function SuperAdminSystemHealthPage() {
     let active = true;
 
     async function load() {
-      const res = await fetch("/api/super-admin/system-health", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/super_admin/system-health", { cache: "no-store", credentials: "include" });
       const json = await res.json().catch(() => null);
       if (active && json?.ok) {
         setHealth(json);

@@ -102,7 +102,11 @@ export async function fetchUserRole(uid: string): Promise<string | null> {
     if (!snap.exists()) return null;
 
     const data = snap.data() as any;
-    const role = (data.role || "").toString().toLowerCase();
+    const role = (data.role || "")
+      .toString()
+      .toLowerCase()
+      .replace(/-/g, "_")
+      .replace(/^account_manager$/, "am");
     return role || null;
   } catch (err) {
     console.error("fetchUserRole ERROR:", err);
