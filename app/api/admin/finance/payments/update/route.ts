@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,12 @@ export async function POST(req: Request) {
     const clientName = String(payment.clientName || "");
 
     if (action === "mark_paid") {
+      try {
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      } catch {
+        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
+
       await ref.update({
         status: "Paid",
         paidAt: serverTimestamp(),
@@ -56,6 +64,19 @@ export async function POST(req: Request) {
         createdByUid: auth.user.uid,
         createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
       });
+
+      try {
+        await logEvent({
+          type: "finance.payment_paid",
+          title: "Payment marked paid",
+          description: `Payment ${id} marked paid for ${clientName || "client"}.`,
+          entityType: "payment",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";

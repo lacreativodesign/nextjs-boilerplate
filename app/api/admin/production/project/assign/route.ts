@@ -4,6 +4,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
 import { createNotification, createNotificationEvent } from "@/lib/notifications";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -43,6 +45,12 @@ export async function POST(req: Request) {
     }
 
     if (!isAdminOrSuper(me.role)) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    try {
+      assertPermission(me.role, Permission.AssignProject);
+    } catch {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -137,6 +145,23 @@ export async function POST(req: Request) {
         ownerAmUid: updated.ownerAmUid || null,
       },
     });
+
+    try {
+      await logEvent({
+        type: "project.assigned",
+        title: "Project assigned",
+        description: `${updated.projectName || "Project"} assigned to production.`,
+        entityType: "project",
+        entityId: projectId,
+        actor: { uid: me.uid, name: actorName },
+        metadata: {
+          productionUid: productionUid || null,
+          ownerAmUid: updated.ownerAmUid || null,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     return NextResponse.json({
       ok: true,

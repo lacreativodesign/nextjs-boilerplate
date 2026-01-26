@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseString, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,12 @@ export async function POST(req: Request) {
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
 
     if (action === "mark_paid") {
+      try {
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      } catch {
+        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
+
       await ref.update({
         status: "Paid",
         paidAt: serverTimestamp(),
@@ -73,6 +81,19 @@ export async function POST(req: Request) {
         createdByUid: auth.user.uid,
         createdByName: actorName,
       });
+
+      try {
+        await logEvent({
+          type: "finance.payment_paid",
+          title: "Payment marked paid",
+          description: `Payment ${id} marked paid for ${clientName || "client"}.`,
+          entityType: "payment",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: actorName },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
 
       return NextResponse.json({ ok: true });
     }

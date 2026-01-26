@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, normalizeRole } from "../../../admin/_utils";
 import { createHrEvent, isAdminLike, isHrRole } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -33,6 +35,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
+    try {
+      assertPermission(requesterRole, Permission.ManageUsers);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const uid = String(body?.uid || "").trim();
     if (!uid) {
@@ -54,6 +62,14 @@ export async function POST(req: Request) {
     const requestedRole = normalizeRole(body?.role || existingRole || "");
     if (requesterRole !== "super_admin" && requestedRole === "super_admin") {
       return NextResponse.json({ ok: false, error: "Cannot assign super admin role." }, { status: 403 });
+    }
+
+    if (requestedRole && requestedRole !== existingRole) {
+      try {
+        assertPermission(requesterRole, Permission.ManageRoles);
+      } catch {
+        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
     }
 
     const email = String(existing?.email || "").trim();
@@ -93,6 +109,20 @@ export async function POST(req: Request) {
         createdByName: current.name || current.email || "Admin",
         metadata: { from: existingRole, to: requestedRole },
       });
+
+      try {
+        await logEvent({
+          type: "user.role_changed",
+          title: "Role updated",
+          description: `${updateData.name} role changed to ${requestedRole}.`,
+          entityType: "user",
+          entityId: uid,
+          actor: { uid: current.uid, name: current.name || current.email || "Admin" },
+          metadata: { from: existingRole, to: requestedRole },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
     }
 
     await createHrEvent({

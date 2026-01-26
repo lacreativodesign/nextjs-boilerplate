@@ -8,6 +8,8 @@ import {
   serverTimestamp,
 } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,12 @@ export async function POST(req: Request) {
     const orderId = String(invoice.orderId || "");
 
     if (action === "mark_paid") {
+      try {
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      } catch {
+        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
+
       await ref.update({
         status: "Paid",
         paidAt: serverTimestamp(),
@@ -82,6 +90,19 @@ export async function POST(req: Request) {
         createdByUid: auth.user.uid,
         createdByName: actorName,
       });
+
+      try {
+        await logEvent({
+          type: "finance.invoice_paid",
+          title: "Invoice marked paid",
+          description: `Invoice ${orderId || id} marked paid.`,
+          entityType: "invoice",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: actorName },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
       const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
