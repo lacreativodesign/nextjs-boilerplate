@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -78,6 +80,21 @@ export async function POST(req: Request) {
       }
     }
 
+    const nextOwnerAmUid =
+      body?.ownerAmUid !== undefined ? cleanString(body.ownerAmUid) || null : data.ownerAmUid || null;
+    const nextProductionUid =
+      body?.productionUid !== undefined ? cleanString(body.productionUid) || null : data.productionUid || null;
+    const assignmentChanged =
+      nextOwnerAmUid !== (data.ownerAmUid || null) || nextProductionUid !== (data.productionUid || null);
+
+    if (body?.ownerAmUid !== undefined || body?.productionUid !== undefined) {
+      try {
+        assertPermission(role, Permission.AssignProject);
+      } catch {
+        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const updateData: Record<string, any> = {};
 
     if (body?.projectName !== undefined) {
@@ -108,15 +125,13 @@ export async function POST(req: Request) {
     }
 
     if (body?.ownerAmUid !== undefined) {
-      const ownerAmUid = cleanString(body.ownerAmUid) || null;
-      updateData.ownerAmUid = ownerAmUid;
-      updateData.ownerAmName = ownerAmUid ? await resolveUserName(ownerAmUid) : null;
+      updateData.ownerAmUid = nextOwnerAmUid;
+      updateData.ownerAmName = nextOwnerAmUid ? await resolveUserName(nextOwnerAmUid) : null;
     }
 
     if (body?.productionUid !== undefined) {
-      const productionUid = cleanString(body.productionUid) || null;
-      updateData.productionUid = productionUid;
-      updateData.productionName = productionUid ? await resolveUserName(productionUid) : null;
+      updateData.productionUid = nextProductionUid;
+      updateData.productionName = nextProductionUid ? await resolveUserName(nextProductionUid) : null;
     }
 
     if (body?.startDate !== undefined) {
@@ -138,6 +153,25 @@ export async function POST(req: Request) {
     updateData.lastActivityAt = now;
 
     await ref.set(updateData, { merge: true });
+
+    if (assignmentChanged) {
+      try {
+        await logEvent({
+          type: "project.assigned",
+          title: "Project assigned",
+          description: `${data.projectName || "Project"} assignment updated.`,
+          entityType: "project",
+          entityId: id,
+          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          metadata: {
+            ownerAmUid: nextOwnerAmUid,
+            productionUid: nextProductionUid,
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
+    }
 
     return NextResponse.json({ ok: true, project: { id, ...updateData } });
   } catch (err: any) {

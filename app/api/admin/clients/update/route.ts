@@ -9,6 +9,7 @@ import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant"
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,16 @@ async function handleUpdate(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!canEditClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-  const tenantId = normalizeTenantId(me.tenantId);
+  try {
+    assertPermission(me.role, Permission.EditClients);
+  } catch {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+  const rawTenantId = String(me.tenantId || "").trim();
+  if (!rawTenantId) {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+  const tenantId = normalizeTenantId(rawTenantId);
 
   let body: any = null;
   try {

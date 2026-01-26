@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 const COOKIE_NAME = "lac_session";
 const COOKIE_DOMAIN = ".lacreativo.com";
@@ -66,6 +68,12 @@ export async function POST(
       );
     }
 
+    try {
+      assertPermission(sessionUser.role, Permission.ManageUsers);
+    } catch {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
     const uid = params.uid;
     const body = await req.json();
 
@@ -80,6 +88,17 @@ export async function POST(
     }
 
     const newRole = String(body.role).toLowerCase();
+    const targetSnap = await adminDb.collection("users").doc(uid).get();
+    const target = targetSnap.exists ? targetSnap.data() : null;
+    const existingRole = String(target?.role || "").toLowerCase();
+
+    if (existingRole && newRole && newRole !== existingRole) {
+      try {
+        assertPermission(sessionUser.role, Permission.ManageRoles);
+      } catch {
+        return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+      }
+    }
 
     // ----------------------------------------------------
     // 6. ADMIN RESTRICTIONS (CANNOT TOUCH SUPER ADMIN)
@@ -94,9 +113,6 @@ export async function POST(
       }
 
       // Admin cannot modify super_admin accounts at all
-      const targetSnap = await adminDb.collection("users").doc(uid).get();
-      const target = targetSnap.data();
-
       if (target?.role === "super_admin") {
         return NextResponse.json(
           { error: "Admins cannot modify super_admin accounts" },
@@ -129,6 +145,22 @@ export async function POST(
     // 8. SAVE TO FIRESTORE
     // ----------------------------------------------------
     await adminDb.collection("users").doc(uid).update(payload);
+
+    if (existingRole && newRole && newRole !== existingRole) {
+      try {
+        await logEvent({
+          type: "user.role_changed",
+          title: "Role updated",
+          description: `${payload.name} role changed to ${newRole}.`,
+          entityType: "user",
+          entityId: uid,
+          actor: { uid: decoded.uid, name: sessionUser.name || sessionUser.email || "" },
+          metadata: { from: existingRole, to: newRole },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

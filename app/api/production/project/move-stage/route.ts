@@ -4,6 +4,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 import { computeHealth, getWorkflowSettings } from "../../../admin/_shared";
 import { getProductionUser, isAssignedToProduction, toISO } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -85,6 +87,12 @@ export async function POST(req: Request) {
     const me = await getProductionUser();
     if (!me) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    try {
+      assertPermission(me.role, Permission.MoveProjectStage);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -205,6 +213,23 @@ export async function POST(req: Request) {
         to: toStage,
       },
     });
+
+    try {
+      await logEvent({
+        type: "project.stage.moved",
+        title: "Project stage updated",
+        description: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+        entityType: "project",
+        entityId: projectId,
+        actor: { uid: me.uid, name: actorName },
+        metadata: {
+          fromStage,
+          toStage,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     return NextResponse.json({
       ok: true,

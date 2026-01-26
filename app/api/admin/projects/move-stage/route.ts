@@ -10,6 +10,8 @@ import {
   normalizeRole,
 } from "../../_utils";
 import { createNotification, createNotificationEvent } from "@/lib/notifications";
+import { logEvent } from "@/lib/audit";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -139,6 +141,12 @@ export async function POST(req: Request) {
     const role = normalizeRole(me.role);
     const fromStage = normalizeStage(data.stage);
 
+    try {
+      assertPermission(role, Permission.MoveProjectStage);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     if (!canMoveStage({ role, project: data, fromStage, toStage, uid: me.uid })) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -238,6 +246,23 @@ export async function POST(req: Request) {
         to: toStage,
       },
     });
+
+    try {
+      await logEvent({
+        type: "project.stage.moved",
+        title: "Project stage updated",
+        description: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
+        entityType: "project",
+        entityId: projectId,
+        actor: { uid: me.uid, name: actorName },
+        metadata: {
+          fromStage,
+          toStage,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     return NextResponse.json({
       ok: true,

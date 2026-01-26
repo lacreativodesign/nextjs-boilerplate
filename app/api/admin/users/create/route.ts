@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../_utils";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
+import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,12 @@ export async function POST(req: Request) {
         { error: "Only admin users can create new users" },
         { status: 403 }
       );
+    }
+
+    try {
+      assertPermission(currentRole, Permission.ManageUsers);
+    } catch {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // 3) Parse body
@@ -53,6 +60,12 @@ export async function POST(req: Request) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    try {
+      assertPermission(currentRole, Permission.ManageRoles);
+    } catch {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (!canManageRole(role)) {
