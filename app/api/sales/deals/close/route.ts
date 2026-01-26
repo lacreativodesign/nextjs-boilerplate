@@ -4,6 +4,7 @@ import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import {
   getWatcherUserIds,
+  getSalesSettings,
   isSales,
   notifyUsers,
   parseString,
@@ -49,9 +50,15 @@ export async function POST(req: Request) {
     }
 
     const discountPct = Number(data.discountPct || 0);
+    const { discountApprovalThresholdPct } = await getSalesSettings();
+    const approvalThreshold = Number(discountApprovalThresholdPct ?? 0);
     const discountStatus = String(data.discountStatus || (discountPct > 0 ? "pending" : "none"));
     const discountApproved = Boolean(data.discountApproved);
-    if (discountStatus === "pending" || (discountPct > 20 && !discountApproved) || discountStatus === "rejected") {
+    if (
+      discountStatus === "pending" ||
+      discountStatus === "rejected" ||
+      (discountPct > approvalThreshold && !discountApproved)
+    ) {
       return NextResponse.json(
         { ok: false, error: "Discount approval required before closing this deal." },
         { status: 403 }

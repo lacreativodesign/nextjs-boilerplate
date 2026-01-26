@@ -28,6 +28,9 @@ export async function GET() {
       pipelineStages: [...SALES_PIPELINE_STAGES],
       leadSources: parseStringArray(data?.leadSources),
       campaignTags: parseStringArray(data?.campaignTags),
+      discountApprovalThresholdPct: Number.isFinite(Number(data?.discountApprovalThresholdPct))
+        ? Number(data?.discountApprovalThresholdPct)
+        : 0,
       closedWonAutomations: {
         createClient: parseBoolean(data?.closedWonAutomations?.createClient, false),
         createProject: parseBoolean(data?.closedWonAutomations?.createProject, false),
@@ -66,6 +69,9 @@ export async function PUT(req: Request) {
       pipelineStages: [...SALES_PIPELINE_STAGES],
       leadSources: parseStringArray(body?.leadSources),
       campaignTags: parseStringArray(body?.campaignTags),
+      discountApprovalThresholdPct: Number.isFinite(Number(body?.discountApprovalThresholdPct))
+        ? Number(body?.discountApprovalThresholdPct)
+        : 0,
       closedWonAutomations: {
         createClient: parseBoolean(body?.closedWonAutomations?.createClient, false),
         createProject: parseBoolean(body?.closedWonAutomations?.createProject, false),

@@ -38,7 +38,7 @@ function canTransition(fromStatus: string, toStatus: string) {
 }
 
 function canApproveOrReject(role: string) {
-  return isAdminOrSuper(role) || isSalesManager(role);
+  return isAdminOrSuper(role);
 }
 
 function canMoveExecution(role: string) {
@@ -47,6 +47,14 @@ function canMoveExecution(role: string) {
 
 function canMoveToReview(role: string) {
   return isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role);
+}
+
+function requiresApproval(data: Record<string, any>) {
+  const type = String(data.type || "");
+  const impactsScope = type === "Scope Change";
+  const impactsTimeline = typeof data.estimatedTimelineDays === "number" && data.estimatedTimelineDays > 0;
+  const impactsCost = typeof data.estimatedCost === "number" && data.estimatedCost > 0;
+  return impactsScope || impactsTimeline || impactsCost;
 }
 
 async function enqueueEvent(type: "CHANGE_REQUEST_APPROVED" | "CHANGE_REQUEST_REJECTED" | "CHANGE_REQUEST_COMPLETED", payload: {
@@ -114,8 +122,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
+    if (toStatus === "Approved" && data.requestedByUid && data.requestedByUid === me.uid) {
+      return NextResponse.json({ ok: false, error: "Requester cannot approve their own request." }, { status: 403 });
+    }
+
     if ((toStatus === "In Progress" || toStatus === "Completed") && !canMoveExecution(role)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    if ((toStatus === "In Progress" || toStatus === "Completed") && requiresApproval(data)) {
+      if (String(data.approvalStatus || "").toLowerCase() !== "approved") {
+        return NextResponse.json({ ok: false, error: "Change request approval required." }, { status: 403 });
+      }
     }
 
     let projectData: Record<string, any> | null = null;
@@ -165,6 +183,11 @@ export async function POST(req: Request) {
     if (toStatus === "Approved") {
       updateData.approvedAt = serverNow;
       updateData.approvedByUid = me.uid;
+      updateData.approvalStatus = "approved";
+    }
+
+    if (toStatus === "Rejected") {
+      updateData.approvalStatus = "rejected";
     }
 
     if (toStatus === "Completed") {
@@ -172,6 +195,32 @@ export async function POST(req: Request) {
     }
 
     await ref.set(updateData, { merge: true });
+
+    if ((toStatus === "Approved" || toStatus === "Rejected") && data.approvalId) {
+      const approvalRef = adminDb.collection("approvals").doc(String(data.approvalId));
+      const approvalSnap = await approvalRef.get();
+      if (approvalSnap.exists) {
+        const approvalData = approvalSnap.data() || {};
+        const approvalChain = Array.isArray(approvalData.approvalChain) ? [...approvalData.approvalChain] : [];
+        const normalizedRole = normalizeRole(role);
+        approvalChain.push({
+          role: normalizedRole,
+          uid: me.uid,
+          decision: toStatus === "Approved" ? "approved" : "rejected",
+          note: note || null,
+          decidedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await approvalRef.set(
+          {
+            status: toStatus === "Approved" ? "approved" : "rejected",
+            approvalChain,
+            finalDecisionBy: { uid: me.uid, role: normalizedRole },
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+    }
 
     if (toStatus === "Approved") {
       await enqueueEvent("CHANGE_REQUEST_APPROVED", {

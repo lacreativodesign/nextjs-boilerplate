@@ -83,12 +83,18 @@ export async function POST(req: Request) {
         if (currentStatus !== "pending") {
           throw new Error("Discount approval is not pending.");
         }
+        if (data.discountRequestedByUid && data.discountRequestedByUid === auth.user.uid) {
+          throw new Error("Forbidden");
+        }
         if (discountAction === "approve") {
           updates.discountApproved = true;
           updates.discountStatus = "approved";
           updates.discountApprovedAt = serverTimestamp();
           updates.discountApprovedByUid = auth.user.uid;
           updates.discountApprovedByName = auth.user.name || auth.user.fullName || "";
+          updates.discountApprovedPct = discountPct;
+          updates.discountApprovedUsd = (listPriceUsd * discountPct) / 100;
+          updates.discountApprovedFinalPriceUsd = finalPriceUsd;
           discountDecision = "approved";
         }
         if (discountAction === "reject") {
@@ -97,6 +103,9 @@ export async function POST(req: Request) {
           updates.discountApprovedAt = serverTimestamp();
           updates.discountApprovedByUid = auth.user.uid;
           updates.discountApprovedByName = auth.user.name || auth.user.fullName || "";
+          updates.discountApprovedPct = null;
+          updates.discountApprovedUsd = null;
+          updates.discountApprovedFinalPriceUsd = null;
           discountDecision = "rejected";
         }
       } else if (payload.discountApproved !== undefined) {
@@ -191,6 +200,42 @@ export async function POST(req: Request) {
     }
 
     if (discountDecision) {
+      const approvalSnap = await adminDb
+        .collection("approvals")
+        .where("tenantId", "==", tenantId)
+        .where("type", "==", "discount")
+        .where("entityId", "==", id)
+        .where("status", "==", "pending")
+        .limit(1)
+        .get();
+      if (!approvalSnap.empty) {
+        const approvalDoc = approvalSnap.docs[0];
+        const approvalData = approvalDoc.data() || {};
+        const approvalChain = Array.isArray(approvalData.approvalChain) ? [...approvalData.approvalChain] : [];
+        const normalizedRole = String(auth.user.role || "").toLowerCase().replace(/-/g, "_") || "sales_manager";
+        const entry = {
+          role: "sales_manager",
+          uid: auth.user.uid,
+          decision: discountDecision,
+          note: null,
+          decidedAt: serverTimestamp(),
+        };
+        const chainIndex = approvalChain.findIndex((item) => item?.role === "sales_manager" && !item?.decision);
+        if (chainIndex >= 0) {
+          approvalChain[chainIndex] = { ...approvalChain[chainIndex], ...entry };
+        } else {
+          approvalChain.push(entry);
+        }
+        await approvalDoc.ref.set(
+          {
+            status: discountDecision,
+            approvalChain,
+            finalDecisionBy: { uid: auth.user.uid, role: normalizedRole },
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
       const discountTitle =
         discountDecision === "approved" ? "Discount approved" : "Discount rejected";
       const discountType =
@@ -203,7 +248,15 @@ export async function POST(req: Request) {
         entityType: "deal",
         entityId: id,
         actor: { uid: auth.user.uid, name: createdByName },
-        metadata: { discountPct, listPriceUsd, finalPriceUsd },
+        metadata: {
+          before: { discountStatus: "pending", discountPct },
+          after: {
+            discountStatus: discountDecision,
+            discountApprovedPct: discountDecision === "approved" ? discountPct : null,
+          },
+          listPriceUsd,
+          finalPriceUsd,
+        },
       });
 
       const notifyTargets = Array.from(new Set([ownerId, createdByUid].filter(Boolean))) as string[];

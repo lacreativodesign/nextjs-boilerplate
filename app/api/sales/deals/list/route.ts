@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
-import { isSales, normalizeStage, requireSalesRead, toISO } from "../../_utils";
+import { getSalesSettings, isSales, normalizeStage, requireSalesRead, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,9 @@ export async function GET() {
         return false;
       });
 
-    return NextResponse.json({ ok: true, deals });
+    const { discountApprovalThresholdPct } = await getSalesSettings();
+
+    return NextResponse.json({ ok: true, deals, discountApprovalThresholdPct });
   } catch (err: any) {
     console.error("sales deals list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });

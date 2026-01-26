@@ -22,6 +22,8 @@ type ProjectDoc = {
   productionOwnerName?: string | null;
   assignedProductionIds?: string[];
   dueDate?: any;
+  productionOverrideStatus?: string | null;
+  productionOverrideApprovalId?: string | null;
   updatedAt?: any;
   createdAt?: any;
   stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
@@ -100,6 +102,8 @@ export async function GET(req: Request) {
           ownerAmName: data.ownerAmName ?? null,
           productionUid: data.productionUid ?? data.productionOwnerId ?? null,
           productionName: data.productionName ?? data.productionOwnerName ?? null,
+          productionOverrideStatus: data.productionOverrideStatus ?? null,
+          productionOverrideApprovalId: data.productionOverrideApprovalId ?? null,
           dueDate,
           updatedAt: toISO(data.updatedAt),
           createdAt: toISO(data.createdAt),

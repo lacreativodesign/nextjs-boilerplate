@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { logEvent } from "@/lib/audit";
 import { getCurrentUser, isAccountManager, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 
@@ -87,6 +89,7 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() || {};
+    const tenantId = String(project?.tenantId || me.tenantId || DEFAULT_TENANT_ID);
 
     if (isAccountManager(role)) {
       const isOwner = project.ownerAmUid === me.uid || (!project.ownerAmUid && project.createdByUid === me.uid);
@@ -97,6 +100,7 @@ export async function POST(req: Request) {
 
     const now = admin.firestore.Timestamp.now();
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
+    const impactsScope = type === "Scope Change";
 
     const docRef = await adminDb.collection("changeRequests").add({
       projectId,
@@ -117,10 +121,15 @@ export async function POST(req: Request) {
       approvedAt: null,
       approvedByUid: null,
       attachedFileIds,
+      approvalStatus: impactsScope ? "pending" : null,
+      approvalId: null,
+      approvalRequestedAt: impactsScope ? serverNow : null,
+      approvalRequestedByUid: impactsScope ? me.uid : null,
       createdAt: serverNow,
       updatedAt: serverNow,
       completedAt: null,
       isDeleted: false,
+      tenantId,
       statusHistory: [
         {
           from: "",
@@ -132,6 +141,46 @@ export async function POST(req: Request) {
         },
       ],
     });
+
+    if (impactsScope) {
+      const approvalRef = adminDb.collection("approvals").doc();
+      await approvalRef.set({
+        tenantId,
+        type: "change_request",
+        entityType: "project",
+        entityId: projectId,
+        requestedBy: {
+          uid: me.uid,
+          role,
+        },
+        requestedData: {
+          changeRequestId: docRef.id,
+          projectId,
+          projectName: project.projectName || "",
+          title,
+          type,
+        },
+        status: "pending",
+        approvalChain: [{ role: "am_manager" }],
+        createdAt: serverNow,
+        updatedAt: serverNow,
+      });
+      await docRef.set({ approvalId: approvalRef.id }, { merge: true });
+
+      await logEvent({
+        tenantId,
+        type: "change_request.approval.requested",
+        title: "Change request approval requested",
+        description: `${title} requires manager approval.`,
+        entityType: "change_request",
+        entityId: docRef.id,
+        actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+        metadata: {
+          projectId,
+          type,
+        },
+      });
+    }
 
     await enqueueEvent({
       changeRequestId: docRef.id,

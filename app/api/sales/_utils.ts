@@ -163,6 +163,14 @@ export async function getUserNameById(uid?: string | null) {
   return String(data.name || data.fullName || data.email || "");
 }
 
+export async function getSalesSettings() {
+  const snap = await adminDb.collection("settings").doc("sales").get();
+  const data = snap.exists ? snap.data() : {};
+  return {
+    discountApprovalThresholdPct: parseNumber(data?.discountApprovalThresholdPct, 0),
+  };
+}
+
 export function normalizeStage(stage?: string) {
   const value = parseString(stage, "").trim();
   if (!value) return value;

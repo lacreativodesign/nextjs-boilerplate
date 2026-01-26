@@ -31,6 +31,7 @@ type DealRecord = {
 };
 
 type DealResponse = { ok: boolean; deals: DealRecord[] };
+type DealResponseWithSettings = DealResponse & { discountApprovalThresholdPct?: number };
 
 type SortKey = "dealName" | "clientName" | "status" | "valueUsd" | "closedAt";
 
@@ -50,6 +51,7 @@ export default function SalesDealsPage() {
   const [selected, setSelected] = useState<DealRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [discountThreshold, setDiscountThreshold] = useState(0);
   const [discountPct, setDiscountPct] = useState(0);
   const [discountReason, setDiscountReason] = useState("");
   const [discountSaving, setDiscountSaving] = useState(false);
@@ -60,11 +62,12 @@ export default function SalesDealsPage() {
       setError(null);
       setLoading(true);
       const res = await fetch("/api/sales/deals/list", { cache: "no-store", credentials: "include" });
-      const data = (await res.json()) as DealResponse;
+      const data = (await res.json()) as DealResponseWithSettings;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load deals.");
       }
       setDeals(data.deals || []);
+      setDiscountThreshold(Number(data.discountApprovalThresholdPct ?? 0));
     } catch (err) {
       console.error("Deals load error", err);
       setError({ title: "Unable to load deals", message: "Please try again in a moment." });
@@ -247,7 +250,7 @@ export default function SalesDealsPage() {
     const status = (deal.discountStatus || "none").toLowerCase();
     const pct = Number(deal.discountPct || 0);
     if (status === "pending" || status === "rejected") return true;
-    if (pct > 20 && !deal.discountApproved) return true;
+    if (pct > discountThreshold && !deal.discountApproved) return true;
     return false;
   };
 
@@ -478,7 +481,11 @@ export default function SalesDealsPage() {
                 disabled={discountSaving || (discountPct > 0 && !discountReason.trim())}
                 style={{ borderRadius: 999 }}
               >
-                {discountSaving ? "Saving..." : "Save Discount"}
+                {discountSaving
+                  ? "Saving..."
+                  : discountPct > discountThreshold
+                  ? "Request Approval"
+                  : "Save Discount"}
               </button>
             </div>
           </div>

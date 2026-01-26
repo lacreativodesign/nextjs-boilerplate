@@ -32,6 +32,8 @@ type ProductionProject = {
   ownerAmName?: string | null;
   productionUid?: string | null;
   productionName?: string | null;
+  productionOverrideStatus?: string | null;
+  productionOverrideApprovalId?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
   stageHistory?: StageHistoryEntry[];
@@ -158,6 +160,9 @@ export default function ProductionProjectDrawer({
   const [qaNotes, setQaNotes] = useState("");
   const [qaReason, setQaReason] = useState("");
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
+  const [overrideType, setOverrideType] = useState("override_deadline");
+  const [overrideNote, setOverrideNote] = useState("");
+  const [overrideLoading, setOverrideLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -213,6 +218,15 @@ export default function ProductionProjectDrawer({
     return [{ value: "", label: "Unassigned" }, ...productionUsers];
   }, [productionUsers]);
 
+  const overrideOptions = useMemo(
+    () => [
+      { value: "reassign_task", label: "Reassign task" },
+      { value: "override_deadline", label: "Override deadline" },
+      { value: "exceed_workload", label: "Exceed workload cap" },
+    ],
+    []
+  );
+
   const latestFiles = useMemo(() => {
     return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as any));
   }, [files]);
@@ -231,6 +245,21 @@ export default function ProductionProjectDrawer({
 
   const hasFinalFile = groupedFiles.Final.length > 0;
   const noOpenCRs = openChangeRequests.length === 0;
+  const overrideStatus = (activeProject?.productionOverrideStatus || "").toLowerCase();
+
+  const overrideStatusLabel = () => {
+    if (overrideStatus === "pending") return "Pending approval";
+    if (overrideStatus === "approved") return "Approved";
+    if (overrideStatus === "rejected") return "Rejected";
+    return "Not requested";
+  };
+
+  const overrideStatusTone = () => {
+    if (overrideStatus === "pending") return { background: "rgba(251,191,36,0.15)", color: "#b45309" };
+    if (overrideStatus === "approved") return { background: "rgba(34,197,94,0.15)", color: "#15803d" };
+    if (overrideStatus === "rejected") return { background: "rgba(248,113,113,0.15)", color: "#b91c1c" };
+    return { background: "rgba(148,163,184,0.15)", color: "var(--text-muted)" };
+  };
 
   if (!open || !activeProject) return null;
 
@@ -347,6 +376,41 @@ export default function ProductionProjectDrawer({
       }
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  async function handleOverrideRequest() {
+    if (!activeProject) return;
+    setOverrideLoading(true);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/approvals/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: "production_override",
+          entityType: "project",
+          entityId: activeProject.id,
+          requestedData: {
+            overrideType,
+            note: overrideNote.trim() || null,
+            projectName: activeProject.projectName || "",
+          },
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload?.error || "Unable to request override.");
+      }
+      setActiveProject((prev) =>
+        prev ? { ...prev, productionOverrideStatus: "pending", productionOverrideApprovalId: payload.id } : prev
+      );
+    } catch (err: any) {
+      console.error(err);
+      setActionError(err?.message || "Unable to request override.");
+    } finally {
+      setOverrideLoading(false);
     }
   }
 
@@ -626,6 +690,47 @@ export default function ProductionProjectDrawer({
         </Section>
 
         <div style={{ height: 12 }} />
+
+        {isProductionRole && (
+          <>
+            <Section title="Override Requests" isDark={isDark}>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>Approval status</span>
+                  <span
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      ...overrideStatusTone(),
+                    }}
+                  >
+                    {overrideStatusLabel()}
+                  </span>
+                </div>
+                <MasterSelect value={overrideType} onChange={(value) => setOverrideType(value)} options={overrideOptions} />
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={overrideNote}
+                  onChange={(event) => setOverrideNote(event.target.value)}
+                  placeholder="Add context for the override request"
+                />
+                <button
+                  className="btn"
+                  style={{ borderRadius: 999, padding: "8px 16px" }}
+                  onClick={handleOverrideRequest}
+                  disabled={overrideLoading || overrideStatus === "pending"}
+                >
+                  {overrideLoading ? "Requesting..." : "Request Approval"}
+                </button>
+              </div>
+            </Section>
+
+            <div style={{ height: 12 }} />
+          </>
+        )}
 
         {(mode === "qa" || (isProductionRole && activeProject.stage === "Final")) && (
           <>

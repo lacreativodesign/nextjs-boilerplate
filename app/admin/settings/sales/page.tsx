@@ -7,6 +7,7 @@ type SalesSettings = {
   pipelineStages: string[];
   leadSources: string[];
   campaignTags: string[];
+  discountApprovalThresholdPct: number;
   closedWonAutomations: {
     createClient: boolean;
     createProject: boolean;
@@ -29,6 +30,7 @@ const DEFAULT_SETTINGS: SalesSettings = {
   ],
   leadSources: [],
   campaignTags: [],
+  discountApprovalThresholdPct: 0,
   closedWonAutomations: {
     createClient: false,
     createProject: false,
@@ -152,6 +154,26 @@ export default function SalesSettingsPage() {
           </div>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <div style={{ fontWeight: 700 }}>Discount Approval Threshold (%)</div>
+              <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>
+                Discounts above this percentage require manager approval.
+              </p>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                max={80}
+                value={settings.discountApprovalThresholdPct}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    discountApprovalThresholdPct: Number(event.target.value || 0),
+                  }))
+                }
+                disabled={disabled}
+              />
+            </div>
             <div className="space-y-2">
               <div style={{ fontWeight: 700 }}>Lead Sources</div>
               <div className="flex flex-wrap gap-2">
