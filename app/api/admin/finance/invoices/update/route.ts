@@ -4,6 +4,7 @@ import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serve
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   computeBalanceDue,
   computeInvoiceStatus,
@@ -11,6 +12,7 @@ import {
   parseInvoiceStatus,
 } from "@/lib/finance/status";
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
+import { normalizeRole } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,12 @@ export async function POST(req: Request) {
     const clientId = String(invoice.clientId || "");
     const clientName = String(invoice.clientName || "");
     const orderId = String(invoice.orderId || "");
+    const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+
+    if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
 
     if (action === "send") {
       await ref.update({
@@ -123,7 +131,16 @@ export async function POST(req: Request) {
 
       const paymentId = parseString(body?.paymentId).trim();
       if (paymentId) {
-        await adminDb.collection("payments").doc(paymentId).set(
+        const paymentRef = adminDb.collection("payments").doc(paymentId);
+        const paymentSnap = await paymentRef.get();
+        if (!paymentSnap.exists) {
+          return NextResponse.json({ ok: false, error: "Payment not found." }, { status: 404 });
+        }
+        const paymentData = paymentSnap.data() || {};
+        if (!isSuperAdmin && docTenantId(paymentData) !== tenantId) {
+          return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        }
+        await paymentRef.set(
           {
             status: "succeeded",
             paidAt: serverTimestamp(),
@@ -180,7 +197,7 @@ export async function POST(req: Request) {
           await maybeAutoCreateProjectFromInvoice({
             invoiceId: id,
             invoiceData: { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus },
-            tenantId: String(invoice.tenantId || auth.user.tenantId || ""),
+            tenantId: String(invoice.tenantId || tenantId || ""),
             actor: { uid: auth.user.uid, name: actorName },
           });
         } catch (autoCreateError) {
