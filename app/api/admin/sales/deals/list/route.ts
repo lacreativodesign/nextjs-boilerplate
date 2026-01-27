@@ -17,6 +17,9 @@ type DealDoc = {
   createdAt?: any;
   updatedAt?: any;
   isDeleted?: boolean;
+  paymentStatus?: string | null;
+  projectId?: string | null;
+  projectCreated?: boolean;
 };
 
 export async function GET() {
@@ -43,6 +46,9 @@ export async function GET() {
         expectedCloseDate: toISO(data.expectedCloseDate),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
+        paymentStatus: data.paymentStatus || null,
+        projectId: data.projectId || null,
+        projectCreated: Boolean(data.projectCreated),
         isDeleted: Boolean(data.isDeleted),
       };
     });
