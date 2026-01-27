@@ -97,7 +97,11 @@ export async function POST(req: Request) {
     }
 
     if (approval.status !== "pending") {
-      return NextResponse.json({ ok: false, error: "Approval is not pending." }, { status: 400 });
+      return NextResponse.json({ ok: true, status: "already_processed" });
+    }
+
+    if (approval.requestedBy?.uid && approval.requestedBy.uid === me.uid) {
+      return NextResponse.json({ ok: false, error: "Requester cannot reject their own request." }, { status: 403 });
     }
 
     if (!canReject(type, me.role)) {
@@ -130,7 +134,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Approval missing change request id." }, { status: 400 });
     }
 
+    let alreadyProcessed = false;
     await adminDb.runTransaction(async (tx) => {
+      const approvalTxSnap = await tx.get(approvalRef);
+      if (!approvalTxSnap.exists) {
+        throw new Error("Approval not found");
+      }
+      const approvalTxData = approvalTxSnap.data() || {};
+      if (String(approvalTxData.status || "") !== "pending") {
+        alreadyProcessed = true;
+        return;
+      }
+
       tx.set(
         approvalRef,
         {
@@ -226,6 +241,10 @@ export async function POST(req: Request) {
         );
       }
     });
+
+    if (alreadyProcessed) {
+      return NextResponse.json({ ok: true, status: "already_processed" });
+    }
 
     const before =
       type === "discount"

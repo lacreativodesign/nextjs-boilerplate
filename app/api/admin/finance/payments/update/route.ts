@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   computeBalanceDue,
   computeInvoiceStatus,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/finance/status";
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 import { createNotification, getUserIdsByRoles } from "../../../../../../lib/notifications";
+import { normalizeRole } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,12 @@ export async function POST(req: Request) {
     const invoiceId = String(payment.invoiceId || "");
     const clientId = String(payment.clientId || "");
     const clientName = String(payment.clientName || "");
+    const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+
+    if (!isSuperAdmin && docTenantId(payment) !== tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
 
     if (action === "mark_paid") {
       try {
@@ -86,6 +94,9 @@ export async function POST(req: Request) {
           const invoiceStatus = normalizeInvoiceStatus(invoice.status);
           invoiceStatusBefore = invoiceStatus;
           invoiceTenantId = String(invoice.tenantId || auth.user.tenantId || "");
+          if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
+            throw new Error("Forbidden");
+          }
           if (invoiceStatus === "void") {
             throw new Error("Void invoices cannot accept payments.");
           }
@@ -116,8 +127,12 @@ export async function POST(req: Request) {
             { merge: true }
           );
         });
-      } catch (updateError) {
+      } catch (updateError: any) {
         console.error("finance/payments update transaction error:", updateError);
+        const message = String(updateError?.message || "");
+        if (message.toLowerCase().includes("forbidden")) {
+          return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        }
         return NextResponse.json({ ok: false, error: "Unable to update payment." }, { status: 500 });
       }
 
