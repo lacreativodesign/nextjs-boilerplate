@@ -60,7 +60,7 @@ export default function FinanceInvoicesPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/invoices/list", { cache: "no-store" });
+      const res = await fetch("/api/finance/invoices/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load invoices.");
@@ -80,7 +80,7 @@ export default function FinanceInvoicesPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -175,10 +175,11 @@ export default function FinanceInvoicesPage() {
     if (!canAdmin) return;
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/admin/finance/invoices/update", {
+      const res = await fetch("/api/finance/invoices/mark-paid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+        credentials: "include",
+        body: JSON.stringify({ id: invoice.id, method: "manual" }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -196,10 +197,11 @@ export default function FinanceInvoicesPage() {
   const handleSendInvoice = async (invoice: InvoiceRecord) => {
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/admin/finance/invoices/update", {
+      const res = await fetch("/api/finance/invoices/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: invoice.id, action: "send" }),
+        credentials: "include",
+        body: JSON.stringify({ id: invoice.id }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -377,7 +379,7 @@ export default function FinanceInvoicesPage() {
                           >
                             View
                           </button>
-                          {canAdmin && invoice.status !== "Paid" && (
+                          {canAdmin && invoice.status === "Sent" && (
                             <button
                               type="button"
                               className="btn"
@@ -603,7 +605,7 @@ function InvoiceDrawer({
           <button
             className="btn"
             onClick={() => onSend(invoice)}
-            disabled={actionLoading}
+            disabled={actionLoading || invoice.status !== "Draft"}
             style={{ borderRadius: 999 }}
           >
             {actionLoading ? "Sending" : "Send Invoice"}
@@ -611,7 +613,7 @@ function InvoiceDrawer({
           <button className="btn ghost" style={{ borderRadius: 999 }} title="PDF download coming soon" disabled>
             Download PDF
           </button>
-          {canAdmin && invoice.status !== "Paid" && (
+          {canAdmin && invoice.status === "Sent" && (
             <button
               className="btn"
               onClick={() => onMarkPaid(invoice)}
@@ -689,9 +691,10 @@ function CreateInvoiceDrawer({
     try {
       setError(null);
       setSubmitting(true);
-      const res = await fetch("/api/admin/finance/invoices/create", {
+      const res = await fetch("/api/finance/invoices/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           clientId,
           clientName,

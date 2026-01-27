@@ -1,6 +1,15 @@
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Overdue" | "Void";
 export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
-export type PaymentMethod = "Card" | "Bank" | "Cash" | "PayPal" | "Wise" | "Other";
+export type PaymentMethod =
+  | "manual"
+  | "bank"
+  | "stripe_future"
+  | "Card"
+  | "Bank"
+  | "Cash"
+  | "PayPal"
+  | "Wise"
+  | "Other";
 export type PayrollStatus = "Draft" | "Approved" | "Paid";
 export type ExpenseStatus = "Recorded" | "Paid";
 
@@ -13,9 +22,13 @@ export type InvoiceLineItem = {
 export type InvoiceRecord = {
   id: string;
   orderId: string;
+  invoiceNumber?: string;
   clientId: string;
   clientName: string;
   currency: "USD";
+  amount?: number;
+  tax?: number | null;
+  totalAmount?: number;
   amountSubtotalUsd: number;
   amountTaxUsd: number;
   amountTotalUsd: number;
@@ -28,6 +41,7 @@ export type InvoiceRecord = {
   createdAt: string | null;
   updatedAt: string | null;
   isDeleted: boolean;
+  tenantId?: string;
 };
 
 export type PaymentRecord = {
@@ -37,14 +51,17 @@ export type PaymentRecord = {
   invoiceId: string | null;
   orderId?: string | null;
   currency: "USD";
+  amount?: number;
   amountUsd: number;
   method: PaymentMethod;
   status: PaymentStatus;
   notes?: string | null;
+  reference?: string | null;
   paidAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   isDeleted: boolean;
+  tenantId?: string;
 };
 
 export type PayrollRecord = {
@@ -69,13 +86,17 @@ export type ExpenseRecord = {
   category: string;
   vendor: string;
   currency: "PKR";
+  amount?: number;
   amountPkr: number;
   expenseDate: string | null;
+  incurredAt?: string | null;
   status: ExpenseStatus;
   notes: string | null;
+  note?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   isDeleted: boolean;
+  tenantId?: string;
 };
 
 export type FinanceEvent = {

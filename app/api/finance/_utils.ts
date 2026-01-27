@@ -1,4 +1,5 @@
 import { getCurrentUser, isAdminRole } from "../admin/_utils";
+import { normalizeTenantId } from "@/lib/tenant";
 import {
   createFinanceEvent,
   parseNumber,
@@ -28,7 +29,7 @@ export async function requireFinance() {
     }
     return { ok: false as const, status: 500, error: "Unable to validate plan access." };
   }
-  return { ok: true as const, user: me };
+  return { ok: true as const, user: me, tenantId: normalizeTenantId(me.tenantId) };
 }
 
 export {

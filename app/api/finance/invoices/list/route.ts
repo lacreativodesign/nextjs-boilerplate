@@ -6,10 +6,15 @@ import { toInvoiceStatusLabel } from "@/lib/finance/status";
 export const dynamic = "force-dynamic";
 
 type InvoiceDoc = {
+  tenantId?: string;
   orderId?: string;
   clientId?: string;
   clientName?: string;
   currency?: string;
+  invoiceNumber?: string;
+  amount?: number;
+  tax?: number;
+  totalAmount?: number;
   amountSubtotalUsd?: number;
   amountTaxUsd?: number;
   amountTotalUsd?: number;
@@ -31,19 +36,31 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb
+      .collection("invoices")
+      .where("tenantId", "==", auth.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
 
     const invoices = snap.docs.map((doc) => {
       const data = (doc.data() || {}) as InvoiceDoc;
+      const amountSubtotalUsd = Number(data.amountSubtotalUsd ?? data.amount ?? 0);
+      const amountTaxUsd = Number(data.amountTaxUsd ?? data.tax ?? 0);
+      const amountTotalUsd = Number(data.amountTotalUsd ?? data.totalAmount ?? amountSubtotalUsd + amountTaxUsd);
       return {
         id: doc.id,
-        orderId: data.orderId || "",
+        orderId: data.orderId || data.invoiceNumber || "",
+        invoiceNumber: data.invoiceNumber || data.orderId || "",
         clientId: data.clientId || "",
         clientName: data.clientName || "",
         currency: data.currency || "USD",
-        amountSubtotalUsd: Number(data.amountSubtotalUsd || 0),
-        amountTaxUsd: Number(data.amountTaxUsd || 0),
-        amountTotalUsd: Number(data.amountTotalUsd || 0),
+        amountSubtotalUsd,
+        amountTaxUsd,
+        amountTotalUsd,
+        amount: Number(data.amount ?? amountSubtotalUsd),
+        tax: Number(data.tax ?? amountTaxUsd),
+        totalAmount: Number(data.totalAmount ?? amountTotalUsd),
         status: toInvoiceStatusLabel(data.status),
         dueDate: toISO(data.dueDate),
         issuedAt: toISO(data.issuedAt),
@@ -53,6 +70,7 @@ export async function GET() {
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
         isDeleted: Boolean(data.isDeleted),
+        tenantId: data.tenantId || auth.tenantId,
       };
     });
 

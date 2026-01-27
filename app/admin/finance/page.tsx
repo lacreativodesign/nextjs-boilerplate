@@ -40,7 +40,7 @@ export default function FinanceOverviewPage() {
   const loadOverview = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/finance/overview", { cache: "no-store" });
+      const res = await fetch("/api/finance/overview", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load finance overview.");

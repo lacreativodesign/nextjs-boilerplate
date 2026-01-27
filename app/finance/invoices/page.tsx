@@ -167,11 +167,11 @@ export default function FinanceInvoicesPage() {
     if (!canUpdate) return;
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/finance/invoices/update", {
+      const res = await fetch("/api/finance/invoices/mark-paid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+        body: JSON.stringify({ id: invoice.id, method: "manual" }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -337,7 +337,7 @@ export default function FinanceInvoicesPage() {
                           >
                             View
                           </button>
-                          {canUpdate && invoice.status !== "Paid" && (
+                          {canUpdate && invoice.status === "Sent" && (
                             <button
                               type="button"
                               className="btn"
@@ -540,7 +540,7 @@ function InvoiceDrawer({
 
         <div style={{ height: 18 }} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {canUpdate && invoice.status !== "Paid" && (
+          {canUpdate && invoice.status === "Sent" && (
             <button className="btn" onClick={() => onMarkPaid(invoice)} disabled={actionLoading} style={{ borderRadius: 999 }}>
               {actionLoading ? "Updating" : "Mark Paid"}
             </button>

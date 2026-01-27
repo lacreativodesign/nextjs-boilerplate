@@ -24,15 +24,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb
+      .collection("payments")
+      .where("tenantId", "==", auth.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
       if (normalizePaymentStatus(data.status) !== "succeeded") return;
-      const key = monthKey(data.paidAt || data.createdAt);
+      const key = monthKey(data.receivedAt || data.paidAt || data.createdAt);
       if (!key) return;
-      totals.set(key, (totals.get(key) || 0) + Number(data.amountUsd || 0));
+      totals.set(key, (totals.get(key) || 0) + Number(data.amount ?? data.amountUsd ?? 0));
     });
 
     const rows = [["Month", "Payments USD"]];

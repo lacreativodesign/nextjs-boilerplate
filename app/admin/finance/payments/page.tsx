@@ -20,8 +20,10 @@ const STATUS_OPTIONS = [
 
 const METHOD_OPTIONS = [
   "",
-  "Card",
+  "Manual",
   "Bank",
+  "Stripe (Future)",
+  "Card",
   "Cash",
   "PayPal",
   "Wise",
@@ -55,13 +57,12 @@ export default function FinancePaymentsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadPayments = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/payments/list", { cache: "no-store" });
+      const res = await fetch("/api/finance/payments/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payments.");
@@ -78,7 +79,7 @@ export default function FinancePaymentsPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -162,27 +163,6 @@ export default function FinancePaymentsPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
-
-  const handleAction = async (payment: PaymentRecord, action: "mark_paid" | "refund") => {
-    try {
-      setActionLoading(payment.id);
-      const res = await fetch("/api/admin/finance/payments/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: payment.id, action }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update payment.");
-      }
-      await loadPayments();
-    } catch (err) {
-      console.error("Payment update error", err);
-      setError({ title: "Unable to update payment", message: "Please try again." });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   return (
     <div>
@@ -352,15 +332,15 @@ export default function FinancePaymentsPage() {
                           >
                             View
                           </button>
-                          {canAdmin && payment.status === "Pending" && (
+                          {canAdmin && (
                             <button
                               type="button"
-                              className="btn"
-                              onClick={() => handleAction(payment, "mark_paid")}
-                              disabled={actionLoading === payment.id}
+                              className="btn ghost"
+                              disabled
                               style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                              title="Payments are recorded from invoice actions."
                             >
-                              {actionLoading === payment.id ? "Updating" : "Mark Paid"}
+                              Actions Locked
                             </button>
                           )}
                         </div>
@@ -375,14 +355,7 @@ export default function FinancePaymentsPage() {
       </div>
 
       {drawerOpen && selectedPayment && (
-        <PaymentDrawer
-          payment={selectedPayment}
-          isDark={isDark}
-          canAdmin={canAdmin}
-          onClose={closeDrawer}
-          onAction={handleAction}
-          actionLoading={actionLoading === selectedPayment.id}
-        />
+        <PaymentDrawer payment={selectedPayment} isDark={isDark} canAdmin={canAdmin} onClose={closeDrawer} />
       )}
     </div>
   );
@@ -457,15 +430,11 @@ function PaymentDrawer({
   isDark,
   canAdmin,
   onClose,
-  onAction,
-  actionLoading,
 }: {
   payment: PaymentRecord;
   isDark: boolean;
   canAdmin: boolean;
   onClose: () => void;
-  onAction: (payment: PaymentRecord, action: "mark_paid" | "refund") => void;
-  actionLoading: boolean;
 }) {
   return (
     <div
@@ -518,24 +487,11 @@ function PaymentDrawer({
 
         <div style={{ height: 18 }} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {canAdmin && payment.status === "Pending" && (
-            <button
-              className="btn"
-              onClick={() => onAction(payment, "mark_paid")}
-              disabled={actionLoading}
-              style={{ borderRadius: 999 }}
-            >
-              {actionLoading ? "Updating" : "Mark Paid"}
+          {canAdmin && (
+            <button className="btn ghost" disabled style={{ borderRadius: 999 }} title="Payments are recorded from invoice actions.">
+              Actions Locked
             </button>
           )}
-          <button
-            className="btn ghost"
-            onClick={() => onAction(payment, "refund")}
-            disabled={actionLoading}
-            style={{ borderRadius: 999 }}
-          >
-            Refund (stub)
-          </button>
         </div>
       </div>
     </div>

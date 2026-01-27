@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseNumber, parseString, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { logEvent } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +15,16 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const category = parseString(body?.category).trim();
-    const vendor = parseString(body?.vendor).trim();
-    const amountPkr = parseNumber(body?.amountPkr, 0);
-    const expenseDate = parseString(body?.expenseDate).trim();
-    const status = parseString(body?.status || "Recorded").trim();
-    const notes = parseString(body?.notes).trim();
+    const amountPkr = parseNumber(body?.amountPkr ?? body?.amount, 0);
+    const incurredAt = parseString(body?.incurredAt ?? body?.expenseDate).trim();
+    const note = parseString(body?.note ?? body?.notes).trim();
 
-    if (!category || !vendor) {
-      return NextResponse.json({ ok: false, error: "Category and vendor are required." }, { status: 400 });
+    const allowedCategories = new Set(["salary", "tools", "operations", "marketing", "other"]);
+    if (!category) {
+      return NextResponse.json({ ok: false, error: "Category is required." }, { status: 400 });
+    }
+    if (!allowedCategories.has(category)) {
+      return NextResponse.json({ ok: false, error: "Invalid expense category." }, { status: 400 });
     }
 
     if (!amountPkr) {
@@ -29,18 +32,23 @@ export async function POST(req: Request) {
     }
 
     const ref = adminDb.collection("expenses").doc();
-    await ref.set({
+    const payload = {
+      id: ref.id,
+      tenantId: auth.tenantId,
       category,
-      vendor,
-      currency: "PKR",
+      amount: amountPkr,
       amountPkr,
-      expenseDate: expenseDate ? new Date(expenseDate) : null,
-      status: status || "Recorded",
-      notes: notes || null,
+      currency: "PKR",
+      note: note || null,
+      notes: note || null,
+      incurredAt: incurredAt ? new Date(incurredAt) : null,
+      expenseDate: incurredAt ? new Date(incurredAt) : null,
+      createdBy: { uid: auth.user.uid, role: auth.user.role },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
-    });
+    };
+    await ref.set(payload);
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
     const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
@@ -49,11 +57,13 @@ export async function POST(req: Request) {
         createNotification({
           toUserId: uid,
           title: "Expense recorded",
-          body: `${category} expense recorded for ${vendor}.`,
+          body: `${category} expense recorded.`,
           type: "info",
           entityId: ref.id,
           deepLink: "/finance/reports",
           createdBy: { uid: auth.user.uid, name: actorName },
+          tenantId: auth.tenantId,
+          roleTarget: "finance",
         })
       )
     );
@@ -61,11 +71,28 @@ export async function POST(req: Request) {
     await createFinanceEvent({
       type: "finance.expense_recorded",
       title: "Expense recorded",
-      description: `${category} expense recorded for ${vendor}.`,
+      description: `${category} expense recorded.`,
       entityType: "expense",
       entityId: ref.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
+      metadata: { tenantId: auth.tenantId },
+    });
+
+    const auditAfter = {
+      ...payload,
+      createdAt: new Date().toISOString(),
+    };
+
+    await logEvent({
+      tenantId: auth.tenantId,
+      type: "finance.expense_added",
+      title: "Expense added",
+      description: `${category} expense added.`,
+      entityType: "expense",
+      entityId: ref.id,
+      actor: { uid: auth.user.uid, name: actorName },
+      metadata: { before: null, after: auditAfter },
     });
 
     return NextResponse.json({ ok: true, id: ref.id });

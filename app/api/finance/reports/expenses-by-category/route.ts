@@ -15,13 +15,18 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("expenses").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb
+      .collection("expenses")
+      .where("tenantId", "==", auth.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const category = String(data.category || "Other");
-      totals.set(category, (totals.get(category) || 0) + Number(data.amountPkr || 0));
+      totals.set(category, (totals.get(category) || 0) + Number(data.amountPkr ?? data.amount ?? 0));
     });
 
     const rows = [["Category", "Expenses PKR"]];

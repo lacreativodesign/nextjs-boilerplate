@@ -10,10 +10,12 @@ const STATUS_OPTIONS = ["", "Pending", "Paid", "Failed", "Refunded"].map((status
   value: status,
 }));
 
-const METHOD_OPTIONS = ["", "Card", "Bank", "Cash", "PayPal", "Wise", "Other"].map((method) => ({
-  label: method || "All Methods",
-  value: method,
-}));
+const METHOD_OPTIONS = ["", "Manual", "Bank", "Stripe (Future)", "Card", "Cash", "PayPal", "Wise", "Other"].map(
+  (method) => ({
+    label: method || "All Methods",
+    value: method,
+  })
+);
 
 type ClientOption = { id: string; companyName: string };
 
@@ -42,7 +44,6 @@ export default function FinancePaymentsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadPayments = useCallback(async () => {
     try {
@@ -150,49 +151,6 @@ export default function FinancePaymentsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
-  const handleAction = async (payment: PaymentRecord, action: "mark_paid") => {
-    try {
-      setActionLoading(payment.id);
-      const res = await fetch("/api/finance/payments/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id: payment.id, action }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update payment.");
-      }
-      await loadPayments();
-    } catch (err) {
-      console.error("Payment update error", err);
-      setError({ title: "Unable to update payment", message: "Please try again." });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleUpdateNotes = async (payment: PaymentRecord, notes: string) => {
-    try {
-      setActionLoading(`notes-${payment.id}`);
-      const res = await fetch("/api/finance/payments/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id: payment.id, action: "update_notes", notes }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update notes.");
-      }
-      await loadPayments();
-    } catch (err) {
-      console.error("Payment notes update error", err);
-      setError({ title: "Unable to update notes", message: "Please try again." });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   return (
     <div>
@@ -344,15 +302,15 @@ export default function FinancePaymentsPage() {
                           >
                             View
                           </button>
-                          {canUpdate && payment.status !== "Paid" && (
+                          {canUpdate && (
                             <button
                               type="button"
-                              className="btn"
-                              onClick={() => handleAction(payment, "mark_paid")}
-                              disabled={actionLoading === payment.id}
+                              className="btn ghost"
+                              disabled
                               style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                              title="Payments are recorded from invoice actions."
                             >
-                              {actionLoading === payment.id ? "Updating" : "Mark Paid"}
+                              Actions Locked
                             </button>
                           )}
                         </div>
@@ -367,15 +325,7 @@ export default function FinancePaymentsPage() {
       </div>
 
       {drawerOpen && selectedPayment && (
-        <PaymentDrawer
-          payment={selectedPayment}
-          isDark={isDark}
-          canUpdate={canUpdate}
-          onClose={closeDrawer}
-          onMarkPaid={handleAction}
-          onUpdateNotes={handleUpdateNotes}
-          actionLoading={actionLoading}
-        />
+        <PaymentDrawer payment={selectedPayment} isDark={isDark} canUpdate={canUpdate} onClose={closeDrawer} />
       )}
     </div>
   );
@@ -450,21 +400,12 @@ function PaymentDrawer({
   isDark,
   canUpdate,
   onClose,
-  onMarkPaid,
-  onUpdateNotes,
-  actionLoading,
 }: {
   payment: PaymentRecord;
   isDark: boolean;
   canUpdate: boolean;
   onClose: () => void;
-  onMarkPaid: (payment: PaymentRecord, action: "mark_paid") => void;
-  onUpdateNotes: (payment: PaymentRecord, notes: string) => void;
-  actionLoading: string | null;
 }) {
-  const [notes, setNotes] = useState(payment.notes || "");
-  const savingNotes = actionLoading === `notes-${payment.id}`;
-
   return (
     <div
       style={{
@@ -514,42 +455,26 @@ function PaymentDrawer({
           </div>
         </div>
 
-        <div style={{ height: 16 }} />
+        {payment.notes && (
+          <>
+            <div style={{ height: 16 }} />
+            <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Payment Notes</div>
+              <div style={{ fontSize: 13, opacity: 0.8 }}>{payment.notes}</div>
+            </div>
+          </>
+        )}
 
-        <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Payment Notes</div>
-          <textarea
-            className="input"
-            rows={4}
-            placeholder="Add payment notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-            <button
-              className="btn"
-              onClick={() => onUpdateNotes(payment, notes)}
-              disabled={!canUpdate || savingNotes}
-              style={{ borderRadius: 999 }}
-            >
-              {savingNotes ? "Saving" : "Save Notes"}
-            </button>
-          </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {canUpdate && payment.status !== "Paid" && (
-            <button
-              className="btn"
-              onClick={() => onMarkPaid(payment, "mark_paid")}
-              disabled={actionLoading === payment.id}
-              style={{ borderRadius: 999 }}
-            >
-              {actionLoading === payment.id ? "Updating" : "Mark Paid"}
-            </button>
-          )}
-        </div>
+        {canUpdate && (
+          <>
+            <div style={{ height: 18 }} />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn ghost" disabled title="Payments are recorded from invoice actions.">
+                Actions Locked
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

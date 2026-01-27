@@ -16,14 +16,19 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb
+      .collection("invoices")
+      .where("tenantId", "==", auth.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500)
+      .get();
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {
       const data = doc.data() || {};
       if (normalizeInvoiceStatus(data.status) !== "paid") return;
       const client = String(data.clientName || "Unknown");
-      totals.set(client, (totals.get(client) || 0) + Number(data.amountTotalUsd || 0));
+      totals.set(client, (totals.get(client) || 0) + Number(data.totalAmount ?? data.amountTotalUsd ?? 0));
     });
 
     const rows = [["Client", "Revenue USD"]];
