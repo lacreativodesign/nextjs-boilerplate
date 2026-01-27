@@ -5,6 +5,7 @@ import { logEvent } from "@/lib/audit";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
+import { requireApprovalsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +100,10 @@ export async function POST(req: Request) {
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
     const entityCollection = collectionForEntity(entityType);
     if (!entityCollection) {
       return NextResponse.json({ ok: false, error: "Unsupported entity type." }, { status: 400 });

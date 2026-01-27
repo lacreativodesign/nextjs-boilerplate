@@ -6,6 +6,7 @@ import { requireSuperAdmin } from "../_utils";
 import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND } from "@/lib/tenant/constants";
 import { writeAuditLog } from "@/lib/tenant/audit";
 import { queueEmailEvent } from "@/lib/emailEvents";
+import { normalizePlan, resolvePlanModules, resolveTenantModules } from "@/app/lib/plan-enforcement";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
     const snap = await adminDb.collection("tenants").orderBy("createdAt", "desc").get();
     const tenants = snap.docs.map((doc) => {
       const data = doc.data() || {};
+      const plan = normalizePlan(data.plan);
       return {
         id: doc.id,
         name: data.name || "",
@@ -30,6 +32,12 @@ export async function GET(req: NextRequest) {
         status: data.status || "active",
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
+        plan,
+        modules: resolveTenantModules({
+          plan,
+          modules: data.modules,
+          legacyModulesEnabled: data.modulesEnabled,
+        }),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -51,6 +59,8 @@ export async function POST(req: NextRequest) {
     const slugInput = String(body?.slug || "").trim();
     const createAdminEmail = String(body?.createAdminEmail || "").trim().toLowerCase();
     const modulesEnabled = body?.modulesEnabled || DEFAULT_MODULES;
+    const plan = normalizePlan(body?.plan);
+    const modules = resolvePlanModules(plan, body?.modules);
 
     if (!name) {
       return NextResponse.json({ ok: false, error: "Tenant name is required" }, { status: 400 });
@@ -72,6 +82,10 @@ export async function POST(req: NextRequest) {
         ...DEFAULT_MODULES,
         ...modulesEnabled,
       },
+      plan,
+      modules,
+      planSetBy: { uid: user.uid, role: "super_admin" },
+      planUpdatedAt: now,
       createdAt: now,
       updatedAt: now,
       updatedBy: user.uid,

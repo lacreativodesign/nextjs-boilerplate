@@ -12,6 +12,10 @@ type Tenant = {
   status: "active" | "suspended";
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   modulesEnabled: Record<string, boolean>;
+  plan?: "starter" | "pro" | "enterprise";
+  modules?: Record<string, boolean>;
+  planSetBy?: { uid: string; role: "super_admin" } | null;
+  planUpdatedAt?: string | null;
 };
 
 const moduleGroups = {
@@ -30,6 +34,16 @@ const moduleGroups = {
   "Management Add-ons": ["salesManager", "headOfProjectManagement", "headOfProduction"],
 };
 
+const planModules = [
+  { key: "crm", label: "CRM" },
+  { key: "projects", label: "Projects" },
+  { key: "approvals", label: "Approvals" },
+  { key: "notifications", label: "Notifications" },
+  { key: "finance", label: "Finance" },
+  { key: "hr", label: "HR" },
+  { key: "reports", label: "Reports" },
+];
+
 export default function TenantDetailPage() {
   const params = useParams();
   const tenantId = String(params?.tenantId || "");
@@ -39,6 +53,9 @@ export default function TenantDetailPage() {
   const [savingBrand, setSavingBrand] = useState(false);
   const [savingModules, setSavingModules] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [savingPlanModules, setSavingPlanModules] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"starter" | "pro" | "enterprise">("pro");
 
   const loadTenant = async () => {
     const res = await fetch(`/api/super_admin/tenants/${tenantId}`, {
@@ -49,6 +66,9 @@ export default function TenantDetailPage() {
     if (json?.ok) {
       setTenant(json.tenant);
       setBrandName(json.tenant?.brand?.name || json.tenant?.name || "");
+      if (json.tenant?.plan) {
+        setSelectedPlan(json.tenant.plan);
+      }
     }
   };
 
@@ -59,6 +79,7 @@ export default function TenantDetailPage() {
   }, [tenantId]);
 
   const moduleState = useMemo(() => tenant?.modulesEnabled || {}, [tenant]);
+  const planModuleState = useMemo(() => tenant?.modules || {}, [tenant]);
 
   const updateBranding = async () => {
     if (!tenant) return;
@@ -118,6 +139,38 @@ export default function TenantDetailPage() {
       await loadTenant();
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const updatePlan = async (nextPlan: "starter" | "pro" | "enterprise") => {
+    if (!tenant) return;
+    setSavingPlan(true);
+    try {
+      await fetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ plan: nextPlan }),
+      });
+      await loadTenant();
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
+  const updatePlanModules = async (nextModules: Record<string, boolean>) => {
+    if (!tenant) return;
+    setSavingPlanModules(true);
+    try {
+      await fetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ modules: nextModules }),
+      });
+      await loadTenant();
+    } finally {
+      setSavingPlanModules(false);
     }
   };
 
@@ -213,8 +266,8 @@ export default function TenantDetailPage() {
 
       <div className="card p-6 space-y-4">
         <div>
-          <h3 className="section-title">Modules Enabled</h3>
-          <p className="section-subtitle">Toggle sellable modules instantly across tenant navigation.</p>
+          <h3 className="section-title">Legacy Modules Enabled</h3>
+          <p className="section-subtitle">Toggle navigation modules for legacy dashboards.</p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -247,6 +300,65 @@ export default function TenantDetailPage() {
             disabled={savingModules}
           >
             {savingModules ? "Saving..." : "Save Modules"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <div>
+          <h3 className="section-title">Plan & SaaS Modules</h3>
+          <p className="section-subtitle">Control subscription tier defaults and override per-module access.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Plan</label>
+            <select
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
+              value={selectedPlan}
+              onChange={(e) => setSelectedPlan(e.target.value as "starter" | "pro" | "enterprise")}
+              disabled={savingPlan}
+            >
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+          <button
+            className="mt-6 rounded-xl bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => updatePlan(selectedPlan)}
+            disabled={savingPlan}
+          >
+            {savingPlan ? "Saving..." : "Update Plan"}
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--border-subtle)] p-4">
+          <div className="text-sm font-semibold mb-3">Module Overrides</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {planModules.map((module) => (
+              <label key={module.key} className="flex items-center justify-between text-sm">
+                <span>{module.label}</span>
+                <input
+                  type="checkbox"
+                  checked={planModuleState[module.key] !== false}
+                  onChange={(e) => {
+                    const nextModules = { ...planModuleState, [module.key]: e.target.checked };
+                    setTenant((prev) => (prev ? { ...prev, modules: nextModules } : prev));
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            className="rounded-xl bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => updatePlanModules(planModuleState)}
+            disabled={savingPlanModules}
+          >
+            {savingPlanModules ? "Saving..." : "Save Plan Modules"}
           </button>
         </div>
       </div>

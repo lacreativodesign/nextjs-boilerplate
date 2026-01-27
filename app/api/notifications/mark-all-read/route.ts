@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
+import { requireNotificationsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,10 @@ export async function POST() {
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
+    const moduleAccess = await requireNotificationsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
     const baseQueries = [
       adminDb.collection("notifications").where("recipientUid", "==", me.uid).where("isRead", "==", false),
       adminDb.collection("notifications").where("toUserId", "==", me.uid).where("isRead", "==", false),

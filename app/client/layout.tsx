@@ -39,8 +39,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
+  const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const notificationsEnabled = planModules.notifications !== false;
 
   useEffect(() => {
     if (tenantLoading) return;

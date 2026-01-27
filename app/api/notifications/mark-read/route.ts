@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
+import { requireNotificationsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
     const data = snap.data() || {};
     const ownerId = String(data.recipientUid || data.toUserId || data.toUid || data.userId || "");
     const tenantId = normalizeTenantId(me.tenantId);
+    const moduleAccess = await requireNotificationsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
     if (!ownerId || ownerId !== me.uid || docTenantId(data) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

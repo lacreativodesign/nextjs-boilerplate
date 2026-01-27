@@ -61,7 +61,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const current = normalize(realPath);
 
   const moduleMap = useMemo(() => tenantContext?.tenant?.modulesEnabled || {}, [tenantContext?.tenant?.modulesEnabled]);
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const planModules = tenantContext?.tenant?.modules || {};
+  const notificationsEnabled = planModules.notifications !== false;
+
+  const isPlanDisabled = (path: string) => {
+    if (path.startsWith("/admin/finance")) return planModules.finance === false;
+    if (path.startsWith("/admin/hr")) return planModules.hr === false;
+    if (path.startsWith("/admin/reports")) return planModules.reports === false;
+    return false;
+  };
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -71,14 +79,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     const activeItem = navItems.find((item) => current.startsWith(item.path));
-    if (activeItem && moduleMap[activeItem.moduleKey as keyof typeof moduleMap] === false) {
+    if (activeItem && (isPlanDisabled(activeItem.path) || moduleMap[activeItem.moduleKey as keyof typeof moduleMap] === false)) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, tenantError, moduleMap, current, router]);
+  }, [tenantLoading, tenantContext, tenantError, moduleMap, current, router, planModules]);
 
-  const filteredNavItems = useMemo(
-    () => navItems.filter((item) => moduleMap[item.moduleKey as keyof typeof moduleMap] !== false),
-    [moduleMap]
+  const navEntries = useMemo(
+    () =>
+      navItems.map((item) => {
+        const legacyDisabled = moduleMap[item.moduleKey as keyof typeof moduleMap] === false;
+        const planDisabled = isPlanDisabled(item.path);
+        const visible = !legacyDisabled || planDisabled;
+        return {
+          ...item,
+          visible,
+          disabled: planDisabled,
+        };
+      }),
+    [moduleMap, planModules]
   );
 
   const handleLogout = async () => {
@@ -178,7 +196,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* NAVIGATION */}
         <nav className="flex flex-col gap-1 px-2">
-          {filteredNavItems.map((item) => {
+          {navEntries
+            .filter((item) => item.visible)
+            .map((item) => {
             const Icon = item.icon;
 
             const itemPath = normalize(item.path);
@@ -189,18 +209,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               : current === itemPath || current.startsWith(itemPath + "/");
 
             return (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={clsx(
-                  "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                  active && "active"
-                )}
-              >
-                <Icon size={18} />
+              item.disabled ? (
+                <span
+                  key={item.path}
+                  title="Upgrade Required"
+                  className={clsx(
+                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed"
+                  )}
+                >
+                  <Icon size={18} />
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </span>
+              ) : (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={clsx(
+                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                    active && "active"
+                  )}
+                >
+                  <Icon size={18} />
 
-                {!collapsed && <span className="font-medium">{item.label}</span>}
-              </Link>
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </Link>
+              )
             );
           })}
         </nav>

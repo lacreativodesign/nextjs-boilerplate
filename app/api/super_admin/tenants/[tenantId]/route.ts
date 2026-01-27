@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../../_utils";
 import { DEFAULT_MODULES } from "@/lib/tenant/constants";
 import { writeAuditLog } from "@/lib/tenant/audit";
+import { normalizePlan, resolveTenantModules } from "@/app/lib/plan-enforcement";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
       return NextResponse.json({ ok: false, error: "Tenant not found" }, { status: 404 });
     }
     const data = snap.data() || {};
+    const plan = normalizePlan(data.plan);
     return NextResponse.json({
       ok: true,
       tenant: {
@@ -26,6 +28,14 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
         status: data.status || "active",
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
+        plan,
+        modules: resolveTenantModules({
+          plan,
+          modules: data.modules,
+          legacyModulesEnabled: data.modulesEnabled,
+        }),
+        planSetBy: data.planSetBy || null,
+        planUpdatedAt: data.planUpdatedAt || null,
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       },

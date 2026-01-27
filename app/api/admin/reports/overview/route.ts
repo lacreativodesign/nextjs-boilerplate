@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { computeHealth, getMonthKey, getReportSettings, getStartOfMonth, requireAdmin, toISO, toMillis } from "../_utils";
+import { computeHealth, getMonthKey, getReportSettings, getStartOfMonth, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const ACTIVITY_PREFIXES = ["finance.", "project.", "production.", "hr."];
 
 export async function GET() {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

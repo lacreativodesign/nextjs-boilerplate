@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { computeHealth, getReportSettings, normalizeStage, requireAdmin, toISO } from "../_utils";
+import { computeHealth, getReportSettings, normalizeStage, requireReportsAccess, toISO } from "../_utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,7 +36,7 @@ function parseDate(value: string | null, endOfDay = false) {
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

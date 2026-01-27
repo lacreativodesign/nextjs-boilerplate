@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND, DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { PLAN_MODULES } from "@/app/config/plans";
 
 export type TenantModules = typeof DEFAULT_MODULES;
 
@@ -11,6 +12,10 @@ export type TenantRecord = {
   status: "active" | "suspended";
   brand: { name: string; logoUrl: string | null; locked: true };
   modulesEnabled: TenantModules;
+  plan?: "starter" | "pro" | "enterprise";
+  modules?: Record<string, boolean>;
+  planSetBy?: { uid: string; role: "super_admin" };
+  planUpdatedAt?: any;
   createdAt?: any;
   updatedAt?: any;
   updatedBy?: string | null;
@@ -83,6 +88,10 @@ export async function ensureDefaultTenant() {
     status: "active",
     brand: DEFAULT_TENANT_BRAND,
     modulesEnabled: DEFAULT_MODULES,
+    plan: "pro",
+    modules: PLAN_MODULES.pro,
+    planSetBy: { uid: "system", role: "super_admin" },
+    planUpdatedAt: now,
     createdAt: now,
     updatedAt: now,
     updatedBy: "system",

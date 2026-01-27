@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSalesManager, toISO } from "../../_utils";
+import { requireSalesReportsAccess, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ function toCSV(rows: string[][]) {
 
 export async function GET() {
   try {
-    const auth = await requireSalesManager();
+    const auth = await requireSalesReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

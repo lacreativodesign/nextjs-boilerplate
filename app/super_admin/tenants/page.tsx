@@ -9,6 +9,7 @@ type Tenant = {
   slug: string;
   status: string;
   modulesEnabled: Record<string, boolean>;
+  plan?: "starter" | "pro" | "enterprise";
 };
 
 const defaultModules = {
@@ -155,6 +156,7 @@ export default function SuperAdminTenantsPage() {
               <tr className="text-left text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Modules</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
@@ -177,6 +179,11 @@ export default function SuperAdminTenantsPage() {
                       {tenant.status}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className="inline-flex items-center rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+                      {tenant.plan || "pro"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
                     {Object.entries(tenant.modulesEnabled || {})
                       .filter(([, enabled]) => enabled)
@@ -196,7 +203,7 @@ export default function SuperAdminTenantsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-sm text-[var(--text-muted)]" colSpan={4}>
+                  <td className="px-4 py-6 text-sm text-[var(--text-muted)]" colSpan={5}>
                     No tenants found.
                   </td>
                 </tr>

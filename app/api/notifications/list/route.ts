@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
+import { requireNotificationsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -135,6 +136,10 @@ export async function GET(req: NextRequest) {
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") || 50);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
     const tenantId = normalizeTenantId(me.tenantId);
+    const moduleAccess = await requireNotificationsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
     const [notifications, unreadCount] = await Promise.all([
       getNotifications(me.uid, tenantId, filter, limit),
       getUnreadCount(me.uid, tenantId),

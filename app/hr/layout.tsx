@@ -49,8 +49,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
-  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const planModules = tenantContext?.tenant?.modules || {};
+  const notificationsEnabled = planModules.notifications !== false;
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -58,10 +58,10 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       router.replace("/suspended");
       return;
     }
-    if (moduleMap.humanResource === false) {
+    if (planModules.hr === false) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, moduleMap, router]);
+  }, [tenantLoading, tenantContext, planModules, router]);
 
   const handleLogout = async () => {
     if (!authInstance) return;

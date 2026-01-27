@@ -27,9 +27,9 @@ const navItems = [
   { label: "Pipeline", path: "/sales_manager/pipeline", icon: FolderKanban },
   { label: "Deals", path: "/sales_manager/deals", icon: Handshake },
   { label: "Targets", path: "/sales_manager/targets", icon: Target },
-  { label: "Approvals", path: "/sales_manager/approvals", icon: Target },
+  { label: "Approvals", path: "/sales_manager/approvals", icon: Target, planKey: "approvals" },
   { label: "Team", path: "/sales_manager/team", icon: UsersRound },
-  { label: "Reports", path: "/sales_manager/reports", icon: BarChart3 },
+  { label: "Reports", path: "/sales_manager/reports", icon: BarChart3, planKey: "reports" },
 ];
 
 export default function SalesManagerLayout({ children }: { children: React.ReactNode }) {
@@ -50,8 +50,11 @@ export default function SalesManagerLayout({ children }: { children: React.React
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath).replace("/sales_manager", "/sales_manager");
 
+  const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const notificationsEnabled = planModules.notifications !== false;
+
+  const isPlanDisabled = (planKey?: string) => (planKey ? planModules[planKey] === false : false);
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -59,10 +62,10 @@ export default function SalesManagerLayout({ children }: { children: React.React
       router.replace("/suspended");
       return;
     }
-    if (moduleMap.salesManager === false) {
+    if (moduleMap.salesManager === false || isPlanDisabled(navItems.find((item) => current.startsWith(item.path))?.planKey)) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, moduleMap, router]);
+  }, [tenantLoading, tenantContext, moduleMap, router, planModules, current]);
 
   const handleLogout = async () => {
     if (!authInstance) return;
@@ -158,8 +161,20 @@ export default function SalesManagerLayout({ children }: { children: React.React
               const itemPath = normalize(item.path);
               const isOverview = itemPath === "/sales_manager";
               const active = isOverview ? current === "/sales_manager" : current === itemPath || current.startsWith(itemPath + "/");
+              const disabled = isPlanDisabled(item.planKey);
 
-              return (
+              return disabled ? (
+                <span
+                  key={item.path}
+                  title="Upgrade Required"
+                  className={clsx(
+                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed"
+                  )}
+                >
+                  <Icon size={18} />
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </span>
+              ) : (
                 <Link
                   key={item.path}
                   href={item.path}

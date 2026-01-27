@@ -5,6 +5,7 @@ import { logEvent } from "@/lib/audit";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
+import { requireApprovalsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
     const type = approval.type as ApprovalType;
     const entityId = parseString(approval.entityId);
     const tenantId = normalizeTenantId(approval.tenantId || me.tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
 
     if (!type || !APPROVAL_TYPES.includes(type)) {
       return NextResponse.json({ ok: false, error: "Unsupported approval type." }, { status: 400 });
