@@ -2,6 +2,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
 import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
+import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,22 @@ export async function requireSalesManager() {
     return { ok: false as const, status: 403, error: "Forbidden" };
   }
   return { ok: true as const, user: me };
+}
+
+export async function requireSalesReportsAccess() {
+  const auth = await requireSalesManager();
+  if (!auth.ok) {
+    return auth;
+  }
+  try {
+    await requireModule(auth.user.tenantId, "reports");
+  } catch (err) {
+    if (isPlanAccessError(err)) {
+      return { ok: false as const, status: err.status, error: err.message };
+    }
+    return { ok: false as const, status: 500, error: "Unable to validate plan access." };
+  }
+  return auth;
 }
 
 export async function createSalesEvent({

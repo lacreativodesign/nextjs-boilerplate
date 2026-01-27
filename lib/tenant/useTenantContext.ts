@@ -9,6 +9,8 @@ export type TenantContext = {
   status: "active" | "suspended";
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   modulesEnabled: Record<string, boolean>;
+  plan?: "starter" | "pro" | "enterprise";
+  modules?: Record<string, boolean>;
 };
 
 export type TenantContextResponse = {

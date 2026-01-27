@@ -13,6 +13,7 @@ import {
   normalizeRole,
 } from "../../admin/_utils";
 import { notifyUsers } from "../../sales_manager/_utils";
+import { requireApprovalsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,10 @@ export async function POST(req: Request) {
     const role = normalizeRole(me.role);
     const tenantId = normalizeTenantId(me.tenantId);
     const actorName = parseString(me.name || me.fullName || me.displayName);
+    const moduleAccess = await requireApprovalsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
 
     if (kind === "discount") {
       if (!(isAdminOrSuper(role) || isSalesManager(role))) {

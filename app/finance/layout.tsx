@@ -38,8 +38,8 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
-  const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const planModules = tenantContext?.tenant?.modules || {};
+  const notificationsEnabled = planModules.notifications !== false;
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -47,10 +47,10 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
       router.replace("/suspended");
       return;
     }
-    if (moduleMap.finance === false) {
+    if (planModules.finance === false) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, moduleMap, router]);
+  }, [tenantLoading, tenantContext, planModules, router]);
 
   const navItems = [
     { label: "Overview", path: "/finance", icon: LayoutDashboard },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUserOrThrow, getTenantIdForRequestOrThrow } from "@/lib/tenant/server";
+import { getTenantPlanState } from "@/app/lib/plan-enforcement";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
     const tenantId = await getTenantIdForRequestOrThrow(req);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;
+    const planState = tenant ? await getTenantPlanState(tenantId) : null;
 
     return NextResponse.json({
       ok: true,
@@ -30,6 +32,8 @@ export async function GET(req: NextRequest) {
             status: tenant.status || "active",
             brand: tenant.brand || null,
             modulesEnabled: tenant.modulesEnabled || {},
+            plan: planState?.plan || "pro",
+            modules: planState?.modules || {},
           }
         : null,
     });

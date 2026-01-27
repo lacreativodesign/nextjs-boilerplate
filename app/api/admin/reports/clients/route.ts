@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getReportSettings, requireAdmin, toISO, toMillis } from "../_utils";
+import { getReportSettings, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
 
@@ -21,7 +21,7 @@ function parseDate(value: string | null, endOfDay = false) {
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

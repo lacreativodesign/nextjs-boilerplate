@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getMonthKey, getReportSettings, requireAdmin, toISO, toMillis } from "../_utils";
+import { getMonthKey, getReportSettings, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus, parseInvoiceStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ function parseDate(value: string | null, endOfDay = false) {
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

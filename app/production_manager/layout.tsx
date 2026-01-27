@@ -13,7 +13,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
   { label: "Overview", path: "/production_manager", icon: LayoutDashboard },
-  { label: "Approvals", path: "/production_manager/approvals", icon: ListChecks },
+  { label: "Approvals", path: "/production_manager/approvals", icon: ListChecks, planKey: "approvals" },
 ];
 
 export default function ProductionManagerLayout({ children }: { children: React.ReactNode }) {
@@ -34,8 +34,10 @@ export default function ProductionManagerLayout({ children }: { children: React.
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
+  const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = moduleMap.notifications !== false;
+  const notificationsEnabled = planModules.notifications !== false;
+  const approvalsEnabled = planModules.approvals !== false;
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -43,10 +45,10 @@ export default function ProductionManagerLayout({ children }: { children: React.
       router.replace("/suspended");
       return;
     }
-    if (moduleMap.production === false) {
+    if (moduleMap.production === false || (!approvalsEnabled && current.startsWith("/production_manager/approvals"))) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, moduleMap, router, tenantError]);
+  }, [tenantLoading, tenantContext, moduleMap, router, tenantError, approvalsEnabled, current]);
 
   useEffect(() => {
     let active = true;
@@ -114,7 +116,19 @@ export default function ProductionManagerLayout({ children }: { children: React.
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = current === item.path || current.startsWith(`${item.path}/`);
-              return (
+              const disabled = item.planKey === "approvals" && !approvalsEnabled;
+              return disabled ? (
+                <span
+                  key={item.path}
+                  title="Upgrade Required"
+                  className={clsx(
+                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed"
+                  )}
+                >
+                  <Icon size={18} />
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </span>
+              ) : (
                 <Link
                   key={item.path}
                   href={item.path}

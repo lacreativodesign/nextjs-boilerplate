@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { getCurrentUser, isAdminRole } from "../_utils";
 import { computeHealth, getFinanceSettings, getWorkflowSettings } from "../settings/_utils";
+import { isPlanAccessError, requireModule } from "../../../lib/plan-enforcement";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,22 @@ export async function requireAdmin() {
     return { ok: false as const, status: 403, error: "Forbidden" };
   }
   return { ok: true as const, user: me };
+}
+
+export async function requireReportsAccess() {
+  const auth = await requireAdmin();
+  if (!auth.ok) {
+    return auth;
+  }
+  try {
+    await requireModule(auth.user.tenantId, "reports");
+  } catch (err) {
+    if (isPlanAccessError(err)) {
+      return { ok: false as const, status: err.status, error: err.message };
+    }
+    return { ok: false as const, status: 500, error: "Unable to validate plan access." };
+  }
+  return auth;
 }
 
 export async function getReportSettings() {

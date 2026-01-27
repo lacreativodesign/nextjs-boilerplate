@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_REPORT_SETTINGS, getReportSettings, parseNumber, requireAdmin } from "../_utils";
+import { DEFAULT_REPORT_SETTINGS, getReportSettings, parseNumber, requireReportsAccess } from "../_utils";
 import { WORKFLOW_STAGES, logSettingsChange, serverTimestamp } from "../../settings/_utils";
 
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireReportsAccess();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

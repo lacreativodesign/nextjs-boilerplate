@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
+import { requireApprovalsModule } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,10 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId);
+    if (!moduleAccess.ok) {
+      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+    }
     const approvalsQuery = adminDb
       .collection("approvals")
       .where("tenantId", "==", tenantId)
