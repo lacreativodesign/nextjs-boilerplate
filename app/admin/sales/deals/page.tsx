@@ -22,6 +22,9 @@ type DealRecord = {
   expectedCloseDate?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+  paymentStatus?: string | null;
+  projectId?: string | null;
+  projectCreated?: boolean;
 };
 
 type UserOption = { uid: string; name?: string; fullName?: string; role?: string };
@@ -64,6 +67,10 @@ export default function SalesDealsPage() {
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<DealFormState>(defaultForm);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const selectedDeal = useMemo(
+    () => (form.id ? deals.find((deal) => deal.id === form.id) || null : null),
+    [deals, form.id]
+  );
 
   const loadDeals = useCallback(async () => {
     try {
@@ -227,6 +234,28 @@ export default function SalesDealsPage() {
     const deal = deals.find((item) => item.id === form.id);
     if (deal) {
       markClosed(deal, "Closed Won");
+    }
+  };
+
+  const handleMarkPaid = async (deal: DealRecord) => {
+    try {
+      const actionKey = `mark-paid-${deal.id}`;
+      setActionLoading(actionKey);
+      const res = await fetch("/api/deals/mark-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deal.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to mark deal paid.");
+      }
+      await loadDeals();
+    } catch (err) {
+      console.error("Deal mark paid error", err);
+      setError({ title: "Unable to mark paid", message: "Please try again." });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -400,6 +429,19 @@ export default function SalesDealsPage() {
                   Mark Closed Won
                 </button>
               )}
+              {drawerMode === "edit" && selectedDeal && (
+                <button
+                  className="btn"
+                  onClick={() => handleMarkPaid(selectedDeal)}
+                  disabled={
+                    Boolean(selectedDeal.projectCreated || selectedDeal.projectId) ||
+                    actionLoading === `mark-paid-${selectedDeal.id}`
+                  }
+                  style={{ borderRadius: 999 }}
+                >
+                  {actionLoading === `mark-paid-${selectedDeal.id}` ? "Processing" : "Mark Paid"}
+                </button>
+              )}
             </>
           }
         >
@@ -465,6 +507,39 @@ export default function SalesDealsPage() {
               </label>
             </div>
           </div>
+          {drawerMode === "edit" && selectedDeal && (
+            <div className="card" style={{ padding: 16, borderRadius: 14, marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontWeight: 700 }}>Project Automation</div>
+                {(selectedDeal.projectCreated || selectedDeal.projectId) && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      background: "rgba(34,197,94,0.12)",
+                      color: "#15803d",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Project Created
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "grid", gap: 10, fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Payment Status</span>
+                  <span style={{ fontWeight: 700 }}>{selectedDeal.paymentStatus || "Unpaid"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Project ID</span>
+                  <span style={{ fontWeight: 700 }}>{selectedDeal.projectId || "—"}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </SalesDrawer>
       )}
     </div>
