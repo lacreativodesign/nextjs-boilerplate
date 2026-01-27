@@ -118,10 +118,6 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
   useEffect(() => {
     if (!enabled) return;
     fetchNotifications("badge");
-    const interval = window.setInterval(() => {
-      fetchNotifications("badge");
-    }, pollIntervalMs);
-    return () => window.clearInterval(interval);
   }, [enabled, pollIntervalMs]);
 
   if (!enabled) return null;

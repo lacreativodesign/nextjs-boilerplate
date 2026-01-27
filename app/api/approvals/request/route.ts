@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -256,6 +257,20 @@ export async function POST(req: Request) {
         before,
         after,
       },
+    });
+
+    const requiredRole = requiredRoleForType(type);
+    const recipients = await getUsersByRoles([requiredRole], tenantId);
+    await createNotifications({
+      recipients,
+      tenantId,
+      recipientRole: requiredRole,
+      type: "approval_requested",
+      title: "Approval requested",
+      message: `${entityType} ${entityId} requires approval.`,
+      entityType,
+      entityId,
+      createdBy: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
     });
 
     return NextResponse.json({ ok: true, id: approvalId });

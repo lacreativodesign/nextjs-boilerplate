@@ -9,7 +9,7 @@ import {
   isSalesManager,
   normalizeRole,
 } from "../../_utils";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -260,7 +260,8 @@ export async function POST(req: Request) {
       projectData = projectSnap.exists ? projectSnap.data() || {} : null;
     }
 
-    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const tenantId = String(data.tenantId || me.tenantId || "");
+    const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId || null);
     const actorName = me.name || me.fullName || me.displayName || "";
     const notifications: Promise<void>[] = [];
     const changeRequestMessage = `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`;
@@ -280,6 +281,7 @@ export async function POST(req: Request) {
           entityId: changeRequestId,
           deepLink,
           createdBy: { uid: me.uid, name: actorName },
+          tenantId,
         })
       );
     }
@@ -295,6 +297,7 @@ export async function POST(req: Request) {
           entityId: changeRequestId,
           deepLink: "/am/change-requests",
           createdBy: { uid: me.uid, name: actorName },
+          tenantId,
         })
       );
     }
@@ -311,11 +314,31 @@ export async function POST(req: Request) {
           entityId: changeRequestId,
           deepLink: "/admin/projects/change-requests",
           createdBy: { uid: me.uid, name: actorName },
+          tenantId,
         })
       );
     });
 
     await Promise.all(notifications);
+
+    if (["Approved", "Rejected"].includes(toStatus) && data.requestedByUid) {
+      await createNotifications({
+        recipients: [
+          {
+            uid: String(data.requestedByUid),
+            role: requestedByRole || "am",
+            tenantId,
+          },
+        ],
+        tenantId,
+        type: "change_request",
+        title: `Change request ${toStatus.toLowerCase()}`,
+        message: changeRequestMessage,
+        entityType: "change_request",
+        entityId: changeRequestId,
+        createdBy: { uid: me.uid, name: actorName },
+      });
+    }
 
     await createNotificationEvent({
       type: "change_request.status_updated",

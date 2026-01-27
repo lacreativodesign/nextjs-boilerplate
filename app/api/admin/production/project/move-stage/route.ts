@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -250,21 +250,35 @@ export async function POST(req: Request) {
         const portalUid = String(clientData.portalUserUid || "");
         if (portalUid) {
           await createNotification({
-            toUserId: portalUid,
+            recipientUid: portalUid,
+            recipientRole: "client",
+            tenantId: updated.tenantId || null,
             title: "Project delivered",
-            body: `${updated.projectName || "Project"} has been delivered.`,
-            type: "success",
+            message: `${updated.projectName || "Project"} has been delivered.`,
+            type: "delivery_completed",
             entityType: "project",
             entityId: projectId,
             deepLink: "/client/projects",
             createdBy: { uid: me.uid, name: actorName },
-            roleTarget: "client",
-            tenantId: updated.tenantId || null,
           });
         }
       } catch (notifyError) {
         console.error("client delivery notification error:", notifyError);
       }
+    }
+
+    if (toStage === "Delivered") {
+      const adminRecipients = await getUsersByRoles(["admin", "super_admin"], updated.tenantId || null);
+      await createNotifications({
+        recipients: adminRecipients,
+        tenantId: updated.tenantId || null,
+        type: "delivery_completed",
+        title: "Project delivered",
+        message: `${updated.projectName || "Project"} has been delivered.`,
+        entityType: "project",
+        entityId: projectId,
+        createdBy: { uid: me.uid, name: actorName },
+      });
     }
 
     await createNotificationEvent({

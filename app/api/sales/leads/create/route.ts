@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, normalizeTenantId } from "@/lib/tenant";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import {
   createSalesEvent,
   getUserNameById,
@@ -163,6 +164,19 @@ export async function POST(req: Request) {
       entityId: docRef.id,
       createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
       tenantId,
+    });
+
+    const recipients = await getUsersByRoles(["sales_manager", "admin", "super_admin"], tenantId);
+    await createNotifications({
+      recipients,
+      tenantId,
+      type: "new_lead",
+      title: "New lead created",
+      message: `${contactName || companyName || "Lead"} was created.`,
+      entityType: "lead",
+      entityId: docRef.id,
+      deepLink: "/sales/leads",
+      createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
