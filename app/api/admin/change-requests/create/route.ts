@@ -4,7 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { getCurrentUser, isAccountManager, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
       actorRole: role,
     });
 
-    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
     const actorName = me.name || me.fullName || me.displayName || "";
     const notifications: Promise<void>[] = [];
     if (project.ownerAmUid) {
@@ -205,6 +205,7 @@ export async function POST(req: Request) {
           entityId: docRef.id,
           deepLink: "/am/change-requests",
           createdBy: { uid: me.uid, name: actorName },
+          tenantId,
         })
       );
     }
@@ -215,17 +216,30 @@ export async function POST(req: Request) {
         createNotification({
           toUserId: uid,
           title: "Change request submitted",
-          body: `${project.projectName || "Project"} has a new change request: ${title}.`,
-          type: "info",
-          entityType: "change_request",
-          entityId: docRef.id,
-          deepLink: "/admin/projects/change-requests",
-          createdBy: { uid: me.uid, name: actorName },
-        })
-      );
+        body: `${project.projectName || "Project"} has a new change request: ${title}.`,
+        type: "info",
+        entityType: "change_request",
+        entityId: docRef.id,
+        deepLink: "/admin/projects/change-requests",
+        createdBy: { uid: me.uid, name: actorName },
+        tenantId,
+      })
+    );
     });
 
     await Promise.all(notifications);
+
+    const managerRecipients = await getUsersByRoles(["am_manager"], tenantId);
+    await createNotifications({
+      recipients: managerRecipients,
+      tenantId,
+      type: "change_request",
+      title: "Change request submitted",
+      message: `${project.projectName || "Project"} has a new change request: ${title}.`,
+      entityType: "change_request",
+      entityId: docRef.id,
+      createdBy: { uid: me.uid, name: actorName },
+    });
 
     await createNotificationEvent({
       type: "change_request.created",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 
@@ -107,21 +107,17 @@ export async function POST(req: Request) {
 
     await leadRef.set(leadData);
 
-    const watcherIds = await getUserIdsByRoles(["admin", "super_admin", "sales_manager"], tenantId);
-    await Promise.all(
-      watcherIds.map((uid) =>
-        createNotification({
-          toUserId: uid,
-          title: "New lead ingested",
-          body: `${name} submitted a new lead from ${source}.`,
-          type: "info",
-          entityType: "lead",
-          entityId: leadRef.id,
-          deepLink: `/sales_manager/leads?open=${leadRef.id}`,
-          tenantId,
-        })
-      )
-    );
+    const recipients = await getUsersByRoles(["admin", "super_admin", "sales_manager"], tenantId);
+    await createNotifications({
+      recipients,
+      tenantId,
+      type: "new_lead",
+      title: "New lead ingested",
+      message: `${name} submitted a new lead from ${source}.`,
+      entityType: "lead",
+      entityId: leadRef.id,
+      deepLink: `/sales_manager/leads?open=${leadRef.id}`,
+    });
 
     await logEvent({
       tenantId,

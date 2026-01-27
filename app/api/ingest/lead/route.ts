@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createNotification, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,47 +127,29 @@ export async function POST(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const notificationTitle = "New website lead";
-    const notificationMessage = `${fullName} submitted a demo request`;
-    const notificationTimestamp = FieldValue.serverTimestamp();
+    await leadRef.set(leadData);
 
-    const usersSnap = await adminDb
-      .collection("users")
-      .where("tenantId", "==", tenantId)
-      .where("role", "in", ["admin", "sales_manager"])
-      .get();
-
-    const notificationsBatch = adminDb.batch();
-    notificationsBatch.set(leadRef, leadData);
-
-    usersSnap.docs.forEach((doc) => {
-      const data = doc.data() || {};
-      const role = String(data.role || "");
-      const deepLink = role === "admin" ? `/admin/sales/leads?open=${leadRef.id}` : `/sales_manager/leads?open=${leadRef.id}`;
-      const notificationRef = adminDb.collection("notifications").doc();
-
-      notificationsBatch.set(notificationRef, {
-        id: notificationRef.id,
-        toUserId: doc.id,
-        title: notificationTitle,
-        body: notificationMessage,
-        message: notificationMessage,
-        type: "new_lead",
-        entityType: "lead",
-        entityId: leadRef.id,
-        deepLink,
-        source: "website",
-        tenantId,
-        leadId: leadRef.id,
-        isRead: false,
-        createdAt: notificationTimestamp,
-        updatedAt: notificationTimestamp,
-        createdBy: null,
-        priority: "normal",
-      });
-    });
-
-    await notificationsBatch.commit();
+    const recipients = await getUsersByRoles(["admin", "sales_manager"], tenantId);
+    await Promise.all(
+      recipients.map((recipient) => {
+        const role = String(recipient.role || "");
+        const deepLink =
+          role === "admin" || role === "super_admin"
+            ? `/admin/sales/leads?open=${leadRef.id}`
+            : `/sales_manager/leads?open=${leadRef.id}`;
+        return createNotification({
+          recipientUid: recipient.uid,
+          recipientRole: role,
+          tenantId,
+          type: "new_lead",
+          title: "New website lead",
+          message: `${fullName} submitted a demo request`,
+          entityType: "lead",
+          entityId: leadRef.id,
+          deepLink,
+        });
+      })
+    );
 
     return NextResponse.json({ ok: true, leadId: leadRef.id }, { status: 200 });
   } catch (error) {

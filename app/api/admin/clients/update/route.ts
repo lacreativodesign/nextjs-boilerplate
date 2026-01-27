@@ -6,7 +6,7 @@ import { createProjectFromDeal } from "@/lib/projects";
 import { generateNextOrderId } from "@/lib/orderIds";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 import { assertPermission, Permission } from "../../../../lib/permissions";
@@ -235,6 +235,22 @@ async function handleUpdate(req: Request) {
           entityType: "deal",
           entityId: dealDoc.id,
           actor: { uid: me.uid, name: me.name || me.fullName || "" },
+        });
+
+        const recipients = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
+        const assignedAmUid = String(dealData.ownerId || dealData.ownerUid || "");
+        if (assignedAmUid) {
+          recipients.push({ uid: assignedAmUid, role: "am", tenantId });
+        }
+        await createNotifications({
+          recipients,
+          tenantId,
+          type: "deal_paid",
+          title: "Deal marked paid",
+          message: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
+          entityType: "deal",
+          entityId: dealDoc.id,
+          createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
         });
       }
 

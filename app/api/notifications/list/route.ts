@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId, DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ type NotificationRecord = {
   id: string;
   title: string;
   body: string;
-  type: "info" | "warning" | "success" | "system";
+  type: string;
   entityType: string | null;
   entityId: string | null;
   deepLink: string | null;
@@ -33,14 +33,14 @@ function toDate(value: any): Date | null {
 function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): NotificationRecord {
   const data = doc.data() || {};
   const rawType = String(data.type || "");
-  const allowedTypes = ["info", "warning", "success", "system"];
-  const type = (allowedTypes.includes(rawType) ? rawType : "system") as NotificationRecord["type"];
+  const type = rawType || "system";
   const createdAtDate = toDate(data.createdAt);
+  const message = String(data.message || data.body || "");
 
   return {
     id: doc.id,
     title: String(data.title || ""),
-    body: String(data.body || data.message || ""),
+    body: message,
     type,
     entityType: data.entityType ? String(data.entityType) : null,
     entityId: data.entityId ? String(data.entityId) : null,
@@ -52,14 +52,6 @@ function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): No
     metadata: (data.metadata as Record<string, unknown>) || null,
     createdAtMs: createdAtDate ? createdAtDate.getTime() : 0,
   };
-}
-
-function buildTenantQueries(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
-  if (tenantId === DEFAULT_TENANT_ID) {
-    queries.push(query.where("tenantId", "==", null));
-  }
-  return queries;
 }
 
 function isApprovalNotification(item: NotificationRecord) {
@@ -74,27 +66,18 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
   const unreadOnly = filter === "unread";
 
   const baseQueries = [
+    adminDb.collection("notifications").where("recipientUid", "==", uid),
     adminDb.collection("notifications").where("toUserId", "==", uid),
     adminDb.collection("notifications").where("toUid", "==", uid),
+    adminDb.collection("notifications").where("userId", "==", uid),
   ];
-  const legacyBase = adminDb.collection("notifications").where("userId", "==", uid);
 
   baseQueries.forEach((base) => {
-    let scoped = base;
+    let scoped = base.where("tenantId", "==", tenantId);
     if (unreadOnly) {
       scoped = scoped.where("isRead", "==", false);
     }
-    buildTenantQueries(scoped, tenantId).forEach((query) => {
-      queries.push(query.orderBy("createdAt", "desc").limit(50));
-    });
-  });
-
-  let legacyQuery = legacyBase;
-  if (unreadOnly) {
-    legacyQuery = legacyQuery.where("read", "==", false);
-  }
-  buildTenantQueries(legacyQuery, tenantId).forEach((query) => {
-    queries.push(query.orderBy("createdAt", "desc").limit(50));
+    queries.push(scoped.orderBy("createdAt", "desc").limit(limit));
   });
 
   const snapshots = await Promise.all(queries.map((query) => query.get()));
@@ -118,13 +101,14 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
 async function getUnreadCount(uid: string, tenantId: string) {
   const queries: FirebaseFirestore.Query[] = [];
   const baseQueries = [
+    adminDb.collection("notifications").where("recipientUid", "==", uid).where("isRead", "==", false),
     adminDb.collection("notifications").where("toUserId", "==", uid).where("isRead", "==", false),
     adminDb.collection("notifications").where("toUid", "==", uid).where("isRead", "==", false),
     adminDb.collection("notifications").where("userId", "==", uid).where("read", "==", false),
   ];
 
   baseQueries.forEach((base) => {
-    buildTenantQueries(base, tenantId).forEach((query) => queries.push(query));
+    queries.push(base.where("tenantId", "==", tenantId));
   });
 
   const snapshots = await Promise.all(queries.map((query) => query.get()));

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, normalizeTenantId } from "@/lib/tenant";
+import { normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -23,21 +23,14 @@ export async function POST() {
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
-    const tenantQueries: FirebaseFirestore.Query[] = [];
     const baseQueries = [
+      adminDb.collection("notifications").where("recipientUid", "==", me.uid).where("isRead", "==", false),
       adminDb.collection("notifications").where("toUserId", "==", me.uid).where("isRead", "==", false),
       adminDb.collection("notifications").where("toUid", "==", me.uid).where("isRead", "==", false),
       adminDb.collection("notifications").where("userId", "==", me.uid).where("read", "==", false),
     ];
 
-    baseQueries.forEach((base) => {
-      tenantQueries.push(base.where("tenantId", "==", tenantId));
-      if (tenantId === DEFAULT_TENANT_ID) {
-        tenantQueries.push(base.where("tenantId", "==", null));
-      }
-    });
-
-    const snapshots = await Promise.all(tenantQueries.map((query) => query.get()));
+    const snapshots = await Promise.all(baseQueries.map((query) => query.where("tenantId", "==", tenantId).get()));
     const docs = snapshots.flatMap((snap) => snap.docs);
 
     const uniqueDocs = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();

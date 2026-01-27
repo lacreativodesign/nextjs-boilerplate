@@ -7,7 +7,7 @@ export type NotificationItem = {
   id: string;
   title: string;
   body: string;
-  type: "info" | "warning" | "success" | "system";
+  type: string;
   entityType: string | null;
   entityId: string | null;
   deepLink: string | null;

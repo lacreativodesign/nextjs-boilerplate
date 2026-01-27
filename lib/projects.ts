@@ -130,9 +130,10 @@ export async function createProjectFromDeal({
       const role = uid === portalUserUid ? "client" : await getUserRole(uid);
       return createNotification({
         toUserId: uid,
+        recipientRole: role || null,
         title: "Project created",
         body: `${projectName} is ready for kickoff.`,
-        type: "info",
+        type: "project_created",
         entityType: "project",
         entityId: projectRef.id,
         deepLink: resolveProjectDeepLink(role),

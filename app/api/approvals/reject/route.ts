@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { createNotification } from "@/lib/notifications";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
 
 export const runtime = "nodejs";
@@ -250,6 +251,20 @@ export async function POST(req: Request) {
         after,
       },
     });
+
+    if (approval.requestedBy?.uid) {
+      await createNotification({
+        recipientUid: approval.requestedBy.uid,
+        recipientRole: approval.requestedBy.role || null,
+        tenantId,
+        type: "approval_decision",
+        title: "Approval rejected",
+        message: `${approval.entityType || "Request"} ${approval.entityId || ""} was rejected.`,
+        entityType: approval.entityType || null,
+        entityId: approval.entityId || null,
+        createdBy: { uid: me.uid, name: actorName },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
