@@ -5,6 +5,7 @@ import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import type { Unsubscribe } from "firebase/auth";
+import SubscriptionBanner from "@/components/SubscriptionBanner";
 
 type Props = {
   allowed: string[];
@@ -61,5 +62,10 @@ export default function RequireAuth({ allowed, children }: Props) {
   if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
   if (!ok) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      <SubscriptionBanner />
+      {children}
+    </>
+  );
 }

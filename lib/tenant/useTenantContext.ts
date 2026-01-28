@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { SubscriptionState } from "@/lib/subscription";
 
 export type TenantContext = {
   id: string;
@@ -11,6 +12,7 @@ export type TenantContext = {
   modulesEnabled: Record<string, boolean>;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
+  subscriptionState?: SubscriptionState;
 };
 
 export type TenantContextResponse = {
