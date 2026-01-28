@@ -8,6 +8,7 @@ export const PLAN_MODULES = {
     finance: false,
     hr: false,
     reports: false,
+    client_stripe_connect: false,
   },
   pro: {
     crm: true,
@@ -17,6 +18,7 @@ export const PLAN_MODULES = {
     finance: true,
     hr: false,
     reports: true,
+    client_stripe_connect: false,
   },
   enterprise: {
     crm: true,
@@ -26,6 +28,7 @@ export const PLAN_MODULES = {
     finance: true,
     hr: true,
     reports: true,
+    client_stripe_connect: false,
   },
 };
 

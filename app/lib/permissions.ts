@@ -30,7 +30,7 @@ const ALL_PERMISSIONS = Object.values(Permission) as Permission[];
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((permission) => permission !== Permission.ManageTenant),
+  admin: ALL_PERMISSIONS,
   sales_manager: [Permission.ViewClients, Permission.EditClients, Permission.ViewReports],
   sales: [Permission.ViewClients],
   am_manager: [Permission.CreateProjects, Permission.MoveProjectStage, Permission.AssignProject],

@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
             plan: planState?.plan || "pro",
             modules: planState?.modules || {},
             subscriptionState,
+            stripeConnect: tenant.stripeConnect || null,
           }
         : null,
     });
