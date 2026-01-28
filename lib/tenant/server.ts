@@ -14,6 +14,8 @@ export type TenantRecord = {
   modulesEnabled: TenantModules;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
+  subscriptionState?: "active" | "grace" | "soft_locked" | "hard_locked";
+  billingStatus?: "active" | "past_due" | "canceled";
   planSetBy?: { uid: string; role: "super_admin" };
   planUpdatedAt?: any;
   createdAt?: any;
