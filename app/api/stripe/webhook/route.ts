@@ -6,6 +6,8 @@ import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
 import { PLAN_MODULES } from "../../../../app/config/plans";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
+import { createRoleNotifications } from "@/lib/notifications";
+import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +77,37 @@ function normalizeBillingStatus(status: Stripe.Subscription.Status, eventType: s
   }
 
   return "past_due";
+}
+
+function formatBillingStatus(status: BillingStatus | null | undefined) {
+  if (!status) return "unknown";
+  return status.replace(/_/g, " ");
+}
+
+function buildSubscriptionNotification({
+  tenantName,
+  previousStatus,
+  nextStatus,
+}: {
+  tenantName: string;
+  previousStatus: BillingStatus | null;
+  nextStatus: BillingStatus;
+}) {
+  const previousLabel = formatBillingStatus(previousStatus);
+  const nextLabel = formatBillingStatus(nextStatus);
+  const title =
+    nextStatus === "active"
+      ? "Subscription active"
+      : nextStatus === "past_due"
+      ? "Subscription past due"
+      : "Subscription canceled";
+  const body =
+    previousStatus && previousStatus !== nextStatus
+      ? `${tenantName} subscription changed from ${previousLabel} to ${nextLabel}.`
+      : `${tenantName} subscription is now ${nextLabel}.`;
+  const type = nextStatus === "active" ? "success" : nextStatus === "past_due" ? "warning" : "warning";
+  const priority = nextStatus === "active" ? "normal" : "high";
+  return { title, body, type, priority };
 }
 
 async function ensureAdminUser({
@@ -249,6 +282,10 @@ async function updateSubscriptionStatus({
     return { updated: false };
   }
 
+  const tenantData = tenantDoc.data() || {};
+  const previousStatus = (tenantData.billingStatus || null) as BillingStatus | null;
+  const tenantName = String(tenantData.name || "Bizosto Tenant");
+
   const updatePayload: Record<string, unknown> = {
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
@@ -261,6 +298,73 @@ async function updateSubscriptionStatus({
   }
 
   await tenantDoc.ref.set(updatePayload, { merge: true });
+
+  if (previousStatus !== billingStatus) {
+    const notificationCopy = buildSubscriptionNotification({
+      tenantName,
+      previousStatus,
+      nextStatus: billingStatus,
+    });
+
+    await Promise.all([
+      createRoleNotifications({
+        tenantId: tenantDoc.id,
+        roles: ["admin", "finance"],
+        title: notificationCopy.title,
+        body: notificationCopy.body,
+        type: notificationCopy.type,
+        priority: notificationCopy.priority,
+        entityType: "subscription",
+        entityId: subscriptionId,
+        deepLink: "/billing",
+        createdBy: { uid: "system", name: "Stripe" },
+        metadata: {
+          previousStatus,
+          billingStatus,
+          billingCycle,
+          eventType,
+          stripeCustomerId: customerId,
+        },
+      }),
+      createRoleNotifications({
+        tenantId: tenantDoc.id,
+        roles: ["super_admin"],
+        recipientTenantId: null,
+        title: notificationCopy.title,
+        body: notificationCopy.body,
+        type: notificationCopy.type,
+        priority: notificationCopy.priority,
+        entityType: "subscription",
+        entityId: subscriptionId,
+        deepLink: "/super_admin/tenants",
+        createdBy: { uid: "system", name: "Stripe" },
+        metadata: {
+          previousStatus,
+          billingStatus,
+          billingCycle,
+          eventType,
+          stripeCustomerId: customerId,
+        },
+      }),
+      writeAuditLog({
+        tenantId: tenantDoc.id,
+        actorUserId: "system",
+        actorName: "Stripe",
+        actorRole: "system",
+        actionType: "subscription_status_changed",
+        entityType: "subscription",
+        entityId: subscriptionId,
+        metadata: {
+          previousStatus,
+          billingStatus,
+          billingCycle,
+          eventType,
+          stripeCustomerId: customerId,
+        },
+      }),
+    ]);
+  }
+
   return { updated: true };
 }
 
