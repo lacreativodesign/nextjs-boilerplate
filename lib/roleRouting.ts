@@ -15,6 +15,7 @@ export const ROLE_ROUTES: Record<string, string> = {
 
 export function getRoleRoute(role?: string | null) {
   const normalized = String(role || "")
+    .trim()
     .toLowerCase()
     .replace(/-/g, "_")
     .replace(/^account_manager$/, "am");
