@@ -23,6 +23,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { canAccessPlanModule, isSuperAdminRole } from "@/lib/tenant/plan-access";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
@@ -60,14 +61,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const current = normalize(realPath);
 
+  const role = tenantContext?.user?.role || "";
+  const isSuperAdmin = isSuperAdminRole(role);
   const moduleMap = useMemo(() => tenantContext?.tenant?.modulesEnabled || {}, [tenantContext?.tenant?.modulesEnabled]);
   const planModules = tenantContext?.tenant?.modules || {};
-  const notificationsEnabled = planModules.notifications !== false;
+  const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
 
   const isPlanDisabled = (path: string) => {
-    if (path.startsWith("/admin/finance")) return planModules.finance === false;
-    if (path.startsWith("/admin/hr")) return planModules.hr === false;
-    if (path.startsWith("/admin/reports")) return planModules.reports === false;
+    if (path.startsWith("/admin/finance")) {
+      return !canAccessPlanModule({ modules: planModules, moduleKey: "finance", role });
+    }
+    if (path.startsWith("/admin/hr")) {
+      return !canAccessPlanModule({ modules: planModules, moduleKey: "hr", role });
+    }
+    if (path.startsWith("/admin/reports")) {
+      return !canAccessPlanModule({ modules: planModules, moduleKey: "reports", role });
+    }
     return false;
   };
 
@@ -79,15 +88,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     const activeItem = navItems.find((item) => current.startsWith(item.path));
-    if (activeItem && (isPlanDisabled(activeItem.path) || moduleMap[activeItem.moduleKey as keyof typeof moduleMap] === false)) {
+    const legacyDisabled =
+      !isSuperAdmin && moduleMap[activeItem?.moduleKey as keyof typeof moduleMap] === false;
+    if (activeItem && (isPlanDisabled(activeItem.path) || legacyDisabled)) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, tenantError, moduleMap, current, router, planModules]);
+  }, [tenantLoading, tenantContext, tenantError, moduleMap, current, router, planModules, isSuperAdmin, role]);
 
   const navEntries = useMemo(
     () =>
       navItems.map((item) => {
-        const legacyDisabled = moduleMap[item.moduleKey as keyof typeof moduleMap] === false;
+        const legacyDisabled = !isSuperAdmin && moduleMap[item.moduleKey as keyof typeof moduleMap] === false;
         const planDisabled = isPlanDisabled(item.path);
         const visible = !legacyDisabled || planDisabled;
         return {

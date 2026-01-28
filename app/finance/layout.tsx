@@ -19,6 +19,7 @@ import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { canAccessPlanModule } from "@/lib/tenant/plan-access";
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -38,8 +39,10 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
+  const role = tenantContext?.user?.role || "";
   const planModules = tenantContext?.tenant?.modules || {};
-  const notificationsEnabled = planModules.notifications !== false;
+  const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
+  const financeEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "finance", role });
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -47,10 +50,10 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
       router.replace("/suspended");
       return;
     }
-    if (planModules.finance === false) {
+    if (!financeEnabled) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, planModules, router]);
+  }, [tenantLoading, tenantContext, financeEnabled, router]);
 
   const navItems = [
     { label: "Overview", path: "/finance", icon: LayoutDashboard },

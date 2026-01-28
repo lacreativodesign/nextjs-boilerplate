@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const role = normalizeRole(me.role);
     const tenantId = normalizeTenantId(me.tenantId);
     const actorName = parseString(me.name || me.fullName || me.displayName);
-    const moduleAccess = await requireApprovalsModule(tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }

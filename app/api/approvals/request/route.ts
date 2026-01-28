@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
-    const moduleAccess = await requireApprovalsModule(tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }

@@ -10,6 +10,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { canAccessPlanModule } from "@/lib/tenant/plan-access";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
@@ -39,9 +40,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
+  const role = tenantContext?.user?.role || "";
   const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = planModules.notifications !== false;
+  const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
 
   useEffect(() => {
     if (tenantLoading) return;
