@@ -16,7 +16,15 @@ export type NotificationType =
   | "success"
   | "system";
 
-export type NotificationEntityType = "lead" | "deal" | "project" | "task" | "approval" | "change_request";
+export type NotificationEntityType =
+  | "lead"
+  | "deal"
+  | "project"
+  | "task"
+  | "approval"
+  | "change_request"
+  | "subscription"
+  | "tenant";
 
 export type NotificationRecipient = {
   uid: string;
@@ -39,6 +47,7 @@ export type NotificationPayload = {
   priority?: "low" | "normal" | "high";
   tenantId?: string | null;
   roleTarget?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type ResolvedRecipient = {
@@ -143,6 +152,7 @@ export async function createNotifications({
         createdBy: payload.createdBy || null,
         priority: payload.priority || "normal",
         roleTarget: payload.roleTarget || role,
+        metadata: payload.metadata || null,
       });
     });
 
@@ -220,4 +230,27 @@ export async function getUsersByRoles(roles: string[], tenantId?: string | null)
 export async function getUserIdsByRoles(roles: string[], tenantId?: string | null) {
   const users = await getUsersByRoles(roles, tenantId);
   return users.map((user) => user.uid);
+}
+
+export async function createRoleNotifications({
+  roles,
+  tenantId,
+  recipientTenantId,
+  ...payload
+}: NotificationPayload & {
+  roles: string[];
+  tenantId: string | null;
+  recipientTenantId?: string | null;
+}) {
+  const users = await getUsersByRoles(roles, recipientTenantId ?? tenantId);
+  if (!users.length) return;
+  await createNotifications({
+    ...payload,
+    tenantId,
+    recipients: users.map((user) => ({
+      uid: user.uid,
+      role: user.role,
+      tenantId: user.tenantId,
+    })),
+  });
 }

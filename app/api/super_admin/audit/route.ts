@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
         id: doc.id,
         tenantId: data.tenantId || null,
         actorUserId: data.actorUserId || "",
+        actorName: data.actorName || "",
+        actorRole: data.actorRole || "",
         actionType: data.actionType || "",
         entityType: data.entityType || "",
         entityId: data.entityId || "",

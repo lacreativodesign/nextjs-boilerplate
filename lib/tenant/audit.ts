@@ -3,7 +3,9 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 type AuditLogInput = {
   tenantId?: string | null;
-  actorUserId: string;
+  actorUserId?: string | null;
+  actorName?: string | null;
+  actorRole?: string | null;
   actionType: string;
   entityType: string;
   entityId: string;
@@ -12,7 +14,9 @@ type AuditLogInput = {
 
 export async function writeAuditLog({
   tenantId = null,
-  actorUserId,
+  actorUserId = null,
+  actorName = null,
+  actorRole = null,
   actionType,
   entityType,
   entityId,
@@ -22,8 +26,11 @@ export async function writeAuditLog({
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   await ref.set({
+    id: ref.id,
     tenantId,
     actorUserId,
+    actorName,
+    actorRole,
     actionType,
     entityType,
     entityId,
