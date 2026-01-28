@@ -19,6 +19,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { canAccessPlanModule } from "@/lib/tenant/plan-access";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
@@ -49,8 +50,10 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath);
 
+  const role = tenantContext?.user?.role || "";
   const planModules = tenantContext?.tenant?.modules || {};
-  const notificationsEnabled = planModules.notifications !== false;
+  const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
+  const hrEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "hr", role });
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -58,10 +61,10 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       router.replace("/suspended");
       return;
     }
-    if (planModules.hr === false) {
+    if (!hrEnabled) {
       router.replace("/module-disabled");
     }
-  }, [tenantLoading, tenantContext, planModules, router]);
+  }, [tenantLoading, tenantContext, hrEnabled, router]);
 
   const handleLogout = async () => {
     if (!authInstance) return;

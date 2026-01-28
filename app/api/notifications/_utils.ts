@@ -1,8 +1,8 @@
 import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
 
-export async function requireNotificationsModule(tenantId: string) {
+export async function requireNotificationsModule(tenantId: string, role?: string | null) {
   try {
-    await requireModule(tenantId, "notifications");
+    await requireModule(tenantId, "notifications", { role });
     return { ok: true as const };
   } catch (err) {
     if (isPlanAccessError(err)) {

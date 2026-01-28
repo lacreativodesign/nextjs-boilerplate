@@ -62,7 +62,7 @@ export async function GET() {
 
     const role = normalizeRole(me.role);
     const tenantId = normalizeTenantId(me.tenantId);
-    const moduleAccess = await requireApprovalsModule(tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId, role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }

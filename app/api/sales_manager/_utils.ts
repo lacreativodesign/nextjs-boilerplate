@@ -54,7 +54,7 @@ export async function requireSalesReportsAccess() {
     return auth;
   }
   try {
-    await requireModule(auth.user.tenantId, "reports");
+    await requireModule(auth.user.tenantId, "reports", { role: auth.user.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };

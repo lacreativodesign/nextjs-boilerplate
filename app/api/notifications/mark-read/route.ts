@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const data = snap.data() || {};
     const ownerId = String(data.recipientUid || data.toUserId || data.toUid || data.userId || "");
     const tenantId = normalizeTenantId(me.tenantId);
-    const moduleAccess = await requireNotificationsModule(tenantId);
+    const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }

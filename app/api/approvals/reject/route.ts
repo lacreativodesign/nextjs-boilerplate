@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     const type = approval.type as ApprovalType;
     const entityId = parseString(approval.entityId);
     const tenantId = normalizeTenantId(approval.tenantId || me.tenantId);
-    const moduleAccess = await requireApprovalsModule(tenantId);
+    const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }

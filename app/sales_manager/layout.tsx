@@ -19,6 +19,7 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { canAccessPlanModule, type PlanModuleKey } from "@/lib/tenant/plan-access";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const navItems = [
@@ -50,11 +51,13 @@ export default function SalesManagerLayout({ children }: { children: React.React
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(realPath).replace("/sales_manager", "/sales_manager");
 
+  const role = tenantContext?.user?.role || "";
   const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
-  const notificationsEnabled = planModules.notifications !== false;
+  const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
 
-  const isPlanDisabled = (planKey?: string) => (planKey ? planModules[planKey] === false : false);
+  const isPlanDisabled = (planKey?: string) =>
+    planKey ? !canAccessPlanModule({ modules: planModules, moduleKey: planKey as PlanModuleKey, role }) : false;
 
   useEffect(() => {
     if (tenantLoading) return;

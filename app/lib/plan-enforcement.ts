@@ -1,10 +1,12 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { PLAN_MODULES } from "@/app/config/plans";
-
-export type PlanTier = keyof typeof PLAN_MODULES;
-export type PlanModuleKey = keyof typeof PLAN_MODULES.starter;
-
-export type PlanModules = Record<PlanModuleKey, boolean>;
+import {
+  canAccessPlanModule,
+  normalizePlan,
+  resolveTenantModules,
+  type PlanModuleKey,
+  type PlanModules,
+  type PlanTier,
+} from "@/lib/tenant/plan-access";
 
 type PlanSetBy = {
   uid: string;
@@ -17,58 +19,6 @@ export type TenantPlanState = {
   planSetBy?: PlanSetBy | null;
   planUpdatedAt?: any;
 };
-
-const PLAN_KEYS = Object.keys(PLAN_MODULES) as PlanTier[];
-
-export function normalizePlan(plan: unknown): PlanTier {
-  const normalized = String(plan || "").toLowerCase();
-  return PLAN_KEYS.includes(normalized as PlanTier) ? (normalized as PlanTier) : "pro";
-}
-
-function normalizeModules(input: unknown): Partial<PlanModules> {
-  if (!input || typeof input !== "object") return {};
-  const entries = Object.entries(input as Record<string, unknown>);
-  return entries.reduce<Partial<PlanModules>>((acc, [key, value]) => {
-    if (key in PLAN_MODULES.starter) {
-      acc[key as PlanModuleKey] = Boolean(value);
-    }
-    return acc;
-  }, {});
-}
-
-export function resolvePlanModules(plan: PlanTier, overrides?: Record<string, unknown>): PlanModules {
-  return {
-    ...PLAN_MODULES[plan],
-    ...normalizeModules(overrides),
-  };
-}
-
-export function resolveTenantModules({
-  plan,
-  modules,
-  legacyModulesEnabled,
-}: {
-  plan: PlanTier;
-  modules?: Record<string, unknown>;
-  legacyModulesEnabled?: Record<string, unknown>;
-}): PlanModules {
-  const hasExplicitModules = Boolean(modules && typeof modules === "object");
-  const baseModules = resolvePlanModules(plan, hasExplicitModules ? modules : {});
-
-  if (!hasExplicitModules && legacyModulesEnabled && typeof legacyModulesEnabled === "object") {
-    const legacy = legacyModulesEnabled as Record<string, unknown>;
-    const legacyOverrides: Partial<PlanModules> = {};
-    if (legacy.finance !== undefined) legacyOverrides.finance = Boolean(legacy.finance);
-    if (legacy.notifications !== undefined) legacyOverrides.notifications = Boolean(legacy.notifications);
-    if (legacy.humanResource !== undefined) legacyOverrides.hr = Boolean(legacy.humanResource);
-    return {
-      ...baseModules,
-      ...legacyOverrides,
-    };
-  }
-
-  return baseModules;
-}
 
 export async function getTenantPlanState(tenantId: string): Promise<TenantPlanState> {
   const snap = await adminDb.collection("tenants").doc(tenantId).get();
@@ -108,9 +58,9 @@ export function isPlanAccessError(error: unknown): error is PlanAccessError {
   return error instanceof PlanAccessError;
 }
 
-export async function requireModule(tenantId: string, moduleKey: PlanModuleKey) {
+export async function requireModule(tenantId: string, moduleKey: PlanModuleKey, options?: { role?: string | null }) {
   const planState = await getTenantPlanState(tenantId);
-  if (!planState.modules[moduleKey]) {
+  if (!canAccessPlanModule({ modules: planState.modules, moduleKey, role: options?.role })) {
     throw new PlanAccessError(moduleKey);
   }
   return planState;

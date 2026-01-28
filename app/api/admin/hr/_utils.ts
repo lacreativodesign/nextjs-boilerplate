@@ -36,7 +36,7 @@ export async function requireHrAccess() {
   if (!me) return { ok: false as const, status: 401, error: "Unauthorized" };
   if (!canAccessHr(me.role)) return { ok: false as const, status: 403, error: "Forbidden" };
   try {
-    await requireModule(me.tenantId, "hr");
+    await requireModule(me.tenantId, "hr", { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };
