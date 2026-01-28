@@ -42,6 +42,7 @@ const planModules = [
   { key: "finance", label: "Finance" },
   { key: "hr", label: "HR" },
   { key: "reports", label: "Reports" },
+  { key: "client_stripe_connect", label: "Client Stripe Connect" },
 ];
 
 export default function TenantDetailPage() {

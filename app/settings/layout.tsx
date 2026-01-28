@@ -16,6 +16,7 @@ export default function SettingsLayout({
     { label: "Security", path: "/settings/security" },
     { label: "Preferences", path: "/settings/preferences" },
     { label: "System Settings", path: "/settings/system" },
+    { label: "Payments", path: "/settings/payments" },
   ];
 
   return (

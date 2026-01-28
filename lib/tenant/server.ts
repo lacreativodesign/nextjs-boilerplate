@@ -14,6 +14,17 @@ export type TenantRecord = {
   modulesEnabled: TenantModules;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
+  stripeConnect?: {
+    enabled?: boolean;
+    accountId?: string;
+    accountEmail?: string | null;
+    status?: "connected" | "disconnected";
+    connectedAt?: any;
+    disconnectedAt?: any;
+    oauthState?: string | null;
+    oauthRequestedAt?: any;
+    firstPaymentAt?: any;
+  };
   subscriptionState?: "active" | "grace" | "soft_locked" | "hard_locked";
   billingStatus?: "active" | "past_due" | "canceled";
   planSetBy?: { uid: string; role: "super_admin" };
