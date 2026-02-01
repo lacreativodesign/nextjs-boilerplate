@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type HealthStats = {
   activeClients: number;
@@ -78,15 +79,21 @@ export default function AmManagerOverview() {
       <div className="kpis" style={{ marginTop: 14 }}>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Active clients</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : health.activeClients}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : health.activeClients}
+          </div>
         </div>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Projects at risk</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : health.projectsAtRisk}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : health.projectsAtRisk}
+          </div>
         </div>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">CR volume (MTD)</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : health.changeRequestsMtd}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : health.changeRequestsMtd}
+          </div>
         </div>
       </div>
 
@@ -103,13 +110,18 @@ export default function AmManagerOverview() {
                 </tr>
               </thead>
               <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={3} className="text-sm text-[var(--text-muted)]">
-                      Loading escalations...
-                    </td>
-                  </tr>
-                )}
+                {loading &&
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={`escalation-skeleton-${index}`}>
+                      <td colSpan={3}>
+                        <div className="grid grid-cols-3 gap-4 py-2">
+                          {Array.from({ length: 3 }).map((__, col) => (
+                            <Skeleton key={`escalation-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 {!loading && escalations.length === 0 && (
                   <tr>
                     <td colSpan={3} className="text-sm text-[var(--text-muted)]">

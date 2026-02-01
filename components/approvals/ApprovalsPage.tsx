@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "../ui/skeleton";
 
 type ApprovalItem = {
   id: string;
@@ -123,13 +124,18 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               </tr>
             </thead>
             <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={6} className="text-sm text-[var(--text-muted)]">
-                    Loading approvals...
-                  </td>
-                </tr>
-              )}
+              {loading &&
+                Array.from({ length: 6 }).map((_, index) => (
+                  <tr key={`approval-skeleton-${index}`}>
+                    <td colSpan={6}>
+                      <div className="grid grid-cols-6 gap-4 py-2">
+                        {Array.from({ length: 6 }).map((__, col) => (
+                          <Skeleton key={`approval-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               {!loading && approvals.length === 0 && (
                 <tr>
                   <td colSpan={6} className="text-sm text-[var(--text-muted)]">

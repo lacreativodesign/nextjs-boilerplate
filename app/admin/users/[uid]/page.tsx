@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SkeletonForm } from "@/components/ui/skeleton";
 import { useParams, useRouter } from "next/navigation";
 
 export default function EditUserPage() {
@@ -100,7 +101,13 @@ export default function EditUserPage() {
     }
   };
 
-  if (loading) return <p>Loading user...</p>;
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 500 }}>
+        <SkeletonForm fields={4} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 500 }}>

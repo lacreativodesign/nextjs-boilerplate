@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SkeletonForm } from "@/components/ui/skeleton";
 
 type ClientProfile = {
   companyName?: string;
@@ -84,7 +85,11 @@ export default function ClientProfilePage() {
   }
 
   if (loading) {
-    return <div className="text-sm text-[var(--text-muted)]">Loading profile...</div>;
+    return (
+      <div className="space-y-4">
+        <SkeletonForm fields={6} />
+      </div>
+    );
   }
 
   return (

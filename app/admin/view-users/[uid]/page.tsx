@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { SkeletonForm } from "@/components/ui/skeleton";
 import { useParams, useRouter } from "next/navigation";
 
 interface UserRecord {
@@ -62,7 +63,7 @@ export default function UserDetailsPage() {
   if (loading) {
     return (
       <div style={container}>
-        <h2 style={loadingText}>Loading user…</h2>
+        <SkeletonForm fields={3} />
       </div>
     );
   }

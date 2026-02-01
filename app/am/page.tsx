@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AMProjectDrawer, { type AMProject } from "@/components/am/AMProjectDrawer";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ActivityItem = {
   id: string;
@@ -342,10 +343,13 @@ export default function AMOverviewPage() {
 }
 
 function KpiCard({ label, value }: { label: string; value: string }) {
+  const showSkeleton = value === "—";
   return (
     <div className="card kpi-card" style={{ padding: 14, borderRadius: 16 }}>
       <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>
+        {showSkeleton ? <Skeleton variant="text" className="h-5 w-20" /> : value}
+      </div>
     </div>
   );
 }
