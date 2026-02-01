@@ -321,6 +321,96 @@ table tbody tr:hover {
     display: table;
     width: 100%;
   }
+
+  table th:nth-child(n + 7):not(:last-child),
+  table td:nth-child(n + 7):not(:last-child) {
+    display: none;
+  }
+}
+
+.table-col-secondary {
+  display: table-cell;
+}
+
+.table-col-tertiary {
+  display: table-cell;
+}
+
+@media (max-width: 1024px) {
+  .table-col-tertiary {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-col-secondary {
+    display: none;
+  }
+
+  table th:nth-child(n + 4):not(:last-child),
+  table td:nth-child(n + 4):not(:last-child) {
+    display: none;
+  }
+}
+
+.table-card {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .table-card thead {
+    display: none;
+  }
+
+  .table-card tbody tr {
+    display: block;
+    margin: 12px 12px 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    background: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .table-card tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0 !important;
+    border-bottom: none;
+    text-align: right;
+  }
+
+  .table-card tbody td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  .table-card tbody td.table-card-primary {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding-bottom: 8px !important;
+  }
+
+  .table-card tbody td.table-card-primary::before {
+    content: "";
+  }
+
+  .table-card tbody td.table-card-actions {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .table-card tbody td.table-card-actions::before {
+    content: "Actions";
+  }
 }
 
 .table-cell-center {
