@@ -178,6 +178,8 @@ body {
   border-radius: 16px;
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-sm);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .card .card {
@@ -238,6 +240,7 @@ body {
   border: 1px solid var(--border-subtle);
   background: var(--surface-card);
   box-shadow: var(--shadow-md);
+  max-width: 100%;
 }
 
 .table-shell > div {
@@ -249,6 +252,7 @@ table {
   border-collapse: collapse;
   font-size: 14px;
   color: var(--text-primary);
+  max-width: 100%;
 }
 
 table th,
@@ -294,6 +298,29 @@ table tbody tr:nth-child(even) {
 
 table tbody tr:hover {
   background: var(--table-row-hover);
+}
+
+@media (max-width: 1024px) {
+  .table-shell {
+    overflow: visible;
+  }
+
+  .table-shell > div {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table thead,
+  table tbody {
+    display: table;
+    width: 100%;
+  }
 }
 
 .table-cell-center {
