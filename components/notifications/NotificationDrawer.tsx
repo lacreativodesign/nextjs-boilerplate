@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { Skeleton } from "../ui/skeleton";
+import EmptyState from "../ui/EmptyState";
 
 export type NotificationItem = {
   id: string;
@@ -153,7 +154,16 @@ export default function NotificationDrawer({
               ))}
             </div>
           )}
-          {!loading && notifications.length === 0 && <div className="notification-empty">No notifications yet.</div>}
+          {!loading && notifications.length === 0 && (
+            <div className="notification-empty">
+              <EmptyState
+                title="No records yet"
+                description="Notifications will land here as approvals, mentions, and updates arrive."
+                hint="Tip: You're all caught up."
+                compact
+              />
+            </div>
+          )}
         </div>
 
         {selected && (

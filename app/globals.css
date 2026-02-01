@@ -422,9 +422,54 @@ table tbody tr:hover {
 }
 
 .table-empty {
-  padding: 24px;
+  padding: 32px 24px;
   text-align: center;
   color: var(--text-muted);
+  background: var(--surface-muted);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.empty-state__badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px dashed var(--border-strong);
+  background: color-mix(in srgb, var(--surface-card) 80%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border-subtle) 40%, transparent);
+}
+
+.empty-state__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-state__description {
+  font-size: 12px;
+  max-width: 320px;
+}
+
+.empty-state__hint {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+.empty-state--compact .empty-state__badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.empty-state--compact .empty-state__description,
+.empty-state--compact .empty-state__hint {
+  max-width: 260px;
 }
 
 .btn {
@@ -753,6 +798,23 @@ select option {
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.admin-shell main {
+  animation: fadeRise 240ms ease both;
+}
+
+.admin-shell main > section {
+  animation: fadeRise 220ms ease both;
+  animation-delay: 40ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell main,
+  .admin-shell main > section,
+  .settings-section {
+    animation: none;
+  }
 }
 
 .admin-link {
