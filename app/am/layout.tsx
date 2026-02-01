@@ -8,7 +8,6 @@ import {
   FileText,
   FolderKanban,
   LayoutDashboard,
-  LogOut,
   Menu,
   UsersRound,
   ListChecks,
@@ -18,7 +17,7 @@ import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { canAccessPlanModule } from "@/lib/tenant/plan-access";
-import NotificationBell from "@/components/notifications/NotificationBell";
+import SidebarFooter from "@/components/layouts/SidebarFooter";
 
 const navItems = [
   { label: "Overview", path: "/am", icon: LayoutDashboard },
@@ -51,6 +50,7 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
   const planModules = tenantContext?.tenant?.modules || {};
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
   const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
+  const userName = tenantContext?.user?.displayName || tenantContext?.user?.email || "Account Manager";
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -117,68 +117,72 @@ export default function AMLayout({ children }: { children: React.ReactNode }) {
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(
-            "admin-sidebar h-screen sticky top-0 transition-all duration-300",
+            "admin-sidebar h-screen sticky top-0 transition-all duration-300 flex flex-col",
             collapsed ? "w-20" : "w-64"
           )}
         >
-          <div className="flex items-center justify-between p-4">
-            {!collapsed && (
-              <div className="flex items-center gap-3">
-                {tenantContext?.tenant?.brand?.logoUrl ? (
-                  <img
-                    src={tenantContext.tenant.brand.logoUrl}
-                    alt={tenantContext.tenant.brand.name || "Tenant logo"}
-                    className="h-10 w-10 rounded-lg object-contain bg-[var(--surface-muted)] p-1"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center text-xs font-semibold">
-                    {(tenantContext?.tenant?.brand?.name || "ERP").slice(0, 2)}
-                  </div>
-                )}
-                <div>
-                  <div className="text-sm font-semibold">
-                    {tenantContext?.tenant?.brand?.name || "LA CREATIVO"}
-                  </div>
-                  <div className="text-xs text-[var(--text-muted)]">Account Manager</div>
-                </div>
-              </div>
-            )}
-            <button className="p-2 rounded-md hover:bg-[var(--surface-muted)]" onClick={() => setCollapsed(!collapsed)}>
-              <Menu size={18} />
-            </button>
-          </div>
-          <nav className="flex flex-col gap-1 px-2">
-            {navItems.map((item) => {
-              const active = current === item.path || (item.path !== "/am" && current.startsWith(item.path));
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={clsx(
-                    "sidebar-link flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
-                    active && "active"
+          <div className="flex flex-col flex-1">
+            <div className="flex items-center justify-between p-4">
+              {!collapsed && (
+                <div className="flex items-center gap-3">
+                  {tenantContext?.tenant?.brand?.logoUrl ? (
+                    <img
+                      src={tenantContext.tenant.brand.logoUrl}
+                      alt={tenantContext.tenant.brand.name || "Tenant logo"}
+                      className="h-10 w-10 rounded-lg object-contain bg-[var(--surface-muted)] p-1"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center text-xs font-semibold">
+                      {(tenantContext?.tenant?.brand?.name || "ERP").slice(0, 2)}
+                    </div>
                   )}
-                >
-                  <span className={clsx("sidebar-link-icon", active && "active")}>
-                    <Icon size={18} />
-                  </span>
-                  {!collapsed && <span className="font-medium">{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
+                  <div>
+                    <div className="text-sm font-semibold">
+                      {tenantContext?.tenant?.brand?.name || "LA CREATIVO"}
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)]">Account Manager</div>
+                  </div>
+                </div>
+              )}
+              <button className="p-2 rounded-md hover:bg-[var(--surface-muted)]" onClick={() => setCollapsed(!collapsed)}>
+                <Menu size={18} />
+              </button>
+            </div>
+            <nav className="flex flex-1 flex-col gap-1 px-2">
+              {navItems.map((item) => {
+                const active = current === item.path || (item.path !== "/am" && current.startsWith(item.path));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={clsx(
+                      "sidebar-link flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
+                      active && "active"
+                    )}
+                  >
+                    <span className={clsx("sidebar-link-icon", active && "active")}>
+                      <Icon size={18} />
+                    </span>
+                    {!collapsed && <span className="font-medium">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+          <SidebarFooter
+            collapsed={collapsed}
+            name={userName}
+            email={tenantContext?.user?.email}
+            role="Account Manager"
+            notificationsEnabled={notificationsEnabled}
+            onLogout={handleLogout}
+          />
         </aside>
 
         <div className="flex-1 flex flex-col">
           <header className="admin-header h-16 flex items-center justify-between px-6">
             <h1 className="text-lg font-semibold">Account Manager Dashboard</h1>
-            <div className="flex items-center gap-3">
-              <NotificationBell enabled={notificationsEnabled} />
-              <button className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600" onClick={handleLogout}>
-                <LogOut size={16} />
-              </button>
-            </div>
           </header>
 
           <main className="p-6">{children}</main>

@@ -22,6 +22,15 @@ export default function ClientProfilePage() {
 
   const [profile, setProfile] = useState<ClientProfile>({});
 
+  const displayName = profile.primaryContactName || profile.companyName || "Client";
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   useEffect(() => {
     let alive = true;
 
@@ -94,17 +103,31 @@ export default function ClientProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">Profile</h1>
-        <p className="page-subtitle">Update your account details and contact information.</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Profile</h1>
+          <p className="page-subtitle">Update your account details and contact information.</p>
+        </div>
       </div>
 
-      <div className="card p-5">
-        {error ? <div className="text-sm text-red-400 mb-3">{error}</div> : null}
-        {success ? <div className="text-sm text-emerald-500 mb-3">{success}</div> : null}
+      <div className="card p-5 settings-section">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-[var(--surface-muted)] text-lg font-semibold text-[var(--text-primary)] flex items-center justify-center">
+            {initials}
+          </div>
+          <div>
+            <div className="text-base font-semibold">{displayName}</div>
+            <div className="text-sm text-[var(--text-muted)]">Client Profile</div>
+          </div>
+        </div>
+
+        <div className="settings-divider" />
+
+        {error ? <div className="helper-text text-red-500 mb-2">{error}</div> : null}
+        {success ? <div className="helper-text text-emerald-600 mb-2">{success}</div> : null}
 
         <form onSubmit={onSubmit} className="grid gap-4">
-          <div className="card p-4">
+          <div className="card p-4 settings-section">
             <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Company</div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
@@ -114,6 +137,7 @@ export default function ClientProfilePage() {
                   value={profile.companyName || ""}
                   onChange={(e) => setProfile((prev) => ({ ...prev, companyName: e.target.value }))}
                 />
+                <p className="helper-text mt-2">Appears on invoices and client-facing screens.</p>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Contact Name</div>
@@ -122,16 +146,18 @@ export default function ClientProfilePage() {
                   value={profile.primaryContactName || ""}
                   onChange={(e) => setProfile((prev) => ({ ...prev, primaryContactName: e.target.value }))}
                 />
+                <p className="helper-text mt-2">Primary point of contact for updates.</p>
               </div>
             </div>
           </div>
 
-          <div className="card p-4">
+          <div className="card p-4 settings-section">
             <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Contact</div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
                 <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Email (Read-only)</div>
                 <input className="input mt-2" value={profile.primaryContactEmail || ""} disabled />
+                <p className="helper-text mt-2">This email is linked to the client account.</p>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Phone</div>
@@ -140,11 +166,12 @@ export default function ClientProfilePage() {
                   value={profile.primaryContactPhone || ""}
                   onChange={(e) => setProfile((prev) => ({ ...prev, primaryContactPhone: e.target.value }))}
                 />
+                <p className="helper-text mt-2">Used for urgent delivery communications.</p>
               </div>
             </div>
           </div>
 
-          <div className="card p-4">
+          <div className="card p-4 settings-section">
             <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Location</div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
@@ -154,6 +181,7 @@ export default function ClientProfilePage() {
                   value={profile.timezone || ""}
                   onChange={(e) => setProfile((prev) => ({ ...prev, timezone: e.target.value }))}
                 />
+                <p className="helper-text mt-2">Aligns project deadlines with your locale.</p>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Address</div>
@@ -162,6 +190,7 @@ export default function ClientProfilePage() {
                   value={profile.address || ""}
                   onChange={(e) => setProfile((prev) => ({ ...prev, address: e.target.value }))}
                 />
+                <p className="helper-text mt-2">Used for compliance and billing records.</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
@@ -184,8 +213,9 @@ export default function ClientProfilePage() {
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <button className="btn" type="submit" disabled={saving}>
+          <div className="flex items-center justify-end gap-3">
+            <span className="helper-text">Changes are saved securely to your client profile.</span>
+            <button className="btn subtle" type="submit" disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>

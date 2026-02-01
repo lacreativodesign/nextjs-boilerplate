@@ -82,14 +82,14 @@ export default function HrSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="card" style={{ padding: 18, borderRadius: 18 }}>
+      <section className="card settings-section" style={{ padding: 18, borderRadius: 18 }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>Settings</div>
         <div style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
           Manage default HR policies and onboarding behavior.
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2 settings-section">
         <div
           className="card"
           style={{
@@ -120,7 +120,7 @@ export default function HrSettingsPage() {
               <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
                 Optional: automatically assign this template to new hires (automation stub).
               </p>
-              <button className="btn" onClick={saveSettings} disabled={saving}>
+              <button className="btn subtle" onClick={saveSettings} disabled={saving}>
                 {saving ? "Saving..." : "Save Settings"}
               </button>
             </div>
@@ -128,7 +128,7 @@ export default function HrSettingsPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: 18, borderRadius: 18 }}>
+      <section className="card settings-section" style={{ padding: 18, borderRadius: 18 }}>
         <div style={{ fontWeight: 700, marginBottom: 10 }}>Document Retention</div>
         <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>{settings.retentionNote}</p>
       </section>

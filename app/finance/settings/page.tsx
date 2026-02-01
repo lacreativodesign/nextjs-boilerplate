@@ -9,14 +9,14 @@ export default function FinanceSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="settings-section">
         <h3 style={{ fontSize: 20, fontWeight: 700 }}>Settings</h3>
         <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
           Finance role settings (read-only). Contact Admin for workflow-level changes.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 settings-section">
         <div className="card" style={{ padding: 18, borderRadius: 16 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Currency Display Rules</div>
           <p style={{ fontSize: 13, opacity: 0.75 }}>
@@ -32,7 +32,7 @@ export default function FinanceSettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 settings-section">
         <div className="card" style={{ padding: 18, borderRadius: 16 }}>
           <div style={{ fontWeight: 700, marginBottom: 10 }}>Payment Methods</div>
           <div className="space-y-2">

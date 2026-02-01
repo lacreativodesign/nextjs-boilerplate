@@ -111,7 +111,7 @@ export default function NotificationSettingsPage() {
         <SettingsAlert tone="info">Only Super Admins can edit notification settings. You have view-only access.</SettingsAlert>
       )}
 
-      <section className="card" style={{ padding: 20, borderRadius: 18 }}>
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Notifications & Email</div>
@@ -119,10 +119,12 @@ export default function NotificationSettingsPage() {
               Toggle in-app alerts, email sending, and per-event switches.
             </p>
           </div>
-          <button className="btn" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
+          <button className="btn subtle" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
+
+        <div className="settings-divider" />
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <label className="flex items-center gap-2 text-sm">
@@ -154,6 +156,7 @@ export default function NotificationSettingsPage() {
               onChange={(e) => setSettings((prev) => ({ ...prev, senderName: e.target.value }))}
               disabled={disabled}
             />
+            <span className="helper-text">Used in outbound email headers.</span>
           </label>
           <label className="space-y-2">
             <span style={{ fontSize: 13, fontWeight: 600 }}>Reply-To Email</span>
@@ -164,6 +167,7 @@ export default function NotificationSettingsPage() {
               onChange={(e) => setSettings((prev) => ({ ...prev, replyToEmail: e.target.value }))}
               disabled={disabled}
             />
+            <span className="helper-text">Replies route to the finance or ops inbox.</span>
           </label>
         </div>
 

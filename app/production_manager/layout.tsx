@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
-import { LayoutDashboard, ListChecks, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, ListChecks, Menu } from "lucide-react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
 import RequireAuth from "@/components/RequireAuth";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { canAccessPlanModule } from "@/lib/tenant/plan-access";
-import NotificationBell from "@/components/notifications/NotificationBell";
+import SidebarFooter from "@/components/layouts/SidebarFooter";
 
 const navItems = [
   { label: "Overview", path: "/production_manager", icon: LayoutDashboard },
@@ -40,6 +40,7 @@ export default function ProductionManagerLayout({ children }: { children: React.
   const moduleMap = tenantContext?.tenant?.modulesEnabled || {};
   const notificationsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "notifications", role });
   const approvalsEnabled = canAccessPlanModule({ modules: planModules, moduleKey: "approvals", role });
+  const userName = tenantContext?.user?.displayName || tenantContext?.user?.email || "Production Manager";
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -102,57 +103,61 @@ export default function ProductionManagerLayout({ children }: { children: React.
   return (
     <RequireAuth allowed={["production_manager"]}>
       <div className="flex min-h-screen bg-[var(--main-bg)]">
-        <aside className={clsx("admin-sidebar", collapsed && "collapsed")}>
-          <div className="flex items-center justify-between px-3 py-3">
-            {!collapsed && (
-              <div>
-                <div className="text-sm font-semibold">{tenantContext?.tenant?.brand?.name || "Bizosto"}</div>
-                <div className="text-xs text-[var(--text-muted)]">Production Manager</div>
-              </div>
-            )}
-            <button className="icon-button" onClick={() => setCollapsed((prev) => !prev)}>
-              <Menu size={18} />
-            </button>
+        <aside className={clsx("admin-sidebar flex flex-col", collapsed && "collapsed")}>
+          <div className="flex flex-col flex-1">
+            <div className="flex items-center justify-between px-3 py-3">
+              {!collapsed && (
+                <div>
+                  <div className="text-sm font-semibold">{tenantContext?.tenant?.brand?.name || "Bizosto"}</div>
+                  <div className="text-xs text-[var(--text-muted)]">Production Manager</div>
+                </div>
+              )}
+              <button className="icon-button" onClick={() => setCollapsed((prev) => !prev)}>
+                <Menu size={18} />
+              </button>
+            </div>
+            <nav className="mt-3 flex flex-1 flex-col gap-1 px-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = current === item.path || current.startsWith(`${item.path}/`);
+                const disabled = item.planKey === "approvals" && !approvalsEnabled;
+                return disabled ? (
+                  <span
+                    key={item.path}
+                    title="Upgrade Required"
+                    className={clsx(
+                      "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    <Icon size={18} />
+                    {!collapsed && <span className="font-medium">{item.label}</span>}
+                  </span>
+                ) : (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={clsx("admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors", active && "active")}
+                  >
+                    <Icon size={18} />
+                    {!collapsed && <span className="font-medium">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
-          <nav className="mt-3 flex flex-col gap-1 px-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = current === item.path || current.startsWith(`${item.path}/`);
-              const disabled = item.planKey === "approvals" && !approvalsEnabled;
-              return disabled ? (
-                <span
-                  key={item.path}
-                  title="Upgrade Required"
-                  className={clsx(
-                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed"
-                  )}
-                >
-                  <Icon size={18} />
-                  {!collapsed && <span className="font-medium">{item.label}</span>}
-                </span>
-              ) : (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={clsx("admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors", active && "active")}
-                >
-                  <Icon size={18} />
-                  {!collapsed && <span className="font-medium">{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarFooter
+            collapsed={collapsed}
+            name={userName}
+            email={tenantContext?.user?.email}
+            role="Production Manager"
+            notificationsEnabled={notificationsEnabled}
+            onLogout={handleLogout}
+          />
         </aside>
 
         <div className="flex-1 flex flex-col">
           <header className="admin-header h-16 flex items-center justify-between px-6">
             <h1 className="text-lg font-semibold">Production Manager</h1>
-            <div className="flex items-center gap-3">
-              <NotificationBell enabled={notificationsEnabled} />
-              <button onClick={handleLogout} className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600">
-                <LogOut size={18} />
-              </button>
-            </div>
           </header>
 
           <main className="p-6">{children}</main>
