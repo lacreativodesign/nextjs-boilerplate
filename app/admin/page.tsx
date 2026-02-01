@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatPkr, formatUsd, useInterval } from "@/components/finance/financeUtils";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart } from "./reports/_components/ReportsUI";
+import EmptyState from "@/components/ui/EmptyState";
 
 type OverviewResponse = {
   kpis: {
@@ -308,13 +309,20 @@ export default function AdminOverview() {
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="table-empty">
-                      Loading activity…
+                      <EmptyState
+                        title="Loading activity"
+                        description="Gathering the latest updates across departments."
+                      />
                     </td>
                   </tr>
                 ) : activityRows.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="table-empty">
-                      No activity found.
+                      <EmptyState
+                        title="No records yet"
+                        description="Activity will appear as teams log updates across projects."
+                        hint="Tip: Use Refresh to pull the newest updates."
+                      />
                     </td>
                   </tr>
                 ) : (
