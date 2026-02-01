@@ -185,7 +185,9 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
             <h1 className="text-lg font-semibold">Finance Dashboard</h1>
           </header>
 
-          <main className="p-6">{children}</main>
+          <main className="p-6">
+            <div className="page-frame">{children}</div>
+          </main>
         </div>
 
       </div>

@@ -192,7 +192,9 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
 
           </header>
 
-          <main className="p-6">{children}</main>
+          <main className="p-6">
+            <div className="page-frame">{children}</div>
+          </main>
         </div>
 
       </div>

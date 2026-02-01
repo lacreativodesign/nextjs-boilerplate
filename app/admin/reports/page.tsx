@@ -196,45 +196,40 @@ export default function ReportsOverviewPage() {
           </button>
         </div>
 
-        <div className="card" style={{ marginTop: 20, padding: 0, borderRadius: 18, overflow: "hidden" }}>
+        <div className="table-shell" style={{ marginTop: 20 }}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <table className="table" style={{ minWidth: 720 }}>
               <thead>
-                <tr style={{ background: "rgba(148,163,184,0.15)" }}>
-                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Activity</th>
-                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Details</th>
-                  <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Timestamp</th>
+                <tr>
+                  <th>Activity</th>
+                  <th>Details</th>
+                  <th className="table-cell-right">Timestamp</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: "center", padding: 40 }}>
+                    <td colSpan={3} className="table-empty">
                       Loading activity…
                     </td>
                   </tr>
                 ) : filteredActivity.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: "center", padding: 40 }}>
+                    <td colSpan={3} className="table-empty">
                       No activity found.
                     </td>
                   </tr>
                 ) : (
-                  filteredActivity.map((event, idx) => {
-                    const rowBg = idx % 2 === 0 ? "rgba(15,23,42,0.02)" : "transparent";
-                    return (
-                      <tr key={event.id} style={{ background: rowBg }}>
-                        <td style={{ padding: "14px 16px", textAlign: "left" }}>
-                          <div style={{ fontWeight: 600 }}>{event.title || "Activity"}</div>
-                          <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{event.type}</div>
-                        </td>
-                        <td style={{ padding: "14px 16px", textAlign: "left" }}>{event.description || "-"}</td>
-                        <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                          {formatDateTime(event.createdAt)}
-                        </td>
-                      </tr>
-                    );
-                  })
+                  filteredActivity.map((event) => (
+                    <tr key={event.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{event.title || "Activity"}</div>
+                        <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{event.type}</div>
+                      </td>
+                      <td>{event.description || "-"}</td>
+                      <td className="table-cell-right">{formatDateTime(event.createdAt)}</td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
