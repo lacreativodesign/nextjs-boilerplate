@@ -137,6 +137,11 @@ body {
   flex-wrap: wrap;
 }
 
+.page-frame {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
 .helper-text {
   font-size: 12px;
   color: var(--text-muted);
@@ -674,6 +679,78 @@ select option {
   background: var(--app-bg);
   color: var(--text-primary);
   min-height: 100vh;
+}
+
+.reports-shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--app-bg);
+  color: var(--text-primary);
+}
+
+.reports-sidebar {
+  width: 260px;
+  padding: 28px 20px;
+  background: var(--surface-card);
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reports-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.reports-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reports-link {
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.reports-link:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.reports-link.active {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.reports-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.reports-header {
+  background: color-mix(in srgb, var(--surface-card) 88%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reports-content {
+  padding: 28px;
 }
 
 .admin-sidebar {

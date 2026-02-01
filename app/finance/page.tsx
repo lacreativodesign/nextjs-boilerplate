@@ -181,44 +181,41 @@ export default function FinanceOverviewPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
+      <section className="table-shell">
         <div style={{ padding: 18, fontWeight: 700 }}>Recent Finance Activity</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+          <table className="table" style={{ minWidth: 720 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
-                <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Event</th>
-                <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Details</th>
-                <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>Timestamp</th>
+              <tr>
+                <th>Event</th>
+                <th>Details</th>
+                <th className="table-cell-center">Timestamp</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: "center", padding: 24 }}>
+                  <td colSpan={3} className="table-empty">
                     Loading activity…
                   </td>
                 </tr>
               ) : overview.recentEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: "center", padding: 24 }}>
+                  <td colSpan={3} className="table-empty">
                     No finance events yet.
                   </td>
                 </tr>
               ) : (
-                overview.recentEvents.map((event, idx) => {
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
-                  return (
-                    <tr key={event.id} style={{ background: rowBg }}>
-                      <td style={{ padding: "12px 16px", textAlign: "left" }}>
-                        <div style={{ fontWeight: 600 }}>{event.title || event.type}</div>
-                        <div style={{ fontSize: 12, opacity: 0.7 }}>{event.type}</div>
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "left" }}>{event.description || "-"}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{formatDateTime(event.createdAt)}</td>
-                    </tr>
-                  );
-                })
+                overview.recentEvents.map((event) => (
+                  <tr key={event.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{event.title || event.type}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{event.type}</div>
+                    </td>
+                    <td>{event.description || "-"}</td>
+                    <td className="table-cell-center">{formatDateTime(event.createdAt)}</td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

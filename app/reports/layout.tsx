@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,70 +19,29 @@ export default function ReportsLayout({
   ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        backgroundColor: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
+    <div className="reports-shell">
       {/* SIDEBAR */}
-      <aside
-        style={{
-          width: 250,
-          backgroundColor: "#111827",
-          color: "white",
-          padding: "30px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-          boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
-        }}
-      >
-        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 30 }}>
-          REPORTS
-        </h2>
+      <aside className="reports-sidebar">
+        <h2 className="reports-title">Reports</h2>
 
-        {navItems.map((item) => {
-          const active = pathname.startsWith(item.path);
+        <nav className="reports-nav">
+          {navItems.map((item) => {
+            const active = pathname.startsWith(item.path);
 
-          return (
-            <Link
-              key={item.path}
-              href={item.path}
-              style={{
-                padding: "12px 16px",
-                borderRadius: 8,
-                background: active ? "#1f2937" : "transparent",
-                color: active ? "#fff" : "#d1d5db",
-                fontWeight: active ? 700 : 500,
-                textDecoration: "none",
-                transition: "0.2s ease",
-              }}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+            return (
+              <Link key={item.path} href={item.path} className={`reports-link ${active ? "active" : ""}`}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
       </aside>
 
       {/* MAIN AREA */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div className="reports-main">
         {/* HEADER */}
-        <header
-          style={{
-            backgroundColor: "#ffffff",
-            borderBottom: "1px solid #e5e7eb",
-            padding: "20px 30px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: "#111827" }}>
-            Reporting Center
-          </h1>
+        <header className="reports-header">
+          <h1 className="text-lg font-semibold">Reporting Center</h1>
 
           <button
             onClick={async () => {
@@ -93,23 +51,17 @@ export default function ReportsLayout({
               });
               window.location.href = "/login";
             }}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              background: "#ef4444",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
+            className="btn btn-danger"
           >
             LOGOUT
           </button>
         </header>
 
         {/* CONTENT */}
-        <main style={{ padding: "30px" }}>{children}</main>
+        <main className="reports-content">
+          <div className="page-frame">{children}</div>
+        </main>
       </div>
     </div>
   );
-        }
+}
