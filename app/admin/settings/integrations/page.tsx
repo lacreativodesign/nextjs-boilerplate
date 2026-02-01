@@ -114,7 +114,7 @@ export default function IntegrationSettingsPage() {
         <SettingsAlert tone="info">Only Super Admins can edit integrations. You have view-only access.</SettingsAlert>
       )}
 
-      <section className="card" style={{ padding: 20, borderRadius: 18 }}>
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Integrations</div>
@@ -122,10 +122,12 @@ export default function IntegrationSettingsPage() {
               Firebase connection status and outbound webhook configuration.
             </p>
           </div>
-          <button className="btn" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
+          <button className="btn subtle" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
+
+        <div className="settings-divider" />
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="card" style={{ padding: 16, borderRadius: 14 }}>

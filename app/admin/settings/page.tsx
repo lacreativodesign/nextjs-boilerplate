@@ -126,74 +126,80 @@ export default function AdminSettingsPage() {
         </SettingsAlert>
       )}
 
-      <section className="card p-5 rounded-xl">
+      <section className="card p-5 rounded-xl settings-section">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-base">
-              General System Settings
-            </h3>
-            <p className="text-sm opacity-70">
-              Global defaults used across the ERP.
-            </p>
+            <h3 className="font-semibold text-base">General System Settings</h3>
+            <p className="text-sm opacity-70">Global defaults used across the ERP.</p>
           </div>
 
-          <button
-            className="btn rounded-full"
-            onClick={handleSave}
-            disabled={disabled}
-          >
+          <button className="btn subtle rounded-full" onClick={handleSave} disabled={disabled}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <input
-            className="input"
-            placeholder="Company Name"
-            value={settings.companyName}
-            onChange={(e) =>
-              setSettings({ ...settings, companyName: e.target.value })
-            }
-            disabled={disabled}
-          />
+        <div className="settings-divider" />
 
-          <input
-            className="input"
-            placeholder="Timezone"
-            value={settings.timezone}
-            onChange={(e) =>
-              setSettings({ ...settings, timezone: e.target.value })
-            }
-            disabled={disabled}
-          />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium">Company Name</label>
+            <input
+              className="input mt-2"
+              placeholder="Company Name"
+              value={settings.companyName}
+              onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+              disabled={disabled}
+            />
+            <p className="helper-text mt-2">Used in invoices, reports, and exports.</p>
+          </div>
 
-          <input
-            className="input"
-            placeholder="Date Format"
-            value={settings.dateFormat}
-            onChange={(e) =>
-              setSettings({ ...settings, dateFormat: e.target.value })
-            }
-            disabled={disabled}
-          />
+          <div>
+            <label className="text-sm font-medium">Timezone</label>
+            <input
+              className="input mt-2"
+              placeholder="Timezone"
+              value={settings.timezone}
+              onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+              disabled={disabled}
+            />
+            <p className="helper-text mt-2">Affects scheduling across modules.</p>
+          </div>
 
-          <input
-            className="input"
-            type="number"
-            min={1}
-            max={12}
-            value={settings.fiscalMonthStart}
-            onChange={(e) =>
-              setSettings({
-                ...settings,
-                fiscalMonthStart: Number(e.target.value),
-              })
-            }
-            disabled={disabled}
-          />
+          <div>
+            <label className="text-sm font-medium">Date Format</label>
+            <input
+              className="input mt-2"
+              placeholder="Date Format"
+              value={settings.dateFormat}
+              onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
+              disabled={disabled}
+            />
+            <p className="helper-text mt-2">Controls date display throughout the app.</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Fiscal Month Start</label>
+            <input
+              className="input mt-2"
+              type="number"
+              min={1}
+              max={12}
+              value={settings.fiscalMonthStart}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  fiscalMonthStart: Number(e.target.value),
+                })
+              }
+              disabled={disabled}
+            />
+            <p className="helper-text mt-2">Aligns reporting periods to your fiscal year.</p>
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="settings-divider" />
+
+        <div className="grid gap-6 lg:grid-cols-2">
           <div>
             <div className="font-medium mb-2">Working Days</div>
             <div className="grid grid-cols-2 gap-2">
@@ -209,6 +215,7 @@ export default function AdminSettingsPage() {
                 </label>
               ))}
             </div>
+            <p className="helper-text mt-2">Used for SLA and workflow planning.</p>
           </div>
 
           <div>
@@ -245,6 +252,7 @@ export default function AdminSettingsPage() {
                 disabled={disabled}
               />
             </div>
+            <p className="helper-text mt-2">Controls default working window visibility.</p>
           </div>
         </div>
       </section>

@@ -10,7 +10,6 @@ import {
   ClipboardCheck,
   FileText,
   LayoutDashboard,
-  LogOut,
   Menu,
   Shield,
   Users,
@@ -18,7 +17,7 @@ import {
 import RequireAuth from "@/components/RequireAuth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { signOut, type Auth } from "firebase/auth";
-import NotificationBell from "@/components/notifications/NotificationBell";
+import SidebarFooter from "@/components/layouts/SidebarFooter";
 
 type TenantOption = { id: string; name: string };
 const navItems = [
@@ -39,6 +38,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [activeTenantId, setActiveTenantId] = useState<string>("");
   const [activeTenantName, setActiveTenantName] = useState<string>("Platform");
+  const userName = authInstance?.currentUser?.displayName || authInstance?.currentUser?.email || "Super Admin";
 
   const normalize = (p: string) => p.replace(/\/+$/, "") || "/";
   const current = normalize(pathname);
@@ -151,54 +151,57 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       <div className="admin-shell flex min-h-screen transition-colors">
         <aside
           className={clsx(
-            "admin-sidebar h-screen sticky top-0 transition-all duration-300",
+            "admin-sidebar h-screen sticky top-0 transition-all duration-300 flex flex-col",
             collapsed ? "w-20" : "w-64"
           )}
         >
-          <div className="flex items-center justify-between p-4">
-            {!collapsed && (
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center">
-                  <Shield size={18} />
+          <div className="flex flex-col flex-1">
+            <div className="flex items-center justify-between p-4">
+              {!collapsed && (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center">
+                    <Shield size={18} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">Bizosto Platform</div>
+                    <div className="text-xs text-[var(--text-muted)]">Super Admin</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm font-semibold">Bizosto Platform</div>
-                  <div className="text-xs text-[var(--text-muted)]">Super Admin</div>
-                </div>
-              </div>
-            )}
-            <button
-              className="p-2 rounded-md hover:bg-[var(--surface-muted)]"
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              <Menu size={20} />
-            </button>
+              )}
+              <button
+                className="p-2 rounded-md hover:bg-[var(--surface-muted)]"
+                onClick={() => setCollapsed(!collapsed)}
+              >
+                <Menu size={20} />
+              </button>
+            </div>
+
+            <nav className="flex flex-1 flex-col gap-1 px-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const itemPath = normalize(item.path);
+                const isOverview = itemPath === "/super_admin";
+                const active = isOverview
+                  ? current === "/super_admin"
+                  : current === itemPath || current.startsWith(itemPath + "/");
+
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={clsx(
+                      "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                      active && "active"
+                    )}
+                  >
+                    <Icon size={18} />
+                    {!collapsed && <span className="font-medium">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
-
-          <nav className="flex flex-col gap-1 px-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const itemPath = normalize(item.path);
-              const isOverview = itemPath === "/super_admin";
-              const active = isOverview
-                ? current === "/super_admin"
-                : current === itemPath || current.startsWith(itemPath + "/");
-
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={clsx(
-                    "admin-link flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                    active && "active"
-                  )}
-                >
-                  <Icon size={18} />
-                  {!collapsed && <span className="font-medium">{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarFooter collapsed={collapsed} name={userName} role="Super Admin" onLogout={handleLogout} />
         </aside>
 
         <div className="flex-1 flex flex-col">
@@ -223,12 +226,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                   ))}
                 </select>
               </div>
-
-              <NotificationBell />
-
-              <button onClick={handleLogout} className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600">
-                <LogOut size={18} />
-              </button>
             </div>
           </header>
 

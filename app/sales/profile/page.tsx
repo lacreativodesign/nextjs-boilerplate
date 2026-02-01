@@ -11,6 +11,15 @@ export default function SalesProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const displayName = "Demo Sales User";
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -47,7 +56,12 @@ export default function SalesProfilePage() {
 
   return (
     <div className="p-6 space-y-8">
-      <h1 className="text-2xl font-bold">Sales Profile</h1>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Sales Profile</h1>
+          <p className="page-subtitle">Review your account details and keep contact information current.</p>
+        </div>
+      </div>
 
       {(message || error) && (
         <div
@@ -62,7 +76,22 @@ export default function SalesProfilePage() {
       )}
 
       {/* Basic Info */}
-      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
+      <section className="card p-6 space-y-4 settings-section">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--surface-muted)] flex items-center justify-center text-lg font-semibold">
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover rounded-2xl" />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+          <div>
+            <div className="text-base font-semibold">{displayName}</div>
+            <div className="text-sm text-[var(--text-muted)]">Sales Executive</div>
+          </div>
+        </div>
+        <div className="settings-divider" />
         <h2 className="text-lg font-semibold">Basic Information</h2>
         <p className="text-sm text-gray-500 dark:text-neutral-400">
           These details come from your account profile. In the enterprise
@@ -76,8 +105,9 @@ export default function SalesProfilePage() {
               type="text"
               value="Demo Sales User"
               disabled
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 cursor-not-allowed"
+              className="mt-2 input"
             />
+            <p className="helper-text mt-2">Managed by HR policies.</p>
           </div>
           <div>
             <label className="text-sm font-medium">Email</label>
@@ -85,8 +115,9 @@ export default function SalesProfilePage() {
               type="email"
               value="sales.user@lacreativo.com"
               disabled
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 cursor-not-allowed"
+              className="mt-2 input"
             />
+            <p className="helper-text mt-2">Used for login and alerts.</p>
           </div>
           <div>
             <label className="text-sm font-medium">Role</label>
@@ -94,7 +125,7 @@ export default function SalesProfilePage() {
               type="text"
               value="Sales Executive"
               disabled
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 cursor-not-allowed"
+              className="mt-2 input"
             />
           </div>
           <div>
@@ -103,14 +134,14 @@ export default function SalesProfilePage() {
               type="text"
               value="Sales"
               disabled
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 cursor-not-allowed"
+              className="mt-2 input"
             />
           </div>
         </div>
       </section>
 
       {/* Avatar / Profile Picture */}
-      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
+      <section className="card p-6 space-y-4 settings-section">
         <h2 className="text-lg font-semibold">Profile Picture</h2>
         <p className="text-sm text-gray-500 dark:text-neutral-400">
           Upload a square image (e.g. 400×400). In the full version this will be
@@ -127,7 +158,7 @@ export default function SalesProfilePage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span>SU</span>
+              <span>{initials}</span>
             )}
           </div>
 
@@ -151,7 +182,7 @@ export default function SalesProfilePage() {
       </section>
 
       {/* Change Password */}
-      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
+      <section className="card p-6 space-y-4 settings-section">
         <h2 className="text-lg font-semibold">Change Password</h2>
         <p className="text-sm text-gray-500 dark:text-neutral-400">
           This is a front-end placeholder. Later we will wire it into the real
@@ -165,9 +196,10 @@ export default function SalesProfilePage() {
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="mt-2 input"
               placeholder="Enter current password"
             />
+            <p className="helper-text mt-2">Required to confirm your identity.</p>
           </div>
 
           <div>
@@ -176,7 +208,7 @@ export default function SalesProfilePage() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="mt-2 input"
               placeholder="Minimum 8 characters"
             />
           </div>
@@ -187,19 +219,19 @@ export default function SalesProfilePage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="mt-2 input"
               placeholder="Re-type new password"
             />
           </div>
 
-          <button
-            type="submit"
-            className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
-          >
-            Update Password
-          </button>
+          <div className="flex items-center justify-between">
+            <span className="helper-text">Password updates take effect immediately.</span>
+            <button type="submit" className="btn subtle">
+              Update Password
+            </button>
+          </div>
         </form>
       </section>
     </div>
   );
-    }
+}
