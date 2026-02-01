@@ -3,13 +3,23 @@
 import Link from "next/link";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { getSubscriptionBannerCopy, isNonActiveSubscription } from "@/lib/subscription";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const BILLING_PATH = "/billing";
 
 export default function SubscriptionBanner() {
   const { data, loading } = useTenantContext();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="sticky top-0 z-50 w-full border-b border-slate-200/70 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3">
+          <Skeleton variant="text" className="h-4 w-1/3" />
+          <Skeleton variant="text" className="h-6 w-24 rounded-full" />
+        </div>
+      </div>
+    );
+  }
 
   const subscriptionState = data?.tenant?.subscriptionState || "active";
   const role = data?.user?.role || "";

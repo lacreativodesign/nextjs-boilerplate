@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const KPI_LABELS = [
   { key: "totalLeads", label: "Total Leads" },
@@ -169,10 +170,13 @@ export default function SalesOverviewPage() {
 }
 
 function KpiCard({ title, value }: { title: string; value: string }) {
+  const showSkeleton = value === "—";
   return (
     <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>
+        {showSkeleton ? <Skeleton variant="text" className="h-6 w-24" /> : value}
+      </div>
     </div>
   );
 }

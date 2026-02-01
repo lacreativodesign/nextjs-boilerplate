@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/components/finance/financeUtils";
 
 export type SortDirection = "asc" | "desc";
@@ -57,12 +58,15 @@ export function KpiCard({
   value,
   subtitle,
   tone,
+  loading,
 }: {
   title: string;
   value: string;
   subtitle?: string;
   tone?: "warning";
+  loading?: boolean;
 }) {
+  const showSkeleton = loading || value === "—";
   return (
     <div
       className="card kpi-card"
@@ -74,8 +78,15 @@ export function KpiCard({
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>{value}</div>
-      {subtitle && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{subtitle}</div>}
+      <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>
+        {showSkeleton ? <Skeleton variant="text" className="h-6 w-24" /> : value}
+      </div>
+      {subtitle &&
+        (showSkeleton ? (
+          <Skeleton variant="text" className="mt-2 h-3 w-32" />
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{subtitle}</div>
+        ))}
     </div>
   );
 }

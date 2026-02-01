@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import clsx from "clsx";
+import { Skeleton } from "../ui/skeleton";
 
 export type NotificationItem = {
   id: string;
@@ -139,7 +140,19 @@ export default function NotificationDrawer({
               </div>
             </div>
           ))}
-          {loading && <div className="notification-empty">Loading notifications...</div>}
+          {loading && (
+            <div className="notification-empty space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={`notification-skeleton-${index}`} className="flex items-center gap-3">
+                  <Skeleton variant="avatar" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton variant="text" className="h-4 w-3/4" />
+                    <Skeleton variant="text" className="h-3 w-5/6" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {!loading && notifications.length === 0 && <div className="notification-empty">No notifications yet.</div>}
         </div>
 

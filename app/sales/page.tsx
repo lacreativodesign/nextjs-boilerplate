@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, LineChart, Line, Pie, PieChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatUsd } from "@/components/finance/financeUtils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const KPI_LABELS = [
   { key: "totalLeads", label: "Total Leads" },
@@ -136,7 +137,9 @@ export default function SalesOverviewPage() {
         {kpiValues.map((kpi) => (
           <div key={kpi.label} className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{kpi.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{loading ? "—" : kpi.value}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>
+              {loading ? <Skeleton variant="text" className="h-6 w-24" /> : kpi.value}
+            </div>
           </div>
         ))}
       </div>

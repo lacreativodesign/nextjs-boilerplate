@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "../ui/skeleton";
 
 type EventRecord = {
   id: string;
@@ -174,13 +175,18 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
               </tr>
             </thead>
             <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={6} className="text-sm text-[var(--text-muted)]">
-                    Loading activity...
-                  </td>
-                </tr>
-              )}
+              {loading &&
+                Array.from({ length: 6 }).map((_, index) => (
+                  <tr key={`activity-skeleton-${index}`}>
+                    <td colSpan={6}>
+                      <div className="grid grid-cols-6 gap-4 py-2">
+                        {Array.from({ length: 6 }).map((__, col) => (
+                          <Skeleton key={`activity-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               {!loading && events.length === 0 && (
                 <tr>
                   <td colSpan={6} className="text-sm text-[var(--text-muted)]">

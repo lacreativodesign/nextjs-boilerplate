@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type WorkloadStats = {
   openProjects: number;
@@ -81,19 +82,27 @@ export default function ProductionManagerOverview() {
       <div className="kpis" style={{ marginTop: 14 }}>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Open projects</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : workload.openProjects}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : workload.openProjects}
+          </div>
         </div>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Drafts pending review</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : workload.draftsPendingReview}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : workload.draftsPendingReview}
+          </div>
         </div>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Revisions in progress</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : workload.revisionsInProgress}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : workload.revisionsInProgress}
+          </div>
         </div>
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="text-xs text-[var(--text-muted)]">Overdue items</div>
-          <div className="text-2xl font-semibold mt-2">{loading ? "—" : workload.overdueItems}</div>
+          <div className="text-2xl font-semibold mt-2">
+            {loading ? <Skeleton variant="text" className="h-6 w-20" /> : workload.overdueItems}
+          </div>
         </div>
       </div>
 
@@ -111,13 +120,18 @@ export default function ProductionManagerOverview() {
                 </tr>
               </thead>
               <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={4} className="text-sm text-[var(--text-muted)]">
-                      Loading queue...
-                    </td>
-                  </tr>
-                )}
+                {loading &&
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={`queue-skeleton-${index}`}>
+                      <td colSpan={4}>
+                        <div className="grid grid-cols-4 gap-4 py-2">
+                          {Array.from({ length: 4 }).map((__, col) => (
+                            <Skeleton key={`queue-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 {!loading && queue.length === 0 && (
                   <tr>
                     <td colSpan={4} className="text-sm text-[var(--text-muted)]">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { SkeletonForm } from "@/components/ui/skeleton";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import {
   INTERNAL_ROLE_OPTIONS,
@@ -302,7 +303,11 @@ export default function EditUserPage() {
   }
 
   if (loading) {
-    return <div style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>Loading...</div>;
+    return (
+      <div style={{ width: "100%" }}>
+        <SkeletonForm fields={8} />
+      </div>
+    );
   }
 
   return (

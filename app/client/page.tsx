@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type OverviewPayload = {
   ok: boolean;
@@ -210,10 +211,13 @@ export default function ClientOverviewPage() {
 }
 
 function KpiCard({ label, value }: { label: string; value: string }) {
+  const showSkeleton = value === "—";
   return (
     <div className="card kpi-card p-4">
       <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">{label}</div>
-      <div className="text-2xl font-semibold mt-2">{value}</div>
+      <div className="text-2xl font-semibold mt-2">
+        {showSkeleton ? <Skeleton variant="text" className="h-6 w-24" /> : value}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
+import { SkeletonForm } from "@/components/ui/skeleton";
 import { useSearchParams, useRouter } from "next/navigation";
 
 function AcceptInviteClient() {
@@ -82,7 +83,11 @@ function AcceptInviteClient() {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-[var(--text-muted)]">Validating invitation…</div>;
+    return (
+      <div className="p-6 max-w-md">
+        <SkeletonForm fields={3} />
+      </div>
+    );
   }
 
   if (error) {
