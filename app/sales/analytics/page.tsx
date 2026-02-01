@@ -11,8 +11,16 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import {
+  ChartContainer,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipProps,
+  useChartAnimation,
+} from "@/components/charts/ChartContainer";
 
 export default function SalesAnalyticsPage() {
+  const chartAnimation = useChartAnimation();
   // Dummy analytics — replace later with Firestore data
   const monthlySales = [
     { month: "Jan", value: 12000 },
@@ -37,39 +45,37 @@ export default function SalesAnalyticsPage() {
       <h1 className="text-2xl font-bold">Sales Analytics</h1>
 
       {/* --- Monthly Revenue Chart --- */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-neutral-800">
-        <h2 className="text-lg font-semibold mb-4">Monthly Revenue</h2>
-
+      <ChartContainer title="Monthly Revenue" description="Trend line for the last six months." height={350}>
         <ResponsiveContainer width="100%" height={350}>
           <LineChart data={monthlySales}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="month" {...chartAxisProps} />
+            <YAxis {...chartAxisProps} />
+            <Tooltip {...chartTooltipProps} />
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#6366F1"
-              strokeWidth={3}
+              stroke="var(--chart-series-1)"
+              strokeWidth={2.5}
+              dot={false}
+              {...chartAnimation}
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </ChartContainer>
 
       {/* --- Pipeline Chart --- */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-neutral-800">
-        <h2 className="text-lg font-semibold mb-4">Lead Pipeline Overview</h2>
-
+      <ChartContainer title="Lead Pipeline Overview" description="Conversion counts by stage." height={350}>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={leadConversion}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-            <XAxis dataKey="stage" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="count" fill="#10B981" radius={[6, 6, 0, 0]} />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="stage" {...chartAxisProps} />
+            <YAxis {...chartAxisProps} />
+            <Tooltip {...chartTooltipProps} />
+            <Bar dataKey="count" fill="var(--chart-series-2)" radius={[8, 8, 0, 0]} {...chartAnimation} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartContainer>
     </div>
   );
 }

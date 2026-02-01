@@ -49,6 +49,12 @@
 
   --chart-track: rgba(148, 163, 184, 0.25);
   --chart-fill: linear-gradient(90deg, rgba(37, 99, 235, 0.85), rgba(37, 99, 235, 0.35));
+  --chart-series-1: #2563eb;
+  --chart-series-2: #14b8a6;
+  --chart-series-3: #f59e0b;
+  --chart-series-4: #94a3b8;
+  --chart-series-5: #8b5cf6;
+  --chart-series-6: #ef4444;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,6 +88,12 @@
 
     --chart-track: rgba(148, 163, 184, 0.18);
     --chart-fill: linear-gradient(90deg, rgba(37, 99, 235, 0.9), rgba(37, 99, 235, 0.35));
+    --chart-series-1: #3b82f6;
+    --chart-series-2: #2dd4bf;
+    --chart-series-3: #fbbf24;
+    --chart-series-4: #94a3b8;
+    --chart-series-5: #a78bfa;
+    --chart-series-6: #f87171;
   }
 }
 
