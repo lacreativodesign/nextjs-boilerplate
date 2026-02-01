@@ -11,9 +11,19 @@ import {
   PieChart,
   Cell,
   Legend,
+  CartesianGrid,
 } from "recharts";
+import {
+  ChartContainer,
+  CHART_COLORS,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipProps,
+  useChartAnimation,
+} from "@/components/charts/ChartContainer";
 
 export default function ProductionReportsPage() {
+  const chartAnimation = useChartAnimation();
   // --- Dummy KPI data ---
   const kpis = [
     { label: "Projects In Queue", value: 12 },
@@ -37,8 +47,6 @@ export default function ProductionReportsPage() {
     { name: "Social Media", value: 18 },
     { name: "Video/Animation", value: 9 },
   ];
-
-  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626"]; // blue, green, amber, red
 
   return (
     <div className="p-6 space-y-8">
@@ -70,59 +78,65 @@ export default function ProductionReportsPage() {
       {/* CHARTS GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* BAR CHART */}
-        <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Tasks Completed Per Member</h2>
+        <ChartContainer
+          title="Tasks Completed Per Member"
+          description="Daily task throughput by team member."
+          height={288}
+        >
           <div className="w-full h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData}>
-                <XAxis dataKey="name" stroke="#888" />
-                <YAxis stroke="#888" />
-                <Tooltip
-                  contentStyle={{
-                    background: "#111",
-                    border: "1px solid #333",
-                    color: "white",
-                  }}
-                />
-                <Bar dataKey="tasks" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="name" {...chartAxisProps} />
+                <YAxis {...chartAxisProps} />
+                <Tooltip {...chartTooltipProps} />
+                <Bar dataKey="tasks" fill="var(--chart-series-1)" radius={[8, 8, 0, 0]} {...chartAnimation} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </ChartContainer>
 
         {/* PIE CHART */}
-        <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Project Category Breakdown</h2>
-          <div className="w-full h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Legend />
-                <Tooltip
-                  contentStyle={{
-                    background: "#111",
-                    border: "1px solid #333",
-                    color: "white",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartContainer
+          title="Project Category Breakdown"
+          description="Work distribution by service category."
+          height={288}
+          showLegendToggle
+        >
+          {({ legendVisible }) => (
+            <div className="w-full h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={85}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="var(--surface-card)"
+                    {...chartAnimation}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  {legendVisible && (
+                    <Legend
+                      align="center"
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
+                    />
+                  )}
+                  <Tooltip {...chartTooltipProps} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </ChartContainer>
       </div>
     </div>
   );
-      }
+}

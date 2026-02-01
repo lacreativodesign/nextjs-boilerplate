@@ -1,10 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart, Bar, LineChart, Line, Pie, PieChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  Pie,
+  PieChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { formatUsd } from "@/components/finance/financeUtils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ChartContainer,
+  CHART_COLORS,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipProps,
+  useChartAnimation,
+} from "@/components/charts/ChartContainer";
 
 const KPI_LABELS = [
   { key: "totalLeads", label: "Total Leads" },
@@ -51,13 +72,12 @@ type OverviewResponse = {
 
 type ErrorState = { title: string; message: string };
 
-const DONUT_COLORS = ["#2563eb", "#60a5fa", "#22c55e", "#f97316", "#e11d48", "#14b8a6", "#a855f7"];
-
 export default function SalesOverviewPage() {
   const isDark = useIsDarkMode();
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
+  const chartAnimation = useChartAnimation();
 
   const loadOverview = useCallback(async () => {
     try {
@@ -145,47 +165,84 @@ export default function SalesOverviewPage() {
       </div>
 
       <section className="grid" style={{ marginTop: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Stage</div>
+        <ChartContainer
+          title="Leads by Stage"
+          description="Pipeline balance across active stages."
+          isLoading={loading}
+          isEmpty={!overview?.charts.leadsByStage.length}
+          height={220}
+        >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={overview?.charts.leadsByStage || []} dataKey="count" nameKey="stage" innerRadius={60} outerRadius={90}>
+                <Pie
+                  data={overview?.charts.leadsByStage || []}
+                  dataKey="count"
+                  nameKey="stage"
+                  innerRadius={60}
+                  outerRadius={90}
+                  stroke="var(--surface-card)"
+                  {...chartAnimation}
+                >
                   {(overview?.charts.leadsByStage || []).map((entry, index) => (
-                    <Cell key={`cell-${entry.stage}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                    <Cell key={`cell-${entry.stage}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => value} />
+                <Tooltip {...chartTooltipProps} formatter={(value: number) => value} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
-        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Leads by Disposition (30d)</div>
+        </ChartContainer>
+        <ChartContainer
+          title="Leads by Disposition (30d)"
+          description="Disposition outcomes over the last 30 days."
+          isLoading={loading}
+          isEmpty={!overview?.charts.leadsByDisposition.length}
+          height={220}
+        >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <BarChart data={overview?.charts.leadsByDisposition || []}>
-                <XAxis dataKey="disposition" hide />
-                <YAxis />
-                <Tooltip formatter={(value: number) => value} />
-                <Bar dataKey="count" fill={isDark ? "#60a5fa" : "#2563eb"} radius={[4, 4, 0, 0]} />
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="disposition" hide {...chartAxisProps} />
+                <YAxis {...chartAxisProps} />
+                <Tooltip {...chartTooltipProps} formatter={(value: number) => value} />
+                <Bar
+                  dataKey="count"
+                  fill="var(--chart-series-1)"
+                  radius={[6, 6, 0, 0]}
+                  {...chartAnimation}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-        <div className="card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Closed Won Revenue (MTD)</div>
+        </ChartContainer>
+        <ChartContainer
+          title="Closed Won Revenue (MTD)"
+          description="Daily revenue trend for closed-won deals."
+          isLoading={loading}
+          isEmpty={!overview?.charts.closedWonRevenueByDay.length}
+          height={220}
+        >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <LineChart data={overview?.charts.closedWonRevenueByDay || []}>
-                <XAxis dataKey="day" hide />
-                <YAxis />
-                <Tooltip formatter={(value: number) => formatUsd(value)} />
-                <Line type="monotone" dataKey="value" stroke={isDark ? "#22c55e" : "#16a34a"} strokeWidth={2} dot={false} />
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="day" hide {...chartAxisProps} />
+                <YAxis {...chartAxisProps} />
+                <Tooltip {...chartTooltipProps} formatter={(value: number) => formatUsd(value)} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--chart-series-2)"
+                  strokeWidth={2}
+                  dot={false}
+                  {...chartAnimation}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </ChartContainer>
       </section>
 
       {target && (

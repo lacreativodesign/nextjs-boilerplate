@@ -9,8 +9,16 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import {
+  ChartContainer,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipProps,
+  useChartAnimation,
+} from "@/components/charts/ChartContainer";
 
 export default function SalesPerformancePage() {
+  const chartAnimation = useChartAnimation();
   // Dummy placeholder data until backend is connected
   const monthlyData = [
     { month: "Jan", leads: 18, closed: 3 },
@@ -48,26 +56,24 @@ export default function SalesPerformancePage() {
       </div>
 
       {/* PERFORMANCE CHART */}
-      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 space-y-4">
-        <h2 className="text-lg font-semibold">Monthly Lead Performance</h2>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
-          This chart reflects demo values. Your real performance will load
-          automatically once we connect Firebase.
-        </p>
-
-        <div className="w-full h-80 mt-4">
+      <ChartContainer
+        title="Monthly Lead Performance"
+        description="Demo values until Firebase connectivity is enabled."
+        height={320}
+      >
+        <div className="w-full h-80 mt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="leads" fill="#6366F1" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="closed" fill="#22C55E" radius={[6, 6, 0, 0]} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="month" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip {...chartTooltipProps} />
+              <Bar dataKey="leads" fill="var(--chart-series-1)" radius={[8, 8, 0, 0]} {...chartAnimation} />
+              <Bar dataKey="closed" fill="var(--chart-series-2)" radius={[8, 8, 0, 0]} {...chartAnimation} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </ChartContainer>
     </div>
   );
 }
