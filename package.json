@@ -13,6 +13,7 @@
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.1.2",
     "@hookform/resolvers": "^3.3.4",
+    "@uploadcare/react-uploader": "^1.12.0",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
     "classnames": "^2.3.2",
