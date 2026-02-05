@@ -90,6 +90,7 @@ export function rolesAllowedForApi(pathname: string): ErpRole[] | null {
   if (pathname.startsWith("/api/finance")) return ["finance"];
   if (pathname.startsWith("/api/hr")) return ["hr"];
   if (pathname.startsWith("/api/client")) return ["client"];
+  if (pathname.startsWith("/api/projects")) return ["admin", "super_admin", "am", "production", "client"] as ErpRole[];
   if (pathname.startsWith("/api/crm")) return ["sales", "sales_manager", "admin"];
   return null;
 }

@@ -4,6 +4,7 @@ import { logEvent } from "@/lib/audit";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
+import { createProjectFromDeal } from "@/lib/projects";
 
 export const DEAL_STAGES = [
   "new",
@@ -140,6 +141,15 @@ export async function createClientFromClosedWonDeal({
       reason: "closed_won_automation",
     });
   }
+
+
+  await createProjectFromDeal({
+    tenantId: actor.tenantId || null,
+    deal: { id: dealId, ...closedData, clientId: closedData.clientId },
+    client: { id: String(closedData.clientId), ...clientData },
+    actor: { uid: actor.uid, name: actor.name || null },
+    stageOverride: "inquiry",
+  });
 
   await logEvent({
     tenantId: actor.tenantId || null,

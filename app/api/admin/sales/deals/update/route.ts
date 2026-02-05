@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createProjectFromDeal } from "@/lib/projects";
 import {
   arrayUnion,
   createSalesEvent,
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
 
     const dealRef = adminDb.collection("deals").doc(id);
     let closedWonTriggered = false;
+    let closedWonProjectId: string | null = null;
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
@@ -82,6 +84,7 @@ export async function POST(req: Request) {
         }
 
         let projectId = data.projectId || null;
+        closedWonProjectId = projectId;
         if (!projectId) {
           const projectRef = adminDb.collection("projects").doc();
           projectId = projectRef.id;
@@ -143,6 +146,23 @@ export async function POST(req: Request) {
     });
 
     if (closedWonTriggered) {
+      const dealSnap = await adminDb.collection("deals").doc(id).get();
+      const dealData = dealSnap.data() || {};
+      const clientId = String(dealData.clientId || "");
+      if (clientId) {
+        const clientSnap = await adminDb.collection("clients").doc(clientId).get();
+        const created = await createProjectFromDeal({
+          tenantId: auth.user.tenantId || null,
+          deal: { id, ...dealData },
+          client: clientSnap.exists ? { id: clientSnap.id, ...(clientSnap.data() || {}) } : { id: clientId },
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || null },
+          stageOverride: "inquiry",
+        });
+        if (created?.id && created.id !== closedWonProjectId) {
+          await adminDb.collection("deals").doc(id).set({ projectId: created.id }, { merge: true });
+        }
+      }
+
       await queueSalesNotification({
         title: "Deal Closed Won",
         body: `Deal ${id} closed won. Project and finance flow created.`,

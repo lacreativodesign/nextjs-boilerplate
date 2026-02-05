@@ -6,6 +6,55 @@ import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant"
 import { generateNextOrderId } from "@/lib/orderIds";
 import { queueEmailEvent } from "./emailEvents";
 
+export const DELIVERY_STATUSES = [
+  "inquiry",
+  "deposit",
+  "kickoff",
+  "draft",
+  "review",
+  "revisions",
+  "final",
+  "delivered",
+] as const;
+
+export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+export const ALLOWED_STATUS_TRANSITIONS: Record<DeliveryStatus, DeliveryStatus | null> = {
+  inquiry: "deposit",
+  deposit: "kickoff",
+  kickoff: "draft",
+  draft: "review",
+  review: "revisions",
+  revisions: "final",
+  final: "delivered",
+  delivered: null,
+};
+
+export function normalizeDeliveryStatus(value: any): DeliveryStatus {
+  const raw = String(value || "").trim().toLowerCase();
+  if ((DELIVERY_STATUSES as readonly string[]).includes(raw)) return raw as DeliveryStatus;
+
+  const mapped: Record<string, DeliveryStatus> = {
+    inquiry: "inquiry",
+    deposit: "deposit",
+    kickoff: "kickoff",
+    draft: "draft",
+    review: "review",
+    revisions: "revisions",
+    final: "final",
+    delivered: "delivered",
+  };
+  return mapped[raw] || "inquiry";
+}
+
+export function canTransitionStatus(fromStatus: any, toStatus: any, allowAdminOverride = false) {
+  const from = normalizeDeliveryStatus(fromStatus);
+  const to = normalizeDeliveryStatus(toStatus);
+  if (from === to) return true;
+  if (allowAdminOverride) return true;
+  return ALLOWED_STATUS_TRANSITIONS[from] === to;
+}
+
 const DEFAULT_KICKOFF_CHECKLIST = [
   { key: "welcome_call", label: "Schedule welcome call", done: false },
   { key: "contract", label: "Collect signed agreement", done: false },
@@ -86,6 +135,7 @@ export async function createProjectFromDeal({
   const projectRef = adminDb.collection("projects").doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
   const stage = stageOverride || "Inquiry";
+  const normalizedStatus = normalizeDeliveryStatus(stageOverride || "inquiry");
 
   await projectRef.set({
     tenantId: scopedTenantId,
@@ -97,10 +147,14 @@ export async function createProjectFromDeal({
     clientName,
     status: "active",
     stage,
+    statusPipeline: normalizedStatus,
+    status: normalizedStatus,
     ownerAmUid,
     ownerAmName,
     assignedAmUid: ownerAmUid,
+    assignedAM: ownerAmUid,
     assignedProdUid: null,
+    assignedProduction: null,
     kickoffChecklist: DEFAULT_KICKOFF_CHECKLIST,
     createdAt: now,
     updatedAt: now,
