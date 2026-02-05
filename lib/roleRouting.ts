@@ -1,23 +1,11 @@
+import { ROLE_DASHBOARD_ROUTE, normalizeRole } from "@/lib/erpAccess";
+
 export const ROLE_ROUTES: Record<string, string> = {
-  super_admin: "/super_admin",
-  admin: "/admin",
-  sales_manager: "/sales_manager",
-  sales: "/sales",
-  am_manager: "/am_manager",
-  am: "/am",
+  ...ROLE_DASHBOARD_ROUTE,
   account_manager: "/am",
-  production_manager: "/production_manager",
-  hr: "/hr",
-  finance: "/finance",
-  production: "/production",
-  client: "/client",
 };
 
 export function getRoleRoute(role?: string | null) {
-  const normalized = String(role || "")
-    .trim()
-    .toLowerCase()
-    .replace(/-/g, "_")
-    .replace(/^account_manager$/, "am");
-  return ROLE_ROUTES[normalized] || "/login";
+  const normalized = normalizeRole(role);
+  return normalized ? ROLE_DASHBOARD_ROUTE[normalized] : "/login";
 }
