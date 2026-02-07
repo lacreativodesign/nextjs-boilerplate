@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || "",
       metadata: { stage },
+      tenantId: auth.user.tenantId,
     });
 
     return NextResponse.json({ ok: true });

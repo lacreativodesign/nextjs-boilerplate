@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { computeHealth, getMonthKey, getReportSettings, getStartOfMonth, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,6 +17,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
@@ -29,30 +32,33 @@ export async function GET() {
       onboardingSnap,
       eventsSnap,
     ] = await Promise.all([
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("users").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("events").where("isDeleted", "==", false).limit(500).get(),
+      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("users").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const projects = projectSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
     const changeRequests = [
-      ...changeRequestSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestAltSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
-    const users = usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const onboardingTasks = onboardingSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const events = eventsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const users = usersSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const onboardingTasks = onboardingSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const events = eventsSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
     const safeEvents =
       events.length > 0
         ? events
-        : (await adminDb.collection("events").limit(500).get()).docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
 
     const revenueThisMonth = invoices.reduce((sum, inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return sum;

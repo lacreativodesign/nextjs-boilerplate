@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "../../_utils";
 import { computeHealth, getWorkflowSettings } from "../../settings/_utils";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,12 +64,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const [snap, workflowSettings] = await Promise.all([
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
+    const tenantId = normalizeTenantId(me.tenantId);
+    const [docs, workflowSettings] = await Promise.all([
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
       getWorkflowSettings(),
     ]);
 
-    const projects = snap.docs.map((doc) => {
+    const projects = docs.map((doc) => {
       const data = doc.data() as ProjectDoc;
       const stage = normalizeStage(data.stage);
       const dueDate = toISO(data.dueDate);

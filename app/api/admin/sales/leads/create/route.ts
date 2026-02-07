@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       stage,
       ownerId,
       ownerName,
+      tenantId: auth.user.tenantId || null,
       isDeleted: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       entityId: docRef.id,
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || "",
+      tenantId: auth.user.tenantId,
     });
 
     const tenantId = String(auth.user.tenantId || "");

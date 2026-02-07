@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 import {
   computeHealth,
   getMonthKey,
@@ -54,7 +56,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
     const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings()]);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
@@ -64,48 +66,51 @@ export async function GET() {
     const fxPkrPerUsd = fxPkrPerUsdRaw > 0 ? fxPkrPerUsdRaw : DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd;
 
     const [
-      projectSnap,
-      changeRequestSnap,
-      changeRequestAltSnap,
-      invoiceSnap,
-      paymentSnap,
-      payrollSnap,
-      expenseSnap,
-      usersSnap,
-      onboardingSnap,
-      clientsSnap,
-      eventsSnap,
+      projectDocs,
+      changeRequestDocs,
+      changeRequestAltDocs,
+      invoiceDocs,
+      paymentDocs,
+      payrollDocs,
+      expenseDocs,
+      userDocs,
+      onboardingDocs,
+      clientDocs,
+      eventDocs,
     ] = await Promise.all([
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("expenses").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("users").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("clients").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("events").where("isDeleted", "==", false).limit(500).get(),
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payroll").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("expenses").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("users").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("clients").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const projects = projectSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const changeRequests = [
-      ...changeRequestSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestAltDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const users = usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const onboardingTasks = onboardingSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const clients = clientsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const events = eventsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const users = userDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const onboardingTasks = onboardingDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const events = eventDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const safeEvents =
       events.length > 0
         ? events
-        : (await adminDb.collection("events").limit(500).get()).docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
 
     const matchesTenant = (doc: Record<string, any>) =>
       String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);

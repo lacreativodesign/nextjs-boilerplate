@@ -25,6 +25,7 @@ export async function POST(req: Request) {
       dealsCount,
       revenueUsd,
       conversionRate: leadsCount ? (dealsCount / leadsCount) * 100 : 0,
+      tenantId: auth.user.tenantId || null,
       isDeleted: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       entityId: docRef.id,
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || "",
+      tenantId: auth.user.tenantId,
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
