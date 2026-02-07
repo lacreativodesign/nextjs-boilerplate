@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export async function verifySession(sessionCookie: string) {

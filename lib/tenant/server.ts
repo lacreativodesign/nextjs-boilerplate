@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import type { NextRequest } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND, DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { PLAN_MODULES } from "@/app/config/plans";
@@ -44,9 +42,37 @@ export type CurrentUser = {
   [key: string]: any;
 };
 
-function readCookie(req: NextRequest | undefined, name: string) {
-  if (req) return req.cookies.get(name)?.value || null;
-  return cookies().get(name)?.value || null;
+type RequestCookies =
+  | {
+      get?: (name: string) => { value?: string } | undefined;
+      [key: string]: any;
+    }
+  | Record<string, string | undefined>;
+
+type RequestLike = {
+  cookies?: RequestCookies;
+  headers?: Record<string, string | string[] | undefined> | { get?: (name: string) => string | null };
+  nextUrl?: { searchParams?: URLSearchParams };
+  query?: Record<string, string | string[] | undefined>;
+};
+
+function readCookie(req: RequestLike | undefined, name: string) {
+  const cookies = req?.cookies;
+  if (!cookies) return null;
+  if (typeof (cookies as { get?: (cookieName: string) => { value?: string } | undefined }).get === "function") {
+    return (cookies as { get: (cookieName: string) => { value?: string } | undefined })
+      .get(name)
+      ?.value || null;
+  }
+  return (cookies as Record<string, string | undefined>)[name] || null;
+}
+
+function readQueryTenantId(req?: RequestLike) {
+  const nextQuery = req?.nextUrl?.searchParams?.get("tenantId");
+  if (nextQuery) return nextQuery;
+  const query = req?.query?.tenantId;
+  if (Array.isArray(query)) return query[0] || null;
+  return query || null;
 }
 
 export function isSuperAdmin(user: Pick<CurrentUser, "role">) {
@@ -63,7 +89,7 @@ export function isSales(user: Pick<CurrentUser, "role">) {
   return role === "sales";
 }
 
-export async function getCurrentUserOrThrow(req?: NextRequest): Promise<CurrentUser> {
+export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentUser> {
   const sessionCookie = readCookie(req, "lac_session");
   if (!sessionCookie) {
     throw new Error("Unauthorized");
@@ -114,13 +140,13 @@ export async function ensureDefaultTenant() {
   return payload;
 }
 
-export async function getTenantIdForRequestOrThrow(req?: NextRequest): Promise<string> {
+export async function getTenantIdForRequestOrThrow(req?: RequestLike): Promise<string> {
   const user = await getCurrentUserOrThrow(req);
   let tenantId = user.tenantId || DEFAULT_TENANT_ID;
 
   if (isSuperAdmin(user)) {
     const cookieTenant = readCookie(req, "bizosto_tenant");
-    const queryTenant = req?.nextUrl?.searchParams?.get("tenantId") || null;
+    const queryTenant = readQueryTenantId(req);
     tenantId = queryTenant || cookieTenant || tenantId;
   }
 

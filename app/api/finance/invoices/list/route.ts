@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireFinance, toISO } from "../../_utils";
 import { toInvoiceStatusLabel } from "@/lib/finance/status";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
+import { logError } from "@/lib/logging";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +26,7 @@ type InvoiceDoc = {
   isDeleted?: boolean;
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const auth = await requireFinance();
     if (!auth.ok) {
@@ -66,13 +68,24 @@ export async function GET() {
       },
     });
   } catch (err: any) {
-    console.error("finance/invoices list error:", err);
+    logError(err, { route: "GET /api/finance/invoices/list" });
     const rawMessage = String(err?.message || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||
       rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load invoices.";
-    return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
+    const finalError = isIndexError
+      ? new AppError({
+          message: "Missing Firestore index.",
+          code: "INTERNAL_SERVER_ERROR",
+          status: 500,
+        })
+      : err;
+    const { status, body } = resolveErrorResponse(finalError, {
+      fallbackMessage: "Unable to load invoices.",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      requestId: req.headers.get("x-request-id") || undefined,
+    });
+    return NextResponse.json(body, { status });
   }
 }
