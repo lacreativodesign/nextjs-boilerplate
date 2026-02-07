@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import type { Unsubscribe } from "firebase/auth";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
+import { normalizeRole } from "@/lib/erpAccess";
 
 type Props = {
   allowed: string[];
@@ -16,6 +17,7 @@ export default function RequireAuth({ allowed, children }: Props) {
   const [ready, setReady] = useState(false);
   const [ok, setOk] = useState(false);
   const router = useRouter();
+  const allowedRoles = useMemo(() => allowed.map((role) => normalizeRole(role)).filter(Boolean), [allowed]);
 
   useEffect(() => {
     let unsub: Unsubscribe | null = null;
@@ -31,14 +33,10 @@ export default function RequireAuth({ allowed, children }: Props) {
             return;
           }
 
-          const role = await fetchUserRole(user.uid);
+          const role = normalizeRole(await fetchUserRole(user.uid));
 
-          if (!role || !allowed.includes(role)) {
-            if (!role) {
-              router.replace("/login");
-            } else {
-              router.replace("/forbidden");
-            }
+          if (!role || !allowedRoles.includes(role)) {
+            router.replace(role ? "/unauthorized" : "/login");
             setReady(true);
             return;
           }
@@ -57,7 +55,7 @@ export default function RequireAuth({ allowed, children }: Props) {
       cancelled = true;
       if (unsub) unsub();
     };
-  }, [allowed, router]);
+  }, [allowedRoles, router]);
 
   if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
   if (!ok) return null;
