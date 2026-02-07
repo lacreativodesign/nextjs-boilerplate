@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../_utils";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 
@@ -11,18 +13,18 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
-      adminDb
-        .collection("events")
-        .where("entityType", "in", ["lead", "deal", "follow_up"])
-        .limit(200)
-        .get(),
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const [leadDocs, dealDocs, eventDocs] = await Promise.all([
+      queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(
+        adminDb.collection("events").where("entityType", "in", ["lead", "deal", "follow_up"]).limit(200),
+        tenantId
+      ),
     ]);
 
-    const leads = leadsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
-    const deals = dealsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
+    const leads = leadDocs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
+    const deals = dealDocs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
 
     const totalLeads = leads.length;
     const activeDeals = deals.filter((deal: any) => !String(deal.stage || "").toLowerCase().includes("closed")).length;
@@ -63,7 +65,7 @@ export async function GET() {
       ownerMap.set(ownerName, entry);
     });
 
-    const recentActivity = eventsSnap.docs
+    const recentActivity = eventDocs
       .map((doc) => {
         const data = doc.data() || {};
         return {

@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { getReportSettings, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +28,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const segmentType = String(searchParams.get("segmentType") || "").trim();
@@ -33,20 +36,20 @@ export async function GET(req: Request) {
     const dateFrom = parseDate(searchParams.get("dateFrom"));
     const dateTo = parseDate(searchParams.get("dateTo"), true);
 
-    const [clientSnap, projectSnap, invoiceSnap, changeRequestSnap, changeRequestAltSnap] = await Promise.all([
-      adminDb.collection("clients").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500).get(),
+    const [clientDocs, projectDocs, invoiceDocs, changeRequestDocs, changeRequestAltDocs] = await Promise.all([
+      queryWithTenant(adminDb.collection("clients").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const clients = clientSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const changeRequests = [
-      ...changeRequestSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestAltDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
 
     const filteredClients = clients.filter((client) => {

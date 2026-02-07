@@ -140,6 +140,7 @@ export async function POST(req: Request) {
       entityId: id,
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || "",
+      tenantId: auth.user.tenantId,
     });
 
     if (closedWonTriggered) {
@@ -148,6 +149,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} closed won. Project and finance flow created.`,
         userId: auth.user.uid,
         metadata: { dealId: id },
+        tenantId: auth.user.tenantId,
       });
 
       await queueSalesEmail({
@@ -155,6 +157,7 @@ export async function POST(req: Request) {
         template: "deal_closed_won",
         subject: "Deal Closed Won",
         data: { dealId: id },
+        tenantId: auth.user.tenantId,
       });
     }
 

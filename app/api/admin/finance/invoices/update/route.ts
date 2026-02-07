@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       });
 
       const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
@@ -82,6 +82,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: actorName,
+        tenantId: auth.user.tenantId,
       });
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
           template: "invoice_sent",
           subject: "Your invoice is ready",
           data: { invoiceId: id, orderId, clientName },
+          tenantId: auth.user.tenantId,
         }).catch((error) => {
           console.error("invoice email queue error:", error);
         });
@@ -177,6 +179,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: actorName,
+        tenantId: auth.user.tenantId,
       });
 
       try {
@@ -213,6 +216,7 @@ export async function POST(req: Request) {
           template: "payment_received",
           subject: "Payment received",
           data: { invoiceId: id, orderId, clientName },
+          tenantId: auth.user.tenantId,
         }).catch((error) => {
           console.error("payment email queue error:", error);
         });

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, serverTimestamp } from "../../_utils";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 
@@ -11,25 +13,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const body = await req.json();
     const month = String(body?.month || "").trim();
     if (!month) {
       return NextResponse.json({ ok: false, error: "Month is required." }, { status: 400 });
     }
 
-    const existingSnap = await adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get();
+    const existingDocs = await queryWithTenant(
+      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500),
+      tenantId
+    );
     const existingUserIds = new Set(
-      existingSnap.docs
+      existingDocs
         .map((doc) => doc.data() || {})
         .filter((row) => String(row.month || "") === month)
         .map((row) => String(row.userId || ""))
     );
 
-    const usersSnap = await adminDb.collection("users").get();
+    const usersDocs = await queryWithTenant(adminDb.collection("users"), tenantId);
     const batch = adminDb.batch();
     let created = 0;
 
-    usersSnap.docs.forEach((doc) => {
+    usersDocs.forEach((doc) => {
       const data = doc.data() || {};
       const salary = Number(data.salary || 0);
       if (!salary || Number.isNaN(salary)) return;
@@ -47,6 +53,7 @@ export async function POST(req: Request) {
         month,
         status: "Draft",
         paidAt: null,
+        tenantId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isDeleted: false,

@@ -37,13 +37,14 @@ export async function POST(req: Request) {
       expenseDate: expenseDate ? new Date(expenseDate) : null,
       status: status || "Recorded",
       notes: notes || null,
+      tenantId: auth.user.tenantId || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
     });
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
     await Promise.all(
       financeIds.map((uid) =>
         createNotification({
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
           entityId: ref.id,
           deepLink: "/finance/reports",
           createdBy: { uid: auth.user.uid, name: actorName },
+          tenantId: auth.user.tenantId || null,
         })
       )
     );
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
       entityId: ref.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
+      tenantId: auth.user.tenantId,
     });
 
     return NextResponse.json({ ok: true, id: ref.id });
