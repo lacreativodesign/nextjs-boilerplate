@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getReportSettings, normalizeStage, requireReportsAccess, toISO } from "../_utils";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -48,9 +51,12 @@ export async function GET(req: Request) {
     const productionOwnerId = String(searchParams.get("productionOwnerId") || "");
     const stageFilter = String(searchParams.get("stage") || "");
 
-    const snap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const docs = await queryWithTenant(
+      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
+      tenantId
+    );
 
-    const projects = snap.docs.map((doc) => {
+    const projects = docs.map((doc) => {
       const data = doc.data() || {};
       const stage = normalizeStage(data.stage);
       const updatedAt = toISO(data.updatedAt || data.createdAt);

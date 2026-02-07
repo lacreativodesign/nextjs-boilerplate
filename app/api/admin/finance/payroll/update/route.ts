@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        tenantId: auth.user.tenantId,
       });
 
       return NextResponse.json({ ok: true });

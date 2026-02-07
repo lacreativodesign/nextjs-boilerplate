@@ -180,6 +180,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: actorName,
+        tenantId: auth.user.tenantId,
       });
 
       try {
@@ -203,6 +204,7 @@ export async function POST(req: Request) {
           template: "payment_received",
           subject: "Payment received",
           data: { paymentId: id, invoiceId },
+          tenantId: auth.user.tenantId,
         }).catch((error) => {
           console.error("payment email queue error:", error);
         });
@@ -244,6 +246,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: actorName,
+        tenantId: auth.user.tenantId,
       });
 
       return NextResponse.json({ ok: true });

@@ -51,6 +51,7 @@ export async function createSalesEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -60,6 +61,7 @@ export async function createSalesEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection("events").add({
     type,
@@ -70,6 +72,7 @@ export async function createSalesEvent({
     metadata: metadata || {},
     createdByUid: createdByUid || null,
     createdByName: createdByName || null,
+    tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -80,11 +83,13 @@ export async function queueSalesNotification({
   body,
   userId,
   metadata,
+  tenantId,
 }: {
   title: string;
   body: string;
   userId?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   if (!userId) return;
   await createNotification({
@@ -94,6 +99,8 @@ export async function queueSalesNotification({
     type: "info",
     entityType: "client",
     createdBy: null,
+    tenantId: tenantId || null,
+    metadata: metadata || null,
   });
 }
 
@@ -103,12 +110,14 @@ export async function queueSalesEmail({
   subject,
   data,
   metadata,
+  tenantId,
 }: {
   to: string;
   template: string;
   subject: string;
   data?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection("emails").add({
     to,
@@ -117,6 +126,7 @@ export async function queueSalesEmail({
     data: data || {},
     metadata: metadata || {},
     status: "pending",
+    tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

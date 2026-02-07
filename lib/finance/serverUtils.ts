@@ -32,6 +32,7 @@ export async function createFinanceEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -41,6 +42,7 @@ export async function createFinanceEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection("events").add({
     type,
@@ -51,6 +53,7 @@ export async function createFinanceEvent({
     metadata: metadata || {},
     createdByUid: createdByUid || null,
     createdByName: createdByName || null,
+    tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -62,12 +65,14 @@ export async function queueFinanceEmail({
   subject,
   data,
   metadata,
+  tenantId,
 }: {
   to: string;
   template: string;
   subject: string;
   data?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection("emails").add({
     to,
@@ -76,6 +81,7 @@ export async function queueFinanceEmail({
     data: data || {},
     metadata: metadata || {},
     status: "pending",
+    tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     }
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
     await Promise.all(
       financeIds.map((uid) =>
         createNotification({
@@ -72,6 +72,7 @@ export async function POST(req: Request) {
           entityId: null,
           deepLink: "/finance/payroll",
           createdBy: { uid: auth.user.uid, name: actorName },
+          tenantId: auth.user.tenantId || null,
         })
       )
     );
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
       entityId: null,
       createdByUid: auth.user.uid,
       createdByName: actorName,
+      tenantId: auth.user.tenantId,
     });
 
     return NextResponse.json({ ok: true, created });

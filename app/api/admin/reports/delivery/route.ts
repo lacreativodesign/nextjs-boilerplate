@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { computeHealth, getReportSettings, normalizeStage, requireReportsAccess, toISO } from "../_utils";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -51,9 +54,12 @@ export async function GET(req: Request) {
     const healthFilter = String(searchParams.get("health") || "");
     const priorityFilter = String(searchParams.get("priority") || "");
 
-    const snap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const docs = await queryWithTenant(
+      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
+      tenantId
+    );
 
-    const projects = snap.docs.map((doc) => {
+    const projects = docs.map((doc) => {
       const data = doc.data() || {};
       const dueDate = toISO(data.dueDate);
       const updatedAt = toISO(data.updatedAt || data.createdAt);
@@ -129,10 +135,13 @@ export async function GET(req: Request) {
       { onTime: 0, overdue: 0 }
     );
 
-    const eventsSnap = await adminDb.collection("events").where("isDeleted", "==", false).limit(500).get();
-    const eventDocs =
-      eventsSnap.docs.length > 0 ? eventsSnap.docs : (await adminDb.collection("events").limit(500).get()).docs;
-    const qaEvents = eventDocs
+    const eventDocs = await queryWithTenant(
+      adminDb.collection("events").where("isDeleted", "==", false).limit(500),
+      tenantId
+    );
+    const safeEvents =
+      eventDocs.length > 0 ? eventDocs : await queryWithTenant(adminDb.collection("events").limit(500), tenantId);
+    const qaEvents = safeEvents
       .map((doc) => doc.data() || {})
       .filter((event) => ["project.qa_approved", "project.qa_rejected"].includes(String(event.type || "")));
 

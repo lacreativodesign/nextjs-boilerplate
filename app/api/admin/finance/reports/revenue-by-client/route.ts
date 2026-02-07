@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin } from "../../_utils";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +18,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const docs = await queryWithTenant(
+      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500),
+      tenantId
+    );
     const totals = new Map<string, number>();
 
-    snap.docs.forEach((doc) => {
+    docs.forEach((doc) => {
       const data = doc.data() || {};
       if (normalizeInvoiceStatus(data.status) !== "paid") return;
       const client = String(data.clientName || "Unknown");

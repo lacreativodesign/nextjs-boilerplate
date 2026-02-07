@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 
@@ -27,22 +29,23 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const now = new Date();
     const startOfMonth = getStartOfMonth(now);
     const startMs = startOfMonth.getTime();
 
-    const [invoiceSnap, paymentSnap, payrollSnap, expenseSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("expenses").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("events").orderBy("createdAt", "desc").limit(20).get(),
+    const [invoiceDocs, paymentDocs, payrollDocs, expenseDocs, eventDocs] = await Promise.all([
+      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payroll").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("expenses").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("events").orderBy("createdAt", "desc").limit(20), tenantId),
     ]);
 
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
@@ -135,7 +138,7 @@ export async function GET() {
 
     const expenseBreakdown = Array.from(expenseGroups.entries()).map(([label, value]) => ({ label, value }));
 
-    const recentEvents = eventsSnap.docs.map((doc) => {
+    const recentEvents = eventDocs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,

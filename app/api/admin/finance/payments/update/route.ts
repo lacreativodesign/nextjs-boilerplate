@@ -161,6 +161,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        tenantId: auth.user.tenantId,
       });
 
       try {
@@ -177,7 +178,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+        const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
         await Promise.all(
           financeIds.map((uid) =>
             createNotification({
@@ -206,6 +207,7 @@ export async function POST(req: Request) {
           template: "payment_received",
           subject: "Payment received",
           data: { paymentId: id, invoiceId },
+          tenantId: auth.user.tenantId,
         }).catch((error) => {
           console.error("payment email queue error:", error);
         });
@@ -228,6 +230,7 @@ export async function POST(req: Request) {
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        tenantId: auth.user.tenantId,
       });
 
       return NextResponse.json({ ok: true });

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getMonthKey, getReportSettings, requireReportsAccess, toISO, toMillis } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus, parseInvoiceStatus } from "@/lib/finance/status";
+import { normalizeTenantId } from "@/lib/tenant";
+import { queryWithTenant } from "@/lib/tenant/query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,6 +27,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -33,13 +36,13 @@ export async function GET(req: Request) {
     const statusFilter = String(searchParams.get("status") || "").trim();
     const normalizedStatusFilter = statusFilter ? parseInvoiceStatus(statusFilter) : null;
 
-    const [invoiceSnap, paymentSnap] = await Promise.all([
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
+    const [invoiceDocs, paymentDocs] = await Promise.all([
+      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
     const filteredInvoices = invoices.filter((inv) => {
       if (clientId && String(inv.clientId || "") !== clientId) return false;
