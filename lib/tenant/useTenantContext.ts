@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 import type { SubscriptionState } from "@/lib/subscription";
 
 export type TenantContext = {
@@ -32,6 +33,7 @@ export function useTenantContext() {
   const [data, setData] = useState<TenantContextResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { notify } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -51,7 +53,15 @@ export function useTenantContext() {
         }
         if (active) setData(json);
       } catch (err: any) {
-        if (active) setError(err?.message || "Failed to load tenant");
+        if (active) {
+          const message = err?.message || "Failed to load tenant";
+          setError(message);
+          notify({
+            title: "Unable to load tenant context",
+            message,
+            variant: "error",
+          });
+        }
       } finally {
         if (active) setLoading(false);
       }

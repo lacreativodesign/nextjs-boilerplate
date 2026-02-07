@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd, useIsSystemDark } from "@/components/finance/financeUtils";
+import { useToast } from "@/components/ui/ToastProvider";
 import type { InvoiceRecord } from "@/lib/finance/types";
 
 const STATUS_OPTIONS = [
@@ -34,6 +35,7 @@ type ErrorState = { title: string; message: string };
 
 export default function FinanceInvoicesPage() {
   const isDark = useIsSystemDark();
+  const { notify } = useToast();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -62,6 +64,11 @@ export default function FinanceInvoicesPage() {
       setCurrentUser(data.currentUser || null);
     } catch (err: any) {
       console.error("Invoices load error", err);
+      notify({
+        title: "Unable to load invoices",
+        message: "Please try again in a moment.",
+        variant: "error",
+      });
       setError({
         title: "Unable to load invoices",
         message: "Please try again in a moment.",
@@ -80,6 +87,11 @@ export default function FinanceInvoicesPage() {
       }
     } catch (err) {
       console.error("Failed to load clients", err);
+      notify({
+        title: "Unable to load clients",
+        message: "Refresh the page or try again shortly.",
+        variant: "warning",
+      });
     }
   }, []);
 
@@ -180,6 +192,11 @@ export default function FinanceInvoicesPage() {
       await loadInvoices();
     } catch (err) {
       console.error("Mark paid error", err);
+      notify({
+        title: "Unable to mark invoice paid",
+        message: "Please try again or contact support if the issue persists.",
+        variant: "error",
+      });
       setError({ title: "Unable to mark paid", message: "Please try again." });
     } finally {
       setActionLoading(null);

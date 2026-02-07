@@ -6,6 +6,7 @@ import {
   normalizeSubscriptionState,
 } from "@/lib/subscription";
 import { normalizeRole, roleFromPath, rolesAllowedForApi } from "@/lib/erpAccess";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
 
 async function fetchSubscriptionStatus(req: NextRequest) {
   try {
@@ -23,6 +24,14 @@ async function fetchSubscriptionStatus(req: NextRequest) {
   } catch {
     return null;
   }
+}
+
+function jsonError(req: NextRequest, status: number, message: string, code: "FORBIDDEN" | "UNAUTHORIZED" | "SUBSCRIPTION_LOCKED" | "SUBSCRIPTION_READ_ONLY") {
+  const { body } = resolveErrorResponse(
+    new AppError({ message, code, status }),
+    { requestId: req.headers.get("x-request-id") || undefined }
+  );
+  return NextResponse.json(body, { status });
 }
 
 function redirectLegacyPath(req: NextRequest, from: RegExp, to: string) {
@@ -85,10 +94,7 @@ export async function middleware(req: NextRequest) {
     if (sessionRole !== "super_admin") {
       if (isHardLockedSubscription(subscriptionState)) {
         if (isApiRequest) {
-          return NextResponse.json(
-            { ok: false, error: "Subscription locked. Please update billing." },
-            { status: 403 }
-          );
+          return jsonError(req, 403, "Subscription locked. Please update billing.", "SUBSCRIPTION_LOCKED");
         }
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = "/billing";
@@ -98,10 +104,7 @@ export async function middleware(req: NextRequest) {
       if (isApiRequest && isReadOnlySubscription(subscriptionState)) {
         const method = req.method.toUpperCase();
         if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-          return NextResponse.json(
-            { ok: false, error: "Subscription is read-only. Mutations are disabled." },
-            { status: 403 }
-          );
+          return jsonError(req, 403, "Subscription is read-only. Mutations are disabled.", "SUBSCRIPTION_READ_ONLY");
         }
       }
     }
@@ -116,7 +119,7 @@ export async function middleware(req: NextRequest) {
   if (isApiRequest && sessionRole) {
     const allowedRoles = rolesAllowedForApi(pathname);
     if (allowedRoles && !allowedRoles.includes(sessionRole)) {
-      return NextResponse.json({ ok: false, error: "Unauthorized for this API scope." }, { status: 403 });
+      return jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN");
     }
   }
 
