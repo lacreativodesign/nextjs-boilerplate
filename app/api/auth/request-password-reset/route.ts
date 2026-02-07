@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminAuth } from "@/lib/firebaseAdmin";
-
-const DASHBOARD_URL = "https://dashboard.lacreativo.com";
+import { AUTH_REDIRECT_URL, EMAIL_FROM, RESEND_API_KEY } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -15,9 +14,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Email is required." }, { status: 400 });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "Email service unavailable." }, { status: 500 });
+    const apiKey = RESEND_API_KEY;
+    const from = EMAIL_FROM;
+    if (!apiKey || !from) {
+      const missing = [!apiKey ? "RESEND_API_KEY" : null, !from ? "EMAIL_FROM" : null].filter(Boolean).join(", ");
+      return NextResponse.json(
+        { ok: false, error: `Email service unavailable: ${missing} missing.` },
+        { status: 500 }
+      );
     }
 
     const user = await adminAuth.getUserByEmail(email).catch(() => null);
@@ -25,9 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    const resetLink = await adminAuth.generatePasswordResetLink(email, {
-      url: `${DASHBOARD_URL}/login`,
-    });
+    const resetLink = await adminAuth.generatePasswordResetLink(email, { url: AUTH_REDIRECT_URL });
 
     const resend = new Resend(apiKey);
 
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
     `;
 
     await resend.emails.send({
-      from: "La Creativo ERP <no-reply@lacreativo.com>",
+      from,
       to: email,
       subject: "Reset your LA CREATIVO Dashboard password",
       html,

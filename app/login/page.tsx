@@ -170,7 +170,7 @@ export default function LoginPage() {
               <div className="login-input-wrap">
                 <input
                   type="email"
-                  placeholder="name@lacreativo.com"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="login-input"

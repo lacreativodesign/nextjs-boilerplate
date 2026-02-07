@@ -35,7 +35,7 @@ export async function GET() {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": "attachment; filename=sales-manager-reports.csv",
+        "Content-Disposition": "attachment; filename=sales_manager-reports.csv",
       },
     });
   } catch (err: any) {

@@ -4,10 +4,16 @@ import { cookies } from "next/headers";
 import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import {
+  COOKIE_DOMAIN,
+  FIREBASE_CLIENT_EMAIL,
+  FIREBASE_PRIVATE_KEY,
+  FIREBASE_PROJECT_ID,
+  IS_PRODUCTION,
+} from "@/lib/env";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
 const DEFAULT_SESSION_DAYS = 1;
 const REMEMBER_SESSION_DAYS = 30;
 
@@ -17,15 +23,15 @@ let adminDb: FirebaseFirestore.Firestore | null = null;
 // ✅ Initialize Firebase Admin ONLY once
 function getAdmin() {
   if (!adminApp) {
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+    if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
       throw new Error("Missing Firebase Admin credentials.");
     }
     if (!getApps().length) {
       adminApp = initializeApp({
         credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+          projectId: FIREBASE_PROJECT_ID,
+          clientEmail: FIREBASE_CLIENT_EMAIL,
+          privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
         }),
       });
     } else {
@@ -80,8 +86,8 @@ export async function POST(req: Request) {
       name: COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      secure: IS_PRODUCTION,
+      sameSite: IS_PRODUCTION ? "none" : "lax",
       path: "/",
       domain: COOKIE_DOMAIN,
     };

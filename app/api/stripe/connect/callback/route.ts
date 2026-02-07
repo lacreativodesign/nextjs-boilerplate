@@ -5,13 +5,14 @@ import Stripe from "stripe";
 import { adminDb } from "../../../../../lib/firebaseAdmin";
 import { createRoleNotifications } from "../../../../../lib/notifications";
 import { writeAuditLog } from "../../../../../lib/tenant/audit";
+import { STRIPE_CONNECT_REDIRECT_URI, STRIPE_CONNECT_SECRET_KEY } from "@/lib/env";
 import { requireTenantStripeConnect } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function getStripeClient() {
-  const secretKey = process.env.STRIPE_CONNECT_SECRET_KEY;
+  const secretKey = STRIPE_CONNECT_SECRET_KEY;
   if (!secretKey) {
     throw new Error("STRIPE_CONNECT_SECRET_KEY is not configured.");
   }
@@ -19,7 +20,7 @@ function getStripeClient() {
 }
 
 function getRedirectUri(req: NextRequest) {
-  const provided = process.env.STRIPE_CONNECT_REDIRECT_URI;
+  const provided = STRIPE_CONNECT_REDIRECT_URI;
   if (provided) return provided;
   return new URL("/api/stripe/connect/callback", req.nextUrl.origin).toString();
 }

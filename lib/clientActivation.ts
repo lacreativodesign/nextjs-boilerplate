@@ -2,8 +2,9 @@ import crypto from "crypto";
 import * as admin from "firebase-admin";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { createPasswordSetupToken } from "@/lib/passwordSetup";
+import { DASHBOARD_BASE_URL } from "@/lib/env";
 
-const DASHBOARD_LOGIN_URL = "https://dashboard.lacreativo.com/login";
+const DASHBOARD_LOGIN_URL = new URL("/login", DASHBOARD_BASE_URL).toString();
 
 type ClientActivationData = {
   primaryContactEmail?: string;

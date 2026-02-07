@@ -113,7 +113,7 @@ export default function SalesProfilePage() {
             <label className="text-sm font-medium">Email</label>
             <input
               type="email"
-              value="sales.user@lacreativo.com"
+              value="sales.user@company.com"
               disabled
               className="mt-2 input"
             />

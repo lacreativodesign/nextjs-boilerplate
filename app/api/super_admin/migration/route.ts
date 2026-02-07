@@ -3,11 +3,12 @@ import type { NextRequest } from "next/server";
 import { requireSuperAdmin } from "../_utils";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { migrateMissingTenantIds } from "@/lib/tenant/migration";
+import { IS_PRODUCTION } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
-    if (process.env.NODE_ENV === "production") {
+    if (IS_PRODUCTION) {
       return NextResponse.json(
         {
           ok: false,

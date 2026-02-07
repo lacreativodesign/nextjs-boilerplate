@@ -117,7 +117,7 @@ export async function GET() {
       escalations,
     });
   } catch (err: any) {
-    console.error("am-manager overview error:", err);
+    console.error("am_manager overview error:", err);
     const rawMessage = String(err?.message || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||

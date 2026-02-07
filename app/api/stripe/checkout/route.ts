@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { APP_BASE_URL, STRIPE_SECRET_KEY } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ type PlanKey = keyof typeof PLAN_CONFIGS;
 type PlanConfig = (typeof PLAN_CONFIGS)[PlanKey];
 
 function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
@@ -113,6 +114,9 @@ export async function POST(req: Request) {
     const product = await ensureProduct(stripe);
     const price = await ensurePrice({ stripe, productId: product.id, config });
 
+    const successUrl = new URL("/welcome", APP_BASE_URL).toString();
+    const cancelUrl = new URL("/pricing", APP_BASE_URL).toString();
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [
@@ -121,8 +125,8 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: "https://login.bizosto.com/welcome",
-      cancel_url: "https://www.bizosto.com/pricing",
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         plan: "pro",
         billingCycle: config.billingCycle,

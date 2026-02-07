@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, events });
   } catch (err: any) {
-    console.error("super-admin/events list error:", err);
+    console.error("super_admin/events list error:", err);
     const rawMessage = String(err?.message || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||

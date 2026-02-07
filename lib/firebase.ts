@@ -2,6 +2,14 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  NEXT_PUBLIC_FB_API_KEY,
+  NEXT_PUBLIC_FB_AUTH_DOMAIN,
+  NEXT_PUBLIC_FB_PROJECT_ID,
+  NEXT_PUBLIC_FB_STORAGE,
+  NEXT_PUBLIC_FB_SENDER_ID,
+  NEXT_PUBLIC_FB_APP_ID,
+} from "@/lib/env";
 
 const isBrowser = typeof window !== "undefined";
 
@@ -20,15 +28,6 @@ function createThrowingProxy<T>(message: string): T {
 }
 
 function getConfig() {
-  const {
-    NEXT_PUBLIC_FB_API_KEY,
-    NEXT_PUBLIC_FB_AUTH_DOMAIN,
-    NEXT_PUBLIC_FB_PROJECT_ID,
-    NEXT_PUBLIC_FB_STORAGE,
-    NEXT_PUBLIC_FB_SENDER_ID,
-    NEXT_PUBLIC_FB_APP_ID,
-  } = process.env;
-
   const missing = [
     ["NEXT_PUBLIC_FB_API_KEY", NEXT_PUBLIC_FB_API_KEY],
     ["NEXT_PUBLIC_FB_AUTH_DOMAIN", NEXT_PUBLIC_FB_AUTH_DOMAIN],

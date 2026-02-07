@@ -93,7 +93,7 @@ export async function GET() {
       queue,
     });
   } catch (err: any) {
-    console.error("production-manager overview error:", err);
+    console.error("production_manager overview error:", err);
     const rawMessage = String(err?.message || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||

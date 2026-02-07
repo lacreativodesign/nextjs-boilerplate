@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { COOKIE_DOMAIN, IS_PRODUCTION } from "@/lib/env";
 
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com";
 
 export async function POST() {
   const res = NextResponse.json({ success: true });
@@ -11,8 +11,8 @@ export async function POST() {
     name: COOKIE_NAME,
     value: "",
     httpOnly: true,
-    secure: true,
-    sameSite: "lax",
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? "none" : "lax",
     path: "/",
     domain: COOKIE_DOMAIN,
     maxAge: 0,

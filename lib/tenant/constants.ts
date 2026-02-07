@@ -1,4 +1,6 @@
-export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || "la-creativo";
+import { DEFAULT_TENANT_ID } from "@/lib/env";
+
+export { DEFAULT_TENANT_ID };
 
 export const DEFAULT_TENANT_BRAND = {
   name: "LA CREATIVO",

@@ -44,10 +44,6 @@ export async function middleware(req: NextRequest) {
 
   const legacyRedirect =
     redirectLegacyPath(req, /^\/account_manager/, "/am") ||
-    redirectLegacyPath(req, /^\/sales-manager/, "/sales_manager") ||
-    redirectLegacyPath(req, /^\/super-admin/, "/super_admin") ||
-    redirectLegacyPath(req, /^\/am-manager/, "/am_manager") ||
-    redirectLegacyPath(req, /^\/production-manager/, "/production_manager") ||
     redirectLegacyPath(req, /^\/customer/, "/client");
 
   if (legacyRedirect) return legacyRedirect;
@@ -136,16 +132,12 @@ export const config = {
     "/api/:path*",
     "/admin/:path*",
     "/super_admin/:path*",
-    "/super-admin/:path*",
     "/sales/:path*",
-    "/sales-manager/:path*",
     "/sales_manager/:path*",
     "/am/:path*",
     "/am_manager/:path*",
-    "/am-manager/:path*",
     "/finance/:path*",
     "/production/:path*",
-    "/production-manager/:path*",
     "/production_manager/:path*",
     "/hr/:path*",
     "/client/:path*",

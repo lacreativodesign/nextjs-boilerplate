@@ -6,6 +6,7 @@ import { adminDb } from "../../../../../lib/firebaseAdmin";
 import { createRoleNotifications } from "../../../../../lib/notifications";
 import { writeAuditLog } from "../../../../../lib/tenant/audit";
 import { isPlanAccessError, requireModule } from "../../../../lib/plan-enforcement";
+import { STRIPE_CONNECT_SECRET_KEY, STRIPE_CONNECT_WEBHOOK_SECRET } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 const HANDLED_EVENTS = new Set(["payment_intent.succeeded", "invoice.paid", "customer.created"]);
 
 function getStripeClient() {
-  const secretKey = process.env.STRIPE_CONNECT_SECRET_KEY;
+  const secretKey = STRIPE_CONNECT_SECRET_KEY;
   if (!secretKey) {
     throw new Error("STRIPE_CONNECT_SECRET_KEY is not configured.");
   }
@@ -21,7 +22,7 @@ function getStripeClient() {
 }
 
 function getWebhookSecret() {
-  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  const secret = STRIPE_CONNECT_WEBHOOK_SECRET;
   if (!secret) {
     throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET is not configured.");
   }

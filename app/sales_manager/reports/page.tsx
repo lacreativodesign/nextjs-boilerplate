@@ -49,7 +49,7 @@ export default function SalesManagerReportsPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sales-manager-reports.csv";
+      link.download = "sales_manager-reports.csv";
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {

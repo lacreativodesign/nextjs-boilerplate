@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../../_utils";
 import { writeAuditLog } from "@/lib/tenant/audit";
+import { COOKIE_DOMAIN, IS_PRODUCTION } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,9 +32,10 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, tenantId });
     res.cookies.set("bizosto_tenant", tenantId, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: true,
+      sameSite: IS_PRODUCTION ? "none" : "lax",
+      secure: IS_PRODUCTION,
       path: "/",
+      domain: COOKIE_DOMAIN,
     });
     return res;
   } catch (err: any) {

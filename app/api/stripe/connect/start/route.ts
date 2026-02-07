@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb } from "../../../../../lib/firebaseAdmin";
+import { STRIPE_CONNECT_CLIENT_ID, STRIPE_CONNECT_REDIRECT_URI } from "@/lib/env";
 import { requireTenantStripeConnect } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function getConnectClientId() {
-  const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+  const clientId = STRIPE_CONNECT_CLIENT_ID;
   if (!clientId) {
     throw new Error("STRIPE_CONNECT_CLIENT_ID is not configured.");
   }
@@ -17,7 +18,7 @@ function getConnectClientId() {
 }
 
 function getRedirectUri(req: NextRequest) {
-  const provided = process.env.STRIPE_CONNECT_REDIRECT_URI;
+  const provided = STRIPE_CONNECT_REDIRECT_URI;
   if (provided) return provided;
   return new URL("/api/stripe/connect/callback", req.nextUrl.origin).toString();
 }

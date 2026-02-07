@@ -1,31 +1,28 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { EMAIL_FROM, RESEND_API_KEY } from "@/lib/env";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-  const { to, subject, html } = body;
+    const { to, subject, html } = body;
 
-  if (!to || !subject || !html) {
-    return NextResponse.json(
-      { error: "Missing required fields." },
-      { status: 400 }
-    );
-  }
+    if (!to || !subject || !html) {
+      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Email service unavailable: RESEND_API_KEY missing." },
-      { status: 500 }
-    );
-  }
+    const apiKey = RESEND_API_KEY;
+    const from = EMAIL_FROM;
+    if (!apiKey || !from) {
+      const missing = [!apiKey ? "RESEND_API_KEY" : null, !from ? "EMAIL_FROM" : null].filter(Boolean).join(", ");
+      return NextResponse.json({ error: `Email service unavailable: ${missing} missing.` }, { status: 500 });
+    }
 
-  const resend = new Resend(apiKey);
+    const resend = new Resend(apiKey);
 
     const result = await resend.emails.send({
-      from: "La Creativo ERP <no-reply@lacreativo.com>",
+      from,
       to,
       subject,
       html,

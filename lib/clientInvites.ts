@@ -2,6 +2,7 @@ import crypto from "crypto";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { queueEmail } from "@/lib/email";
+import { APP_BASE_URL } from "@/lib/env";
 import { normalizeTenantId } from "@/lib/tenant";
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -19,19 +20,19 @@ function buildInviteEmail({
   email: string;
   token: string;
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-  const inviteUrl = `${baseUrl}/client/accept-invite?token=${token}`;
+  const inviteUrl = new URL("/client/accept-invite", APP_BASE_URL);
+  inviteUrl.searchParams.set("token", token);
   const subject = "You are invited to the Bizosto client portal";
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#0f172a;">
       <h2>Welcome to Bizosto</h2>
       <p>Your client portal is ready. Click below to set your password and activate your account.</p>
-      <p><a href="${inviteUrl}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;">Activate portal</a></p>
+      <p><a href="${inviteUrl.toString()}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;">Activate portal</a></p>
       <p>If the button doesn't work, copy this link into your browser:</p>
-      <p>${inviteUrl}</p>
+      <p>${inviteUrl.toString()}</p>
     </div>
   `;
-  return { subject, html, inviteUrl, tenantId, email };
+  return { subject, html, inviteUrl: inviteUrl.toString(), tenantId, email };
 }
 
 export async function createClientInvite({

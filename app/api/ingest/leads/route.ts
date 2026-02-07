@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { NEXT_PUBLIC_ERP_INGEST_KEY } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     const tenantId = normalizeTenantId(rawTenantId || DEFAULT_TENANT_ID);
     const apiKey = normalizeOptionalString(body.apiKey);
 
-    if (!apiKey || apiKey !== String(process.env.NEXT_PUBLIC_ERP_INGEST_KEY || "")) {
+    if (!apiKey || apiKey !== String(NEXT_PUBLIC_ERP_INGEST_KEY || "")) {
       return NextResponse.json({ ok: false, error: "Invalid apiKey." }, { status: 401 });
     }
 

@@ -8,6 +8,7 @@ import { PLAN_MODULES } from "../../../../app/config/plans";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
 import { createRoleNotifications } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/tenant/audit";
+import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ type BillingCycle = "monthly" | "annual";
 type BillingStatus = "active" | "past_due" | "canceled";
 
 function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
@@ -32,7 +33,7 @@ function getStripeClient() {
 }
 
 function requireWebhookSecret() {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = STRIPE_WEBHOOK_SECRET;
   if (!secret) {
     throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
   }

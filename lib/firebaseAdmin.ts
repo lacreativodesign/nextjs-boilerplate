@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
+import { FIREBASE_ADMIN_KEY } from "@/lib/env";
 
-const rawKey = process.env.FIREBASE_ADMIN_KEY || "";
+const rawKey = FIREBASE_ADMIN_KEY || "";
 let serviceAccount: any = null;
 
 if (rawKey) {

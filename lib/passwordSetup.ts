@@ -1,13 +1,15 @@
 import crypto from "crypto";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { DASHBOARD_BASE_URL, EMAIL_FROM, RESEND_API_KEY } from "@/lib/env";
 
 const TOKEN_COLLECTION = "password_setup_tokens";
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const DASHBOARD_URL = "https://dashboard.lacreativo.com";
 
 export function buildSetPasswordLink(token: string) {
-  return `${DASHBOARD_URL}/set-password?token=${token}`;
+  const url = new URL("/set-password", DASHBOARD_BASE_URL);
+  url.searchParams.set("token", token);
+  return url.toString();
 }
 
 export async function createPasswordSetupToken({
@@ -67,11 +69,13 @@ export async function sendSetPasswordEmail({
   email: string;
   link: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = RESEND_API_KEY;
+  const from = EMAIL_FROM;
 
-  if (!apiKey) {
-    console.log("[set-password] Resend not configured. Link:", link);
-    return { sent: false, error: "RESEND_API_KEY missing", link };
+  if (!apiKey || !from) {
+    const missing = [!apiKey ? "RESEND_API_KEY" : null, !from ? "EMAIL_FROM" : null].filter(Boolean).join(", ");
+    console.log(`[set-password] Email not configured (${missing}). Link:`, link);
+    return { sent: false, error: `${missing} missing`, link };
   }
 
   const resend = new Resend(apiKey);
@@ -90,7 +94,7 @@ export async function sendSetPasswordEmail({
   `;
 
   await resend.emails.send({
-    from: "La Creativo ERP <no-reply@lacreativo.com>",
+    from,
     to: email,
     subject: "Set your LA CREATIVO Dashboard password",
     html,
