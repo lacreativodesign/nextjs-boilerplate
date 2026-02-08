@@ -8,7 +8,9 @@ import {
   useInterval,
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
+import { SkeletonDashboard } from "@/components/ui/Skeleton";
 import type { FinanceOverview } from "@/lib/finance/types";
+import { toastError } from "@/lib/toast";
 
 const emptyOverview: FinanceOverview = {
   kpisUsd: {
@@ -49,6 +51,7 @@ export default function FinanceOverviewPage() {
     } catch (err: any) {
       console.error("Finance overview load error", err);
       setError("Unable to load finance overview right now.");
+      toastError("Unable to load finance overview right now.");
     } finally {
       setLoading(false);
     }
@@ -90,34 +93,39 @@ export default function FinanceOverviewPage() {
         </div>
       )}
 
-      <section>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>USD Performance</div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard title="Total Revenue (This Month)" value={formatUsd(overview.kpisUsd.totalRevenueMonth)} subtitle="Paid invoices" />
-          <KpiCard title="Outstanding Invoices" value={formatUsd(overview.kpisUsd.outstandingInvoices)} subtitle="Sent / overdue" />
-          <KpiCard title="Payments Received" value={formatUsd(overview.kpisUsd.paymentsReceivedMonth)} subtitle="This month" />
-          <KpiCard
-            title="AR Aging"
-            value={formatUsd(
-              overview.kpisUsd.agingBuckets.bucket0to30 +
-                overview.kpisUsd.agingBuckets.bucket31to60 +
-                overview.kpisUsd.agingBuckets.bucket61to90 +
-                overview.kpisUsd.agingBuckets.bucket90plus
-            )}
-            subtitle="Total outstanding"
-          />
-        </div>
-      </section>
+      {/* Loading state: show dashboard skeleton to avoid layout jump. */}
+      {loading ? (
+        <SkeletonDashboard />
+      ) : (
+        <>
+          <section>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>USD Performance</div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <KpiCard title="Total Revenue (This Month)" value={formatUsd(overview.kpisUsd.totalRevenueMonth)} subtitle="Paid invoices" />
+              <KpiCard title="Outstanding Invoices" value={formatUsd(overview.kpisUsd.outstandingInvoices)} subtitle="Sent / overdue" />
+              <KpiCard title="Payments Received" value={formatUsd(overview.kpisUsd.paymentsReceivedMonth)} subtitle="This month" />
+              <KpiCard
+                title="AR Aging"
+                value={formatUsd(
+                  overview.kpisUsd.agingBuckets.bucket0to30 +
+                    overview.kpisUsd.agingBuckets.bucket31to60 +
+                    overview.kpisUsd.agingBuckets.bucket61to90 +
+                    overview.kpisUsd.agingBuckets.bucket90plus
+                )}
+                subtitle="Total outstanding"
+              />
+            </div>
+          </section>
 
-      <section>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>PKR Performance</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <KpiCard title="Payroll Due (This Month)" value={formatPkr(overview.kpisPkr.payrollDueMonth)} subtitle="Draft / approved" />
-          <KpiCard title="Expenses (This Month)" value={formatPkr(overview.kpisPkr.expensesMonth)} subtitle="Operating spend" />
-        </div>
-      </section>
+          <section>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>PKR Performance</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <KpiCard title="Payroll Due (This Month)" value={formatPkr(overview.kpisPkr.payrollDueMonth)} subtitle="Draft / approved" />
+              <KpiCard title="Expenses (This Month)" value={formatPkr(overview.kpisPkr.expensesMonth)} subtitle="Operating spend" />
+            </div>
+          </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-6 lg:grid-cols-2">
         <div className="card" style={{ padding: 20, borderRadius: 18 }}>
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Revenue vs Payments (USD)</div>
           <div className="space-y-3">
@@ -239,6 +247,8 @@ export default function FinanceOverviewPage() {
           </div>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

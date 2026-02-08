@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingButton from "@/components/ui/LoadingButton";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 import { formatDate, formatDateTime, formatUsd, useIsSystemDark } from "@/components/finance/financeUtils";
-import { useToast } from "@/components/ui/ToastProvider";
 import type { InvoiceRecord } from "@/lib/finance/types";
+import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 
 const STATUS_OPTIONS = [
   "",
@@ -35,7 +38,6 @@ type ErrorState = { title: string; message: string };
 
 export default function FinanceInvoicesPage() {
   const isDark = useIsSystemDark();
-  const { notify } = useToast();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -64,11 +66,7 @@ export default function FinanceInvoicesPage() {
       setCurrentUser(data.currentUser || null);
     } catch (err: any) {
       console.error("Invoices load error", err);
-      notify({
-        title: "Unable to load invoices",
-        message: "Please try again in a moment.",
-        variant: "error",
-      });
+      toastError("Unable to load invoices. Please try again in a moment.");
       setError({
         title: "Unable to load invoices",
         message: "Please try again in a moment.",
@@ -87,11 +85,7 @@ export default function FinanceInvoicesPage() {
       }
     } catch (err) {
       console.error("Failed to load clients", err);
-      notify({
-        title: "Unable to load clients",
-        message: "Refresh the page or try again shortly.",
-        variant: "warning",
-      });
+      toastWarning("Unable to load clients. Refresh the page or try again shortly.");
     }
   }, []);
 
@@ -179,24 +173,28 @@ export default function FinanceInvoicesPage() {
     if (!canUpdate) return;
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/finance/invoices/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to mark paid.");
-      }
+      await toastPromise(
+        fetch("/api/finance/invoices/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.ok) {
+            throw new Error(data?.error || "Unable to mark paid.");
+          }
+          return data;
+        }),
+        {
+          loading: "Updating invoice...",
+          success: "Invoice marked as paid.",
+          error: (err) => err?.message || "Unable to mark invoice paid.",
+        }
+      );
       await loadInvoices();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Mark paid error", err);
-      notify({
-        title: "Unable to mark invoice paid",
-        message: "Please try again or contact support if the issue persists.",
-        variant: "error",
-      });
       setError({ title: "Unable to mark paid", message: "Please try again." });
     } finally {
       setActionLoading(null);
@@ -270,58 +268,55 @@ export default function FinanceInvoicesPage() {
           overflow: "hidden",
         }}
       >
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
-            <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("orderId")} style={headerButtonStyle}>
-                    Invoice/Order {sortKey === "orderId" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("clientName")} style={headerButtonStyle}>
-                    Client {sortKey === "clientName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("amountTotalUsd")} style={headerButtonStyle}>
-                    Total (USD) {sortKey === "amountTotalUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("dueDate")} style={headerButtonStyle}>
-                    Due Date {sortKey === "dueDate" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("updatedAt")} style={headerButtonStyle}>
-                    Updated {sortKey === "updatedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("status")} style={headerButtonStyle}>
-                    Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </button>
-                </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
-                    Loading invoices…
-                  </td>
+        {/* Loading state: show skeleton table to avoid blank flashes. */}
+        {loading ? (
+          <div className="p-4">
+            <SkeletonTable rows={6} columns={7} />
+          </div>
+        ) : sortedInvoices.length === 0 ? (
+          <div className="p-6">
+            <EmptyState title="No invoices found" description="Try adjusting filters or create a new invoice." />
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+              <thead>
+                <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("orderId")} style={headerButtonStyle}>
+                      Invoice/Order {sortKey === "orderId" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("clientName")} style={headerButtonStyle}>
+                      Client {sortKey === "clientName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("amountTotalUsd")} style={headerButtonStyle}>
+                      Total (USD) {sortKey === "amountTotalUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("dueDate")} style={headerButtonStyle}>
+                      Due Date {sortKey === "dueDate" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("updatedAt")} style={headerButtonStyle}>
+                      Updated {sortKey === "updatedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
+                    <button type="button" onClick={() => toggleSort("status")} style={headerButtonStyle}>
+                      Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
                 </tr>
-              ) : sortedInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
-                    No invoices found.
-                  </td>
-                </tr>
-              ) : (
-                sortedInvoices.map((invoice, idx) => {
+              </thead>
+              <tbody>
+                {sortedInvoices.map((invoice, idx) => {
                   const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
                   const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
                   return (
@@ -355,25 +350,26 @@ export default function FinanceInvoicesPage() {
                             View
                           </button>
                           {canUpdate && invoice.status !== "Paid" && (
-                            <button
+                            <LoadingButton
                               type="button"
                               className="btn"
                               onClick={() => handleMarkPaid(invoice)}
-                              disabled={actionLoading === invoice.id}
+                              loading={actionLoading === invoice.id}
+                              loadingText="Updating"
                               style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
                             >
-                              {actionLoading === invoice.id ? "Updating" : "Mark Paid"}
-                            </button>
+                              Mark Paid
+                            </LoadingButton>
                           )}
                         </div>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {drawerOpen && selectedInvoice && (
@@ -558,9 +554,15 @@ function InvoiceDrawer({
         <div style={{ height: 18 }} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {canUpdate && invoice.status !== "Paid" && (
-            <button className="btn" onClick={() => onMarkPaid(invoice)} disabled={actionLoading} style={{ borderRadius: 999 }}>
-              {actionLoading ? "Updating" : "Mark Paid"}
-            </button>
+            <LoadingButton
+              className="btn"
+              onClick={() => onMarkPaid(invoice)}
+              loading={actionLoading}
+              loadingText="Updating"
+              style={{ borderRadius: 999 }}
+            >
+              Mark Paid
+            </LoadingButton>
           )}
           <button className="btn ghost" style={{ borderRadius: 999 }} title="PDF download coming soon" disabled>
             Download PDF

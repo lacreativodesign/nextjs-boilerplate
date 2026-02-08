@@ -55,6 +55,18 @@
   --chart-series-4: #94a3b8;
   --chart-series-5: #8b5cf6;
   --chart-series-6: #ef4444;
+
+  --toast-bg: #ffffff;
+  --toast-text: #0f172a;
+  --toast-border: rgba(15, 23, 42, 0.12);
+  --toast-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+  --toast-success: #10b981;
+  --toast-error: #ef4444;
+  --toast-warning: #f59e0b;
+  --toast-info: #3b82f6;
+
+  --skeleton-base: rgba(148, 163, 184, 0.18);
+  --skeleton-highlight: rgba(148, 163, 184, 0.32);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -94,6 +106,18 @@
     --chart-series-4: #94a3b8;
     --chart-series-5: #a78bfa;
     --chart-series-6: #f87171;
+
+    --toast-bg: #111214;
+    --toast-text: #f8fafc;
+    --toast-border: rgba(148, 163, 184, 0.25);
+    --toast-shadow: 0 16px 32px rgba(0, 0, 0, 0.55);
+    --toast-success: #34d399;
+    --toast-error: #f87171;
+    --toast-warning: #fbbf24;
+    --toast-info: #60a5fa;
+
+    --skeleton-base: rgba(148, 163, 184, 0.18);
+    --skeleton-highlight: rgba(148, 163, 184, 0.32);
   }
 }
 
@@ -160,6 +184,34 @@ body {
 
 .settings-section {
   animation: fadeRise 220ms ease both;
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 180ms ease-out both;
 }
 
 .settings-divider {

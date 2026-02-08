@@ -1,5 +1,6 @@
 import "./globals.css";
-import ToastProvider from "@/components/ui/ToastProvider";
+import ToastProvider from "@/components/providers/ToastProvider";
+import RouteProgress from "@/components/ui/RouteProgress";
 
 export default function RootLayout({
   children,
@@ -9,7 +10,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider />
+        <RouteProgress />
+        {children}
       </body>
     </html>
   );

@@ -1,39 +1,47 @@
 "use client";
 
 import React, { useState } from "react";
+import LoadingButton from "@/components/ui/LoadingButton";
+import { toastError, toastPromise } from "@/lib/toast";
 
 export default function CreateUserPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("client");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleCreateUser(e: any) {
     e.preventDefault();
     setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/users/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, name, role }),
-      });
+      await toastPromise(
+        fetch("/api/admin/users/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, name, role }),
+        }).then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed to create user");
+          return data;
+        }),
+        {
+          loading: "Creating user...",
+          success: "User created successfully! Password invite sent.",
+          error: (err) => err?.message || "Error creating user.",
+        }
+      );
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Failed to create user");
-
-      setSuccess("User created successfully! Password invite sent.");
       setEmail("");
       setName("");
       setRole("client");
     } catch (err: any) {
-      setError(err.message || "Error creating user");
+      const message = err?.message || "Error creating user";
+      setError(message);
+      toastError(message);
     } finally {
       setLoading(false);
     }
@@ -115,21 +123,6 @@ export default function CreateUserPage() {
           </div>
         )}
 
-        {success && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 12,
-              background: "#DCFCE7",
-              color: "#166534",
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          >
-            {success}
-          </div>
-        )}
-
         <form onSubmit={handleCreateUser}>
           {/* Name */}
           <label style={{ fontSize: 14, fontWeight: 500 }}>Full Name</label>
@@ -189,9 +182,10 @@ export default function CreateUserPage() {
             <option value="client">Client</option>
           </select>
 
-          <button
+          <LoadingButton
             type="submit"
-            disabled={loading}
+            loading={loading}
+            loadingText="Creating..."
             style={{
               width: "100%",
               padding: "12px",
@@ -204,8 +198,8 @@ export default function CreateUserPage() {
               opacity: loading ? 0.6 : 1,
             }}
           >
-            {loading ? "Creating..." : "Create User"}
-          </button>
+            Create User
+          </LoadingButton>
         </form>
       </main>
     </div>

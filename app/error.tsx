@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { logError } from "@/lib/logging";
-import { useToast } from "@/components/ui/ToastProvider";
+import { toastError } from "@/lib/toast";
 
 export default function Error({
   error,
@@ -11,16 +11,10 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const { notify } = useToast();
-
   useEffect(() => {
     logError(error, { route: "app/error", metadata: { digest: error.digest } });
-    notify({
-      title: "Something went wrong",
-      message: "Please try again. If the issue persists, contact support.",
-      variant: "error",
-    });
-  }, [error, notify]);
+    toastError("Something went wrong. Please try again. If the issue persists, contact support.");
+  }, [error]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">

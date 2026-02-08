@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingButton from "@/components/ui/LoadingButton";
+import { toastError, toastPromise } from "@/lib/toast";
 import type { SegmentDefinition } from "@/lib/segments";
 
 type SalesStage =
@@ -149,6 +151,7 @@ export default function AddClientPage() {
       } catch {
         if (!alive) return;
         setSegments([]);
+        toastError("Failed to load client segments.");
       }
     }
 
@@ -334,18 +337,25 @@ export default function AddClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      const res = await fetch("/api/admin/clients/create", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      const json = (await res.json().catch(() => ({}))) as ApiResp;
-
-      if (!res.ok || !("ok" in json) || !json.ok) {
-        throw new Error((json as any)?.error || "Failed to create client");
-      }
+      await toastPromise(
+        fetch("/api/admin/clients/create", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        }).then(async (res) => {
+          const json = (await res.json().catch(() => ({}))) as ApiResp;
+          if (!res.ok || !("ok" in json) || !json.ok) {
+            throw new Error((json as any)?.error || "Failed to create client");
+          }
+          return json;
+        }),
+        {
+          loading: "Creating client...",
+          success: "Client created successfully.",
+          error: (err) => err?.message || "Failed to create client.",
+        }
+      );
 
       // reset
       setCompanyName("");
@@ -377,7 +387,9 @@ export default function AddClientPage() {
 
       setTotalPaidUsd("0");
     } catch (err: any) {
-      setError(err?.message || "Failed to create client");
+      const message = err?.message || "Failed to create client";
+      setError(message);
+      toastError(message);
     } finally {
       setLoading(false);
     }
@@ -719,9 +731,9 @@ export default function AddClientPage() {
           </div>
 
           <div style={styles.actions}>
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Add Client"}
-            </button>
+            <LoadingButton className="btn" type="submit" loading={loading} loadingText="Creating...">
+              Add Client
+            </LoadingButton>
           </div>
         </form>
       </div>
