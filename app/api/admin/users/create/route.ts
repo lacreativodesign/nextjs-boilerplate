@@ -4,6 +4,9 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../_utils";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
+import { createUserSchema } from "@/lib/validations/user";
+import { validateRequest } from "@/lib/validations/validate";
 
 export const runtime = "nodejs";
 
@@ -33,15 +36,28 @@ export async function POST(req: Request) {
 
     // 3) Parse body
     const body = await req.json();
+    const displayNameInput = String(body?.name || body?.fullName || body?.displayName || "").trim();
+
+    const validatedData = validateRequest(createUserSchema, {
+      email: body?.email,
+      displayName: displayNameInput,
+      role: body?.role,
+      tenantId: current.tenantId || body?.tenantId || "",
+      phone: body?.phone,
+      department: body?.department,
+    });
 
     const {
-      name,
-      fullName,
       email,
-      password,
+      displayName,
       role,
+      tenantId,
       phone,
       department,
+    } = validatedData;
+
+    const {
+      password,
       designation,
       salary,
       monthlyTarget,
@@ -50,17 +66,7 @@ export async function POST(req: Request) {
       cnic,
       dob,
       status,
-    } = body;
-
-    const displayName = String(name || fullName || "").trim();
-
-    // 4) Validate required fields
-    if (!email || !role || !displayName) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+    } = body || {};
 
     try {
       assertPermission(currentRole, Permission.ManageRoles);
@@ -106,6 +112,7 @@ export async function POST(req: Request) {
       name: displayName,
       email,
       role: targetRole,
+      tenantId,
       phone: phone || "",
       department: department || "",
       designation: designation || "",
@@ -152,10 +159,19 @@ export async function POST(req: Request) {
     });
   } catch (e: any) {
     console.error("Error create user:", e);
-    return NextResponse.json(
-      { error: e?.message || "Server error" },
-      { status: 500 }
-    );
+    const finalError = e instanceof SyntaxError
+      ? new AppError({
+          message: "Invalid JSON body",
+          code: "VALIDATION_ERROR",
+          status: 400,
+        })
+      : e;
+    const { status, body } = resolveErrorResponse(finalError, {
+      fallbackMessage: "Unable to create user.",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      requestId: req.headers.get("x-request-id") || undefined,
+    });
+    return NextResponse.json(body, { status });
   }
 }
 

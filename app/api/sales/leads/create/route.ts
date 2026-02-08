@@ -14,6 +14,9 @@ import {
   serverTimestamp,
   userLabel,
 } from "../../_utils";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
+import { createLeadSchema } from "@/lib/validations/lead";
+import { validateRequest } from "@/lib/validations/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -38,20 +41,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const payload = await req.json();
-    const companyName = parseString(payload.companyName || payload.company, "");
-    const contactName = parseString(payload.contactName || payload.name, "");
-    const contactEmail = parseString(payload.contactEmail || payload.email, "");
-    const contactPhone = parseString(payload.contactPhone || payload.phone, "");
-    const source = parseString(payload.source, "manual") || "manual";
+    let payload: any = null;
+    try {
+      payload = await req.json();
+    } catch {
+      throw new AppError({
+        message: "Invalid JSON body",
+        code: "VALIDATION_ERROR",
+        status: 400,
+      });
+    }
+
+    const sourceInput = String(payload?.source || payload?.leadSource || "other")
+      .trim()
+      .toLowerCase()
+      .replace("social", "social_media")
+      .replace("coldcall", "cold_call")
+      .replace("manual", "other");
+
+    const statusInputRaw = String(payload?.status || payload?.stage || "new")
+      .trim()
+      .toLowerCase()
+      .replace("proposal_sent", "proposal")
+      .replace("closed_won", "won")
+      .replace("closed_lost", "lost");
+
+    const validatedData = validateRequest(createLeadSchema, {
+      title: payload?.title || payload?.companyName || payload?.company || payload?.name || "",
+      contactName: payload?.contactName || payload?.name || "",
+      email: payload?.contactEmail || payload?.email || "",
+      phone: payload?.contactPhone || payload?.phone,
+      company: payload?.company || payload?.companyName,
+      source: sourceInput,
+      status: statusInputRaw,
+      value: payload?.value ?? payload?.expectedValueUsd,
+      assignedTo: payload?.assignedTo,
+      notes: payload?.notes,
+      tenantId: auth.user.tenantId || "",
+    });
+
+    const companyName = parseString(payload.companyName || payload.company || validatedData.company || validatedData.title, "");
+    const contactName = parseString(validatedData.contactName, "");
+    const contactEmail = parseString(validatedData.email, "");
+    const contactPhone = parseString(validatedData.phone || "", "");
+    const source = parseString(validatedData.source, "");
     const notes = parseString(payload.notes, "");
-    const rawStatusInput = parseString(payload.status || payload.stage, "new").toLowerCase();
+    const rawStatusInput = parseString(validatedData.status || payload.status || payload.stage, "new").toLowerCase();
     const status = rawStatusInput
       .replace(/\s+/g, "_")
       .replace("new_lead", "new")
-      .replace("proposal_sent", "proposal_sent")
-      .replace("closed_won", "closed_won")
-      .replace("closed_lost", "closed_lost");
+      .replace("proposal", "proposal_sent")
+      .replace("won", "closed_won")
+      .replace("lost", "closed_lost");
     const allowedStatuses = [
       "new",
       "contacted",
@@ -81,7 +122,7 @@ export async function POST(req: Request) {
       }
     };
     const disposition = parseString(payload.disposition, "");
-    const expectedValueUsd = parseNumber(payload.expectedValueUsd, 0);
+    const expectedValueUsd = parseNumber(validatedData.value ?? payload.expectedValueUsd, 0);
     const packageName = parseString(payload.packageName, "");
     const interestedServices = Array.isArray(payload.interestedServices)
       ? payload.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
@@ -182,6 +223,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (err: any) {
     console.error("sales leads create error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to create lead." }, { status: 500 });
+    const { status, body } = resolveErrorResponse(err, {
+      fallbackMessage: "Unable to create lead.",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      requestId: req.headers.get("x-request-id") || undefined,
+    });
+    return NextResponse.json(body, { status });
   }
 }

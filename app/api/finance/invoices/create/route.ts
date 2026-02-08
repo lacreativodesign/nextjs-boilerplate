@@ -15,6 +15,8 @@ import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
 import { normalizeRole } from "../../../admin/_utils";
+import { createInvoiceSchema } from "@/lib/validations/invoice";
+import { validateRequest } from "@/lib/validations/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +39,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await req.json();
+    let body: any = null;
+    try {
+      body = await req.json();
+    } catch {
+      throw new AppError({
+        message: "Invalid JSON body.",
+        code: "VALIDATION_ERROR",
+        status: 400,
+      });
+    }
+
+    const normalizedItems = Array.isArray(body?.items)
+      ? body.items
+      : Array.isArray(body?.lineItems)
+        ? body.lineItems.map((item: LineItemInput) => ({
+            description: item?.name,
+            quantity: item?.qty,
+            unitPrice: item?.unitPriceUsd,
+            taxRate: 0,
+          }))
+        : [];
+
+    const validatedData = validateRequest(createInvoiceSchema, {
+      clientId: body?.clientId,
+      items: normalizedItems,
+      currency: body?.currency || "USD",
+      dueDate: body?.dueDate,
+      notes: body?.notes,
+      status: body?.status || "draft",
+      tenantId: auth.user.tenantId || "",
+    });
     const orderId = parseString(body?.orderId).trim();
-    const clientId = parseString(body?.clientId).trim();
-    const currency = parseString(body?.currency || "USD").toUpperCase();
-    const notes = parseString(body?.notes || "").trim();
-    const lineItems = Array.isArray(body?.lineItems) ? (body.lineItems as LineItemInput[]) : [];
-    const statusInput = normalizeInvoiceStatus(body?.status);
-    const dueDateRaw = parseString(body?.dueDate).trim();
+    const clientId = parseString(validatedData.clientId).trim();
+    const currency = parseString(validatedData.currency || "USD").toUpperCase();
+    const notes = parseString(validatedData.notes || "").trim();
+    const lineItems = validatedData.items;
+    const statusInput = normalizeInvoiceStatus(validatedData.status);
+    const dueDateRaw = parseString(validatedData.dueDate).trim();
     const issuedAtRaw = parseString(body?.issuedAt).trim();
     const dealId = parseString(body?.dealId).trim();
     const type = parseString(body?.type).trim();
@@ -73,18 +105,10 @@ export async function POST(req: Request) {
       });
     }
 
-    if (lineItems.length === 0) {
-      throw new AppError({
-        message: "At least one line item is required.",
-        code: "VALIDATION_ERROR",
-        status: 400,
-      });
-    }
-
     const sanitizedItems = lineItems.map((item) => {
-      const name = parseString(item?.name).trim();
-      const qty = parseNumber(item?.qty, 0);
-      const unitPriceUsd = parseNumber(item?.unitPriceUsd, 0);
+      const name = parseString(item?.description).trim();
+      const qty = parseNumber(item?.quantity, 0);
+      const unitPriceUsd = parseNumber(item?.unitPrice, 0);
       if (!name || qty <= 0 || unitPriceUsd < 0) {
         throw new AppError({
           message: "Each line item must include a name, qty, and unit price.",

@@ -14,6 +14,7 @@ export type ErrorResponse = {
   ok: false;
   error: string;
   code: ErrorCode;
+  details?: unknown;
   requestId?: string;
 };
 
@@ -29,24 +30,28 @@ export class AppError extends Error {
   code: ErrorCode;
   status: number;
   expose: boolean;
+  details?: unknown;
   constructor({
     message,
     code,
     status,
     expose = true,
     cause,
+    details,
   }: {
     message: string;
     code: ErrorCode;
     status: number;
     expose?: boolean;
     cause?: unknown;
+    details?: unknown;
   }) {
     super(message);
     this.name = "AppError";
     this.code = code;
     this.status = status;
     this.expose = expose;
+    this.details = details;
     if (cause) {
       this.cause = cause;
     }
@@ -73,6 +78,7 @@ export function resolveErrorResponse(
         ok: false,
         error: error.expose ? error.message : fallbackMessage,
         code: error.code,
+        details: error.details ?? error.cause,
         requestId,
       },
     };
