@@ -4,6 +4,7 @@ import { getCurrentUser, isAdminRole } from "../../_utils";
 import { paginationSchema } from "@/lib/validations/common";
 import { validateQuery } from "@/lib/validations/validate";
 import { resolveErrorResponse } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
     if (!current || !isAdminRole(current.role)) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    await checkRateLimit(req, "relaxed", current.uid);
 
     void validateQuery(paginationSchema, req.nextUrl.searchParams);
 
