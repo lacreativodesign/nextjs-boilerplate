@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import type { Unsubscribe } from "firebase/auth";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import { normalizeRole } from "@/lib/erpAccess";
+import SessionTimeoutModal from "@/components/auth/SessionTimeoutModal";
+import { useSessionTimeout } from "@/lib/hooks/useSessionTimeout";
 
 type Props = {
   allowed: string[];
@@ -18,6 +20,7 @@ export default function RequireAuth({ allowed, children }: Props) {
   const [ok, setOk] = useState(false);
   const router = useRouter();
   const allowedRoles = useMemo(() => allowed.map((role) => normalizeRole(role)).filter(Boolean), [allowed]);
+  const { showTimeoutWarning, timeRemaining, extendSession, logout } = useSessionTimeout();
 
   useEffect(() => {
     let unsub: Unsubscribe | null = null;
@@ -62,6 +65,12 @@ export default function RequireAuth({ allowed, children }: Props) {
 
   return (
     <>
+      <SessionTimeoutModal
+        open={showTimeoutWarning}
+        timeRemaining={timeRemaining}
+        onStayLoggedIn={extendSession}
+        onLogout={logout}
+      />
       <SubscriptionBanner />
       {children}
     </>
