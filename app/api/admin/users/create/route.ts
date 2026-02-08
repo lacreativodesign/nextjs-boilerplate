@@ -7,6 +7,7 @@ import { assertPermission, Permission } from "../../../../lib/permissions";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { createUserSchema } from "@/lib/validations/user";
 import { validateRequest } from "@/lib/validations/validate";
+import { checkRateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    await checkRateLimit(req, "standard", current.uid);
 
     // 3) Parse body
     const body = await req.json();

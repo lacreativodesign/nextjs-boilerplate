@@ -7,6 +7,7 @@ import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { createClientSchema } from "@/lib/validations/client";
 import { validateRequest } from "@/lib/validations/validate";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
     const me = await getCurrentUser();
     if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     if (!canCreateClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+
+    await checkRateLimit(req, "standard", me.uid);
 
     let body: any = null;
     try {

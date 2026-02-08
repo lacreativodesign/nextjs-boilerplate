@@ -17,6 +17,7 @@ import {
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { createLeadSchema } from "@/lib/validations/lead";
 import { validateRequest } from "@/lib/validations/validate";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export async function POST(req: Request) {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+
+    await checkRateLimit(req, "standard", auth.user.uid);
 
     const parseIso = (value: any) => {
       if (!value) return null;

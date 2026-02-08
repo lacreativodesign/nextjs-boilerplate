@@ -17,6 +17,7 @@ import { assertPermission, Permission } from "../../../../lib/permissions";
 import { normalizeRole } from "../../../admin/_utils";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
 import { validateRequest } from "@/lib/validations/validate";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
+
+    await checkRateLimit(req, "standard", auth.user.uid);
 
     let body: any = null;
     try {
