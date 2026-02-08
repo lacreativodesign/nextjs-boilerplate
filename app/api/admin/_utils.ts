@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { refreshSession, validateSession } from "@/lib/auth/session";
 
 export type CurrentUser = {
   uid: string;
@@ -18,6 +19,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const sessionCookie = cookieStore.get("lac_session")?.value;
     if (!sessionCookie) return null;
 
+    const sessionStatus = await validateSession(sessionCookie);
+    if (!sessionStatus.valid) return null;
+
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     const uid = decoded.uid;
 
@@ -28,6 +32,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const role = normalizeRole((data.role as string | undefined) || "sales");
 
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
+
+    void refreshSession(sessionCookie);
 
     return {
       uid,

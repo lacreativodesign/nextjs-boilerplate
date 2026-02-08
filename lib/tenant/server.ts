@@ -1,6 +1,7 @@
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND, DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { PLAN_MODULES } from "@/app/config/plans";
+import { refreshSession, validateSession } from "@/lib/auth/session";
 
 export type TenantModules = typeof DEFAULT_MODULES;
 
@@ -95,6 +96,11 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     throw new Error("Unauthorized");
   }
 
+  const sessionStatus = await validateSession(sessionCookie);
+  if (!sessionStatus.valid) {
+    throw new Error("Session expired");
+  }
+
   const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
   const uid = decoded.uid;
 
@@ -106,6 +112,8 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
   const data = userDoc.data() || {};
   const role = (data.role as string | undefined)?.toLowerCase() || "sales";
   const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
+
+  void refreshSession(sessionCookie);
 
   return {
     uid,

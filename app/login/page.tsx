@@ -1,9 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { type Auth, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  type Auth,
+  getMultiFactorResolver,
+  signInWithEmailAndPassword,
+  type MultiFactorResolver,
+} from "firebase/auth";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { getRoleRoute } from "@/lib/roleRouting";
+import MFAVerify from "@/components/auth/MFAVerify";
+import { verifyMFASignIn } from "@/lib/auth/mfa";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,6 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,7 +43,7 @@ export default function LoginPage() {
     };
   }, []);
 
-  // HANDLE LOGIN (same logic as before, no changes)
+  // HANDLE LOGIN (adds MFA challenge handling)
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firebaseAuth) {
@@ -47,29 +55,57 @@ export default function LoginPage() {
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-      const uid = userCred.user.uid;
+      await completeLogin(userCred);
+    } catch (err: any) {
+      if (firebaseAuth && err?.code === "auth/multi-factor-auth-required") {
+        // Firebase returns a MultiFactorResolver when TOTP is required.
+        const resolver = getMultiFactorResolver(firebaseAuth, err);
+        setMfaResolver(resolver);
+        setError("Two-factor authentication required.");
+      } else {
+        setError(err.message || "Login failed");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      const role = await fetchUserRole(uid);
-      if (!role) throw new Error("No role assigned");
+  async function completeLogin(userCred: { user: { uid: string; getIdToken: (forceRefresh: boolean) => Promise<string> } }) {
+    const uid = userCred.user.uid;
 
-      const idToken = await userCred.user.getIdToken(true);
+    const role = await fetchUserRole(uid);
+    if (!role) throw new Error("No role assigned");
 
-      // Send to server to make secure cookie
-      const cookieRes = await fetch("/api/session-login", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+    const idToken = await userCred.user.getIdToken(true);
+
+    // Send to server to make secure cookie
+    const cookieRes = await fetch("/api/session-login", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken, rememberMe: remember }),
     });
 
-      if (!cookieRes.ok) {
-        const j = await cookieRes.json().catch(() => null);
-        throw new Error(j?.error || "Session error");
-      }
+    if (!cookieRes.ok) {
+      const j = await cookieRes.json().catch(() => null);
+      throw new Error(j?.error || "Session error");
+    }
 
-      window.location.href = getRoleRoute(role);
+    window.location.href = getRoleRoute(role);
+  }
+
+  async function handleVerifyMfa(code: string) {
+    if (!firebaseAuth || !mfaResolver) {
+      throw new Error("MFA session expired. Please sign in again.");
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const credential = await verifyMFASignIn(mfaResolver, code);
+      await completeLogin(credential);
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError(err?.message || "MFA verification failed.");
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -164,58 +200,70 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          <form onSubmit={handleLogin} className="login-form">
-            <label className="login-field">
-              <span className="login-label">Email</span>
-              <div className="login-input-wrap">
-                <input
-                  type="email"
-                  placeholder="name@lacreativo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="login-input"
-                  required
-                />
-              </div>
-            </label>
-
-            <label className="login-field">
-              <span className="login-label">Password</span>
-              <div className="login-input-wrap">
-                <input
-                  type={showPass ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="login-input login-input--with-toggle"
-                  required
-                />
-                <button
-                  type="button"
-                  className="login-toggle"
-                  onClick={() => setShowPass(!showPass)}
-                  aria-label={showPass ? "Hide password" : "Show password"}
-                >
-                  {showPass ? "Hide" : "Show"}
-                </button>
-              </div>
-            </label>
-
-            <div className="login-row">
-              <label className="login-check">
-                <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
-                <span>Remember me</span>
+          {mfaResolver ? (
+            <MFAVerify
+              onVerify={handleVerifyMfa}
+              onCancel={() => {
+                setMfaResolver(null);
+                setError("");
+              }}
+            />
+          ) : (
+            <form onSubmit={handleLogin} className="login-form">
+              <label className="login-field">
+                <span className="login-label">Email</span>
+                <div className="login-input-wrap">
+                  <input
+                    type="email"
+                    placeholder="name@lacreativo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="login-input"
+                    required
+                  />
+                </div>
               </label>
-            </div>
 
-            <button type="submit" disabled={loading || !firebaseAuth} className="login-submit">
-              {loading ? "Signing in…" : "Login"}
+              <label className="login-field">
+                <span className="login-label">Password</span>
+                <div className="login-input-wrap">
+                  <input
+                    type={showPass ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="login-input login-input--with-toggle"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="login-toggle"
+                    onClick={() => setShowPass(!showPass)}
+                    aria-label={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </label>
+
+              <div className="login-row">
+                <label className="login-check">
+                  <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
+                  <span>Remember me</span>
+                </label>
+              </div>
+
+              <button type="submit" disabled={loading || !firebaseAuth} className="login-submit">
+                {loading ? "Signing in…" : "Login"}
+              </button>
+            </form>
+          )}
+
+          {!mfaResolver ? (
+            <button onClick={handleForgot} className="login-forgot" type="button">
+              Forgot Password?
             </button>
-          </form>
-
-          <button onClick={handleForgot} className="login-forgot" type="button">
-            Forgot Password?
-          </button>
+          ) : null}
         </div>
       </div>
       <style jsx global>{`

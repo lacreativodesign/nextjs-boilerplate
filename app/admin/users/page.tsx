@@ -21,6 +21,7 @@ type UserRecord = {
   monthlyTarget?: number | string;
   commission?: number | string;
   status?: string;
+  mfaEnabled?: boolean;
   cnic?: string;
   dob?: string;
   createdAt?: string;
@@ -69,6 +70,7 @@ export default function UsersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [resettingMfaUid, setResettingMfaUid] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -219,6 +221,30 @@ export default function UsersPage() {
     setSelectedUid(null);
   };
 
+  const handleResetMfa = async (uid: string) => {
+    const confirmReset = window.confirm(
+      "Reset MFA for this user? They will need to re-enroll with an authenticator app."
+    );
+    if (!confirmReset) return;
+
+    try {
+      setResettingMfaUid(uid);
+      const res = await fetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE", credentials: "include" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to reset MFA.");
+      }
+
+      setUsers((prev) =>
+        prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user))
+      );
+    } catch (err: any) {
+      alert(err?.message || "Failed to reset MFA.");
+    } finally {
+      setResettingMfaUid((prev) => (prev === uid ? null : prev));
+    }
+  };
+
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
@@ -332,6 +358,7 @@ export default function UsersPage() {
                   <th style={headerCellStyle} onClick={() => handleSort("status")}>
                     {headerLabel("Status", sortKey === "status", sortDir)}
                   </th>
+                  <th style={{ ...headerCellStyle, cursor: "default" }}>MFA</th>
                   <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
                     {headerLabel("Action")}
                   </th>
@@ -366,6 +393,21 @@ export default function UsersPage() {
                       <td style={cellStyle}>{u.phone || "-"}</td>
                       <td style={cellStyle}>{u.department || "-"}</td>
                       <td style={cellStyle}>{normalizeStatus(u.status)}</td>
+                      <td style={cellStyle}>
+                        <span
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            background: u.mfaEnabled ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.2)",
+                            color: u.mfaEnabled ? "#10b981" : isDark ? "#cbd5f5" : "#475569",
+                          }}
+                        >
+                          {u.mfaEnabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <div style={{ display: "flex", justifyContent: "center" }}>
                           <button
@@ -416,6 +458,8 @@ export default function UsersPage() {
               deleting={deletingUid === getRowId(selectedUser)}
               onDelete={(id) => handleDelete(id)}
               onEdit={(id) => router.push(`/admin/users/${id}/edit`)}
+              onResetMfa={(id) => handleResetMfa(id)}
+              resettingMfa={resettingMfaUid === getRowId(selectedUser)}
             />
           </div>
         </div>
@@ -430,12 +474,16 @@ function UserDrawerContent({
   deleting,
   onDelete,
   onEdit,
+  onResetMfa,
+  resettingMfa,
 }: {
   user: UserRecord;
   isDark: boolean;
   deleting: boolean;
   onDelete: (uid: string) => void;
   onEdit: (uid: string) => void;
+  onResetMfa: (uid: string) => void;
+  resettingMfa: boolean;
 }) {
   const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
@@ -496,7 +544,28 @@ function UserDrawerContent({
 
       <div style={{ height: 12 }} />
 
+      <Section title="Security" isDark={isDark}>
+        <Row label="MFA Status" value={user.mfaEnabled ? "Enabled" : "Disabled"} isDark={isDark} />
+      </Section>
+
+      <div style={{ height: 12 }} />
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => onResetMfa(uid)}
+          disabled={resettingMfa}
+          style={{
+            borderRadius: 12,
+            fontWeight: 500,
+            background: "rgba(59,130,246,0.1)",
+            border: "1px solid rgba(59,130,246,0.35)",
+            opacity: resettingMfa ? 0.7 : 1,
+          }}
+        >
+          {resettingMfa ? "Resetting MFA..." : "Reset MFA"}
+        </button>
         <button
           type="button"
           className="btn"

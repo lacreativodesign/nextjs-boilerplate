@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../../_utils";
 import { paginationSchema } from "@/lib/validations/common";
 import { validateQuery } from "@/lib/validations/validate";
-import { resolveErrorResponse } from "@/lib/errors";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   try {
     const current = await getCurrentUser();
     if (!current || !isAdminRole(current.role)) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      throw new AppError({ message: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
     }
 
     await checkRateLimit(req, "relaxed", current.uid);
@@ -26,7 +26,23 @@ export async function GET(req: NextRequest) {
       ...d.data(),
     }));
 
-    return NextResponse.json(list);
+    const identifiers = list.map((user) => ({ uid: user.uid })).filter((item) => Boolean(item.uid));
+    const mfaMap = new Map<string, boolean>();
+
+    if (identifiers.length) {
+      const authResult = await adminAuth.getUsers(identifiers);
+      authResult.users.forEach((user) => {
+        const enrolled = user.multiFactor?.enrolledFactors || [];
+        mfaMap.set(user.uid, enrolled.length > 0);
+      });
+    }
+
+    const enriched = list.map((user) => ({
+      ...user,
+      mfaEnabled: mfaMap.get(user.uid) || false,
+    }));
+
+    return NextResponse.json(enriched);
   } catch (e) {
     console.error("Error list users:", e);
     const { status, body } = resolveErrorResponse(e, {

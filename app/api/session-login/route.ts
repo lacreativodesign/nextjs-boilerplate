@@ -4,12 +4,16 @@ import { cookies } from "next/headers";
 import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+import { createSession } from "@/lib/auth/session";
+import { SESSION_CONFIG } from "@/lib/auth/sessionConfig";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
 const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
-const DEFAULT_SESSION_DAYS = 1;
-const REMEMBER_SESSION_DAYS = 30;
+const DEFAULT_SESSION_DAYS = SESSION_CONFIG.maxAge / (24 * 60 * 60 * 1000);
+const REMEMBER_SESSION_DAYS = SESSION_CONFIG.rememberMeMaxAge / (24 * 60 * 60 * 1000);
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -38,9 +42,10 @@ function getAdmin() {
 
 export async function POST(req: Request) {
   try {
+    await checkRateLimit(req, "strict");
     const { idToken, rememberMe } = await req.json();
     if (!idToken) {
-      return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
+      throw new AppError({ message: "Missing idToken", code: "VALIDATION_ERROR", status: 400 });
     }
 
     const { adminApp, adminDb } = getAdmin();
@@ -86,11 +91,17 @@ export async function POST(req: Request) {
       domain: COOKIE_DOMAIN,
     };
 
-    if (rememberMe) {
-      cookieOptions.maxAge = expiresIn / 1000;
-    }
+    cookieOptions.maxAge = expiresIn / 1000;
 
     c.set(cookieOptions);
+
+    await createSession(uid, {
+      rememberMe: Boolean(rememberMe),
+      sessionCookie,
+      ip: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || "unknown",
+      db: adminDb,
+    });
 
     // 4) Auto attendance logging (non-blocking)
     try {
@@ -148,6 +159,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error("SESSION LOGIN ERROR:", e);
-    return NextResponse.json({ error: e?.message || "Session error" }, { status: 400 });
+    const { status, body } = resolveErrorResponse(e, {
+      fallbackMessage: "Session error",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      fallbackStatus: 400,
+      requestId: req.headers.get("x-request-id") || undefined,
+    });
+    return NextResponse.json(body, { status });
   }
 }
