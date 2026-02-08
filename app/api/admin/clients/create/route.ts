@@ -4,6 +4,9 @@ import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
+import { AppError, resolveErrorResponse } from "@/lib/errors";
+import { createClientSchema } from "@/lib/validations/client";
+import { validateRequest } from "@/lib/validations/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -33,114 +36,129 @@ function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid
 }
 
 export async function POST(req: Request) {
-  const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  if (!canCreateClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-
-  let body: any = null;
   try {
-    body = await req.json();
-  } catch {
-    body = null;
-  }
+    const me = await getCurrentUser();
+    if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    if (!canCreateClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  const companyName = cleanString(body?.companyName);
-  const primaryContactName = cleanString(body?.primaryContactName);
-  const primaryContactEmail = cleanString(body?.primaryContactEmail);
-  const salesOwner = cleanString(body?.salesOwner);
-  const primaryContactEmailLower = normalizeEmail(primaryContactEmail);
+    let body: any = null;
+    try {
+      body = await req.json();
+    } catch {
+      throw new AppError({
+        message: "Invalid JSON body",
+        code: "VALIDATION_ERROR",
+        status: 400,
+      });
+    }
 
-  if (!companyName) return NextResponse.json({ ok: false, error: "Company Name is required" }, { status: 400 });
-  if (!primaryContactName) return NextResponse.json({ ok: false, error: "Primary Contact Name is required" }, { status: 400 });
-  if (!primaryContactEmail) return NextResponse.json({ ok: false, error: "Primary Contact Email is required" }, { status: 400 });
-  if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
+    const validatedData = validateRequest(createClientSchema, {
+      companyName: body?.companyName,
+      contactName: body?.primaryContactName || body?.contactName,
+      email: body?.primaryContactEmail || body?.email,
+      phone: body?.primaryContactPhone || body?.phone,
+      address: body?.address,
+      industry: body?.industry,
+      website: body?.website,
+      tenantId: me.tenantId || body?.tenantId || "",
+    });
 
-  // Enforce 1 email per account (ignore deleted clients)
-  const existingByLower = await db
-    .collection("clients")
-    .where("primaryContactEmailLower", "==", primaryContactEmailLower)
-    .limit(1)
-    .get();
+    const companyName = validatedData.companyName;
+    const primaryContactName = validatedData.contactName;
+    const primaryContactEmail = validatedData.email;
+    const primaryContactPhone = validatedData.phone || "";
+    const tenantId = validatedData.tenantId;
+    const salesOwner = cleanString(body?.salesOwner);
+    const primaryContactEmailLower = normalizeEmail(primaryContactEmail);
 
-  const existingByRaw = await db
-    .collection("clients")
-    .where("primaryContactEmail", "==", primaryContactEmail)
-    .limit(1)
-    .get();
+    if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
 
-  const duplicate =
-    existingByLower.docs.concat(existingByRaw.docs).find((doc) => {
-      const data = doc.data() || {};
-      return !data.deletedAt;
-    }) || null;
+    // Enforce 1 email per account (ignore deleted clients)
+    const existingByLower = await db
+      .collection("clients")
+      .where("primaryContactEmailLower", "==", primaryContactEmailLower)
+      .limit(1)
+      .get();
 
-  if (duplicate) {
-    return NextResponse.json({ ok: false, error: "Primary contact email already exists" }, { status: 400 });
-  }
+    const existingByRaw = await db
+      .collection("clients")
+      .where("primaryContactEmail", "==", primaryContactEmail)
+      .limit(1)
+      .get();
 
-  // IMPORTANT: Order ID is ONLY for paid clients. So on create we DO NOT generate it.
-  // Payment status defaults to Unpaid unless (optional) admin wants to create as paid via update flow.
-  const paymentStatus = "Unpaid" as const;
+    const duplicate =
+      existingByLower.docs.concat(existingByRaw.docs).find((doc) => {
+        const data = doc.data() || {};
+        return !data.deletedAt;
+      }) || null;
 
-  const now = admin.firestore.FieldValue.serverTimestamp();
+    if (duplicate) {
+      return NextResponse.json({ ok: false, error: "Primary contact email already exists" }, { status: 400 });
+    }
 
-  const doc = {
-    // Company
-    companyName,
-    website: cleanString(body?.website),
-    industry: cleanString(body?.industry),
-    businessType: cleanString(body?.businessType),
-    country: cleanString(body?.country),
-    city: cleanString(body?.city),
-    timezone: cleanString(body?.timezone),
-    employeeCountRange: cleanString(body?.employeeCountRange) || null,
-    yearsInBusinessRange: cleanString(body?.yearsInBusinessRange) || null,
+    // IMPORTANT: Order ID is ONLY for paid clients. So on create we DO NOT generate it.
+    // Payment status defaults to Unpaid unless (optional) admin wants to create as paid via update flow.
+    const paymentStatus = "Unpaid" as const;
 
-    segmentServices: normalizeSlugArray(body?.segmentServices),
-    segmentBusinessType: normalizeOptionalSlug(body?.segmentBusinessType),
-    segmentIndustry: normalizeOptionalSlug(body?.segmentIndustry),
-    segmentGeo: body?.segmentGeo !== undefined ? normalizeOptionalSlug(body?.segmentGeo) : slugify(cleanString(body?.country)) || null,
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
-    // Contact
-    primaryContactName,
-    primaryContactTitle: cleanString(body?.primaryContactTitle),
-    primaryContactEmail,
-    primaryContactEmailLower,
-    primaryContactPhone: cleanString(body?.primaryContactPhone),
+    const doc = {
+      // Company
+      companyName,
+      website: cleanString(body?.website),
+      industry: cleanString(body?.industry),
+      businessType: cleanString(body?.businessType),
+      country: cleanString(body?.country),
+      city: cleanString(body?.city),
+      timezone: cleanString(body?.timezone),
+      employeeCountRange: cleanString(body?.employeeCountRange) || null,
+      yearsInBusinessRange: cleanString(body?.yearsInBusinessRange) || null,
 
-    // Lifecycle
-    salesStage: cleanString(body?.salesStage) || "New Lead",
-    paymentStatus,
-    retainerStatus: cleanString(body?.retainerStatus) || "None",
+      segmentServices: normalizeSlugArray(body?.segmentServices),
+      segmentBusinessType: normalizeOptionalSlug(body?.segmentBusinessType),
+      segmentIndustry: normalizeOptionalSlug(body?.segmentIndustry),
+      segmentGeo: body?.segmentGeo !== undefined ? normalizeOptionalSlug(body?.segmentGeo) : slugify(cleanString(body?.country)) || null,
 
-    // Ownership
-    salesOwner,
-    accountManager: cleanString(body?.accountManager),
-    productionOwner: cleanString(body?.productionOwner),
+      // Contact
+      primaryContactName,
+      primaryContactTitle: cleanString(body?.primaryContactTitle),
+      primaryContactEmail,
+      primaryContactEmailLower,
+      primaryContactPhone,
 
-    // Finance
-    totalContractValueUsd: toNumber(body?.totalContractValueUsd),
-    totalPaidUsd: toNumber(body?.totalPaidUsd), // stored but status remains Unpaid until admin updates paymentStatus
-    openBalanceUsd: toNumber(body?.openBalanceUsd),
+      // Lifecycle
+      salesStage: cleanString(body?.salesStage) || "New Lead",
+      paymentStatus,
+      retainerStatus: cleanString(body?.retainerStatus) || "None",
 
-    // Notes
-    services: "",
+      // Ownership
+      salesOwner,
+      accountManager: cleanString(body?.accountManager),
+      productionOwner: cleanString(body?.productionOwner),
 
-    // Paid account identifier (ONLY generated when paid/partially paid)
-    orderId: "",
+      // Finance
+      totalContractValueUsd: toNumber(body?.totalContractValueUsd),
+      totalPaidUsd: toNumber(body?.totalPaidUsd), // stored but status remains Unpaid until admin updates paymentStatus
+      openBalanceUsd: toNumber(body?.openBalanceUsd),
 
-    // Timestamps
-    createdAt: now,
-    updatedAt: now,
-    lastActivity: now,
-  };
+      // Notes
+      services: "",
 
-  // If someone tries to sneak Paid in create payload, ignore it.
-  // (Paid must be done via update and only admin/super_admin).
-  // We keep this for clarity:
-  void canonicalPaymentStatus(body?.paymentStatus);
+      // Paid account identifier (ONLY generated when paid/partially paid)
+      orderId: "",
 
-  try {
+      // Timestamps
+      createdAt: now,
+      updatedAt: now,
+      lastActivity: now,
+      tenantId,
+    };
+
+    // If someone tries to sneak Paid in create payload, ignore it.
+    // (Paid must be done via update and only admin/super_admin).
+    // We keep this for clarity:
+    void canonicalPaymentStatus(body?.paymentStatus);
+
     const ref = await db.collection("clients").add(doc);
 
     try {
@@ -160,6 +178,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message ?? "Failed to create client" }, { status: 500 });
+    const { status, body } = resolveErrorResponse(err, {
+      fallbackMessage: "Failed to create client.",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      requestId: req.headers.get("x-request-id") || undefined,
+    });
+    return NextResponse.json(body, { status });
   }
 }
