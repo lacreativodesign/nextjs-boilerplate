@@ -157,3 +157,29 @@ exports.pollEmailInboxes = functions.pubsub.schedule("every 5 minutes").onRun(as
     }
   }
 });
+
+exports.purgeAuditLogs = functions.pubsub.schedule("every 24 hours").onRun(async () => {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const cutoffTimestamp = admin.firestore.Timestamp.fromDate(cutoff);
+  const collection = admin.firestore().collection("audit_logs");
+
+  let hasMore = true;
+  while (hasMore) {
+    const snapshot = await collection
+      .where("timestamp", "<", cutoffTimestamp)
+      .orderBy("timestamp", "asc")
+      .limit(500)
+      .get();
+
+    if (snapshot.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const batch = admin.firestore().batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+
+    hasMore = snapshot.size === 500;
+  }
+});
