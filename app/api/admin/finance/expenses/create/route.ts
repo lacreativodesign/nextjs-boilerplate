@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { parseNumber, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     const ref = adminDb.collection("expenses").doc();
-    await ref.set({
+    const expenseData = {
       category,
       vendor,
       currency: "PKR",
@@ -39,7 +41,36 @@ export async function POST(req: Request) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
-    });
+    };
+
+    await ref.set(expenseData);
+
+    try {
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+      const changes = Object.entries(expenseData)
+        .filter(([field]) => !["createdAt", "updatedAt"].includes(field))
+        .map(([field, value]) => ({ field, oldValue: null, newValue: value }));
+      await logEvent({
+        type: "finance.expense_recorded",
+        title: "Expense recorded",
+        description: `${category} expense recorded for ${vendor}.`,
+        entityType: "expense",
+        entityId: ref.id,
+        actor: { uid: auth.user.uid, name: actorName },
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "",
+        },
+        audit: {
+          action: "create",
+          resource: "expense",
+          resourceId: ref.id,
+          changes,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {

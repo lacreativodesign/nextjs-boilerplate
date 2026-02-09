@@ -126,7 +126,36 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
     };
 
+    const changes = Object.entries(updateData)
+      .filter(([field]) => field !== "updatedAt")
+      .filter(([field, value]) => value !== (existing as Record<string, unknown>)[field])
+      .map(([field, value]) => ({
+        field,
+        oldValue: (existing as Record<string, unknown>)[field],
+        newValue: value,
+      }));
+
     await adminDb.collection("users").doc(uid).update(updateData);
+
+    if (changes.length) {
+      try {
+        await logEvent({
+          type: "user.updated",
+          title: "User updated",
+          description: `${name} profile updated.`,
+          entityType: "user",
+          entityId: uid,
+          actor: { uid: current.uid, name: current.name || current.email || "" },
+          audit: {
+            action: "update",
+            resource: "user",
+            changes,
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
+    }
 
     if (requestedRole && role !== existingRole) {
       try {
@@ -138,6 +167,17 @@ export async function POST(req: Request) {
           entityId: uid,
           actor: { uid: current.uid, name: current.name || current.email || "" },
           metadata: { from: existingRole, to: role },
+          audit: {
+            action: "role_changed",
+            resource: "user",
+            changes: [
+              {
+                field: "role",
+                oldValue: existingRole,
+                newValue: role,
+              },
+            ],
+          },
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);

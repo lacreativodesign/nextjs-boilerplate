@@ -9,6 +9,7 @@ import {
 } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 import { assertPermission, Permission } from "../../../../lib/permissions";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
@@ -142,6 +143,21 @@ export async function POST(req: Request) {
           entityType: "invoice",
           entityId: id,
           actor: { uid: auth.user.uid, name: actorName },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "invoice",
+            resourceId: id,
+            changes: [
+              { field: "status", oldValue: invoice.status || null, newValue: nextStatus },
+              { field: "totalPaid", oldValue: invoice.totalPaid || 0, newValue: nextPaid },
+              { field: "balanceDue", oldValue: invoice.balanceDue || 0, newValue: balanceDue },
+              { field: "paidAt", oldValue: invoice.paidAt || null, newValue: nextStatus === "paid" ? "serverTimestamp" : null },
+            ],
+          },
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);
@@ -192,6 +208,29 @@ export async function POST(req: Request) {
         status: requested,
         updatedAt: serverTimestamp(),
       });
+      try {
+        const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+        await logEvent({
+          type: "finance.invoice_status_updated",
+          title: "Invoice status updated",
+          description: `Invoice ${orderId || id} status updated to ${requested}.`,
+          entityType: "invoice",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: actorName },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "invoice",
+            resourceId: id,
+            changes: [{ field: "status", oldValue: invoice.status || null, newValue: requested }],
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
       return NextResponse.json({ ok: true });
     }
 

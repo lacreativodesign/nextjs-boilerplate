@@ -7,7 +7,8 @@ import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { createClientSchema } from "@/lib/validations/client";
 import { validateRequest } from "@/lib/validations/validate";
-import { checkRateLimit } from "@/lib/security";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+import { logEvent } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,37 @@ export async function POST(req: Request) {
     void canonicalPaymentStatus(body?.paymentStatus);
 
     const ref = await db.collection("clients").add(doc);
+
+    try {
+      const changes = Object.entries(doc)
+        .filter(([field]) => !["createdAt", "updatedAt", "lastActivity"].includes(field))
+        .map(([field, value]) => ({
+          field,
+          oldValue: null,
+          newValue: value,
+        }));
+      await logEvent({
+        tenantId,
+        type: "client.created",
+        title: "Client created",
+        description: `${companyName} created.`,
+        entityType: "client",
+        entityId: ref.id,
+        actor: { uid: me.uid, name: me.name || me.fullName || "" },
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "",
+        },
+        audit: {
+          action: "create",
+          resource: "customer",
+          resourceId: ref.id,
+          changes,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     try {
       await queueClientActivationInvite({

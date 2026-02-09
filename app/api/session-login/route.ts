@@ -8,6 +8,8 @@ import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { createSession } from "@/lib/auth/session";
 import { SESSION_CONFIG } from "@/lib/auth/sessionConfig";
+import { AuditLogger } from "@/lib/audit/audit-logger";
+import { hashSessionToken } from "@/lib/auth/session";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
 
     // 2) Get role from Firestore `users` collection
     let role = "client";
+    let tenantId = "";
     try {
       const userSnap = await adminDb.collection("users").doc(uid).get();
       if (userSnap.exists) {
@@ -70,6 +73,7 @@ export async function POST(req: Request) {
         if (data.role) {
           role = String(data.role).toLowerCase();
         }
+        tenantId = String(data.tenantId || "");
       }
     } catch (err) {
       console.error("Error reading user role for attendance:", err);
@@ -95,26 +99,40 @@ export async function POST(req: Request) {
 
     c.set(cookieOptions);
 
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers.get("user-agent") || "unknown";
+
     await createSession(uid, {
       rememberMe: Boolean(rememberMe),
       sessionCookie,
-      ip: getClientIp(req),
-      userAgent: req.headers.get("user-agent") || "unknown",
+      ip: ipAddress,
+      userAgent,
       db: adminDb,
     });
+
+    try {
+      await AuditLogger.logSuccess({
+        tenantId: tenantId || "unknown",
+        userId: uid,
+        userEmail: email,
+        userName: name,
+        action: "login",
+        resource: "user",
+        resourceId: uid,
+        metadata: {
+          ip: ipAddress,
+          userAgent,
+          sessionId: hashSessionToken(sessionCookie),
+        },
+      });
+    } catch (auditError) {
+      console.error("audit login error:", auditError);
+    }
 
     // 4) Auto attendance logging (non-blocking)
     try {
       const now = new Date();
       const dateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-
-      const ipHeader =
-        req.headers.get("x-forwarded-for") ||
-        req.headers.get("x-real-ip") ||
-        "";
-      const ipAddress = ipHeader.split(",")[0].trim() || "unknown";
-
-      const userAgent = req.headers.get("user-agent") || "unknown";
 
       // 4A) Per-user daily attendance
       await adminDb
@@ -158,6 +176,24 @@ export async function POST(req: Request) {
     // 5) Done
     return NextResponse.json({ ok: true });
   } catch (e: any) {
+    try {
+      await AuditLogger.log({
+        tenantId: "unknown",
+        userId: "unknown",
+        userEmail: "",
+        userName: "",
+        action: "login_failed",
+        resource: "user",
+        status: "failure",
+        errorMessage: e?.message || "Login failed",
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "unknown",
+        },
+      });
+    } catch (auditError) {
+      console.error("audit login failure error:", auditError);
+    }
     console.error("SESSION LOGIN ERROR:", e);
     const { status, body } = resolveErrorResponse(e, {
       fallbackMessage: "Session error",

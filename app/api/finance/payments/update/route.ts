@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseString, queueFinanceEmail, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 import { assertPermission, Permission } from "../../../../lib/permissions";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
@@ -191,6 +192,19 @@ export async function POST(req: Request) {
           entityType: "payment",
           entityId: id,
           actor: { uid: auth.user.uid, name: actorName },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "payment",
+            resourceId: id,
+            changes: [
+              { field: "status", oldValue: payment.status || null, newValue: "succeeded" },
+              { field: "paidAt", oldValue: payment.paidAt || null, newValue: "serverTimestamp" },
+            ],
+          },
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);
@@ -248,6 +262,35 @@ export async function POST(req: Request) {
         createdByName: actorName,
         tenantId: auth.user.tenantId,
       });
+
+      try {
+        await logEvent({
+          type: "finance.payment_note",
+          title: "Payment note updated",
+          description: `Payment ${id} note updated for ${clientName || "client"}.`,
+          entityType: "payment",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: actorName },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "payment",
+            resourceId: id,
+            changes: [
+              {
+                field: "notes",
+                oldValue: payment.notes || null,
+                newValue: notes || null,
+              },
+            ],
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
 
       return NextResponse.json({ ok: true });
     }

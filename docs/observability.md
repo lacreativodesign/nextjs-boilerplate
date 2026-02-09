@@ -27,7 +27,7 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 - `createdAt` (timestamp)
 - `updatedAt` (timestamp)
 
-### `auditLogs` (critical actions)
+### `auditLogs` (legacy critical actions)
 
 **Document fields**
 - `id` (string): Document ID.
@@ -40,6 +40,31 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 - `entityId` (string)
 - `metadata` (map): Flexible metadata payload.
 - `createdAt` (timestamp)
+
+### `audit_logs` (compliance-grade audit trail)
+
+**Document fields**
+- `id` (string): Document ID.
+- `tenantId` (string): Tenant scope.
+- `userId` (string)
+- `userEmail` (string)
+- `userName` (string)
+- `action` (string): `create`, `update`, `delete`, `login`, etc.
+- `resource` (string): `user`, `invoice`, `payment`, etc.
+- `resourceId` (string | null)
+- `changes` (array | null): Field-level `{ field, oldValue, newValue }`.
+- `metadata` (map): `{ ip, userAgent, location, sessionId }`.
+- `status` (`success` | `failure`)
+- `errorMessage` (string | null)
+- `timestamp` (timestamp)
+- `createdAt` (timestamp)
+
+**Composite indexes**
+- `tenantId` + `timestamp` (desc)
+- `tenantId` + `userId` + `timestamp` (desc)
+- `tenantId` + `resource` + `timestamp` (desc)
+- `tenantId` + `action` + `timestamp` (desc)
+- `tenantId` + `status` + `timestamp` (desc)
 
 ### `events` (tenant activity feed)
 
