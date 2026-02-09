@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/skeleton";
+import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import { toastError, toastPromise } from "@/lib/toast";
+import type { SearchFilter } from "@/types/search";
 
 type UserRecord = {
   uid?: string;
@@ -35,6 +37,39 @@ type UserRecord = {
 
 type SortKey = "name" | "email" | "phone" | "department" | "status";
 type SortDir = "asc" | "desc";
+
+type FilterRow = {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+};
+
+type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
+
+const userSearchFields: SearchField[] = [
+  { name: "name", label: "Name", type: "string" },
+  { name: "email", label: "Email", type: "string" },
+  { name: "phone", label: "Phone", type: "string" },
+  { name: "department", label: "Department", type: "string" },
+  { name: "role", label: "Role", type: "string" },
+  { name: "status", label: "Status", type: "string" },
+  { name: "mfaEnabled", label: "MFA Enabled", type: "boolean" },
+  { name: "createdAt", label: "Created At", type: "string" },
+];
+
+const normalizeFilterValue = (value: string | undefined, type?: SearchField["type"]) => {
+  if (value === undefined) return value;
+  if (type === "number") {
+    const numeric = Number(value);
+    return Number.isNaN(numeric) ? value : numeric;
+  }
+  if (type === "boolean") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return value;
+};
 
 /** Always get a usable ID no matter what your API returns */
 const getRowId = (u: any) =>
@@ -76,8 +111,43 @@ export default function UsersPage() {
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
   const [resettingMfaUid, setResettingMfaUid] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedActive, setAdvancedActive] = useState(false);
 
   const router = useRouter();
+
+  const buildSearchFilters = useCallback((filters: FilterRow[]): SearchFilter[] => {
+    const fieldMap = new Map(userSearchFields.map((field) => [field.name, field]));
+
+    return filters
+      .filter((filter) => filter.field && filter.operator)
+      .map((filter) => {
+        const fieldConfig = fieldMap.get(filter.field);
+        const trimmed = filter.value?.toString().trim();
+
+        if (filter.operator === "isNull" || filter.operator === "isNotNull") {
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: null };
+        }
+
+        if (filter.operator === "between") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.slice(0, 2).map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: "between", value: normalized };
+        }
+
+        if (filter.operator === "in" || filter.operator === "notIn") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
+        }
+
+        return {
+          field: filter.field,
+          operator: filter.operator as SearchFilter["operator"],
+          value: normalizeFilterValue(trimmed, fieldConfig?.type),
+        };
+      });
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -123,6 +193,109 @@ export default function UsersPage() {
       alive = false;
     };
   }, []);
+
+  const handleAdvancedSearch = useCallback(
+    async (filters: FilterRow[]) => {
+      try {
+        setLoading(true);
+        setError("");
+        const payloadFilters = buildSearchFilters(filters);
+        const res = await fetch("/api/users/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            page: 1,
+            limit: 200,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json?.error || "Failed to search users");
+        }
+        const list: UserRecord[] = Array.isArray(json?.results) ? json.results : [];
+        setUsers(list);
+        setSearch("");
+        setAdvancedActive(true);
+      } catch (err: any) {
+        const message = err?.message || "Failed to search users";
+        setError(message);
+        toastError(message);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleSaveSearch = useCallback(
+    async (name: string, filters: FilterRow[]) => {
+      const payloadFilters = buildSearchFilters(filters);
+      await toastPromise(
+        fetch("/api/saved-searches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            module: "users",
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            isShared: false,
+          }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data?.error || "Failed to save search");
+          }
+          return data;
+        }),
+        {
+          loading: "Saving search...",
+          success: "Search saved.",
+          error: (err) => err?.message || "Failed to save search.",
+        }
+      );
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleResetSearch = useCallback(() => {
+    setSearch("");
+    if (advancedActive) {
+      setAdvancedActive(false);
+      setLoading(true);
+      fetch("/api/admin/users/list", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+      })
+        .then(async (res) => {
+          const json = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error((json as any)?.error || "Failed to load users");
+          }
+          const list: any[] = Array.isArray(json)
+            ? json
+            : Array.isArray((json as any)?.users)
+            ? (json as any).users
+            : [];
+          setUsers(list as UserRecord[]);
+        })
+        .catch((err: any) => {
+          const message = err?.message || "Unexpected error occurred.";
+          setError(message);
+          toastError(message);
+          setUsers([]);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [advancedActive]);
 
   const handleDelete = async (uid: string) => {
     const confirmDelete = window.confirm(
@@ -317,19 +490,29 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <LoadingButton
-          type="button"
-          className="btn"
-          loading={creatingUser}
-          loadingText="Opening..."
-          onClick={() => {
-            setCreatingUser(true);
-            router.push("/admin/users/add");
-          }}
-          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
-        >
-          + Create User
-        </LoadingButton>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setAdvancedOpen(true)}
+            style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 600 }}
+          >
+            🔍 Advanced Search
+          </button>
+          <LoadingButton
+            type="button"
+            className="btn"
+            loading={creatingUser}
+            loadingText="Opening..."
+            onClick={() => {
+              setCreatingUser(true);
+              router.push("/admin/users/add");
+            }}
+            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
+          >
+            + Create User
+          </LoadingButton>
+        </div>
       </div>
 
       <div
@@ -347,7 +530,22 @@ export default function UsersPage() {
           alignItems: "center",
         }}
       >
-        <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keyword" />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            className="input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search keyword"
+          />
+          <button
+            type="button"
+            className="btn"
+            onClick={handleResetSearch}
+            style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 600 }}
+          >
+            {advancedActive ? "Reset Search" : "Reset Filters"}
+          </button>
+        </div>
         <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
           {loading ? "Loading..." : `${sorted.length} user(s)`}
         </div>
@@ -458,6 +656,15 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      <AdvancedSearchDialog
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        module="users"
+        fields={userSearchFields}
+        onSearch={handleAdvancedSearch}
+        onSave={handleSaveSearch}
+      />
 
       {drawerOpen && selectedUser && (
         <div className="drawer-overlay" onClick={closeDrawer}>

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/skeleton";
+import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import { toastError, toastPromise } from "@/lib/toast";
+import type { SearchFilter } from "@/types/search";
 
 type SalesStage =
   | "New Lead"
@@ -71,6 +73,39 @@ type SortKey =
 
 type SortDir = "asc" | "desc";
 
+type FilterRow = {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+};
+
+type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
+
+const clientSearchFields: SearchField[] = [
+  { name: "orderId", label: "Order ID", type: "string" },
+  { name: "companyName", label: "Company Name", type: "string" },
+  { name: "primaryContactName", label: "Primary Contact", type: "string" },
+  { name: "primaryContactEmail", label: "Primary Email", type: "string" },
+  { name: "primaryContactPhone", label: "Primary Phone", type: "string" },
+  { name: "paymentStatus", label: "Payment Status", type: "string" },
+  { name: "totalPaidUsd", label: "Total Paid (USD)", type: "number" },
+  { name: "createdAt", label: "Created At", type: "string" },
+];
+
+const normalizeFilterValue = (value: string | undefined, type?: SearchField["type"]) => {
+  if (value === undefined) return value;
+  if (type === "number") {
+    const numeric = Number(value);
+    return Number.isNaN(numeric) ? value : numeric;
+  }
+  if (type === "boolean") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return value;
+};
+
 function fmtMoney(n: number) {
   try {
     return new Intl.NumberFormat("en-US", {
@@ -122,7 +157,42 @@ export default function ClientsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activationSending, setActivationSending] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedActive, setAdvancedActive] = useState(false);
   const [segmentMap, setSegmentMap] = useState<Record<string, { name: string; type: string }>>({});
+
+  const buildSearchFilters = useCallback((filters: FilterRow[]): SearchFilter[] => {
+    const fieldMap = new Map(clientSearchFields.map((field) => [field.name, field]));
+
+    return filters
+      .filter((filter) => filter.field && filter.operator)
+      .map((filter) => {
+        const fieldConfig = fieldMap.get(filter.field);
+        const trimmed = filter.value?.toString().trim();
+
+        if (filter.operator === "isNull" || filter.operator === "isNotNull") {
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: null };
+        }
+
+        if (filter.operator === "between") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.slice(0, 2).map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: "between", value: normalized };
+        }
+
+        if (filter.operator === "in" || filter.operator === "notIn") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
+        }
+
+        return {
+          field: filter.field,
+          operator: filter.operator as SearchFilter["operator"],
+          value: normalizeFilterValue(trimmed, fieldConfig?.type),
+        };
+      });
+  }, []);
 
   // OS-level theme only
   useEffect(() => {
@@ -179,6 +249,104 @@ export default function ClientsPage() {
       alive = false;
     };
   }, []);
+
+  const handleAdvancedSearch = useCallback(
+    async (filters: FilterRow[]) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const payloadFilters = buildSearchFilters(filters);
+        const res = await fetch("/api/clients/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            page: 1,
+            limit: 200,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json?.error || "Failed to search clients");
+        }
+        const list: ClientRecord[] = Array.isArray(json?.results) ? json.results : [];
+        setRows(list);
+        setQuery("");
+        setAdvancedActive(true);
+      } catch (e: any) {
+        const message = e?.message || "Failed to search clients";
+        setError(message);
+        toastError(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleSaveSearch = useCallback(
+    async (name: string, filters: FilterRow[]) => {
+      const payloadFilters = buildSearchFilters(filters);
+      await toastPromise(
+        fetch("/api/saved-searches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            module: "clients",
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            isShared: false,
+          }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data?.error || "Failed to save search");
+          }
+          return data;
+        }),
+        {
+          loading: "Saving search...",
+          success: "Search saved.",
+          error: (err) => err?.message || "Failed to save search.",
+        }
+      );
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleResetSearch = useCallback(() => {
+    setQuery("");
+    if (advancedActive) {
+      setAdvancedActive(false);
+      setLoading(true);
+      fetch("/api/admin/clients/list", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+      })
+        .then(async (res) => {
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json?.ok) {
+            throw new Error(json?.error || res.statusText || "Failed to load clients");
+          }
+          const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
+          setRows(list);
+        })
+        .catch((e: any) => {
+          const message = e?.message || "Failed to load clients";
+          setError(message);
+          toastError(message);
+          setRows([]);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [advancedActive]);
 
   useEffect(() => {
     let alive = true;
@@ -415,19 +583,29 @@ export default function ClientsPage() {
           </div>
         </div>
 
-        <LoadingButton
-          type="button"
-          className="btn"
-          loading={addingClient}
-          loadingText="Opening..."
-          onClick={() => {
-            setAddingClient(true);
-            router.push("/admin/clients/add");
-          }}
-          style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
-        >
-          + Add Client
-        </LoadingButton>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setAdvancedOpen(true)}
+            style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 600 }}
+          >
+            🔍 Advanced Search
+          </button>
+          <LoadingButton
+            type="button"
+            className="btn"
+            loading={addingClient}
+            loadingText="Opening..."
+            onClick={() => {
+              setAddingClient(true);
+              router.push("/admin/clients/add");
+            }}
+            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
+          >
+            + Add Client
+          </LoadingButton>
+        </div>
       </div>
 
       <div
@@ -445,7 +623,17 @@ export default function ClientsPage() {
           alignItems: "center",
         }}
       >
-        <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
+          <button
+            type="button"
+            className="btn"
+            onClick={handleResetSearch}
+            style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 600 }}
+          >
+            {advancedActive ? "Reset Search" : "Reset Filters"}
+          </button>
+        </div>
         <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
           {loading ? "Loading..." : `${sorted.length} client(s)`}
         </div>
@@ -536,6 +724,15 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      <AdvancedSearchDialog
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        module="clients"
+        fields={clientSearchFields}
+        onSearch={handleAdvancedSearch}
+        onSave={handleSaveSearch}
+      />
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>

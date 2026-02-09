@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import LoadingButton from "@/components/ui/LoadingButton";
+import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import {
   formatDate,
   formatDateTime,
@@ -11,6 +12,7 @@ import {
 } from "@/components/finance/financeUtils";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
+import type { SearchFilter } from "@/types/search";
 
 const STATUS_OPTIONS = [
   "",
@@ -39,6 +41,38 @@ type CurrentUser = { uid: string; role: string; name?: string };
 
 type ErrorState = { title: string; message: string };
 
+type FilterRow = {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+};
+
+type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
+
+const invoiceSearchFields: SearchField[] = [
+  { name: "orderId", label: "Invoice / Order ID", type: "string" },
+  { name: "clientName", label: "Client Name", type: "string" },
+  { name: "clientId", label: "Client ID", type: "string" },
+  { name: "status", label: "Status", type: "string" },
+  { name: "amountTotalUsd", label: "Total Amount (USD)", type: "number" },
+  { name: "dueDate", label: "Due Date", type: "string" },
+  { name: "updatedAt", label: "Updated At", type: "string" },
+];
+
+const normalizeFilterValue = (value: string | undefined, type?: SearchField["type"]) => {
+  if (value === undefined) return value;
+  if (type === "number") {
+    const numeric = Number(value);
+    return Number.isNaN(numeric) ? value : numeric;
+  }
+  if (type === "boolean") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return value;
+};
+
 export default function FinanceInvoicesPage() {
   const isDark = useIsSystemDark();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
@@ -57,6 +91,8 @@ export default function FinanceInvoicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedActive, setAdvancedActive] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -93,6 +129,123 @@ export default function FinanceInvoicesPage() {
       toastWarning("Unable to load clients. Refresh the page or try again shortly.");
     }
   }, []);
+
+  const buildSearchFilters = useCallback((filters: FilterRow[]): SearchFilter[] => {
+    const fieldMap = new Map(invoiceSearchFields.map((field) => [field.name, field]));
+
+    return filters
+      .filter((filter) => filter.field && filter.operator)
+      .map((filter) => {
+        const fieldConfig = fieldMap.get(filter.field);
+        const trimmed = filter.value?.toString().trim();
+
+        if (filter.operator === "isNull" || filter.operator === "isNotNull") {
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: null };
+        }
+
+        if (filter.operator === "between") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.slice(0, 2).map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: "between", value: normalized };
+        }
+
+        if (filter.operator === "in" || filter.operator === "notIn") {
+          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
+          const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
+          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
+        }
+
+        return {
+          field: filter.field,
+          operator: filter.operator as SearchFilter["operator"],
+          value: normalizeFilterValue(trimmed, fieldConfig?.type),
+        };
+      });
+  }, []);
+
+  const handleAdvancedSearch = useCallback(
+    async (filters: FilterRow[]) => {
+      try {
+        setError(null);
+        setLoading(true);
+        const payloadFilters = buildSearchFilters(filters);
+        const res = await fetch("/api/invoices/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            page: 1,
+            limit: 200,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || "Unable to search invoices.");
+        }
+        setInvoices(Array.isArray(data?.results) ? data.results : []);
+        setAdvancedActive(true);
+        setQuery("");
+        setStatusFilter("");
+        setDueFilter("");
+        setClientFilter("");
+      } catch (err: any) {
+        console.error("Advanced invoice search error", err);
+        toastError(err?.message || "Unable to search invoices.");
+        setError({
+          title: "Unable to search invoices",
+          message: "Please try again in a moment.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleSaveSearch = useCallback(
+    async (name: string, filters: FilterRow[]) => {
+      const payloadFilters = buildSearchFilters(filters);
+      await toastPromise(
+        fetch("/api/saved-searches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            module: "invoices",
+            filters: payloadFilters,
+            sortBy: sortKey,
+            sortOrder: sortDir,
+            isShared: false,
+          }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data?.error || "Unable to save search.");
+          }
+          return data;
+        }),
+        {
+          loading: "Saving search...",
+          success: "Search saved.",
+          error: (err) => err?.message || "Unable to save search.",
+        }
+      );
+    },
+    [buildSearchFilters, sortDir, sortKey]
+  );
+
+  const handleResetFilters = useCallback(async () => {
+    setQuery("");
+    setStatusFilter("");
+    setDueFilter("");
+    setClientFilter("");
+    if (advancedActive) {
+      setAdvancedActive(false);
+      await loadInvoices();
+    }
+  }, [advancedActive, loadInvoices]);
 
   useEffect(() => {
     loadInvoices();
@@ -263,9 +416,14 @@ export default function FinanceInvoicesPage() {
             USD invoicing with live Firestore sync.
           </p>
         </div>
-        <button className="btn" onClick={() => setCreateOpen(true)} style={{ borderRadius: 999 }}>
-          Create Invoice
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn" onClick={() => setAdvancedOpen(true)} style={{ borderRadius: 999 }}>
+            🔍 Advanced Search
+          </button>
+          <button className="btn" onClick={() => setCreateOpen(true)} style={{ borderRadius: 999 }}>
+            Create Invoice
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
@@ -286,15 +444,10 @@ export default function FinanceInvoicesPage() {
         <button
           type="button"
           className="btn"
-          onClick={() => {
-            setQuery("");
-            setStatusFilter("");
-            setDueFilter("");
-            setClientFilter("");
-          }}
+          onClick={handleResetFilters}
           style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
         >
-          Reset Filters
+          {advancedActive ? "Reset Search" : "Reset Filters"}
         </button>
       </div>
 
@@ -421,6 +574,15 @@ export default function FinanceInvoicesPage() {
           </table>
         </div>
       </div>
+
+      <AdvancedSearchDialog
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        module="invoices"
+        fields={invoiceSearchFields}
+        onSearch={handleAdvancedSearch}
+        onSave={handleSaveSearch}
+      />
 
       {drawerOpen && selectedInvoice && (
         <InvoiceDrawer
