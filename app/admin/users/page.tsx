@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingButton from "@/components/ui/LoadingButton";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { toastError, toastPromise } from "@/lib/toast";
 
 type UserRecord = {
   uid?: string;
@@ -71,6 +75,7 @@ export default function UsersPage() {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
   const [resettingMfaUid, setResettingMfaUid] = useState<string | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const router = useRouter();
 
@@ -103,7 +108,9 @@ export default function UsersPage() {
         setUsers(list as UserRecord[]);
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Unexpected error occurred.");
+        const message = err?.message || "Unexpected error occurred.";
+        setError(message);
+        toastError(message);
         setUsers([]);
       } finally {
         if (!alive) return;
@@ -125,19 +132,25 @@ export default function UsersPage() {
 
     try {
       setDeletingUid(uid);
-
-      const res = await fetch("/api/admin/users/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid }),
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        alert(msg || "Failed to delete user");
-        return;
-      }
+      await toastPromise(
+        fetch("/api/admin/users/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid }),
+          credentials: "include",
+        }).then(async (res) => {
+          const msg = await res.text().catch(() => "");
+          if (!res.ok) {
+            throw new Error(msg || "Failed to delete user");
+          }
+          return true;
+        }),
+        {
+          loading: "Deleting user...",
+          success: "User deleted successfully.",
+          error: (err) => err?.message || "Failed to delete user.",
+        }
+      );
 
       setUsers((prev) => prev.filter((u) => getRowId(u) !== uid));
       if (selectedUid === uid) {
@@ -146,7 +159,6 @@ export default function UsersPage() {
       }
     } catch (e) {
       console.error("Error deleting user:", e);
-      alert("Error deleting user");
     } finally {
       setDeletingUid((prev) => (prev === uid ? null : prev));
     }
@@ -229,17 +241,26 @@ export default function UsersPage() {
 
     try {
       setResettingMfaUid(uid);
-      const res = await fetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE", credentials: "include" });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to reset MFA.");
-      }
+      await toastPromise(
+        fetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE", credentials: "include" }).then(async (res) => {
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error(data?.error || "Failed to reset MFA.");
+          }
+          return data;
+        }),
+        {
+          loading: "Resetting MFA...",
+          success: "MFA reset successfully.",
+          error: (err) => err?.message || "Failed to reset MFA.",
+        }
+      );
 
       setUsers((prev) =>
         prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user))
       );
     } catch (err: any) {
-      alert(err?.message || "Failed to reset MFA.");
+      console.error("Reset MFA error", err);
     } finally {
       setResettingMfaUid((prev) => (prev === uid ? null : prev));
     }
@@ -296,14 +317,19 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <button
+        <LoadingButton
           type="button"
           className="btn"
-          onClick={() => router.push("/admin/users/add")}
+          loading={creatingUser}
+          loadingText="Opening..."
+          onClick={() => {
+            setCreatingUser(true);
+            router.push("/admin/users/add");
+          }}
           style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
         >
           + Create User
-        </button>
+        </LoadingButton>
       </div>
 
       <div
@@ -328,16 +354,17 @@ export default function UsersPage() {
       </div>
 
       <div style={tableShellStyle}>
+        {/* Loading state: keep table structure stable with skeletons. */}
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
-            Loading users...
-          </p>
+          <SkeletonTable rows={6} columns={7} />
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
-            No users found.
-          </p>
+          <EmptyState
+            title="No users found"
+            description="Create your first user to start managing access."
+            action={{ label: "Create User", onClick: () => router.push("/admin/users/add") }}
+          />
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
@@ -551,11 +578,12 @@ function UserDrawerContent({
       <div style={{ height: 12 }} />
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <button
+        <LoadingButton
           type="button"
           className="btn"
           onClick={() => onResetMfa(uid)}
-          disabled={resettingMfa}
+          loading={resettingMfa}
+          loadingText="Resetting MFA..."
           style={{
             borderRadius: 12,
             fontWeight: 500,
@@ -564,8 +592,8 @@ function UserDrawerContent({
             opacity: resettingMfa ? 0.7 : 1,
           }}
         >
-          {resettingMfa ? "Resetting MFA..." : "Reset MFA"}
-        </button>
+          Reset MFA
+        </LoadingButton>
         <button
           type="button"
           className="btn"
@@ -575,11 +603,12 @@ function UserDrawerContent({
           Edit User
         </button>
 
-        <button
+        <LoadingButton
           type="button"
           className="btn"
           onClick={() => onDelete(uid)}
-          disabled={deleting}
+          loading={deleting}
+          loadingText="Deleting..."
           style={{
             borderRadius: 12,
             fontWeight: 500,
@@ -590,8 +619,8 @@ function UserDrawerContent({
             color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
           }}
         >
-          {deleting ? "Deleting..." : "Delete User"}
-        </button>
+          Delete User
+        </LoadingButton>
       </div>
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
+import LoadingButton from "@/components/ui/LoadingButton";
 import {
   formatDate,
   formatDateTime,
@@ -9,6 +10,7 @@ import {
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
+import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 
 const STATUS_OPTIONS = [
   "",
@@ -69,6 +71,7 @@ export default function FinanceInvoicesPage() {
       setCurrentUser(data.currentUser || null);
     } catch (err: any) {
       console.error("Invoices load error", err);
+      toastError("Unable to load invoices. Please try again in a moment.");
       setError({
         title: "Unable to load invoices",
         message: "Please try again in a moment.",
@@ -87,6 +90,7 @@ export default function FinanceInvoicesPage() {
       }
     } catch (err) {
       console.error("Failed to load clients", err);
+      toastWarning("Unable to load clients. Refresh the page or try again shortly.");
     }
   }, []);
 
@@ -175,15 +179,24 @@ export default function FinanceInvoicesPage() {
     if (!canAdmin) return;
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/admin/finance/invoices/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to mark paid.");
-      }
+      await toastPromise(
+        fetch("/api/admin/finance/invoices/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+        }).then(async (res) => {
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data?.error || "Unable to mark paid.");
+          }
+          return data;
+        }),
+        {
+          loading: "Updating invoice...",
+          success: "Invoice marked as paid.",
+          error: (err) => err?.message || "Unable to mark invoice paid.",
+        }
+      );
       await loadInvoices();
     } catch (err) {
       console.error("Mark paid error", err);
@@ -196,15 +209,24 @@ export default function FinanceInvoicesPage() {
   const handleSendInvoice = async (invoice: InvoiceRecord) => {
     try {
       setActionLoading(invoice.id);
-      const res = await fetch("/api/admin/finance/invoices/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: invoice.id, action: "send" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to send invoice.");
-      }
+      await toastPromise(
+        fetch("/api/admin/finance/invoices/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: invoice.id, action: "send" }),
+        }).then(async (res) => {
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data?.error || "Unable to send invoice.");
+          }
+          return data;
+        }),
+        {
+          loading: "Sending invoice...",
+          success: "Invoice sent successfully.",
+          error: (err) => err?.message || "Unable to send invoice.",
+        }
+      );
       await loadInvoices();
     } catch (err) {
       console.error("Send invoice error", err);
@@ -378,15 +400,16 @@ export default function FinanceInvoicesPage() {
                             View
                           </button>
                           {canAdmin && invoice.status !== "Paid" && (
-                            <button
+                            <LoadingButton
                               type="button"
                               className="btn"
                               onClick={() => handleMarkPaid(invoice)}
-                              disabled={actionLoading === invoice.id}
+                              loading={actionLoading === invoice.id}
+                              loadingText="Updating"
                               style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
                             >
-                              {actionLoading === invoice.id ? "Updating" : "Mark Paid"}
-                            </button>
+                              Mark Paid
+                            </LoadingButton>
                           )}
                         </div>
                       </td>
@@ -600,26 +623,28 @@ function InvoiceDrawer({
 
         <div style={{ height: 18 }} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
+          <LoadingButton
             className="btn"
             onClick={() => onSend(invoice)}
-            disabled={actionLoading}
+            loading={actionLoading}
+            loadingText="Sending"
             style={{ borderRadius: 999 }}
           >
-            {actionLoading ? "Sending" : "Send Invoice"}
-          </button>
+            Send Invoice
+          </LoadingButton>
           <button className="btn ghost" style={{ borderRadius: 999 }} title="PDF download coming soon" disabled>
             Download PDF
           </button>
           {canAdmin && invoice.status !== "Paid" && (
-            <button
+            <LoadingButton
               className="btn"
               onClick={() => onMarkPaid(invoice)}
-              disabled={actionLoading}
+              loading={actionLoading}
+              loadingText="Updating"
               style={{ borderRadius: 999 }}
             >
               Mark Paid
-            </button>
+            </LoadingButton>
           )}
         </div>
       </div>
@@ -689,22 +714,31 @@ function CreateInvoiceDrawer({
     try {
       setError(null);
       setSubmitting(true);
-      const res = await fetch("/api/admin/finance/invoices/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId,
-          clientName,
-          dueDate,
-          notes,
-          amountTaxUsd: Number(tax || 0),
-          lineItems,
+      await toastPromise(
+        fetch("/api/admin/finance/invoices/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId,
+            clientName,
+            dueDate,
+            notes,
+            amountTaxUsd: Number(tax || 0),
+            lineItems,
+          }),
+        }).then(async (res) => {
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data?.error || "Unable to create invoice.");
+          }
+          return data;
         }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to create invoice.");
-      }
+        {
+          loading: "Creating invoice...",
+          success: "Invoice created successfully.",
+          error: (err) => err?.message || "Unable to create invoice.",
+        }
+      );
       onCreated();
     } catch (err: any) {
       console.error("Create invoice error", err);
@@ -848,9 +882,15 @@ function CreateInvoiceDrawer({
 
         <div style={{ height: 16 }} />
 
-        <button className="btn" onClick={handleSubmit} disabled={submitting} style={{ borderRadius: 999, width: "100%" }}>
-          {submitting ? "Creating…" : "Create Invoice"}
-        </button>
+        <LoadingButton
+          className="btn"
+          onClick={handleSubmit}
+          loading={submitting}
+          loadingText="Creating…"
+          style={{ borderRadius: 999, width: "100%" }}
+        >
+          Create Invoice
+        </LoadingButton>
       </div>
     </div>
   );

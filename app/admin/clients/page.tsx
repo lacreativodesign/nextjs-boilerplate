@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingButton from "@/components/ui/LoadingButton";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { toastError, toastPromise } from "@/lib/toast";
 
 type SalesStage =
   | "New Lead"
@@ -117,6 +121,7 @@ export default function ClientsPage() {
   const [selected, setSelected] = useState<ClientRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activationSending, setActivationSending] = useState(false);
+  const [addingClient, setAddingClient] = useState(false);
   const [segmentMap, setSegmentMap] = useState<Record<string, { name: string; type: string }>>({});
 
   // OS-level theme only
@@ -159,7 +164,9 @@ export default function ClientsPage() {
         setRows(list);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Failed to load clients");
+        const message = e?.message || "Failed to load clients";
+        setError(message);
+        toastError(message);
         setRows([]);
       } finally {
         if (!alive) return;
@@ -198,6 +205,7 @@ export default function ClientsPage() {
       } catch {
         if (!alive) return;
         setSegmentMap({});
+        toastError("Unable to load client segments.");
       }
     }
 
@@ -295,16 +303,25 @@ export default function ClientsPage() {
     if (!selected) return;
     setActivationSending(true);
     try {
-      const res = await fetch("/api/admin/clients/send-invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ clientId: selected.id }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Unable to send activation email.");
-      }
+      await toastPromise(
+        fetch("/api/admin/clients/send-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ clientId: selected.id }),
+        }).then(async (res) => {
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload?.ok) {
+            throw new Error(payload?.error || "Unable to send activation email.");
+          }
+          return payload;
+        }),
+        {
+          loading: "Sending activation email...",
+          success: "Activation email sent.",
+          error: (err) => err?.message || "Unable to send activation email.",
+        }
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -318,15 +335,23 @@ export default function ClientsPage() {
 
     try {
       setDeletingId(id);
-      const res = await fetch("/api/admin/clients/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete client");
+      await toastPromise(
+        fetch("/api/admin/clients/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id }),
+        }).then(async (res) => {
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete client");
+          return json;
+        }),
+        {
+          loading: "Deleting client...",
+          success: "Client deleted successfully.",
+          error: (err) => err?.message || "Failed to delete client.",
+        }
+      );
 
       setRows((prev) => prev.filter((c) => c.id !== id));
       if (selected?.id === id) {
@@ -334,7 +359,7 @@ export default function ClientsPage() {
         setDrawerOpen(false);
       }
     } catch (e: any) {
-      alert(e?.message || "Failed to delete client");
+      console.error(e);
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));
     }
@@ -390,14 +415,19 @@ export default function ClientsPage() {
           </div>
         </div>
 
-        <button
+        <LoadingButton
           type="button"
           className="btn"
-          onClick={() => router.push("/admin/clients/add")}
+          loading={addingClient}
+          loadingText="Opening..."
+          onClick={() => {
+            setAddingClient(true);
+            router.push("/admin/clients/add");
+          }}
           style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
         >
           + Add Client
-        </button>
+        </LoadingButton>
       </div>
 
       <div
@@ -422,16 +452,17 @@ export default function ClientsPage() {
       </div>
 
       <div style={tableShellStyle}>
+        {/* Loading state: keep table structure stable with skeletons. */}
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
-            Loading clients...
-          </p>
+          <SkeletonTable rows={6} columns={6} />
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
-            No clients found.
-          </p>
+          <EmptyState
+            title="No clients found"
+            description="Add your first client to start tracking pipeline and payments."
+            action={{ label: "Add Client", onClick: () => router.push("/admin/clients/add") }}
+          />
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1080 }}>
@@ -610,15 +641,16 @@ export default function ClientsPage() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
               {!selected.portalUserUid && (
-                <button
+                <LoadingButton
                   type="button"
                   className="btn ghost"
                   style={{ borderRadius: 12, fontWeight: 400 }}
                   onClick={sendActivationInvite}
-                  disabled={activationSending}
+                  loading={activationSending}
+                  loadingText="Sending..."
                 >
-                  {activationSending ? "Sending..." : "Send Client Activation Email"}
-                </button>
+                  Send Client Activation Email
+                </LoadingButton>
               )}
               <button
                 type="button"
@@ -628,11 +660,12 @@ export default function ClientsPage() {
               >
                 Edit Client
               </button>
-              <button
+              <LoadingButton
                 type="button"
                 className="btn ghost"
-                disabled={deletingId === selected.id}
                 onClick={() => handleDelete(selected.id)}
+                loading={deletingId === selected.id}
+                loadingText="Deleting..."
                 style={{
                   borderRadius: 12,
                   fontWeight: 400,
@@ -642,8 +675,8 @@ export default function ClientsPage() {
                   opacity: deletingId === selected.id ? 0.7 : 1,
                 }}
               >
-                {deletingId === selected.id ? "Deleting..." : "Delete Client"}
-              </button>
+                Delete Client
+              </LoadingButton>
             </div>
           </div>
         </div>
