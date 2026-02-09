@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
+import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
     const orderId = await generateNextInvoiceId();
     const ref = adminDb.collection("invoices").doc();
 
-    await ref.set({
+    const invoiceData = {
       orderId,
       clientId,
       clientName,
@@ -84,7 +86,9 @@ export async function POST(req: Request) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
-    });
+    };
+
+    await ref.set(invoiceData);
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
     const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
@@ -115,6 +119,36 @@ export async function POST(req: Request) {
       createdByName: actorName,
       tenantId: auth.user.tenantId,
     });
+
+    try {
+      const changes = Object.entries(invoiceData)
+        .filter(([field]) => !["createdAt", "updatedAt"].includes(field))
+        .map(([field, value]) => ({
+          field,
+          oldValue: null,
+          newValue: value,
+        }));
+      await logEvent({
+        type: "finance.invoice_created",
+        title: "Invoice created",
+        description: `Invoice ${orderId} created for ${clientName}.`,
+        entityType: "invoice",
+        entityId: ref.id,
+        actor: { uid: auth.user.uid, name: actorName },
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "",
+        },
+        audit: {
+          action: "create",
+          resource: "invoice",
+          resourceId: ref.id,
+          changes,
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     if (isFirstInvoice) {
       try {

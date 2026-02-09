@@ -10,6 +10,7 @@ import { createNotification, createNotifications, getUserIdsByRoles, getUsersByR
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import { getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -203,7 +204,42 @@ async function handleUpdate(req: Request) {
     updateData.updatedAt = now;
     updateData.lastActivity = now;
 
+    const changes = Object.entries(updateData)
+      .filter(([field]) => !["updatedAt", "lastActivity"].includes(field))
+      .filter(([field, value]) => value !== (existing as Record<string, unknown>)[field])
+      .map(([field, value]) => ({
+        field,
+        oldValue: (existing as Record<string, unknown>)[field],
+        newValue: value,
+      }));
+
     await ref.set(updateData, { merge: true });
+
+    if (changes.length) {
+      try {
+        await logEvent({
+          tenantId,
+          type: "client.updated",
+          title: "Client updated",
+          description: `${existing.companyName || "Client"} updated.`,
+          entityType: "client",
+          entityId: id,
+          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "customer",
+            resourceId: id,
+            changes,
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
+    }
 
     const becomesPaid = requestedPayment === "Paid" && existingPayment !== "Paid";
     if (becomesPaid) {

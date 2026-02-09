@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Expense id is required." }, { status: 400 });
     }
 
-    await adminDb.collection("expenses").doc(id).set(
+    const ref = adminDb.collection("expenses").doc(id);
+    const snap = await ref.get();
+    const existing = snap.exists ? snap.data() || {} : {};
+
+    await ref.set(
       {
         isDeleted: true,
         updatedAt: serverTimestamp(),
@@ -25,6 +31,33 @@ export async function POST(req: Request) {
       },
       { merge: true }
     );
+
+    try {
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+      await logEvent({
+        type: "finance.expense_deleted",
+        title: "Expense deleted",
+        description: `${String(existing.category || "Expense")} deleted.`,
+        entityType: "expense",
+        entityId: id,
+        actor: { uid: auth.user.uid, name: actorName },
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "",
+        },
+        audit: {
+          action: "delete",
+          resource: "expense",
+          resourceId: id,
+          changes: [
+            { field: "isDeleted", oldValue: existing.isDeleted || false, newValue: true },
+            { field: "deletedAt", oldValue: existing.deletedAt || null, newValue: "serverTimestamp" },
+          ],
+        },
+      });
+    } catch (auditError) {
+      console.error("audit log error:", auditError);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {

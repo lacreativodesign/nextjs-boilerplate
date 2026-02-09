@@ -17,7 +17,7 @@ import { assertPermission, Permission } from "../../../../lib/permissions";
 import { normalizeRole } from "../../../admin/_utils";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
 import { validateRequest } from "@/lib/validations/validate";
-import { checkRateLimit } from "@/lib/security";
+import { checkRateLimit, getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
     const balanceDue = computeBalanceDue(total, totalPaid);
 
     const docRef = adminDb.collection("invoices").doc();
-    await docRef.set({
+    const invoiceData = {
       orderId,
       clientId,
       clientName,
@@ -219,7 +219,9 @@ export async function POST(req: Request) {
       isDeleted: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    await docRef.set(invoiceData);
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
     await createFinanceEvent({
@@ -234,6 +236,13 @@ export async function POST(req: Request) {
     });
 
     try {
+      const changes = Object.entries(invoiceData)
+        .filter(([field]) => !["createdAt", "updatedAt"].includes(field))
+        .map(([field, value]) => ({
+          field,
+          oldValue: null,
+          newValue: value,
+        }));
       await logEvent({
         type: "finance.invoice_created",
         title: "Invoice created",
@@ -241,6 +250,16 @@ export async function POST(req: Request) {
         entityType: "invoice",
         entityId: docRef.id,
         actor: { uid: auth.user.uid, name: actorName },
+        metadata: {
+          ip: getClientIp(req),
+          userAgent: req.headers.get("user-agent") || "",
+        },
+        audit: {
+          action: "create",
+          resource: "invoice",
+          resourceId: docRef.id,
+          changes,
+        },
       });
     } catch (auditError) {
       logError(auditError, { route: "audit:finance.invoice_created" });

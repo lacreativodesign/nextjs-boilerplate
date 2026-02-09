@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
+import { getClientIp } from "@/lib/security";
+import { logEvent } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,41 @@ export async function POST(req: Request) {
     },
     { merge: true }
   );
+
+  try {
+    await logEvent({
+      tenantId: String((data as any).tenantId || ""),
+      type: "client.deleted",
+      title: "Client deleted",
+      description: `${String((data as any).companyName || "Client")} deleted.`,
+      entityType: "client",
+      entityId: id,
+      actor: { uid: me.uid, name: me.name || me.fullName || "" },
+      metadata: {
+        ip: getClientIp(req),
+        userAgent: req.headers.get("user-agent") || "",
+      },
+      audit: {
+        action: "delete",
+        resource: "customer",
+        resourceId: id,
+        changes: [
+          {
+            field: "deletedAt",
+            oldValue: (data as any).deletedAt || null,
+            newValue: "serverTimestamp",
+          },
+          {
+            field: "deletedBy",
+            oldValue: (data as any).deletedBy || null,
+            newValue: me.uid,
+          },
+        ],
+      },
+    });
+  } catch (auditError) {
+    console.error("audit log error:", auditError);
+  }
 
   return NextResponse.json({ ok: true });
 }

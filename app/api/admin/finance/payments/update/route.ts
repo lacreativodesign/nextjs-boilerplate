@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
 import { logEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/security";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
@@ -172,6 +173,19 @@ export async function POST(req: Request) {
           entityType: "payment",
           entityId: id,
           actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "payment",
+            resourceId: id,
+            changes: [
+              { field: "status", oldValue: payment.status || null, newValue: "succeeded" },
+              { field: "paidAt", oldValue: payment.paidAt || null, newValue: "serverTimestamp" },
+            ],
+          },
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);
@@ -232,6 +246,29 @@ export async function POST(req: Request) {
         createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
         tenantId: auth.user.tenantId,
       });
+
+      try {
+        await logEvent({
+          type: "finance.payment_refunded",
+          title: "Payment refunded",
+          description: `Payment ${id} refunded for ${clientName || "client"}.`,
+          entityType: "payment",
+          entityId: id,
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get("user-agent") || "",
+          },
+          audit: {
+            action: "update",
+            resource: "payment",
+            resourceId: id,
+            changes: [{ field: "status", oldValue: payment.status || null, newValue: "refunded" }],
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
 
       return NextResponse.json({ ok: true });
     }

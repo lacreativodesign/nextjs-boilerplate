@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AuditLogger } from "@/lib/audit/audit-logger";
+import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import type { AuditAction, AuditResource } from "@/types/audit";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+import { Timestamp } from "firebase-admin/firestore";
+import { resolveErrorResponse } from "@/lib/errors";
 
 export const runtime = "nodejs";
 
@@ -75,6 +79,131 @@ function toCsv(logs: any[]) {
   return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 }
 
+function buildQuery(
+  tenantId: string,
+  filters?: {
+    userId?: string;
+    resource?: AuditResource;
+    action?: AuditAction;
+    status?: "success" | "failure";
+    startDate?: Date;
+    endDate?: Date;
+  }
+) {
+  let query: FirebaseFirestore.Query = adminDb
+    .collection("audit_logs")
+    .where("tenantId", "==", tenantId)
+    .orderBy("timestamp", "desc");
+
+  if (filters?.userId) {
+    query = query.where("userId", "==", filters.userId);
+  }
+  if (filters?.resource) {
+    query = query.where("resource", "==", filters.resource);
+  }
+  if (filters?.action) {
+    query = query.where("action", "==", filters.action);
+  }
+  if (filters?.status) {
+    query = query.where("status", "==", filters.status);
+  }
+  if (filters?.startDate) {
+    query = query.where("timestamp", ">=", Timestamp.fromDate(filters.startDate));
+  }
+  if (filters?.endDate) {
+    query = query.where("timestamp", "<=", Timestamp.fromDate(filters.endDate));
+  }
+
+  return query;
+}
+
+function createCsvStream(options: {
+  tenantId: string;
+  filters: {
+    userId?: string;
+    resource?: AuditResource;
+    action?: AuditAction;
+    status?: "success" | "failure";
+    startDate?: Date;
+    endDate?: Date;
+  };
+}) {
+  const encoder = new TextEncoder();
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  let done = false;
+  let headerSent = false;
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (done) {
+        controller.close();
+        return;
+      }
+
+      let query = buildQuery(options.tenantId, options.filters).limit(500);
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+
+      const snapshot = await query.get();
+
+      if (!headerSent) {
+        const headerLine = [
+          "timestamp",
+          "tenantId",
+          "userId",
+          "userEmail",
+          "userName",
+          "action",
+          "resource",
+          "resourceId",
+          "status",
+          "ip",
+          "userAgent",
+          "sessionId",
+          "errorMessage",
+          "changes",
+        ].join(",");
+        controller.enqueue(encoder.encode(`${headerLine}\n`));
+        headerSent = true;
+      }
+
+      if (snapshot.empty) {
+        done = true;
+        controller.close();
+        return;
+      }
+
+      snapshot.docs.forEach((doc) => {
+        const serialized = serializeLog({ id: doc.id, ...doc.data() });
+        const row = [
+          escapeCsv(serialized.timestamp),
+          escapeCsv(serialized.tenantId),
+          escapeCsv(serialized.userId),
+          escapeCsv(serialized.userEmail),
+          escapeCsv(serialized.userName),
+          escapeCsv(serialized.action),
+          escapeCsv(serialized.resource),
+          escapeCsv(serialized.resourceId || ""),
+          escapeCsv(serialized.status),
+          escapeCsv(serialized.metadata?.ip || ""),
+          escapeCsv(serialized.metadata?.userAgent || ""),
+          escapeCsv(serialized.metadata?.sessionId || ""),
+          escapeCsv(serialized.errorMessage || ""),
+          escapeCsv(serialized.changes || []),
+        ].join(",");
+        controller.enqueue(encoder.encode(`${row}\n`));
+      });
+
+      lastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+      if (snapshot.size < 500) {
+        done = true;
+        controller.close();
+      }
+    },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const me = await getCurrentUser();
@@ -84,6 +213,8 @@ export async function GET(request: Request) {
     if (!isAuditViewer(me.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    await checkRateLimit(request, "standard", me.uid);
 
     const searchParams = new URL(request.url).searchParams;
     const params = querySchema.parse({
@@ -100,21 +231,14 @@ export async function GET(request: Request) {
 
     const offset = (params.page - 1) * params.limit;
 
-    const { logs, total } = await AuditLogger.getLogs({
-      tenantId: me.tenantId,
-      filters: {
-        userId: params.userId,
-        resource: params.resource as AuditResource | undefined,
-        action: params.action as AuditAction | undefined,
-        status: params.status,
-        startDate: params.startDate ? new Date(params.startDate) : undefined,
-        endDate: params.endDate ? new Date(params.endDate) : undefined,
-      },
-      limit: params.limit,
-      offset,
-    });
-
-    const serialized = logs.map(serializeLog);
+    const filters = {
+      userId: params.userId,
+      resource: params.resource as AuditResource | undefined,
+      action: params.action as AuditAction | undefined,
+      status: params.status,
+      startDate: params.startDate ? new Date(params.startDate) : undefined,
+      endDate: params.endDate ? new Date(params.endDate) : undefined,
+    };
 
     if (params.format === "csv") {
       try {
@@ -126,14 +250,18 @@ export async function GET(request: Request) {
           action: "export",
           resource: "report",
           metadata: {
+            ip: getClientIp(request),
             userAgent: request.headers.get("user-agent") || "",
           },
         });
       } catch (auditError) {
         console.error("audit export log error:", auditError);
       }
-      const csv = toCsv(serialized);
-      return new NextResponse(csv, {
+      const stream = createCsvStream({
+        tenantId: me.tenantId,
+        filters,
+      });
+      return new NextResponse(stream, {
         status: 200,
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
@@ -141,6 +269,15 @@ export async function GET(request: Request) {
         },
       });
     }
+
+    const { logs, total } = await AuditLogger.getLogs({
+      tenantId: me.tenantId,
+      filters,
+      limit: params.limit,
+      offset,
+    });
+
+    const serialized = logs.map(serializeLog);
 
     return NextResponse.json({
       logs: serialized,
@@ -153,6 +290,11 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching audit logs:", error);
-    return NextResponse.json({ error: "Failed to fetch audit logs" }, { status: 500 });
+    const { status, body } = resolveErrorResponse(error, {
+      fallbackMessage: "Failed to fetch audit logs",
+      fallbackCode: "INTERNAL_SERVER_ERROR",
+      fallbackStatus: 500,
+    });
+    return NextResponse.json(body, { status });
   }
 }
