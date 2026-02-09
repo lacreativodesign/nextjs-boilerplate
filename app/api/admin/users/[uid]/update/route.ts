@@ -90,6 +90,7 @@ export async function POST(
     const newRole = String(body.role).toLowerCase();
     const targetSnap = await adminDb.collection("users").doc(uid).get();
     const target = targetSnap.exists ? targetSnap.data() : null;
+    const existingUser = target || {};
     const existingRole = String(target?.role || "").toLowerCase();
 
     if (existingRole && newRole && newRole !== existingRole) {
@@ -141,10 +142,39 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     };
 
+    const changes = Object.entries(payload)
+      .filter(([field]) => field !== "updatedAt")
+      .filter(([field, value]) => value !== (existingUser as Record<string, unknown>)[field])
+      .map(([field, value]) => ({
+        field,
+        oldValue: (existingUser as Record<string, unknown>)[field],
+        newValue: value,
+      }));
+
     // ----------------------------------------------------
     // 8. SAVE TO FIRESTORE
     // ----------------------------------------------------
     await adminDb.collection("users").doc(uid).update(payload);
+
+    if (changes.length) {
+      try {
+        await logEvent({
+          type: "user.updated",
+          title: "User updated",
+          description: `${payload.name} profile updated.`,
+          entityType: "user",
+          entityId: uid,
+          actor: { uid: decoded.uid, name: sessionUser.name || sessionUser.email || "" },
+          audit: {
+            action: "update",
+            resource: "user",
+            changes,
+          },
+        });
+      } catch (auditError) {
+        console.error("audit log error:", auditError);
+      }
+    }
 
     if (existingRole && newRole && newRole !== existingRole) {
       try {
@@ -156,6 +186,17 @@ export async function POST(
           entityId: uid,
           actor: { uid: decoded.uid, name: sessionUser.name || sessionUser.email || "" },
           metadata: { from: existingRole, to: newRole },
+          audit: {
+            action: "role_changed",
+            resource: "user",
+            changes: [
+              {
+                field: "role",
+                oldValue: existingRole,
+                newValue: newRole,
+              },
+            ],
+          },
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);
