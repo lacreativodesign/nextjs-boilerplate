@@ -1,12 +1,10 @@
 import RequireAuth from "@/components/RequireAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import AppShell from "@/components/layout/AppShell";
 
-export default function AmLayout({ children }: { children: React.ReactNode }) {
+export default function AccountManagementLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth allowed={["am"]}>
-      <DashboardLayout role="am" title="Account Manager Dashboard">
-        {children}
-      </DashboardLayout>
+      <AppShell>{children}</AppShell>
     </RequireAuth>
   );
 }

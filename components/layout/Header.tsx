@@ -1,0 +1,143 @@
+"use client";
+
+import { Bell, ChevronDown, Menu } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
+
+type HeaderProps = {
+  onMenuToggle: () => void;
+  currentUser: { name: string; email: string; role: string; avatarUrl?: string };
+};
+
+const roleBasePaths: Record<string, string> = {
+  super_admin: "/super_admin",
+  admin: "/admin",
+  sales: "/sales",
+  sales_manager: "/sales_manager",
+  am: "/am",
+  am_manager: "/am_manager",
+  production: "/production",
+  production_manager: "/production_manager",
+  client: "/client",
+  hr: "/hr",
+  finance: "/finance",
+};
+
+const profileEnabledRoles = new Set(["sales", "client"]);
+
+const getBasePath = (role: string) => roleBasePaths[role] || "/";
+
+export default function Header({ onMenuToggle, currentUser }: HeaderProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const basePath = useMemo(() => getBasePath(currentUser.role), [currentUser.role]);
+  const profileHref = profileEnabledRoles.has(currentUser.role) ? `${basePath}/profile` : basePath;
+  const settingsHref = currentUser.role === "admin" || currentUser.role === "super_admin" ? `${basePath}/settings` : basePath;
+  const sessionsHref = currentUser.role === "admin" || currentUser.role === "super_admin" ? `${basePath}/settings/security` : profileHref;
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (!menuRef.current || !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    router.replace("/login");
+  };
+
+  return (
+    <header className="sticky top-0 z-30 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-[var(--page-padding-x)] shadow-sm">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="hidden md:block">
+          <Breadcrumbs pathname={pathname} />
+        </div>
+        <div className="md:hidden text-base font-semibold text-[var(--text-primary)]">Bizosto</div>
+      </div>
+
+      <div className="hidden flex-1 items-center justify-center md:flex">
+        <div className="w-full max-w-md">
+          <input
+            type="search"
+            placeholder="Search"
+            className="w-full rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-soft)]"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm"
+          aria-label="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[11px] font-semibold text-white">
+            1
+          </span>
+        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5 text-sm shadow-sm"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] text-sm font-semibold">
+              {currentUser.name.slice(0, 1).toUpperCase()}
+            </div>
+            <span className="hidden text-sm font-semibold md:inline">{currentUser.name}</span>
+            <ChevronDown className="h-4 w-4 text-[var(--text-soft)]" />
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm shadow-lg"
+            >
+              <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+                <div className="font-semibold text-[var(--text-primary)]">{currentUser.name}</div>
+                <div className="text-xs text-[var(--text-muted)]">{currentUser.email}</div>
+              </div>
+              <div className="flex flex-col">
+                <Link href={profileHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">
+                  Profile
+                </Link>
+                <Link href={settingsHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">
+                  Settings
+                </Link>
+                <Link href={sessionsHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">
+                  Active Sessions
+                </Link>
+              </div>
+              <div className="border-t border-[var(--border-subtle)] px-4 py-2">
+                <button type="button" onClick={handleLogout} className="w-full text-left text-[var(--danger)]" role="menuitem">
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

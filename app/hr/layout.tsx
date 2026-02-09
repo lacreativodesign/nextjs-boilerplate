@@ -1,12 +1,10 @@
 import RequireAuth from "@/components/RequireAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import AppShell from "@/components/layout/AppShell";
 
 export default function HrLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth allowed={["hr"]}>
-      <DashboardLayout role="hr" title="HR Dashboard">
-        {children}
-      </DashboardLayout>
+      <AppShell>{children}</AppShell>
     </RequireAuth>
   );
 }

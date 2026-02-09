@@ -1,12 +1,10 @@
 import RequireAuth from "@/components/RequireAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import AppShell from "@/components/layout/AppShell";
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth allowed={["finance"]}>
-      <DashboardLayout role="finance" title="Finance Dashboard">
-        {children}
-      </DashboardLayout>
+      <AppShell>{children}</AppShell>
     </RequireAuth>
   );
 }
