@@ -1,12 +1,10 @@
 import RequireAuth from "@/components/RequireAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import AppShell from "@/components/layout/AppShell";
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth allowed={["sales"]}>
-      <DashboardLayout role="sales" title="Sales Dashboard">
-        {children}
-      </DashboardLayout>
+      <AppShell>{children}</AppShell>
     </RequireAuth>
   );
 }

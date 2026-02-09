@@ -22,6 +22,7 @@
 
   --sidebar-text: var(--text-muted);
   --sidebar-active-text: #ffffff;
+  --sidebar-active: var(--erp-blue);
 
   --border-subtle: rgba(15, 23, 42, 0.08);
   --border-strong: rgba(15, 23, 42, 0.12);
@@ -67,6 +68,15 @@
 
   --skeleton-base: rgba(148, 163, 184, 0.18);
   --skeleton-highlight: rgba(148, 163, 184, 0.32);
+
+  /* Layout constants */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 56px;
+  --page-max-width: 1400px;
+  --page-padding-x: 24px;
+  --page-padding-y: 24px;
+  --card-padding: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,6 +92,8 @@
 
     --border-subtle: rgba(148, 163, 184, 0.18);
     --border-strong: rgba(148, 163, 184, 0.28);
+
+    --sidebar-active: var(--erp-blue);
 
     --shadow-sm: 0 12px 28px rgba(0, 0, 0, 0.45);
     --shadow-md: 0 18px 40px rgba(0, 0, 0, 0.55);
@@ -121,6 +133,14 @@
   }
 }
 
+@media (max-width: 768px) {
+  :root {
+    --page-padding-x: 16px;
+    --page-padding-y: 16px;
+    --card-padding: 16px;
+  }
+}
+
 * {
   box-sizing: border-box;
   font-family: Inter, system-ui;
@@ -139,10 +159,11 @@ html {
 body {
   background: var(--app-bg);
   color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 .page-title {
-  font-size: 34px;
+  font-size: clamp(24px, 2.4vw, 34px);
   font-weight: 900;
   letter-spacing: -0.01em;
 }
@@ -162,8 +183,10 @@ body {
 }
 
 .page-frame {
-  width: min(1200px, 100%);
+  width: min(var(--page-max-width), 100%);
   margin: 0 auto;
+  padding-left: var(--page-padding-x);
+  padding-right: var(--page-padding-x);
 }
 
 .helper-text {
@@ -298,6 +321,29 @@ body {
   background: var(--surface-card);
   box-shadow: var(--shadow-md);
   max-width: 100%;
+  position: relative;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .table-shell {
+    box-shadow: inset 14px 0 14px -14px rgba(15, 23, 42, 0.25), inset -14px 0 14px -14px rgba(15, 23, 42, 0.25);
+  }
+}
+
+/* Smooth layout transitions */
+.sidebar-transition {
+  transition: width 200ms ease, transform 200ms ease;
+}
+
+.main-content-transition {
+  transition: margin-left 200ms ease;
+}
+
+@layer components {
+  .card {
+    padding: var(--card-padding);
+  }
 }
 
 .table-shell > div {
