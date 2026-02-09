@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { SkeletonTable } from "@/components/ui/Skeleton";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { formatDate, formatDateTime, formatUsd, useIsSystemDark } from "@/components/finance/financeUtils";
 import type { InvoiceRecord } from "@/lib/finance/types";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";

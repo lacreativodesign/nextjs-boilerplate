@@ -8,7 +8,7 @@ import {
   useInterval,
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
-import { SkeletonDashboard } from "@/components/ui/Skeleton";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 import type { FinanceOverview } from "@/lib/finance/types";
 import { toastError } from "@/lib/toast";
 

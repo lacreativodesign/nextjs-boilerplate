@@ -1,4 +1,4 @@
-import { SkeletonDashboard } from "@/components/ui/Skeleton";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 
 export default function AdminLoading() {
   return (
