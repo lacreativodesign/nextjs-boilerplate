@@ -7,17 +7,13 @@ import { ModuleErrorFallback } from "./ErrorFallback";
 interface ModuleErrorBoundaryProps {
   children: ReactNode;
   moduleName: string;
-  onError?: (error: Error) => void;
 }
 
-export function ModuleErrorBoundary({ children, moduleName, onError }: ModuleErrorBoundaryProps) {
+export function ModuleErrorBoundary({ children, moduleName }: ModuleErrorBoundaryProps) {
   return (
     <ErrorBoundary
       fallbackComponent={ModuleErrorFallback}
-      onError={(error, errorInfo) => {
-        console.error(`${moduleName} Error:`, error, errorInfo);
-        onError?.(error);
-      }}
+      resetKeys={[moduleName]}
     >
       {children}
     </ErrorBoundary>

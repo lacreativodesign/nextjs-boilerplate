@@ -15,9 +15,6 @@ export default function RootLayout({
       <body>
         <ErrorBoundary
           fallbackComponent={PageErrorFallback}
-          onError={(error, errorInfo) => {
-            console.error("Root Layout Error:", error, errorInfo);
-          }}
         >
           <ToastProvider />
           <Suspense fallback={null}>
