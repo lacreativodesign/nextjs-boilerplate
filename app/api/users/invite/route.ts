@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { UserService } from "@/lib/users/user-service";
+import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
+
+export const dynamic = "force-dynamic";
+
+const inviteSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "manager", "staff", "viewer"]),
+  teamIds: z.array(z.string().min(1)).optional(),
+});
+
+function canInvite(role: string) {
+  const normalized = normalizeRole(role);
+  return normalized === "admin" || normalized === "super_admin" || normalized === "manager" || normalized === "owner";
+}
+
+export async function POST(request: Request) {
+  try {
+    const me = await getCurrentUser();
+    if (!me) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!canInvite(me.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const data = inviteSchema.parse(body);
+
+    const invitationId = await UserService.inviteUser({
+      tenantId: me.tenantId,
+      email: data.email,
+      role: data.role,
+      teamIds: data.teamIds,
+      invitedBy: me.uid,
+      invitedByEmail: me.email,
+    });
+
+    return NextResponse.json({
+      invitationId,
+      message: "Invitation sent successfully",
+    });
+  } catch (error: any) {
+    console.error("Error inviting user:", error);
+    return NextResponse.json(
+      { error: error?.message || "Failed to send invitation" },
+      { status: 500 }
+    );
+  }
+}
