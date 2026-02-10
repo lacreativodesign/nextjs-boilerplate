@@ -9,6 +9,7 @@ import {
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 
 const STATUS_OPTIONS = [
   "",
@@ -302,8 +303,8 @@ export default function FinancePaymentsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 40 }}>
-                    Loading payments…
+                  <td colSpan={8} style={{ padding: 24 }}>
+                    <TableSkeleton rows={7} columns={8} />
                   </td>
                 </tr>
               ) : sortedPayments.length === 0 ? (
