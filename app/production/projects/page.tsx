@@ -1,6 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { TableSkeleton } from "@/components/ui/Skeleton";
+
 export default function ProductionProjectsPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoading(false), 600);
+    return () => window.clearTimeout(timer);
+  }, []);
   const projects = [
     {
       id: "P-001",
@@ -51,7 +60,11 @@ export default function ProductionProjectsPage() {
         </div>
 
         {/* Rows */}
-        {projects.map((p) => (
+        {loading ? (
+          <div className="px-4 py-4">
+            <TableSkeleton rows={3} columns={6} />
+          </div>
+        ) : projects.map((p) => (
           <div
             key={p.id}
             className="grid grid-cols-6 px-4 py-4 border-t border-gray-200 dark:border-neutral-800 text-sm items-center hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition"

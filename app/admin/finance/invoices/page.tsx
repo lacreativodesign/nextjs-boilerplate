@@ -12,6 +12,7 @@ import {
 } from "@/components/finance/financeUtils";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
 
 const STATUS_OPTIONS = [
@@ -503,8 +504,8 @@ export default function FinanceInvoicesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
-                    Loading invoices…
+                  <td colSpan={7} style={{ padding: 24 }}>
+                    <TableSkeleton rows={7} columns={7} />
                   </td>
                 </tr>
               ) : sortedInvoices.length === 0 ? (

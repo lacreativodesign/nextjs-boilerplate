@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { formatDate, useIsSystemDark } from "@/components/finance/financeUtils";
 
 const DOC_TYPES = [
@@ -215,8 +216,8 @@ export default function HrDocumentsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
-                    Loading documents…
+                  <td colSpan={6} style={{ padding: 24 }}>
+                    <ListSkeleton items={6} />
                   </td>
                 </tr>
               ) : filteredDocuments.length === 0 ? (
