@@ -5,6 +5,8 @@ import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
+import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
     const dueDate = parseString(body?.dueDate).trim();
     const notes = parseString(body?.notes).trim();
     const amountTaxUsd = parseNumber(body?.amountTaxUsd, 0);
+    const currencyCode = String(body?.currency || "USD").toUpperCase() as CurrencyCode;
 
     const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
 
@@ -44,17 +47,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Add at least one line item." }, { status: 400 });
     }
 
+    getCurrency(currencyCode);
+
     const normalizedItems = lineItems.map((item: any) => ({
       name: parseString(item?.name).trim(),
       qty: parseNumber(item?.qty, 1),
       unitPriceUsd: parseNumber(item?.unitPriceUsd, 0),
     }));
 
-    const amountSubtotalUsd = normalizedItems.reduce((sum: number, item: any) => {
+    const amountSubtotal = normalizedItems.reduce((sum: number, item: any) => {
       return sum + Number(item.qty || 0) * Number(item.unitPriceUsd || 0);
     }, 0);
 
-    const amountTotalUsd = amountSubtotalUsd + amountTaxUsd;
+    const amountTotal = amountSubtotal + amountTaxUsd;
+    const baseCurrency: CurrencyCode = "USD";
+    let exchangeRate = 1;
+    if (currencyCode !== baseCurrency) {
+      exchangeRate = await getExchangeRate(currencyCode, baseCurrency);
+      await storeHistoricalRate(currencyCode, baseCurrency, exchangeRate, auth.user.tenantId || "global");
+    }
+
+    const amountSubtotalBase = amountSubtotal * exchangeRate;
+    const amountTaxBase = amountTaxUsd * exchangeRate;
+    const amountTotalBase = amountTotal * exchangeRate;
 
     const existingInvoiceSnap = await adminDb
       .collection("invoices")
@@ -71,13 +86,22 @@ export async function POST(req: Request) {
       orderId,
       clientId,
       clientName,
-      currency: "USD",
-      amountSubtotalUsd,
-      amountTaxUsd,
-      amountTotalUsd,
+      currency: currencyCode,
+      currencySymbol: getCurrency(currencyCode).symbol,
+      baseCurrency,
+      exchangeRate,
+      amountSubtotal,
+      amountTax: amountTaxUsd,
+      amountTotal,
+      amountSubtotalBase,
+      amountTaxBase,
+      amountTotalBase,
+      amountSubtotalUsd: amountSubtotalBase,
+      amountTaxUsd: amountTaxBase,
+      amountTotalUsd: amountTotalBase,
       status: "draft",
       totalPaid: 0,
-      balanceDue: amountTotalUsd,
+      balanceDue: amountTotal,
       dueDate: dueDate ? new Date(dueDate) : null,
       issuedAt: serverTimestamp(),
       paidAt: null,
