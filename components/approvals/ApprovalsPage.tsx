@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Skeleton } from "../ui/skeleton";
+import { Skeleton } from "../ui/Skeleton";
 
 type ApprovalItem = {
   id: string;
