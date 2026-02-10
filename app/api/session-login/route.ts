@@ -13,9 +13,27 @@ import { hashSessionToken } from "@/lib/auth/session";
 
 // 🔐 Cookie settings
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com"; // works on subdomains
 const DEFAULT_SESSION_DAYS = SESSION_CONFIG.maxAge / (24 * 60 * 60 * 1000);
 const REMEMBER_SESSION_DAYS = SESSION_CONFIG.rememberMeMaxAge / (24 * 60 * 60 * 1000);
+
+/**
+ * Extracts the appropriate cookie domain from hostname
+ * - localhost/127.0.0.1 → undefined (no domain restriction)
+ * - app.bizosto.com → .bizosto.com (works on all subdomains)
+ * - subdomain.example.com → .example.com
+ */
+function getCookieDomain(hostname: string): string | undefined {
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return undefined;
+  }
+
+  const parts = hostname.split(".");
+  if (parts.length >= 2) {
+    return `.${parts.slice(-2).join(".")}`;
+  }
+
+  return undefined;
+}
 
 let adminApp: App | null = null;
 let adminDb: FirebaseFirestore.Firestore | null = null;
@@ -44,7 +62,9 @@ function getAdmin() {
 
 export async function POST(req: Request) {
   try {
-    await checkRateLimit(req, "strict");
+    if (process.env.NODE_ENV !== "development") {
+      await checkRateLimit(req, "strict");
+    }
     const { idToken, rememberMe } = await req.json();
     if (!idToken) {
       throw new AppError({ message: "Missing idToken", code: "VALIDATION_ERROR", status: 400 });
@@ -84,18 +104,23 @@ export async function POST(req: Request) {
       (rememberMe ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS) * 24 * 60 * 60 * 1000; // ms
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
+    const url = new URL(req.url);
+    const cookieDomain = getCookieDomain(url.hostname);
+
     const c = cookies();
     const cookieOptions: Parameters<typeof c.set>[0] = {
       name: COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      domain: COOKIE_DOMAIN,
+      maxAge: expiresIn / 1000,
     };
 
-    cookieOptions.maxAge = expiresIn / 1000;
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
 
     c.set(cookieOptions);
 
@@ -195,6 +220,13 @@ export async function POST(req: Request) {
       console.error("audit login failure error:", auditError);
     }
     console.error("SESSION LOGIN ERROR:", e);
+    console.error("Error details:", {
+      message: e?.message,
+      code: e?.code,
+      stack: e?.stack,
+      url: req.url,
+      timestamp: new Date().toISOString(),
+    });
     const { status, body } = resolveErrorResponse(e, {
       fallbackMessage: "Session error",
       fallbackCode: "INTERNAL_SERVER_ERROR",
