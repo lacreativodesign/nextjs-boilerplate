@@ -11,6 +11,8 @@ import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { getRoleRoute } from "@/lib/roleRouting";
 import MFAVerify from "@/components/auth/MFAVerify";
 import { verifyMFASignIn } from "@/lib/auth/mfa";
+import Button from "@/components/ui/Button";
+import { showToast } from "@/lib/utils/toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -56,6 +58,7 @@ export default function LoginPage() {
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       await completeLogin(userCred);
+      showToast.success("Login successful!");
     } catch (err: any) {
       if (firebaseAuth && err?.code === "auth/multi-factor-auth-required") {
         // Firebase returns a MultiFactorResolver when TOTP is required.
@@ -64,6 +67,7 @@ export default function LoginPage() {
         setError("Two-factor authentication required.");
       } else {
         setError(err.message || "Login failed");
+        showToast.error(err.message || "Login failed");
       }
     } finally {
       setLoading(false);
@@ -76,22 +80,27 @@ export default function LoginPage() {
     const role = await fetchUserRole(uid);
     if (!role) throw new Error("No role assigned");
 
-    const idToken = await userCred.user.getIdToken(true);
+    const sessionToast = showToast.loading("Creating session...");
+    try {
+      const idToken = await userCred.user.getIdToken(true);
 
     // Send to server to make secure cookie
-    const cookieRes = await fetch("/api/session-login", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, rememberMe: remember }),
-    });
+      const cookieRes = await fetch("/api/session-login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, rememberMe: remember }),
+      });
 
-    if (!cookieRes.ok) {
-      const j = await cookieRes.json().catch(() => null);
-      throw new Error(j?.error || "Session error");
+      if (!cookieRes.ok) {
+        const j = await cookieRes.json().catch(() => null);
+        throw new Error(j?.error || "Session error");
+      }
+
+      window.location.href = getRoleRoute(role);
+    } finally {
+      showToast.dismiss(sessionToast);
     }
-
-    window.location.href = getRoleRoute(role);
   }
 
   async function handleVerifyMfa(code: string) {
@@ -253,9 +262,16 @@ export default function LoginPage() {
                 </label>
               </div>
 
-              <button type="submit" disabled={loading || !firebaseAuth} className="login-submit">
-                {loading ? "Signing in…" : "Login"}
-              </button>
+              <Button
+                type="submit"
+                disabled={!firebaseAuth}
+                loading={loading}
+                loadingText="Signing in..."
+                className="login-submit"
+                fullWidth
+              >
+                Login
+              </Button>
             </form>
           )}
 

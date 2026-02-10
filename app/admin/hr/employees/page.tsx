@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { useIsSystemDark } from "@/components/finance/financeUtils";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import {
   INTERNAL_ROLE_OPTIONS,
   USER_DEPARTMENT_VALUES,
@@ -326,6 +327,11 @@ export default function HrEmployeesPage() {
       </section>
 
       <section className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
+        {loading ? (
+          <div style={{ padding: 16 }}>
+            <TableSkeleton rows={8} columns={9} />
+          </div>
+        ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
@@ -350,13 +356,7 @@ export default function HrEmployeesPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: 24 }}>
-                    Loading employees…
-                  </td>
-                </tr>
-              ) : error ? (
+              {error ? (
                 <tr>
                   <td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#ef4444" }}>
                     {error}
@@ -400,6 +400,7 @@ export default function HrEmployeesPage() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {drawerOpen && selectedUser && (
