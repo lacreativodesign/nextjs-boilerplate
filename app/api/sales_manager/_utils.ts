@@ -140,6 +140,15 @@ export async function getAdminUserIds(tenantId?: string | null) {
   return ids;
 }
 
+export async function getSalesSettings(tenantId?: string | null) {
+  const settingsDocId = tenantId || "sales";
+  const snap = await adminDb.collection("settings").doc(settingsDocId).get();
+  const data = snap.exists ? snap.data() : {};
+  return {
+    discountApprovalThresholdPct: parseNumber(data?.discountApprovalThresholdPct, 0),
+  };
+}
+
 export function normalizeStage(stage?: string) {
   return parseString(stage, "").trim();
 }

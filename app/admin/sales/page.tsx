@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const KPI_LABELS = [
   { key: "totalLeads", label: "Total Leads" },
