@@ -2,6 +2,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import {
   canAccessPlanModule,
   normalizePlan,
+  resolvePlanModules,
   resolveTenantModules,
   type PlanModuleKey,
   type PlanModules,
@@ -65,3 +66,6 @@ export async function requireModule(tenantId: string, moduleKey: PlanModuleKey, 
   }
   return planState;
 }
+
+
+export { normalizePlan, resolvePlanModules, resolveTenantModules };

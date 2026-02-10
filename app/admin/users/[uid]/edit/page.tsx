@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { SkeletonForm } from "@/components/ui/skeleton";
+import { SkeletonForm } from "@/components/ui/Skeleton";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import {
   INTERNAL_ROLE_OPTIONS,

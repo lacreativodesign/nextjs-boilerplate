@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SkeletonForm } from "@/components/ui/skeleton";
+import { SkeletonForm } from "@/components/ui/Skeleton";
 
 type ClientProfile = {
   companyName?: string;

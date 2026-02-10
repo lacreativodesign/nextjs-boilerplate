@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/components/finance/financeUtils";
 
 export type SortDirection = "asc" | "desc";

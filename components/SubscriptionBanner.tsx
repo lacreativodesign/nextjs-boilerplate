@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { getSubscriptionBannerCopy, isNonActiveSubscription } from "@/lib/subscription";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const BILLING_PATH = "/billing";
 

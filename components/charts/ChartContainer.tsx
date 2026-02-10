@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { SkeletonChart } from "@/components/ui/skeleton";
+import { SkeletonChart } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 
 export const CHART_COLORS = [

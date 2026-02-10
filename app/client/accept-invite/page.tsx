@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
-import { SkeletonForm } from "@/components/ui/skeleton";
+import { SkeletonForm } from "@/components/ui/Skeleton";
 import { useSearchParams, useRouter } from "next/navigation";
 
 function AcceptInviteClient() {

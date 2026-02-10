@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { SkeletonTable } from "@/components/ui/skeleton";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import { toastError, toastPromise } from "@/lib/toast";
 import type { SearchFilter } from "@/types/search";
