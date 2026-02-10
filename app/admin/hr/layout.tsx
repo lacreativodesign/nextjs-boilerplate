@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 const tabs = [
   { label: "Overview", path: "/admin/hr" },
@@ -18,7 +19,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="w-full">
+    <ModuleErrorBoundary moduleName="HR">
+      <div className="w-full">
       <div className="mb-4">
         <h2 className="section-title mb-1">HR & Team</h2>
         <p className="section-subtitle">People ops, onboarding, performance, and HR documentation.</p>
@@ -36,6 +38,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div>{children}</div>
-    </div>
+      </div>
+    </ModuleErrorBoundary>
   );
 }

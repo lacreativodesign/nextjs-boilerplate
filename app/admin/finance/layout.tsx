@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 const tabs = [
   { label: "Overview", path: "/admin/finance" },
@@ -17,7 +18,8 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
 
   return (
-    <div className="w-full">
+    <ModuleErrorBoundary moduleName="Finance">
+      <div className="w-full">
       <div className="mb-4">
         <h2 className="section-title mb-1">Finance</h2>
         <p className="section-subtitle">Monitor revenue, cash flow, payroll, and finance operations.</p>
@@ -35,6 +37,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
       </div>
 
       <div>{children}</div>
-    </div>
+      </div>
+    </ModuleErrorBoundary>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 const tabs = [
   { label: "Overview", path: "/admin/sales" },
@@ -17,7 +18,8 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="w-full">
+    <ModuleErrorBoundary moduleName="Sales">
+      <div className="w-full">
       <div className="mb-4">
         <h2 className="section-title mb-1">Sales & Pipeline</h2>
         <p className="section-subtitle">Track leads, deals, pipeline, and sales activity in one place.</p>
@@ -35,6 +37,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
       </div>
 
       <div>{children}</div>
-    </div>
+      </div>
+    </ModuleErrorBoundary>
   );
 }
