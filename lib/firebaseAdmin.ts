@@ -50,12 +50,15 @@ const missingAdminMessage = 'Firebase Admin is not configured. Set FIREBASE_ADMI
 // Core services
 const auth = app ? admin.auth(app) : createThrowingProxy<admin.auth.Auth>(missingAdminMessage);
 const db = app ? admin.firestore(app) : createThrowingProxy<admin.firestore.Firestore>(missingAdminMessage);
+const storage = app ? admin.storage(app) : createThrowingProxy<admin.storage.Storage>(missingAdminMessage);
 
 // Export in all formats your API routes expect
 export const adminAuth = auth;
 export const adminDb = db;
 export const adminDB = db; // Some routes use this
+export const adminStorage = storage;
 export const getAdminAuth = () => auth;
 export const getAdminDB = () => db;
+export const getAdminStorage = () => storage;
 
 export default app;

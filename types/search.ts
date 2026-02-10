@@ -23,7 +23,8 @@ export type SearchModule =
   | "audit_logs"
   | "payments"
   | "expenses"
-  | "clients";
+  | "clients"
+  | "documents";
 
 export interface SearchFilter {
   field: string;
