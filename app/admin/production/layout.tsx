@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 const tabs = [
   { label: "Overview", path: "/admin/production" },
@@ -14,7 +15,8 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
 
   return (
-    <div className="w-full">
+    <ModuleErrorBoundary moduleName="Production">
+      <div className="w-full">
       <div className="mb-4">
         <h2 className="section-title mb-1">Production</h2>
         <p className="section-subtitle">Monitor workloads, QA approvals, and delivery readiness.</p>
@@ -32,6 +34,7 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
       </div>
 
       <div>{children}</div>
-    </div>
+      </div>
+    </ModuleErrorBoundary>
   );
 }

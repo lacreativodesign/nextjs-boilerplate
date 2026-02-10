@@ -1,31 +1,41 @@
 "use client";
 
 import { useEffect } from "react";
-import { logError } from "@/lib/logging";
 
 export default function GlobalError({
   error,
+  reset,
 }: {
   error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    logError(error, { route: "app/global-error", metadata: { digest: error.digest } });
+    console.error("Critical Global Error:", error);
   }, [error]);
 
   return (
-    <html lang="en">
+    <html>
       <body>
-        <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-          <div className="text-2xl font-semibold">We ran into a critical error</div>
-          <p className="mt-2 text-sm text-slate-500">
-            Please refresh the page. If the problem continues, contact support.
-          </p>
-          <a
-            href="/"
-            className="mt-6 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-slate-800"
-          >
-            Return home
-          </a>
+        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
+          <div className="max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+            <div className="mb-4 text-6xl">💥</div>
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Critical Error</h2>
+            <p className="mb-6 text-gray-600">Something went very wrong. Please refresh the page.</p>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={reset}
+                className="rounded-lg border border-blue-600 bg-white px-6 py-2 text-blue-600 hover:bg-blue-50"
+              >
+                Try Reset
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
+              >
+                Reload Application
+              </button>
+            </div>
+          </div>
         </div>
       </body>
     </html>

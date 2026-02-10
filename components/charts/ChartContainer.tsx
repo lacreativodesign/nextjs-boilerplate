@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SkeletonChart } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 
 export const CHART_COLORS = [
   "var(--chart-series-1)",
@@ -81,41 +82,42 @@ export function ChartContainer({
 }: ChartContainerProps) {
   const [legendVisible, setLegendVisible] = useState(defaultLegendVisible);
 
-  const content =
-    typeof children === "function"
-      ? children({ legendVisible })
-      : children;
+  const content = typeof children === "function" ? children({ legendVisible }) : children;
 
   return (
-    <div className={`card ${className}`} style={{ padding: 20, borderRadius: 18 }}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
-          {description && (
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-              {description}
-            </div>
+    <ErrorBoundary
+      fallback={
+        <div className="flex h-[300px] items-center justify-center rounded-lg border border-red-200 bg-red-50">
+          <p className="text-red-600">Failed to load chart</p>
+        </div>
+      }
+    >
+      <div className={`card ${className}`} style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
+            {description && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{description}</div>
+            )}
+          </div>
+          {showLegendToggle && (
+            <button
+              type="button"
+              onClick={() => setLegendVisible((prev) => !prev)}
+              className="btn"
+              style={{
+                padding: "6px 12px",
+                borderRadius: 999,
+                fontSize: 12,
+                background: "var(--surface-muted)",
+              }}
+            >
+              {legendVisible ? "Hide legend" : "Show legend"}
+            </button>
           )}
         </div>
-        {showLegendToggle && (
-          <button
-            type="button"
-            onClick={() => setLegendVisible((prev) => !prev)}
-            className="btn"
-            style={{
-              padding: "6px 12px",
-              borderRadius: 999,
-              fontSize: 12,
-              background: "var(--surface-muted)",
-            }}
-          >
-            {legendVisible ? "Hide legend" : "Show legend"}
-          </button>
-        )}
+        <div style={{ marginTop: 16 }}>{isLoading || isEmpty ? <SkeletonChart height={height} /> : content}</div>
       </div>
-      <div style={{ marginTop: 16 }}>
-        {isLoading || isEmpty ? <SkeletonChart height={height} /> : content}
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 }
