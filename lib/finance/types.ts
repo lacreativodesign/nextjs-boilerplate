@@ -1,3 +1,5 @@
+import { CurrencyCode } from "./currencies";
+
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Overdue" | "Void";
 export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
 export type PaymentMethod = "Card" | "Bank" | "Cash" | "PayPal" | "Wise" | "Other";
@@ -15,7 +17,15 @@ export type InvoiceRecord = {
   orderId: string;
   clientId: string;
   clientName: string;
-  currency: "USD";
+  currency: CurrencyCode;
+  baseCurrency?: CurrencyCode;
+  exchangeRate?: number;
+  amountSubtotal?: number;
+  amountTax?: number;
+  amountTotal?: number;
+  amountSubtotalBase?: number;
+  amountTaxBase?: number;
+  amountTotalBase?: number;
   amountSubtotalUsd: number;
   amountTaxUsd: number;
   amountTotalUsd: number;

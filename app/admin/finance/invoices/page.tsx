@@ -11,6 +11,9 @@ import {
   useIsSystemDark,
 } from "@/components/finance/financeUtils";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
+import { CurrencyCode } from "@/lib/finance/currencies";
+import { CurrencyDisplay } from "@/components/finance/CurrencyDisplay";
+import { CurrencySelector } from "@/components/finance/CurrencySelector";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
@@ -839,6 +842,7 @@ function CreateInvoiceDrawer({
     { name: "", qty: 1, unitPriceUsd: 0 },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<CurrencyCode>("USD");
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.qty * item.unitPriceUsd, 0);
   const total = subtotal + Number(tax || 0);
@@ -887,6 +891,7 @@ function CreateInvoiceDrawer({
             dueDate,
             notes,
             amountTaxUsd: Number(tax || 0),
+            currency,
             lineItems,
           }),
         }).then(async (res) => {
@@ -940,7 +945,7 @@ function CreateInvoiceDrawer({
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>Create Invoice</div>
-            <div style={{ opacity: 0.7, fontSize: 12 }}>USD billing (client revenue).</div>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>Multi-currency billing for international clients.</div>
           </div>
           <button className="btn ghost" onClick={onClose} style={{ height: 34, borderRadius: 999 }}>
             Close
@@ -968,6 +973,7 @@ function CreateInvoiceDrawer({
 
         <div className="space-y-3">
           <MasterSelect value={clientId} onChange={(value) => updateClient(value)} options={clientOptions} />
+          <CurrencySelector value={currency} onChange={setCurrency} className="mb-2" />
           <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           <textarea
             className="input"
@@ -998,13 +1004,16 @@ function CreateInvoiceDrawer({
                   value={item.qty}
                   onChange={(e) => updateLineItem(idx, "qty", e.target.value)}
                 />
-                <input
-                  className="input"
-                  type="number"
-                  min={0}
-                  value={item.unitPriceUsd}
-                  onChange={(e) => updateLineItem(idx, "unitPriceUsd", e.target.value)}
-                />
+                <div className="space-y-1">
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    value={item.unitPriceUsd}
+                    onChange={(e) => updateLineItem(idx, "unitPriceUsd", e.target.value)}
+                  />
+                  <CurrencyDisplay amount={item.unitPriceUsd} currency={currency} className="text-xs opacity-70" showCode />
+                </div>
                 <div className="flex items-center justify-end">
                   {lineItems.length > 1 && (
                     <button className="btn ghost" onClick={() => removeLineItem(idx)} style={{ borderRadius: 999 }}>
@@ -1025,9 +1034,9 @@ function CreateInvoiceDrawer({
 
         <div className="card" style={{ padding: 16, borderRadius: 14 }}>
           <div className="space-y-2">
-            <Row label="Subtotal" value={formatUsd(subtotal)} />
+            <Row label="Subtotal" value={<CurrencyDisplay amount={subtotal} currency={currency} />} />
             <Row
-              label="Tax (USD)"
+              label={`Tax (${currency})`}
               value={
                 <input
                   className="input"
@@ -1039,7 +1048,7 @@ function CreateInvoiceDrawer({
                 />
               }
             />
-            <Row label="Total" value={formatUsd(total)} />
+            <Row label="Total" value={<CurrencyDisplay amount={total} currency={currency} />} />
           </div>
         </div>
 

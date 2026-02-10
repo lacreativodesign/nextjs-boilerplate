@@ -18,6 +18,8 @@ import { normalizeRole } from "../../../admin/_utils";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
 import { validateRequest } from "@/lib/validations/validate";
 import { checkRateLimit, getClientIp } from "@/lib/security";
+import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
 
 export const dynamic = "force-dynamic";
 
@@ -100,13 +102,8 @@ export async function POST(req: Request) {
       });
     }
 
-    if (currency && currency !== "USD") {
-      throw new AppError({
-        message: "Only USD invoices are supported.",
-        code: "VALIDATION_ERROR",
-        status: 400,
-      });
-    }
+    const currencyCode = currency as CurrencyCode;
+    const currencyInfo = getCurrency(currencyCode);
 
     const sanitizedItems = lineItems.map((item) => {
       const name = parseString(item?.description).trim();
@@ -122,9 +119,18 @@ export async function POST(req: Request) {
       return { name, qty, unitPriceUsd };
     });
 
-    const subtotal = sanitizedItems.reduce((sum, item) => sum + item.qty * item.unitPriceUsd, 0);
-    const taxAmount = parseNumber(body?.amountTaxUsd, 0);
-    if (taxAmount < 0) {
+    const tenantId = normalizeTenantId(auth.user.tenantId);
+
+    let exchangeRate = 1;
+    const baseCurrency: CurrencyCode = "USD";
+    if (currencyCode !== baseCurrency) {
+      exchangeRate = await getExchangeRate(currencyCode, baseCurrency);
+      await storeHistoricalRate(currencyCode, baseCurrency, exchangeRate, tenantId);
+    }
+
+    const subtotalInCurrency = sanitizedItems.reduce((sum, item) => sum + item.qty * item.unitPriceUsd, 0);
+    const taxAmountInCurrency = parseNumber(body?.amountTaxUsd, 0);
+    if (taxAmountInCurrency < 0) {
       throw new AppError({
         message: "Tax amount cannot be negative.",
         code: "VALIDATION_ERROR",
@@ -132,14 +138,18 @@ export async function POST(req: Request) {
       });
     }
 
-    const total = subtotal + taxAmount;
-    if (total <= 0) {
+    const totalInCurrency = subtotalInCurrency + taxAmountInCurrency;
+    if (totalInCurrency <= 0) {
       throw new AppError({
         message: "Invoice total must be greater than zero.",
         code: "VALIDATION_ERROR",
         status: 400,
       });
     }
+
+    const subtotalInBase = subtotalInCurrency * exchangeRate;
+    const taxAmountInBase = taxAmountInCurrency * exchangeRate;
+    const totalInBase = totalInCurrency * exchangeRate;
 
     const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
     if (dueDateRaw && (!dueDate || Number.isNaN(dueDate.getTime()))) {
@@ -159,7 +169,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
     const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
 
     const clientSnap = await adminDb.collection("clients").doc(clientId).get();
@@ -182,7 +191,7 @@ export async function POST(req: Request) {
 
     const clientName = parseString(client.companyName || client.name).trim();
     const totalPaid = parseNumber(body?.totalPaid, 0);
-    if (totalPaid < 0 || totalPaid > total) {
+    if (totalPaid < 0 || totalPaid > totalInCurrency) {
       throw new AppError({
         message: "Total paid must be between 0 and the invoice total.",
         code: "VALIDATION_ERROR",
@@ -192,19 +201,32 @@ export async function POST(req: Request) {
     const status = computeInvoiceStatus({
       currentStatus: statusInput,
       totalPaid,
-      totalAmount: total,
+      totalAmount: totalInCurrency,
     });
-    const balanceDue = computeBalanceDue(total, totalPaid);
+    const balanceDue = computeBalanceDue(totalInCurrency, totalPaid);
 
     const docRef = adminDb.collection("invoices").doc();
     const invoiceData = {
       orderId,
       clientId,
       clientName,
-      currency: "USD",
-      amountSubtotalUsd: subtotal,
-      amountTaxUsd: taxAmount,
-      amountTotalUsd: total,
+
+      currency: currencyCode,
+      currencySymbol: currencyInfo.symbol,
+      baseCurrency,
+      exchangeRate,
+
+      amountSubtotal: subtotalInCurrency,
+      amountTax: taxAmountInCurrency,
+      amountTotal: totalInCurrency,
+
+      amountSubtotalBase: subtotalInBase,
+      amountTaxBase: taxAmountInBase,
+      amountTotalBase: totalInBase,
+
+      amountSubtotalUsd: subtotalInBase,
+      amountTaxUsd: taxAmountInBase,
+      amountTotalUsd: totalInBase,
       totalPaid,
       balanceDue,
       status,
