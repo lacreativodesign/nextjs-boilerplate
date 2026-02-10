@@ -85,13 +85,7 @@ export function ChartContainer({
   const content = typeof children === "function" ? children({ legendVisible }) : children;
 
   return (
-    <ErrorBoundary
-      fallback={
-        <div className="flex h-[300px] items-center justify-center rounded-lg border border-red-200 bg-red-50">
-          <p className="text-red-600">Failed to load chart</p>
-        </div>
-      }
-    >
+    <ErrorBoundary fallbackComponent={ChartErrorFallback}>
       <div className={`card ${className}`} style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -119,5 +113,23 @@ export function ChartContainer({
         <div style={{ marginTop: 16 }}>{isLoading || isEmpty ? <SkeletonChart height={height} /> : content}</div>
       </div>
     </ErrorBoundary>
+  );
+}
+
+
+function ChartErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <div className="flex h-[300px] items-center justify-center rounded-lg border border-red-200 bg-red-50">
+      <div className="text-center">
+        <p className="text-red-600">Failed to load chart</p>
+        <p className="mt-1 text-xs text-red-500">{error.message}</p>
+        <button
+          onClick={reset}
+          className="mt-3 rounded-md bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
   );
 }

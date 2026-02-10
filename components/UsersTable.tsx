@@ -27,13 +27,7 @@ export default function UsersTable({
   };
 
   return (
-    <ErrorBoundary
-      fallback={
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm text-red-600">Failed to load users table.</p>
-        </div>
-      }
-    >
+    <ErrorBoundary fallbackComponent={UsersTableErrorFallback}>
       <div className="overflow-x-auto rounded-lg border bg-white dark:bg-neutral-900">
         <table className="min-w-full text-sm">
           <thead className="bg-neutral-100 dark:bg-neutral-800">
@@ -83,5 +77,21 @@ export default function UsersTable({
         </table>
       </div>
     </ErrorBoundary>
+  );
+}
+
+
+function UsersTableErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+      <p className="text-sm text-red-600">Failed to load users table.</p>
+      <p className="mt-1 text-xs text-red-500">{error.message}</p>
+      <button
+        onClick={reset}
+        className="mt-3 rounded-md bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
+      >
+        Retry
+      </button>
+    </div>
   );
 }

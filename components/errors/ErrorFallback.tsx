@@ -98,3 +98,15 @@ export function ErrorFallback({ error, resetError, context = "component" }: Erro
     </div>
   );
 }
+
+export function PageErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return <ErrorFallback error={error} resetError={reset} context="page" />;
+}
+
+export function ModuleErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return <ErrorFallback error={error} resetError={reset} context="module" />;
+}
+
+export function ComponentErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return <ErrorFallback error={error} resetError={reset} context="component" />;
+}

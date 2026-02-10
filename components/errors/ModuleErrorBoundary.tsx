@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { ErrorFallback } from "./ErrorFallback";
+import { ModuleErrorFallback } from "./ErrorFallback";
 
 interface ModuleErrorBoundaryProps {
   children: ReactNode;
@@ -13,7 +13,7 @@ interface ModuleErrorBoundaryProps {
 export function ModuleErrorBoundary({ children, moduleName, onError }: ModuleErrorBoundaryProps) {
   return (
     <ErrorBoundary
-      fallback={<ErrorFallback error={new Error(`Failed to load ${moduleName} module`)} context="module" />}
+      fallbackComponent={ModuleErrorFallback}
       onError={(error, errorInfo) => {
         console.error(`${moduleName} Error:`, error, errorInfo);
         onError?.(error);
