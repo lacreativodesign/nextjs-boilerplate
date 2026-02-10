@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 
 const STATUS_OPTIONS = ["All", "Open", "Won", "Lost"];
 
@@ -345,8 +346,8 @@ export default function SalesDealsPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: 24, textAlign: "center" }}>
-                      Loading deals...
+                    <td colSpan={7} style={{ padding: 24 }}>
+                      <TableSkeleton rows={6} columns={7} />
                     </td>
                   </tr>
                 ) : sortedDeals.length === 0 ? (

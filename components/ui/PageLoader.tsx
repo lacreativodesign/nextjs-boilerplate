@@ -1,28 +1,24 @@
-"use client";
+import React from "react";
+import { LoadingSpinner } from "./LoadingSpinner";
 
-import React, { useEffect, useState } from "react";
-import Spinner from "@/components/ui/Spinner";
-
-type PageLoaderProps = {
+interface PageLoaderProps {
   message?: string;
-  delay?: number;
-};
+}
 
-export default function PageLoader({ message = "Loading...", delay = 200 }: PageLoaderProps) {
-  const [visible, setVisible] = useState(delay === 0);
-
-  useEffect(() => {
-    if (delay === 0) return;
-    const timer = window.setTimeout(() => setVisible(true), delay);
-    return () => window.clearTimeout(timer);
-  }, [delay]);
-
-  if (!visible) return null;
-
+export function PageLoader({ message = "Loading..." }: PageLoaderProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/10 text-center backdrop-blur-sm transition-opacity fade-in">
-      <Spinner size="lg" />
-      {message ? <div className="text-sm font-medium text-[var(--text-primary)]">{message}</div> : null}
+    <div className="flex min-h-[400px] items-center justify-center">
+      <LoadingSpinner size="lg" label={message} />
     </div>
   );
 }
+
+export function FullScreenLoader({ message }: PageLoaderProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
+      <LoadingSpinner size="xl" label={message} />
+    </div>
+  );
+}
+
+export default PageLoader;
