@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
+import { NotificationService } from "@/lib/notifications/notification-service";
 import { getCurrentUser } from "../../admin/_utils";
 import { requireNotificationsModule } from "../_utils";
 
@@ -28,6 +29,8 @@ export async function POST() {
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }
+
+    const updatedNew = await NotificationService.markAllAsRead(me.uid, tenantId);
     const baseQueries = [
       adminDb.collection("notifications").where("recipientUid", "==", me.uid).where("isRead", "==", false),
       adminDb.collection("notifications").where("toUserId", "==", me.uid).where("isRead", "==", false),
@@ -60,7 +63,7 @@ export async function POST() {
       await batch.commit();
     }
 
-    return NextResponse.json({ ok: true, updated: uniqueDocs.size });
+    return NextResponse.json({ ok: true, updated: uniqueDocs.size + updatedNew });
   } catch (err: any) {
     console.error("notifications mark-all-read error:", err);
     const rawMessage = String(err?.message || "");
