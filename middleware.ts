@@ -7,7 +7,14 @@ import {
 } from "@/lib/subscription";
 import { normalizeRole, roleFromPath, rolesAllowedForApi } from "@/lib/erpAccess";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { applySecurityHeaders, checkRateLimit, getClientIp } from "@/lib/security";
+import {
+  applyRateLimitHeaders,
+  applySecurityHeaders,
+  checkRateLimit,
+  getClientIp,
+  verifyRequestSignature,
+  verifyRotatingApiKey,
+} from "@/lib/security";
 
 async function fetchSubscriptionStatus(req: NextRequest) {
   try {
@@ -51,18 +58,9 @@ function isSuspiciousPath(req: NextRequest): boolean {
 }
 
 function getRateLimitTier(pathname: string) {
-  if (pathname.startsWith("/api/auth")) return "strict";
-  if (pathname.startsWith("/api/client")) return "relaxed";
-  if (pathname.startsWith("/api/upload")) return "upload";
-  if (
-    pathname.startsWith("/api/admin")
-    || pathname.startsWith("/api/sales")
-    || pathname.startsWith("/api/finance")
-    || pathname.startsWith("/api/hr")
-    || pathname.startsWith("/api/production")
-  ) {
-    return "standard";
-  }
+  if (pathname.startsWith("/api/session-login") || pathname.startsWith("/api/logout") || pathname.startsWith("/api/auth")) return "strict";
+  if (pathname.startsWith("/api/upload") || pathname.startsWith("/api/documents/upload") || pathname.startsWith("/api/production/files/upload")) return "upload";
+  if (pathname.startsWith("/api/public") || pathname.startsWith("/api/subscription/status") || pathname.startsWith("/api/tenant/context")) return "relaxed";
   return "standard";
 }
 
@@ -72,6 +70,37 @@ function redirectLegacyPath(req: NextRequest, from: RegExp, to: string) {
   const redirectUrl = req.nextUrl.clone();
   redirectUrl.pathname = pathname.replace(from, to);
   return NextResponse.redirect(redirectUrl, 308);
+}
+
+function isPublicApiPath(pathname: string) {
+  return (
+    pathname.startsWith("/api/stripe")
+    || pathname.startsWith("/api/webhooks/stripe")
+    || pathname.startsWith("/api/session-login")
+    || pathname.startsWith("/api/logout")
+    || pathname.startsWith("/api/tenant/context")
+    || pathname.startsWith("/api/subscription/status")
+    || pathname.startsWith("/api/public")
+  );
+}
+
+function isSensitiveApiPath(pathname: string) {
+  return pathname.startsWith("/api/cron")
+    || pathname.startsWith("/api/ingest")
+    || pathname.startsWith("/api/super-admin")
+    || pathname.startsWith("/api/super_admin");
+}
+
+function applyRateHeaders(response: NextResponse, rateContext?: {
+  limit: number;
+  remaining: number;
+  resetSeconds: number;
+  retryAfterSeconds: number;
+}) {
+  if (rateContext) {
+    applyRateLimitHeaders(response.headers, rateContext);
+  }
+  return withSecurityHeaders(response);
 }
 
 export async function middleware(req: NextRequest) {
@@ -99,10 +128,14 @@ export async function middleware(req: NextRequest) {
     return withSecurityHeaders(new NextResponse("Suspicious request blocked.", { status: 403 }));
   }
 
+  const sessionToken = req.cookies.get("lac_session")?.value;
+
+  let rateContext;
   if (isApiRequest) {
     const tier = getRateLimitTier(pathname);
+    const userIdentifier = sessionToken ? `session:${sessionToken.slice(0, 24)}` : undefined;
     try {
-      await checkRateLimit(req, tier);
+      rateContext = await checkRateLimit(req, tier, userIdentifier);
     } catch (error) {
       console.warn("Rate limit exceeded", { pathname, method: req.method, ip: getClientIp(req) });
       const { status, body } = resolveErrorResponse(error, {
@@ -111,11 +144,31 @@ export async function middleware(req: NextRequest) {
         fallbackStatus: 429,
         requestId: req.headers.get("x-request-id") || undefined,
       });
-      return withSecurityHeaders(NextResponse.json(body, { status }));
+      return applyRateHeaders(NextResponse.json(body, { status }), {
+        limit: 0,
+        remaining: 0,
+        resetSeconds: 60,
+        retryAfterSeconds: 60,
+      });
+    }
+
+    if (isSensitiveApiPath(pathname)) {
+      const apiKey = req.headers.get("x-api-key");
+      const keyValidation = verifyRotatingApiKey(apiKey);
+      if (!keyValidation.valid) {
+        return applyRateHeaders(jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
+      }
+
+      const signature = req.headers.get("x-signature");
+      const timestamp = req.headers.get("x-signature-timestamp");
+      const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
+      const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
+
+      if (!verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret })) {
+        return applyRateHeaders(jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
+      }
     }
   }
-
-  const token = req.cookies.get("lac_session")?.value;
 
   const legacyRedirect =
     redirectLegacyPath(req, /^\/account_manager/, "/am") ||
@@ -125,30 +178,26 @@ export async function middleware(req: NextRequest) {
     redirectLegacyPath(req, /^\/production-manager/, "/production_manager") ||
     redirectLegacyPath(req, /^\/customer/, "/client");
 
-  if (legacyRedirect) return withSecurityHeaders(legacyRedirect);
+  if (legacyRedirect) return applyRateHeaders(legacyRedirect, rateContext);
 
   if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/set-password")) {
-    return withSecurityHeaders(NextResponse.next());
+    return applyRateHeaders(NextResponse.next(), rateContext);
   }
 
-  if (
-    pathname.startsWith("/api/stripe") ||
-    pathname.startsWith("/api/webhooks/stripe") ||
-    pathname.startsWith("/api/session-login") ||
-    pathname.startsWith("/api/logout") ||
-    pathname.startsWith("/api/tenant/context") ||
-    pathname.startsWith("/api/subscription/status")
-  ) {
-    return withSecurityHeaders(NextResponse.next());
+  if (isApiRequest && isPublicApiPath(pathname)) {
+    return applyRateHeaders(NextResponse.next(), rateContext);
   }
 
   const pageRole = roleFromPath(pathname);
 
-  if ((pageRole || isApiRequest) && !token) {
-    return withSecurityHeaders(NextResponse.redirect(new URL("/login", req.url)));
+  if ((pageRole || isApiRequest) && !sessionToken) {
+    if (isApiRequest) {
+      return applyRateHeaders(jsonError(req, 401, "Unauthorized", "UNAUTHORIZED"), rateContext);
+    }
+    return applyRateHeaders(NextResponse.redirect(new URL("/login", req.url)), rateContext);
   }
 
-  const requiresSubscriptionCheck = Boolean(token) && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
+  const requiresSubscriptionCheck = Boolean(sessionToken) && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
 
   let sessionRole = normalizeRole(null);
 
@@ -160,17 +209,17 @@ export async function middleware(req: NextRequest) {
     if (sessionRole !== "super_admin") {
       if (isHardLockedSubscription(subscriptionState)) {
         if (isApiRequest) {
-          return jsonError(req, 403, "Subscription locked. Please update billing.", "SUBSCRIPTION_LOCKED");
+          return applyRateHeaders(jsonError(req, 403, "Subscription locked. Please update billing.", "SUBSCRIPTION_LOCKED"), rateContext);
         }
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = "/billing";
-        return withSecurityHeaders(NextResponse.redirect(redirectUrl));
+        return applyRateHeaders(NextResponse.redirect(redirectUrl), rateContext);
       }
 
       if (isApiRequest && isReadOnlySubscription(subscriptionState)) {
         const method = req.method.toUpperCase();
         if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-          return jsonError(req, 403, "Subscription is read-only. Mutations are disabled.", "SUBSCRIPTION_READ_ONLY");
+          return applyRateHeaders(jsonError(req, 403, "Subscription is read-only. Mutations are disabled.", "SUBSCRIPTION_READ_ONLY"), rateContext);
         }
       }
     }
@@ -179,17 +228,17 @@ export async function middleware(req: NextRequest) {
   if (pageRole && sessionRole && pageRole !== sessionRole) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = "/unauthorized";
-    return withSecurityHeaders(NextResponse.redirect(redirectUrl));
+    return applyRateHeaders(NextResponse.redirect(redirectUrl), rateContext);
   }
 
   if (isApiRequest && sessionRole) {
     const allowedRoles = rolesAllowedForApi(pathname);
     if (allowedRoles && !allowedRoles.includes(sessionRole)) {
-      return jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN");
+      return applyRateHeaders(jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN"), rateContext);
     }
   }
 
-  return withSecurityHeaders(NextResponse.next());
+  return applyRateHeaders(NextResponse.next(), rateContext);
 }
 
 export const config = {
