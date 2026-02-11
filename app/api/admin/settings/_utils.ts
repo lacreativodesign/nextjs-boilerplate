@@ -39,7 +39,27 @@ export const DEFAULT_FINANCE_SETTINGS = {
   payrollApprovalRequired: false,
   lockPastMonths: false,
   fxPkrPerUsd: 280,
+  lateFeesSettings: {
+    enabled: true,
+    type: "percentage" as const,
+    value: 5,
+    gracePeriodDays: 3,
+  },
 };
+
+export function parseLateFeesSettings(value: any) {
+  const source = typeof value === "object" && value ? value : {};
+  const type = source.type === "fixed" ? "fixed" : "percentage";
+  return {
+    enabled: parseBoolean(source.enabled, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.enabled),
+    type,
+    value: Math.max(0, parseNumber(source.value, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.value)),
+    gracePeriodDays: Math.max(
+      0,
+      parseNumber(source.gracePeriodDays, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.gracePeriodDays)
+    ),
+  };
+}
 
 export const DEFAULT_SYSTEM_SETTINGS = {
   companyName: "",
@@ -155,6 +175,7 @@ export async function getFinanceSettings() {
     payrollApprovalRequired: parseBoolean(data?.payrollApprovalRequired, DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired),
     lockPastMonths: parseBoolean(data?.lockPastMonths, DEFAULT_FINANCE_SETTINGS.lockPastMonths),
     fxPkrPerUsd: parseNumber(data?.fxPkrPerUsd, DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd),
+    lateFeesSettings: parseLateFeesSettings(data?.lateFeesSettings),
     updatedAt: toISO(data?.updatedAt),
     updatedBy: data?.updatedBy || null,
   };

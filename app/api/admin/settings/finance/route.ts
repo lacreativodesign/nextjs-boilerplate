@@ -8,6 +8,7 @@ import {
   parseNumberArray,
   parseString,
   parseStringArray,
+  parseLateFeesSettings,
   requireAdmin,
   serverTimestamp,
   toISO,
@@ -35,6 +36,7 @@ export async function GET() {
       payrollApprovalRequired: parseBoolean(data?.payrollApprovalRequired, DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired),
       lockPastMonths: parseBoolean(data?.lockPastMonths, DEFAULT_FINANCE_SETTINGS.lockPastMonths),
       fxPkrPerUsd: parseNumber(data?.fxPkrPerUsd, DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd),
+      lateFeesSettings: parseLateFeesSettings(data?.lateFeesSettings),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,
     };
@@ -71,6 +73,7 @@ export async function PUT(req: Request) {
       payrollApprovalRequired: parseBoolean(body?.payrollApprovalRequired, DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired),
       lockPastMonths: parseBoolean(body?.lockPastMonths, DEFAULT_FINANCE_SETTINGS.lockPastMonths),
       fxPkrPerUsd: parseNumber(body?.fxPkrPerUsd, DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd),
+      lateFeesSettings: parseLateFeesSettings(body?.lateFeesSettings),
       updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
     };
