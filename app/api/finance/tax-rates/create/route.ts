@@ -4,7 +4,6 @@ import { requireFinance, serverTimestamp } from "@/app/api/finance/_utils";
 import { resolveErrorResponse } from "@/lib/errors";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logError } from "@/lib/logging";
-import { assertPermission, Permission } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +28,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    assertPermission(auth.user.role, Permission.EditFinance);
     await checkRateLimit(req, "standard", auth.user.uid);
 
     const body = await req.json();
