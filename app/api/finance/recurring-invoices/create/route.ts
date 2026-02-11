@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { requireFinance, serverTimestamp } from "@/app/api/_utils";
+import { requireFinance, serverTimestamp } from "../../_utils";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
 import { checkRateLimit } from "@/lib/security";
