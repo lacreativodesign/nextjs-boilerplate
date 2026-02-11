@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "qa": "node scripts/qa-smoke.mjs"
+    "qa": "node scripts/qa-smoke.mjs",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
@@ -51,6 +53,13 @@
     "eslint-config-next": "14.2.12",
     "postcss": "8.4.38",
     "tailwindcss": "3.4.10",
-    "typescript": "5.5.4"
+    "typescript": "5.5.4",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/user-event": "^14.6.1",
+    "msw": "^2.7.0"
   }
 }
