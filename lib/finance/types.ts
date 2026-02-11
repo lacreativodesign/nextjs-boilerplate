@@ -20,6 +20,8 @@ export type InvoiceRecord = {
   currency: CurrencyCode;
   baseCurrency?: CurrencyCode;
   exchangeRate?: number;
+  exchangeRateDate?: string | null;
+  totalUSD?: number;
   amountSubtotal?: number;
   amountTax?: number;
   amountTotal?: number;
