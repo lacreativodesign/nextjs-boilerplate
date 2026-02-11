@@ -11,6 +11,12 @@ type FinanceSettings = {
   payrollApprovalRequired: boolean;
   lockPastMonths: boolean;
   fxPkrPerUsd: number;
+  lateFeesSettings: {
+    enabled: boolean;
+    type: "percentage" | "fixed";
+    value: number;
+    gracePeriodDays: number;
+  };
   updatedAt?: string | null;
   updatedBy?: string | null;
 };
@@ -23,6 +29,12 @@ const DEFAULT_SETTINGS: FinanceSettings = {
   payrollApprovalRequired: false,
   lockPastMonths: false,
   fxPkrPerUsd: 280,
+  lateFeesSettings: {
+    enabled: true,
+    type: "percentage",
+    value: 5,
+    gracePeriodDays: 3,
+  },
 };
 
 export default function FinanceSettingsPage() {
@@ -249,6 +261,97 @@ export default function FinanceSettingsPage() {
             />
             <span>Lock edits for past months</span>
           </label>
+        </div>
+
+        <div className="mt-8 border-t border-[var(--line)] pt-6">
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Late Fee Configuration</div>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            Automatically apply late fees and drive overdue invoice recovery.
+          </p>
+
+          <div className="mt-4 grid gap-6 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.lateFeesSettings.enabled}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    lateFeesSettings: { ...prev.lateFeesSettings, enabled: e.target.checked },
+                  }))
+                }
+                disabled={disabled}
+              />
+              <span>Enable Late Fees</span>
+            </label>
+          </div>
+
+          {settings.lateFeesSettings.enabled && (
+            <div className="mt-4 grid gap-6 lg:grid-cols-3">
+              <label className="space-y-2">
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Late Fee Type</span>
+                <select
+                  className="input"
+                  value={settings.lateFeesSettings.type}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      lateFeesSettings: {
+                        ...prev.lateFeesSettings,
+                        type: e.target.value === "fixed" ? "fixed" : "percentage",
+                      },
+                    }))
+                  }
+                  disabled={disabled}
+                >
+                  <option value="percentage">Percentage</option>
+                  <option value="fixed">Fixed Amount</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  Late Fee {settings.lateFeesSettings.type === "percentage" ? "Percentage" : "Amount (USD)"}
+                </span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={settings.lateFeesSettings.value}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      lateFeesSettings: {
+                        ...prev.lateFeesSettings,
+                        value: Number(e.target.value),
+                      },
+                    }))
+                  }
+                  disabled={disabled}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Grace Period (days)</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={settings.lateFeesSettings.gracePeriodDays}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      lateFeesSettings: {
+                        ...prev.lateFeesSettings,
+                        gracePeriodDays: Number(e.target.value),
+                      },
+                    }))
+                  }
+                  disabled={disabled}
+                />
+              </label>
+            </div>
+          )}
         </div>
       </section>
     </div>
