@@ -7,6 +7,7 @@ import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { formatDate, formatDateTime, formatUsd, useIsSystemDark } from "@/components/finance/financeUtils";
 import type { InvoiceRecord } from "@/lib/finance/types";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 
 const STATUS_OPTIONS = [
@@ -35,6 +36,10 @@ type SortDir = "asc" | "desc";
 type CurrentUser = { uid: string; role: string; name?: string };
 
 type ErrorState = { title: string; message: string };
+
+const getCurrencySymbol = (code?: string) => {
+  return SUPPORTED_CURRENCIES.find((currency) => currency.code === code)?.symbol || code || "USD";
+};
 
 export default function FinanceInvoicesPage() {
   const isDark = useIsSystemDark();
@@ -335,7 +340,7 @@ export default function FinanceInvoicesPage() {
                         <div style={{ fontSize: 12, opacity: 0.65 }}>{invoice.clientId}</div>
                       </td>
                       <td style={{ padding: "14px 16px", textAlign: "left" }}>{invoice.clientName}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatUsd(invoice.amountTotalUsd)}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}><span>{getCurrencySymbol(invoice.currency)}{Number(invoice.amountTotal || invoice.amountTotalUsd || 0).toFixed(2)}</span></td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(invoice.dueDate)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(invoice.updatedAt)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(invoice.status, isDark)}</td>
@@ -465,9 +470,9 @@ function InvoiceDrawer({
   onMarkPaid: (invoice: InvoiceRecord) => void;
   actionLoading: boolean;
 }) {
-  const subtotal = invoice.amountSubtotalUsd;
-  const tax = invoice.amountTaxUsd;
-  const total = invoice.amountTotalUsd;
+  const subtotal = Number(invoice.amountSubtotal || invoice.amountSubtotalUsd || 0);
+  const tax = Number(invoice.amountTax || invoice.amountTaxUsd || 0);
+  const total = Number(invoice.amountTotal || invoice.amountTotalUsd || 0);
 
   return (
     <div
@@ -530,15 +535,15 @@ function InvoiceDrawer({
                   <span>
                     {item.name} × {item.qty}
                   </span>
-                  <span>{formatUsd(item.qty * item.unitPriceUsd)}</span>
+                  <span>{getCurrencySymbol(invoice.currency)}{(item.qty * item.unitPriceUsd).toFixed(2)}</span>
                 </div>
               ))
             )}
           </div>
           <div style={{ height: 10 }} />
-          <Row label="Subtotal" value={formatUsd(subtotal)} />
-          <Row label="Tax" value={formatUsd(tax)} />
-          <Row label="Total" value={formatUsd(total)} />
+          <Row label="Subtotal" value={<span>{getCurrencySymbol(invoice.currency)}{subtotal.toFixed(2)}</span>} />
+          <Row label="Tax" value={<span>{getCurrencySymbol(invoice.currency)}{tax.toFixed(2)}</span>} />
+          <Row label="Total" value={<span>{getCurrencySymbol(invoice.currency)}{total.toFixed(2)}</span>} />
         </div>
 
         {invoice.notes && (

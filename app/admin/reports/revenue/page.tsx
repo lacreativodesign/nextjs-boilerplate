@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart, useSortableData } from "../_components/ReportsUI";
+import { CurrencyConverter } from "@/components/currency/CurrencyConverter";
 
 type RevenueResponse = {
   revenueByMonth: Array<{ label: string; revenueUsd: number }>;
@@ -246,6 +247,10 @@ export default function RevenueReportsPage() {
             valueFormatter={formatUsd}
           />
         </CardShell>
+      </section>
+
+      <section>
+        <CurrencyConverter />
       </section>
 
       <section>

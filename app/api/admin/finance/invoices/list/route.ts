@@ -12,9 +12,14 @@ type InvoiceDoc = {
   clientId?: string;
   clientName?: string;
   currency?: string;
+  amountSubtotal?: number;
+  amountTax?: number;
+  amountTotal?: number;
   amountSubtotalUsd?: number;
   amountTaxUsd?: number;
   amountTotalUsd?: number;
+  exchangeRateDate?: string;
+  totalUSD?: number;
   status?: string;
   dueDate?: any;
   issuedAt?: any;
@@ -47,9 +52,14 @@ export async function GET() {
         clientId: data.clientId || "",
         clientName: data.clientName || "",
         currency: data.currency || "USD",
+        amountSubtotal: Number(data.amountSubtotal ?? data.amountSubtotalUsd || 0),
+        amountTax: Number(data.amountTax ?? data.amountTaxUsd || 0),
+        amountTotal: Number(data.amountTotal ?? data.amountTotalUsd || 0),
         amountSubtotalUsd: Number(data.amountSubtotalUsd || 0),
         amountTaxUsd: Number(data.amountTaxUsd || 0),
         amountTotalUsd: Number(data.amountTotalUsd || 0),
+        exchangeRateDate: data.exchangeRateDate || null,
+        totalUSD: Number(data.totalUSD ?? data.amountTotalUsd || 0),
         status: toInvoiceStatusLabel(data.status),
         dueDate: toISO(data.dueDate),
         issuedAt: toISO(data.issuedAt),

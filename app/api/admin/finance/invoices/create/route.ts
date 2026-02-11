@@ -6,7 +6,7 @@ import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
-import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
+import { currencyConverter } from "@/lib/currency/currencyConverter";
 import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
 
 export const dynamic = "force-dynamic";
@@ -96,15 +96,17 @@ export async function POST(req: Request) {
     }
 
     const baseCurrency: CurrencyCode = "USD";
-    let exchangeRate = 1;
-    if (currencyCode !== baseCurrency) {
-      exchangeRate = await getExchangeRate(currencyCode, baseCurrency);
-      await storeHistoricalRate(currencyCode, baseCurrency, exchangeRate, auth.user.tenantId || "global");
+
+    if (currencyConverter.needsUpdate()) {
+      await currencyConverter.fetchRates();
     }
 
-    const amountSubtotalBase = amountSubtotal * exchangeRate;
-    const amountTaxBase = amountTaxUsd * exchangeRate;
-    const amountTotalBase = amountTotal * exchangeRate;
+    const exchangeRate = currencyCode !== baseCurrency ? currencyConverter.getRate(currencyCode, baseCurrency) : 1;
+
+    const amountSubtotalBase = Number((amountSubtotal * exchangeRate).toFixed(2));
+    const amountTaxBase = Number((amountTaxUsd * exchangeRate).toFixed(2));
+    const amountTotalBase = Number((amountTotal * exchangeRate).toFixed(2));
+    const exchangeRateDate = new Date().toISOString();
 
     const existingInvoiceSnap = await adminDb
       .collection("invoices")
@@ -125,6 +127,7 @@ export async function POST(req: Request) {
       currencySymbol: getCurrency(currencyCode).symbol,
       baseCurrency,
       exchangeRate,
+      exchangeRateDate,
       amountSubtotal,
       amountTax: amountTaxUsd,
       amountTotal,
@@ -136,6 +139,7 @@ export async function POST(req: Request) {
       amountSubtotalUsd: amountSubtotalBase,
       amountTaxUsd: amountTaxBase,
       amountTotalUsd: amountTotalBase,
+      totalUSD: amountTotalBase,
       status: "draft",
       totalPaid: 0,
       balanceDue: amountTotal,
