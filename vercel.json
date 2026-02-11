@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-invoices",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
