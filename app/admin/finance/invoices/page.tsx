@@ -14,6 +14,7 @@ import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
 import { CurrencyCode } from "@/lib/finance/currencies";
 import { CurrencyDisplay } from "@/components/finance/CurrencyDisplay";
 import { CurrencySelector } from "@/components/finance/CurrencySelector";
+import { InvoiceDownloadButton } from "@/components/finance/InvoiceDownloadButton";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
@@ -798,9 +799,7 @@ function InvoiceDrawer({
           >
             Send Invoice
           </LoadingButton>
-          <button className="btn ghost" style={{ borderRadius: 999 }} title="PDF download coming soon" disabled>
-            Download PDF
-          </button>
+          <InvoiceDownloadButton invoiceId={invoice.id} invoiceNumber={invoice.orderId || invoice.id} />
           {canAdmin && invoice.status !== "Paid" && (
             <LoadingButton
               className="btn"
