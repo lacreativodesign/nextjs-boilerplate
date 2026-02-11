@@ -7,6 +7,7 @@ import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
+import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context is required." }, { status: 400 });
+    }
+
     const body = await req.json();
     const clientId = parseString(body?.clientId).trim();
     const clientName = parseString(body?.clientName).trim();
     const dueDate = parseString(body?.dueDate).trim();
     const notes = parseString(body?.notes).trim();
-    const amountTaxUsd = parseNumber(body?.amountTaxUsd, 0);
+    const isTaxExempt = Boolean(body?.isTaxExempt);
     const currencyCode = String(body?.currency || "USD").toUpperCase() as CurrencyCode;
 
     const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
@@ -59,7 +64,37 @@ export async function POST(req: Request) {
       return sum + Number(item.qty || 0) * Number(item.unitPriceUsd || 0);
     }, 0);
 
-    const amountTotal = amountSubtotal + amountTaxUsd;
+    let taxDetails: Array<{ name: string; rate: number; amount: number }> = [];
+    let amountTaxUsd = 0;
+    let amountTotal = amountSubtotal;
+
+    if (!isTaxExempt) {
+      const taxRatesSnap = await adminDb
+        .collection("tenants")
+        .doc(auth.user.tenantId)
+        .collection("taxRates")
+        .where("enabled", "==", true)
+        .get();
+
+      const taxRates = taxRatesSnap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: String(data.name || "Tax"),
+          rate: Number(data.rate || 0),
+          type: data.type === "compound" ? "compound" : "simple",
+          applies_to: data.applies_to === "subtotal_plus_other_taxes" ? "subtotal_plus_other_taxes" : "subtotal",
+          enabled: Boolean(data.enabled),
+        } as TaxRate;
+      });
+
+      const calculator = new TaxCalculator(taxRates);
+      const taxCalculation = calculator.calculate(amountSubtotal);
+      taxDetails = taxCalculation.taxDetails;
+      amountTaxUsd = taxCalculation.totalTax;
+      amountTotal = taxCalculation.total;
+    }
+
     const baseCurrency: CurrencyCode = "USD";
     let exchangeRate = 1;
     if (currencyCode !== baseCurrency) {
@@ -93,6 +128,8 @@ export async function POST(req: Request) {
       amountSubtotal,
       amountTax: amountTaxUsd,
       amountTotal,
+      taxDetails,
+      isTaxExempt,
       amountSubtotalBase,
       amountTaxBase,
       amountTotalBase,
