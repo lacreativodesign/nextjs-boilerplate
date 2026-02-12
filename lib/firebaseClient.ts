@@ -11,7 +11,6 @@ type FirebaseClientConfig = {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
-  databaseURL?: string;
 };
 
 const isBrowser = typeof window !== "undefined";
@@ -87,13 +86,12 @@ export function getFirebaseApp(): FirebaseApp {
   const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
   const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-  const databaseURL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
 
   if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
     throw new Error("Firebase public config is incomplete for realtime features.");
   }
 
-  return initializeApp({ apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId, databaseURL });
+  return initializeApp({ apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId });
 }
 
 export async function getFirebaseAuth(): Promise<Auth> {

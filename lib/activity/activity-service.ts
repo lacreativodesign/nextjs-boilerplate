@@ -1,8 +1,9 @@
-import { adminDb, adminRtdb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/firebaseAdmin";
 import type { ActivityActionType, ActivityRecord, PresenceRecord } from "@/types/activity-feed";
 
 const ACTIVITIES_COLLECTION = "activities";
 const READ_STATES_COLLECTION = "activity_read_states";
+const PRESENCE_COLLECTION = "activity_presence";
 
 type CreateActivityInput = {
   tenantId: string;
@@ -53,8 +54,6 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
   };
 
   await ref.set(payload);
-
-  await adminRtdb.ref(`activity/${input.tenantId}/${payload.id}`).set(payload);
   return payload;
 }
 
@@ -118,7 +117,7 @@ export async function markActivityReadForUser(params: { tenantId: string; uid: s
       lastReadAt: nextLastReadAt,
       updatedAt: new Date().toISOString(),
     },
-    { merge: true },
+    { merge: true }
   );
 
   return { ok: true as const };
@@ -137,15 +136,44 @@ export async function getUnreadCount(tenantId: string, uid: string): Promise<num
     q = q.where("createdAt", ">", lastReadAt);
   }
 
-  const [countSnap] = await Promise.all([q.count().get()]);
+  const countSnap = await q.count().get();
   return countSnap.data().count;
 }
 
-export async function listOnlineUsers(tenantId: string): Promise<PresenceRecord[]> {
-  const snap = await adminRtdb.ref(`presence/${tenantId}`).get();
-  const raw = (snap.val() || {}) as Record<string, PresenceRecord>;
+export async function upsertPresence(input: {
+  tenantId: string;
+  uid: string;
+  name: string;
+  email?: string | null;
+  role?: string | null;
+  online: boolean;
+}): Promise<void> {
+  const docId = `${input.tenantId}_${input.uid}`;
+  await adminDb.collection(PRESENCE_COLLECTION).doc(docId).set(
+    {
+      tenantId: input.tenantId,
+      uid: input.uid,
+      name: input.name,
+      email: input.email || null,
+      role: input.role || null,
+      online: input.online,
+      lastSeenAt: Date.now(),
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true }
+  );
+}
 
-  return Object.values(raw)
-    .filter((item) => Boolean(item?.online))
-    .sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+export async function listOnlineUsers(tenantId: string): Promise<PresenceRecord[]> {
+  const threshold = Date.now() - 2 * 60 * 1000;
+  const snapshot = await adminDb
+    .collection(PRESENCE_COLLECTION)
+    .where("tenantId", "==", tenantId)
+    .where("online", "==", true)
+    .where("lastSeenAt", ">=", threshold)
+    .orderBy("lastSeenAt", "desc")
+    .limit(100)
+    .get();
+
+  return snapshot.docs.map((doc) => doc.data() as PresenceRecord);
 }

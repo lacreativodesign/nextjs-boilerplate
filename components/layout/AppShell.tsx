@@ -62,13 +62,6 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <ActivityFeedSidebar
               open={activityOpen}
               onClose={() => setActivityOpen((prev) => !prev)}
-              tenantId={data?.user?.tenantId || "default"}
-              user={{
-                uid: data?.user?.uid || "unknown",
-                name: currentUser.name,
-                email: currentUser.email,
-                role: currentUser.role,
-              }}
             />
           }
         />

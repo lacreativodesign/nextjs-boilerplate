@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCircle2, Clock3, MessageSquare, Pencil, PlusCircle, Trash2, UserRoundPlus, Users } from "lucide-react";
 import type { ActivityRecord, PresenceRecord } from "@/types/activity-feed";
-import { setUserPresence, subscribeToActivityUpdates, subscribeToPresence } from "@/lib/realtime/activity-sync";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  tenantId: string;
-  user: { uid: string; name: string; email?: string | null; role?: string | null };
 };
 
 const iconByAction = {
@@ -26,7 +23,7 @@ function formatDate(value: string) {
   return parsed.toLocaleString();
 }
 
-export default function ActivityFeedSidebar({ open, onClose, tenantId, user }: Props) {
+export default function ActivityFeedSidebar({ open, onClose }: Props) {
   const [items, setItems] = useState<ActivityRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,6 +44,22 @@ export default function ActivityFeedSidebar({ open, onClose, tenantId, user }: P
     }
   }, []);
 
+  const fetchPresence = useCallback(async () => {
+    const res = await fetch("/api/activities/presence", { cache: "no-store" });
+    const payload = await res.json().catch(() => null);
+    if (res.ok && payload?.ok && Array.isArray(payload.users)) {
+      setPresence(payload.users as PresenceRecord[]);
+    }
+  }, []);
+
+  const sendPresence = useCallback(async (online: boolean) => {
+    await fetch("/api/activities/presence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ online }),
+    });
+  }, []);
+
   const load = useCallback(
     async (cursor?: string, append?: boolean) => {
       const params = new URLSearchParams();
@@ -59,6 +72,7 @@ export default function ActivityFeedSidebar({ open, onClose, tenantId, user }: P
 
       if (append) setLoadingMore(true);
       else setLoading(true);
+
       try {
         const res = await fetch(`/api/activities/feed?${params.toString()}`, { cache: "no-store" });
         const payload = await res.json().catch(() => null);
@@ -78,46 +92,44 @@ export default function ActivityFeedSidebar({ open, onClose, tenantId, user }: P
         setLoadingMore(false);
       }
     },
-    [moduleFilter, userFilter, fromDate, toDate],
+    [moduleFilter, userFilter, fromDate, toDate]
   );
 
   useEffect(() => {
     void load();
     void fetchUnread();
-  }, [load, fetchUnread]);
+    void fetchPresence();
+  }, [load, fetchUnread, fetchPresence]);
 
   useEffect(() => {
-    const stop = subscribeToActivityUpdates({
-      tenantId,
-      onActivity: (activity) => {
-        setItems((prev) => {
-          const map = new Map(prev.map((item) => [item.id, item]));
-          map.set(activity.id, activity);
-          return Array.from(map.values()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-        });
-        setUnreadCount((prev) => prev + 1);
-      },
-    });
+    void sendPresence(true);
 
-    return () => stop();
-  }, [tenantId]);
+    const unreadInterval = window.setInterval(() => {
+      void fetchUnread();
+    }, 8000);
 
-  useEffect(() => {
-    const stopPresence = subscribeToPresence(tenantId, setPresence);
-    let stopOwnPresence: null | (() => void) = null;
-    setUserPresence({ tenantId, uid: user.uid, name: user.name, email: user.email || null, role: user.role || null })
-      .then((cleanup) => {
-        stopOwnPresence = cleanup;
-      })
-      .catch((err) => {
-        console.error("presence init failed", err);
-      });
+    const feedInterval = window.setInterval(() => {
+      void load();
+    }, 10000);
+
+    const presenceInterval = window.setInterval(() => {
+      void sendPresence(true);
+      void fetchPresence();
+    }, 30000);
+
+    const onBeforeUnload = () => {
+      navigator.sendBeacon("/api/activities/presence", JSON.stringify({ online: false }));
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => {
-      stopPresence();
-      stopOwnPresence?.();
+      window.clearInterval(unreadInterval);
+      window.clearInterval(feedInterval);
+      window.clearInterval(presenceInterval);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void sendPresence(false);
     };
-  }, [tenantId, user.uid, user.name, user.email, user.role]);
+  }, [fetchPresence, fetchUnread, load, sendPresence]);
 
   useEffect(() => {
     if (!endRef.current || !nextCursor) return;
@@ -127,7 +139,7 @@ export default function ActivityFeedSidebar({ open, onClose, tenantId, user }: P
           void load(nextCursor, true);
         }
       },
-      { threshold: 0.2 },
+      { threshold: 0.2 }
     );
     observer.observe(endRef.current);
     return () => observer.disconnect();

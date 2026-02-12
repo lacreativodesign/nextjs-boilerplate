@@ -10,7 +10,6 @@ export async function GET() {
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     NEXT_PUBLIC_FIREBASE_APP_ID,
-    NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   } = process.env;
 
   const missing = [
@@ -38,6 +37,5 @@ export async function GET() {
     storageBucket: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: NEXT_PUBLIC_FIREBASE_APP_ID,
-    databaseURL: NEXT_PUBLIC_FIREBASE_DATABASE_URL || null,
   });
 }
