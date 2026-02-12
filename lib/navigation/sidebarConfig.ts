@@ -126,6 +126,7 @@ export const sidebarNavigation: NavItem[] = [
     roles: ["hr", "admin", "super_admin"],
     children: [
       { id: "hr-dashboard", label: "Dashboard", href: "/hr/dashboard", icon: "LayoutDashboard", roles: ["hr", "admin", "super_admin"] },
+      { id: "hr-leave", label: "Leave", href: "/hr/leave", icon: "CalendarDays", roles: ["hr", "admin", "super_admin"] },
     ],
   },
   {
