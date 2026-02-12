@@ -31,6 +31,7 @@ export const sidebarNavigation: NavItem[] = [
       { id: "admin-dashboard", label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard", roles: ["admin", "super_admin"] },
       { id: "admin-users", label: "Users", href: "/admin/users", icon: "Users", roles: ["admin", "super_admin"] },
       { id: "admin-clients", label: "Clients", href: "/admin/clients", icon: "Briefcase", roles: ["admin", "super_admin"] },
+      { id: "admin-automation", label: "Automation", href: "/admin/automation", icon: "Settings", roles: ["admin", "super_admin"] },
     ],
   },
   {
