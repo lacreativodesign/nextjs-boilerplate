@@ -35,6 +35,8 @@ type PaymentRecord = {
   amountUsd?: number | null;
   paidAt?: string | null;
   createdAt?: string | null;
+  receiptUrl?: string | null;
+  method?: string | null;
 };
 
 type ChangeRequestRecord = {
@@ -101,6 +103,8 @@ export default function ClientBillingPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detail, setDetail] = useState<InvoiceDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const headerCellStyle: CSSProperties = {
     padding: "12px 14px",
@@ -131,7 +135,7 @@ export default function ClientBillingPage() {
       try {
         const [invResS, payResS, crResS] = await Promise.allSettled([
           fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
-          fetch("/api/client/billing/payments/list", { credentials: "include", cache: "no-store" }),
+          fetch("/api/payments/history", { credentials: "include", cache: "no-store" }),
           fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" }),
         ]);
 
@@ -233,6 +237,29 @@ export default function ClientBillingPage() {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setDetail(null);
+    setCheckoutError(null);
+  };
+
+  const startPayment = async (invoiceId: string) => {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/payments/create-intent", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok || !payload?.checkoutUrl) {
+        throw new Error(payload?.error || "Unable to start payment.");
+      }
+      window.location.href = payload.checkoutUrl;
+    } catch (err: any) {
+      setCheckoutError(err?.message || "Unable to start payment.");
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   return (
@@ -337,9 +364,11 @@ export default function ClientBillingPage() {
                 <tr>
                   <th style={headerCellStyle}>Order</th>
                   <th style={headerCellStyle}>Status</th>
+                  <th style={headerCellStyle}>Method</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Amount</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Paid</th>
                   <th style={{ ...headerCellStyle, textAlign: "right" }}>Created</th>
+                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Receipt</th>
                 </tr>
               </thead>
               <tbody>
@@ -355,9 +384,19 @@ export default function ClientBillingPage() {
                     <tr key={p.id} style={{ background: rowBg }}>
                       <td style={cellStyle}>{p.orderId || "-"}</td>
                       <td style={cellStyle}>{p.status || "-"}</td>
+                      <td style={cellStyle}>{p.method || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(Number(p.amountUsd || 0))}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.paidAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(p.createdAt)}</td>
+                      <td style={{ ...cellStyle, textAlign: "center" }}>
+                        {p.receiptUrl ? (
+                          <a className="btn ghost" style={{ borderRadius: 999 }} href={p.receiptUrl} target="_blank" rel="noreferrer">
+                            Download
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -430,8 +469,21 @@ export default function ClientBillingPage() {
                   <p className="text-sm mt-2 text-[var(--text-muted)]">
                     {safeLower(detail.status) === "paid"
                       ? "Payment received. Receipt details will be emailed to you."
-                      : "Payment Pending — our team will follow up with next steps."}
+                      : "Pay this invoice securely via Stripe Checkout."}
                   </p>
+                  {safeLower(detail.status) !== "paid" && (
+                    <div className="mt-3">
+                      <button
+                        className="btn"
+                        style={{ borderRadius: 999 }}
+                        disabled={checkoutLoading}
+                        onClick={() => startPayment(detail.id)}
+                      >
+                        {checkoutLoading ? "Redirecting to Stripe..." : "Pay invoice"}
+                      </button>
+                    </div>
+                  )}
+                  {checkoutError && <p className="mt-2 text-sm text-red-400">{checkoutError}</p>}
                 </div>
               </>
             )}
