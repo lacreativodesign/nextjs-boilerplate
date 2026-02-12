@@ -74,11 +74,14 @@ export default function Header({ onMenuToggle, currentUser }: HeaderProps) {
 
       <div className="hidden flex-1 items-center justify-center md:flex">
         <div className="w-full max-w-md">
-          <input
-            type="search"
-            placeholder="Search"
-            className="w-full rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-soft)]"
-          />
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("bizosto:search-open"))}
+            className="flex w-full items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-2 text-sm text-[var(--text-soft)]"
+          >
+            <span>Search</span>
+            <span className="rounded border border-[var(--border-subtle)] px-1.5 py-0.5 text-[10px] font-semibold">⌘K</span>
+          </button>
         </div>
       </div>
 

@@ -31,3 +31,26 @@ export interface SearchFilter {
   operator: FilterOperator;
   value: unknown;
 }
+
+export type GlobalSearchModule =
+  | "users"
+  | "customers"
+  | "projects"
+  | "invoices"
+  | "documents"
+  | "payments"
+  | "expenses"
+  | "inventory"
+  | "search_index";
+
+export interface GlobalSearchResult {
+  id: string;
+  module: GlobalSearchModule;
+  title: string;
+  subtitle: string;
+  status?: string;
+  date?: string;
+  href: string;
+  score: number;
+  highlights: string[];
+}

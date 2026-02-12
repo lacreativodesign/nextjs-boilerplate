@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
+import GlobalSearchModal from "@/components/search/GlobalSearchModal";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { normalizeRole } from "@/lib/erpAccess";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
@@ -43,7 +44,6 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)]">
-      {/* Sidebar is fixed on desktop/tablet; mobile uses off-canvas drawer */}
       <Sidebar
         currentRole={currentUser.role}
         userName={currentUser.name}
@@ -60,6 +60,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <GlobalSearchModal />
     </div>
   );
 }
