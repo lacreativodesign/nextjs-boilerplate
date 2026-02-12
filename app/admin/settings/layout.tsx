@@ -10,6 +10,7 @@ const tabs = [
   { label: "Finance", path: "/admin/settings/finance" },
   { label: "Sales", path: "/admin/settings/sales" },
   { label: "Notifications", path: "/admin/settings/notifications" },
+  { label: "Email Templates", path: "/admin/settings/email-templates" },
   { label: "Workflows", path: "/admin/settings/workflows" },
   { label: "Integrations", path: "/admin/settings/integrations" },
 ];
