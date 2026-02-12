@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, serverTimestamp } from "../_utils";
 import { TaxRate } from "@/lib/tax/taxCalculator";
+import { QUERY_CACHE_TTL_MS, getQueryCacheControl, isCacheFresh } from "@/lib/cache/query-client";
 
 export const dynamic = "force-dynamic";
+
+type TenantTaxCache = {
+  taxRates: Array<TaxRate & { id: string }>;
+  updatedAt: number;
+};
+
+const tenantTaxRatesCache = new Map<string, TenantTaxCache>();
 
 function normalizeTaxRate(data: Partial<TaxRate>): Omit<TaxRate, "id"> {
   return {
@@ -41,10 +49,22 @@ async function getTenantId() {
   return { ok: true as const, tenantId, auth };
 }
 
+function invalidateTenantCache(tenantId: string) {
+  tenantTaxRatesCache.delete(tenantId);
+}
+
 export async function GET() {
   try {
     const tenantResult = await getTenantId();
     if (!tenantResult.ok) return tenantResult.response;
+
+    const cached = tenantTaxRatesCache.get(tenantResult.tenantId);
+    if (cached && isCacheFresh(cached.updatedAt, "taxRates")) {
+      return NextResponse.json(
+        { ok: true, taxRates: cached.taxRates },
+        { headers: { "Cache-Control": getQueryCacheControl("taxRates") } },
+      );
+    }
 
     const snapshot = await adminDb
       .collection("tenants")
@@ -56,9 +76,19 @@ export async function GET() {
     const taxRates = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    })) as Array<TaxRate & { id: string }>;
 
-    return NextResponse.json({ ok: true, taxRates });
+    tenantTaxRatesCache.set(tenantResult.tenantId, { taxRates, updatedAt: Date.now() });
+
+    return NextResponse.json(
+      { ok: true, taxRates },
+      {
+        headers: {
+          "Cache-Control": getQueryCacheControl("taxRates"),
+          "X-Cache-TTL-Ms": String(QUERY_CACHE_TTL_MS.taxRates),
+        },
+      },
+    );
   } catch (error: any) {
     console.error("Error fetching tax rates:", error);
     return NextResponse.json({ ok: false, error: "Failed to fetch tax rates" }, { status: 500 });
@@ -84,6 +114,8 @@ export async function POST(request: Request) {
       updatedAt: serverTimestamp(),
       createdBy: tenantResult.auth.user.uid,
     });
+
+    invalidateTenantCache(tenantResult.tenantId);
 
     return NextResponse.json({ ok: true, id: docRef.id, taxRate: { id: docRef.id, ...taxRate } });
   } catch (error: any) {
@@ -118,6 +150,7 @@ export async function PATCH(request: Request) {
     updates.updatedAt = serverTimestamp();
 
     await adminDb.collection("tenants").doc(tenantResult.tenantId).collection("taxRates").doc(id).update(updates);
+    invalidateTenantCache(tenantResult.tenantId);
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {
@@ -138,6 +171,8 @@ export async function DELETE(request: Request) {
     }
 
     await adminDb.collection("tenants").doc(tenantResult.tenantId).collection("taxRates").doc(id).delete();
+    invalidateTenantCache(tenantResult.tenantId);
+
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error("Error deleting tax rate:", error);
