@@ -30,7 +30,6 @@ try {
   app = null;
 }
 
-// When credentials are missing, expose throw-on-use stubs so runtime fails loudly
 function createThrowingProxy<T>(message: string): T {
   return new Proxy(
     {},
@@ -47,18 +46,17 @@ function createThrowingProxy<T>(message: string): T {
 
 const missingAdminMessage = 'Firebase Admin is not configured. Set FIREBASE_ADMIN_KEY with a valid "project_id".';
 
-// Core services
 const auth = app ? admin.auth(app) : createThrowingProxy<admin.auth.Auth>(missingAdminMessage);
-const db = app ? admin.firestore(app) : createThrowingProxy<admin.firestore.Firestore>(missingAdminMessage);
+const firestoreDb = app ? admin.firestore(app) : createThrowingProxy<admin.firestore.Firestore>(missingAdminMessage);
 const storage = app ? admin.storage(app) : createThrowingProxy<admin.storage.Storage>(missingAdminMessage);
 
-// Export in all formats your API routes expect
 export const adminAuth = auth;
-export const adminDb = db;
-export const adminDB = db; // Some routes use this
+export const adminDb = firestoreDb;
+export const adminDB = firestoreDb;
 export const adminStorage = storage;
+export const db = firestoreDb;
 export const getAdminAuth = () => auth;
-export const getAdminDB = () => db;
+export const getAdminDB = () => firestoreDb;
 export const getAdminStorage = () => storage;
 
 export default app;

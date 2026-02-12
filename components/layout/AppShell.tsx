@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import GlobalSearchModal from "@/components/search/GlobalSearchModal";
+import ActivityFeedSidebar from "@/components/activity/ActivityFeedSidebar";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { normalizeRole } from "@/lib/erpAccess";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
@@ -12,6 +13,7 @@ import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { data, loading } = useTenantContext();
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const role = useMemo(() => normalizeRole(data?.user?.role || ""), [data?.user?.role]);
 
@@ -53,7 +55,16 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       />
 
       <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
-        <Header onMenuToggle={openMobile} currentUser={currentUser} />
+        <Header
+          onMenuToggle={openMobile}
+          currentUser={currentUser}
+          activityTrigger={
+            <ActivityFeedSidebar
+              open={activityOpen}
+              onClose={() => setActivityOpen((prev) => !prev)}
+            />
+          }
+        />
         <main className="page-content flex-1 py-[var(--page-padding-y)]">
           <div className="page-frame">
             {loading ? <div className="card p-6">Loading workspace…</div> : children}
