@@ -1,14 +1,15 @@
 "use client";
 
-import { Bell, ChevronDown, Menu } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 
 type HeaderProps = {
   onMenuToggle: () => void;
   currentUser: { name: string; email: string; role: string; avatarUrl?: string };
+  activityTrigger?: ReactNode;
 };
 
 const roleBasePaths: Record<string, string> = {
@@ -29,7 +30,7 @@ const profileEnabledRoles = new Set(["sales", "client"]);
 
 const getBasePath = (role: string) => roleBasePaths[role] || "/";
 
-export default function Header({ onMenuToggle, currentUser }: HeaderProps) {
+export default function Header({ onMenuToggle, currentUser, activityTrigger }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,16 +87,7 @@ export default function Header({ onMenuToggle, currentUser }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[11px] font-semibold text-white">
-            1
-          </span>
-        </button>
+{activityTrigger || null}
 
         <div className="relative" ref={menuRef}>
           <button

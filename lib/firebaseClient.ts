@@ -11,6 +11,7 @@ type FirebaseClientConfig = {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  databaseURL?: string;
 };
 
 const isBrowser = typeof window !== "undefined";
@@ -69,6 +70,30 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
   }
 
   return clientsPromise;
+}
+
+
+export function getFirebaseApp(): FirebaseApp {
+  if (!isBrowser) {
+    throw new Error("Firebase client is only available in the browser.");
+  }
+  if (getApps().length) {
+    return getApp();
+  }
+
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+  const databaseURL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+
+  if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
+    throw new Error("Firebase public config is incomplete for realtime features.");
+  }
+
+  return initializeApp({ apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId, databaseURL });
 }
 
 export async function getFirebaseAuth(): Promise<Auth> {

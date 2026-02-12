@@ -21,6 +21,7 @@ try {
   if (!admin.apps.length && hasProject) {
     app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || process.env.FIREBASE_DATABASE_URL,
     });
   } else if (admin.apps.length) {
     app = admin.app();
@@ -51,14 +52,17 @@ const missingAdminMessage = 'Firebase Admin is not configured. Set FIREBASE_ADMI
 const auth = app ? admin.auth(app) : createThrowingProxy<admin.auth.Auth>(missingAdminMessage);
 const db = app ? admin.firestore(app) : createThrowingProxy<admin.firestore.Firestore>(missingAdminMessage);
 const storage = app ? admin.storage(app) : createThrowingProxy<admin.storage.Storage>(missingAdminMessage);
+const rtdb = app ? admin.database(app) : createThrowingProxy<admin.database.Database>(missingAdminMessage);
 
 // Export in all formats your API routes expect
 export const adminAuth = auth;
 export const adminDb = db;
 export const adminDB = db; // Some routes use this
 export const adminStorage = storage;
+export const adminRtdb = rtdb;
 export const getAdminAuth = () => auth;
 export const getAdminDB = () => db;
 export const getAdminStorage = () => storage;
+export const getAdminRtdb = () => rtdb;
 
 export default app;
