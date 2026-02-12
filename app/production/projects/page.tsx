@@ -1,103 +1,113 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { TableSkeleton } from "@/components/ui/Skeleton";
+import { useEffect, useMemo, useState } from "react";
+import GanttChart from "@/components/production/GanttChart";
+
+type ProjectOption = { id: string; projectName: string };
+
+type GanttPayload = {
+  project: { id: string; name: string };
+  tasks: any[];
+  dependencies: any[];
+  milestones: any[];
+};
 
 export default function ProductionProjectsPage() {
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string>("");
+  const [data, setData] = useState<GanttPayload | null>(null);
+  const [criticalPathIds, setCriticalPathIds] = useState<string[]>([]);
+  const [overAllocatedResources, setOverAllocatedResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 600);
-    return () => window.clearTimeout(timer);
+    let mounted = true;
+    async function loadProjects() {
+      try {
+        setLoading(true);
+        setError(null);
+        const overview = await fetch("/api/production/overview", { credentials: "include", cache: "no-store" }).then((r) => r.json());
+        const queue = (overview?.myQueueTop10 || []) as any[];
+        const options = queue.map((item) => ({ id: item.id, projectName: item.projectName || item.id }));
+        if (!mounted) return;
+        setProjects(options);
+        if (options.length) setActiveProjectId(options[0].id);
+      } catch (err) {
+        if (!mounted) return;
+        setError("Unable to load production projects.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    void loadProjects();
+    return () => {
+      mounted = false;
+    };
   }, []);
-  const projects = [
-    {
-      id: "P-001",
-      name: "Corporate Website Redesign",
-      client: "Brightwood Publishing",
-      stage: "Draft Submitted",
-      accountManager: "Sarah Johnson",
-      due: "2025-02-18",
-    },
-    {
-      id: "P-002",
-      name: "Brand Identity Kit",
-      client: "Zenova Health",
-      stage: "In Production",
-      accountManager: "David Wilson",
-      due: "2025-02-22",
-    },
-    {
-      id: "P-003",
-      name: "Social Media Creatives",
-      client: "Hipster Circles",
-      stage: "Awaiting Review",
-      accountManager: "Emily Carter",
-      due: "2025-02-10",
-    },
-  ];
 
-  const stageColors: any = {
-    "Draft Submitted": "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    "In Production": "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-    "Awaiting Review": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
-    Completed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  };
+  useEffect(() => {
+    let mounted = true;
+    async function loadGantt() {
+      if (!activeProjectId) return;
+      try {
+        setLoading(true);
+        const [ganttRes, cpRes] = await Promise.all([
+          fetch(`/api/production/projects/${activeProjectId}/gantt-data`, { credentials: "include", cache: "no-store" }).then((r) => r.json()),
+          fetch(`/api/production/projects/${activeProjectId}/critical-path`, { credentials: "include", cache: "no-store" }).then((r) => r.json()),
+        ]);
+        if (!mounted) return;
+        setData(ganttRes);
+        setCriticalPathIds(cpRes.criticalPathTaskIds || []);
+        setOverAllocatedResources(cpRes.overAllocatedResources || []);
+      } catch {
+        if (!mounted) return;
+        setError("Unable to load gantt chart data.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void loadGantt();
+    return () => {
+      mounted = false;
+    };
+  }, [activeProjectId]);
+
+  const preparedTasks = useMemo(() => {
+    return (data?.tasks || []).map((task) => ({ ...task, critical: criticalPathIds.includes(task.id) }));
+  }, [data?.tasks, criticalPathIds]);
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Projects</h1>
-
-      <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-sm overflow-hidden">
-        {/* Header */}
-        <div className="grid grid-cols-6 px-4 py-3 bg-gray-100 dark:bg-neutral-800 text-sm font-semibold text-gray-700 dark:text-neutral-300">
-          <div>ID</div>
-          <div>Project</div>
-          <div>Client</div>
-          <div>AM</div>
-          <div>Status</div>
-          <div>Due Date</div>
-        </div>
-
-        {/* Rows */}
-        {loading ? (
-          <div className="px-4 py-4">
-            <TableSkeleton rows={3} columns={6} />
-          </div>
-        ) : projects.map((p) => (
-          <div
-            key={p.id}
-            className="grid grid-cols-6 px-4 py-4 border-t border-gray-200 dark:border-neutral-800 text-sm items-center hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition"
-          >
-            <div className="font-medium">{p.id}</div>
-
-            <div>{p.name}</div>
-
-            <div className="text-gray-600 dark:text-neutral-400">
-              {p.client}
-            </div>
-
-            <div className="text-gray-700 dark:text-neutral-300">
-              {p.accountManager}
-            </div>
-
-            <div>
-              <span
-                className={`px-2 py-1 rounded-md text-xs font-semibold ${stageColors[p.stage]}`}
-              >
-                {p.stage}
-              </span>
-            </div>
-
-            <div>{p.due}</div>
-          </div>
-        ))}
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Production Gantt</h1>
+        <select
+          className="rounded-md border border-gray-300 text-sm px-3 py-2"
+          value={activeProjectId}
+          onChange={(event) => setActiveProjectId(event.target.value)}
+        >
+          <option value="">Select project</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.projectName}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <p className="text-xs text-gray-400 dark:text-neutral-500 mt-2">
-        (This is placeholder UI. Later, Production will only see their assigned projects.  
-        Admin sees all. AM sees their clients’ projects only.)
-      </p>
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {loading ? <p className="text-sm text-gray-500">Loading gantt chart…</p> : null}
+
+      {!loading && data ? (
+        <GanttChart
+          projectId={data.project.id}
+          tasks={preparedTasks}
+          dependencies={data.dependencies || []}
+          milestones={data.milestones || []}
+          overAllocatedResources={overAllocatedResources}
+        />
+      ) : null}
     </div>
   );
-                                                   }
+}
