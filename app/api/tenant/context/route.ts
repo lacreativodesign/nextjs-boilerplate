@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
         status: user.status || "active",
         displayName: user.displayName || user.name || null,
         email: user.email || null,
+        language: user.language || null,
+        locale: user.locale || user.language || null,
       },
       tenant: tenant
         ? {

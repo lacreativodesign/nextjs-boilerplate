@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "Bizosto",
+    "home": "Accueil",
+    "loading": "Chargement...",
+    "search": "Rechercher",
+    "logout": "Se déconnecter",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "activeSessions": "Sessions actives",
+    "openMenu": "Ouvrir le menu",
+    "language": "Langue",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "close": "Fermer"
+  },
+  "navigation": {
+    "superAdmin": "Super Admin",
+    "tenants": "Locataires",
+    "plans": "Plans",
+    "system": "Système",
+    "administration": "Administration",
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs",
+    "clients": "Clients",
+    "automation": "Automatisation",
+    "sales": "Ventes",
+    "leads": "Prospects",
+    "deals": "Opportunités",
+    "finance": "Finance",
+    "invoices": "Factures",
+    "reports": "Rapports",
+    "accountMgmt": "Gestion des comptes",
+    "production": "Production",
+    "resources": "Ressources",
+    "hr": "RH",
+    "leave": "Congés",
+    "myPortal": "Mon portail",
+    "projects": "Projets"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "invalidEmail": "Saisissez une adresse e-mail valide.",
+    "minLength": "Doit contenir au moins {{count}} caractères.",
+    "maxLength": "Doit contenir {{count}} caractères ou moins."
+  },
+  "errors": {
+    "generic": "Une erreur est survenue.",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action.",
+    "forbidden": "Accès refusé.",
+    "notFound": "La ressource demandée est introuvable.",
+    "network": "Erreur réseau. Veuillez réessayer."
+  },
+  "dashboard": { "widgets": { "revenue": "Revenu", "openInvoices": "Factures ouvertes", "pipeline": "Pipeline", "activeProjects": "Projets actifs" } },
+  "reports": { "titles": { "paymentsByMonth": "Paiements par mois", "payrollByMonth": "Paie par mois", "salesPipeline": "Pipeline commercial" } },
+  "email": {
+    "subjects": { "welcome": "Bienvenue sur Bizosto", "invoiceReminder": "Rappel de facture" },
+    "body": { "greeting": "Bonjour {{name}},", "footer": "Merci,\nÉquipe Bizosto" }
+  },
+  "i18n": {
+    "progress": "Couverture de traduction",
+    "missing": "Traduction manquante",
+    "complete": "Complet",
+    "itemsRemaining": { "zero": "Aucune clé manquante", "one": "{{count}} clé manquante", "other": "{{count}} clés manquantes" }
+  }
+}

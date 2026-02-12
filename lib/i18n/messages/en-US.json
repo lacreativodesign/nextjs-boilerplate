@@ -1,0 +1,89 @@
+{
+  "common": {
+    "appName": "Bizosto",
+    "home": "Home",
+    "loading": "Loading...",
+    "search": "Search",
+    "logout": "Logout",
+    "profile": "Profile",
+    "settings": "Settings",
+    "activeSessions": "Active Sessions",
+    "openMenu": "Open menu",
+    "language": "Language",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "navigation": {
+    "superAdmin": "Super Admin",
+    "tenants": "Tenants",
+    "plans": "Plans",
+    "system": "System",
+    "administration": "Administration",
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "clients": "Clients",
+    "automation": "Automation",
+    "sales": "Sales",
+    "leads": "Leads",
+    "deals": "Deals",
+    "finance": "Finance",
+    "invoices": "Invoices",
+    "reports": "Reports",
+    "accountMgmt": "Account Mgmt",
+    "production": "Production",
+    "resources": "Resources",
+    "hr": "HR",
+    "leave": "Leave",
+    "myPortal": "My Portal",
+    "projects": "Projects"
+  },
+  "validation": {
+    "required": "This field is required.",
+    "invalidEmail": "Enter a valid email address.",
+    "minLength": "Must be at least {{count}} characters.",
+    "maxLength": "Must be {{count}} characters or fewer."
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "forbidden": "Access denied.",
+    "notFound": "The requested resource was not found.",
+    "network": "Network error. Please try again."
+  },
+  "dashboard": {
+    "widgets": {
+      "revenue": "Revenue",
+      "openInvoices": "Open Invoices",
+      "pipeline": "Pipeline",
+      "activeProjects": "Active Projects"
+    }
+  },
+  "reports": {
+    "titles": {
+      "paymentsByMonth": "Payments by Month",
+      "payrollByMonth": "Payroll by Month",
+      "salesPipeline": "Sales Pipeline"
+    }
+  },
+  "email": {
+    "subjects": {
+      "welcome": "Welcome to Bizosto",
+      "invoiceReminder": "Invoice reminder"
+    },
+    "body": {
+      "greeting": "Hello {{name}},",
+      "footer": "Thanks,\nBizosto Team"
+    }
+  },
+  "i18n": {
+    "progress": "Translation coverage",
+    "missing": "Missing translation",
+    "complete": "Complete",
+    "itemsRemaining": {
+      "zero": "No keys missing",
+      "one": "{{count}} key missing",
+      "other": "{{count}} keys missing"
+    }
+  }
+}
