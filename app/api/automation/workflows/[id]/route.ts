@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAutomationAdmin } from "../../../_utils";
+import { requireAutomationAdmin } from "../../_utils";
 
 export const runtime = "nodejs";
 

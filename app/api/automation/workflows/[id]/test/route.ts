@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { WorkflowEngine } from "@/lib/automation/workflow-engine";
 import type { WorkflowDefinition } from "@/lib/automation/workflow-types";
-import { requireAutomationAdmin } from "../../../../_utils";
+import { requireAutomationAdmin } from "../../../_utils";
 
 export const runtime = "nodejs";
 
