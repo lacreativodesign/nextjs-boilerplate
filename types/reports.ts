@@ -16,11 +16,23 @@ export type DataSource =
   | "deals"
   | "leads"
   | "opportunities"
+  | "time_entries"
+  | "budget_lines"
   | "custom";
 
 export type ChartType = "line" | "bar" | "pie" | "area" | "scatter" | "table" | "metric";
 
 export type AggregationFunction = "sum" | "avg" | "count" | "min" | "max";
+
+export type ReportFormat = "pdf" | "csv" | "xlsx";
+
+export interface ReportFieldSelection {
+  field: string;
+  label: string;
+  alias?: string;
+  type?: "string" | "number" | "boolean" | "date" | "array" | "object";
+  selectedAt: number;
+}
 
 export interface ReportFilter {
   field: string;
@@ -41,12 +53,18 @@ export interface ReportFilter {
     | "isNull"
     | "isNotNull";
   value: unknown;
+  logicalOperator?: "and" | "or";
 }
 
 export interface Aggregation {
   field: string;
   function: AggregationFunction;
   alias?: string;
+}
+
+export interface ReportSort {
+  field: string;
+  direction: "asc" | "desc";
 }
 
 export interface ReportSchedule {
@@ -59,11 +77,14 @@ export interface ReportSchedule {
 }
 
 export interface ChartConfiguration {
+  type?: ChartType;
   xAxis?: string;
   yAxis?: string[];
+  series?: string[];
   colors?: string[];
   showLegend?: boolean;
   showGrid?: boolean;
+  stacked?: boolean;
 }
 
 export interface Report {
@@ -74,14 +95,17 @@ export interface Report {
   category: ReportCategory;
   type: ReportType;
   dataSource: DataSource;
+  fields?: ReportFieldSelection[];
   filters: ReportFilter[];
   groupBy?: string[];
   aggregations?: Aggregation[];
+  sorts?: ReportSort[];
   chartType?: ChartType;
   chartConfig?: ChartConfiguration;
   isScheduled: boolean;
   schedule?: ReportSchedule;
   recipients?: string[];
+  snapshotRetentionDays?: number;
   createdBy: string;
   isPublic: boolean;
   sharedWith?: string[];
@@ -110,4 +134,35 @@ export interface ReportExecution {
     start: Date;
     end: Date;
   };
+}
+
+export interface ReportSnapshot {
+  id: string;
+  tenantId: string;
+  reportId: string;
+  createdBy: string;
+  rowCount: number;
+  data: Record<string, unknown>[];
+  metadata: {
+    chartType?: ChartType;
+    chartConfig?: ChartConfiguration;
+    filters: ReportFilter[];
+    groupBy?: string[];
+    aggregations?: Aggregation[];
+  };
+  createdAt: Timestamp;
+}
+
+export interface ReportScheduleRecord {
+  id: string;
+  tenantId: string;
+  reportId: string;
+  schedule: ReportSchedule;
+  recipients: string[];
+  format: ReportFormat;
+  nextRunAt: Timestamp;
+  lastRunAt?: Timestamp;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
