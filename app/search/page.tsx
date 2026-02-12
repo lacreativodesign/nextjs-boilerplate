@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
@@ -21,7 +21,7 @@ type SearchResult = {
 const MODULE_OPTIONS = ["all", "users", "customers", "projects", "invoices", "documents", "payments", "expenses", "inventory"];
 const ALLOWED_ROLES = ["super_admin", "admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "client", "hr", "finance"];
 
-export default function SearchResultsPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -105,5 +105,13 @@ export default function SearchResultsPage() {
         </div>
       </AppShell>
     </RequireAuth>
+  );
+}
+
+export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-[var(--text-soft)]">Loading search...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
