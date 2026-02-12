@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "Bizosto",
+    "home": "Startseite",
+    "loading": "Wird geladen...",
+    "search": "Suchen",
+    "logout": "Abmelden",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "activeSessions": "Aktive Sitzungen",
+    "openMenu": "Menü öffnen",
+    "language": "Sprache",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen"
+  },
+  "navigation": {
+    "superAdmin": "Super Admin",
+    "tenants": "Mandanten",
+    "plans": "Pläne",
+    "system": "System",
+    "administration": "Verwaltung",
+    "dashboard": "Dashboard",
+    "users": "Benutzer",
+    "clients": "Kunden",
+    "automation": "Automatisierung",
+    "sales": "Vertrieb",
+    "leads": "Leads",
+    "deals": "Abschlüsse",
+    "finance": "Finanzen",
+    "invoices": "Rechnungen",
+    "reports": "Berichte",
+    "accountMgmt": "Kontoverwaltung",
+    "production": "Produktion",
+    "resources": "Ressourcen",
+    "hr": "Personal",
+    "leave": "Urlaub",
+    "myPortal": "Mein Portal",
+    "projects": "Projekte"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich.",
+    "invalidEmail": "Bitte eine gültige E-Mail-Adresse eingeben.",
+    "minLength": "Muss mindestens {{count}} Zeichen enthalten.",
+    "maxLength": "Darf höchstens {{count}} Zeichen enthalten."
+  },
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen.",
+    "unauthorized": "Sie sind für diese Aktion nicht berechtigt.",
+    "forbidden": "Zugriff verweigert.",
+    "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+    "network": "Netzwerkfehler. Bitte erneut versuchen."
+  },
+  "dashboard": { "widgets": { "revenue": "Umsatz", "openInvoices": "Offene Rechnungen", "pipeline": "Pipeline", "activeProjects": "Aktive Projekte" } },
+  "reports": { "titles": { "paymentsByMonth": "Zahlungen pro Monat", "payrollByMonth": "Lohnabrechnung pro Monat", "salesPipeline": "Vertriebspipeline" } },
+  "email": {
+    "subjects": { "welcome": "Willkommen bei Bizosto", "invoiceReminder": "Rechnungserinnerung" },
+    "body": { "greeting": "Hallo {{name}},", "footer": "Danke,\nBizosto-Team" }
+  },
+  "i18n": {
+    "progress": "Übersetzungsabdeckung",
+    "missing": "Fehlende Übersetzung",
+    "complete": "Vollständig",
+    "itemsRemaining": { "zero": "Keine fehlenden Schlüssel", "one": "{{count}} fehlender Schlüssel", "other": "{{count}} fehlende Schlüssel" }
+  }
+}

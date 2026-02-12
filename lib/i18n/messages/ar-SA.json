@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "بيزوستو",
+    "home": "الرئيسية",
+    "loading": "جاري التحميل...",
+    "search": "بحث",
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "activeSessions": "الجلسات النشطة",
+    "openMenu": "فتح القائمة",
+    "language": "اللغة",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق"
+  },
+  "navigation": {
+    "superAdmin": "المشرف العام",
+    "tenants": "المستأجرون",
+    "plans": "الخطط",
+    "system": "النظام",
+    "administration": "الإدارة",
+    "dashboard": "لوحة التحكم",
+    "users": "المستخدمون",
+    "clients": "العملاء",
+    "automation": "الأتمتة",
+    "sales": "المبيعات",
+    "leads": "العملاء المحتملون",
+    "deals": "الصفقات",
+    "finance": "المالية",
+    "invoices": "الفواتير",
+    "reports": "التقارير",
+    "accountMgmt": "إدارة الحسابات",
+    "production": "الإنتاج",
+    "resources": "الموارد",
+    "hr": "الموارد البشرية",
+    "leave": "الإجازات",
+    "myPortal": "بوابتي",
+    "projects": "المشاريع"
+  },
+  "validation": {
+    "required": "هذا الحقل مطلوب.",
+    "invalidEmail": "أدخل بريدًا إلكترونيًا صالحًا.",
+    "minLength": "يجب أن يكون على الأقل {{count}} أحرف.",
+    "maxLength": "يجب ألا يزيد عن {{count}} أحرف."
+  },
+  "errors": {
+    "generic": "حدث خطأ ما.",
+    "unauthorized": "غير مصرح لك بتنفيذ هذا الإجراء.",
+    "forbidden": "تم رفض الوصول.",
+    "notFound": "المورد المطلوب غير موجود.",
+    "network": "خطأ في الشبكة. حاول مرة أخرى."
+  },
+  "dashboard": { "widgets": { "revenue": "الإيرادات", "openInvoices": "الفواتير المفتوحة", "pipeline": "خط الأنابيب", "activeProjects": "المشاريع النشطة" } },
+  "reports": { "titles": { "paymentsByMonth": "المدفوعات حسب الشهر", "payrollByMonth": "الرواتب حسب الشهر", "salesPipeline": "خط مبيعات" } },
+  "email": {
+    "subjects": { "welcome": "مرحبًا بك في بيزوستو", "invoiceReminder": "تذكير بالفاتورة" },
+    "body": { "greeting": "مرحبًا {{name}}،", "footer": "شكرًا،\nفريق بيزوستو" }
+  },
+  "i18n": {
+    "progress": "تغطية الترجمة",
+    "missing": "ترجمة مفقودة",
+    "complete": "مكتمل",
+    "itemsRemaining": { "zero": "لا توجد مفاتيح مفقودة", "one": "مفتاح واحد مفقود", "other": "{{count}} مفاتيح مفقودة" }
+  }
+}

@@ -25,6 +25,8 @@ export type TenantContextResponse = {
     status: string;
     displayName: string | null;
     email: string | null;
+    language?: string | null;
+    locale?: string | null;
   };
   tenant: TenantContext | null;
 };
