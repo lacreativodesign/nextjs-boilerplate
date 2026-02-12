@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ErrorFallback } from "@/components/errors/ErrorFallback";
 
-export default function Error({
+export default function ProjectsError({
   error,
   reset,
 }: {
@@ -11,8 +11,8 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Global Error:", error);
+    console.error("Projects module error:", error);
   }, [error]);
 
-  return <ErrorFallback error={error} resetError={reset} context="page" moduleName="Application" />;
+  return <ErrorFallback error={error} resetError={reset} context="module" moduleName="Projects" />;
 }
