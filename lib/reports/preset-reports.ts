@@ -102,6 +102,23 @@ export const PRESET_REPORTS: Record<ReportCategory, PresetReport[]> = {
       },
     },
     {
+      id: "revenue-by-client-monthly",
+      name: "Revenue by Client (Monthly)",
+      description: "Monthly paid revenue grouped by client",
+      category: "sales",
+      type: "preset",
+      dataSource: "invoices",
+      filters: [{ field: "status", operator: "equals", value: "paid" }],
+      groupBy: ["customerId", "month"],
+      aggregations: [{ field: "total", function: "sum", alias: "revenue" }],
+      chartType: "line",
+      chartConfig: {
+        xAxis: "month",
+        yAxis: ["revenue"],
+        series: ["customerId"],
+      },
+    },
+    {
       id: "sales-pipeline",
       name: "Sales Pipeline",
       description: "Deals by stage",
@@ -138,6 +155,22 @@ export const PRESET_REPORTS: Record<ReportCategory, PresetReport[]> = {
     },
   ],
   operations: [
+    {
+      id: "project-status-overview",
+      name: "Project Status Overview",
+      description: "Project counts by lifecycle stage",
+      category: "operations",
+      type: "preset",
+      dataSource: "projects",
+      filters: [],
+      groupBy: ["status"],
+      aggregations: [{ field: "id", function: "count", alias: "projects" }],
+      chartType: "bar",
+      chartConfig: {
+        xAxis: "status",
+        yAxis: ["projects"],
+      },
+    },
     {
       id: "user-activity",
       name: "User Activity Report",
@@ -182,6 +215,25 @@ export const PRESET_REPORTS: Record<ReportCategory, PresetReport[]> = {
         yAxis: ["activeProjects"],
       },
     },
+    {
+      id: "budget-vs-actual-variance",
+      name: "Budget vs Actual Variance",
+      description: "Variance between budget and actual project spend",
+      category: "operations",
+      type: "preset",
+      dataSource: "projects",
+      filters: [],
+      groupBy: ["name"],
+      aggregations: [
+        { field: "budgetAmount", function: "sum", alias: "budget" },
+        { field: "actualSpend", function: "sum", alias: "actual" },
+      ],
+      chartType: "bar",
+      chartConfig: {
+        xAxis: "name",
+        yAxis: ["budget", "actual"],
+      },
+    },
   ],
   inventory: [
     {
@@ -202,6 +254,22 @@ export const PRESET_REPORTS: Record<ReportCategory, PresetReport[]> = {
     },
   ],
   hr: [
+    {
+      id: "time-tracking-by-employee",
+      name: "Time Tracking by Employee",
+      description: "Tracked hours per employee",
+      category: "hr",
+      type: "preset",
+      dataSource: "users",
+      filters: [{ field: "status", operator: "equals", value: "active" }],
+      groupBy: ["displayName"],
+      aggregations: [{ field: "trackedHours", function: "sum", alias: "hours" }],
+      chartType: "bar",
+      chartConfig: {
+        xAxis: "displayName",
+        yAxis: ["hours"],
+      },
+    },
     {
       id: "headcount-by-role",
       name: "Headcount by Role",
@@ -235,6 +303,22 @@ export const PRESET_REPORTS: Record<ReportCategory, PresetReport[]> = {
       chartConfig: {
         xAxis: "month",
         yAxis: ["newHires"],
+      },
+    },
+    {
+      id: "overdue-invoices-summary",
+      name: "Overdue Invoices Summary",
+      description: "Open overdue invoices grouped by age group",
+      category: "hr",
+      type: "preset",
+      dataSource: "invoices",
+      filters: [{ field: "status", operator: "equals", value: "overdue" }],
+      groupBy: ["ageGroup"],
+      aggregations: [{ field: "id", function: "count", alias: "invoiceCount" }],
+      chartType: "pie",
+      chartConfig: {
+        xAxis: "ageGroup",
+        yAxis: ["invoiceCount"],
       },
     },
   ],
