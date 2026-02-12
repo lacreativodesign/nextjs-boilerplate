@@ -11,6 +11,7 @@ import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 import { assertPermission, Permission } from "../../../../lib/permissions";
 import { getClientIp } from "@/lib/security";
+import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -323,6 +324,24 @@ async function handleUpdate(req: Request) {
           )
         );
       }
+    }
+
+    try {
+      await dispatchWebhookEvent({
+        tenantId,
+        event: "client.updated",
+        entityType: "client",
+        entityId: id,
+        payload: {
+          clientId: id,
+          companyName: String(updateData.companyName || existing.companyName || ""),
+          changes,
+          orderId: newOrderId || existingOrderId || "",
+        },
+        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+      });
+    } catch (webhookError) {
+      console.error("client.updated webhook dispatch error:", webhookError);
     }
 
     return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || "" });

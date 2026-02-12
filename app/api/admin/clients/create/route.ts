@@ -9,6 +9,7 @@ import { createClientSchema } from "@/lib/validations/client";
 import { validateRequest } from "@/lib/validations/validate";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { logEvent } from "@/lib/audit";
+import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -209,6 +210,25 @@ export async function POST(req: Request) {
       });
     } catch (inviteError) {
       console.error("client activation invite error:", inviteError);
+    }
+
+    try {
+      await dispatchWebhookEvent({
+        tenantId,
+        event: "client.created",
+        entityType: "client",
+        entityId: ref.id,
+        payload: {
+          clientId: ref.id,
+          companyName,
+          primaryContactName,
+          primaryContactEmail,
+          salesOwner,
+        },
+        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+      });
+    } catch (webhookError) {
+      console.error("client.created webhook dispatch error:", webhookError);
     }
 
     return NextResponse.json({ ok: true, id: ref.id });
