@@ -10,7 +10,15 @@
     "qa": "node scripts/qa-smoke.mjs",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "typecheck": "tsc --noEmit",
+    "format": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
+    "docs:api": "node scripts/generate-openapi.mjs",
+    "bundle:check": "node scripts/check-bundle-size.mjs",
+    "licenses:check": "node scripts/check-licenses.mjs",
+    "precommit": "node scripts/lint-staged.mjs",
+    "quality:ci": "npm run docs:api && npm run lint && npm run typecheck && npm run format:check && npm run test && npm run build && npm run bundle:check && npm run licenses:check"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
@@ -62,5 +70,14 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/user-event": "^14.6.1",
     "msw": "^2.7.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "eslint --max-warnings=0 --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
   }
 }

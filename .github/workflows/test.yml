@@ -1,4 +1,4 @@
-name: Test
+name: Quality Gates
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
       - master
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,8 +23,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate OpenAPI
+        run: npm run docs:api
+
+      - name: Validate formatting
+        run: npm run format:check
+
       - name: Run lint
         run: npm run lint
 
+      - name: Type check
+        run: npm run typecheck
+
       - name: Run tests with coverage threshold
         run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Bundle size check
+        run: npm run bundle:check
+
+      - name: License compliance
+        run: npm run licenses:check
+
+  sonar:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SONAR_TOKEN != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test coverage
+        run: npm test
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
