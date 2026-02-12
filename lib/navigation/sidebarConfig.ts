@@ -116,6 +116,13 @@ export const sidebarNavigation: NavItem[] = [
         icon: "LayoutDashboard",
         roles: ["production", "production_manager", "admin", "super_admin"],
       },
+      {
+        id: "prod-resources",
+        label: "Resources",
+        href: "/production/resources",
+        icon: "Users",
+        roles: ["production", "production_manager", "admin", "super_admin"],
+      },
     ],
   },
   {
