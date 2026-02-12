@@ -1,10 +1,13 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { AppError } from "@/lib/errors";
 import { CurrencyCode, getCurrency } from "./currencies";
+import { QUERY_CACHE_TTL_MS, isCacheFresh } from "@/lib/cache/query-client";
 
 const CACHE_DURATION_HOURS = 1;
 const API_BASE_URL = process.env.EXCHANGE_RATE_API_URL || "https://v6.exchangerate-api.com/v6";
 const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
+
+const inMemoryExchangeRateCache = new Map<string, { rates: Record<string, number>; updatedAt: number }>();
 
 interface ExchangeRateResponse {
   result: "success" | "error";
@@ -50,6 +53,11 @@ async function fetchExchangeRatesFromAPI(baseCurrency: CurrencyCode = "USD"): Pr
 
 export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Promise<Record<string, number>> {
   const cacheKey = `exchange_rates_${baseCurrency}`;
+  const memoryCache = inMemoryExchangeRateCache.get(cacheKey);
+
+  if (memoryCache && isCacheFresh(memoryCache.updatedAt, "exchangeRates")) {
+    return memoryCache.rates;
+  }
 
   try {
     const cacheDoc = await adminDb.collection("system").doc(cacheKey).get();
@@ -57,10 +65,12 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
     if (cacheDoc.exists) {
       const cacheData = cacheDoc.data();
       const cacheAge = Date.now() - Number(cacheData?.timestamp || 0);
-      const cacheMaxAge = CACHE_DURATION_HOURS * 60 * 60 * 1000;
+      const cacheMaxAge = Math.min(CACHE_DURATION_HOURS * 60 * 60 * 1000, QUERY_CACHE_TTL_MS.exchangeRates);
 
       if (cacheAge < cacheMaxAge && cacheData?.rates) {
-        return cacheData.rates as Record<string, number>;
+        const rates = cacheData.rates as Record<string, number>;
+        inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
+        return rates;
       }
     }
 
@@ -72,6 +82,7 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
       timestamp: Date.now(),
       updatedAt: new Date(),
     });
+    inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
 
     return rates;
   } catch (error) {
@@ -79,7 +90,9 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
 
     const cacheDoc = await adminDb.collection("system").doc(cacheKey).get();
     if (cacheDoc.exists) {
-      return (cacheDoc.data()?.rates || {}) as Record<string, number>;
+      const rates = (cacheDoc.data()?.rates || {}) as Record<string, number>;
+      inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
+      return rates;
     }
 
     throw error;

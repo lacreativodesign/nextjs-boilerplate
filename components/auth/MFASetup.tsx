@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { enrollMFA, verifyMFAEnrollment } from "@/lib/auth/mfa";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebaseClient";
@@ -144,8 +145,18 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
               Use Google Authenticator, Authy, or any compatible app.
             </p>
             {qrCodeUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={qrCodeUrl} alt="MFA QR code" className="mt-4 h-40 w-40 rounded-lg bg-white p-2" />
+              <Image
+                src={qrCodeUrl}
+                alt="MFA QR code"
+                width={160}
+                height={160}
+                className="mt-4 h-40 w-40 rounded-lg bg-white p-2"
+                loading="lazy"
+                sizes="160px"
+                placeholder="blur"
+                blurDataURL={qrCodeUrl}
+                unoptimized
+              />
             ) : null}
             <button
               type="button"

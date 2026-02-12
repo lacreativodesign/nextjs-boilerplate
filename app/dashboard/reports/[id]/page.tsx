@@ -1,9 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { ReportViewer } from "@/components/reports/ReportViewer";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import type { Report, ReportFilter } from "@/types/reports";
+
+const ReportViewer = dynamic(
+  () => import("@/components/reports/ReportViewer").then((module) => module.ReportViewer),
+  {
+    ssr: false,
+    loading: () => <div className="mt-6 text-sm text-[var(--text-muted)]">Loading chart module...</div>,
+  },
+);
 
 export default function ReportDetailPage({ params }: { params: { id: string } }) {
   const [report, setReport] = useState<Report | null>(null);

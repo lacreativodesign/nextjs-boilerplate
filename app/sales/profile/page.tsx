@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   EmailAuthProvider,
@@ -238,8 +239,18 @@ export default function SalesProfilePage() {
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-[var(--surface-muted)] flex items-center justify-center text-lg font-semibold">
             {avatarPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover rounded-2xl" />
+              <Image
+                src={avatarPreview}
+                alt="Avatar preview"
+                width={64}
+                height={64}
+                className="w-full h-full object-cover rounded-2xl"
+                loading="lazy"
+                sizes="64px"
+                placeholder="blur"
+                blurDataURL={avatarPreview}
+                unoptimized
+              />
             ) : (
               <span>{initials}</span>
             )}
@@ -286,8 +297,18 @@ export default function SalesProfilePage() {
         <div className="flex items-center gap-6 mt-4">
           <div className="w-20 h-20 rounded-full bg-indigo-100 dark:bg-neutral-800 flex items-center justify-center overflow-hidden text-xl font-semibold text-indigo-700 dark:text-indigo-300">
             {avatarPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
+              <Image
+                src={avatarPreview}
+                alt="Avatar preview"
+                width={80}
+                height={80}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                sizes="80px"
+                placeholder="blur"
+                blurDataURL={avatarPreview}
+                unoptimized
+              />
             ) : (
               <span>{initials}</span>
             )}

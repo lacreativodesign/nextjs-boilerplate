@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -208,10 +209,17 @@ export default function TenantDetailPage() {
           <div className="flex flex-wrap gap-4">
             <div className="w-full md:w-[240px] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
               {tenant.brand?.logoUrl ? (
-                <img
+                <Image
                   src={tenant.brand.logoUrl}
                   alt={tenant.brand.name}
+                  width={208}
+                  height={96}
                   className="h-24 w-full object-contain"
+                  loading="lazy"
+                  sizes="(max-width: 768px) 100vw, 240px"
+                  placeholder="blur"
+                  blurDataURL={tenant.brand.logoUrl}
+                  unoptimized
                 />
               ) : (
                 <div className="flex h-24 items-center justify-center text-xs text-[var(--text-muted)]">
