@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
+import TableSkeleton from "@/components/ui/skeleton/TableSkeleton";
+import { toastError } from "@/lib/toast";
+import { useOptimisticUpdate } from "@/lib/hooks/useOptimisticUpdate";
 import { PIPELINE_STAGES, toInputDate } from "@/lib/sales/utils";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
@@ -67,6 +70,8 @@ export default function SalesDealsPage() {
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<DealFormState>(defaultForm);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const { executeOptimisticDelete, executeOptimisticUpdate } = useOptimisticUpdate<DealRecord>(setDeals);
   const selectedDeal = useMemo(
     () => (form.id ? deals.find((deal) => deal.id === form.id) || null : null),
     [deals, form.id]
@@ -130,6 +135,33 @@ export default function SalesDealsPage() {
     });
   }, [deals, query, stageFilter, ownerFilter]);
 
+  const visibleDeals = useMemo(() => filteredDeals.slice(0, visibleCount), [filteredDeals, visibleCount]);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [query, stageFilter, ownerFilter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sentinel = document.getElementById("deals-infinite-scroll-sentinel");
+    if (!sentinel || visibleCount >= filteredDeals.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 20, filteredDeals.length));
+        }
+      },
+      { rootMargin: "240px" }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredDeals.length, visibleCount]);
+
   const openCreate = () => {
     setDrawerMode("create");
     setForm(defaultForm);
@@ -190,16 +222,25 @@ export default function SalesDealsPage() {
   const handleDelete = async (deal: DealRecord) => {
     try {
       setActionLoading(deal.id);
-      const res = await fetch("/api/admin/sales/deals/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: deal.id }),
+      const previousDeals = deals;
+      await executeOptimisticDelete({
+        item: deal,
+        previousData: deals,
+        optimisticData: deals.filter((entry) => entry.id !== deal.id),
+        mutation: async () => {
+          const res = await fetch("/api/admin/sales/deals/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: deal.id }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data?.error || "Unable to delete deal.");
+          }
+        },
+        errorMessage: "Unable to delete deal.",
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to delete deal.");
-      }
-      await loadDeals();
+      setVisibleCount((prev) => Math.min(prev, Math.max(previousDeals.length - 1, 20)));
     } catch (err) {
       console.error("Deal delete error", err);
       setError({ title: "Unable to delete deal", message: "Please try again." });
@@ -211,16 +252,28 @@ export default function SalesDealsPage() {
   const markClosed = async (deal: DealRecord, status: "Closed Won" | "Closed Lost") => {
     try {
       setActionLoading(`${deal.id}-${status}`);
-      const res = await fetch("/api/admin/sales/deals/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: deal.id, stage: status }),
+      const previousDeals = deals;
+      const optimisticDeals = deals.map((entry) =>
+        entry.id === deal.id ? { ...entry, stage: status, updatedAt: new Date().toISOString() } : entry
+      );
+
+      await executeOptimisticUpdate({
+        optimisticData: optimisticDeals,
+        rollbackData: previousDeals,
+        mutation: async () => {
+          const res = await fetch("/api/admin/sales/deals/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: deal.id, stage: status }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data?.error || "Unable to update deal.");
+          }
+        },
+        successMessage: `Deal moved to ${status}.`,
+        errorMessage: "Unable to update deal.",
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update deal.");
-      }
-      await loadDeals();
     } catch (err) {
       console.error("Deal close error", err);
       setError({ title: "Unable to update deal", message: "Please try again." });
@@ -253,6 +306,7 @@ export default function SalesDealsPage() {
       await loadDeals();
     } catch (err) {
       console.error("Deal mark paid error", err);
+      toastError("Unable to mark deal paid. Please try again.");
       setError({ title: "Unable to mark paid", message: "Please try again." });
     } finally {
       setActionLoading(null);
@@ -349,14 +403,14 @@ export default function SalesDealsPage() {
                     Loading deals...
                   </td>
                 </tr>
-              ) : filteredDeals.length === 0 ? (
+              ) : visibleDeals.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ padding: 24, textAlign: "center" }}>
                     No deals found.
                   </td>
                 </tr>
               ) : (
-                filteredDeals.map((deal) => (
+                visibleDeals.map((deal) => (
                   <tr key={deal.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
                     <td style={{ padding: "14px 16px", fontWeight: 600 }}>{deal.dealName}</td>
                     <td style={{ padding: "14px 16px" }}>{deal.clientName || deal.leadName || "-"}</td>
@@ -411,6 +465,24 @@ export default function SalesDealsPage() {
             </tbody>
           </table>
         </div>
+        {loading ? (
+          <div style={{ padding: 20 }}>
+            <TableSkeleton rows={6} columns={9} showHeader={false} />
+          </div>
+        ) : null}
+        {!loading && visibleCount < filteredDeals.length ? (
+          <div className="flex items-center justify-center gap-3 border-t border-slate-200/80 p-4 dark:border-slate-800/80">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setVisibleCount((prev) => Math.min(prev + 20, filteredDeals.length))}
+              style={{ borderRadius: 999 }}
+            >
+              Load More
+            </button>
+            <div id="deals-infinite-scroll-sentinel" style={{ width: 1, height: 1 }} />
+          </div>
+        ) : null}
       </div>
 
       {drawerOpen && (
