@@ -14,6 +14,7 @@ import {
 } from "@/lib/finance/status";
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 import { normalizeRole } from "../../../_utils";
+import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,19 @@ export async function POST(req: Request) {
         }).catch((error) => {
           console.error("invoice email queue error:", error);
         });
+      }
+
+      try {
+        await dispatchWebhookEvent({
+          tenantId,
+          event: "invoice.updated",
+          entityType: "invoice",
+          entityId: id,
+          payload: { invoiceId: id, orderId, status: "issued", action: "send" },
+          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        });
+      } catch (webhookError) {
+        console.error("invoice.updated webhook dispatch error:", webhookError);
       }
 
       return NextResponse.json({ ok: true });
@@ -264,6 +278,27 @@ export async function POST(req: Request) {
         });
       }
 
+      try {
+        await dispatchWebhookEvent({
+          tenantId,
+          event: "invoice.paid",
+          entityType: "invoice",
+          entityId: id,
+          payload: { invoiceId: id, orderId, status: nextStatus, action: "mark_paid", balanceDue },
+          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        });
+        await dispatchWebhookEvent({
+          tenantId,
+          event: "payment.received",
+          entityType: "payment",
+          entityId: parseString(body?.paymentId).trim() || id,
+          payload: { invoiceId: id, orderId, status: "succeeded", amountTotal },
+          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        });
+      } catch (webhookError) {
+        console.error("invoice.paid/payment.received webhook dispatch error:", webhookError);
+      }
+
       return NextResponse.json({ ok: true });
     }
 
@@ -303,6 +338,18 @@ export async function POST(req: Request) {
         });
       } catch (auditError) {
         console.error("audit log error:", auditError);
+      }
+      try {
+        await dispatchWebhookEvent({
+          tenantId,
+          event: "invoice.updated",
+          entityType: "invoice",
+          entityId: id,
+          payload: { invoiceId: id, orderId, status: requested, action: "update_status" },
+          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        });
+      } catch (webhookError) {
+        console.error("invoice.updated webhook dispatch error:", webhookError);
       }
       return NextResponse.json({ ok: true });
     }

@@ -8,6 +8,7 @@ import { getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { currencyConverter } from "@/lib/currency/currencyConverter";
 import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
+import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -234,6 +235,27 @@ export async function POST(req: Request) {
       } catch (inviteError) {
         console.error("client activation invite error:", inviteError);
       }
+    }
+
+    try {
+      await dispatchWebhookEvent({
+        tenantId: auth.user.tenantId,
+        event: "invoice.created",
+        entityType: "invoice",
+        entityId: ref.id,
+        payload: {
+          invoiceId: ref.id,
+          orderId,
+          clientId,
+          clientName,
+          status: "draft",
+          amountTotal,
+          currency: currencyCode,
+        },
+        actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+      });
+    } catch (webhookError) {
+      console.error("invoice.created webhook dispatch error:", webhookError);
     }
 
     return NextResponse.json({ ok: true, id: ref.id, orderId });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
 import { LeaveService } from "@/lib/hr/leave";
+import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,25 @@ export async function POST(request: NextRequest) {
       endDate: new Date(payload.endDate),
       reason: payload.reason || null,
     });
+
+    try {
+      await dispatchWebhookEvent({
+        tenantId: me.tenantId,
+        event: "leave.requested",
+        entityType: "leave",
+        entityId: leaveRequest.id,
+        payload: {
+          requestId: leaveRequest.id,
+          leaveType: payload.leaveType,
+          employeeId: me.uid,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+        },
+        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+      });
+    } catch (webhookError) {
+      console.error("leave.requested webhook dispatch error:", webhookError);
+    }
 
     return NextResponse.json({ ok: true, requestId: leaveRequest.id });
   } catch (err) {
