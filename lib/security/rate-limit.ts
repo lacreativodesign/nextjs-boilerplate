@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { AppError } from "@/lib/errors";
 
 export type RateLimitTier = "strict" | "standard" | "relaxed" | "upload";
@@ -35,7 +34,12 @@ const TIER_CONFIG: Record<RateLimitTier, TierConfig> = {
 const inMemoryStore = new Map<string, { count: number; resetAtMs: number }>();
 
 function toHashedKey(value: string) {
-  return createHash("sha256").update(value).digest("hex");
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 function getUpstashConfig() {

@@ -183,3 +183,27 @@ export function SkeletonDashboard({ className = "" }: SkeletonDashboardProps) {
     </div>
   );
 }
+
+export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          {Array.from({ length: columns }).map((_, j) => (
+            <Skeleton key={j} className="h-12 flex-1" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ListSkeleton({ items = 5 }: { items?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: items }).map((_, i) => (
+        <Skeleton key={i} className="h-16 w-full" />
+      ))}
+    </div>
+  );
+}

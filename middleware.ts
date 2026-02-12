@@ -12,9 +12,8 @@ import {
   applySecurityHeaders,
   checkRateLimit,
   getClientIp,
-  verifyRequestSignature,
-  verifyRotatingApiKey,
 } from "@/lib/security";
+import { verifyRequestSignature, verifyRotatingApiKey } from "@/lib/security/request-signing";
 
 async function fetchSubscriptionStatus(req: NextRequest) {
   try {
@@ -164,7 +163,7 @@ export async function middleware(req: NextRequest) {
       const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
       const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
 
-      if (!verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret })) {
+      if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
         return applyRateHeaders(jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
       }
     }
