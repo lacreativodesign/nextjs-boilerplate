@@ -11,7 +11,7 @@ import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { getRoleRoute } from "@/lib/roleRouting";
 import MFAVerify from "@/components/auth/MFAVerify";
 import { verifyMFASignIn } from "@/lib/auth/mfa";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { showToast } from "@/lib/utils/toast";
 
 export default function LoginPage() {
