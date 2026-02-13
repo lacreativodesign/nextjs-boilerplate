@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/app/api/admin/_utils";
 import type { Task } from "@/types/project-management";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
+import { dispatchZapierTriggerEvent } from "@/lib/zapier/service";
 
 const updateTaskStatusSchema = z.object({
   status: z.enum(["todo", "in_progress", "in_review", "blocked", "completed", "cancelled"]),
@@ -40,6 +41,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       userId: me.uid,
       userName: me.name || me.fullName || "",
     });
+
+    if (validated.data.status === "completed") {
+      try {
+        await dispatchZapierTriggerEvent({
+          tenantId: me.tenantId,
+          eventName: "task.completed",
+          entityType: "task",
+          entityId: params.taskId,
+          payload: {
+            projectId: params.id,
+            taskId: params.taskId,
+            status: validated.data.status,
+          },
+          actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        });
+      } catch (error) {
+        logError(error, { route: "PATCH /api/projects/[id]/tasks/[taskId]/status", action: "zapier-dispatch" });
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

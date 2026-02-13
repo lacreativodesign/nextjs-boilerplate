@@ -12,6 +12,7 @@ import {
 import { createNotification, createNotificationEvent } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import { dispatchZapierTriggerEvent } from "@/lib/zapier/service";
 
 export const runtime = "nodejs";
 
@@ -202,6 +203,26 @@ export async function POST(req: Request) {
 
     const updatedSnap = await ref.get();
     const updated = updatedSnap.data() || {};
+
+    if (updated.tenantId) {
+      try {
+        await dispatchZapierTriggerEvent({
+          tenantId: String(updated.tenantId),
+          eventName: "project.status_changed",
+          entityType: "project",
+          entityId: projectId,
+          payload: {
+            projectId,
+            fromStage,
+            toStage,
+            projectName: updated.projectName || null,
+          },
+          actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        });
+      } catch (error) {
+        console.error("zapier project.status_changed dispatch error", error);
+      }
+    }
 
     const actorName = me.name || me.fullName || me.displayName || "";
     const notifications: Promise<void>[] = [];
