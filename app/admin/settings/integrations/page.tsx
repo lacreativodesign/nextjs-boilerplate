@@ -296,6 +296,19 @@ export default function IntegrationSettingsPage() {
         </div>
       </section>
 
+
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Mailchimp</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Audience sync for CRM clients, tag mapping, segment sync, and unsubscribe-safe automation.</p>
+          </div>
+          <a className="btn subtle" href="/admin/settings/integrations/mailchimp">
+            Open Mailchimp Sync
+          </a>
+        </div>
+      </section>
+
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
