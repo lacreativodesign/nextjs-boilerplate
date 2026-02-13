@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { NotificationPreferenceService, type NotificationDispatchRequest } from "@/lib/notifications/preferences";
 import { normalizeTenantId } from "@/lib/tenant";
 import type { Role } from "./permissions";
 
@@ -95,6 +96,23 @@ async function resolveRecipient(recipient: NotificationRecipient): Promise<Resol
   return { uid: recipient.uid, role: resolvedRole, tenantId: resolvedTenant };
 }
 
+function mapPayloadTypeToEventType(type?: NotificationType): NotificationDispatchRequest["eventType"] {
+  switch (type) {
+    case "approval_requested":
+      return "approval_pending";
+    case "approval_decision":
+      return "approval_approved";
+    case "delivery_completed":
+      return "project_milestone_reached";
+    case "deal_paid":
+      return "invoice_paid";
+    case "warning":
+      return "system_maintenance";
+    default:
+      return "system_updates";
+  }
+}
+
 function uniqueRecipients(recipients: NotificationRecipient[]) {
   const map = new Map<string, NotificationRecipient>();
   recipients.forEach((recipient) => {
@@ -127,11 +145,44 @@ export async function createNotifications({
     const notificationsRef = adminDb.collection("notifications");
     const batch = adminDb.batch();
     const payloadTenant = payload.tenantId ? normalizeTenantId(payload.tenantId) : null;
+    const eventType = mapPayloadTypeToEventType(payload.type);
+    let writes = 0;
 
-    usable.forEach(({ uid, role, tenantId }) => {
+    for (const { uid, role, tenantId } of usable) {
       const ref = notificationsRef.doc();
       const scopedTenantId = payloadTenant || tenantId;
-      if (!scopedTenantId) return;
+      if (!scopedTenantId) continue;
+
+      const preferenceCheck = await NotificationPreferenceService.shouldSendNow({
+        tenantId: scopedTenantId,
+        userId: uid,
+        eventType,
+        title: payload.title,
+        message,
+        actionUrl: payload.deepLink || undefined,
+        metadata: (payload.metadata || {}) as Record<string, unknown>,
+      });
+
+      if (!preferenceCheck.deliverNow && preferenceCheck.reason !== "digest") {
+        continue;
+      }
+
+      if (!preferenceCheck.deliverNow && preferenceCheck.reason === "digest") {
+        await NotificationPreferenceService.queueDigestItem(
+          {
+            tenantId: scopedTenantId,
+            userId: uid,
+            eventType,
+            title: payload.title,
+            message,
+            actionUrl: payload.deepLink || undefined,
+            metadata: (payload.metadata || {}) as Record<string, unknown>,
+          },
+          preferenceCheck.frequency as "hourly" | "daily" | "weekly"
+        );
+        continue;
+      }
+
       batch.set(ref, {
         id: ref.id,
         tenantId: scopedTenantId,
@@ -154,9 +205,12 @@ export async function createNotifications({
         roleTarget: payload.roleTarget || role,
         metadata: payload.metadata || null,
       });
-    });
+      writes += 1;
+    }
 
-    await batch.commit();
+    if (writes > 0) {
+      await batch.commit();
+    }
   } catch (error) {
     console.error("notification create error:", error);
   }
