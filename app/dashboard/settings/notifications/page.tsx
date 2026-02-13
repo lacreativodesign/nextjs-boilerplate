@@ -1,321 +1,326 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { NotificationCategory, NotificationChannel, NotificationPreferences } from "@/types/notifications";
+import { USER_NOTIFICATION_CHANNELS } from "@/lib/notifications/preferences-config";
+import type { UserNotificationEventType, UserNotificationPreferences } from "@/types/notifications";
 
-const categories: NotificationCategory[] = [
-  "system",
-  "financial",
-  "sales",
-  "operations",
-  "security",
-  "team",
-  "custom",
-];
+const GROUPS: Record<string, UserNotificationEventType[]> = {
+  Invoices: ["invoice_sent", "invoice_paid", "invoice_overdue"],
+  Tasks: ["task_assigned", "task_due_soon", "task_completed"],
+  Projects: ["project_status_changed", "project_milestone_reached"],
+  Approvals: ["approval_pending", "approval_approved", "approval_rejected"],
+  Leave: ["leave_request_submitted", "leave_request_approved"],
+  System: ["system_maintenance", "system_updates"],
+};
 
-const channelOptions: { label: string; value: NotificationChannel }[] = [
-  { label: "In-App", value: "in_app" },
-  { label: "Email", value: "email" },
-  { label: "SMS", value: "sms" },
-  { label: "Webhook", value: "webhook" },
-];
+const FREQUENCIES = ["instant", "hourly", "daily", "weekly"] as const;
 
-const priorityOptions = ["low", "medium", "high", "urgent"] as const;
-
-type PreferencesState = NotificationPreferences;
-
-function normalizePreferences(preferences: PreferencesState): PreferencesState {
-  const updated = { ...preferences };
-  categories.forEach((category) => {
-    if (!updated.categorySettings?.[category]) {
-      updated.categorySettings[category] = {
-        enabled: true,
-        channels: ["in_app", "email"],
-        minPriority: "low",
-      };
-    }
-  });
-
-  if (!updated.quietHours) {
-    updated.quietHours = {
-      enabled: false,
-      start: "22:00",
-      end: "08:00",
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    };
-  }
-
-  if (!updated.emailDigest) {
-    updated.emailDigest = {
-      enabled: false,
-      frequency: "daily",
-      time: "09:00",
-    };
-  }
-
-  return updated;
+function titleCase(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export default function NotificationSettingsPage() {
-  const [preferences, setPreferences] = useState<PreferencesState | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [preferences, setPreferences] = useState<UserNotificationPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchPreferences = async () => {
-      const response = await fetch("/api/notifications/preferences");
+    const run = async () => {
+      setLoading(true);
+      const response = await fetch("/api/users/notifications/preferences", { cache: "no-store" });
       const data = await response.json();
-      if (!isMounted) return;
-      setPreferences(normalizePreferences(data.preferences));
+      setPreferences(data.preferences);
+      setLoading(false);
     };
-
-    fetchPreferences();
-    return () => {
-      isMounted = false;
-    };
+    run();
   }, []);
 
-  const categorySettings = useMemo(() => preferences?.categorySettings || null, [preferences]);
+  const digestPreview = useMemo(() => {
+    if (!preferences) return "";
+    const daily = preferences.digest.enabled && preferences.digest.frequencies.includes("daily");
+    const weekly = preferences.digest.enabled && preferences.digest.frequencies.includes("weekly");
+    return [
+      daily ? `Daily digest at ${preferences.digest.dailySendTime}` : null,
+      weekly ? `Weekly digest on ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][preferences.digest.weeklySendDay]} ${preferences.digest.weeklySendTime}` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+  }, [preferences]);
 
-  const updateChannelToggle = (channel: "inApp" | "email" | "sms", value: boolean) => {
+  const save = async () => {
     if (!preferences) return;
-    setPreferences({
-      ...preferences,
-      channels: { ...preferences.channels, [channel]: value },
-    });
-  };
-
-  const updateCategorySetting = (
-    category: NotificationCategory,
-    updates: Partial<NotificationPreferences["categorySettings"][NotificationCategory]>
-  ) => {
-    if (!preferences) return;
-    setPreferences({
-      ...preferences,
-      categorySettings: {
-        ...preferences.categorySettings,
-        [category]: {
-          ...preferences.categorySettings[category],
-          ...updates,
-        },
-      },
-    });
-  };
-
-  const toggleCategoryChannel = (category: NotificationCategory, channel: NotificationChannel, enabled: boolean) => {
-    if (!preferences) return;
-    const current = preferences.categorySettings[category].channels;
-    const next = enabled
-      ? Array.from(new Set([...current, channel]))
-      : current.filter((item) => item !== channel);
-    updateCategorySetting(category, { channels: next });
-  };
-
-  const savePreferences = async () => {
-    if (!preferences) return;
-    setIsSaving(true);
+    setSaving(true);
     setError(null);
-    try {
-      await fetch("/api/notifications/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(preferences),
-      });
-    } catch (err) {
-      setError("Failed to save preferences.");
-    } finally {
-      setIsSaving(false);
+    const response = await fetch("/api/users/notifications/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(preferences),
+    });
+
+    if (!response.ok) {
+      setError("Failed to save notification preferences.");
     }
+    setSaving(false);
   };
 
-  if (!preferences || !categorySettings) return <div className="p-6">Loading...</div>;
+  const sendTest = async () => {
+    setTesting(true);
+    setError(null);
+    const response = await fetch("/api/users/notifications/test", { method: "POST" });
+    if (!response.ok) {
+      setError("Failed to send test notification.");
+    }
+    setTesting(false);
+  };
+
+  if (loading || !preferences) {
+    return <div className="p-6">Loading notification preferences...</div>;
+  }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Notification Settings</h1>
-        <p className="text-sm text-gray-500">Customize your alert channels and quiet hours.</p>
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Notification Preferences</h1>
+        <p className="text-sm text-gray-500">Control channels, event types, digest mode, and quiet hours.</p>
       </div>
 
-      {error && <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error ? <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
-      <div className="mb-6 rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold">Global Channels</h2>
-        <div className="space-y-3">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={preferences.channels.inApp}
-              onChange={(event) => updateChannelToggle("inApp", event.target.checked)}
-            />
-            <span>In-App Notifications</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={preferences.channels.email}
-              onChange={(event) => updateChannelToggle("email", event.target.checked)}
-            />
-            <span>Email Notifications</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={preferences.channels.sms}
-              onChange={(event) => updateChannelToggle("sms", event.target.checked)}
-            />
-            <span>SMS Notifications</span>
-          </label>
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold">Quiet Hours</h2>
-        <label className="mb-4 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={preferences.quietHours?.enabled || false}
-            onChange={(event) =>
-              setPreferences({
-                ...preferences,
-                quietHours: {
-                  ...preferences.quietHours,
-                  enabled: event.target.checked,
-                },
-              })
-            }
-          />
-          <span>Enable quiet hours</span>
-        </label>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="text-sm text-gray-500">Start</label>
-            <input
-              type="time"
-              value={preferences.quietHours?.start || "22:00"}
-              onChange={(event) =>
-                setPreferences({
-                  ...preferences,
-                  quietHours: {
-                    ...preferences.quietHours,
-                    start: event.target.value,
-                  },
-                })
-              }
-              className="mt-1 w-full rounded border border-gray-200 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500">End</label>
-            <input
-              type="time"
-              value={preferences.quietHours?.end || "08:00"}
-              onChange={(event) =>
-                setPreferences({
-                  ...preferences,
-                  quietHours: {
-                    ...preferences.quietHours,
-                    end: event.target.value,
-                  },
-                })
-              }
-              className="mt-1 w-full rounded border border-gray-200 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500">Timezone</label>
-            <input
-              type="text"
-              value={preferences.quietHours?.timezone || "UTC"}
-              onChange={(event) =>
-                setPreferences({
-                  ...preferences,
-                  quietHours: {
-                    ...preferences.quietHours,
-                    timezone: event.target.value,
-                  },
-                })
-              }
-              className="mt-1 w-full rounded border border-gray-200 px-3 py-2"
-              placeholder="America/New_York"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold">Category Settings</h2>
-        <div className="space-y-6">
-          {categories.map((category) => {
-            const settings = categorySettings[category];
+      <section className="rounded-lg border bg-white p-4">
+        <h2 className="mb-3 font-medium">Global Channels</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {USER_NOTIFICATION_CHANNELS.map((channel) => {
+            const key = channel === "in_app" ? "inApp" : channel;
             return (
-              <div key={category} className="rounded border border-gray-100 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold capitalize">{category}</h3>
-                    <p className="text-xs text-gray-500">Control channels and priority thresholds.</p>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={settings.enabled}
-                      onChange={(event) => updateCategorySetting(category, { enabled: event.target.checked })}
-                    />
-                    <span>Enabled</span>
-                  </label>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">Channels</p>
-                    <div className="mt-2 flex flex-wrap gap-3">
-                      {channelOptions.map((channel) => (
-                        <label key={channel.value} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={settings.channels.includes(channel.value)}
-                            onChange={(event) =>
-                              toggleCategoryChannel(category, channel.value, event.target.checked)
-                            }
-                          />
-                          <span>{channel.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500">Minimum priority</label>
-                    <select
-                      value={settings.minPriority || "low"}
-                      onChange={(event) =>
-                        updateCategorySetting(category, {
-                          minPriority: event.target.value as NotificationPreferences["categorySettings"][NotificationCategory]["minPriority"],
-                        })
-                      }
-                      className="mt-2 w-full rounded border border-gray-200 px-3 py-2"
-                    >
-                      {priorityOptions.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {priority}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
+              <label key={channel} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={preferences.channels[key]}
+                  onChange={(event) =>
+                    setPreferences({
+                      ...preferences,
+                      channels: {
+                        ...preferences.channels,
+                        [key]: event.target.checked,
+                      },
+                    })
+                  }
+                />
+                <span>{titleCase(channel)}</span>
+              </label>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      <div className="flex items-center gap-4">
-        <button
-          onClick={savePreferences}
-          disabled={isSaving}
-          className="rounded bg-blue-600 px-6 py-2 text-white disabled:opacity-60"
-        >
-          {isSaving ? "Saving..." : "Save Preferences"}
+      <section className="rounded-lg border bg-white p-4">
+        <h2 className="mb-3 font-medium">Event Preferences</h2>
+        {Object.entries(GROUPS).map(([group, events]) => (
+          <div key={group} className="mb-4">
+            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{group}</h3>
+            <div className="space-y-2">
+              {events.map((eventType) => {
+                const config = preferences.eventPreferences[eventType];
+                return (
+                  <div key={eventType} className="rounded border p-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium">{titleCase(eventType)}</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={config.enabled}
+                          onChange={(event) =>
+                            setPreferences({
+                              ...preferences,
+                              eventPreferences: {
+                                ...preferences.eventPreferences,
+                                [eventType]: { ...config, enabled: event.target.checked },
+                              },
+                            })
+                          }
+                        />
+                        Enabled
+                      </label>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div className="flex flex-wrap gap-3">
+                        {USER_NOTIFICATION_CHANNELS.map((channel) => (
+                          <label key={`${eventType}-${channel}`} className="flex items-center gap-1 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={config.channels.includes(channel)}
+                              onChange={(event) => {
+                                const channels = event.target.checked
+                                  ? Array.from(new Set([...config.channels, channel]))
+                                  : config.channels.filter((item) => item !== channel);
+                                setPreferences({
+                                  ...preferences,
+                                  eventPreferences: {
+                                    ...preferences.eventPreferences,
+                                    [eventType]: { ...config, channels },
+                                  },
+                                });
+                              }}
+                            />
+                            {titleCase(channel)}
+                          </label>
+                        ))}
+                      </div>
+                      <select
+                        className="rounded border px-2 py-1 text-sm"
+                        value={config.frequency}
+                        onChange={(event) =>
+                          setPreferences({
+                            ...preferences,
+                            eventPreferences: {
+                              ...preferences.eventPreferences,
+                              [eventType]: { ...config, frequency: event.target.value as (typeof FREQUENCIES)[number] },
+                            },
+                          })
+                        }
+                      >
+                        {FREQUENCIES.map((frequency) => (
+                          <option key={`${eventType}-${frequency}`} value={frequency}>
+                            {titleCase(frequency)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="rounded-lg border bg-white p-4">
+        <h2 className="mb-3 font-medium">Digest Settings</h2>
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={preferences.digest.enabled}
+            onChange={(event) =>
+              setPreferences({
+                ...preferences,
+                digest: { ...preferences.digest, enabled: event.target.checked },
+              })
+            }
+          />
+          Enable digest emails
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="text-xs text-gray-500">Daily send time</label>
+            <input
+              type="time"
+              className="mt-1 w-full rounded border px-2 py-1 text-sm"
+              value={preferences.digest.dailySendTime}
+              onChange={(event) =>
+                setPreferences({
+                  ...preferences,
+                  digest: { ...preferences.digest, dailySendTime: event.target.value },
+                })
+              }
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Weekly schedule</label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <select
+                className="rounded border px-2 py-1 text-sm"
+                value={preferences.digest.weeklySendDay}
+                onChange={(event) =>
+                  setPreferences({
+                    ...preferences,
+                    digest: { ...preferences.digest, weeklySendDay: Number(event.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
+                  })
+                }
+              >
+                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => (
+                  <option key={day} value={index}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="time"
+                className="rounded border px-2 py-1 text-sm"
+                value={preferences.digest.weeklySendTime}
+                onChange={(event) =>
+                  setPreferences({
+                    ...preferences,
+                    digest: { ...preferences.digest, weeklySendTime: event.target.value },
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-gray-500">Digest preview: {digestPreview || "Disabled"}</p>
+      </section>
+
+      <section className="rounded-lg border bg-white p-4">
+        <h2 className="mb-3 font-medium">Do Not Disturb</h2>
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={preferences.quietHours.enabled}
+            onChange={(event) =>
+              setPreferences({
+                ...preferences,
+                quietHours: { ...preferences.quietHours, enabled: event.target.checked },
+              })
+            }
+          />
+          Enable quiet hours
+        </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input
+            type="time"
+            className="rounded border px-2 py-1 text-sm"
+            value={preferences.quietHours.start}
+            onChange={(event) =>
+              setPreferences({
+                ...preferences,
+                quietHours: { ...preferences.quietHours, start: event.target.value },
+              })
+            }
+          />
+          <input
+            type="time"
+            className="rounded border px-2 py-1 text-sm"
+            value={preferences.quietHours.end}
+            onChange={(event) =>
+              setPreferences({
+                ...preferences,
+                quietHours: { ...preferences.quietHours, end: event.target.value },
+              })
+            }
+          />
+          <input
+            type="text"
+            className="rounded border px-2 py-1 text-sm"
+            value={preferences.quietHours.timezone}
+            onChange={(event) =>
+              setPreferences({
+                ...preferences,
+                quietHours: { ...preferences.quietHours, timezone: event.target.value },
+              })
+            }
+            placeholder="Timezone"
+          />
+        </div>
+      </section>
+
+      <div className="flex flex-wrap gap-3">
+        <button className="rounded bg-blue-600 px-4 py-2 text-white" onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save preferences"}
+        </button>
+        <button className="rounded border px-4 py-2" onClick={sendTest} disabled={testing}>
+          {testing ? "Sending..." : "Send test notification"}
         </button>
       </div>
     </div>
