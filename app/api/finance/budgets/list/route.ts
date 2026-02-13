@@ -4,6 +4,7 @@ import { resolveErrorResponse } from "@/lib/errors";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logError } from "@/lib/logging";
 import { checkRateLimit } from "@/lib/security";
+import { executeMonitoredQuery, getPageSize } from "@/lib/firestore/query-performance";
 
 type BudgetListRecord = {
   id: string;
@@ -38,14 +39,30 @@ export async function GET(req: Request) {
     const type = searchParams.get("type");
     const ownerId = searchParams.get("ownerId");
     const active = searchParams.get("active") === "true";
+    const cursor = searchParams.get("cursor");
+    const pageSize = getPageSize(searchParams.get("limit"));
 
-    let query = adminDb.collection("budgets").where("tenantId", "==", auth.user.tenantId);
+    let query: FirebaseFirestore.Query = adminDb.collection("budgets").where("tenantId", "==", auth.user.tenantId);
 
     if (status) query = query.where("status", "==", status);
     if (type) query = query.where("type", "==", type);
     if (ownerId) query = query.where("ownerId", "==", ownerId);
 
-    const snapshot = await query.orderBy("startDate", "desc").get();
+    query = query.orderBy("startDate", "desc").limit(pageSize);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("budgets").doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await executeMonitoredQuery(() => query.get(), {
+      route: "GET /api/finance/budgets/list",
+      tenantId: auth.user.tenantId,
+      queryName: "finance_budgets_list",
+      metadata: { status, type, ownerId, active, limit: pageSize, cursor: cursor || null },
+    });
     const now = new Date();
 
     let budgets: BudgetListRecord[] = snapshot.docs.map((doc) => ({
@@ -62,7 +79,14 @@ export async function GET(req: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, budgets });
+    return NextResponse.json({
+      ok: true,
+      budgets,
+      pagination: {
+        limit: pageSize,
+        nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null,
+      },
+    });
   } catch (err) {
     logError(err, { route: "GET /api/finance/budgets/list" });
     const { status, body } = resolveErrorResponse(err, {

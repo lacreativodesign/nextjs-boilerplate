@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireFinance, toISO } from "../../_utils";
 import { toPaymentStatusLabel } from "@/lib/finance/status";
+import { executeMonitoredQuery, getPageSize } from "@/lib/firestore/query-performance";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +22,37 @@ type PaymentDoc = {
   isDeleted?: boolean;
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const auth = await requireFinance();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get();
+    const { searchParams } = new URL(req.url);
+    const cursor = searchParams.get("cursor");
+    const pageSize = getPageSize(searchParams.get("limit"));
+
+    let query: FirebaseFirestore.Query = adminDb
+      .collection("payments")
+      .where("tenantId", "==", auth.user.tenantId)
+      .where("isDeleted", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(pageSize);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("payments").doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snap = await executeMonitoredQuery(() => query.get(), {
+      route: "GET /api/finance/payments/list",
+      tenantId: auth.user.tenantId,
+      queryName: "finance_payments_list",
+      metadata: { limit: pageSize, cursor: cursor || null },
+    });
 
     const payments = snap.docs.map((doc) => {
       const data = (doc.data() || {}) as PaymentDoc;
@@ -53,6 +77,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       payments,
+      pagination: {
+        limit: pageSize,
+        nextCursor: snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null,
+      },
       currentUser: {
         uid: auth.user.uid,
         role: auth.user.role,

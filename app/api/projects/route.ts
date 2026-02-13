@@ -5,6 +5,7 @@ import { ProjectService } from "@/lib/projects/project-service";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
+import { executeMonitoredQuery, getPageSize } from "@/lib/firestore/query-performance";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
     const clientId = searchParams.get("clientId");
+    const cursor = searchParams.get("cursor");
+    const pageSize = getPageSize(searchParams.get("limit"));
 
     let query: FirebaseFirestore.Query = adminDb.collection("projects").where("tenantId", "==", me.tenantId);
 
@@ -95,10 +98,30 @@ export async function GET(request: NextRequest) {
       query = query.where("teamMemberIds", "array-contains", me.uid);
     }
 
-    const snapshot = await query.orderBy("createdAt", "desc").get();
+    query = query.orderBy("createdAt", "desc").limit(pageSize);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("projects").doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await executeMonitoredQuery(() => query.get(), {
+      route: "GET /api/projects",
+      tenantId: me.tenantId,
+      queryName: "projects_list",
+      metadata: { status, clientId, limit: pageSize, cursor: cursor || null },
+    });
     const projects = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    return NextResponse.json({ projects });
+    return NextResponse.json({
+      projects,
+      pagination: {
+        limit: pageSize,
+        nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null,
+      },
+    });
   } catch (error) {
     logError(error, { route: "GET /api/projects" });
     const { status, body, headers } = resolveErrorResponse(error, {
