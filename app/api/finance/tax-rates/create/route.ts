@@ -5,6 +5,7 @@ import { resolveErrorResponse } from "@/lib/errors";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logError } from "@/lib/logging";
 import { checkRateLimit } from "@/lib/security";
+import { invalidateTag } from "@/lib/cache/redis-client";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    await invalidateTag(`tenant:${tenantId}:tax-rates`);
 
     return NextResponse.json({ ok: true, taxRateId: docRef.id });
   } catch (err) {

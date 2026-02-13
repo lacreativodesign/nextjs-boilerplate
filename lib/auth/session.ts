@@ -3,6 +3,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { AppError } from "@/lib/errors";
 import { SESSION_CONFIG } from "@/lib/auth/sessionConfig";
+import { CACHE_TTL_SECONDS, cacheKeys, deleteCached, getCached, setCached } from "@/lib/cache/redis-client";
 
 export { SESSION_CONFIG };
 
@@ -35,6 +36,16 @@ function hashToken(token: string) {
 
 export function hashSessionToken(token: string) {
   return hashToken(token);
+}
+
+type CachedSessionValidation = {
+  uid?: string;
+  valid: boolean;
+  expired?: boolean;
+};
+
+function sessionCacheKeyFromToken(token: string) {
+  return cacheKeys.session(hashToken(token));
 }
 
 function toDate(value: any): Date | null {
@@ -83,6 +94,8 @@ export async function createSession(
 
   await enforceSessionLimit(uid, token, db);
 
+  await setCached(sessionCacheKeyFromToken(token), { valid: true, uid, expired: false } satisfies CachedSessionValidation, CACHE_TTL_SECONDS.sessions, [`user:${uid}:sessions`]);
+
   return { token, expiresAt };
 }
 
@@ -91,6 +104,12 @@ export async function validateSession(
   dbOverride?: Firestore
 ): Promise<{ valid: boolean; uid?: string; expired?: boolean }> {
   if (!token) return { valid: false };
+
+  const cachedValidation = await getCached<CachedSessionValidation>(sessionCacheKeyFromToken(token));
+  if (cachedValidation) {
+    return cachedValidation;
+  }
+
   const sessionId = hashToken(token);
   const db = getDb(dbOverride);
   const ref = db.collection("sessions").doc(sessionId);
@@ -111,15 +130,21 @@ export async function validateSession(
 
   if (!expiresAt || expiresAt.getTime() <= now.getTime()) {
     await ref.set({ active: false, revokedAt: now }, { merge: true });
-    return { valid: false, uid: data.uid, expired: true };
+    const result = { valid: false, uid: data.uid, expired: true };
+    await setCached(sessionCacheKeyFromToken(token), result, 60, [`user:${data.uid}:sessions`]);
+    return result;
   }
 
   if (lastActivity && now.getTime() - lastActivity.getTime() > SESSION_CONFIG.idleTimeout) {
     await ref.set({ active: false, revokedAt: now }, { merge: true });
-    return { valid: false, uid: data.uid, expired: true };
+    const result = { valid: false, uid: data.uid, expired: true };
+    await setCached(sessionCacheKeyFromToken(token), result, 60, [`user:${data.uid}:sessions`]);
+    return result;
   }
 
-  return { valid: true, uid: data.uid };
+  const result = { valid: true, uid: data.uid };
+  await setCached(sessionCacheKeyFromToken(token), result, CACHE_TTL_SECONDS.sessions, [`user:${data.uid}:sessions`]);
+  return result;
 }
 
 export async function refreshSession(token: string, dbOverride?: Firestore): Promise<void> {
@@ -140,6 +165,7 @@ export async function refreshSession(token: string, dbOverride?: Firestore): Pro
   }
 
   await ref.set({ lastActivity: now }, { merge: true });
+  await setCached(sessionCacheKeyFromToken(token), { valid: true, uid: data.uid, expired: false } satisfies CachedSessionValidation, CACHE_TTL_SECONDS.sessions, [`user:${data.uid}:sessions`]);
 }
 
 export async function invalidateSession(token: string, dbOverride?: Firestore): Promise<void> {
@@ -153,6 +179,7 @@ export async function invalidateSession(token: string, dbOverride?: Firestore): 
     },
     { merge: true }
   );
+  await deleteCached(cacheKeys.session(sessionId));
 }
 
 export async function invalidateSessionById(sessionId: string, dbOverride?: Firestore): Promise<void> {
@@ -165,6 +192,7 @@ export async function invalidateSessionById(sessionId: string, dbOverride?: Fire
     },
     { merge: true }
   );
+  await deleteCached(cacheKeys.session(sessionId));
 }
 
 export async function invalidateAllSessions(
@@ -183,6 +211,11 @@ export async function invalidateAllSessions(
   });
 
   await batch.commit();
+  await Promise.all(
+    query.docs
+      .filter((doc) => !exceptId || doc.id !== exceptId)
+      .map((doc) => deleteCached(cacheKeys.session(doc.id)))
+  );
 }
 
 export async function getActiveSessions(uid: string, dbOverride?: Firestore): Promise<SessionRecord[]> {
@@ -204,6 +237,7 @@ export async function getActiveSessions(uid: string, dbOverride?: Firestore): Pr
 
     if (isExpired || isIdle) {
       batch.set(doc.ref, { active: false, revokedAt: now }, { merge: true });
+      void deleteCached(cacheKeys.session(doc.id));
       hasUpdates = true;
       return;
     }
@@ -249,9 +283,11 @@ export async function enforceSessionLimit(
   const excess = docs.length - SESSION_CONFIG.maxConcurrentSessions;
   const batch = db.batch();
 
-  docs.slice(0, excess).forEach((doc) => {
+  const revoked = docs.slice(0, excess);
+  revoked.forEach((doc) => {
     batch.set(doc.ref, { active: false, revokedAt: new Date() }, { merge: true });
   });
 
   await batch.commit();
+  await Promise.all(revoked.map((doc) => deleteCached(cacheKeys.session(doc.id))));
 }

@@ -1,6 +1,10 @@
 export const QUERY_CACHE_TTL_MS = {
   exchangeRates: 60 * 60 * 1000,
   taxRates: 24 * 60 * 60 * 1000,
+  userPermissions: 5 * 60 * 1000,
+  dashboardData: 5 * 60 * 1000,
+  searchResults: 10 * 60 * 1000,
+  sessions: 60 * 60 * 1000,
 } as const;
 
 export function getQueryCacheControl(key: keyof typeof QUERY_CACHE_TTL_MS): string {
