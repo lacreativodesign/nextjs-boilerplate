@@ -1,5 +1,6 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import {
   isHardLockedSubscription,
   isReadOnlySubscription,
@@ -10,10 +11,10 @@ import { AppError, resolveErrorResponse } from "@/lib/errors";
 import {
   applyRateLimitHeaders,
   applySecurityHeaders,
-  checkRateLimit,
   getClientIp,
 } from "@/lib/security";
 import { verifyRequestSignature, verifyRotatingApiKey } from "@/lib/security/request-signing";
+import { buildRateLimitHeaders, checkRateLimit } from "@/lib/rate-limit/limiter";
 
 async function fetchSubscriptionStatus(req: NextRequest) {
   try {
@@ -31,6 +32,39 @@ async function fetchSubscriptionStatus(req: NextRequest) {
   } catch {
     return null;
   }
+}
+
+function hash(value: string) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 24);
+}
+
+function resolveTenantId(req: NextRequest) {
+  return req.headers.get("x-tenant-id") || req.cookies.get("tenant_id")?.value || "unknown";
+}
+
+function resolveUserId(req: NextRequest) {
+  const headerUser = req.headers.get("x-user-id");
+  if (headerUser) return headerUser;
+  const sessionToken = req.cookies.get("lac_session")?.value;
+  if (sessionToken) return `session:${hash(sessionToken)}`;
+  return `ip:${getClientIp(req)}`;
+}
+
+function queueUsageLog(event: NextFetchEvent, req: NextRequest, payload: Record<string, unknown>) {
+  const secret = process.env.INTERNAL_USAGE_LOG_KEY;
+  if (!secret) return;
+
+  event.waitUntil(
+    fetch(new URL("/api/internal/usage-log", req.url), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-usage-key": secret,
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    }).catch(() => undefined)
+  );
 }
 
 function jsonError(req: NextRequest, status: number, message: string, code: "FORBIDDEN" | "UNAUTHORIZED" | "SUBSCRIPTION_LOCKED" | "SUBSCRIPTION_READ_ONLY") {
@@ -54,13 +88,6 @@ function isSuspiciousPath(req: NextRequest): boolean {
     || rawUrl.includes("%2f")
     || rawUrl.includes("%5c")
   );
-}
-
-function getRateLimitTier(pathname: string) {
-  if (pathname.startsWith("/api/session-login") || pathname.startsWith("/api/logout") || pathname.startsWith("/api/auth")) return "strict";
-  if (pathname.startsWith("/api/upload") || pathname.startsWith("/api/documents/upload") || pathname.startsWith("/api/production/files/upload")) return "upload";
-  if (pathname.startsWith("/api/public") || pathname.startsWith("/api/subscription/status") || pathname.startsWith("/api/tenant/context")) return "relaxed";
-  return "standard";
 }
 
 function redirectLegacyPath(req: NextRequest, from: RegExp, to: string) {
@@ -102,13 +129,18 @@ function applyRateHeaders(response: NextResponse, rateContext?: {
   return withSecurityHeaders(response);
 }
 
-export async function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest, event: NextFetchEvent) {
   if (req.headers.get("x-middleware-prefetch") === "1") {
     return withSecurityHeaders(NextResponse.next());
   }
 
+  const startedAt = Date.now();
   const { pathname } = req.nextUrl;
   const isApiRequest = pathname.startsWith("/api");
+
+  if (pathname.startsWith("/api/internal/usage-log")) {
+    return withSecurityHeaders(NextResponse.next());
+  }
 
   if (isSuspiciousPath(req)) {
     const ip = getClientIp(req);
@@ -128,44 +160,74 @@ export async function middleware(req: NextRequest) {
   }
 
   const sessionToken = req.cookies.get("lac_session")?.value;
+  const tenantId = resolveTenantId(req);
+  const userId = resolveUserId(req);
 
   let rateContext;
+  let ruleId = "";
+  let quotaExceeded = false;
+
   if (isApiRequest) {
-    const tier = getRateLimitTier(pathname);
-    const userIdentifier = sessionToken ? `session:${sessionToken.slice(0, 24)}` : undefined;
-    try {
-      rateContext = await checkRateLimit(req, tier, userIdentifier);
-    } catch (error) {
-      console.warn("Rate limit exceeded", { pathname, method: req.method, ip: getClientIp(req) });
-      const { status, body } = resolveErrorResponse(error, {
-        fallbackMessage: "Rate limit exceeded.",
-        fallbackCode: "RATE_LIMITED",
-        fallbackStatus: 429,
-        requestId: req.headers.get("x-request-id") || undefined,
+    const decision = await checkRateLimit({
+      tenantId,
+      userId,
+      ip: getClientIp(req),
+      endpoint: pathname,
+      method: req.method,
+      timestamp: Date.now(),
+    });
+
+    ruleId = decision.ruleId;
+    quotaExceeded = decision.reason === "QUOTA_EXCEEDED";
+
+    if (!decision.allowed) {
+      const body = {
+        ok: false,
+        error: decision.reason === "QUOTA_EXCEEDED" ? "Tenant API quota exceeded." : "Rate limit exceeded.",
+        code: decision.reason === "QUOTA_EXCEEDED" ? "QUOTA_EXCEEDED" : "RATE_LIMITED",
+      };
+      const blocked = NextResponse.json(body, { status: 429 });
+      Object.entries(buildRateLimitHeaders(decision)).forEach(([key, value]) => blocked.headers.set(key, value));
+      if (decision.retryAfterSeconds > 0) blocked.headers.set("Retry-After", String(decision.retryAfterSeconds));
+
+      queueUsageLog(event, req, {
+        endpoint: pathname,
+        tenantId,
+        userId,
+        ip: getClientIp(req),
+        method: req.method,
+        status: 429,
+        responseTimeMs: Date.now() - startedAt,
+        rateLimitRuleId: decision.ruleId,
+        quotaExceeded,
+        createdAt: new Date().toISOString(),
       });
-      return applyRateHeaders(NextResponse.json(body, { status }), {
-        limit: 0,
-        remaining: 0,
-        resetSeconds: 60,
-        retryAfterSeconds: 60,
-      });
+
+      return withSecurityHeaders(blocked);
     }
 
-    if (isSensitiveApiPath(pathname)) {
-      const apiKey = req.headers.get("x-api-key");
-      const keyValidation = verifyRotatingApiKey(apiKey);
-      if (!keyValidation.valid) {
-        return applyRateHeaders(jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
-      }
+    rateContext = {
+      limit: decision.limit,
+      remaining: decision.remaining,
+      resetSeconds: decision.resetSeconds,
+      retryAfterSeconds: 0,
+    };
+  }
 
-      const signature = req.headers.get("x-signature");
-      const timestamp = req.headers.get("x-signature-timestamp");
-      const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
-      const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
+  if (isApiRequest && isSensitiveApiPath(pathname)) {
+    const apiKey = req.headers.get("x-api-key");
+    const keyValidation = verifyRotatingApiKey(apiKey);
+    if (!keyValidation.valid) {
+      return applyRateHeaders(jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
+    }
 
-      if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
-        return applyRateHeaders(jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
-      }
+    const signature = req.headers.get("x-signature");
+    const timestamp = req.headers.get("x-signature-timestamp");
+    const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
+    const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
+
+    if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
+      return applyRateHeaders(jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
     }
   }
 
@@ -184,7 +246,20 @@ export async function middleware(req: NextRequest) {
   }
 
   if (isApiRequest && isPublicApiPath(pathname)) {
-    return applyRateHeaders(NextResponse.next(), rateContext);
+    const res = applyRateHeaders(NextResponse.next(), rateContext);
+    queueUsageLog(event, req, {
+      endpoint: pathname,
+      tenantId,
+      userId,
+      ip: getClientIp(req),
+      method: req.method,
+      status: 200,
+      responseTimeMs: Date.now() - startedAt,
+      rateLimitRuleId: ruleId,
+      quotaExceeded,
+      createdAt: new Date().toISOString(),
+    });
+    return res;
   }
 
   const pageRole = roleFromPath(pathname);
@@ -237,7 +312,24 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return applyRateHeaders(NextResponse.next(), rateContext);
+  const response = applyRateHeaders(NextResponse.next(), rateContext);
+
+  if (isApiRequest) {
+    queueUsageLog(event, req, {
+      endpoint: pathname,
+      tenantId,
+      userId,
+      ip: getClientIp(req),
+      method: req.method,
+      status: response.status || 200,
+      responseTimeMs: Date.now() - startedAt,
+      rateLimitRuleId: ruleId,
+      quotaExceeded,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return response;
 }
 
 export const config = {
