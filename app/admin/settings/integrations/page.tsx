@@ -55,12 +55,25 @@ type SlackConnection = {
   notificationEnabled: boolean;
 };
 
+type MicrosoftConnection = {
+  connected: boolean;
+  accountEmail: string | null;
+  accountDisplayName: string | null;
+  microsoftTenantId: string | null;
+  scopes: string[];
+  calendarSyncEnabled: boolean;
+  outlookEmailEnabled: boolean;
+  oneDriveRootFolderId: string | null;
+  oneDriveRootFolderName: string | null;
+};
+
 export default function IntegrationSettingsPage() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [health, setHealth] = useState<Health[]>([]);
   const [googleConnection, setGoogleConnection] = useState<GoogleConnection | null>(null);
   const [slackConnection, setSlackConnection] = useState<SlackConnection | null>(null);
+  const [microsoftConnection, setMicrosoftConnection] = useState<MicrosoftConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,28 +90,32 @@ export default function IntegrationSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [subRes, deliveryRes, googleRes, slackRes] = await Promise.all([
+      const [subRes, deliveryRes, googleRes, slackRes, microsoftRes] = await Promise.all([
         fetch("/api/webhooks/subscriptions", { cache: "no-store", credentials: "include" }),
         fetch("/api/webhooks/deliveries?limit=100", { cache: "no-store", credentials: "include" }),
         fetch("/api/integrations/google/connection", { cache: "no-store", credentials: "include" }),
         fetch("/api/integrations/slack/connection", { cache: "no-store", credentials: "include" }),
+        fetch("/api/integrations/microsoft/connection", { cache: "no-store", credentials: "include" }),
       ]);
 
       const subData = await subRes.json();
       const deliveryData = await deliveryRes.json();
       const googleData = await googleRes.json();
       const slackData = await slackRes.json();
+      const microsoftData = await microsoftRes.json();
 
       if (!subRes.ok || !subData?.ok) throw new Error(subData?.error || "Unable to load webhooks.");
       if (!deliveryRes.ok || !deliveryData?.ok) throw new Error(deliveryData?.error || "Unable to load deliveries.");
       if (!googleRes.ok || !googleData?.ok) throw new Error(googleData?.error || "Unable to load Google Workspace connection.");
       if (!slackRes.ok || !slackData?.ok) throw new Error(slackData?.error || "Unable to load Slack connection.");
+      if (!microsoftRes.ok || !microsoftData?.ok) throw new Error(microsoftData?.error || "Unable to load Microsoft connection.");
 
       setWebhooks(subData.subscriptions || []);
       setHealth(subData.health || []);
       setDeliveries(deliveryData.deliveries || []);
       setGoogleConnection(googleData.connection || null);
       setSlackConnection(slackData.connection || null);
+      setMicrosoftConnection(microsoftData.connection || null);
     } catch (err: any) {
       setError(err.message || "Unable to load webhook settings.");
     } finally {
@@ -196,6 +213,10 @@ export default function IntegrationSettingsPage() {
     }
   };
 
+  const connectMicrosoft365 = () => {
+    window.location.href = "/api/integrations/microsoft/authorize?returnTo=/admin/settings/integrations";
+  };
+
   const updateSlackConnection = async (patch: Partial<SlackConnection>) => {
     try {
       setSaving(true);
@@ -236,6 +257,26 @@ export default function IntegrationSettingsPage() {
     }
   };
 
+  const updateMicrosoftConnection = async (patch: Partial<MicrosoftConnection>) => {
+    try {
+      setSaving(true);
+      setError(null);
+      const res = await fetch("/api/integrations/microsoft/connection", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Microsoft settings.");
+      await load();
+    } catch (err: any) {
+      setError(err.message || "Unable to update Microsoft settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const healthMap = useMemo(() => new Map(health.map((item) => [item.subscriptionId, item.healthy])), [health]);
 
   return (
@@ -252,6 +293,76 @@ export default function IntegrationSettingsPage() {
           <a className="btn subtle" href="/admin/settings/integrations/quickbooks">
             Open QuickBooks Sync
           </a>
+        </div>
+      </section>
+
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Microsoft 365</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth consent, Outlook calendar sync, OneDrive storage, and Outlook email delivery.</p>
+          </div>
+          <button className="btn subtle" type="button" onClick={connectMicrosoft365} disabled={saving || loading}>
+            {microsoftConnection?.connected ? "Reconnect Microsoft 365" : "Connect Microsoft 365"}
+          </button>
+        </div>
+
+        <div className="settings-divider" />
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Status</div>
+            <div style={{ fontWeight: 700, marginTop: 4 }}>{microsoftConnection?.connected ? "Connected" : "Not connected"}</div>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>{microsoftConnection?.accountDisplayName || microsoftConnection?.accountEmail || "No Microsoft account linked"}</div>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>Tenant ID: {microsoftConnection?.microsoftTenantId || "-"}</div>
+          </div>
+          <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+            <label className="flex items-center justify-between text-sm">
+              <span>Outlook calendar sync enabled</span>
+              <input
+                type="checkbox"
+                checked={Boolean(microsoftConnection?.calendarSyncEnabled)}
+                disabled={!microsoftConnection?.connected || saving || loading}
+                onChange={(e) => updateMicrosoftConnection({ calendarSyncEnabled: e.target.checked })}
+              />
+            </label>
+            <label className="mt-3 flex items-center justify-between text-sm">
+              <span>Outlook email enabled</span>
+              <input
+                type="checkbox"
+                checked={Boolean(microsoftConnection?.outlookEmailEnabled)}
+                disabled={!microsoftConnection?.connected || saving || loading}
+                onChange={(e) => updateMicrosoftConnection({ outlookEmailEnabled: e.target.checked })}
+              />
+            </label>
+            <input
+              className="input mt-3"
+              value={microsoftConnection?.oneDriveRootFolderId || ""}
+              placeholder="OneDrive root folder ID"
+              disabled={!microsoftConnection?.connected || saving || loading}
+              onChange={(e) => setMicrosoftConnection((prev) => (prev ? { ...prev, oneDriveRootFolderId: e.target.value } : prev))}
+            />
+            <input
+              className="input mt-3"
+              value={microsoftConnection?.oneDriveRootFolderName || ""}
+              placeholder="OneDrive folder name"
+              disabled={!microsoftConnection?.connected || saving || loading}
+              onChange={(e) => setMicrosoftConnection((prev) => (prev ? { ...prev, oneDriveRootFolderName: e.target.value } : prev))}
+            />
+            <button
+              className="btn ghost mt-3"
+              type="button"
+              disabled={!microsoftConnection?.connected || saving || loading}
+              onClick={() =>
+                updateMicrosoftConnection({
+                  oneDriveRootFolderId: microsoftConnection?.oneDriveRootFolderId || null,
+                  oneDriveRootFolderName: microsoftConnection?.oneDriveRootFolderName || null,
+                })
+              }
+            >
+              Save OneDrive Folder
+            </button>
+          </div>
         </div>
       </section>
 
