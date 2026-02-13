@@ -20,6 +20,7 @@ import {
 } from "@/lib/finance/status";
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 import { normalizeRole } from "../../../admin/_utils";
+import { sendBizostoEventNotification } from "@/lib/integrations/slack";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +175,15 @@ export async function POST(req: Request) {
         } catch (autoCreateError) {
           console.error("project auto-create error:", autoCreateError);
         }
+
+        await sendBizostoEventNotification({
+          type: "invoice_paid",
+          tenantId: String(invoice.tenantId || tenantId || ""),
+          invoiceNumber: orderId || id,
+          amountLabel: `${invoice.currency || "USD"} ${amountTotal.toFixed(2)}`,
+        }).catch((error) => {
+          console.error("slack invoice notification failed:", error);
+        });
       }
 
       const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;

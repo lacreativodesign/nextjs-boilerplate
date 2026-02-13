@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createHrNotification } from "@/app/api/admin/hr/_utils";
+import { sendBizostoEventNotification } from "@/lib/integrations/slack";
 
 export type LeaveTypeCode = "vacation" | "sick" | "personal" | "unpaid" | "bereavement";
 export type LeaveRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
@@ -542,6 +543,15 @@ export class LeaveService {
       type: "success",
       entityId: params.requestId,
       deepLink: "/hr/leave",
+    });
+
+    await sendBizostoEventNotification({
+      type: "leave_approved",
+      tenantId: params.tenantId,
+      targetUserId: String(request.employeeId || ""),
+      leaveType: String(request.leaveType || "leave"),
+    }).catch((error) => {
+      console.error("slack leave approval notification failed:", error);
     });
   }
 
