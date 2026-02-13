@@ -7,6 +7,7 @@ import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND } from "@/lib/tenant/constants";
 import { writeAuditLog } from "@/lib/tenant/audit";
 import { queueEmailEvent } from "@/lib/emailEvents";
 import { normalizePlan, resolvePlanModules, resolveTenantModules } from "@/app/lib/plan-enforcement";
+import { ensureStripeCustomer } from "@/lib/billing/stripe-subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,14 @@ export async function POST(req: NextRequest) {
     };
 
     await tenantRef.set(payload);
+
+    if (process.env.STRIPE_SECRET_KEY) {
+      await ensureStripeCustomer({
+        tenantId: tenantRef.id,
+        email: createAdminEmail || undefined,
+        name,
+      });
+    }
 
     let createdUserId: string | null = null;
     if (createAdminEmail) {
