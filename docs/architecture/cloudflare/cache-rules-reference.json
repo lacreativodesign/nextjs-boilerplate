@@ -1,0 +1,47 @@
+{
+  "cache_rules": [
+    {
+      "name": "cache-static-assets",
+      "expression": "http.request.uri.path matches \"^/(?:_next/static|.*\\\\.(?:js|css|png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2))$\"",
+      "action": "set_cache_settings",
+      "settings": {
+        "cache": true,
+        "browser_ttl": 31536000,
+        "edge_ttl": 2592000,
+        "respect_origin": true
+      }
+    },
+    {
+      "name": "bypass-auth-endpoints",
+      "expression": "http.request.uri.path starts_with \"/api/auth\" or http.request.uri.path starts_with \"/api/login\" or http.request.uri.path starts_with \"/api/logout\" or http.request.uri.path starts_with \"/api/session\"",
+      "action": "set_cache_settings",
+      "settings": {
+        "cache": false
+      }
+    },
+    {
+      "name": "cache-public-api",
+      "expression": "http.request.uri.path starts_with \"/api/public/\"",
+      "action": "set_cache_settings",
+      "settings": {
+        "cache": true,
+        "browser_ttl": 300,
+        "edge_ttl": 3600,
+        "cache_key": {
+          "include_query_string": true
+        }
+      }
+    }
+  ],
+  "security": {
+    "ssl_mode": "full_strict",
+    "auto_minify": {
+      "html": true,
+      "css": true,
+      "js": true
+    },
+    "brotli": true,
+    "waf_managed_rules": true,
+    "bot_protection": true
+  }
+}

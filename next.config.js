@@ -22,7 +22,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["ucarecdn.com", "firebasestorage.googleapis.com"],
+    domains: ["ucarecdn.com", "firebasestorage.googleapis.com", "imagedelivery.net"],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
     remotePatterns: [
@@ -33,6 +33,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "firebasestorage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "imagedelivery.net",
       },
     ],
   },
@@ -47,7 +51,11 @@ const nextConfig = {
       },
       {
         source: "/(.*)\\.(js|css|svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2)$",
-        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, s-maxage=2592000, immutable" }],
+      },
+      {
+        source: "/api/public/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" }],
       },
       {
         source: "/(.*)",
