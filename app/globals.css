@@ -1094,3 +1094,25 @@ select option {
 .sidebar-action--icon {
   padding: 8px;
 }
+
+button,
+a,
+[role="button"],
+input,
+select,
+textarea {
+  min-height: 44px;
+}
+
+.mobile-form input,
+.mobile-form select,
+.mobile-form textarea {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

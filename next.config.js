@@ -5,6 +5,12 @@ const withBundleAnalyzer =
       })
     : (config) => config;
 
+const withPWA = require("next-pwa")({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: false,
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -37,15 +43,11 @@ const nextConfig = {
     return [
       {
         source: "/_next/static/:path*",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
         source: "/(.*)\\.(js|css|svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2)$",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
-        ],
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
       },
       {
         source: "/(.*)",
@@ -61,4 +63,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+module.exports = withBundleAnalyzer(withPWA(nextConfig));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -11,9 +12,12 @@ import { normalizeRole } from "@/lib/erpAccess";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
+import MobileBottomNav from "@/components/layout/MobileBottomNav";
 
 function AppShellInner({ children, data, loading }: { children: React.ReactNode; data: TenantContextResponse | null; loading: boolean }) {
   const { t } = useI18n();
+  const router = useRouter();
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
@@ -53,6 +57,35 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
     document.body.style.fontFamily = `var(--brand-font)`;
   }, [data?.tenant?.whiteLabel]);
 
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const onTouchStart = (event: TouchEvent) => {
+      startX = event.touches[0]?.clientX || 0;
+      startY = event.touches[0]?.clientY || 0;
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      const endX = event.changedTouches[0]?.clientX || 0;
+      const endY = event.changedTouches[0]?.clientY || 0;
+      const deltaX = endX - startX;
+      const deltaY = Math.abs(endY - startY);
+
+      if (startX < 24 && deltaX > 110 && deltaY < 70) {
+        router.back();
+      }
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [router]);
+
   useKeyboardShortcuts({
     onToggleSidebar: toggleCollapse,
     onOpenSearch: () => {
@@ -80,10 +113,13 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
           currentUser={currentUser}
           activityTrigger={<ActivityFeedSidebar open={activityOpen} onClose={() => setActivityOpen((prev) => !prev)} />}
         />
-        <main className="page-content flex-1 py-[var(--page-padding-y)]">
-          <div className="page-frame">{loading ? <div className="card p-6">{t("common.loading")}</div> : children}</div>
+        <main className="page-content flex-1 pb-20 py-[var(--page-padding-y)] md:pb-0">
+          <PullToRefresh>
+            <div className="page-frame">{loading ? <div className="card p-6">{t("common.loading")}</div> : children}</div>
+          </PullToRefresh>
         </main>
       </div>
+      <MobileBottomNav onMenuTap={openMobile} />
       <GlobalSearchModal />
     </div>
   );
