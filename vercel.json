@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/invoice-reminders",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/compliance-retention",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/compliance-report",
+      "schedule": "0 3 * * 1"
     }
   ]
 }
