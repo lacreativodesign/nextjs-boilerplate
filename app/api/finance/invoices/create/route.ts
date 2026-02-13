@@ -21,6 +21,7 @@ import { checkRateLimit, getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
 import { calculateTax } from "@/lib/finance/tax";
+import { incrementTenantStats } from "@/lib/tenant/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -299,6 +300,10 @@ export async function POST(req: Request) {
     };
 
     await docRef.set(invoiceData);
+    await incrementTenantStats(tenantId, {
+      invoicesCreated: 1,
+      invoiceAmountTotalBaseDelta: totalInBase,
+    });
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
     await createFinanceEvent({

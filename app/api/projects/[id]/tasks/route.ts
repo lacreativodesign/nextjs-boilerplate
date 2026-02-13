@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/app/api/admin/_utils";
 import type { Project } from "@/types/project-management";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
+import { executeMonitoredQuery, getPageSize } from "@/lib/firestore/query-performance";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
     const assignedTo = searchParams.get("assignedTo");
+    const cursor = searchParams.get("cursor");
+    const pageSize = getPageSize(searchParams.get("limit"));
 
     let query: FirebaseFirestore.Query = adminDb
       .collection("tasks")
@@ -91,10 +94,30 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     if (status && status !== "all") query = query.where("status", "==", status);
     if (assignedTo) query = query.where("assignedTo", "==", assignedTo);
 
-    const snapshot = await query.orderBy("createdAt", "desc").get();
+    query = query.orderBy("createdAt", "desc").limit(pageSize);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("tasks").doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await executeMonitoredQuery(() => query.get(), {
+      route: "GET /api/projects/[id]/tasks",
+      tenantId: me.tenantId,
+      queryName: "project_tasks_list",
+      metadata: { projectId: params.id, status, assignedTo, limit: pageSize, cursor: cursor || null },
+    });
     const tasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    return NextResponse.json({ tasks });
+    return NextResponse.json({
+      tasks,
+      pagination: {
+        limit: pageSize,
+        nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null,
+      },
+    });
   } catch (error) {
     logError(error, { route: "GET /api/projects/[id]/tasks" });
     const { status, body, headers } = resolveErrorResponse(error, {

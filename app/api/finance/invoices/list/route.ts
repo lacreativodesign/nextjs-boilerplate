@@ -4,6 +4,7 @@ import { requireFinance, toISO } from "../../_utils";
 import { toInvoiceStatusLabel } from "@/lib/finance/status";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
+import { executeMonitoredQuery, getPageSize } from "@/lib/firestore/query-performance";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,30 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const { searchParams } = new URL(req.url);
+    const cursor = searchParams.get("cursor");
+    const pageSize = getPageSize(searchParams.get("limit"));
+
+    let query: FirebaseFirestore.Query = adminDb
+      .collection("invoices")
+      .where("tenantId", "==", auth.user.tenantId)
+      .where("isDeleted", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(pageSize);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("invoices").doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snap = await executeMonitoredQuery(() => query.get(), {
+      route: "GET /api/finance/invoices/list",
+      tenantId: auth.user.tenantId,
+      queryName: "finance_invoices_list",
+      metadata: { limit: pageSize, cursor: cursor || null },
+    });
 
     const invoices = snap.docs.map((doc) => {
       const data = (doc.data() || {}) as InvoiceDoc;
@@ -71,6 +95,10 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       invoices,
+      pagination: {
+        limit: pageSize,
+        nextCursor: snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null,
+      },
       currentUser: {
         uid: auth.user.uid,
         role: auth.user.role,
