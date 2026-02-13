@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   type Auth,
   getMultiFactorResolver,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   type MultiFactorResolver,
 } from "firebase/auth";
@@ -13,6 +14,7 @@ import MFAVerify from "@/components/auth/MFAVerify";
 import { verifyMFASignIn } from "@/lib/auth/mfa";
 import { Button } from "@/components/ui/button";
 import { showToast } from "@/lib/utils/toast";
+import SSOLoginButtons from "@/components/auth/SSOLoginButtons";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -23,6 +25,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [ssoProviders, setSsoProviders] = useState<Array<{ provider: "google" | "microsoft" | "okta" | "auth0" }>>([]);
+  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "default";
 
   useEffect(() => {
     let active = true;
@@ -44,6 +48,57 @@ export default function LoginPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch(`/api/auth/sso/providers?tenantId=${encodeURIComponent(tenantId)}`, {
+      cache: "no-store",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active || !data?.ok) return;
+        setSsoProviders(data.providers || []);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (!firebaseAuth) return;
+    const params = new URLSearchParams(window.location.search);
+    const ssoToken = params.get("ssoToken");
+    const returnTo = params.get("returnTo") || "/";
+    if (!ssoToken) return;
+
+    const completeSso = async () => {
+      try {
+        const userCred = await signInWithCustomToken(firebaseAuth, ssoToken);
+        const idToken = await userCred.user.getIdToken(true);
+        const cookieRes = await fetch("/api/session-login", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken, rememberMe: true }),
+        });
+
+        if (!cookieRes.ok) {
+          const payload = await cookieRes.json().catch(() => null);
+          throw new Error(payload?.error || "Failed to create SSO session.");
+        }
+
+        window.location.href = returnTo;
+      } catch (err: any) {
+        setError(err?.message || "SSO sign-in failed.");
+      }
+    };
+
+    void completeSso();
+  }, [firebaseAuth]);
 
   // HANDLE LOGIN (adds MFA challenge handling)
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -272,6 +327,9 @@ export default function LoginPage() {
               >
                 Login
               </Button>
+
+              <div className="text-center text-xs opacity-70">or</div>
+              <SSOLoginButtons tenantId={tenantId} providers={ssoProviders} />
             </form>
           )}
 
