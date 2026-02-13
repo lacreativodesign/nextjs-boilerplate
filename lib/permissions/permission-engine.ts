@@ -1,4 +1,5 @@
 import { adminDb } from "@/lib/firebaseAdmin";
+import { CACHE_TTL_SECONDS, cacheKeys, deleteCached, getCached, setCached } from "@/lib/cache/redis-client";
 import type {
   FieldAccess,
   PermissionAction,
@@ -10,51 +11,9 @@ import type {
   UserPermissionSnapshot,
 } from "@/lib/permissions/types";
 
-const CACHE_TTL_SECONDS = 120;
+const MEMORY_CACHE_TTL_SECONDS = CACHE_TTL_SECONDS.userPermissions;
 const memoryCache = new Map<string, { expiresAt: number; value: UserPermissionSnapshot }>();
 const FIELD_ACCESS_WEIGHT: Record<FieldAccess, number> = { hidden: 0, read: 1, write: 2 };
-
-function getUpstashConfig() {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return null;
-  return { url: url.replace(/\/$/, ""), token };
-}
-
-async function redisGet<T>(key: string): Promise<T | null> {
-  const upstash = getUpstashConfig();
-  if (!upstash) return null;
-
-  const res = await fetch(`${upstash.url}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${upstash.token}` },
-    cache: "no-store",
-  });
-
-  if (!res.ok) return null;
-  const payload = (await res.json()) as { result?: string | null };
-  if (!payload?.result) return null;
-
-  try {
-    return JSON.parse(payload.result) as T;
-  } catch {
-    return null;
-  }
-}
-
-async function redisSet(key: string, value: unknown, ttlSeconds: number) {
-  const upstash = getUpstashConfig();
-  if (!upstash) return;
-
-  await fetch(`${upstash.url}/setex/${encodeURIComponent(key)}/${ttlSeconds}/${encodeURIComponent(JSON.stringify(value))}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${upstash.token}` },
-    cache: "no-store",
-  });
-}
-
-function cacheKeyForUser(tenantId: string, userId: string) {
-  return `permissions:user:${tenantId}:${userId}`;
-}
 
 function normalizeString(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
@@ -153,29 +112,22 @@ async function resolveRoleHierarchy(tenantId: string, startingRoles: RoleDocumen
 }
 
 export async function invalidateUserPermissionCache(tenantId: string, userId: string) {
-  const key = cacheKeyForUser(tenantId, userId);
+  const key = cacheKeys.userPermissions(tenantId, userId);
   memoryCache.delete(key);
 
-  const upstash = getUpstashConfig();
-  if (!upstash) return;
-
-  await fetch(`${upstash.url}/del/${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${upstash.token}` },
-    cache: "no-store",
-  });
+  await deleteCached(key);
 }
 
 export async function buildUserPermissionSnapshot(tenantId: string, userId: string): Promise<UserPermissionSnapshot> {
-  const key = cacheKeyForUser(tenantId, userId);
+  const key = cacheKeys.userPermissions(tenantId, userId);
   const memoryEntry = memoryCache.get(key);
   if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
     return memoryEntry.value;
   }
 
-  const redisEntry = await redisGet<UserPermissionSnapshot>(key);
+  const redisEntry = await getCached<UserPermissionSnapshot>(key);
   if (redisEntry) {
-    memoryCache.set(key, { expiresAt: Date.now() + CACHE_TTL_SECONDS * 1000, value: redisEntry });
+    memoryCache.set(key, { expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000, value: redisEntry });
     return redisEntry;
   }
 
@@ -196,8 +148,8 @@ export async function buildUserPermissionSnapshot(tenantId: string, userId: stri
     permissions: mergedPermissions,
   };
 
-  memoryCache.set(key, { expiresAt: Date.now() + CACHE_TTL_SECONDS * 1000, value: snapshot });
-  await redisSet(key, snapshot, CACHE_TTL_SECONDS);
+  memoryCache.set(key, { expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000, value: snapshot });
+  await setCached(key, snapshot, CACHE_TTL_SECONDS.userPermissions, [`tenant:${tenantId}:permissions`, `user:${userId}:permissions`]);
 
   return snapshot;
 }

@@ -2,6 +2,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { AppError } from "@/lib/errors";
 import { CurrencyCode, getCurrency } from "./currencies";
 import { QUERY_CACHE_TTL_MS, isCacheFresh } from "@/lib/cache/query-client";
+import { CACHE_TTL_SECONDS, cacheKeys, getCached, setCached } from "@/lib/cache/redis-client";
 
 const CACHE_DURATION_HOURS = 1;
 const API_BASE_URL = process.env.EXCHANGE_RATE_API_URL || "https://v6.exchangerate-api.com/v6";
@@ -53,10 +54,17 @@ async function fetchExchangeRatesFromAPI(baseCurrency: CurrencyCode = "USD"): Pr
 
 export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Promise<Record<string, number>> {
   const cacheKey = `exchange_rates_${baseCurrency}`;
+  const redisKey = cacheKeys.exchangeRates(baseCurrency);
   const memoryCache = inMemoryExchangeRateCache.get(cacheKey);
 
   if (memoryCache && isCacheFresh(memoryCache.updatedAt, "exchangeRates")) {
     return memoryCache.rates;
+  }
+
+  const redisRates = await getCached<Record<string, number>>(redisKey);
+  if (redisRates) {
+    inMemoryExchangeRateCache.set(cacheKey, { rates: redisRates, updatedAt: Date.now() });
+    return redisRates;
   }
 
   try {
@@ -70,6 +78,7 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
       if (cacheAge < cacheMaxAge && cacheData?.rates) {
         const rates = cacheData.rates as Record<string, number>;
         inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
+        await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
         return rates;
       }
     }
@@ -83,6 +92,7 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
       updatedAt: new Date(),
     });
     inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
+    await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
 
     return rates;
   } catch (error) {
@@ -92,6 +102,7 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
     if (cacheDoc.exists) {
       const rates = (cacheDoc.data()?.rates || {}) as Record<string, number>;
       inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
+      await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
       return rates;
     }
 

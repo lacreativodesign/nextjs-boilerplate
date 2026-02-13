@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { SearchService } from "@/lib/search/search-service";
 import {
   csvResponse,
@@ -10,6 +11,7 @@ import {
   type SearchModuleConfig,
 } from "@/lib/search/search-api";
 import type { SearchFilter } from "@/types/search";
+import { CACHE_TTL_SECONDS, cacheKeys, rememberCached } from "@/lib/cache/redis-client";
 
 export type SearchSession = {
   uid: string;
@@ -36,6 +38,19 @@ export async function handleModuleSearch(
   }
 
   const offset = (params.page - 1) * params.limit;
+
+  const cachePayload = {
+    module: config.module,
+    tenantId: session.tenantId,
+    searchText: params.searchText || "",
+    filters: params.filters || [],
+    sortBy: params.sortBy || config.defaultSortBy || "",
+    sortOrder: params.sortOrder || "",
+    page: params.page,
+    limit: params.limit,
+    format: params.format || "json",
+  };
+  const searchHash = crypto.createHash("sha256").update(JSON.stringify(cachePayload)).digest("hex").slice(0, 20);
 
   let results: Array<Record<string, unknown>> = [];
   let total = 0;
@@ -89,7 +104,7 @@ export async function handleModuleSearch(
     return csvResponse(csvPayload, `${config.module}-search.csv`);
   }
 
-  return NextResponse.json({
+  const responsePayload = {
     results,
     pagination: {
       total,
@@ -97,5 +112,16 @@ export async function handleModuleSearch(
       limit: params.limit,
       totalPages: Math.max(1, Math.ceil(total / params.limit)),
     },
-  });
+  };
+
+  if (params.format === "json" || !params.format) {
+    const key = cacheKeys.searchResults(session.tenantId, config.module, searchHash);
+    const cachedPayload = await rememberCached(key, CACHE_TTL_SECONDS.searchResults, async () => responsePayload, [
+      `tenant:${session.tenantId}:search`,
+      `tenant:${session.tenantId}:search:${config.module}`,
+    ]);
+    return NextResponse.json(cachedPayload);
+  }
+
+  return NextResponse.json(responsePayload);
 }
