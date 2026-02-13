@@ -312,6 +312,18 @@ export default function IntegrationSettingsPage() {
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>DocuSign</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth connection, signature workflow, status tracking, and signed document download.</p>
+          </div>
+          <a className="btn subtle" href="/admin/settings/integrations/docusign">
+            Open DocuSign E-Signature
+          </a>
+        </div>
+      </section>
+
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Microsoft 365</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth consent, Outlook calendar sync, OneDrive storage, and Outlook email delivery.</p>
           </div>
