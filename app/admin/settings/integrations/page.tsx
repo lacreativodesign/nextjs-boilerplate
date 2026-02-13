@@ -33,10 +33,20 @@ type Health = {
   healthy: boolean;
 };
 
+type GoogleConnection = {
+  connected: boolean;
+  accountEmail: string | null;
+  scopes: string[];
+  calendarSyncEnabled: boolean;
+  gmailEnabled: boolean;
+  driveFolderId: string | null;
+};
+
 export default function IntegrationSettingsPage() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [health, setHealth] = useState<Health[]>([]);
+  const [googleConnection, setGoogleConnection] = useState<GoogleConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,20 +63,24 @@ export default function IntegrationSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [subRes, deliveryRes] = await Promise.all([
+      const [subRes, deliveryRes, googleRes] = await Promise.all([
         fetch("/api/webhooks/subscriptions", { cache: "no-store", credentials: "include" }),
         fetch("/api/webhooks/deliveries?limit=100", { cache: "no-store", credentials: "include" }),
+        fetch("/api/integrations/google/connection", { cache: "no-store", credentials: "include" }),
       ]);
 
       const subData = await subRes.json();
       const deliveryData = await deliveryRes.json();
+      const googleData = await googleRes.json();
 
       if (!subRes.ok || !subData?.ok) throw new Error(subData?.error || "Unable to load webhooks.");
       if (!deliveryRes.ok || !deliveryData?.ok) throw new Error(deliveryData?.error || "Unable to load deliveries.");
+      if (!googleRes.ok || !googleData?.ok) throw new Error(googleData?.error || "Unable to load Google Workspace connection.");
 
       setWebhooks(subData.subscriptions || []);
       setHealth(subData.health || []);
       setDeliveries(deliveryData.deliveries || []);
+      setGoogleConnection(googleData.connection || null);
     } catch (err: any) {
       setError(err.message || "Unable to load webhook settings.");
     } finally {
@@ -142,12 +156,93 @@ export default function IntegrationSettingsPage() {
     }
   };
 
+  const connectGoogleWorkspace = () => {
+    window.location.href = "/api/integrations/google/authorize?returnTo=/admin/settings/integrations";
+  };
+
+  const updateGoogleConnection = async (patch: Partial<GoogleConnection>) => {
+    try {
+      setSaving(true);
+      setError(null);
+      const res = await fetch("/api/integrations/google/connection", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Google Workspace settings.");
+      await load();
+    } catch (err: any) {
+      setError(err.message || "Unable to update Google Workspace settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const healthMap = useMemo(() => new Map(health.map((item) => [item.subscriptionId, item.healthy])), [health]);
 
   return (
     <div className="space-y-6">
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
+
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Google Workspace</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth consent, Calendar sync, Drive storage, and Gmail sending.</p>
+          </div>
+          <button className="btn subtle" type="button" onClick={connectGoogleWorkspace} disabled={saving || loading}>
+            {googleConnection?.connected ? "Reconnect Google" : "Connect Google"}
+          </button>
+        </div>
+
+        <div className="settings-divider" />
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Status</div>
+            <div style={{ fontWeight: 700, marginTop: 4 }}>{googleConnection?.connected ? "Connected" : "Not connected"}</div>
+            <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>{googleConnection?.accountEmail || "No Google account linked"}</div>
+          </div>
+          <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+            <label className="flex items-center justify-between text-sm">
+              <span>Calendar sync enabled</span>
+              <input
+                type="checkbox"
+                checked={Boolean(googleConnection?.calendarSyncEnabled)}
+                disabled={!googleConnection?.connected || saving || loading}
+                onChange={(e) => updateGoogleConnection({ calendarSyncEnabled: e.target.checked })}
+              />
+            </label>
+            <label className="mt-3 flex items-center justify-between text-sm">
+              <span>Gmail sending enabled</span>
+              <input
+                type="checkbox"
+                checked={Boolean(googleConnection?.gmailEnabled)}
+                disabled={!googleConnection?.connected || saving || loading}
+                onChange={(e) => updateGoogleConnection({ gmailEnabled: e.target.checked })}
+              />
+            </label>
+            <input
+              className="input mt-3"
+              value={googleConnection?.driveFolderId || ""}
+              placeholder="Drive folder ID for Bizosto files"
+              disabled={!googleConnection?.connected || saving || loading}
+              onChange={(e) => setGoogleConnection((prev) => (prev ? { ...prev, driveFolderId: e.target.value } : prev))}
+            />
+            <button
+              className="btn ghost mt-3"
+              type="button"
+              disabled={!googleConnection?.connected || saving || loading}
+              onClick={() => updateGoogleConnection({ driveFolderId: googleConnection?.driveFolderId || null })}
+            >
+              Save Drive Folder
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div style={{ fontSize: 16, fontWeight: 700 }}>Webhook Subscriptions</div>
