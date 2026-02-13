@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -10,6 +10,7 @@ import { useTenantContext, type TenantContextResponse } from "@/lib/tenant/useTe
 import { normalizeRole } from "@/lib/erpAccess";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
+import { generateThemeCssVariables } from "@/lib/white-label/theme";
 
 function AppShellInner({ children, data, loading }: { children: React.ReactNode; data: TenantContextResponse | null; loading: boolean }) {
   const { t } = useI18n();
@@ -33,6 +34,25 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
     return brandName || data?.tenant?.name || t("common.appName");
   }, [data?.tenant?.brand?.name, data?.tenant?.name, t]);
 
+  const tenantLogoUrl = data?.tenant?.whiteLabel?.logoUrl || data?.tenant?.brand?.logoUrl || null;
+
+  useEffect(() => {
+    const whiteLabel = data?.tenant?.whiteLabel;
+    if (!whiteLabel) return;
+
+    const variables = generateThemeCssVariables({
+      ...whiteLabel,
+      updatedAt: undefined,
+      updatedBy: undefined,
+    });
+
+    Object.entries(variables).forEach(([key, value]) => {
+      document.documentElement.style.setProperty(key, value);
+    });
+    document.documentElement.style.setProperty("--brand-font", `"${whiteLabel.fontFamily}", system-ui`);
+    document.body.style.fontFamily = `var(--brand-font)`;
+  }, [data?.tenant?.whiteLabel]);
+
   useKeyboardShortcuts({
     onToggleSidebar: toggleCollapse,
     onOpenSearch: () => {
@@ -45,7 +65,14 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)]">
-      <Sidebar currentRole={currentUser.role} userName={currentUser.name} userEmail={currentUser.email} tenantName={tenantName} collapsed={isCollapsed} />
+      <Sidebar
+        currentRole={currentUser.role}
+        userName={currentUser.name}
+        userEmail={currentUser.email}
+        tenantName={tenantName}
+        tenantLogoUrl={tenantLogoUrl}
+        collapsed={isCollapsed}
+      />
 
       <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
         <Header

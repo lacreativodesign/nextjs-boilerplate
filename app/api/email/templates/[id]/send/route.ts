@@ -6,6 +6,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { sendEmail } from "@/lib/email/email-service";
 import { generatePreviewPayload, renderTemplate } from "@/lib/email/template-engine";
 import { normalizeTenantId } from "@/lib/tenant";
+import { buildEmailBrandingTemplate, getTenantBranding } from "@/lib/white-label/branding";
 
 const sendSchema = z.object({
   to: z.string().email(),
@@ -46,11 +47,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       locale: parsed.data.locale,
     });
 
+    const branding = await getTenantBranding(tenantId);
+    const brandedHtml = buildEmailBrandingTemplate({ branding, html: rendered.renderedHtml });
+
     await sendEmail({
       to: parsed.data.to,
       subject: rendered.renderedSubject,
-      html: rendered.renderedHtml,
+      html: brandedHtml,
       text: rendered.renderedText,
+      fromName: branding.emailBranding.fromName || undefined,
+      fromEmail: branding.emailBranding.fromEmail || undefined,
     });
 
     await adminDb.collection("email_template_usage").add({
@@ -59,7 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       channel: "test_send",
       locale: rendered.locale,
       renderedSubject: rendered.renderedSubject,
-      renderedHtml: rendered.renderedHtml,
+      renderedHtml: brandedHtml,
       recipientEmail: parsed.data.to,
       actorUid: me.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

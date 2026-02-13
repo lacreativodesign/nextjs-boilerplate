@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/app/api/admin/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { generatePreviewPayload, renderTemplate } from "@/lib/email/template-engine";
 import { normalizeTenantId } from "@/lib/tenant";
+import { buildEmailBrandingTemplate, getTenantBranding } from "@/lib/white-label/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +35,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       locale: typeof body?.locale === "string" ? body.locale : undefined,
     });
 
+    const branding = await getTenantBranding(tenantId);
+    const brandedHtml = buildEmailBrandingTemplate({ branding, html: preview.renderedHtml });
+
     await adminDb.collection("email_template_usage").add({
       templateId: params.id,
       tenantId,
       channel: "preview",
       locale: preview.locale,
       renderedSubject: preview.renderedSubject,
-      renderedHtml: preview.renderedHtml,
+      renderedHtml: brandedHtml,
       actorUid: me.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ ok: true, preview, context });
+    return NextResponse.json({ ok: true, preview: { ...preview, renderedHtml: brandedHtml }, context, branding });
   } catch (error: any) {
     console.error("POST /api/email/templates/[id]/preview error", error);
     return NextResponse.json({ ok: false, error: error?.message || "Failed to generate preview" }, { status: 500 });

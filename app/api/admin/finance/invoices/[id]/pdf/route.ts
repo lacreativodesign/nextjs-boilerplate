@@ -39,6 +39,12 @@ type TenantDoc = {
   name?: string;
   companyName?: string;
   logoUrl?: string;
+  brand?: { logoUrl?: string | null };
+  whiteLabel?: {
+    logoUrl?: string | null;
+    primaryColor?: string;
+    secondaryColor?: string;
+  };
   address?: string;
   email?: string;
   supportEmail?: string;
@@ -126,7 +132,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         },
         tenant: {
           name: String(tenant.name || tenant.companyName || "Bizosto"),
-          logoUrl: tenant.logoUrl || null,
+          logoUrl: tenant.whiteLabel?.logoUrl || tenant.brand?.logoUrl || tenant.logoUrl || null,
+          primaryColor: tenant.whiteLabel?.primaryColor || "#2563eb",
+          secondaryColor: tenant.whiteLabel?.secondaryColor || "#1d4ed8",
           address: tenant.address || null,
           email: tenant.email || tenant.supportEmail || null,
           phone: tenant.phone || tenant.contactPhone || null,

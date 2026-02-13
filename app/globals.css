@@ -77,6 +77,7 @@
   --page-padding-x: 24px;
   --page-padding-y: 24px;
   --card-padding: 20px;
+  --brand-font: Inter, system-ui;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -143,7 +144,7 @@
 
 * {
   box-sizing: border-box;
-  font-family: Inter, system-ui;
+  font-family: var(--brand-font);
 }
 
 html,

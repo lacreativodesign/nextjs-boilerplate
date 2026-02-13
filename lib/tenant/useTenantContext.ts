@@ -10,6 +10,29 @@ export type TenantContext = {
   slug: string;
   status: "active" | "suspended";
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
+  whiteLabel?: {
+    logoUrl: string | null;
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    fontFamily: string;
+    themeMode: "light" | "dark" | "system";
+    emailBranding: {
+      fromName: string;
+      fromEmail: string;
+      emailFooter: string;
+      status: "pending" | "verified";
+      spfValid: boolean;
+      dkimValid: boolean;
+      verifiedAt: string | null;
+    };
+    customDomains: Array<{
+      domain: string;
+      status: "pending" | "verified";
+      verificationToken: string;
+      verifiedAt: string | null;
+    }>;
+  } | null;
   modulesEnabled: Record<string, boolean>;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;

@@ -16,13 +16,17 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["ucarecdn.com"],
+    domains: ["ucarecdn.com", "firebasestorage.googleapis.com"],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: "https",
         hostname: "ucarecdn.com",
+      },
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
       },
     ],
   },

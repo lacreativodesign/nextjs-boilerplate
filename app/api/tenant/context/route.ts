@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
             slug: tenant.slug || "",
             status: tenant.status || "active",
             brand: tenant.brand || null,
+            whiteLabel: tenant.whiteLabel || null,
             modulesEnabled: tenant.modulesEnabled || {},
             plan: planState?.plan || "pro",
             modules: planState?.modules || {},

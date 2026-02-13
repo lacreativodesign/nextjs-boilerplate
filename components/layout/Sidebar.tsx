@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import {
   BarChart3,
@@ -58,6 +59,7 @@ type SidebarProps = {
   userName: string;
   userEmail: string;
   tenantName: string;
+  tenantLogoUrl?: string | null;
   collapsed?: boolean;
   onCollapse?: (collapsed: boolean) => void;
 };
@@ -74,7 +76,7 @@ const isActivePath = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
-export default function Sidebar({ currentRole, userName, userEmail, tenantName, collapsed, onCollapse }: SidebarProps) {
+export default function Sidebar({ currentRole, userName, userEmail, tenantName, tenantLogoUrl, collapsed, onCollapse }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useI18n();
   const { isCollapsed, isMobileOpen, toggleCollapse, closeMobile } = useSidebar();
@@ -179,7 +181,9 @@ export default function Sidebar({ currentRole, userName, userEmail, tenantName, 
         aria-label="Primary"
       >
         <div className="flex items-center gap-3 px-4 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-muted)] text-sm font-bold">BZ</div>
+          <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-muted)] text-sm font-bold">
+            {tenantLogoUrl ? <Image src={tenantLogoUrl} alt={tenantName} fill className="object-contain p-1" sizes="40px" /> : "BZ"}
+          </div>
           <div className={`transition-all ${effectiveCollapsed ? "md:opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
             <div className="text-sm font-semibold text-[var(--text-primary)]">{tenantName}</div>
             <div className="text-xs text-[var(--text-muted)]">ERP Platform</div>
