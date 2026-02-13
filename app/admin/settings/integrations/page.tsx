@@ -246,6 +246,18 @@ export default function IntegrationSettingsPage() {
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>QuickBooks Online</div>
+            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Manage OAuth connection, sync settings, conflict mode, and accounting sync logs.</p>
+          </div>
+          <a className="btn subtle" href="/admin/settings/integrations/quickbooks">
+            Open QuickBooks Sync
+          </a>
+        </div>
+      </section>
+
+      <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Google Workspace</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth consent, Calendar sync, Drive storage, and Gmail sending.</p>
           </div>
