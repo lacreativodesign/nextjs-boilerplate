@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/compliance-report",
       "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/quickbooks-sync",
+      "schedule": "0 1 * * *"
     }
   ]
 }
