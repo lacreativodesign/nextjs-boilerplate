@@ -31,6 +31,8 @@ type TenantPdfData = {
   address?: string | null;
   email?: string | null;
   phone?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 };
 
 type ClientPdfData = {
@@ -157,6 +159,9 @@ const getStatusColor = (status: string) => {
 };
 
 export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client }) => {
+  const primaryColor = tenant.primaryColor || "#2563eb";
+  const secondaryColor = tenant.secondaryColor || "#1d4ed8";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -171,7 +176,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client 
           </View>
 
           <View style={styles.companyInfo}>
-            <Text style={styles.title}>INVOICE</Text>
+            <Text style={{ ...styles.title, color: primaryColor }}>INVOICE</Text>
             <Text style={styles.label}>Invoice #: {invoice.invoiceNumber || "-"}</Text>
             <Text style={styles.value}>Date: {formatDate(invoice.issueDate)}</Text>
             <Text style={styles.value}>Due: {formatDate(invoice.dueDate)}</Text>
@@ -190,7 +195,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client 
         </View>
 
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
+          <View style={{ ...styles.tableHeader, backgroundColor: `${primaryColor}22` }}>
             <Text style={styles.tableCol1}>Description</Text>
             <Text style={styles.tableCol2}>Qty</Text>
             <Text style={styles.tableCol3}>Rate</Text>
@@ -230,7 +235,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client 
             </View>
           ) : null}
 
-          <View style={{ ...styles.totalRow, borderTopWidth: 2, borderTopColor: "#1F2937", paddingTop: 10, marginTop: 10 }}>
+          <View style={{ ...styles.totalRow, borderTopWidth: 2, borderTopColor: secondaryColor, paddingTop: 10, marginTop: 10 }}>
             <Text style={{ ...styles.totalLabel, fontSize: 14 }}>TOTAL:</Text>
             <Text style={{ ...styles.totalValue, fontSize: 14 }}>{formatMoney(invoice.total || 0)}</Text>
           </View>
@@ -243,7 +248,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client 
               </View>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Balance Due:</Text>
-                <Text style={{ ...styles.totalValue, color: "#EF4444" }}>{formatMoney(Math.max((invoice.total || 0) - invoice.amountPaid, 0))}</Text>
+                <Text style={{ ...styles.totalValue, color: secondaryColor }}>{formatMoney(Math.max((invoice.total || 0) - invoice.amountPaid, 0))}</Text>
               </View>
             </>
           ) : null}
