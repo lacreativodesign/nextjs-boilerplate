@@ -2,6 +2,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { Timestamp } from "firebase-admin/firestore";
 import { NotificationService } from "@/lib/notifications/notification-service";
 import { Activity, ActivityType, Customer, CustomerNote, CustomerStatus, CustomerType } from "@/types/crm";
+import { autoSyncCustomerIfEnabled } from "@/lib/integrations/mailchimp";
 
 export class CustomerService {
   static async createCustomer(params: {
@@ -55,6 +56,12 @@ export class CustomerService {
     };
 
     const docRef = await adminDb.collection("customers").add(customer);
+
+    await autoSyncCustomerIfEnabled({
+      tenantId: params.tenantId,
+      userUid: params.ownerId,
+      customerId: docRef.id,
+    }).catch(() => undefined);
 
     await this.logActivity({
       tenantId: params.tenantId,
