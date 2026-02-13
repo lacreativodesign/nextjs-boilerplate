@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { dispatchZapierTriggerEvent } from "@/lib/zapier/service";
 import { WEBHOOK_EVENT_TYPES, type WebhookDeliveryRecord, type WebhookEventEnvelope, type WebhookEventType, type WebhookSubscriptionRecord } from "./types";
 
 const SUBSCRIPTIONS_COLLECTION = "webhook_subscriptions";
@@ -310,6 +311,22 @@ export async function dispatchWebhookEvent(params: {
   };
 
   await eventRef.set(envelope);
+
+  const zapierEligibleEvents = new Set(["invoice.created", "invoice.paid", "client.created", "payment.received", "leave.requested"]);
+  if (zapierEligibleEvents.has(params.event)) {
+    try {
+      await dispatchZapierTriggerEvent({
+        tenantId: params.tenantId,
+        eventName: params.event,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        payload: params.payload,
+        actor: params.actor,
+      });
+    } catch (error) {
+      console.error("zapier dispatch error", error);
+    }
+  }
 
   const subSnap = await adminDb
     .collection(SUBSCRIPTIONS_COLLECTION)
