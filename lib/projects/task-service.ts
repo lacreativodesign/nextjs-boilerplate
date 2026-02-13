@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { NotificationService } from "@/lib/notifications/notification-service";
 import { MilestoneService } from "@/lib/projects/milestone-service";
 import { ProjectService } from "@/lib/projects/project-service";
+import { sendBizostoEventNotification } from "@/lib/integrations/slack";
 import type { Project, Task, TaskComment, TaskStatus, TimeEntry } from "@/types/project-management";
 
 export class TaskService {
@@ -81,6 +82,16 @@ export class TaskService {
         category: "team",
         priority: params.priority === "urgent" ? "high" : "medium",
         actionUrl: `/dashboard/projects/${params.projectId}`,
+      });
+
+      await sendBizostoEventNotification({
+        type: "task_assigned",
+        tenantId: params.tenantId,
+        targetUserId: params.assignedTo,
+        title: params.title,
+        projectId: params.projectId,
+      }).catch((error) => {
+        console.error("slack task assignment notification failed:", error);
       });
     }
 

@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { sendBizostoEventNotification } from "@/lib/integrations/slack";
 import type { Milestone } from "@/types/project-management";
 
 export class MilestoneService {
@@ -54,6 +55,8 @@ export class MilestoneService {
     const isOverdue = dueDateMs > 0 && dueDateMs < Date.now() && progress < 100;
     const status = progress === 100 ? "completed" : isOverdue ? "overdue" : progress > 0 ? "in_progress" : "upcoming";
 
+    const wasCompleted = milestone.status === "completed";
+
     await milestoneRef.update({
       totalTasks,
       completedTasks,
@@ -62,5 +65,16 @@ export class MilestoneService {
       completedAt: status === "completed" ? Timestamp.now() : null,
       updatedAt: Timestamp.now(),
     });
+
+    if (!wasCompleted && status === "completed") {
+      await sendBizostoEventNotification({
+        type: "project_milestone",
+        tenantId: milestone.tenantId,
+        projectName: milestone.projectName,
+        milestoneName: milestone.name,
+      }).catch((error) => {
+        console.error("slack milestone notification failed:", error);
+      });
+    }
   }
 }
