@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "@/app/api/admin/_utils";
-import type { Folder } from "@/types/documents";
+import { FileManager } from "@/lib/files/file-manager";
 
 export const runtime = "nodejs";
 
 const createFolderSchema = z.object({
   name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  parentId: z.string().optional(),
-  color: z.string().optional(),
-  icon: z.string().optional(),
-  visibility: z.enum(["private", "team", "public"]).optional(),
+  parentFolderId: z.string().optional(),
+  visibility: z.enum(["private", "team", "public"]).default("private"),
+  allowedRoles: z.array(z.string().min(1)).optional(),
+  allowedUsers: z.array(z.string().min(1)).optional(),
 });
 
 export async function POST(request: Request) {
@@ -23,52 +20,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const data = createFolderSchema.parse(body);
-
-    let path = `/${data.name}`;
-    let level = 0;
-
-    if (data.parentId) {
-      const parentDoc = await adminDb.collection("folders").doc(data.parentId).get();
-      if (parentDoc.exists) {
-        const parent = parentDoc.data() as Folder;
-        if (parent.tenantId !== session.tenantId) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        path = `${parent.path}/${data.name}`;
-        level = parent.level + 1;
-      }
-    }
-
-    const now = admin.firestore.Timestamp.now();
-
-    const folder: Omit<Folder, "id"> = {
+    const body = createFolderSchema.parse(await request.json());
+    const folder = await FileManager.createFolder({
       tenantId: session.tenantId,
-      name: data.name,
-      description: data.description,
-      color: data.color,
-      icon: data.icon,
-      parentId: data.parentId,
-      path,
-      level,
+      name: body.name,
+      parentFolderId: body.parentFolderId,
       createdBy: session.uid,
-      visibility: data.visibility || "private",
-      documentCount: 0,
-      totalSize: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const docRef = await adminDb.collection("folders").add(folder);
-
-    return NextResponse.json({
-      id: docRef.id,
-      ...folder,
+      permissions: {
+        visibility: body.visibility,
+        allowedRoles: body.allowedRoles ?? [],
+        allowedUsers: body.allowedUsers ?? [],
+      },
     });
-  } catch (error) {
+
+    return NextResponse.json({ folder });
+  } catch (error: any) {
     console.error("Error creating folder:", error);
-    return NextResponse.json({ error: "Failed to create folder" }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Failed to create folder" }, { status: 500 });
   }
 }
 
@@ -80,22 +48,13 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const parentId = searchParams.get("parentId");
+    const parentFolderId = searchParams.get("parentFolderId") || undefined;
 
-    let query: FirebaseFirestore.Query = adminDb.collection("folders").where("tenantId", "==", session.tenantId);
-
-    if (parentId) {
-      query = query.where("parentId", "==", parentId);
-    } else {
-      query = query.where("level", "==", 0);
-    }
-
-    const snapshot = await query.orderBy("name").get();
-    const folders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const folders = await FileManager.listFolders(session.tenantId, parentFolderId);
 
     return NextResponse.json({ folders });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching folders:", error);
-    return NextResponse.json({ error: "Failed to fetch folders" }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Failed to fetch folders" }, { status: 500 });
   }
 }
