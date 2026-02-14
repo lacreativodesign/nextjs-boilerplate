@@ -3,6 +3,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import PasswordStrengthMeter from "@/components/auth/PasswordStrengthMeter";
 
+export const dynamic = "force-dynamic";
+
 declare global {
   interface Window {
     grecaptcha?: {
