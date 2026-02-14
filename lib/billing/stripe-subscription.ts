@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getStripeClient } from "@/lib/payments/stripe";
 import { type BillingPlanKey, getStripePriceId, normalizePlanKey, plans } from "@/lib/billing/plans";
+import { ingestMetric } from "@/lib/monitoring/dashboard-service";
 
 export type UsageMetric = "api_calls" | "storage" | "users";
 
@@ -383,6 +384,16 @@ export async function handleBillingWebhook(event: Stripe.Event) {
       stripeCustomerId: String(subscription.customer || ""),
       stripeSubscriptionId: subscription.id,
     });
+
+    if (event.type === "customer.subscription.created") {
+      await ingestMetric({
+        type: "conversion_event",
+        module: "billing",
+        endpoint: "stripe.subscription.created",
+        conversionStage: "trial",
+        metadata: { tenantId, plan: planFromMetadata, status: subscription.status },
+      });
+    }
     return;
   }
 
@@ -414,6 +425,16 @@ export async function handleBillingWebhook(event: Stripe.Event) {
       billingStatus: event.type === "invoice.paid" ? "active" : "past_due",
       subscriptionState: event.type === "invoice.paid" ? "active" : "grace",
     });
+
+    if (event.type === "invoice.paid") {
+      await ingestMetric({
+        type: "conversion_event",
+        module: "billing",
+        endpoint: "stripe.invoice.paid",
+        conversionStage: "paid",
+        metadata: { tenantId, invoiceId: invoice.id, amount },
+      });
+    }
   }
 }
 

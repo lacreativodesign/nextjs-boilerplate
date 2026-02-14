@@ -1,4 +1,5 @@
 import { logInfo } from "@/lib/logging";
+import { ingestMetric } from "@/lib/monitoring/dashboard-service";
 
 type SlowQueryContext = {
   route: string;
@@ -25,6 +26,17 @@ export async function executeMonitoredQuery<T>(run: () => Promise<T>, context: S
       },
     });
   }
+
+  await ingestMetric({
+    type: "database_query_duration",
+    endpoint: context.route,
+    module: "database",
+    durationMs,
+    metadata: {
+      queryName: context.queryName,
+      ...context.metadata,
+    },
+  });
 
   return result;
 }
