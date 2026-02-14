@@ -1,0 +1,25 @@
+<svg width="1120" height="640" viewBox="0 0 1120 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1120" height="640" rx="16" fill="#F8FAFC"/>
+  <rect x="40" y="32" width="1040" height="72" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="64" y="56" width="260" height="24" rx="8" fill="#DBEAFE"/>
+  <rect x="40" y="124" width="700" height="476" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="760" y="124" width="320" height="476" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="72" y="172" width="280" height="40" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="72" y="236" width="636" height="248" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <line x1="72" y1="290" x2="708" y2="290" stroke="#CBD5E1"/>
+  <line x1="72" y1="344" x2="708" y2="344" stroke="#CBD5E1"/>
+  <line x1="72" y1="398" x2="708" y2="398" stroke="#CBD5E1"/>
+  <rect x="812" y="176" width="220" height="44" rx="8" fill="#2563EB"/>
+  <rect x="812" y="236" width="220" height="36" rx="8" fill="#F1F5F9"/>
+  <rect x="812" y="284" width="220" height="36" rx="8" fill="#F1F5F9"/>
+  <rect x="812" y="332" width="220" height="36" rx="8" fill="#F1F5F9"/>
+  <path d="M212 150L212 120" stroke="#2563EB" stroke-width="2"/>
+  <rect x="126" y="84" width="172" height="32" rx="8" fill="#1D4ED8"/>
+  <text x="142" y="105" fill="white" font-family="Arial, sans-serif" font-size="14">Client selector</text>
+  <path d="M392 228L392 200" stroke="#2563EB" stroke-width="2"/>
+  <rect x="310" y="164" width="180" height="32" rx="8" fill="#1D4ED8"/>
+  <text x="326" y="185" fill="white" font-family="Arial, sans-serif" font-size="14">Line items</text>
+  <path d="M920 162L920 128" stroke="#2563EB" stroke-width="2"/>
+  <rect x="850" y="86" width="150" height="32" rx="8" fill="#1D4ED8"/>
+  <text x="872" y="107" fill="white" font-family="Arial, sans-serif" font-size="14">Send action</text>
+</svg>
