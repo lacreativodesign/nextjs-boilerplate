@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
-import { refreshSession, validateSession } from "@/lib/auth/session";
+import { cookies } from 'next/headers';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
+import { refreshSession, validateSession } from '@/lib/auth/session';
+import { captureApiError, setSentryContext, trackDbQuery } from '@/lib/monitoring/sentry';
 
 export type CurrentUser = {
   uid: string;
@@ -16,24 +17,35 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const cookieStore = cookies();
 
     // Use the SAME cookie as middleware + app/page.tsx + session-login
-    const sessionCookie = cookieStore.get("lac_session")?.value;
+    const sessionCookie = cookieStore.get('lac_session')?.value;
     if (!sessionCookie) return null;
 
     const sessionStatus = await validateSession(sessionCookie);
     if (!sessionStatus.valid) return null;
 
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const decoded = await trackDbQuery('auth.verify', 'admin.verifySessionCookie', async () =>
+      adminAuth.verifySessionCookie(sessionCookie, true),
+    );
     const uid = decoded.uid;
 
-    const userDoc = await adminDb.collection("users").doc(uid).get();
+    const userDoc = await trackDbQuery('db.query', 'admin.users.getCurrentUser', async () =>
+      adminDb.collection('users').doc(uid).get(),
+    );
     if (!userDoc.exists) return null;
 
     const data = userDoc.data() || {};
-    const role = normalizeRole((data.role as string | undefined) || "sales");
+    const role = normalizeRole((data.role as string | undefined) || 'sales');
 
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
     void refreshSession(sessionCookie);
+
+    setSentryContext({
+      userId: uid,
+      email: typeof data.email === 'string' ? data.email : undefined,
+      role,
+      tenantId,
+    });
 
     return {
       uid,
@@ -42,61 +54,62 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       ...data,
     };
   } catch (err) {
-    console.error("getCurrentUser error:", err);
+    captureApiError(err, { fingerprint: ['admin.getCurrentUser'] });
+    console.error('getCurrentUser error:', err);
     return null;
   }
 }
 
 // Role checks
 export function isAdminRole(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin";
+  const r = (role || '').toLowerCase();
+  return r === 'admin' || r === 'super_admin';
 }
 
 export function isSuperAdmin(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "super_admin";
+  const r = (role || '').toLowerCase();
+  return r === 'super_admin';
 }
 
 export function normalizeRole(role?: string) {
-  return (role || "")
+  return (role || '')
     .toLowerCase()
-    .replace(/-/g, "_")
-    .replace(/^account_manager$/, "am");
+    .replace(/-/g, '_')
+    .replace(/^account_manager$/, 'am');
 }
 
 export function isAdminOrSuper(role: string) {
   const r = normalizeRole(role);
-  return r === "admin" || r === "super_admin";
+  return r === 'admin' || r === 'super_admin';
 }
 
 export function isSalesManager(role: string) {
-  return normalizeRole(role) === "sales_manager";
+  return normalizeRole(role) === 'sales_manager';
 }
 
 export function isAccountManager(role: string) {
-  return normalizeRole(role) === "am";
+  return normalizeRole(role) === 'am';
 }
 
 export function isProduction(role: string) {
-  return normalizeRole(role) === "production";
+  return normalizeRole(role) === 'production';
 }
 
 export function isProductionManager(role: string) {
-  return normalizeRole(role) === "production_manager";
+  return normalizeRole(role) === 'production_manager';
 }
 
 export function isAmManager(role: string) {
-  return normalizeRole(role) === "am_manager";
+  return normalizeRole(role) === 'am_manager';
 }
 
 export async function requireAdminOrSuperAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isAdminOrSuper(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
@@ -104,10 +117,10 @@ export async function requireAdminOrSuperAdmin() {
 export async function requireSalesManagerOrAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isSalesManager(me.role) && !isAdminOrSuper(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
@@ -115,10 +128,10 @@ export async function requireSalesManagerOrAdmin() {
 export async function requireProductionManagerOrAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isProductionManager(me.role) && !isAdminOrSuper(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
@@ -126,10 +139,10 @@ export async function requireProductionManagerOrAdmin() {
 export async function requireAmManagerOrAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isAmManager(me.role) && !isAdminOrSuper(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
