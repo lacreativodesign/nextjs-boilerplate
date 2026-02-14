@@ -1,11 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
-import GlobalSearchModal from "@/components/search/GlobalSearchModal";
 import ActivityFeedSidebar from "@/components/activity/ActivityFeedSidebar";
 import { useTenantContext, type TenantContextResponse } from "@/lib/tenant/useTenantContext";
 import { normalizeRole } from "@/lib/erpAccess";
@@ -14,6 +14,11 @@ import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
+
+const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
+  ssr: false,
+  loading: () => null,
+});
 
 function AppShellInner({ children, data, loading }: { children: React.ReactNode; data: TenantContextResponse | null; loading: boolean }) {
   const { t } = useI18n();
@@ -85,6 +90,22 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
       window.removeEventListener("touchend", onTouchEnd);
     };
   }, [router]);
+
+  useEffect(() => {
+    const prefetchSearchModal = () => {
+      import("@/components/search/GlobalSearchModal");
+    };
+
+    if (typeof window === "undefined") return;
+
+    if ("requestIdleCallback" in window) {
+      const idleCallback = window.requestIdleCallback(prefetchSearchModal, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleCallback);
+    }
+
+    const timeoutId = window.setTimeout(prefetchSearchModal, 900);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   useKeyboardShortcuts({
     onToggleSidebar: toggleCollapse,

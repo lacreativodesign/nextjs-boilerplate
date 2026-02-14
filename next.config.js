@@ -1,9 +1,16 @@
-const withBundleAnalyzer =
-  process.env.ANALYZE === "true"
-    ? require("@next/bundle-analyzer")({
-        enabled: true,
-      })
-    : (config) => config;
+let withBundleAnalyzer = (config) => config;
+
+if (process.env.ANALYZE === "true") {
+  try {
+    withBundleAnalyzer = require("@next/bundle-analyzer")({
+      enabled: true,
+    });
+  } catch {
+    process.stderr.write(
+      "[bundle-analyzer] Package '@next/bundle-analyzer' is not available in this environment. Continuing without analyzer.\n",
+    );
+  }
+}
 
 const withPWA = require("next-pwa")({
   dest: "public",
