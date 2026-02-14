@@ -1,5 +1,6 @@
 "use client";
 
+import { optimizeImageForUpload } from "@/lib/images/client-image-optimizer";
 import { useRef, useState } from "react";
 
 const CHUNK_SIZE = 5 * 1024 * 1024;
@@ -8,23 +9,30 @@ export function FileUploader({ folderId, onCompleted }: { folderId?: string; onC
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const uploadFile = async (file: File) => {
+    const optimized = file.type.startsWith("image/") ? await optimizeImageForUpload(file) : null;
+    const uploadTarget = optimized?.file || file;
     const uploadId = `${Date.now()}-${crypto.randomUUID()}`;
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const totalChunks = Math.ceil(uploadTarget.size / CHUNK_SIZE);
 
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
       const start = chunkIndex * CHUNK_SIZE;
-      const end = Math.min(file.size, start + CHUNK_SIZE);
-      const chunk = file.slice(start, end);
+      const end = Math.min(uploadTarget.size, start + CHUNK_SIZE);
+      const chunk = uploadTarget.slice(start, end);
 
       const form = new FormData();
       form.append("uploadId", uploadId);
       form.append("chunkIndex", String(chunkIndex));
       form.append("totalChunks", String(totalChunks));
-      form.append("fileName", file.name);
-      form.append("mimeType", file.type || "application/octet-stream");
-      form.append("size", String(file.size));
+      form.append("fileName", uploadTarget.name);
+      form.append("mimeType", uploadTarget.type || "application/octet-stream");
+      form.append("size", String(uploadTarget.size));
+      if (optimized && chunkIndex === 0) {
+        form.append("imageMetadata", JSON.stringify(optimized.metadata));
+        form.append("thumbnail", optimized.thumbnail);
+      }
       if (folderId) form.append("folderId", folderId);
       form.append("chunk", chunk);
 
@@ -42,14 +50,16 @@ export function FileUploader({ folderId, onCompleted }: { folderId?: string; onC
     if (!files || files.length === 0) return;
     setUploading(true);
     setProgress(0);
+    setError(null);
 
     try {
       for (const file of Array.from(files)) {
         await uploadFile(file);
       }
       onCompleted();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setError(error?.message || "Upload failed.");
     } finally {
       setUploading(false);
       setProgress(0);
@@ -71,7 +81,8 @@ export function FileUploader({ folderId, onCompleted }: { folderId?: string; onC
           <div className="h-2 rounded bg-blue-600" style={{ width: `${progress}%` }} />
         </div>
       )}
-      <p className="text-xs text-gray-500">Supports chunked uploads for large files.</p>
+      <p className="text-xs text-gray-500">Supports chunked uploads and image optimization (WebP conversion, metadata extraction, thumbnail generation).</p>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
   );
 }

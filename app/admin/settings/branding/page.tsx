@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 
@@ -243,7 +243,7 @@ export default function BrandingSettingsPage() {
         <h4 className="font-semibold">Live Theme Preview</h4>
         <div className="mt-3 rounded-xl border p-4" style={{ borderColor: "var(--erp-blue)" }}>
           <div className="flex items-center gap-3">
-            {state.logoUrl ? <div className="relative h-8 w-8 overflow-hidden rounded"><Image src={state.logoUrl} alt="logo" fill sizes="32px" className="object-contain" /></div> : <div className="h-8 w-8 rounded bg-[var(--erp-blue)]" />}
+            {state.logoUrl ? <div className="relative h-8 w-8 overflow-hidden rounded"><OptimizedImage src={state.logoUrl} alt="logo" width={32} height={32} className="h-8 w-8 object-contain" sizes="32px" priority disableManualLazy /></div> : <div className="h-8 w-8 rounded bg-[var(--erp-blue)]" />}
             <div>
               <div className="font-semibold">{state.emailBranding.fromName}</div>
               <div className="text-sm opacity-70">{state.emailBranding.fromEmail || "sender@company.com"}</div>

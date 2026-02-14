@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { useState } from "react";
 import type { Document } from "@/types/documents";
 
@@ -72,15 +72,13 @@ export function DocumentCard({
 
         <div className="h-20 w-20 rounded border bg-gray-50 flex items-center justify-center overflow-hidden">
           {isImage && document.previewUrl ? (
-            <Image
+            <OptimizedImage
               src={document.previewUrl}
               alt={document.originalFileName}
               width={80}
               height={80}
               className="h-full w-full object-cover"
-              loading="lazy"
               sizes="80px"
-              unoptimized
             />
           ) : isPdf ? (
             <span className="text-xs font-medium text-gray-600">PDF</span>

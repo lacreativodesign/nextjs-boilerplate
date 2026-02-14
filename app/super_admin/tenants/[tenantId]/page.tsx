@@ -1,10 +1,11 @@
 "use client";
 
-import Image from "next/image";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { MAX_IMAGE_UPLOAD_SIZE_BYTES, optimizeImageForUpload } from "@/lib/images/client-image-optimizer";
 
 type Tenant = {
   id: string;
@@ -52,6 +53,7 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [brandName, setBrandName] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoMetadata, setLogoMetadata] = useState<{ width: number; height: number; format: string } | null>(null);
   const [savingBrand, setSavingBrand] = useState(false);
   const [savingModules, setSavingModules] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -90,9 +92,15 @@ export default function TenantDetailPage() {
 
     try {
       if (logoFile) {
+        const optimized = await optimizeImageForUpload(logoFile);
+        setLogoMetadata({
+          width: optimized.metadata.width,
+          height: optimized.metadata.height,
+          format: optimized.metadata.format,
+        });
         const storage = await getFirebaseStorage();
-        const storageRef = ref(storage, `tenants/${tenant.id}/brand/logo.png`);
-        await uploadBytes(storageRef, logoFile);
+        const storageRef = ref(storage, `tenants/${tenant.id}/brand/logo.webp`);
+        await uploadBytes(storageRef, optimized.file, { contentType: optimized.file.type });
         logoUrl = await getDownloadURL(storageRef);
       }
 
@@ -209,17 +217,14 @@ export default function TenantDetailPage() {
           <div className="flex flex-wrap gap-4">
             <div className="w-full md:w-[240px] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
               {tenant.brand?.logoUrl ? (
-                <Image
+                <OptimizedImage
                   src={tenant.brand.logoUrl}
                   alt={tenant.brand.name}
                   width={208}
                   height={96}
                   className="h-24 w-full object-contain"
-                  loading="lazy"
                   sizes="(max-width: 768px) 100vw, 240px"
-                  placeholder="blur"
                   blurDataURL={tenant.brand.logoUrl}
-                  unoptimized
                 />
               ) : (
                 <div className="flex h-24 items-center justify-center text-xs text-[var(--text-muted)]">
@@ -239,8 +244,39 @@ export default function TenantDetailPage() {
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
                 type="file"
                 accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                onChange={async (e) => {
+                  const next = e.target.files?.[0] || null;
+                  if (!next) {
+                    setLogoFile(null);
+                    setLogoMetadata(null);
+                    return;
+                  }
+
+                  if (next.size > MAX_IMAGE_UPLOAD_SIZE_BYTES) {
+                    alert("Logo file exceeds 5MB limit.");
+                    e.currentTarget.value = "";
+                    setLogoFile(null);
+                    setLogoMetadata(null);
+                    return;
+                  }
+
+                  try {
+                    const optimized = await optimizeImageForUpload(next);
+                    setLogoFile(optimized.file);
+                    setLogoMetadata({
+                      width: optimized.metadata.width,
+                      height: optimized.metadata.height,
+                      format: optimized.metadata.format,
+                    });
+                  } catch (error: any) {
+                    alert(error?.message || "Unable to process logo image.");
+                    e.currentTarget.value = "";
+                    setLogoFile(null);
+                    setLogoMetadata(null);
+                  }
+                }}
               />
+              {logoMetadata ? <p className="text-xs text-[var(--text-muted)]">Optimized logo: {logoMetadata.width}×{logoMetadata.height} ({logoMetadata.format})</p> : null}
               <button
                 className="rounded-xl bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white"
                 onClick={updateBranding}
