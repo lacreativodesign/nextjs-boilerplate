@@ -3,6 +3,8 @@ import { HelpSearch } from "@/components/help-center/HelpSearch";
 import { CrispChatWidget } from "@/components/help-center/CrispChatWidget";
 import { helpCategories } from "@/lib/help-center/data";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Help Center",
   description: "Documentation, video tutorials, FAQs, and support for BIZOSTO ERP.",

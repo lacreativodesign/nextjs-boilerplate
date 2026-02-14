@@ -1,7 +1,7 @@
 import {
   ChartBarSquareIcon,
   CurrencyDollarIcon,
-  PlugIcon,
+  BoltIcon,
   RocketLaunchIcon,
   UserGroupIcon,
   Cog6ToothIcon,
@@ -387,7 +387,7 @@ export const helpCategories: HelpCategory[] = [
   {
     id: "integrations",
     name: "Integrations",
-    icon: PlugIcon,
+    icon: BoltIcon,
     articles: [
       { slug: "google-workspace-setup", title: "Google Workspace Setup", excerpt: "Connect calendar and email sync securely.", lastUpdated: "2026-01-13", readTime: "4 min", keywords: ["google", "integration"], relatedSlugs: [], sections: [{ heading: "OAuth Setup", blocks: [{ type: "paragraph", content: "Register redirect URI and grant minimum scopes required." }] }] },
       { slug: "quickbooks-sync", title: "QuickBooks Sync", excerpt: "Sync chart of accounts and invoice states.", lastUpdated: "2026-01-09", readTime: "5 min", keywords: ["quickbooks", "accounting"], relatedSlugs: [], sections: [{ heading: "Sync Rules", blocks: [{ type: "paragraph", content: "Map accounts and define conflict resolution behavior." }] }] },
