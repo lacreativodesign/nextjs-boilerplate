@@ -1,6 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 export default function GlobalError({
   error,
@@ -10,7 +11,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Critical Global Error:", error);
+    Sentry.captureException(error);
+    console.error('Critical Global Error:', error);
   }, [error]);
 
   return (
@@ -20,7 +22,9 @@ export default function GlobalError({
           <div className="max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
             <div className="mb-4 text-6xl">💥</div>
             <h2 className="mb-2 text-2xl font-bold text-gray-900">Critical Error</h2>
-            <p className="mb-6 text-gray-600">Something went very wrong. Please refresh the page.</p>
+            <p className="mb-6 text-gray-600">
+              Something went very wrong. Please refresh the page.
+            </p>
             <div className="flex justify-center gap-2">
               <button
                 onClick={reset}
