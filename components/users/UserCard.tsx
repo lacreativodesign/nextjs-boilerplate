@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 export type UserCardData = {
   id: string;
@@ -55,15 +55,13 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
       <div className="flex items-center gap-3">
         <div className="h-12 w-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
           {user.profile?.avatar ? (
-            <Image
+            <OptimizedImage
               src={user.profile.avatar}
               alt={displayName}
               width={48}
               height={48}
-              className="h-full w-full object-cover"
-              loading="lazy"
+              className="h-full w-full"
               sizes="48px"
-              unoptimized
             />
           ) : (
             <span className="text-sm font-semibold text-gray-500">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { useCallback, useMemo, useState } from "react";
 import {
   BarChart3,
@@ -182,7 +182,7 @@ export default function Sidebar({ currentRole, userName, userEmail, tenantName, 
       >
         <div className="flex items-center gap-3 px-4 py-4">
           <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-muted)] text-sm font-bold">
-            {tenantLogoUrl ? <Image src={tenantLogoUrl} alt={tenantName} fill className="object-contain p-1" sizes="40px" /> : "BZ"}
+            {tenantLogoUrl ? <OptimizedImage src={tenantLogoUrl} alt={tenantName} width={40} height={40} className="h-10 w-10 p-1" sizes="40px" priority disableManualLazy /> : "BZ"}
           </div>
           <div className={`transition-all ${effectiveCollapsed ? "md:opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
             <div className="text-sm font-semibold text-[var(--text-primary)]">{tenantName}</div>
