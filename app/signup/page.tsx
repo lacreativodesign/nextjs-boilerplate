@@ -31,35 +31,36 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const safeForm = form ?? initialForm;
 
   const domainError = useMemo(() => {
-    const atIndex = form.email.indexOf("@");
+    const atIndex = safeForm?.email?.indexOf("@") ?? -1;
     if (atIndex < 0) return "";
-    const domain = form.email.slice(atIndex + 1).trim().toLowerCase();
+    const domain = (safeForm?.email ?? "").slice(atIndex + 1).trim().toLowerCase();
     if (blockedDomains.includes(domain)) {
       return "Use your work email (personal email domains are blocked).";
     }
     return "";
-  }, [form.email]);
+  }, [safeForm?.email]);
 
   const passwordRules = useMemo(() => {
     return {
-      minLength: form.password.length >= 8,
-      uppercase: /[A-Z]/.test(form.password),
-      number: /\d/.test(form.password),
-      special: /[^A-Za-z\d]/.test(form.password),
+      minLength: (safeForm?.password?.length ?? 0) >= 8,
+      uppercase: /[A-Z]/.test(safeForm?.password ?? ""),
+      number: /\d/.test(safeForm?.password ?? ""),
+      special: /[^A-Za-z\d]/.test(safeForm?.password ?? ""),
     };
-  }, [form.password]);
+  }, [safeForm?.password]);
 
   const isPasswordValid = Object.values(passwordRules).every(Boolean);
 
   const canSubmit =
-    form.name.trim().length >= 2 &&
-    form.company.trim().length >= 2 &&
+    (safeForm?.name?.trim().length ?? 0) >= 2 &&
+    (safeForm?.company?.trim().length ?? 0) >= 2 &&
     !domainError &&
-    form.email.trim().length > 0 &&
+    (safeForm?.email?.trim().length ?? 0) > 0 &&
     isPasswordValid &&
-    form.agreeToLegal &&
+    Boolean(safeForm?.agreeToLegal) &&
     recaptchaToken.length > 0;
 
   async function ensureRecaptcha() {
@@ -109,7 +110,7 @@ export default function SignupPage() {
       const response = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, recaptchaToken }),
+        body: JSON.stringify({ ...safeForm, recaptchaToken }),
       });
       const payload = (await response.json().catch(() => null)) as { success?: boolean; error?: string; message?: string } | null;
       if (!response.ok || !payload?.success) {
@@ -175,28 +176,28 @@ export default function SignupPage() {
           <form className="mt-6 space-y-4" onSubmit={onSubmit}>
             <div className="space-y-1">
               <label htmlFor="name" className="text-sm font-medium text-slate-700">Full name</label>
-              <input id="name" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              <input id="name" value={safeForm?.name ?? ""} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
             </div>
 
             <div className="space-y-1">
               <label htmlFor="email" className="text-sm font-medium text-slate-700">Work email</label>
-              <input id="email" type="email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              <input id="email" type="email" value={safeForm?.email ?? ""} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
               {domainError ? <p className="text-xs text-red-600">{domainError}</p> : null}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="company" className="text-sm font-medium text-slate-700">Company name</label>
-              <input id="company" value={form.company} onChange={(e) => setForm((s) => ({ ...s, company: e.target.value }))} required minLength={2} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              <input id="company" value={safeForm?.company ?? ""} onChange={(e) => setForm((s) => ({ ...s, company: e.target.value }))} required minLength={2} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
             </div>
 
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium text-slate-700">Password</label>
-              <input id="password" type="password" value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-              <PasswordStrengthMeter password={form.password} />
+              <input id="password" type="password" value={safeForm?.password ?? ""} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              <PasswordStrengthMeter password={safeForm?.password ?? ""} />
             </div>
 
             <label className="flex items-start gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={form.agreeToLegal} onChange={(e) => setForm((s) => ({ ...s, agreeToLegal: e.target.checked }))} className="mt-1" />
+              <input type="checkbox" checked={Boolean(safeForm?.agreeToLegal)} onChange={(e) => setForm((s) => ({ ...s, agreeToLegal: e.target.checked }))} className="mt-1" />
               <span>
                 I agree to the <a href="/terms" className="underline">Terms</a> and <a href="/privacy" className="underline">Privacy Policy</a>.
               </span>
