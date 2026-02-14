@@ -1,36 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/generate-invoices",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/invoice-reminders",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/compliance-retention",
+      "path": "/api/cron/daily-tasks",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/compliance-report",
-      "schedule": "0 3 * * 1"
-    },
-    {
-      "path": "/api/cron/quickbooks-sync",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/daily-cleanup",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/generate-reports",
-      "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/cron/sync-integrations",
-      "schedule": "*/30 * * * *"
     }
   ]
 }
