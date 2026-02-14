@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SwaggerWindow = Window & {
   SwaggerUIBundle?: (args: {
@@ -13,24 +13,32 @@ type SwaggerWindow = Window & {
   SwaggerUIStandalonePreset?: unknown;
 };
 
+type SwaggerVersion = {
+  label: string;
+  value: string;
+};
+
 export type SwaggerUiProps = {
-  /** URL serving OpenAPI YAML contract. */
-  specUrl: string;
+  defaultVersion: string;
+  versions: SwaggerVersion[];
 };
 
 /**
- * Renders Swagger UI without adding new npm dependencies.
+ * Renders Swagger UI with API version selection.
  */
-export function SwaggerUi({ specUrl }: SwaggerUiProps) {
+export function SwaggerUi({ defaultVersion, versions }: SwaggerUiProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
+
+  const specUrl = useMemo(() => `/api/openapi?version=${encodeURIComponent(selectedVersion)}`, [selectedVersion]);
 
   useEffect(() => {
     let cancelled = false;
 
     const initSwagger = async () => {
       await loadStyles();
-      await loadScript('https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js');
-      await loadScript('https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js');
+      await loadScript("https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js");
+      await loadScript("https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js");
 
       if (cancelled || !mountRef.current) {
         return;
@@ -44,7 +52,7 @@ export function SwaggerUi({ specUrl }: SwaggerUiProps) {
         presets: swaggerWindow.SwaggerUIStandalonePreset
           ? [swaggerWindow.SwaggerUIStandalonePreset]
           : undefined,
-        layout: 'StandaloneLayout',
+        layout: "StandaloneLayout",
       });
     };
 
@@ -55,36 +63,48 @@ export function SwaggerUi({ specUrl }: SwaggerUiProps) {
     };
   }, [specUrl]);
 
-  return <div ref={mountRef} className="min-h-[70vh]" />;
+  return (
+    <section>
+      <label htmlFor="api-version" className="mb-2 block text-sm font-medium text-gray-700">
+        API Version
+      </label>
+      <select
+        id="api-version"
+        className="mb-6 w-64 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+        value={selectedVersion}
+        onChange={(event) => setSelectedVersion(event.target.value)}
+      >
+        {versions.map((version) => (
+          <option key={version.value} value={version.value}>
+            {version.label}
+          </option>
+        ))}
+      </select>
+      <div ref={mountRef} className="min-h-[70vh]" />
+    </section>
+  );
 }
 
-/**
- * Loads Swagger UI stylesheet once per session.
- */
 async function loadStyles() {
-  const styleId = 'swagger-ui-style';
+  const styleId = "swagger-ui-style";
   if (document.getElementById(styleId)) {
     return;
   }
 
-  const link = document.createElement('link');
+  const link = document.createElement("link");
   link.id = styleId;
-  link.rel = 'stylesheet';
-  link.href = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css';
+  link.rel = "stylesheet";
+  link.href = "https://unpkg.com/swagger-ui-dist@5/swagger-ui.css";
   document.head.appendChild(link);
 }
 
-/**
- * Loads an external script if missing.
- * @param src script source URL
- */
 async function loadScript(src: string) {
   if (document.querySelector(`script[src=\"${src}\"]`)) {
     return;
   }
 
   await new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = src;
     script.async = true;
     script.onload = () => resolve();

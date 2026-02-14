@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: BIZOSTO ERP API
+  version: 2.0.0-preview
+  description: |
+    Version 2 of the API is reserved for forward-compatible changes.
+    Endpoints are currently in preview planning mode.
+servers:
+  - url: /api/v2
+paths: {}
+components: {}
