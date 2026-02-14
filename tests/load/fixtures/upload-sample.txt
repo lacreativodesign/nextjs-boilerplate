@@ -1,0 +1,2 @@
+BIZOSTO ERP load test fixture file.
+This file is used by k6 file-upload scenarios to validate concurrent upload throughput and latency.
