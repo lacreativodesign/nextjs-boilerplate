@@ -18,7 +18,14 @@
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
     "precommit": "node scripts/lint-staged.mjs",
-    "quality:ci": "npm run docs:api && npm run lint && npm run typecheck && npm run format:check && npm run test && npm run build && npm run bundle:check && npm run licenses:check"
+    "quality:ci": "npm run docs:api && npm run lint && npm run typecheck && npm run format:check && npm run test && npm run build && npm run bundle:check && npm run licenses:check",
+    "load:test:login": "k6 run tests/load/login-flow.js",
+    "load:test:dashboard": "k6 run tests/load/dashboard-load.js",
+    "load:test:invoice": "k6 run tests/load/invoice-list.js",
+    "load:test:search": "k6 run tests/load/search.js",
+    "load:test:api": "k6 run tests/load/api-endpoints.js",
+    "load:test:upload": "k6 run tests/load/file-upload.js",
+    "load:test:all": "bash -lc 'set -euo pipefail; mkdir -p load-results; for scenario in login-flow dashboard-load invoice-list search api-endpoints file-upload; do echo \"Running $scenario\"; LOAD_TEST_RESULTS_DIR=load-results k6 run tests/load/$scenario.js; done'"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
