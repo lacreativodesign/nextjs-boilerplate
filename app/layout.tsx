@@ -6,6 +6,7 @@ import RouteProgress from "@/components/ui/RouteProgress";
 import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 import { PageErrorFallback } from "@/components/errors/ErrorFallback";
 import PWAInitializer from "@/components/pwa/PWAInitializer";
+import ClientMonitoring from "@/components/monitoring/ClientMonitoring";
 
 export const metadata: Metadata = {
   title: "Bizosto ERP",
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>
+          <ClientMonitoring />
           {children}
         </ErrorBoundary>
       </body>

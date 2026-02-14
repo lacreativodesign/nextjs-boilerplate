@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { CACHE_TTL_SECONDS, getCached, setCached } from "@/lib/cache/redis-client";
+import { ingestMetric } from "@/lib/monitoring/dashboard-service";
 
 type ApiCacheOptions<T> = {
   ttlSeconds: number;
@@ -26,16 +27,20 @@ export async function withApiCache<T>(req: Request, handler: () => Promise<NextR
 
   const ifNoneMatch = req.headers.get("if-none-match");
   if (cached && ifNoneMatch && ifNoneMatch === cached.etag) {
+    await ingestMetric({ type: "cache_event", module: "cache", endpoint: key, cacheResult: "hit" });
     const res = new NextResponse(null, { status: 304 });
     withCacheHeaders(res, cached.etag, options.ttlSeconds);
     return res;
   }
 
   if (cached) {
+    await ingestMetric({ type: "cache_event", module: "cache", endpoint: key, cacheResult: "hit" });
     const res = NextResponse.json(cached.payload);
     withCacheHeaders(res, cached.etag, options.ttlSeconds);
     return res;
   }
+
+  await ingestMetric({ type: "cache_event", module: "cache", endpoint: key, cacheResult: "miss" });
 
   const response = await handler();
   if (!response.ok) return response;

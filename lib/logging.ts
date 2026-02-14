@@ -32,22 +32,43 @@ export function serializeError(error: unknown) {
   return { message: String(error) };
 }
 
-export function logError(error: unknown, context: LogContext = {}) {
+function emit(level: "debug" | "info" | "warn" | "error", message: string, context: LogContext = {}, error?: unknown) {
   const payload = {
-    level: "error",
-    error: serializeError(error),
+    level,
+    message,
     context,
+    error: error ? serializeError(error) : undefined,
     timestamp: new Date().toISOString(),
   };
-  console.error(payload);
+
+  const logLine = JSON.stringify(payload);
+  if (level === "error") {
+    console.error(logLine);
+    return;
+  }
+  if (level === "warn") {
+    console.warn(logLine);
+    return;
+  }
+  if (level === "debug") {
+    console.debug(logLine);
+    return;
+  }
+  console.info(logLine);
+}
+
+export function logDebug(message: string, context: LogContext = {}) {
+  emit("debug", message, context);
 }
 
 export function logInfo(message: string, context: LogContext = {}) {
-  const payload = {
-    level: "info",
-    message,
-    context,
-    timestamp: new Date().toISOString(),
-  };
-  console.info(payload);
+  emit("info", message, context);
+}
+
+export function logWarn(message: string, context: LogContext = {}) {
+  emit("warn", message, context);
+}
+
+export function logError(error: unknown, context: LogContext = {}) {
+  emit("error", "application_error", context, error);
 }
