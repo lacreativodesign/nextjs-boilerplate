@@ -1,8 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import UsageChartsSkeleton from "./_components/UsageChartsSkeleton";
 
 type UsageStats = {
   totalCalls: number;
@@ -21,6 +22,12 @@ type UsageLog = {
   responseTimeMs: number;
   createdAt: string;
 };
+
+const UsageCharts = dynamic(() => import("./_components/UsageCharts"), {
+  ssr: false,
+  loading: () => <UsageChartsSkeleton />,
+});
+
 
 const EMPTY_STATS: UsageStats = {
   totalCalls: 0,
@@ -100,36 +107,7 @@ export default function ApiUsageSettingsPage() {
       <section className="card p-5 rounded-xl settings-section">
         <h3 className="font-semibold">API Usage Dashboard</h3>
         <p className="text-sm opacity-70">Total API calls: {loading ? "Loading..." : stats.totalCalls.toLocaleString()}</p>
-        <div className="mt-4 grid gap-6 lg:grid-cols-2">
-          <div>
-            <h4 className="font-medium text-sm mb-2">Endpoint Usage</h4>
-            <div style={{ width: "100%", height: 260 }}>
-              <ResponsiveContainer>
-                <BarChart data={stats.endpointStats.slice(0, 8)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="endpoint" hide />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#4f46e5" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div>
-            <h4 className="font-medium text-sm mb-2">Real-time Usage (Last 24h buckets)</h4>
-            <div style={{ width: "100%", height: 260 }}>
-              <ResponsiveContainer>
-                <LineChart data={realtimePoints}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="bucket" hide />
-                  <YAxis />
-                  <Tooltip />
-                  <Line dataKey="count" stroke="#16a34a" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
+        <UsageCharts endpointStats={stats.endpointStats} realtimePoints={realtimePoints} />
       </section>
 
       <section className="card p-5 rounded-xl settings-section">
