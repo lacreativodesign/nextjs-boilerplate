@@ -1,0 +1,4869 @@
+openapi: 3.0.3
+info:
+  title: Bizosto ERP API
+  version: 1.0.0
+  description: >-
+    Multi-tenant API contract generated from App Router route handlers.
+servers:
+  - url: /
+security:
+  - BearerAuth: []
+tags:
+  - name: Auth
+  - name: Tenant
+  - name: Core
+paths:
+  /api/admin/activity/add:
+    post:
+      summary: POST /api/admin/activity/add
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/activity/list:
+    get:
+      summary: GET /api/admin/activity/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/change-requests/create:
+    post:
+      summary: POST /api/admin/change-requests/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/change-requests/list:
+    get:
+      summary: GET /api/admin/change-requests/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/change-requests/update-commercial:
+    post:
+      summary: POST /api/admin/change-requests/update-commercial
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/change-requests/update-status:
+    post:
+      summary: POST /api/admin/change-requests/update-status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/activation:
+    post:
+      summary: POST /api/admin/clients/activation
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/create:
+    post:
+      summary: POST /api/admin/clients/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/delete:
+    post:
+      summary: POST /api/admin/clients/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/get:
+    get:
+      summary: GET /api/admin/clients/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/invite:
+    post:
+      summary: POST /api/admin/clients/invite
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/list:
+    get:
+      summary: GET /api/admin/clients/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/segments/create:
+    post:
+      summary: POST /api/admin/clients/segments/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/segments/delete:
+    post:
+      summary: POST /api/admin/clients/segments/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/segments/list:
+    get:
+      summary: GET /api/admin/clients/segments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/segments/update:
+    post:
+      summary: POST /api/admin/clients/segments/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/send-invite:
+    post:
+      summary: POST /api/admin/clients/send-invite
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/clients/update:
+    post:
+      summary: POST /api/admin/clients/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/admin/clients/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/create-user:
+    post:
+      summary: POST /api/admin/create-user
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/delete-user:
+    post:
+      summary: POST /api/admin/delete-user
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/events/list:
+    get:
+      summary: GET /api/admin/events/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/files/create:
+    post:
+      summary: POST /api/admin/files/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/files/delete:
+    post:
+      summary: POST /api/admin/files/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/files/list:
+    get:
+      summary: GET /api/admin/files/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/budgets:
+    get:
+      summary: GET /api/admin/finance/budgets
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/admin/finance/budgets
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/expenses/create:
+    post:
+      summary: POST /api/admin/finance/expenses/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/expenses/delete:
+    post:
+      summary: POST /api/admin/finance/expenses/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/expenses/list:
+    get:
+      summary: GET /api/admin/finance/expenses/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/invoices/{id}/pdf:
+    get:
+      summary: GET /api/admin/finance/invoices/{id}/pdf
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/invoices/create:
+    post:
+      summary: POST /api/admin/finance/invoices/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/invoices/delete:
+    post:
+      summary: POST /api/admin/finance/invoices/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/invoices/list:
+    get:
+      summary: GET /api/admin/finance/invoices/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/invoices/update:
+    post:
+      summary: POST /api/admin/finance/invoices/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/overview:
+    get:
+      summary: GET /api/admin/finance/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/payments/list:
+    get:
+      summary: GET /api/admin/finance/payments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/payments/update:
+    post:
+      summary: POST /api/admin/finance/payments/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/payroll/list:
+    get:
+      summary: GET /api/admin/finance/payroll/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/payroll/run:
+    post:
+      summary: POST /api/admin/finance/payroll/run
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/payroll/update:
+    post:
+      summary: POST /api/admin/finance/payroll/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/expenses-by-category:
+    get:
+      summary: GET /api/admin/finance/reports/expenses-by-category
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/outstanding-ar:
+    get:
+      summary: GET /api/admin/finance/reports/outstanding-ar
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/payments-by-month:
+    get:
+      summary: GET /api/admin/finance/reports/payments-by-month
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/payroll-by-month:
+    get:
+      summary: GET /api/admin/finance/reports/payroll-by-month
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/profit-loss:
+    get:
+      summary: GET /api/admin/finance/reports/profit-loss
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/reports/revenue-by-client:
+    get:
+      summary: GET /api/admin/finance/reports/revenue-by-client
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/finance/tax-rates:
+    get:
+      summary: GET /api/admin/finance/tax-rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/admin/finance/tax-rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/admin/finance/tax-rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    delete:
+      summary: DELETE /api/admin/finance/tax-rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/get-user:
+    post:
+      summary: POST /api/admin/get-user
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/activity/list:
+    get:
+      summary: GET /api/admin/hr/activity/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/documents/delete:
+    post:
+      summary: POST /api/admin/hr/documents/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/documents/list:
+    get:
+      summary: GET /api/admin/hr/documents/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/documents/upload:
+    post:
+      summary: POST /api/admin/hr/documents/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/employees/get:
+    get:
+      summary: GET /api/admin/hr/employees/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/employees/list:
+    get:
+      summary: GET /api/admin/hr/employees/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/employees/update:
+    post:
+      summary: POST /api/admin/hr/employees/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/assign:
+    post:
+      summary: POST /api/admin/hr/onboarding/assign
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/tasks/list:
+    get:
+      summary: GET /api/admin/hr/onboarding/tasks/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/tasks/update:
+    post:
+      summary: POST /api/admin/hr/onboarding/tasks/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/templates/create:
+    post:
+      summary: POST /api/admin/hr/onboarding/templates/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/templates/list:
+    get:
+      summary: GET /api/admin/hr/onboarding/templates/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/onboarding/templates/update:
+    post:
+      summary: POST /api/admin/hr/onboarding/templates/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/overview:
+    get:
+      summary: GET /api/admin/hr/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/performance/create:
+    post:
+      summary: POST /api/admin/hr/performance/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/performance/list:
+    get:
+      summary: GET /api/admin/hr/performance/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/hr/settings:
+    get:
+      summary: GET /api/admin/hr/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/admin/hr/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/leads/list:
+    get:
+      summary: GET /api/admin/leads/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/list-users:
+    get:
+      summary: GET /api/admin/list-users
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/overview:
+    get:
+      summary: GET /api/admin/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/events/create:
+    post:
+      summary: POST /api/admin/production/events/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/files/list:
+    get:
+      summary: GET /api/admin/production/files/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/overview:
+    get:
+      summary: GET /api/admin/production/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/project/assign:
+    post:
+      summary: POST /api/admin/production/project/assign
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/project/move-stage:
+    post:
+      summary: POST /api/admin/production/project/move-stage
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/production/queue:
+    get:
+      summary: GET /api/admin/production/queue
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/create:
+    post:
+      summary: POST /api/admin/projects/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/delete:
+    post:
+      summary: POST /api/admin/projects/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/list:
+    get:
+      summary: GET /api/admin/projects/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/move-stage:
+    post:
+      summary: POST /api/admin/projects/move-stage
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/pipeline:
+    get:
+      summary: GET /api/admin/projects/pipeline
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/projects/update:
+    post:
+      summary: POST /api/admin/projects/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/clients:
+    get:
+      summary: GET /api/admin/reports/clients
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/delivery:
+    get:
+      summary: GET /api/admin/reports/delivery
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/change-requests:
+    get:
+      summary: GET /api/admin/reports/exports/change-requests
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/outstanding-ar:
+    get:
+      summary: GET /api/admin/reports/exports/outstanding-ar
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/overdue-projects:
+    get:
+      summary: GET /api/admin/reports/exports/overdue-projects
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/payments-by-month:
+    get:
+      summary: GET /api/admin/reports/exports/payments-by-month
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/production-workload:
+    get:
+      summary: GET /api/admin/reports/exports/production-workload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/projects-by-stage:
+    get:
+      summary: GET /api/admin/reports/exports/projects-by-stage
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/exports/revenue-by-client:
+    get:
+      summary: GET /api/admin/reports/exports/revenue-by-client
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/overview:
+    get:
+      summary: GET /api/admin/reports/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/production:
+    get:
+      summary: GET /api/admin/reports/production
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/revenue:
+    get:
+      summary: GET /api/admin/reports/revenue
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/reports/settings:
+    get:
+      summary: GET /api/admin/reports/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/admin/reports/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/campaigns/create:
+    post:
+      summary: POST /api/admin/sales/campaigns/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/campaigns/delete:
+    post:
+      summary: POST /api/admin/sales/campaigns/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/campaigns/list:
+    get:
+      summary: GET /api/admin/sales/campaigns/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/campaigns/update:
+    post:
+      summary: POST /api/admin/sales/campaigns/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/deals/create:
+    post:
+      summary: POST /api/admin/sales/deals/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/deals/delete:
+    post:
+      summary: POST /api/admin/sales/deals/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/deals/list:
+    get:
+      summary: GET /api/admin/sales/deals/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/deals/update:
+    post:
+      summary: POST /api/admin/sales/deals/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/follow-ups/create:
+    post:
+      summary: POST /api/admin/sales/follow-ups/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/follow-ups/delete:
+    post:
+      summary: POST /api/admin/sales/follow-ups/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/follow-ups/list:
+    get:
+      summary: GET /api/admin/sales/follow-ups/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/follow-ups/update:
+    post:
+      summary: POST /api/admin/sales/follow-ups/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/leads/create:
+    post:
+      summary: POST /api/admin/sales/leads/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/leads/delete:
+    post:
+      summary: POST /api/admin/sales/leads/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/leads/list:
+    get:
+      summary: GET /api/admin/sales/leads/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/leads/update:
+    post:
+      summary: POST /api/admin/sales/leads/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/overview:
+    get:
+      summary: GET /api/admin/sales/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/pipeline/list:
+    get:
+      summary: GET /api/admin/sales/pipeline/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/sales/pipeline/update:
+    post:
+      summary: POST /api/admin/sales/pipeline/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/finance:
+    get:
+      summary: GET /api/admin/settings/finance
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/finance
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/integrations:
+    get:
+      summary: GET /api/admin/settings/integrations
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/integrations
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/notifications:
+    get:
+      summary: GET /api/admin/settings/notifications
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/notifications
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/sales:
+    get:
+      summary: GET /api/admin/settings/sales
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/sales
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/security:
+    get:
+      summary: GET /api/admin/settings/security
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/security
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/system:
+    get:
+      summary: GET /api/admin/settings/system
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/system
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/settings/workflows:
+    get:
+      summary: GET /api/admin/settings/workflows
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/admin/settings/workflows
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/update-user:
+    post:
+      summary: POST /api/admin/update-user
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/{uid}:
+    get:
+      summary: GET /api/admin/users/{uid}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/{uid}/mfa:
+    get:
+      summary: GET /api/admin/users/{uid}/mfa
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    delete:
+      summary: DELETE /api/admin/users/{uid}/mfa
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/{uid}/update:
+    post:
+      summary: POST /api/admin/users/{uid}/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/by-role:
+    get:
+      summary: GET /api/admin/users/by-role
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/create:
+    post:
+      summary: POST /api/admin/users/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/delete:
+    post:
+      summary: POST /api/admin/users/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/get:
+    post:
+      summary: POST /api/admin/users/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/list:
+    get:
+      summary: GET /api/admin/users/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/admin/users/update:
+    post:
+      summary: POST /api/admin/users/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am_manager/overview:
+    get:
+      summary: GET /api/am_manager/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/change-requests/create:
+    post:
+      summary: POST /api/am/change-requests/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/change-requests/list:
+    get:
+      summary: GET /api/am/change-requests/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/change-requests/update-status:
+    post:
+      summary: POST /api/am/change-requests/update-status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/clients/get:
+    get:
+      summary: GET /api/am/clients/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/clients/list:
+    get:
+      summary: GET /api/am/clients/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/files/list:
+    get:
+      summary: GET /api/am/files/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/files/upload:
+    post:
+      summary: POST /api/am/files/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/messages/list:
+    get:
+      summary: GET /api/am/messages/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/messages/send:
+    post:
+      summary: POST /api/am/messages/send
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/overview:
+    get:
+      summary: GET /api/am/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/pipeline:
+    get:
+      summary: GET /api/am/pipeline
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/projects/list:
+    get:
+      summary: GET /api/am/projects/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/projects/move-stage:
+    post:
+      summary: POST /api/am/projects/move-stage
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/am/projects/request-stage-move:
+    post:
+      summary: POST /api/am/projects/request-stage-move
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/approve:
+    post:
+      summary: POST /api/approvals/approve
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/list:
+    get:
+      summary: GET /api/approvals/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/pending:
+    get:
+      summary: GET /api/approvals/pending
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/reject:
+    post:
+      summary: POST /api/approvals/reject
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/request:
+    post:
+      summary: POST /api/approvals/request
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/approvals/resolve:
+    post:
+      summary: POST /api/approvals/resolve
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/audit-logs:
+    get:
+      summary: GET /api/audit-logs
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/audit-logs/search:
+    post:
+      summary: POST /api/audit-logs/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/consume-set-password-token:
+    post:
+      summary: POST /api/auth/consume-set-password-token
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/create-set-password-token:
+    post:
+      summary: POST /api/auth/create-set-password-token
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/request-password-reset:
+    post:
+      summary: POST /api/auth/request-password-reset
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/sessions:
+    get:
+      summary: GET /api/auth/sessions
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/auth/sessions
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/sessions/{id}:
+    delete:
+      summary: DELETE /api/auth/sessions/{id}
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/auth/sessions/invalidate-all:
+    post:
+      summary: POST /api/auth/sessions/invalidate-all
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/billing/invoices/get:
+    get:
+      summary: GET /api/client/billing/invoices/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/billing/invoices/list:
+    get:
+      summary: GET /api/client/billing/invoices/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/billing/payments/list:
+    get:
+      summary: GET /api/client/billing/payments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/change-requests/comment:
+    post:
+      summary: POST /api/client/change-requests/comment
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/change-requests/create:
+    post:
+      summary: POST /api/client/change-requests/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/change-requests/list:
+    get:
+      summary: GET /api/client/change-requests/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/change-requests/update-status:
+    post:
+      summary: POST /api/client/change-requests/update-status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/files/list:
+    get:
+      summary: GET /api/client/files/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/files/upload:
+    post:
+      summary: POST /api/client/files/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/invites/complete:
+    post:
+      summary: POST /api/client/invites/complete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/invites/validate:
+    get:
+      summary: GET /api/client/invites/validate
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/overview:
+    get:
+      summary: GET /api/client/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/profile:
+    get:
+      summary: GET /api/client/profile
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/client/profile
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/profile/get:
+    get:
+      summary: GET /api/client/profile/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/profile/update:
+    post:
+      summary: POST /api/client/profile/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/projects/approve:
+    post:
+      summary: POST /api/client/projects/approve
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/projects/get:
+    get:
+      summary: GET /api/client/projects/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/projects/list:
+    get:
+      summary: GET /api/client/projects/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/client/segments/list:
+    get:
+      summary: GET /api/client/segments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/clients/search:
+    post:
+      summary: POST /api/clients/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/create-user:
+    post:
+      summary: POST /api/create-user
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/customers:
+    get:
+      summary: GET /api/crm/customers
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/crm/customers
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/deals:
+    get:
+      summary: GET /api/crm/deals
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/crm/deals
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/deals/{id}:
+    get:
+      summary: GET /api/crm/deals/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/crm/deals/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/deals/{id}/discount-request:
+    post:
+      summary: POST /api/crm/deals/{id}/discount-request
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/discount-requests:
+    get:
+      summary: GET /api/crm/discount-requests
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/discount-requests/{id}/review:
+    post:
+      summary: POST /api/crm/discount-requests/{id}/review
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/leads:
+    get:
+      summary: GET /api/crm/leads
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/crm/leads
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/leads/convert:
+    post:
+      summary: POST /api/crm/leads/convert
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/crm/pipelines:
+    get:
+      summary: GET /api/crm/pipelines
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/cron/generate-invoices:
+    get:
+      summary: GET /api/cron/generate-invoices
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/cron/invoice-reminders:
+    get:
+      summary: GET /api/cron/invoice-reminders
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/currency/rates:
+    get:
+      summary: GET /api/currency/rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/customers/search:
+    post:
+      summary: POST /api/customers/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/deals/mark-paid:
+    post:
+      summary: POST /api/deals/mark-paid
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents:
+    get:
+      summary: GET /api/documents
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/{id}/download:
+    get:
+      summary: GET /api/documents/{id}/download
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/{id}/version:
+    post:
+      summary: POST /api/documents/{id}/version
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/bulk-delete:
+    post:
+      summary: POST /api/documents/bulk-delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/bulk-move:
+    post:
+      summary: POST /api/documents/bulk-move
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/search:
+    post:
+      summary: POST /api/documents/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/documents/upload:
+    post:
+      summary: POST /api/documents/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/expenses/search:
+    post:
+      summary: POST /api/expenses/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/create:
+    post:
+      summary: POST /api/finance/budgets/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/delete:
+    post:
+      summary: POST /api/finance/budgets/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/list:
+    get:
+      summary: GET /api/finance/budgets/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/record-actual:
+    post:
+      summary: POST /api/finance/budgets/record-actual
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/update:
+    post:
+      summary: POST /api/finance/budgets/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/budgets/variance:
+    get:
+      summary: GET /api/finance/budgets/variance
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/clients/list:
+    get:
+      summary: GET /api/finance/clients/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/currency/convert:
+    post:
+      summary: POST /api/finance/currency/convert
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/currency/rates:
+    get:
+      summary: GET /api/finance/currency/rates
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/expenses/create:
+    post:
+      summary: POST /api/finance/expenses/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/expenses/list:
+    get:
+      summary: GET /api/finance/expenses/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/invoices/create:
+    post:
+      summary: POST /api/finance/invoices/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/invoices/list:
+    get:
+      summary: GET /api/finance/invoices/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/invoices/mark-paid:
+    post:
+      summary: POST /api/finance/invoices/mark-paid
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/invoices/update:
+    post:
+      summary: POST /api/finance/invoices/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/overview:
+    get:
+      summary: GET /api/finance/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payments/list:
+    get:
+      summary: GET /api/finance/payments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payments/record:
+    post:
+      summary: POST /api/finance/payments/record
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payments/update:
+    post:
+      summary: POST /api/finance/payments/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payroll/list:
+    get:
+      summary: GET /api/finance/payroll/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payroll/run:
+    post:
+      summary: POST /api/finance/payroll/run
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/payroll/update:
+    post:
+      summary: POST /api/finance/payroll/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/create:
+    post:
+      summary: POST /api/finance/recurring-invoices/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/delete:
+    post:
+      summary: POST /api/finance/recurring-invoices/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/history:
+    get:
+      summary: GET /api/finance/recurring-invoices/history
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/list:
+    get:
+      summary: GET /api/finance/recurring-invoices/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/set-status:
+    post:
+      summary: POST /api/finance/recurring-invoices/set-status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/recurring-invoices/update:
+    post:
+      summary: POST /api/finance/recurring-invoices/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/expenses-by-category:
+    get:
+      summary: GET /api/finance/reports/expenses-by-category
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/outstanding-ar:
+    get:
+      summary: GET /api/finance/reports/outstanding-ar
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/payments-by-month:
+    get:
+      summary: GET /api/finance/reports/payments-by-month
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/payroll-by-month:
+    get:
+      summary: GET /api/finance/reports/payroll-by-month
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/platform:
+    get:
+      summary: GET /api/finance/reports/platform
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/revenue-by-client:
+    get:
+      summary: GET /api/finance/reports/revenue-by-client
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/reports/tax:
+    get:
+      summary: GET /api/finance/reports/tax
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-exemptions/create:
+    post:
+      summary: POST /api/finance/tax-exemptions/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-exemptions/list:
+    get:
+      summary: GET /api/finance/tax-exemptions/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-rates/create:
+    post:
+      summary: POST /api/finance/tax-rates/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-rates/delete:
+    post:
+      summary: POST /api/finance/tax-rates/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-rates/list:
+    get:
+      summary: GET /api/finance/tax-rates/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax-rates/update:
+    post:
+      summary: POST /api/finance/tax-rates/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/finance/tax/calculate:
+    post:
+      summary: POST /api/finance/tax/calculate
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/folders:
+    get:
+      summary: GET /api/folders
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/folders
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/activity/list:
+    get:
+      summary: GET /api/hr/activity/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/attendance:
+    get:
+      summary: GET /api/hr/attendance
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/attendance/absentees:
+    get:
+      summary: GET /api/hr/attendance/absentees
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/attendance/employee:
+    get:
+      summary: GET /api/hr/attendance/employee
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/attendance/list:
+    get:
+      summary: GET /api/hr/attendance/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/documents/delete:
+    post:
+      summary: POST /api/hr/documents/delete
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/documents/list:
+    get:
+      summary: GET /api/hr/documents/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/documents/upload:
+    post:
+      summary: POST /api/hr/documents/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/employees/create:
+    post:
+      summary: POST /api/hr/employees/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/employees/get:
+    get:
+      summary: GET /api/hr/employees/get
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/employees/list:
+    get:
+      summary: GET /api/hr/employees/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/employees/update:
+    post:
+      summary: POST /api/hr/employees/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/assign:
+    post:
+      summary: POST /api/hr/onboarding/assign
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/tasks/list:
+    get:
+      summary: GET /api/hr/onboarding/tasks/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/tasks/update:
+    post:
+      summary: POST /api/hr/onboarding/tasks/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/templates/create:
+    post:
+      summary: POST /api/hr/onboarding/templates/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/templates/list:
+    get:
+      summary: GET /api/hr/onboarding/templates/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/onboarding/templates/update:
+    post:
+      summary: POST /api/hr/onboarding/templates/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/overview:
+    get:
+      summary: GET /api/hr/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/payroll:
+    get:
+      summary: GET /api/hr/payroll
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/performance/create:
+    post:
+      summary: POST /api/hr/performance/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/performance/list:
+    get:
+      summary: GET /api/hr/performance/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/performance/update:
+    post:
+      summary: POST /api/hr/performance/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/hr/settings:
+    get:
+      summary: GET /api/hr/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/hr/settings
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/ingest/lead:
+    post:
+      summary: POST /api/ingest/lead
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/ingest/leads:
+    post:
+      summary: POST /api/ingest/leads
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/inventory/adjustments:
+    post:
+      summary: POST /api/inventory/adjustments
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/inventory/products:
+    get:
+      summary: GET /api/inventory/products
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/inventory/products
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/inventory/purchase-orders:
+    get:
+      summary: GET /api/inventory/purchase-orders
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/inventory/purchase-orders
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/inventory/purchase-orders/{poId}/receive:
+    post:
+      summary: POST /api/inventory/purchase-orders/{poId}/receive
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/invoices/search:
+    post:
+      summary: POST /api/invoices/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/leads/convert-to-deal:
+    post:
+      summary: POST /api/leads/convert-to-deal
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/login-stamp:
+    post:
+      summary: POST /api/login-stamp
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/logout:
+    post:
+      summary: POST /api/logout
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/me:
+    get:
+      summary: GET /api/me
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications:
+    get:
+      summary: GET /api/notifications
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications/{id}/read:
+    post:
+      summary: POST /api/notifications/{id}/read
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications/list:
+    get:
+      summary: GET /api/notifications/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications/mark-all-read:
+    post:
+      summary: POST /api/notifications/mark-all-read
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications/mark-read:
+    post:
+      summary: POST /api/notifications/mark-read
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/notifications/preferences:
+    get:
+      summary: GET /api/notifications/preferences
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    put:
+      summary: PUT /api/notifications/preferences
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/openapi:
+    get:
+      summary: GET /api/openapi
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/payments/search:
+    post:
+      summary: POST /api/payments/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production_manager/overview:
+    get:
+      summary: GET /api/production_manager/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/change-requests/list:
+    get:
+      summary: GET /api/production/change-requests/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/files/list:
+    get:
+      summary: GET /api/production/files/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/files/upload:
+    post:
+      summary: POST /api/production/files/upload
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/overview:
+    get:
+      summary: GET /api/production/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/project/move-stage:
+    post:
+      summary: POST /api/production/project/move-stage
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/project/qa:
+    post:
+      summary: POST /api/production/project/qa
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/production/queue:
+    get:
+      summary: GET /api/production/queue
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/products/search:
+    post:
+      summary: POST /api/products/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/projects:
+    get:
+      summary: GET /api/projects
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/projects
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/projects/{id}:
+    get:
+      summary: GET /api/projects/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/projects/{id}/tasks:
+    get:
+      summary: GET /api/projects/{id}/tasks
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/projects/{id}/tasks
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/projects/{id}/tasks/{taskId}/status:
+    patch:
+      summary: PATCH /api/projects/{id}/tasks/{taskId}/status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/public/firebase-config:
+    get:
+      summary: GET /api/public/firebase-config
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/reports:
+    get:
+      summary: GET /api/reports
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/reports
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/reports/{id}:
+    get:
+      summary: GET /api/reports/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/reports/{id}/execute:
+    post:
+      summary: POST /api/reports/{id}/execute
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/deals/list:
+    get:
+      summary: GET /api/sales_manager/deals/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/deals/update:
+    post:
+      summary: POST /api/sales_manager/deals/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/leads/convert:
+    post:
+      summary: POST /api/sales_manager/leads/convert
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/leads/list:
+    get:
+      summary: GET /api/sales_manager/leads/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/leads/owners:
+    get:
+      summary: GET /api/sales_manager/leads/owners
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/leads/update:
+    post:
+      summary: POST /api/sales_manager/leads/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/overview:
+    get:
+      summary: GET /api/sales_manager/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/pipeline/list:
+    get:
+      summary: GET /api/sales_manager/pipeline/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/pipeline/update:
+    post:
+      summary: POST /api/sales_manager/pipeline/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/reports/export:
+    get:
+      summary: GET /api/sales_manager/reports/export
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/reports/summary:
+    get:
+      summary: GET /api/sales_manager/reports/summary
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/targets:
+    get:
+      summary: GET /api/sales_manager/targets
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales_manager/team:
+    get:
+      summary: GET /api/sales_manager/team
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/campaigns/create:
+    post:
+      summary: POST /api/sales/campaigns/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/campaigns/list:
+    get:
+      summary: GET /api/sales/campaigns/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/campaigns/update:
+    post:
+      summary: POST /api/sales/campaigns/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/deals/close:
+    post:
+      summary: POST /api/sales/deals/close
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/deals/list:
+    get:
+      summary: GET /api/sales/deals/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/deals/update:
+    post:
+      summary: POST /api/sales/deals/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/email/list:
+    get:
+      summary: GET /api/sales/email/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/email/send:
+    post:
+      summary: POST /api/sales/email/send
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/follow-ups/create:
+    post:
+      summary: POST /api/sales/follow-ups/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/follow-ups/list:
+    get:
+      summary: GET /api/sales/follow-ups/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/follow-ups/update:
+    post:
+      summary: POST /api/sales/follow-ups/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/lead-notes/create:
+    post:
+      summary: POST /api/sales/lead-notes/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/lead-notes/list:
+    get:
+      summary: GET /api/sales/lead-notes/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/leads/create:
+    post:
+      summary: POST /api/sales/leads/create
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/leads/events/list:
+    get:
+      summary: GET /api/sales/leads/events/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/leads/list:
+    get:
+      summary: GET /api/sales/leads/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/leads/update:
+    post:
+      summary: POST /api/sales/leads/update
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/overview:
+    get:
+      summary: GET /api/sales/overview
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/payments/create-link:
+    post:
+      summary: POST /api/sales/payments/create-link
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/payments/list:
+    get:
+      summary: GET /api/sales/payments/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/sales/pipeline:
+    get:
+      summary: GET /api/sales/pipeline
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/saved-searches:
+    get:
+      summary: GET /api/saved-searches
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/saved-searches
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/saved-searches/{id}:
+    patch:
+      summary: PATCH /api/saved-searches/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    delete:
+      summary: DELETE /api/saved-searches/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/send-email:
+    post:
+      summary: POST /api/send-email
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/session-login:
+    post:
+      summary: POST /api/session-login
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/checkout:
+    post:
+      summary: POST /api/stripe/checkout
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/connect/callback:
+    get:
+      summary: GET /api/stripe/connect/callback
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/connect/disconnect:
+    post:
+      summary: POST /api/stripe/connect/disconnect
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/connect/start:
+    post:
+      summary: POST /api/stripe/connect/start
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/connect/webhook:
+    post:
+      summary: POST /api/stripe/connect/webhook
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/stripe/webhook:
+    post:
+      summary: POST /api/stripe/webhook
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/subscription/status:
+    get:
+      summary: GET /api/subscription/status
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/audit:
+    get:
+      summary: GET /api/super_admin/audit
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/events/list:
+    get:
+      summary: GET /api/super_admin/events/list
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/migration:
+    post:
+      summary: POST /api/super_admin/migration
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/system-health:
+    get:
+      summary: GET /api/super_admin/system-health
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenant/switch:
+    post:
+      summary: POST /api/super_admin/tenant/switch
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenants:
+    get:
+      summary: GET /api/super_admin/tenants
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/super_admin/tenants
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenants/{tenantId}:
+    get:
+      summary: GET /api/super_admin/tenants/{tenantId}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/super_admin/tenants/{tenantId}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenants/{tenantId}/branding:
+    post:
+      summary: POST /api/super_admin/tenants/{tenantId}/branding
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenants/{tenantId}/modules:
+    post:
+      summary: POST /api/super_admin/tenants/{tenantId}/modules
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tenants/{tenantId}/plan:
+    post:
+      summary: POST /api/super_admin/tenants/{tenantId}/plan
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/users:
+    get:
+      summary: GET /api/super_admin/users
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/super_admin/users
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/users/{uid}:
+    patch:
+      summary: PATCH /api/super_admin/users/{uid}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/teams:
+    get:
+      summary: GET /api/teams
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/teams
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/tenant/context:
+    get:
+      summary: GET /api/tenant/context
+      tags:
+        - Tenant
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/time-entries/start:
+    post:
+      summary: POST /api/time-entries/start
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/time-entries/stop:
+    post:
+      summary: POST /api/time-entries/stop
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users:
+    get:
+      summary: GET /api/users
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users/{id}:
+    patch:
+      summary: PATCH /api/users/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    delete:
+      summary: DELETE /api/users/{id}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users/{id}/reactivate:
+    post:
+      summary: POST /api/users/{id}/reactivate
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users/accept-invitation:
+    post:
+      summary: POST /api/users/accept-invitation
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users/invite:
+    post:
+      summary: POST /api/users/invite
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/users/search:
+    post:
+      summary: POST /api/users/search
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/webhooks/stripe:
+    post:
+      summary: POST /api/webhooks/stripe
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

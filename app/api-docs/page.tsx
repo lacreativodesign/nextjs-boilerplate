@@ -1,16 +1,22 @@
-import { SwaggerUi } from '@/components/docs/swagger-ui';
+import { SwaggerUi } from "@/components/docs/swagger-ui";
 
 /**
- * API documentation page backed by generated OpenAPI contract.
+ * API documentation page backed by generated OpenAPI contracts.
  */
 export default function ApiDocsPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <h1 className="mb-2 text-3xl font-semibold">API Documentation</h1>
       <p className="mb-8 text-sm text-gray-600">
-        OpenAPI contract is generated from App Router route handlers via `npm run docs:api`.
+        OpenAPI contracts are versioned and served from <code>/api/openapi?version=*</code>.
       </p>
-      <SwaggerUi specUrl="/api/openapi" />
+      <SwaggerUi
+        defaultVersion="v1"
+        versions={[
+          { label: "v1 (current)", value: "v1" },
+          { label: "v2 (planned)", value: "v2" },
+        ]}
+      />
     </main>
   );
 }
