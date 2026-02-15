@@ -4,7 +4,7 @@ import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".lacreativo.com";
+const COOKIE_DOMAIN = ".bizosto.com";
 
 export async function POST(
   req: Request,

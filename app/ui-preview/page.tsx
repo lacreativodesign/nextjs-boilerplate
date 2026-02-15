@@ -189,7 +189,7 @@ function DashboardMini({
             }}
           >
             <span style={{ fontWeight: 600, color: "#111827" }}>
-              LA CREATIVO ERP
+              BIZOSTO ERP
             </span>
             <span style={{ fontSize: 10, color: "#6B7280" }}>Admin • v1.0</span>
           </div>
@@ -309,7 +309,7 @@ function DashboardMini({
               fontSize: 10,
             }}
           >
-            <span style={{ fontWeight: 600 }}>LA CREATIVO • NEBULA PANEL</span>
+            <span style={{ fontWeight: 600 }}>BIZOSTO • NEBULA PANEL</span>
             <span
               style={{
                 padding: "3px 8px",
@@ -475,7 +475,7 @@ function DashboardMini({
                 letterSpacing: 0.2,
               }}
             >
-              LA CREATIVO · Admin
+              BIZOSTO · Admin
             </span>
             <span
               style={{
@@ -602,7 +602,7 @@ function DashboardMini({
             color: "#E5E7EB",
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 700 }}>LA CREATIVO</div>
+          <div style={{ fontSize: 11, fontWeight: 700 }}>BIZOSTO</div>
           {["Overview", "Clients", "Projects", "Billing"].map((label, idx) => (
             <div
               key={label}
@@ -802,7 +802,7 @@ function DashboardMini({
             color: "#F9FAFB",
           }}
         >
-          LA CREATIVO
+          BIZOSTO
         </div>
         {["Overview", "Deployments", "Logs", "Settings"].map((label, idx) => (
           <div
@@ -921,7 +921,7 @@ export default function UiPreviewPage() {
           color: "#0F172A",
         }}
       >
-        LA CREATIVO ERP · UI Style Preview
+        BIZOSTO ERP · UI Style Preview
       </h1>
       <p
         style={{
@@ -988,7 +988,7 @@ export default function UiPreviewPage() {
         {/* D — Premium Agency */}
         <SectionWrapper
           title="D · Premium Creative Agency"
-          subtitle="Perfect for LA CREATIVO · gradients, soft cards, as if Apple made an agency ERP."
+          subtitle="Perfect for BIZOSTO · gradients, soft cards, as if Apple made an agency ERP."
         >
           <LoginCard
             title="Login · Agency"

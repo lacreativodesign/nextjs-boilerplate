@@ -1,7 +1,7 @@
 export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || "la-creativo";
 
 export const DEFAULT_TENANT_BRAND = {
-  name: "LA CREATIVO",
+  name: "BIZOSTO",
   logoUrl: null as string | null,
   locked: true,
 };
