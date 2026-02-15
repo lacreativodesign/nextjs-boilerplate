@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+// Edge-compatible: no Node.js crypto import needed
 
 export type RateLimitRule = {
   id: string;
@@ -135,8 +135,12 @@ function matchPattern(pathname: string, pattern: string) {
   return new RegExp(`^${escaped}$`).test(pathname);
 }
 
-function hash(value: string) {
-  return createHash("sha256").update(value).digest("hex").slice(0, 24);
+function hash(value: string): string {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) {
+    h = ((h << 5) - h + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36).padStart(8, "0").slice(0, 24);
 }
 
 function defaultRuleForEndpoint(pathname: string, method: string): RateLimitRule {
@@ -216,7 +220,7 @@ function resolveRule(pathname: string, method: string, rules: RateLimitRule[]) {
 }
 
 async function slidingWindowCount(key: string, windowSeconds: number, nowMs: number) {
-  const member = `${nowMs}-${randomUUID()}`;
+  const member = `${nowMs}-${crypto.randomUUID()}`;
   const min = nowMs - windowSeconds * 1000;
   const pipeline = await upstashPipeline([
     ["ZADD", key, String(nowMs), member],
