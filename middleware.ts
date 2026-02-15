@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+// Edge-compatible hash — no Node.js crypto needed
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
 import {
@@ -35,8 +35,12 @@ async function fetchSubscriptionStatus(req: NextRequest) {
   }
 }
 
-function hash(value: string) {
-  return createHash("sha256").update(value).digest("hex").slice(0, 24);
+function hash(value: string): string {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) {
+    h = ((h << 5) - h + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36).padStart(8, "0").slice(0, 24);
 }
 
 function resolveTenantId(req: NextRequest) {
@@ -372,5 +376,4 @@ export const config = {
     "/hr/:path*",
     "/client/:path*",
   ],
-  runtime: "nodejs",
 };

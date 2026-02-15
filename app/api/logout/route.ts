@@ -5,17 +5,24 @@ import { invalidateSession } from "@/lib/auth/session";
 import { resolveErrorResponse } from "@/lib/errors";
 
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".bizosto.com";
+function getCookieDomain(hostname: string): string | undefined {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return undefined;
+  const parts = hostname.split(".");
+  if (parts.length >= 2) return `.${parts.slice(-2).join(".")}`;
+  return undefined;
+}
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    await checkRateLimit(req, "strict");
+    await checkRateLimit(request, "strict");
     const sessionCookie = cookies().get(COOKIE_NAME)?.value;
     if (sessionCookie) {
       await invalidateSession(sessionCookie);
     }
 
     const res = NextResponse.json({ success: true });
+    const hostname = new URL(request.url).hostname;
+    const cookieDomain = getCookieDomain(hostname);
 
     // Clear lac_session cookie
     res.cookies.set({
@@ -25,7 +32,7 @@ export async function POST(req: Request) {
       secure: true,
       sameSite: "lax",
       path: "/",
-      domain: COOKIE_DOMAIN,
+      domain: cookieDomain,
       maxAge: 0,
     });
 
@@ -35,7 +42,7 @@ export async function POST(req: Request) {
     const { status, body } = resolveErrorResponse(e, {
       fallbackMessage: "Unable to log out.",
       fallbackCode: "INTERNAL_SERVER_ERROR",
-      requestId: req.headers.get("x-request-id") || undefined,
+      requestId: request.headers.get("x-request-id") || undefined,
     });
     return NextResponse.json(body, { status });
   }

@@ -90,7 +90,7 @@ export async function sendSetPasswordEmail({
   `;
 
   await resend.emails.send({
-    from: "Bizosto ERP <no-reply@bizosto.com>",
+    from: "Bizosto <no-reply@bizosto.com>",
     to: email,
     subject: "Set your BIZOSTO Dashboard password",
     html,

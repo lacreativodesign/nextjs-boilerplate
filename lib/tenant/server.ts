@@ -182,7 +182,7 @@ export async function ensureDefaultTenant() {
   const now = new Date().toISOString();
   const payload: TenantRecord = {
     name: 'BIZOSTO',
-    slug: 'la-creativo',
+    slug: 'bizosto',
     status: 'active',
     brand: DEFAULT_TENANT_BRAND,
     modulesEnabled: DEFAULT_MODULES,

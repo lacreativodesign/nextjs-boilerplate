@@ -4,7 +4,28 @@ import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 const COOKIE_NAME = "lac_session";
-const COOKIE_DOMAIN = ".bizosto.com";
+function getCookieDomain(hostname: string): string | undefined {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return undefined;
+  const parts = hostname.split(".");
+  if (parts.length >= 2) return `.${parts.slice(-2).join(".")}`;
+  return undefined;
+}
+
+function clearSessionCookie(response: NextResponse, request: Request) {
+  const hostname = new URL(request.url).hostname;
+  const cookieDomain = getCookieDomain(hostname);
+  response.cookies.set({
+    name: COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    domain: cookieDomain,
+    maxAge: 0,
+  });
+  return response;
+}
 
 export async function POST(
   req: Request,
@@ -22,7 +43,7 @@ export async function POST(
       ?.split("=")[1];
 
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return clearSessionCookie(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), req);
     }
 
     // ----------------------------------------------------
@@ -33,9 +54,12 @@ export async function POST(
       decoded = await adminAuth.verifySessionCookie(token, true);
     } catch (err) {
       console.error("SESSION COOKIE VERIFY ERROR:", err);
-      return NextResponse.json(
-        { error: "Invalid session token" },
-        { status: 401 }
+      return clearSessionCookie(
+        NextResponse.json(
+          { error: "Invalid session token" },
+          { status: 401 }
+        ),
+        req
       );
     }
 
@@ -48,9 +72,12 @@ export async function POST(
       .get();
 
     if (!sessionSnap.exists) {
-      return NextResponse.json(
-        { error: "Session user not found" },
-        { status: 401 }
+      return clearSessionCookie(
+        NextResponse.json(
+          { error: "Session user not found" },
+          { status: 401 }
+        ),
+        req
       );
     }
 

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const resend = new Resend(apiKey);
 
     const result = await resend.emails.send({
-      from: "Bizosto ERP <no-reply@bizosto.com>",
+      from: "Bizosto <no-reply@bizosto.com>",
       to,
       subject,
       html,

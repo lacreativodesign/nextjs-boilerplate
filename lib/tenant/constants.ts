@@ -1,4 +1,4 @@
-export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || "la-creativo";
+export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || "bizosto";
 
 export const DEFAULT_TENANT_BRAND = {
   name: "BIZOSTO",

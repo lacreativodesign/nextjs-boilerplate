@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     `;
 
     await resend.emails.send({
-      from: "Bizosto ERP <no-reply@bizosto.com>",
+      from: "Bizosto <no-reply@bizosto.com>",
       to: email,
       subject: "Reset your BIZOSTO Dashboard password",
       html,
