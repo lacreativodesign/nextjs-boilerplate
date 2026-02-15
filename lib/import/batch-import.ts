@@ -32,16 +32,51 @@ async function updateImportProgress(
     );
 }
 
-export async function batchImport({ tenantId, collection, rows, importJobId }: BatchImportParams) {
+function normalizeArgs(
+  tenantIdOrParams: string | BatchImportParams,
+  collection?: string,
+  rows?: Record<string, unknown>[],
+): BatchImportParams {
+  if (typeof tenantIdOrParams === 'string') {
+    return {
+      tenantId: tenantIdOrParams,
+      collection: collection || '',
+      rows: rows || [],
+    };
+  }
+
+  return tenantIdOrParams;
+}
+
+export async function batchImport(
+  tenantId: string,
+  collection: string,
+  rows: Record<string, unknown>[],
+): Promise<{ imported: number; total: number }>;
+export async function batchImport(
+  params: BatchImportParams,
+): Promise<{ imported: number; total: number }>;
+export async function batchImport(
+  tenantIdOrParams: string | BatchImportParams,
+  collection?: string,
+  rows?: Record<string, unknown>[],
+) {
+  const {
+    tenantId,
+    collection: targetCollection,
+    rows: importRows,
+    importJobId,
+  } = normalizeArgs(tenantIdOrParams, collection, rows);
+
   const BATCH_SIZE = 500;
   let imported = 0;
 
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+  for (let i = 0; i < importRows.length; i += BATCH_SIZE) {
     const batch = adminDb.batch();
-    const chunk = rows.slice(i, i + BATCH_SIZE);
+    const chunk = importRows.slice(i, i + BATCH_SIZE);
 
     chunk.forEach((row) => {
-      const docRef = adminDb.collection('tenants').doc(tenantId).collection(collection).doc();
+      const docRef = adminDb.collection('tenants').doc(tenantId).collection(targetCollection).doc();
 
       batch.set(docRef, {
         ...row,
@@ -55,9 +90,9 @@ export async function batchImport({ tenantId, collection, rows, importJobId }: B
     imported += chunk.length;
 
     if (importJobId) {
-      await updateImportProgress(tenantId, importJobId, imported, rows.length);
+      await updateImportProgress(tenantId, importJobId, imported, importRows.length);
     }
   }
 
-  return { imported, total: rows.length };
+  return { imported, total: importRows.length };
 }

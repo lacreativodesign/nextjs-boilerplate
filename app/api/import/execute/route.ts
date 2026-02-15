@@ -1,84 +1,128 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { batchImport } from '@/lib/import/batch-import';
-import { validateRows } from '@/lib/import/validator';
-import { createClientSchema } from '@/lib/validations/client';
-import { createInvoiceSchema } from '@/lib/validations/invoice';
-import { createProjectSchema } from '@/lib/validations/project';
-import { createEmployeeSchema } from '@/lib/validations/employee';
+import { z } from 'zod';
 
-export const runtime = 'nodejs';
-
-const requestSchema = z.object({
-  tenantId: z.string().trim().min(1),
-  entityType: z.enum(['clients', 'invoices', 'projects', 'employees']),
-  rows: z.array(z.record(z.unknown())),
-  mapping: z.record(z.string()),
-  dryRun: z.boolean().optional().default(false),
-  importJobId: z.string().trim().min(1).optional(),
+// Define schemas for each entity type
+const clientSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  address: z.string().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
 });
 
-function getSchemaForEntity(entityType: 'clients' | 'invoices' | 'projects' | 'employees') {
-  switch (entityType) {
-    case 'clients':
-      return createClientSchema.omit({ tenantId: true });
-    case 'invoices':
-      return createInvoiceSchema.omit({ tenantId: true });
-    case 'projects':
-      return createProjectSchema.omit({ tenantId: true });
-    case 'employees':
-      return createEmployeeSchema.omit({ tenantId: true });
-    default:
-      throw new Error(`Unsupported entity type: ${entityType}`);
-  }
+const invoiceSchema = z.object({
+  clientId: z.string(),
+  invoiceNumber: z.string(),
+  amount: z.number().or(z.string().transform(Number)),
+  dueDate: z.string(),
+  status: z.enum(['draft', 'sent', 'paid', 'overdue']).optional(),
+});
+
+const productSchema = z.object({
+  name: z.string().min(1),
+  sku: z.string().optional(),
+  price: z.number().or(z.string().transform(Number)),
+  description: z.string().optional(),
+  stock: z.number().or(z.string().transform(Number)).optional(),
+});
+
+const projectSchema = z.object({
+  name: z.string().min(1),
+  clientId: z.string().optional(),
+  status: z.enum(['active', 'completed', 'on_hold']).optional(),
+  budget: z.number().or(z.string().transform(Number)).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+function getSchemaForEntity(entityType: string): z.ZodSchema {
+  const schemas: Record<string, z.ZodSchema> = {
+    clients: clientSchema,
+    invoices: invoiceSchema,
+    products: productSchema,
+    projects: projectSchema,
+  };
+
+  return schemas[entityType] || z.object({}).passthrough();
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getCurrentUser();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const body = await req.json();
+    const { tenantId, entityType, rows, mapping } = body;
 
-    if (!isAdminOrSuper(session.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const payload = requestSchema.parse(await req.json());
-
-    if (payload.tenantId !== session.tenantId) {
-      return NextResponse.json({ error: 'Tenant mismatch' }, { status: 403 });
-    }
-
-    const schema = getSchemaForEntity(payload.entityType);
-    const { validRows, errors } = await validateRows(payload.rows, schema, payload.mapping);
-
-    if (errors.length > 0) {
-      return NextResponse.json({ errors, validRows: validRows.length }, { status: 400 });
-    }
-
-    if (payload.dryRun) {
-      return NextResponse.json({ validRows: validRows.length, errors: [] });
-    }
-
-    const result = await batchImport({
-      tenantId: payload.tenantId,
-      collection: payload.entityType,
-      rows: validRows,
-      importJobId: payload.importJobId,
-    });
-
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (!tenantId || !entityType || !rows || !mapping) {
       return NextResponse.json(
-        { error: 'Invalid request payload', details: error.flatten() },
+        { error: 'Missing required fields: tenantId, entityType, rows, mapping' },
         { status: 400 },
       );
     }
 
-    const message = error instanceof Error ? error.message : 'Failed to import rows';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Get schema
+    const schema = getSchemaForEntity(entityType);
+
+    // Map and validate rows
+    const validRows: any[] = [];
+    const errors: { row: number; field: string; error: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const mapped: any = {};
+
+      // Map fields
+      for (const [systemField, fileField] of Object.entries(mapping)) {
+        if (typeof fileField === 'string' && fileField !== '') {
+          mapped[systemField] = row[fileField];
+        }
+      }
+
+      // Validate
+      const result = schema.safeParse(mapped);
+
+      if (!result.success) {
+        result.error.errors.forEach((err) => {
+          errors.push({
+            row: i + 1,
+            field: err.path.join('.'),
+            error: err.message,
+          });
+        });
+      } else {
+        validRows.push(result.data);
+      }
+    }
+
+    // Return errors if validation failed
+    if (errors.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          errors,
+          validCount: validRows.length,
+          errorCount: errors.length,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Import valid rows
+    const result = await batchImport(tenantId, entityType, validRows);
+
+    return NextResponse.json({
+      success: true,
+      imported: result.imported,
+      total: result.total,
+    });
+  } catch (error: any) {
+    console.error('Import execute error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Import failed',
+      },
+      { status: 500 },
+    );
   }
 }
