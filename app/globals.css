@@ -140,6 +140,60 @@
     --page-padding-y: 16px;
     --card-padding: 16px;
   }
+
+  .sidebar {
+    position: fixed;
+    left: calc(-1 * var(--sidebar-width));
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-container table {
+    min-width: 640px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .page-frame,
+  .page-content {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .touch-target,
+  button,
+  [role="button"],
+  [role="menuitem"],
+  select {
+    min-height: 44px;
+  }
+
+  .clickable-group > * + * {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 16px;
+  }
+
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
 }
 
 * {
