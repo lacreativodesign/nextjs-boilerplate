@@ -1,10 +1,10 @@
 export default function Head() {
   return (
     <>
-      <title>Users | LA CREATIVO ERP</title>
+      <title>Users | BIZOSTO ERP</title>
       <meta
         name="description"
-        content="View and manage all users in the LA CREATIVO ERP with search, sorting and detailed user profiles."
+        content="View and manage all users in the BIZOSTO ERP with search, sorting and detailed user profiles."
       />
     </>
   );

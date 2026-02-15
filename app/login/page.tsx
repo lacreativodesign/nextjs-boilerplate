@@ -230,7 +230,7 @@ export default function LoginPage() {
         }}
       >
         <div className="login-brand-panel">
-          <div className="login-brand-pill">LA CREATIVO</div>
+          <div className="login-brand-pill">BIZOSTO</div>
           <h1 className="login-brand-title">Master UI access for your enterprise workspace.</h1>
           <p className="login-brand-subtitle">
             Securely manage operations, clients, and analytics with premium-grade controls built for speed.
@@ -253,7 +253,7 @@ export default function LoginPage() {
 
         <div className="login-card" aria-live="polite" aria-busy={!firebaseAuth}>
           <div className="login-heading">
-            <p className="login-kicker">LA CREATIVO DASHBOARD</p>
+            <p className="login-kicker">BIZOSTO DASHBOARD</p>
             <h2 className="login-title">Sign in to continue</h2>
             <p className="login-subtitle">Use your company credentials to access the enterprise suite.</p>
           </div>
@@ -279,7 +279,7 @@ export default function LoginPage() {
                 <div className="login-input-wrap">
                   <input
                     type="email"
-                    placeholder="name@lacreativo.com"
+                    placeholder="name@bizosto.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="login-input"

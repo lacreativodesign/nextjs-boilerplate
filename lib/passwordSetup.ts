@@ -4,7 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 const TOKEN_COLLECTION = "password_setup_tokens";
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const DASHBOARD_URL = "https://dashboard.lacreativo.com";
+const DASHBOARD_URL = "https://app.bizosto.com";
 
 export function buildSetPasswordLink(token: string) {
   return `${DASHBOARD_URL}/set-password?token=${token}`;
@@ -78,8 +78,8 @@ export async function sendSetPasswordEmail({
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111827;">
-      <h2 style="margin: 0 0 12px;">Set your LA CREATIVO Dashboard password</h2>
-      <p style="margin: 0 0 16px;">Welcome to LA CREATIVO ERP. Click the button below to set your password.</p>
+      <h2 style="margin: 0 0 12px;">Set your BIZOSTO Dashboard password</h2>
+      <p style="margin: 0 0 16px;">Welcome to BIZOSTO ERP. Click the button below to set your password.</p>
       <p style="margin: 0 0 20px;">
         <a href="${link}" style="display: inline-block; padding: 12px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
           Set Password
@@ -90,9 +90,9 @@ export async function sendSetPasswordEmail({
   `;
 
   await resend.emails.send({
-    from: "La Creativo ERP <no-reply@lacreativo.com>",
+    from: "Bizosto ERP <no-reply@bizosto.com>",
     to: email,
-    subject: "Set your LA CREATIVO Dashboard password",
+    subject: "Set your BIZOSTO Dashboard password",
     html,
   });
 

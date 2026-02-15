@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { createPasswordSetupToken } from "@/lib/passwordSetup";
 
-const DASHBOARD_LOGIN_URL = "https://dashboard.lacreativo.com/login";
+const DASHBOARD_LOGIN_URL = "https://app.bizosto.com/login";
 
 type ClientActivationData = {
   primaryContactEmail?: string;
@@ -147,7 +147,7 @@ export async function queueClientActivationInvite({
     await adminDb.collection("emails").add({
       to: email,
       template: "clientActivation",
-      subject: "Activate your LA CREATIVO client account",
+      subject: "Activate your BIZOSTO client account",
       data: {
         clientId,
         companyName: cleanString(clientData.companyName),

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
-const DASHBOARD_URL = "https://dashboard.lacreativo.com";
+const DASHBOARD_URL = "https://app.bizosto.com";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
     const html = `
       <div style="font-family: Arial, sans-serif; color: #111827;">
-        <h2 style="margin: 0 0 12px;">Reset your LA CREATIVO Dashboard password</h2>
+        <h2 style="margin: 0 0 12px;">Reset your BIZOSTO Dashboard password</h2>
         <p style="margin: 0 0 16px;">Click the button below to reset your password.</p>
         <p style="margin: 0 0 20px;">
           <a href="${resetLink}" style="display: inline-block; padding: 12px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
@@ -45,9 +45,9 @@ export async function POST(req: Request) {
     `;
 
     await resend.emails.send({
-      from: "La Creativo ERP <no-reply@lacreativo.com>",
+      from: "Bizosto ERP <no-reply@bizosto.com>",
       to: email,
-      subject: "Reset your LA CREATIVO Dashboard password",
+      subject: "Reset your BIZOSTO Dashboard password",
       html,
     });
 
