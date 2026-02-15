@@ -175,9 +175,10 @@ export default function Sidebar({ currentRole, userName, userEmail, tenantName, 
     <>
       <button type="button" aria-hidden={!isMobileOpen} onClick={closeMobile} className={`fixed inset-0 z-40 bg-[var(--drawer-overlay)] transition-opacity md:hidden ${isMobileOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} />
       <aside
-        className={`sidebar-transition group fixed inset-y-0 left-0 z-50 flex w-[var(--sidebar-width)] flex-col border-r border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg md:shadow-none ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 ${effectiveCollapsed ? "md:w-[var(--sidebar-collapsed-width)] md:hover:w-[var(--sidebar-width)]" : "md:w-[var(--sidebar-width)]"}`}
+        id="primary-sidebar"
+        className={`sidebar sidebar-transition group fixed inset-y-0 z-50 flex w-[var(--sidebar-width)] flex-col border-r border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg md:left-0 md:shadow-none ${
+          isMobileOpen ? "open" : ""
+        } ${effectiveCollapsed ? "md:w-[var(--sidebar-collapsed-width)] md:hover:w-[var(--sidebar-width)]" : "md:w-[var(--sidebar-width)]"}`}
         aria-label="Primary"
       >
         <div className="flex items-center gap-3 px-4 py-4">

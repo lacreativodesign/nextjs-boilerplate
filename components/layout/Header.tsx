@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Menu } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -11,7 +11,6 @@ import TranslationProgress from "@/components/i18n/TranslationProgress";
 import MissingTranslationWarning from "@/components/i18n/MissingTranslationWarning";
 
 type HeaderProps = {
-  onMenuToggle: () => void;
   currentUser: { name: string; email: string; role: string; avatarUrl?: string };
   activityTrigger?: ReactNode;
 };
@@ -34,7 +33,7 @@ const profileEnabledRoles = new Set(["sales", "client"]);
 
 const getBasePath = (role: string) => roleBasePaths[role] || "/";
 
-export default function Header({ onMenuToggle, currentUser, activityTrigger }: HeaderProps) {
+export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useI18n();
@@ -65,9 +64,6 @@ export default function Header({ onMenuToggle, currentUser, activityTrigger }: H
     <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-[var(--page-padding-x)] py-2 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onMenuToggle} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm md:hidden" aria-label={t("common.openMenu")}>
-            <Menu className="h-5 w-5" />
-          </button>
           <div className="hidden md:block">
             <Breadcrumbs pathname={pathname} />
           </div>

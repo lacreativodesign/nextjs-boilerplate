@@ -14,6 +14,7 @@ import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
+import { MobileNav } from "@/components/layout/MobileNav";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
@@ -127,10 +128,10 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
         tenantLogoUrl={tenantLogoUrl}
         collapsed={isCollapsed}
       />
+      <MobileNav />
 
       <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
         <Header
-          onMenuToggle={openMobile}
           currentUser={currentUser}
           activityTrigger={<ActivityFeedSidebar open={activityOpen} onClose={() => setActivityOpen((prev) => !prev)} />}
         />
