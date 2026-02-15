@@ -6,6 +6,7 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { checkRateLimit } from "@/lib/security";
 import { WORKFLOW_TEMPLATES } from "@/lib/automation/workflow-templates";
 import { sendEmail } from "@/lib/email/email-service";
+import { createTenantWorkspace } from "@/lib/tenant/onboarding";
 
 export const runtime = "nodejs";
 
@@ -143,25 +144,13 @@ export async function POST(request: Request) {
       plan: "trial",
     });
 
-    await adminDb.collection("tenants").doc(tenantId).set({
-      id: tenantId,
+    await createTenantWorkspace({
+      tenantId,
       name: parsed.data.company,
-      ownerId: user.uid,
+      email,
       plan: "trial",
+      ownerId: user.uid,
       trialEndsAt,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      settings: {
-        currency: "USD",
-        timezone: "UTC",
-        language: "en",
-      },
-      limits: {
-        users: 10,
-        storage: 5368709120,
-        apiCalls: 10000,
-      },
-      status: "trial",
     });
 
     await adminDb.collection("users").doc(user.uid).set({
