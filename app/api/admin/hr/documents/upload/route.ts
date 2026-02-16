@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
+import { logActivity } from '@/lib/activity/tracker';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -12,14 +13,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const userId = String(body?.userId || "").trim();
-    const docType = String(body?.docType || "").trim();
-    const fileName = String(body?.fileName || "").trim();
-    const storagePath = String(body?.storagePath || "").trim();
-    const downloadUrl = String(body?.downloadUrl || "").trim();
+    const userId = String(body?.userId || '').trim();
+    const docType = String(body?.docType || '').trim();
+    const fileName = String(body?.fileName || '').trim();
+    const storagePath = String(body?.storagePath || '').trim();
+    const downloadUrl = String(body?.downloadUrl || '').trim();
 
     if (!userId || !docType || !fileName || !storagePath || !downloadUrl) {
-      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
     const payload = {
@@ -34,22 +35,31 @@ export async function POST(req: Request) {
       isDeleted: false,
     };
 
-    const ref = await adminDb.collection("employeeDocuments").add(payload);
+    const ref = await adminDb.collection('employeeDocuments').add(payload);
 
     await createHrEvent({
-      type: "hr.document_uploaded",
-      title: "Document uploaded",
+      type: 'hr.document_uploaded',
+      title: 'Document uploaded',
       description: `${fileName} uploaded for employee.`,
-      entityType: "employeeDocument",
+      entityType: 'employeeDocument',
       entityId: ref.id,
       createdByUid: access.user.uid,
-      createdByName: access.user.name || access.user.email || "Admin",
+      createdByName: access.user.name || access.user.email || 'Admin',
       metadata: { userId, docType },
     });
 
+    await logActivity({
+      tenantId: access.user.tenantId,
+      actor: { uid: access.user.uid, name: access.user.name || access.user.email || 'Admin' },
+      action: 'created',
+      entityType: 'document',
+      entityId: ref.id,
+      entityName: fileName,
+      category: 'project',
+    });
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err) {
-    console.error("HR documents upload error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR documents upload error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

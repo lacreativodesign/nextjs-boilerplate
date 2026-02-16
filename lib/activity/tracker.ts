@@ -1,4 +1,4 @@
-import type { ActivityActionType, ActivityEntityType } from "@/types/activity-feed";
+import type { ActivityActionType, ActivityEntityType } from '@/types/activity-feed';
 
 type TrackActivityInput = {
   action: ActivityActionType;
@@ -10,10 +10,46 @@ type TrackActivityInput = {
   metadata?: Record<string, unknown>;
 };
 
+type ActivityCategory = 'invoice' | 'project' | 'client' | 'user';
+
+type LogActivityInput = {
+  tenantId: string;
+  actor: { uid: string; name: string };
+  action: 'created' | 'updated' | 'deleted';
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  category: ActivityCategory;
+  type?: 'user_action' | 'system_event';
+};
+
+export async function logActivity(params: LogActivityInput): Promise<void> {
+  if (typeof window !== 'undefined') {
+    throw new Error('logActivity can only be used on the server.');
+  }
+
+  const { adminDb } = await import('@/lib/firebaseAdmin');
+
+  await adminDb
+    .collection('tenants')
+    .doc(params.tenantId)
+    .collection('activity_feed')
+    .add({
+      actor: params.actor,
+      action: params.action,
+      category: params.category,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      entityName: params.entityName,
+      timestamp: new Date(),
+      type: params.type || 'user_action',
+    });
+}
+
 export async function trackActivity(input: TrackActivityInput) {
-  await fetch("/api/activities", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  await fetch('/api/activities', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: input.action,
       entity: {
@@ -32,66 +68,70 @@ export async function trackActivity(input: TrackActivityInput) {
 
 export async function trackInvoiceCreated(invoiceId: string, invoiceNumber: string) {
   await trackActivity({
-    action: "created",
-    entityType: "invoice",
+    action: 'created',
+    entityType: 'invoice',
     entityId: invoiceId,
     entityName: invoiceNumber,
-    module: "finance",
+    module: 'finance',
     description: `Invoice ${invoiceNumber} created`,
   });
 }
 
 export async function trackInvoiceUpdated(invoiceId: string, invoiceNumber: string) {
   await trackActivity({
-    action: "updated",
-    entityType: "invoice",
+    action: 'updated',
+    entityType: 'invoice',
     entityId: invoiceId,
     entityName: invoiceNumber,
-    module: "finance",
+    module: 'finance',
     description: `Invoice ${invoiceNumber} updated`,
   });
 }
 
 export async function trackInvoicePaid(invoiceId: string, invoiceNumber: string) {
   await trackActivity({
-    action: "updated",
-    entityType: "payment",
+    action: 'updated',
+    entityType: 'payment',
     entityId: invoiceId,
     entityName: invoiceNumber,
-    module: "finance",
+    module: 'finance',
     description: `Invoice ${invoiceNumber} marked paid`,
   });
 }
 
 export async function trackClientAdded(clientId: string, clientName: string) {
   await trackActivity({
-    action: "created",
-    entityType: "client",
+    action: 'created',
+    entityType: 'client',
     entityId: clientId,
     entityName: clientName,
-    module: "crm",
+    module: 'crm',
     description: `Client ${clientName} added`,
   });
 }
 
-export async function trackProjectStatusChanged(projectId: string, projectName: string, status: string) {
+export async function trackProjectStatusChanged(
+  projectId: string,
+  projectName: string,
+  status: string,
+) {
   await trackActivity({
-    action: "updated",
-    entityType: "project",
+    action: 'updated',
+    entityType: 'project',
     entityId: projectId,
     entityName: projectName,
-    module: "projects",
+    module: 'projects',
     description: `Project ${projectName} moved to ${status}`,
   });
 }
 
 export async function trackTaskAssigned(taskId: string, taskTitle: string, assigneeUid: string) {
   await trackActivity({
-    action: "assigned",
-    entityType: "task",
+    action: 'assigned',
+    entityType: 'task',
     entityId: taskId,
     entityName: taskTitle,
-    module: "projects",
+    module: 'projects',
     description: `Task ${taskTitle} assigned`,
     metadata: { assigneeUid },
   });
@@ -99,45 +139,49 @@ export async function trackTaskAssigned(taskId: string, taskTitle: string, assig
 
 export async function trackTaskCompleted(taskId: string, taskTitle: string) {
   await trackActivity({
-    action: "updated",
-    entityType: "task",
+    action: 'updated',
+    entityType: 'task',
     entityId: taskId,
     entityName: taskTitle,
-    module: "projects",
+    module: 'projects',
     description: `Task ${taskTitle} completed`,
     metadata: { completed: true },
   });
 }
 
-export async function trackCommentAdded(commentId: string, entityType: ActivityEntityType, entityId: string) {
+export async function trackCommentAdded(
+  commentId: string,
+  entityType: ActivityEntityType,
+  entityId: string,
+) {
   await trackActivity({
-    action: "commented",
+    action: 'commented',
     entityType,
     entityId,
-    module: "collaboration",
-    description: "Comment added",
+    module: 'collaboration',
+    description: 'Comment added',
     metadata: { commentId },
   });
 }
 
 export async function trackDocumentUploaded(documentId: string, documentName: string) {
   await trackActivity({
-    action: "created",
-    entityType: "document",
+    action: 'created',
+    entityType: 'document',
     entityId: documentId,
     entityName: documentName,
-    module: "documents",
+    module: 'documents',
     description: `Document ${documentName} uploaded`,
   });
 }
 
-export async function trackUserSession(uid: string, action: "logged_in" | "logged_out") {
+export async function trackUserSession(uid: string, action: 'logged_in' | 'logged_out') {
   await trackActivity({
-    action: "updated",
-    entityType: "user",
+    action: 'updated',
+    entityType: 'user',
     entityId: uid,
-    module: "auth",
-    description: action === "logged_in" ? "User logged in" : "User logged out",
+    module: 'auth',
+    description: action === 'logged_in' ? 'User logged in' : 'User logged out',
     metadata: { sessionAction: action },
   });
 }
