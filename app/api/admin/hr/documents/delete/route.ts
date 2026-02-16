@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
+import { logActivity } from '@/lib/activity/tracker';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -12,15 +13,15 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const docId = String(body?.docId || "").trim();
+    const docId = String(body?.docId || '').trim();
     if (!docId) {
-      return NextResponse.json({ ok: false, error: "Missing document id" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing document id' }, { status: 400 });
     }
 
-    const ref = adminDb.collection("employeeDocuments").doc(docId);
+    const ref = adminDb.collection('employeeDocuments').doc(docId);
     const snap = await ref.get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Document not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Document not found' }, { status: 404 });
     }
 
     const data = snap.data() || {};
@@ -31,19 +32,28 @@ export async function POST(req: Request) {
     });
 
     await createHrEvent({
-      type: "hr.document_deleted",
-      title: "Document removed",
-      description: `${data?.fileName || "Document"} marked as deleted.`,
-      entityType: "employeeDocument",
+      type: 'hr.document_deleted',
+      title: 'Document removed',
+      description: `${data?.fileName || 'Document'} marked as deleted.`,
+      entityType: 'employeeDocument',
       entityId: docId,
       createdByUid: access.user.uid,
-      createdByName: access.user.name || access.user.email || "Admin",
+      createdByName: access.user.name || access.user.email || 'Admin',
       metadata: { userId: data?.userId || null },
     });
 
+    await logActivity({
+      tenantId: access.user.tenantId,
+      actor: { uid: access.user.uid, name: access.user.name || access.user.email || 'Admin' },
+      action: 'deleted',
+      entityType: 'document',
+      entityId: docId,
+      entityName: String(data?.fileName || 'Document'),
+      category: 'project',
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("HR documents delete error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR documents delete error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
