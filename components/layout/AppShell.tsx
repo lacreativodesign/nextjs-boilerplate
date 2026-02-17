@@ -14,14 +14,21 @@ import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import { MobileNav } from "@/components/layout/MobileNav";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
   loading: () => null,
 });
 
-function AppShellInner({ children, data, loading }: { children: React.ReactNode; data: TenantContextResponse | null; loading: boolean }) {
+function AppShellInner({
+  children,
+  data,
+  loading,
+}: {
+  children: React.ReactNode;
+  data: TenantContextResponse | null;
+  loading: boolean;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
@@ -49,13 +56,11 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
   useEffect(() => {
     const whiteLabel = data?.tenant?.whiteLabel;
     if (!whiteLabel) return;
-
     const variables = generateThemeCssVariables({
       ...whiteLabel,
       updatedAt: undefined,
       updatedBy: undefined,
     });
-
     Object.entries(variables).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
     });
@@ -66,26 +71,21 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
   useEffect(() => {
     let startX = 0;
     let startY = 0;
-
     const onTouchStart = (event: TouchEvent) => {
       startX = event.touches[0]?.clientX || 0;
       startY = event.touches[0]?.clientY || 0;
     };
-
     const onTouchEnd = (event: TouchEvent) => {
       const endX = event.changedTouches[0]?.clientX || 0;
       const endY = event.changedTouches[0]?.clientY || 0;
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
-
       if (startX < 24 && deltaX > 110 && deltaY < 70) {
         router.back();
       }
     };
-
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
-
     return () => {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
@@ -96,14 +96,11 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
     const prefetchSearchModal = () => {
       import("@/components/search/GlobalSearchModal");
     };
-
     if (typeof window === "undefined") return;
-
     if ("requestIdleCallback" in window) {
       const idleCallback = window.requestIdleCallback(prefetchSearchModal, { timeout: 1200 });
       return () => window.cancelIdleCallback(idleCallback);
     }
-
     const timeoutId = window.setTimeout(prefetchSearchModal, 900);
     return () => window.clearTimeout(timeoutId);
   }, []);
@@ -116,10 +113,12 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
     onEscape: closeMobile,
   });
 
-  const contentShift = isCollapsed ? "md:ml-[var(--sidebar-collapsed-width)]" : "md:ml-[var(--sidebar-width)]";
+  const contentShift = isCollapsed
+    ? "md:ml-[var(--sidebar-collapsed-width)]"
+    : "md:ml-[var(--sidebar-width)]";
 
   return (
-    <div className="app-shell min-h-screen bg-[var(--app-bg)]">
+    <div className="min-h-screen bg-[var(--app-bg)]">
       <Sidebar
         currentRole={currentUser.role}
         userName={currentUser.name}
@@ -128,19 +127,33 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
         tenantLogoUrl={tenantLogoUrl}
         collapsed={isCollapsed}
       />
-      <MobileNav />
 
+      {/* Main content - properly offset on desktop, full width on mobile */}
       <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
         <Header
+          onMenuToggle={openMobile}
           currentUser={currentUser}
-          activityTrigger={<ActivityFeedSidebar open={activityOpen} onClose={() => setActivityOpen((prev) => !prev)} />}
+          activityTrigger={
+            <ActivityFeedSidebar
+              open={activityOpen}
+              onClose={() => setActivityOpen((prev) => !prev)}
+            />
+          }
         />
-        <main className="page-content flex-1 pb-20 py-[var(--page-padding-y)] md:pb-0">
+        <main className="flex-1 py-[var(--page-padding-y)] pb-20 md:pb-[var(--page-padding-y)]">
           <PullToRefresh>
-            <div className="page-frame">{loading ? <div className="card p-6">{t("common.loading")}</div> : children}</div>
+            <div className="page-frame">
+              {loading ? (
+                <div className="card p-6">{t("common.loading")}</div>
+              ) : (
+                children
+              )}
+            </div>
           </PullToRefresh>
         </main>
       </div>
+
+      {/* Mobile bottom nav */}
       <MobileBottomNav onMenuTap={openMobile} />
       <GlobalSearchModal />
     </div>
@@ -149,10 +162,14 @@ function AppShellInner({ children, data, loading }: { children: React.ReactNode;
 
 function AppShellWithI18n({ children }: { children: React.ReactNode }) {
   const { data, loading } = useTenantContext();
-
   return (
-    <I18nProvider userId={data?.user?.uid} userLocale={data?.user?.locale || data?.user?.language || null}>
-      <AppShellInner data={data} loading={loading}>{children}</AppShellInner>
+    <I18nProvider
+      userId={data?.user?.uid}
+      userLocale={data?.user?.locale || data?.user?.language || null}
+    >
+      <AppShellInner data={data} loading={loading}>
+        {children}
+      </AppShellInner>
     </I18nProvider>
   );
 }
