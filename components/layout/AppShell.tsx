@@ -128,7 +128,6 @@ function AppShellInner({
         collapsed={isCollapsed}
       />
 
-      {/* Main content - properly offset on desktop, full width on mobile */}
       <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
         <Header
           onMenuToggle={openMobile}
@@ -153,7 +152,6 @@ function AppShellInner({
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
       <MobileBottomNav onMenuTap={openMobile} />
       <GlobalSearchModal />
     </div>

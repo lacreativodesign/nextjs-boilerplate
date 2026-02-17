@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Bell, Search, Menu } from "lucide-react";
-import { useSidebar } from "@/lib/context/SidebarContext";
 
 type Item = {
   href: string;
