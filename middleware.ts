@@ -252,7 +252,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext);
 
-  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/set-password")) {
+  // Skip tenant validation for login/signup pages
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/session-login')) {
+    return NextResponse.next();
+  }
+
+  if (pathname === "/" || pathname.startsWith("/set-password")) {
     return applyRateHeaders(pathname, NextResponse.next(), rateContext);
   }
 

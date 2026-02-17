@@ -130,28 +130,26 @@ export default function LoginPage() {
   }
 
   async function completeLogin(userCred: { user: { uid: string; getIdToken: (forceRefresh: boolean) => Promise<string> } }) {
-    const uid = userCred.user.uid;
-
-    const role = await fetchUserRole(uid);
-    if (!role) throw new Error("No role assigned");
-
     const sessionToast = showToast.loading("Creating session...");
     try {
       const idToken = await userCred.user.getIdToken(true);
 
-    // Send to server to make secure cookie
-      const cookieRes = await fetch("/api/session-login", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+      // Create session cookie
+      const cookieRes = await fetch('/api/session-login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, rememberMe: remember }),
       });
 
       if (!cookieRes.ok) {
-        const j = await cookieRes.json().catch(() => null);
-        throw new Error(j?.error || "Session error");
+        const errorData = await cookieRes.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Session creation failed:', errorData);
+        throw new Error(errorData.error || 'Failed to create session. Please try again.');
       }
 
+      // Get user role and redirect
+      const role = await fetchUserRole(userCred.user.uid);
       window.location.href = getRoleRoute(role);
     } finally {
       showToast.dismiss(sessionToast);
