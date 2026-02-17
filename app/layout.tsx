@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en-US" dir="ltr" suppressHydrationWarning>
+    <html lang="en-US" dir="ltr">
       <body>
         <ErrorBoundary fallbackComponent={PageErrorFallback}>
           <ToastProvider />
