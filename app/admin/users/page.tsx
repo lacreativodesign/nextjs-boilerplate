@@ -506,7 +506,7 @@ export default function UsersPage() {
             loadingText="Opening..."
             onClick={() => {
               setCreatingUser(true);
-              router.push("/admin/users/add");
+              router.push("/users/add");
             }}
             style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
           >
@@ -561,7 +561,7 @@ export default function UsersPage() {
           <EmptyState
             title="No users found"
             description="Create your first user to start managing access."
-            action={{ label: "Create User", onClick: () => router.push("/admin/users/add") }}
+            action={{ label: "Create User", onClick: () => router.push("/users/add") }}
           />
         ) : (
           <div style={{ overflowX: "auto" }}>

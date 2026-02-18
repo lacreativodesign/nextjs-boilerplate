@@ -117,7 +117,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <Link href="/admin/support" className="text-sm text-blue-700 hover:underline">
+        <Link href="/support" className="text-sm text-blue-700 hover:underline">
           ← Back to Support Tickets
         </Link>
       </div>

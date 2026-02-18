@@ -17,7 +17,7 @@ type HeaderProps = {
 
 const roleBasePaths: Record<string, string> = {
   super_admin: "/super_admin",
-  admin: "/admin",
+  admin: "/dashboard",
   sales: "/sales",
   sales_manager: "/sales_manager",
   am: "/am",

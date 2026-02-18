@@ -256,7 +256,7 @@ function RoleSection({
               </div>
 
               <a
-                href="/admin/users"
+                href="/users"
                 style={{
                   display: "inline-block",
                   marginTop: 10,

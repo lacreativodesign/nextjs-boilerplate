@@ -128,7 +128,8 @@ function AppShellInner({
         collapsed={isCollapsed}
       />
 
-      <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
+      {/* Mobile: ml-[64px], Desktop: shifts based on sidebar state */}
+      <div className={`main-content-transition flex min-h-screen flex-col ml-[64px] ${contentShift}`}>
         <Header
           onMenuToggle={openMobile}
           currentUser={currentUser}

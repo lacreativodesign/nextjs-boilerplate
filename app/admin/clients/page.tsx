@@ -599,7 +599,7 @@ export default function ClientsPage() {
             loadingText="Opening..."
             onClick={() => {
               setAddingClient(true);
-              router.push("/admin/clients/add");
+              router.push("/clients/add");
             }}
             style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
           >
@@ -649,7 +649,7 @@ export default function ClientsPage() {
           <EmptyState
             title="No clients found"
             description="Add your first client to start tracking pipeline and payments."
-            action={{ label: "Add Client", onClick: () => router.push("/admin/clients/add") }}
+            action={{ label: "Add Client", onClick: () => router.push("/clients/add") }}
           />
         ) : (
           <div style={{ overflowX: "auto" }}>

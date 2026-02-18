@@ -294,7 +294,7 @@ export default function EditUserPage() {
         throw new Error(json?.error || "Update failed.");
       }
 
-      router.push("/admin/users");
+      router.push("/users");
     } catch (e: any) {
       setError(e?.message || "Update failed.");
     } finally {

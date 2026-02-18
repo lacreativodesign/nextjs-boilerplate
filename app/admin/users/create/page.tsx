@@ -175,7 +175,7 @@ export default function CreateUserPage() {
     }
 
     setOkMsg("User created successfully.");
-    setTimeout(() => router.push("/admin/users"), 500);
+    setTimeout(() => router.push("/users"), 500);
   }
 
   return (
