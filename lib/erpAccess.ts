@@ -16,7 +16,7 @@ export type ErpRole = (typeof ERP_ROLES)[number];
 
 export const ROLE_DASHBOARD_ROUTE: Record<ErpRole, string> = {
   super_admin: "/super_admin",
-  admin: "/admin",
+  admin: "/dashboard",
   sales_manager: "/sales_manager",
   sales: "/sales",
   am_manager: "/am_manager",
@@ -31,7 +31,7 @@ export const ROLE_DASHBOARD_ROUTE: Record<ErpRole, string> = {
 export type NavItem = { label: string; href: string };
 
 const ERP_MENU: NavItem[] = [
-  { label: "Overview", href: "/admin" },
+  { label: "Overview", href: "/dashboard" },
   { label: "Sales", href: "/sales" },
   { label: "Finance", href: "/finance" },
   { label: "Production", href: "/production" },

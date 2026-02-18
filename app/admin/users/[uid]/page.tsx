@@ -69,7 +69,7 @@ export default function EditUserPage() {
         return;
       }
 
-      router.push("/admin/users");
+      router.push("/users");
     } catch (e) {
       setError("Error updating user");
       setSaving(false);
@@ -94,7 +94,7 @@ export default function EditUserPage() {
         return;
       }
 
-      router.push("/admin/users");
+      router.push("/users");
     } catch (e) {
       setError("Error deleting user");
       setDeleting(false);

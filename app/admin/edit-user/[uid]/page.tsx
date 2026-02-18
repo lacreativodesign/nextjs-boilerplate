@@ -60,7 +60,7 @@ export default function EditUserPage() {
       if (!res.ok) throw new Error(data.error);
 
       alert("User updated successfully!");
-      router.push("/admin/view-users");
+      router.push("/view-users");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -95,7 +95,7 @@ export default function EditUserPage() {
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Edit User</h1>
 
         <button
-          onClick={() => router.push("/admin/view-users")}
+          onClick={() => router.push("/view-users")}
           style={{
             padding: "10px 20px",
             borderRadius: 8,

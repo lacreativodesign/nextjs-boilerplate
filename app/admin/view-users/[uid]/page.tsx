@@ -54,7 +54,7 @@ export default function UserDetailsPage() {
 
     if (res.ok) {
       alert("User deleted successfully");
-      router.push("/admin/view-users");
+      router.push("/view-users");
     } else {
       alert("Failed to delete user");
     }
