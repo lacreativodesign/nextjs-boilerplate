@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "Overview", path: "/reports" },
+  { label: "Overview", path: "/admin/reports" },
   { label: "Revenue & AR", path: "/admin/reports/revenue" },
   { label: "Delivery Performance", path: "/admin/reports/delivery" },
   { label: "Production Analytics", path: "/admin/reports/production" },
@@ -27,7 +27,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
 
       <div className="tabs-bar">
         {tabs.map((t) => {
-          const isActive = pathname === t.path || (pathname.startsWith(t.path + "/") && t.path !== "/reports");
+          const isActive = pathname === t.path || (pathname.startsWith(t.path + "/") && t.path !== "/admin/reports");
 
           return (
             <Link

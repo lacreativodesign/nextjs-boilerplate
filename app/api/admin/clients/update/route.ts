@@ -317,7 +317,7 @@ async function handleUpdate(req: Request) {
               body: `${email} will receive a portal activation email.`,
               entityType: "client",
               entityId: id,
-              deepLink: "/clients",
+              deepLink: "/admin/clients",
               tenantId,
               createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
             })

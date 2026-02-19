@@ -309,7 +309,7 @@ export async function POST(req: Request) {
       message: `${projectName || "Project"} created from paid deal.`,
       entityType: "project",
       entityId: projectId || null,
-      deepLink: "/projects",
+      deepLink: "/admin/projects",
       createdBy: { uid: me.uid, name: actorName },
     });
 

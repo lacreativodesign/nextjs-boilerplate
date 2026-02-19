@@ -2,42 +2,51 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
+import AppShell from "@/components/layout/AppShell";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
-const tabs = [
-  { label: "Overview", path: "/finance" },
-  { label: "Invoices", path: "/finance/invoices" },
-  { label: "Payments", path: "/finance/payments" },
-  { label: "Payroll", path: "/finance/payroll" },
-  { label: "Reports", path: "/finance/reports" },
-  { label: "Settings", path: "/finance/settings" },
+const TABS = [
+  { href: "/finance", label: "Overview" },
+  { href: "/finance/invoices", label: "Invoices" },
+  { href: "/finance/payments", label: "Payments" },
+  { href: "/finance/payroll", label: "Payroll" },
+  { href: "/finance/reports", label: "Reports" },
+  { href: "/finance/settings", label: "Settings" },
 ];
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="w-full">
-      <div className="mb-4">
-        <h2 className="section-title mb-1">Finance</h2>
-        <p className="section-subtitle">Monitor revenue, cash flow, payroll, and finance operations.</p>
-      </div>
+    <RequireAuth allowed={["finance"]}>
+      <ModuleErrorBoundary moduleName="Finance">
+        <AppShell>
+          <div>
+            <div className="mb-6">
+              <h1 className="page-title">Finance</h1>
+              <p className="page-subtitle">Monitor revenue, cash flow, payroll, and finance operations.</p>
+            </div>
 
-      <div className="tabs-bar">
-        {tabs.map((t) => {
-          const active = pathname === t.path || (t.path !== "/finance" && pathname.startsWith(t.path));
-          return (
-            <Link
-              key={t.path}
-              href={t.path}
-              className={`tab-pill ${active ? "active" : ""}`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-      </div>
+            <div className="tabs-bar">
+              {TABS.map((tab) => {
+                const isActive = pathname === tab.href || (tab.href !== "/finance" && pathname.startsWith(tab.href));
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`tab-pill ${isActive ? "active" : ""}`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
 
-      <div>{children}</div>
-    </div>
+            <div>{children}</div>
+          </div>
+        </AppShell>
+      </ModuleErrorBoundary>
+    </RequireAuth>
   );
 }

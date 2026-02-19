@@ -21,17 +21,17 @@ export default function AdminSidebar() {
 
   const navItems = [
     { label: "Overview", icon: LayoutDashboard, path: "/admin" },
-    { label: "User Management", icon: Users, path: "/users" },
-    { label: "Clients", icon: UserCog, path: "/clients" },
-    { label: "Projects", icon: Briefcase, path: "/projects" },
-    { label: "Finance", icon: DollarSign, path: "/finance" },
-    { label: "HR & Team", icon: FileText, path: "/hr" },
-    { label: "Production", icon: PanelsTopLeft, path: "/production" },
+    { label: "User Management", icon: Users, path: "/admin/users" },
+    { label: "Clients", icon: UserCog, path: "/admin/clients" },
+    { label: "Projects", icon: Briefcase, path: "/admin/projects" },
+    { label: "Finance", icon: DollarSign, path: "/admin/finance" },
+    { label: "HR & Team", icon: FileText, path: "/admin/hr" },
+    { label: "Production", icon: PanelsTopLeft, path: "/admin/production" },
     { label: "Leads", icon: BarChart4, path: "/admin/leads" },
-    { label: "Sales", icon: BarChart4, path: "/sales" },
+    { label: "Sales", icon: BarChart4, path: "/admin/sales" },
     { label: "Sales Manager", icon: BarChart4, path: "/admin/sales_manager" },
-    { label: "Reports", icon: FileText, path: "/reports" },
-    { label: "Settings", icon: Settings, path: "/settings" },
+    { label: "Reports", icon: FileText, path: "/admin/reports" },
+    { label: "Settings", icon: Settings, path: "/admin/settings" },
   ];
 
   return (

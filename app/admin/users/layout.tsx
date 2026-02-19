@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "All Users", path: "/users" },
+  { label: "All Users", path: "/admin/users" },
   { label: "Roles", path: "/admin/users/roles" },
 ];
 
