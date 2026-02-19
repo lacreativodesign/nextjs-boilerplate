@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 const tabs = [
-  { label: "Overview", path: "/admin/production" },
+  { label: "Overview", path: "/production" },
   { label: "Queue", path: "/admin/production/queue" },
   { label: "QA & Approvals", path: "/admin/production/qa" },
 ];

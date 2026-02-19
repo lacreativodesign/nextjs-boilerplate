@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const tabs = [
-  { label: "All Projects", path: "/admin/projects" },
+  { label: "All Projects", path: "/projects" },
   { label: "Delivery Pipeline", path: "/admin/projects/pipeline" },
   { label: "Global Files", path: "/admin/projects/files" },
   { label: "Change Requests", path: "/admin/projects/change-requests" },

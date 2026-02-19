@@ -74,7 +74,7 @@ export async function POST(req: Request) {
             type: "info",
             entityType: "project",
             entityId: projectId,
-            deepLink: "/admin/projects",
+            deepLink: "/projects",
             createdBy: { uid: me.uid, name: senderName },
           })
         )

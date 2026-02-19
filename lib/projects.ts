@@ -35,7 +35,7 @@ function resolveProjectDeepLink(role: string) {
   if (normalized === "production_manager" || normalized === "production") return "/production/projects";
   if (normalized === "am_manager" || normalized === "am") return "/am/projects";
   if (normalized === "client") return "/client/projects";
-  return "/admin/projects";
+  return "/projects";
 }
 
 async function getUserRole(uid: string) {
