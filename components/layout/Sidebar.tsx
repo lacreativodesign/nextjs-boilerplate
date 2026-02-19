@@ -53,7 +53,7 @@ export default function Sidebar({
   collapsed,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
+  const { isMobileOpen, closeMobile, toggleCollapse, openMobile } = useSidebar();
   const navigation = useMemo(() => getNavigationForRole(currentRole), [currentRole]);
 
   return (
@@ -139,7 +139,7 @@ export default function Sidebar({
           {/* Mobile: Always hamburger */}
           <div className="md:hidden">
             <button
-              onClick={toggleCollapse}
+              onClick={openMobile}
               className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] hover:bg-[var(--surface-card)]"
             >
               <Menu className="h-5 w-5" />
