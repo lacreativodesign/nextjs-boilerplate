@@ -113,6 +113,10 @@ function AppShellInner({
     onEscape: closeMobile,
   });
 
+  const contentShift = isCollapsed
+    ? "ml-16 md:ml-16"
+    : "ml-16 md:ml-[260px]";
+
   return (
     <div className="min-h-screen bg-[var(--app-bg)]">
       <Sidebar
@@ -124,10 +128,7 @@ function AppShellInner({
         collapsed={isCollapsed}
       />
 
-      {/* Content always offset by sidebar */}
-      <div className={`main-content-transition flex min-h-screen flex-col ml-16 ${
-        isCollapsed ? "md:ml-16" : "md:ml-[260px]"
-      }`}>
+      <div className={`main-content-transition flex min-h-screen flex-col ${contentShift}`}>
         <Header
           onMenuToggle={openMobile}
           currentUser={currentUser}
