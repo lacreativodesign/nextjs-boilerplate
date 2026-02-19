@@ -79,7 +79,7 @@ export async function maybeAutoCreateProjectFromInvoice({
           type: "success",
           entityType: "project",
           entityId: created.id,
-          deepLink: "/projects",
+          deepLink: "/admin/projects",
           createdBy: actor || null,
           tenantId: tenantId || null,
           roleTarget: "finance",

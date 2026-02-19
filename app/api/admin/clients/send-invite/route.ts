@@ -73,7 +73,7 @@ export async function POST(req: Request) {
           body: `${clientData.companyName || "Client"} invite sent to ${email}.`,
           entityType: "client",
           entityId: clientId,
-          deepLink: "/clients",
+          deepLink: "/admin/clients",
           tenantId,
           createdBy: { uid: current.uid, name: current.name || current.fullName || "" },
         })

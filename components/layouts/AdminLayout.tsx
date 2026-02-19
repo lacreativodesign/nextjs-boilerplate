@@ -8,10 +8,10 @@ import clsx from "clsx";
 
 const navItems = [
   { label: "Overview", path: "/admin", icon: <LayoutDashboard size={18} /> },
-  { label: "Users", path: "/users", icon: <Users size={18} /> },
+  { label: "Users", path: "/admin/users", icon: <Users size={18} /> },
   { label: "Activity", path: "/admin/activity", icon: <Activity size={18} /> },
-  { label: "Reports", path: "/reports", icon: <BarChart3 size={18} /> },
-  { label: "Settings", path: "/settings", icon: <Settings size={18} /> },
+  { label: "Reports", path: "/admin/reports", icon: <BarChart3 size={18} /> },
+  { label: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

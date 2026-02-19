@@ -94,7 +94,7 @@ export async function POST(req: Request) {
           body: `${email} activated their portal access.`,
           entityType: "client",
           entityId: clientId,
-          deepLink: "/clients",
+          deepLink: "/admin/clients",
           tenantId,
         })
       )

@@ -85,7 +85,7 @@ export async function POST(req: Request) {
             type: "warning",
             entityType: "project",
             entityId: projectId,
-            deepLink: "/projects",
+            deepLink: "/admin/projects",
             createdBy: { uid: me.uid, name: actorName },
           })
         )
