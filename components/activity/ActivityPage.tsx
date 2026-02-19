@@ -43,8 +43,8 @@ function resolveEntityRoute(entityType?: string | null) {
   if (normalized === "change_request") return "/admin/projects/change-requests";
   if (normalized === "invoice") return "/admin/finance/invoices";
   if (normalized === "payment") return "/admin/finance/payments";
-  if (normalized === "project") return "/admin/projects";
-  if (normalized === "client") return "/admin/clients";
+  if (normalized === "project") return "/projects";
+  if (normalized === "client") return "/clients";
   return null;
 }
 

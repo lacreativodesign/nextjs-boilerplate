@@ -8,7 +8,7 @@ export default function UserTabs() {
   const pathname = usePathname();
 
   const tabs = [
-    { label: "All Users", path: "/admin/users" },
+    { label: "All Users", path: "/users" },
     { label: "Create User", path: "/admin/users/create" },
     { label: "Activity Log", path: "/admin/users/activity" },
     { label: "Disabled Users", path: "/admin/users/disabled" },

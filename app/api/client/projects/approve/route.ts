@@ -57,7 +57,7 @@ export async function POST(req: Request) {
             type: "success",
             entityType: "project",
             entityId: projectId,
-            deepLink: uid === project.ownerAmUid ? "/am/projects" : "/admin/projects",
+            deepLink: uid === project.ownerAmUid ? "/am/projects" : "/projects",
             createdBy: { uid: auth.user.uid, name: actorName },
           })
         )
