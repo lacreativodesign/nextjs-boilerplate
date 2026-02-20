@@ -33,7 +33,9 @@ function AppShellInner({
 
   const currentUser = useMemo(
     () => ({
-      name: data?.user?.displayName || data?.user?.email || "User",
+      name:
+        data?.user?.displayName ||
+        (data?.user?.email ? data.user.email.split("@")[0] : "User"),
       email: data?.user?.email || "",
       role: normalizeRole(data?.user?.role || "") || "admin",
       avatarUrl: undefined,
