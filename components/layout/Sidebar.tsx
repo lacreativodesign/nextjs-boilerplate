@@ -54,10 +54,10 @@ export default function Sidebar({
       {isMobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            className="fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity duration-300 ease-in-out"
             onClick={closeMobile}
           />
-          <aside className="fixed left-0 top-0 z-50 h-full w-[260px] bg-[var(--surface-card)] border-r border-[var(--border-subtle)] md:hidden">
+          <aside className="fixed left-0 top-0 z-50 h-full w-[260px] bg-[var(--surface-card)] border-r border-[var(--border-subtle)] md:hidden transition-transform duration-300 ease-in-out">
             <div className="flex h-full flex-col p-4">
               <div className="mb-6 flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
                 <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export default function Sidebar({
 
       {/* ALWAYS VISIBLE Sidebar - Collapsed 64px on mobile, Full 260px on desktop */}
       <aside
-        className={`sidebar-transition fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] ${
+        className={`fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] hidden md:block transition-[width] duration-300 ease-in-out overflow-hidden ${
           collapsed ? "w-16 md:w-[var(--sidebar-collapsed-width)]" : "w-16 md:w-[var(--sidebar-width)]"
         }`}
       >
