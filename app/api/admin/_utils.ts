@@ -20,8 +20,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const sessionCookie = cookieStore.get('lac_session')?.value;
     if (!sessionCookie) return null;
 
-    const sessionStatus = await validateSession(sessionCookie);
-    if (!sessionStatus.valid) return null;
+    let sessionStatus: { valid: boolean; uid?: string; expired?: boolean } | null = null;
+    try {
+      sessionStatus = await validateSession(sessionCookie);
+    } catch (err) {
+      console.error('getCurrentUser validateSession error:', err);
+    }
 
     const decoded = await trackDbQuery('auth.verify', 'admin.verifySessionCookie', async () =>
       adminAuth.verifySessionCookie(sessionCookie, true),
@@ -36,6 +40,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const data = userDoc.data() || {};
     const role = normalizeRole((data.role as string | undefined) || 'sales');
 
+    if (sessionStatus && !sessionStatus.valid && role !== 'super_admin') {
+      return null;
+    }
+
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
     void refreshSession(sessionCookie);
@@ -47,12 +55,16 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       tenantId,
     });
 
-    return {
+    const current = {
       uid,
       role,
       tenantId,
       ...data,
     };
+
+    console.log('getCurrentUser result:', JSON.stringify(current));
+
+    return current;
   } catch (err) {
     captureApiError(err, { fingerprint: ['admin.getCurrentUser'] });
     console.error('getCurrentUser error:', err);
@@ -61,14 +73,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 // Role checks
-export function isAdminRole(role: string) {
-  const r = (role || '').toLowerCase();
-  return r === 'admin' || r === 'super_admin';
+export function isAdminRole(role?: string | null): boolean {
+  return role === 'admin' || role === 'super_admin';
 }
 
-export function isSuperAdmin(role: string) {
-  const r = (role || '').toLowerCase();
-  return r === 'super_admin';
+export function isSuperAdmin(role?: string | null): boolean {
+  return role === 'super_admin';
 }
 
 export function normalizeRole(role?: string) {
