@@ -2,13 +2,10 @@
 
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
-import TranslationProgress from "@/components/i18n/TranslationProgress";
-import MissingTranslationWarning from "@/components/i18n/MissingTranslationWarning";
+import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
 
 type HeaderProps = {
   currentUser: { name: string; email: string; role: string; avatarUrl?: string };
@@ -34,9 +31,8 @@ const profileEnabledRoles = new Set(["sales", "client"]);
 const getBasePath = (role: string) => roleBasePaths[role] || "/";
 
 export default function Header({ currentUser, activityTrigger }: HeaderProps) {
-  const pathname = usePathname();
   const router = useRouter();
-  const { t } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,9 +60,6 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
     <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-[var(--page-padding-x)] py-2 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="hidden md:block">
-            <Breadcrumbs pathname={pathname} />
-          </div>
           <div className="text-base font-semibold text-[var(--text-primary)] md:hidden">{t("common.appName")}</div>
         </div>
 
@@ -80,7 +73,18 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">{activityTrigger || null}
-          <LanguageSwitcher />
+          <select
+            value={locale}
+            onChange={(event) => setLocale(event.target.value as SupportedLocale)}
+            className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-card)] px-2 py-1 text-xs text-[var(--text-primary)]"
+            aria-label={t("common.language")}
+          >
+            {SUPPORTED_LOCALES.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.flag} {item.nativeName}
+              </option>
+            ))}
+          </select>
 
           <div className="relative" ref={menuRef}>
             <button type="button" onClick={() => setMenuOpen((prev) => !prev)} className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5 text-sm shadow-sm" aria-haspopup="menu" aria-expanded={menuOpen}>
@@ -107,10 +111,6 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
             )}
           </div>
         </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between">
-        <TranslationProgress />
-        <MissingTranslationWarning />
       </div>
     </header>
   );
