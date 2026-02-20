@@ -19,7 +19,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
 
   return (
-    <RequireAuth allowed={["finance"]}>
+    <RequireAuth allowed={["finance", "super_admin"]}>
       <ModuleErrorBoundary moduleName="Finance">
         <AppShell>
           <div>

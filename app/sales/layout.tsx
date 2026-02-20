@@ -4,7 +4,7 @@ import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RequireAuth allowed={["sales"]}>
+    <RequireAuth allowed={["sales", "super_admin"]}>
       <ModuleErrorBoundary moduleName="Sales">
         <AppShell>{children}</AppShell>
       </ModuleErrorBoundary>
