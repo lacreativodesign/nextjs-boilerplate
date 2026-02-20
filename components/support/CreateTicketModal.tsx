@@ -94,8 +94,8 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-xl font-bold text-slate-900">Create Support Ticket</h2>
+      <div className="w-full max-w-xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Report a Bug</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -104,7 +104,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
             placeholder="Title"
             value={formData.title}
             onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            className="input w-full"
           />
 
           <textarea
@@ -113,14 +113,14 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
             placeholder="Description"
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-            className="h-32 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            className="input h-32 w-full"
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               value={formData.priority}
               onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as TicketPriority }))}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              className="input w-full"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -131,7 +131,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
             <select
               value={formData.category}
               onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value as TicketCategory }))}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              className="input w-full"
             >
               <option value="bug">Bug</option>
               <option value="feature">Feature</option>
@@ -144,7 +144,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
             placeholder="Tags (comma-separated)"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            className="input w-full"
           />
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -153,9 +153,9 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
             <button
               type="submit"
               disabled={!canSubmit || submitting}
-              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Creating..." : "Create"}
+              {submitting ? "Sending..." : "Send Bug Report"}
             </button>
             <button
               type="button"
