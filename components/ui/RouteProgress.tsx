@@ -32,12 +32,26 @@ export default function RouteProgress() {
 
   return (
     <div
-      className="pointer-events-none bg-transparent"
-      style={{ position: "fixed", top: 0, left: 0, right: 0, width: "100%", zIndex: 9999, height: "3px" }}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "2px",
+        zIndex: 99999,
+        pointerEvents: "none",
+        backgroundColor: "transparent",
+      }}
     >
       <div
-        className="h-full bg-indigo-500 transition-[width] duration-200 ease-out"
-        style={{ width: `${progress}%` }}
+        style={{
+          height: "100%",
+          width: `${progress}%`,
+          backgroundColor: "var(--erp-blue)",
+          borderRadius: "0 2px 2px 0",
+          transition: "width 200ms ease-out",
+          boxShadow: "0 0 8px var(--erp-blue)",
+        }}
       />
     </div>
   );
