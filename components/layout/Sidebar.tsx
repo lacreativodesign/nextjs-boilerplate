@@ -110,7 +110,7 @@ export default function Sidebar({
           collapsed ? "w-16 md:w-[var(--sidebar-collapsed-width)]" : "w-16 md:w-[var(--sidebar-width)]"
         }`}
       >
-        <div className="flex h-full flex-col p-2 md:p-4">
+        <div className={`flex h-full flex-col ${collapsed ? "p-2" : "p-2 md:p-4"}`}>
           {/* Hamburger button on mobile, Logo on desktop */}
           <div className="mb-6 border-b border-[var(--border-subtle)] pb-4">
             {/* Mobile: Just hamburger */}
@@ -171,10 +171,10 @@ export default function Sidebar({
                   key={item.href}
                   href={item.href}
                   title={item.label}
-                  className={`flex items-center gap-3 rounded-xl transition-all ${
+                  className={`transition-all ${
                     collapsed
-                      ? "h-12 w-12 justify-center md:h-12 md:w-12"
-                      : "h-12 w-12 justify-center md:h-auto md:w-auto md:justify-start md:px-3 md:py-2.5"
+                      ? "flex h-12 w-12 items-center justify-center rounded-xl mx-auto"
+                      : "flex h-12 w-12 items-center justify-center gap-3 rounded-xl md:h-auto md:w-auto md:justify-start md:px-3 md:py-2.5"
                   } ${
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg"
