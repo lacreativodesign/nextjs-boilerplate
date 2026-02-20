@@ -10,7 +10,7 @@ import ActivityFeedSidebar from "@/components/activity/ActivityFeedSidebar";
 import { useTenantContext, type TenantContextResponse } from "@/lib/tenant/useTenantContext";
 import { normalizeRole } from "@/lib/erpAccess";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
-import { I18nProvider, useI18n } from "@/components/i18n/I18nProvider";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
@@ -23,35 +23,23 @@ const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearch
 function AppShellInner({
   children,
   data,
-  loading,
 }: {
   children: React.ReactNode;
   data: TenantContextResponse | null;
-  loading: boolean;
 }) {
-  const { t } = useI18n();
   const router = useRouter();
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
-
-  const role = useMemo(() => normalizeRole(data?.user?.role || ""), [data?.user?.role]);
 
   const currentUser = useMemo(
     () => ({
       name: data?.user?.displayName || data?.user?.email || "User",
       email: data?.user?.email || "",
-      role: role || "admin",
+      role: normalizeRole(data?.user?.role || "") || "admin",
       avatarUrl: undefined,
     }),
-    [data?.user?.displayName, data?.user?.email, role],
+    [data?.user?.displayName, data?.user?.email, data?.user?.role],
   );
-
-  const tenantName = useMemo(() => {
-    const brandName = data?.tenant?.brand?.name;
-    return brandName || data?.tenant?.name || t("common.appName");
-  }, [data?.tenant?.brand?.name, data?.tenant?.name, t]);
-
-  const tenantLogoUrl = data?.tenant?.whiteLabel?.logoUrl || data?.tenant?.brand?.logoUrl || null;
 
   useEffect(() => {
     const whiteLabel = data?.tenant?.whiteLabel;
@@ -119,8 +107,8 @@ function AppShellInner({
         currentRole={currentUser.role}
         userName={currentUser.name}
         userEmail={currentUser.email}
-        tenantName={tenantName}
-        tenantLogoUrl={tenantLogoUrl}
+        tenantName={data?.tenant?.name || "Bizosto"}
+        tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || null}
         collapsed={isCollapsed}
       />
 
@@ -140,13 +128,7 @@ function AppShellInner({
         />
         <main className="flex-1 py-[var(--page-padding-y)] pb-20 md:pb-[var(--page-padding-y)]">
           <PullToRefresh>
-            <div className="page-frame">
-              {loading ? (
-                <div className="card p-6">{t("common.loading")}</div>
-              ) : (
-                children
-              )}
-            </div>
+            <div className="page-frame">{children}</div>
           </PullToRefresh>
         </main>
       </div>
@@ -158,13 +140,13 @@ function AppShellInner({
 }
 
 function AppShellWithI18n({ children }: { children: React.ReactNode }) {
-  const { data, loading } = useTenantContext();
+  const { data } = useTenantContext();
   return (
     <I18nProvider
       userId={data?.user?.uid}
       userLocale={data?.user?.locale || data?.user?.language || null}
     >
-      <AppShellInner data={data} loading={loading}>
+      <AppShellInner data={data}>
         {children}
       </AppShellInner>
     </I18nProvider>
