@@ -106,8 +106,8 @@ export default function Sidebar({
 
       {/* ALWAYS VISIBLE Sidebar - Collapsed 64px on mobile, Full 260px on desktop */}
       <aside
-        className={`fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] hidden md:block transition-[width] duration-300 ease-in-out overflow-hidden ${
-          collapsed ? "w-16 md:w-[var(--sidebar-collapsed-width)]" : "w-16 md:w-[var(--sidebar-width)]"
+        className={`fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] block transition-[width] duration-300 ease-in-out overflow-hidden ${
+          collapsed ? "w-16" : "w-16 md:w-[260px]"
         }`}
       >
         <div className={`flex h-full flex-col ${collapsed ? "p-2" : "p-2 md:p-4"}`}>
