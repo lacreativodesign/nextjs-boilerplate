@@ -10,6 +10,24 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUserOrThrow(req);
+
+    if (user.role === "super_admin") {
+      return NextResponse.json({
+        ok: true,
+        user: {
+          uid: user.uid,
+          role: user.role,
+          tenantId: "bizosto",
+          status: user.status || "active",
+          displayName: user.displayName || user.name || null,
+          email: user.email || null,
+          language: null,
+          locale: null,
+        },
+        tenant: null,
+      });
+    }
+
     const tenantId = await getTenantIdForRequestOrThrow(req);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toastError } from "@/lib/toast";
 import type { SubscriptionState } from "@/lib/subscription";
 
@@ -58,6 +58,7 @@ export function useTenantContext() {
   const [data, setData] = useState<TenantContextResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toastFiredRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -73,14 +74,31 @@ export function useTenantContext() {
         });
         const json = (await res.json().catch(() => null)) as TenantContextResponse | null;
         if (!res.ok || !json?.ok) {
-          throw new Error((json as any)?.error || res.statusText || "Failed to load tenant");
+          const requestError = new Error((json as any)?.error || res.statusText || "Failed to load tenant") as Error & {
+            status?: number;
+          };
+          requestError.status = res.status;
+          throw requestError;
         }
         if (active) setData(json);
       } catch (err: any) {
         if (active) {
           const message = err?.message || "Failed to load tenant";
+          const status = typeof err?.status === "number" ? err.status : null;
           setError(message);
-          toastError(`Unable to load tenant context. ${message}`);
+
+          const shouldRedirectToLogin =
+            status === 401 && (message.includes("Unauthorized") || message.includes("Session expired"));
+
+          if (shouldRedirectToLogin) {
+            window.location.assign("/login");
+            return;
+          }
+
+          if (!toastFiredRef.current) {
+            toastError(`Unable to load tenant context. ${message}`);
+            toastFiredRef.current = true;
+          }
         }
       } finally {
         if (active) setLoading(false);
