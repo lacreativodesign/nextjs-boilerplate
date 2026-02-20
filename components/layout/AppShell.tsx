@@ -115,7 +115,7 @@ function AppShellInner({
       />
 
       {/* Content always offset by sidebar */}
-      <div className={`main-content-transition flex min-h-screen flex-col ml-16 ${
+      <div className={`transition-[margin] duration-300 ease-in-out flex min-h-screen flex-col ml-16 ${
         isCollapsed ? "md:ml-16" : "md:ml-[260px]"
       }`}>
         <Header
