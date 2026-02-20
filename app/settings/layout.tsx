@@ -1,118 +1,43 @@
 "use client";
-
-import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
+import AppShell from "@/components/layout/AppShell";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
-export default function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const TABS = [
+  { href: "/settings", label: "General" },
+  { href: "/settings/security", label: "Security" },
+  { href: "/settings/notifications", label: "Notifications" },
+  { href: "/settings/integrations", label: "Integrations" },
+  { href: "/settings/email", label: "Email" },
+];
+
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  const navItems = [
-    { label: "Profile Settings", path: "/settings" },
-    { label: "Security", path: "/settings/security" },
-    { label: "Preferences", path: "/settings/preferences" },
-    { label: "System Settings", path: "/settings/system" },
-    { label: "Payments", path: "/settings/payments" },
-  ];
-
   return (
-    <RequireAuth allowed={["settings", "super_admin"]}>
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          backgroundColor: "#f9fafb",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        {/* SIDEBAR */}
-        <aside
-          style={{
-            width: 250,
-            backgroundColor: "#111827",
-            color: "white",
-            padding: "30px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 20,
-            boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
-          }}
-        >
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 30 }}>
-            SETTINGS
-          </h2>
-
-          {navItems.map((item) => {
-            const active = pathname.startsWith(item.path);
-
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  background: active ? "#1f2937" : "transparent",
-                  color: active ? "#fff" : "#d1d5db",
-                  fontWeight: active ? 700 : 500,
-                  textDecoration: "none",
-                  transition: "0.2s ease",
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </aside>
-
-        {/* MAIN AREA */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {/* HEADER */}
-          <header
-            style={{
-              backgroundColor: "#ffffff",
-              borderBottom: "1px solid #e5e7eb",
-              padding: "20px 30px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: "#111827" }}>
-              Account Settings
-            </h1>
-
-            <button
-              onClick={async () => {
-                await fetch("/api/logout", {
-                  method: "POST",
-                  credentials: "include",
-                });
-                window.location.href = "/login";
-              }}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 8,
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              LOGOUT
-            </button>
-          </header>
-
-          {/* CONTENT */}
-          <main style={{ padding: "30px" }}>{children}</main>
-        </div>
-      </div>
+    <RequireAuth allowed={["admin", "super_admin"]}>
+      <ModuleErrorBoundary moduleName="Settings">
+        <AppShell>
+          <div>
+            <div className="mb-6">
+              <h1 className="page-title">Settings</h1>
+              <p className="page-subtitle">System configuration and workspace preferences.</p>
+            </div>
+            <div className="tabs-bar">
+              {TABS.map((tab) => {
+                const isActive = pathname === tab.href || (tab.href !== "/settings" && pathname.startsWith(tab.href));
+                return (
+                  <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div>{children}</div>
+          </div>
+        </AppShell>
+      </ModuleErrorBoundary>
     </RequireAuth>
   );
 }

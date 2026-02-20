@@ -1,70 +1,43 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
+import AppShell from "@/components/layout/AppShell";
+import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
-export default function ReportsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const TABS = [
+  { href: "/reports", label: "Overview" },
+  { href: "/reports/sales", label: "Sales" },
+  { href: "/reports/projects", label: "Projects" },
+  { href: "/reports/team", label: "Team" },
+  { href: "/reports/finance", label: "Finance" },
+];
+
+export default function ReportsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  const navItems = [
-    { label: "Overview", path: "/reports" },
-    { label: "Sales Reports", path: "/reports/sales" },
-    { label: "Project Reports", path: "/reports/projects" },
-    { label: "Team Performance", path: "/reports/team" },
-    { label: "Financial Reports", path: "/reports/finance" },
-  ];
-
   return (
-    <RequireAuth allowed={["reports", "super_admin"]}>
-      <div className="reports-shell">
-        {/* SIDEBAR */}
-        <aside className="reports-sidebar">
-          <h2 className="reports-title">Reports</h2>
-
-          <nav className="reports-nav">
-            {navItems.map((item) => {
-              const active = pathname.startsWith(item.path);
-
-              return (
-                <Link key={item.path} href={item.path} className={`reports-link ${active ? "active" : ""}`}>
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* MAIN AREA */}
-        <div className="reports-main">
-          {/* HEADER */}
-          <header className="reports-header">
-            <h1 className="text-lg font-semibold">Reporting Center</h1>
-
-            <button
-              onClick={async () => {
-                await fetch("/api/logout", {
-                  method: "POST",
-                  credentials: "include",
-                });
-                window.location.href = "/login";
-              }}
-              className="btn btn-danger"
-            >
-              LOGOUT
-            </button>
-          </header>
-
-          {/* CONTENT */}
-          <main className="reports-content">
-            <div className="page-frame">{children}</div>
-          </main>
-        </div>
-      </div>
+    <RequireAuth allowed={["admin", "super_admin", "sales_manager", "hr", "finance"]}>
+      <ModuleErrorBoundary moduleName="Reports">
+        <AppShell>
+          <div>
+            <div className="mb-6">
+              <h1 className="page-title">Reports</h1>
+              <p className="page-subtitle">Analytics and performance reporting across all modules.</p>
+            </div>
+            <div className="tabs-bar">
+              {TABS.map((tab) => {
+                const isActive = pathname === tab.href || (tab.href !== "/reports" && pathname.startsWith(tab.href));
+                return (
+                  <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div>{children}</div>
+          </div>
+        </AppShell>
+      </ModuleErrorBoundary>
     </RequireAuth>
   );
 }
