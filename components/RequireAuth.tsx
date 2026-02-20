@@ -38,6 +38,7 @@ export default function RequireAuth({ allowed, children }: Props) {
 
           const role = normalizeRole(await fetchUserRole(user.uid));
 
+          // super_admin bypasses all route restrictions
           if (role === "super_admin") {
             setOk(true);
             setReady(true);
