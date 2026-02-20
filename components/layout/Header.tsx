@@ -88,7 +88,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
 
           <div className="relative" ref={menuRef}>
             <button type="button" onClick={() => setMenuOpen((prev) => !prev)} className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5 text-sm shadow-sm" aria-haspopup="menu" aria-expanded={menuOpen}>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] text-sm font-semibold">{currentUser.name.slice(0, 1).toUpperCase()}</div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--erp-blue)] text-sm font-bold text-white">{currentUser.name.slice(0, 1).toUpperCase()}</div>
               <span className="hidden text-sm font-semibold md:inline">{currentUser.name}</span>
               <ChevronDown className="h-4 w-4 text-[var(--text-soft)]" />
             </button>
