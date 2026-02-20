@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toastError } from "@/lib/toast";
 import type { SubscriptionState } from "@/lib/subscription";
 
@@ -58,7 +58,6 @@ export function useTenantContext() {
   const [data, setData] = useState<TenantContextResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const toastFiredRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -84,20 +83,15 @@ export function useTenantContext() {
       } catch (err: any) {
         if (active) {
           const message = err?.message || "Failed to load tenant";
-          const status = typeof err?.status === "number" ? err.status : null;
           setError(message);
 
-          const shouldRedirectToLogin =
-            status === 401 && (message.includes("Unauthorized") || message.includes("Session expired"));
-
-          if (shouldRedirectToLogin) {
-            window.location.assign("/login");
-            return;
-          }
-
-          if (!toastFiredRef.current) {
+          // Only show toast for non-auth errors to avoid noise for super_admin
+          if (
+            !message.includes("Unauthorized") &&
+            !message.includes("Session expired") &&
+            !message.includes("expired")
+          ) {
             toastError(`Unable to load tenant context. ${message}`);
-            toastFiredRef.current = true;
           }
         }
       } finally {

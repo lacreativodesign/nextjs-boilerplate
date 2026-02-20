@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUserOrThrow(req);
 
+    // super_admin is platform-level — no tenant required
     if (user.role === "super_admin") {
       return NextResponse.json({
         ok: true,
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
           uid: user.uid,
           role: user.role,
           tenantId: "bizosto",
-          status: user.status || "active",
+          status: "active",
           displayName: user.displayName || user.name || null,
           email: user.email || null,
           language: null,
