@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   try {
     const current = await getCurrentUser();
-    if (!current || !isAdminRole(current.role)) {
+    if (!current || (!isAdminRole(current.role) && current.role !== 'super_admin')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
