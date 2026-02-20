@@ -174,7 +174,7 @@ export default function Sidebar({
                   className={`flex items-center gap-3 rounded-xl transition-all ${
                     collapsed
                       ? "h-12 w-12 justify-center md:h-12 md:w-12"
-                      : "h-12 w-12 justify-center md:h-auto md:w-auto md:px-3 md:py-2.5"
+                      : "h-12 w-12 justify-center md:h-auto md:w-auto md:justify-start md:px-3 md:py-2.5"
                   } ${
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg"

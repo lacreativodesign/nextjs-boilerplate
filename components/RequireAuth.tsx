@@ -66,7 +66,31 @@ export default function RequireAuth({ allowed, children }: Props) {
     };
   }, [allowedRoles, router]);
 
-  if (!ready) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (!ready)
+    return (
+      <div className="flex h-screen bg-[var(--surface-bg)]">
+        {/* Sidebar skeleton */}
+        <div className="w-16 md:w-[260px] border-r border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 flex flex-col gap-3">
+          <div className="h-10 w-10 rounded-lg bg-[var(--surface-muted)] animate-pulse" />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-10 rounded-xl bg-[var(--surface-muted)] animate-pulse" />
+          ))}
+        </div>
+        {/* Content skeleton */}
+        <div className="flex-1 flex flex-col">
+          <div className="h-14 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] animate-pulse" />
+          <div className="flex-1 p-6 space-y-4">
+            <div className="h-8 w-1/3 rounded-lg bg-[var(--surface-muted)] animate-pulse" />
+            <div className="grid grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-xl bg-[var(--surface-muted)] animate-pulse" />
+              ))}
+            </div>
+            <div className="h-64 rounded-xl bg-[var(--surface-muted)] animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
   if (!ok) return null;
 
   return (
