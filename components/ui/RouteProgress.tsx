@@ -31,7 +31,7 @@ export default function RouteProgress() {
   if (!visible) return null;
 
   return (
-    <div className="fixed left-0 top-0 z-[10000] h-[3px] w-full bg-transparent">
+    <div className="pointer-events-none fixed left-0 top-0 z-[9999] h-[3px] w-full bg-transparent">
       <div
         className="h-full rounded-r-full bg-indigo-500 transition-[width] duration-200 ease-out"
         style={{ width: `${progress}%` }}
