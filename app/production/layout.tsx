@@ -4,7 +4,7 @@ import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 
 export default function ProductionLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RequireAuth allowed={["production"]}>
+    <RequireAuth allowed={["production", "super_admin"]}>
       <ModuleErrorBoundary moduleName="Production">
         <AppShell>{children}</AppShell>
       </ModuleErrorBoundary>

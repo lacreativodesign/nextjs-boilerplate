@@ -38,6 +38,12 @@ export default function RequireAuth({ allowed, children }: Props) {
 
           const role = normalizeRole(await fetchUserRole(user.uid));
 
+          if (role === "super_admin") {
+            setOk(true);
+            setReady(true);
+            return;
+          }
+
           if (!role || !allowedRoles.includes(role)) {
             router.replace(role ? "/unauthorized" : "/login");
             setReady(true);
