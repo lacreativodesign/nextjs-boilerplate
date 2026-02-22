@@ -12,7 +12,6 @@ const TABS = [
   { href: "/hr/leave", label: "Leave" },
   { href: "/hr/payroll", label: "Payroll" },
   { href: "/hr/performance", label: "Performance" },
-  { href: "/hr/settings", label: "Settings" },
 ];
 
 export default function HrLayout({ children }: { children: React.ReactNode }) {
@@ -24,19 +23,21 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
           <div>
             <div className="mb-6">
               <h1 className="page-title">HR & Team</h1>
-              <p className="page-subtitle">Workforce coverage and people operations.</p>
+              <p className="page-subtitle">Workforce, attendance, leave, and people operations.</p>
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/hr" && pathname.startsWith(tab.href));
+                const isActive = pathname === tab.href ||
+                  (tab.href !== "/hr" && pathname.startsWith(tab.href));
                 return (
-                  <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>
+                  <Link key={tab.href} href={tab.href}
+                    className={`tab-pill ${isActive ? "active" : ""}`}>
                     {tab.label}
                   </Link>
                 );
               })}
             </div>
-            <div>{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
         </AppShell>
       </ModuleErrorBoundary>
