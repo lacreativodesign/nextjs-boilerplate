@@ -22,19 +22,21 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
           <div>
             <div className="mb-6">
               <h1 className="page-title">Production</h1>
-              <p className="page-subtitle">Execution board for production and delivery.</p>
+              <p className="page-subtitle">Jobs, workload management, QA, and file delivery.</p>
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/production" && pathname.startsWith(tab.href));
+                const isActive = pathname === tab.href ||
+                  (tab.href !== "/production" && pathname.startsWith(tab.href));
                 return (
-                  <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>
+                  <Link key={tab.href} href={tab.href}
+                    className={`tab-pill ${isActive ? "active" : ""}`}>
                     {tab.label}
                   </Link>
                 );
               })}
             </div>
-            <div>{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
         </AppShell>
       </ModuleErrorBoundary>
