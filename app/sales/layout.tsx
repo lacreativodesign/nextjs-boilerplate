@@ -11,6 +11,7 @@ const TABS = [
   { href: "/sales/deals", label: "Deals" },
   { href: "/sales/pipeline", label: "Pipeline" },
   { href: "/sales/follow-ups", label: "Follow-ups" },
+  { href: "/sales/campaigns", label: "Campaigns" },
 ];
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
@@ -26,15 +27,21 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/sales" && pathname.startsWith(tab.href));
+                const isActive =
+                  pathname === tab.href ||
+                  (tab.href !== "/sales" && pathname.startsWith(tab.href));
                 return (
-                  <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`tab-pill ${isActive ? "active" : ""}`}
+                  >
                     {tab.label}
                   </Link>
                 );
               })}
             </div>
-            <div>{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
         </AppShell>
       </ModuleErrorBoundary>
