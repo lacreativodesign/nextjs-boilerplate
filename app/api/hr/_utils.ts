@@ -3,12 +3,16 @@ import {
   createHrEvent,
   createHrNotification,
   isAdminLike,
-  isHrRole,
   requireHrAccess,
   serverTimestamp,
   toIso,
 } from "../admin/hr/_utils";
 import { normalizeRole } from "../admin/_utils";
+
+function isHrRole(role?: string | null) {
+  const normalizedRole = normalizeRole(role || "");
+  return normalizedRole === "hr" || normalizedRole === "admin" || normalizedRole === "super_admin";
+}
 
 export {
   canAccessHr,
