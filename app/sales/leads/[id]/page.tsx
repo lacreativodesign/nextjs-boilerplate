@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 type LeadStatus =
   | "New"
@@ -73,7 +72,7 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <ERPLayout pageTitle={`Lead • ${lead.fullName}`}>
+    <div className="space-y-6">
       <div className="flex flex-col gap-6">
         {/* TITLE + META */}
         <div>
@@ -221,6 +220,6 @@ export default function LeadDetailPage() {
           </p>
         </div>
       </div>
-    </ERPLayout>
+    </div>
   );
   }

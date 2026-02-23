@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ERPLayout from "@/components/layouts/ERPLayout";
 import dayjs from "dayjs";
 
 type PayrollRow = {
@@ -67,7 +66,7 @@ export default function PayrollSummary() {
   };
 
   return (
-    <ERPLayout role="hr" title="Payroll Summary">
+    <div className="space-y-6">
       {/* TOP BAR */}
       <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between" }}>
         <h2 style={{ fontSize: 24, fontWeight: 600 }}>
@@ -134,6 +133,6 @@ export default function PayrollSummary() {
           </tbody>
         </table>
       </div>
-    </ERPLayout>
+    </div>
   );
 }

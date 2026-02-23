@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 type Log = {
   type: "login" | "logout";
@@ -121,22 +120,22 @@ export default function EmployeeAttendanceDetail() {
 
   if (loading) {
     return (
-      <ERPLayout role="hr" title="Attendance Detail">
+      <div className="space-y-6">
         <p>Loading...</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   if (!employee) {
     return (
-      <ERPLayout role="hr" title="Attendance Detail">
+      <div className="space-y-6">
         <p>Employee not found.</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   return (
-    <ERPLayout role="hr" title="Attendance Detail">
+    <div className="space-y-6">
       {/* TOP BAR */}
       <div
         style={{
@@ -314,7 +313,7 @@ export default function EmployeeAttendanceDetail() {
           </tbody>
         </table>
       </div>
-    </ERPLayout>
+    </div>
   );
 }
 

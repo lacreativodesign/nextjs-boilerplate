@@ -1,12 +1,11 @@
 "use client";
 
-import ERPLayout from "@/components/layouts/ERPLayout";
 import LeaveManagementDashboard from "@/components/hr/LeaveManagementDashboard";
 
 export default function HrLeavePage() {
   return (
-    <ERPLayout role="hr" title="Leave Management">
+    <div className="space-y-6">
       <LeaveManagementDashboard canApprove />
-    </ERPLayout>
+    </div>
   );
 }

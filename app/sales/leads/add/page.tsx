@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 const serviceOptions = [
   "Website Design",
@@ -44,7 +43,7 @@ export default function AddLeadPage() {
   }
 
   return (
-    <ERPLayout pageTitle="Add New Lead">
+    <div className="space-y-6">
       <div className="max-w-3xl mx-auto">
         <form
           onSubmit={handleSubmit}
@@ -180,6 +179,6 @@ export default function AddLeadPage() {
           </div>
         </form>
       </div>
-    </ERPLayout>
+    </div>
   );
 }
