@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
@@ -9,149 +10,180 @@ import { toastError, toastPromise } from "@/lib/toast";
 type Lead = {
   id: string;
   name: string;
-  company: string;
   email: string;
-  status: string;
-  createdAt: string | null;
+  phone?: string;
+  source?: string;
+  stage: string;
+  ownerName?: string | null;
+  createdAt?: string | null;
 };
 
+const STAGE_OPTIONS = ["New", "Contacted", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
+
 export default function SalesLeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [convertingId, setConvertingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", source: "" });
+  const [query, setQuery] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  async function loadLeads() {
+  const loadLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/crm/leads", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
+      const res = await fetch("/api/admin/sales/leads/list", { cache: "no-store", credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
         throw new Error(data?.error || "Failed to load leads.");
       }
-      setLeads(data.leads || []);
+      setLeads(Array.isArray(data.leads) ? data.leads : []);
     } catch (err: any) {
       toastError(err?.message || "Failed to load leads.");
       setLeads([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadLeads();
-  }, []);
+  }, [loadLeads]);
 
-  async function addLead() {
-    setCreating(true);
+  const filteredLeads = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((lead) =>
+      [lead.name, lead.email, lead.phone, lead.source, lead.stage, lead.ownerName]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [leads, query]);
+
+  const updateStage = async (id: string, stage: string) => {
     try {
+      setActionLoading(`stage:${id}`);
       await toastPromise(
-        fetch("/api/crm/leads", {
+        fetch("/api/admin/sales/leads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          credentials: "include",
+          body: JSON.stringify({ id, stage }),
         }).then(async (res) => {
-          const data = await res.json();
-          if (!res.ok || !data.ok) {
-            throw new Error(data?.error || "Failed to create lead");
-          }
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to update lead stage.");
           return data;
         }),
         {
-          loading: "Creating lead...",
-          success: "Lead created successfully.",
-          error: (err) => err?.message || "Failed to create lead.",
+          loading: "Updating lead...",
+          success: "Lead updated.",
+          error: (err) => err?.message || "Failed to update lead.",
         }
       );
-      setForm({ name: "", company: "", email: "", phone: "", source: "" });
-      await loadLeads();
+      setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, stage } : lead)));
     } finally {
-      setCreating(false);
+      setActionLoading(null);
     }
-  }
+  };
 
-  async function convertToDeal(leadId: string) {
-    const valueUSD = Number(prompt("Deal value (USD)", "0") || "0");
-    const title = prompt("Deal title", "New deal") || "New deal";
-    setConvertingId(leadId);
+  const deleteLead = async (id: string) => {
+    if (!window.confirm("Delete this lead?")) return;
     try {
+      setActionLoading(`delete:${id}`);
       await toastPromise(
-        fetch("/api/crm/leads/convert", {
+        fetch("/api/admin/sales/leads/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId, title, valueUSD }),
+          credentials: "include",
+          body: JSON.stringify({ id }),
         }).then(async (res) => {
-          const data = await res.json();
-          if (!res.ok || !data.ok) {
-            throw new Error(data?.error || "Failed to convert");
-          }
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to delete lead.");
           return data;
         }),
         {
-          loading: "Converting lead...",
-          success: "Lead converted to deal.",
-          error: (err) => err?.message || "Failed to convert lead.",
+          loading: "Deleting lead...",
+          success: "Lead deleted.",
+          error: (err) => err?.message || "Failed to delete lead.",
         }
       );
-      await loadLeads();
+      setLeads((prev) => prev.filter((lead) => lead.id !== id));
     } finally {
-      setConvertingId(null);
+      setActionLoading(null);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Sales Leads</h1>
-
-      <div className="card grid gap-2 p-4 md:grid-cols-6">
-        <input className="input" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input className="input" placeholder="Company" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-        <input className="input" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input className="input" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <input className="input" placeholder="Source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
-        <LoadingButton className="btn" onClick={addLead} loading={creating} loadingText="Saving...">
-          Add Lead
-        </LoadingButton>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">Sales Leads</h1>
+        <button className="btn" onClick={() => router.push("/sales/leads/add")}>+ Add Lead</button>
       </div>
 
-      {/* Loading state: use skeleton table for consistent layout. */}
+      <div className="card p-4">
+        <input
+          className="input"
+          placeholder="Search leads"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ minWidth: 260 }}
+        />
+      </div>
+
       {loading ? (
-        <SkeletonTable rows={5} columns={6} />
-      ) : leads.length === 0 ? (
-        <EmptyState title="No leads yet" description="Create your first lead to get started." />
+        <SkeletonTable rows={5} columns={7} />
+      ) : filteredLeads.length === 0 ? (
+        <EmptyState title="No leads found" description="Create your first lead to get started." />
       ) : (
         <div className="card overflow-x-auto p-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left">
                 <th>Name</th>
-                <th>Company</th>
                 <th>Email</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th />
+                <th>Phone</th>
+                <th>Owner</th>
+                <th>Stage</th>
+                <th>Created</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {leads.map((lead) => (
+              {filteredLeads.map((lead) => (
                 <tr key={lead.id} className="border-t">
-                  <td>{lead.name}</td>
-                  <td>{lead.company}</td>
-                  <td>{lead.email}</td>
-                  <td>{lead.status}</td>
+                  <td>{lead.name || "-"}</td>
+                  <td>{lead.email || "-"}</td>
+                  <td>{lead.phone || "-"}</td>
+                  <td>{lead.ownerName || "-"}</td>
+                  <td>
+                    <select
+                      className="input"
+                      value={lead.stage || "New"}
+                      onChange={(e) => updateStage(lead.id, e.target.value)}
+                      disabled={actionLoading === `stage:${lead.id}`}
+                    >
+                      {STAGE_OPTIONS.map((stage) => (
+                        <option key={stage} value={stage}>
+                          {stage}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td>{lead.createdAt ? new Date(lead.createdAt).toLocaleString() : "-"}</td>
                   <td>
-                    {lead.status !== "converted" && (
+                    <div className="flex justify-end gap-2">
+                      <button className="btn ghost" onClick={() => router.push(`/sales/leads/${lead.id}/edit`)}>
+                        Edit
+                      </button>
                       <LoadingButton
-                        className="btn"
-                        onClick={() => convertToDeal(lead.id)}
-                        loading={convertingId === lead.id}
-                        loadingText="Converting..."
+                        className="btn ghost"
+                        onClick={() => deleteLead(lead.id)}
+                        loading={actionLoading === `delete:${lead.id}`}
+                        loadingText="Deleting"
                       >
-                        Convert to Deal
+                        Delete
                       </LoadingButton>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

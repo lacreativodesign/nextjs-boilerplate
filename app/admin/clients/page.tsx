@@ -472,7 +472,7 @@ export default function ClientsPage() {
     setActivationSending(true);
     try {
       await toastPromise(
-        fetch("/api/admin/clients/send-invite", {
+        fetch("/api/admin/clients/activation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -853,7 +853,7 @@ export default function ClientsPage() {
                 type="button"
                 className="btn"
                 style={{ borderRadius: 12, fontWeight: 400 }}
-                onClick={() => router.push(`/admin/clients/${selected.id}/edit`)}
+                onClick={() => router.push(`/clients/${selected.id}/edit`)}
               >
                 Edit Client
               </button>

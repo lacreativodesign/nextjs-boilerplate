@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import MasterSelect from "@/components/ui/MasterSelect";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
@@ -42,6 +43,7 @@ const getCurrencySymbol = (code?: string) => {
 };
 
 export default function FinanceInvoicesPage() {
+  const router = useRouter();
   const isDark = useIsSystemDark();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -62,7 +64,7 @@ export default function FinanceInvoicesPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/invoices/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/finance/invoices/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load invoices.");
@@ -83,7 +85,7 @@ export default function FinanceInvoicesPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/clients/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -179,11 +181,11 @@ export default function FinanceInvoicesPage() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        fetch("/api/finance/invoices/update", {
+        fetch("/api/finance/invoices/mark-paid", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+          body: JSON.stringify({ id: invoice.id }),
         }).then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok || !data?.ok) {
@@ -201,6 +203,38 @@ export default function FinanceInvoicesPage() {
     } catch (err: any) {
       console.error("Mark paid error", err);
       setError({ title: "Unable to mark paid", message: "Please try again." });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async (invoice: InvoiceRecord) => {
+    if (!canUpdate || !window.confirm("Delete this invoice?")) return;
+    try {
+      setActionLoading(`delete-${invoice.id}`);
+      await toastPromise(
+        fetch("/api/admin/finance/invoices/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: invoice.id }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.ok) {
+            throw new Error(data?.error || "Unable to delete invoice.");
+          }
+          return data;
+        }),
+        {
+          loading: "Deleting invoice...",
+          success: "Invoice deleted.",
+          error: (err) => err?.message || "Unable to delete invoice.",
+        }
+      );
+      if (selectedInvoice?.id === invoice.id) {
+        closeDrawer();
+      }
+      await loadInvoices();
     } finally {
       setActionLoading(null);
     }
@@ -229,6 +263,12 @@ export default function FinanceInvoicesPage() {
       <div>
         <h3 style={{ fontSize: 20, fontWeight: 700 }}>Invoices</h3>
         <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>USD invoicing with live Firestore sync.</p>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <button className="btn" onClick={() => router.push("/admin/finance/invoices/create")} style={{ borderRadius: 999 }}>
+          Create Invoice
+        </button>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
@@ -366,6 +406,18 @@ export default function FinanceInvoicesPage() {
                               Mark Paid
                             </LoadingButton>
                           )}
+                          {canUpdate && (
+                            <LoadingButton
+                              type="button"
+                              className="btn ghost"
+                              onClick={() => handleDelete(invoice)}
+                              loading={actionLoading === `delete-${invoice.id}`}
+                              loadingText="Deleting"
+                              style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            >
+                              Delete
+                            </LoadingButton>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -384,7 +436,8 @@ export default function FinanceInvoicesPage() {
           canUpdate={canUpdate}
           onClose={closeDrawer}
           onMarkPaid={handleMarkPaid}
-          actionLoading={actionLoading === selectedInvoice.id}
+          onDelete={handleDelete}
+          actionLoading={actionLoading === selectedInvoice.id || actionLoading === `delete-${selectedInvoice.id}`}
         />
       )}
     </div>
@@ -461,6 +514,7 @@ function InvoiceDrawer({
   canUpdate,
   onClose,
   onMarkPaid,
+  onDelete,
   actionLoading,
 }: {
   invoice: InvoiceRecord;
@@ -468,6 +522,7 @@ function InvoiceDrawer({
   canUpdate: boolean;
   onClose: () => void;
   onMarkPaid: (invoice: InvoiceRecord) => void;
+  onDelete: (invoice: InvoiceRecord) => void;
   actionLoading: boolean;
 }) {
   const subtotal = Number(invoice.amountSubtotal || invoice.amountSubtotalUsd || 0);
@@ -569,9 +624,26 @@ function InvoiceDrawer({
               Mark Paid
             </LoadingButton>
           )}
-          <button className="btn ghost" style={{ borderRadius: 999 }} title="PDF download coming soon" disabled>
+          {canUpdate && (
+            <LoadingButton
+              className="btn ghost"
+              onClick={() => onDelete(invoice)}
+              loading={actionLoading}
+              loadingText="Deleting"
+              style={{ borderRadius: 999 }}
+            >
+              Delete
+            </LoadingButton>
+          )}
+          <a
+            className="btn ghost"
+            style={{ borderRadius: 999 }}
+            href={`/api/admin/finance/invoices/${invoice.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
             Download PDF
-          </button>
+          </a>
         </div>
       </div>
     </div>
