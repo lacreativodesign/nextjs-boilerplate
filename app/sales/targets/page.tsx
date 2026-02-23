@@ -1,84 +1,150 @@
 "use client";
+import { useEffect, useState } from "react";
 
-import { useState } from "react";
+type TargetData = {
+  userId: string;
+  userName?: string;
+  target: number;
+  achieved: number;
+  month: string;
+};
+
+const SCORE_COLOR = (pct: number) =>
+  pct >= 90 ? "#10b981" : pct >= 75 ? "#3b82f6" : pct >= 50 ? "#f59e0b" : "#ef4444";
+
+const SCORE_LABEL = (pct: number) =>
+  pct >= 90 ? "Exceeding" : pct >= 75 ? "On Track" : pct >= 50 ? "Behind" : "At Risk";
+
+function ProgressBar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
+  const color = SCORE_COLOR(pct);
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span style={{ color }} className="font-semibold">{SCORE_LABEL(pct)}</span>
+        <span className="text-[var(--text-muted)]">{pct}%</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-[var(--surface-muted)]">
+        <div className="h-2 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <div className="text-xs text-[var(--text-muted)]">
+        ${value.toLocaleString()} achieved of ${max.toLocaleString()} target
+      </div>
+    </div>
+  );
+}
 
 export default function SalesTargetsPage() {
-  const [selectedMonth, setSelectedMonth] = useState("January");
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [month, setMonth] = useState(defaultMonth);
+  const [targets, setTargets] = useState<TargetData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // DEMO DATA (Will be replaced with Firebase later)
-  const exampleTargets = {
-    January: {
-      target: 5000,
-      achieved: 3200,
-    },
-    February: {
-      target: 6000,
-      achieved: 4800,
-    },
-    March: {
-      target: 7000,
-      achieved: 2100,
-    },
-  };
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetch(`/api/sales_manager/targets?month=${month}`, {
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || "Failed to load targets");
+        if (!alive) return;
+        setTargets(data?.targets || data?.users || []);
+      } catch (err: any) {
+        if (!alive) return;
+        setError(err.message || "Failed to load targets");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    load();
+    return () => { alive = false; };
+  }, [month]);
 
-  const data = exampleTargets[selectedMonth];
-  const progress = Math.min(
-    (data.achieved / data.target) * 100 || 0,
-    100
-  ).toFixed(0);
+  const totalTarget = targets.reduce((s, t) => s + (t.target || 0), 0);
+  const totalAchieved = targets.reduce((s, t) => s + (t.achieved || 0), 0);
+  const overallPct = totalTarget > 0
+    ? Math.round((totalAchieved / totalTarget) * 100)
+    : 0;
 
   return (
-    <div className="p-6 space-y-8">
-      <h1 className="text-2xl font-bold">Sales Targets</h1>
-
-      {/* Month Selector */}
-      <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-5 rounded-xl shadow-sm w-full sm:w-80">
-        <label className="block text-sm font-medium text-gray-600 dark:text-neutral-400 mb-2">
-          Select Month
-        </label>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200"
-        >
-          {Object.keys(exampleTargets).map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Stats Box */}
-      <div className="bg-white dark:bg-neutral-900 p-6 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-sm text-gray-500 dark:text-neutral-400">Monthly Target</p>
-            <p className="text-xl font-bold">${data.target}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500 dark:text-neutral-400">Achieved</p>
-            <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-              ${data.achieved}
-            </p>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <p className="text-sm font-medium mb-1">Progress: {progress}%</p>
-          <div className="w-full h-3 rounded-full bg-gray-200 dark:bg-neutral-800">
-            <div
-              className="h-full rounded-full bg-blue-600 dark:bg-blue-400 transition-all"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-
-          <p className="text-xs mt-2 text-gray-400 dark:text-neutral-500">
-            (This data is demo-only. Once we connect Firebase, each Sales user
-            will see **their** targets, and Sales Manager/Admin will see all.)
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">
+            Sales Targets
+          </h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            Monthly revenue targets per sales representative.
           </p>
         </div>
+        <input
+          type="month"
+          className="input"
+          value={month}
+          onChange={e => setMonth(e.target.value)}
+        />
       </div>
+
+      {/* Overall summary */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Team Target", value: `$${totalTarget.toLocaleString()}` },
+          { label: "Total Achieved", value: `$${totalAchieved.toLocaleString()}`,
+            color: SCORE_COLOR(overallPct) },
+          { label: "Overall Progress", value: `${overallPct}%`,
+            color: SCORE_COLOR(overallPct) },
+        ].map(card => (
+          <div key={card.label}
+            className="rounded-xl border border-[var(--border-subtle)]
+              bg-[var(--surface-card)] p-5">
+            <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
+            <p className="mt-2 text-3xl font-bold"
+              style={{ color: card.color || "var(--text-primary)" }}>
+              {card.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-user targets */}
+      {loading ? (
+        <div className="card p-6 text-[var(--text-muted)]">Loading targets...</div>
+      ) : error ? (
+        <div className="card p-6 text-red-400">{error}</div>
+      ) : targets.length === 0 ? (
+        <div className="card p-6 text-[var(--text-muted)]">
+          No targets set for {month}. Ask your sales manager to set targets.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {targets.map((t, i) => (
+            <div key={i}
+              className="rounded-xl border border-[var(--border-subtle)]
+                bg-[var(--surface-card)] p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-full bg-[var(--erp-blue)]
+                  flex items-center justify-center text-white font-bold text-sm">
+                  {(t.userName || "U").slice(0, 1).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)]">
+                    {t.userName || t.userId}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">{t.month}</p>
+                </div>
+              </div>
+              <ProgressBar value={t.achieved || 0} max={t.target || 0} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
