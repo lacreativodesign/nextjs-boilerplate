@@ -1,57 +1,115 @@
+"use client";
+import { useEffect, useState } from "react";
+
+type Stats = {
+  tenants: number;
+  users: number;
+  activeUsers: number;
+};
+
+function StatCard({ label, value, sub, color }: {
+  label: string; value: string | number; sub: string; color?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
+      <p className="text-sm text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 text-3xl font-bold" style={{ color: color || "var(--text-primary)" }}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-[var(--text-soft)]">{sub}</p>
+    </div>
+  );
+}
+
+const ACTION_LINKS = [
+  { title: "Tenant Management", href: "/super_admin/tenants",
+    desc: "View, create, and manage tenant workspaces." },
+  { title: "All Users", href: "/super_admin/users",
+    desc: "View every user across all tenants." },
+  { title: "System Health", href: "/super_admin/system-health",
+    desc: "Monitor Firebase, API, and service status." },
+  { title: "Audit Logs", href: "/super_admin/audit",
+    desc: "Review all platform activity and changes." },
+  { title: "Activity Feed", href: "/super_admin/activity",
+    desc: "Live stream of platform-wide events." },
+  { title: "Backups", href: "/super_admin/backups",
+    desc: "Manage data exports and backup schedules." },
+];
+
 export default function SuperAdminPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [usersRes, tenantsRes] = await Promise.all([
+          fetch("/api/admin/users/list", { credentials: "include" }),
+          fetch("/api/super_admin/tenants/list", { credentials: "include" })
+            .catch(() => null),
+        ]);
+        const usersData = await usersRes.json().catch(() => ({}));
+        const tenantsData = tenantsRes
+          ? await tenantsRes.json().catch(() => ({}))
+          : {};
+
+        const userList = Array.isArray(usersData)
+          ? usersData
+          : usersData?.users || [];
+        const tenantList = Array.isArray(tenantsData?.tenants)
+          ? tenantsData.tenants
+          : [];
+        const activeUsers = userList.filter(
+          (u: any) => (u.status || "active") === "active"
+        ).length;
+
+        setStats({
+          tenants: tenantList.length || 1,
+          users: userList.length,
+          activeUsers,
+        });
+      } catch (err) {
+        console.error("Super admin stats error", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <h1 className="page-title">Super Admin</h1>
-        <p className="page-subtitle">Platform governance, tenant management, and system control.</p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total Tenants"
+          value={loading ? "..." : stats?.tenants ?? "—"}
+          sub="Active workspaces"
+          color="var(--erp-blue)"
+        />
+        <StatCard
+          label="Total Users"
+          value={loading ? "..." : stats?.users ?? "—"}
+          sub="Across all tenants"
+        />
+        <StatCard
+          label="Active Users"
+          value={loading ? "..." : stats?.activeUsers ?? "—"}
+          sub="Status: active"
+          color="#10b981"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {[
-          { label: "Total Tenants", value: "—", sub: "Active workspaces" },
-          { label: "Active Users", value: "—", sub: "Across all tenants" },
-          { label: "System Health", value: "OK", sub: "All services running" },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5"
-          >
-            <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
-            <p className="mt-2 text-3xl font-bold text-[var(--text-primary)]">{card.value}</p>
-            <p className="mt-1 text-xs text-[var(--text-soft)]">{card.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {[
-          {
-            title: "Tenant Management",
-            href: "/super_admin/tenants",
-            desc: "View, create, and manage tenant workspaces.",
-          },
-          {
-            title: "Plan Management",
-            href: "/super_admin/plans",
-            desc: "Configure subscription plans and feature access.",
-          },
-          {
-            title: "System Settings",
-            href: "/super_admin/system",
-            desc: "Platform-wide configuration and maintenance.",
-          },
-          {
-            title: "Audit Logs",
-            href: "/super_admin/activity",
-            desc: "Review all platform activity and user actions.",
-          },
-        ].map((item) => (
+        {ACTION_LINKS.map((item) => (
           <a
             key={item.href}
             href={item.href}
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 hover:border-[var(--erp-blue)] hover:bg-[var(--erp-blue-soft)] transition-all group"
+            className="rounded-xl border border-[var(--border-subtle)]
+              bg-[var(--surface-card)] p-5
+              hover:border-[var(--erp-blue)] transition-all group"
           >
-            <p className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--erp-blue)]">
+            <p className="font-semibold text-[var(--text-primary)]
+              group-hover:text-[var(--erp-blue)]">
               {item.title}
             </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
