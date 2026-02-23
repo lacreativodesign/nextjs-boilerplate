@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 export default function AttendanceDashboard() {
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -62,14 +61,14 @@ export default function AttendanceDashboard() {
 
   if (loading) {
     return (
-      <ERPLayout role="hr" title="Attendance">
+      <div className="space-y-6">
         <p>Loading...</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   return (
-    <ERPLayout role="hr" title="Attendance">
+    <div className="space-y-6">
       {/* HEADER */}
       <div
         style={{
@@ -161,7 +160,7 @@ export default function AttendanceDashboard() {
           </tbody>
         </table>
       </div>
-    </ERPLayout>
+    </div>
   );
 }
 

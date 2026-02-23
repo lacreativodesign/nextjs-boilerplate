@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 export default function EmployeeProfilePage() {
   const { id } = useParams();
@@ -26,22 +25,22 @@ export default function EmployeeProfilePage() {
 
   if (loading) {
     return (
-      <ERPLayout role="hr" title="Employee Profile">
+      <div className="space-y-6">
         <p>Loading...</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   if (!employee) {
     return (
-      <ERPLayout role="hr" title="Employee Profile">
+      <div className="space-y-6">
         <p>Employee not found.</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   return (
-    <ERPLayout role="hr" title="Employee Profile">
+    <div className="space-y-6">
       <div
         style={{
           background: "#fff",
@@ -112,7 +111,7 @@ export default function EmployeeProfilePage() {
           </p>
         </div>
       </div>
-    </ERPLayout>
+    </div>
   );
 }
 

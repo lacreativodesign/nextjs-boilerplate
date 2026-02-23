@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 // Same dropdown data used in Add Lead
 const serviceOptions = [
@@ -63,7 +62,7 @@ export default function EditLeadPage({ params }: any) {
   }
 
   return (
-    <ERPLayout pageTitle={`Edit Lead #${id}`}>
+    <div className="space-y-6">
       <div className="max-w-3xl mx-auto">
         <form
           onSubmit={handleSubmit}
@@ -206,6 +205,6 @@ export default function EditLeadPage({ params }: any) {
           </div>
         </form>
       </div>
-    </ERPLayout>
+    </div>
   );
     }

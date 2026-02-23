@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 export default function AddEmployeePage() {
   const [loading, setLoading] = useState(false);
@@ -44,7 +43,7 @@ export default function AddEmployeePage() {
   }
 
   return (
-    <ERPLayout role="hr" title="Add Employee">
+    <div className="space-y-6">
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
         Add New Employee
       </h2>
@@ -125,7 +124,7 @@ export default function AddEmployeePage() {
           {loading ? "Saving..." : "Create Employee"}
         </button>
       </form>
-    </ERPLayout>
+    </div>
   );
 }
 

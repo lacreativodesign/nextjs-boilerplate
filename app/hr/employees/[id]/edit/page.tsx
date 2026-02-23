@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import ERPLayout from "@/components/layouts/ERPLayout";
 
 export default function EditEmployeePage() {
   const { id } = useParams();
@@ -51,22 +50,22 @@ export default function EditEmployeePage() {
 
   if (loading) {
     return (
-      <ERPLayout role="hr" title="Edit Employee">
+      <div className="space-y-6">
         <p>Loading...</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   if (!employee) {
     return (
-      <ERPLayout role="hr" title="Edit Employee">
+      <div className="space-y-6">
         <p>Employee not found.</p>
-      </ERPLayout>
+      </div>
     );
   }
 
   return (
-    <ERPLayout role="hr" title="Edit Employee">
+    <div className="space-y-6">
       <div
         style={{
           background: "#fff",
@@ -137,7 +136,7 @@ export default function EditEmployeePage() {
           {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
-    </ERPLayout>
+    </div>
   );
 }
 
