@@ -60,13 +60,13 @@ export default function SalesFollowUpsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<FollowUpForm>(defaultForm);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadFollowUps = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/sales/follow-ups/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/sales/follow-ups/list", { cache: "no-store", credentials: "include" });
       const data = (await res.json()) as FollowUpResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load follow-ups.");
@@ -191,8 +191,8 @@ export default function SalesFollowUpsPage() {
       return;
     }
     try {
-      setActionLoading(true);
-      const endpoint = drawerMode === "create" ? "/api/sales/follow-ups/create" : "/api/sales/follow-ups/update";
+      setActionLoading("save");
+      const endpoint = drawerMode === "create" ? "/api/admin/sales/follow-ups/create" : "/api/admin/sales/follow-ups/update";
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -213,14 +213,14 @@ export default function SalesFollowUpsPage() {
       console.error("Follow-up save error", err);
       setError({ title: "Unable to save follow-up", message: "Please try again." });
     } finally {
-      setActionLoading(false);
+      setActionLoading(null);
     }
   };
 
   const markDone = async (item: FollowUpRecord) => {
     try {
       setActionLoading(item.id);
-      const res = await fetch("/api/sales/follow-ups/update", {
+      const res = await fetch("/api/admin/sales/follow-ups/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -234,6 +234,29 @@ export default function SalesFollowUpsPage() {
     } catch (err) {
       console.error("Follow-up update error", err);
       setError({ title: "Unable to update follow-up", message: "Please try again." });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteFollowUp = async (item: FollowUpRecord) => {
+    if (!window.confirm("Delete this follow-up?")) return;
+    try {
+      setActionLoading(item.id);
+      const res = await fetch("/api/admin/sales/follow-ups/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: item.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || "Unable to delete follow-up.");
+      }
+      await loadFollowUps();
+    } catch (err) {
+      console.error("Follow-up delete error", err);
+      setError({ title: "Unable to delete follow-up", message: "Please try again." });
     } finally {
       setActionLoading(null);
     }
@@ -373,6 +396,14 @@ export default function SalesFollowUpsPage() {
                               {actionLoading === item.id ? "Updating" : "Mark Done"}
                             </button>
                           )}
+                          <button
+                            className="btn ghost"
+                            onClick={() => deleteFollowUp(item)}
+                            disabled={actionLoading === item.id}
+                            style={{ borderRadius: 999 }}
+                          >
+                            {actionLoading === item.id ? "Deleting" : "Delete"}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -390,8 +421,8 @@ export default function SalesFollowUpsPage() {
           subtitle={drawerMode === "create" ? "Schedule a new follow-up" : "Update follow-up"}
           onClose={() => setDrawerOpen(false)}
           actions={
-            <button className="btn" onClick={handleSave} disabled={actionLoading}>
-              {actionLoading ? "Saving..." : "Save Follow-up"}
+            <button className="btn" onClick={handleSave} disabled={actionLoading === "save"}>
+              {actionLoading === "save" ? "Saving..." : "Save Follow-up"}
             </button>
           }
         >

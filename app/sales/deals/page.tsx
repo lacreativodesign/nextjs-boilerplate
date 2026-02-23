@@ -62,7 +62,7 @@ export default function SalesDealsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/sales/deals/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/sales/deals/list", { cache: "no-store", credentials: "include" });
       const data = (await res.json()) as DealResponseWithSettings;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load deals.");
@@ -183,11 +183,11 @@ export default function SalesDealsPage() {
   const closeDeal = async (deal: DealRecord, status: "Won" | "Lost") => {
     try {
       setActionLoading(deal.id + status);
-      const res = await fetch("/api/sales/deals/close", {
+      const res = await fetch("/api/admin/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ id: deal.id, status }),
+        body: JSON.stringify({ id: deal.id, status, stage: status === "Won" ? "Closed Won" : "Closed Lost" }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -207,7 +207,7 @@ export default function SalesDealsPage() {
     try {
       setDiscountSaving(true);
       setDiscountError(null);
-      const res = await fetch("/api/sales/deals/update", {
+      const res = await fetch("/api/admin/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -259,6 +259,27 @@ export default function SalesDealsPage() {
     const listPrice = Number(deal.listPriceUsd ?? deal.valueUsd ?? 0);
     const discountUsd = (listPrice * pct) / 100;
     return Math.max(listPrice - discountUsd, 0);
+  };
+
+  const deleteDeal = async (id: string) => {
+    if (!window.confirm("Delete this deal?")) return;
+    try {
+      setActionLoading(`delete-${id}`);
+      const res = await fetch("/api/admin/sales/deals/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to delete deal.");
+      await loadDeals();
+    } catch (err) {
+      console.error("Deal delete error", err);
+      setError({ title: "Unable to delete deal", message: "Please try again." });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   return (
@@ -385,6 +406,14 @@ export default function SalesDealsPage() {
                             style={{ borderRadius: 999 }}
                           >
                             {actionLoading === deal.id + "Lost" ? "Closing" : "Closed Lost"}
+                          </button>
+                          <button
+                            className="btn ghost"
+                            onClick={() => deleteDeal(deal.id)}
+                            disabled={actionLoading === `delete-${deal.id}`}
+                            style={{ borderRadius: 999 }}
+                          >
+                            {actionLoading === `delete-${deal.id}` ? "Deleting" : "Delete"}
                           </button>
                         </div>
                       </td>

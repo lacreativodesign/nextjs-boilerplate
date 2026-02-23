@@ -48,7 +48,7 @@ export default function FinancePaymentsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/payments/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/finance/payments/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payments.");
@@ -65,7 +65,7 @@ export default function FinancePaymentsPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/clients/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -153,7 +153,7 @@ export default function FinancePaymentsPage() {
   const handleAction = async (payment: PaymentRecord, action: "mark_paid") => {
     try {
       setActionLoading(payment.id);
-      const res = await fetch("/api/finance/payments/update", {
+      const res = await fetch("/api/admin/finance/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -175,7 +175,7 @@ export default function FinancePaymentsPage() {
   const handleUpdateNotes = async (payment: PaymentRecord, notes: string) => {
     try {
       setActionLoading(`notes-${payment.id}`);
-      const res = await fetch("/api/finance/payments/update", {
+      const res = await fetch("/api/admin/finance/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

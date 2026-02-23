@@ -37,7 +37,7 @@ export default function FinancePayrollPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/payroll/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/admin/finance/payroll/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payroll.");
@@ -114,7 +114,7 @@ export default function FinancePayrollPage() {
   const handleAction = async (row: PayrollRecord, action: "approve" | "mark_paid") => {
     try {
       setActionLoading(row.id);
-      const res = await fetch("/api/finance/payroll/update", {
+      const res = await fetch("/api/admin/finance/payroll/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -137,7 +137,7 @@ export default function FinancePayrollPage() {
     if (!runMonth) return;
     try {
       setActionLoading("run");
-      const res = await fetch("/api/finance/payroll/run", {
+      const res = await fetch("/api/admin/finance/payroll/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
