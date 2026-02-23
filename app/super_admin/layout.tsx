@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
-
 const TABS = [
   { href: "/super_admin", label: "Overview" },
   { href: "/super_admin/tenants", label: "Tenants" },
@@ -14,7 +13,6 @@ const TABS = [
   { href: "/super_admin/activity", label: "Activity" },
   { href: "/super_admin/backups", label: "Backups" },
 ];
-
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
@@ -24,24 +22,12 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <div>
             <div className="mb-6">
               <h1 className="page-title">Super Admin</h1>
-              <p className="page-subtitle">
-                Platform governance, tenant management, and system control.
-              </p>
+              <p className="page-subtitle">Platform management, tenants, system health, and audit logs.</p>
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive =
-                  pathname === tab.href ||
-                  (tab.href !== "/super_admin" && pathname.startsWith(tab.href));
-                return (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    className={`tab-pill ${isActive ? "active" : ""}`}
-                  >
-                    {tab.label}
-                  </Link>
-                );
+                const isActive = pathname === tab.href || (tab.href !== "/super_admin" && pathname.startsWith(tab.href));
+                return <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>{tab.label}</Link>;
               })}
             </div>
             <div className="mt-6">{children}</div>

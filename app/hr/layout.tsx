@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
-
 const TABS = [
   { href: "/hr", label: "Overview" },
   { href: "/hr/employees", label: "Employees" },
@@ -13,7 +12,6 @@ const TABS = [
   { href: "/hr/payroll", label: "Payroll" },
   { href: "/hr/performance", label: "Performance" },
 ];
-
 export default function HrLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
@@ -22,19 +20,13 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
         <AppShell>
           <div>
             <div className="mb-6">
-              <h1 className="page-title">HR & Team</h1>
-              <p className="page-subtitle">Workforce, attendance, leave, and people operations.</p>
+              <h1 className="page-title">HR & People</h1>
+              <p className="page-subtitle">Workforce management, attendance, payroll, and performance.</p>
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href ||
-                  (tab.href !== "/hr" && pathname.startsWith(tab.href));
-                return (
-                  <Link key={tab.href} href={tab.href}
-                    className={`tab-pill ${isActive ? "active" : ""}`}>
-                    {tab.label}
-                  </Link>
-                );
+                const isActive = pathname === tab.href || (tab.href !== "/hr" && pathname.startsWith(tab.href));
+                return <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>{tab.label}</Link>;
               })}
             </div>
             <div className="mt-6">{children}</div>
