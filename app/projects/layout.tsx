@@ -15,8 +15,7 @@ const TABS = [
 export default function ProjectsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <RequireAuth allowed={["admin", "am", "am_manager", "production", 
-      "production_manager", "super_admin"]}>
+    <RequireAuth allowed={["admin", "super_admin", "am", "am_manager", "production", "production_manager"]}>
       <ModuleErrorBoundary moduleName="Projects">
         <AppShell>
           <div>
@@ -26,17 +25,17 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || 
+                const isActive = pathname === tab.href ||
                   (tab.href !== "/projects" && pathname.startsWith(tab.href));
                 return (
-                  <Link key={tab.href} href={tab.href} 
+                  <Link key={tab.href} href={tab.href}
                     className={`tab-pill ${isActive ? "active" : ""}`}>
                     {tab.label}
                   </Link>
                 );
               })}
             </div>
-            <div>{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
         </AppShell>
       </ModuleErrorBoundary>
