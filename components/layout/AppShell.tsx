@@ -13,7 +13,6 @@ import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
-import MobileBottomNav from "@/components/layout/MobileBottomNav";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
@@ -119,7 +118,6 @@ function AppShellInner({
         isCollapsed ? "md:ml-16" : "md:ml-[260px]"
       }`}>
         <Header
-          onMenuToggle={openMobile}
           currentUser={currentUser}
           activityTrigger={
             <ActivityFeedSidebar
@@ -128,14 +126,13 @@ function AppShellInner({
             />
           }
         />
-        <main className="flex-1 py-[var(--page-padding-y)] pb-20 md:pb-[var(--page-padding-y)]">
+        <main className="flex-1 py-[var(--page-padding-y)]">
           <PullToRefresh>
             <div className="page-frame">{children}</div>
           </PullToRefresh>
         </main>
       </div>
 
-      <MobileBottomNav onMenuTap={openMobile} />
       <GlobalSearchModal />
     </div>
   );
