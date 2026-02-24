@@ -32,6 +32,8 @@ const BASE_ITEMS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const SUPER_ADMIN_ITEM = { href: "/super_admin", label: "Super Admin", icon: Shield };
+
 type SidebarProps = {
   currentRole: string;
   userName: string;
@@ -48,12 +50,9 @@ export default function Sidebar({
   collapsed,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
+  const { isMobileOpen, closeMobile, toggleCollapse, openMobile } = useSidebar();
 
-  const MENU_ITEMS =
-    currentRole === "super_admin"
-      ? [{ href: "/super_admin", label: "Super Admin", icon: Shield }, ...BASE_ITEMS]
-      : BASE_ITEMS;
+  const navItems = currentRole === "super_admin" ? [SUPER_ADMIN_ITEM, ...BASE_ITEMS] : BASE_ITEMS;
 
   const linkClass = (href: string) => {
     const isActive =
@@ -94,7 +93,7 @@ export default function Sidebar({
                 </button>
               </div>
               <nav className="flex-1 space-y-1">
-                {MENU_ITEMS.map((item) => {
+                {navItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
@@ -125,7 +124,7 @@ export default function Sidebar({
           <div className="mb-6 border-b border-[var(--border-subtle)] pb-4">
             <div className="md:hidden">
               <button
-                onClick={toggleCollapse}
+                onClick={openMobile}
                 className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] hover:bg-[var(--surface-card)]"
               >
                 <Menu className="h-5 w-5" />
@@ -167,7 +166,7 @@ export default function Sidebar({
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1">
-            {MENU_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
