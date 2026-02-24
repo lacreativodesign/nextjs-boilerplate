@@ -18,7 +18,7 @@ Sentry.init({
   replaysOnErrorSampleRate,
   integrations: [
     Sentry.feedbackIntegration({
-      autoInject: true,
+      autoInject: false,
       colorScheme: 'system',
       showBranding: false,
       isNameRequired: false,
