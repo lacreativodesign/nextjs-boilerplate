@@ -39,8 +39,15 @@ export default function SuperAdminBackupsPage() {
           setBackups(payload.backups || []);
         }
       } catch (err: any) {
+        const msg = err?.message || "";
+        const friendly =
+          msg.includes("Session expired") || msg.includes("Unauthorized")
+            ? "Your session has expired. Please refresh the page and log in again."
+            : msg.includes("Forbidden")
+            ? "You do not have permission to view backups."
+            : "Unable to load backups. Please try again.";
         if (active) {
-          setError(err?.message || "Failed to load backups");
+          setError(friendly);
         }
       } finally {
         if (active) {

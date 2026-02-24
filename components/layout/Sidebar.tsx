@@ -19,12 +19,12 @@ import {
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 
-const MENU_ITEMS = [
+const BASE_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/users", label: "Users", icon: Users },
   { href: "/clients", label: "Clients", icon: Briefcase },
-  { href: "/sales", label: "Sales & Pipeline", icon: TrendingUp },
-  { href: "/projects", label: "Projects & Delivery", icon: FolderKanban },
+  { href: "/sales", label: "Sales", icon: TrendingUp },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/production", label: "Production", icon: Package },
   { href: "/finance", label: "Finance", icon: DollarSign },
   { href: "/hr", label: "HR & Team", icon: UserCircle },
@@ -47,24 +47,33 @@ export default function Sidebar({
   tenantLogoUrl,
   collapsed,
 }: SidebarProps) {
-  const menuItems =
-    currentRole === "super_admin"
-      ? [{ href: "/super_admin", label: "Super Admin", icon: Shield }, ...MENU_ITEMS]
-      : MENU_ITEMS;
-
   const pathname = usePathname();
   const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
 
+  const MENU_ITEMS =
+    currentRole === "super_admin"
+      ? [{ href: "/super_admin", label: "Super Admin", icon: Shield }, ...BASE_ITEMS]
+      : BASE_ITEMS;
+
+  const linkClass = (href: string) => {
+    const isActive =
+      href === "/dashboard"
+        ? pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+        : pathname.startsWith(href);
+    return `flex items-center gap-3 rounded-xl transition-all ${
+      isActive
+        ? "bg-[var(--erp-blue)] text-white shadow-lg"
+        : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+    }`;
+  };
+
   return (
     <>
-      {/* Mobile Overlay (only when hamburger clicked) */}
+      {/* Mobile overlay drawer */}
       {isMobileOpen && (
         <>
-          <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity duration-300 ease-in-out"
-            onClick={closeMobile}
-          />
-          <aside className="fixed left-0 top-0 z-50 h-full w-[260px] bg-[var(--surface-card)] border-r border-[var(--border-subtle)] md:hidden transition-transform duration-300 ease-in-out">
+          <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={closeMobile} />
+          <aside className="fixed left-0 top-0 z-50 h-full w-[260px] bg-[var(--surface-card)] border-r border-[var(--border-subtle)] md:hidden">
             <div className="flex h-full flex-col p-4">
               <div className="mb-6 flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
                 <div className="flex items-center gap-3">
@@ -84,21 +93,15 @@ export default function Sidebar({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-
               <nav className="flex-1 space-y-1">
-                {menuItems.map((item) => {
+                {MENU_ITEMS.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname.startsWith(item.href);
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={closeMobile}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
-                        isActive
-                          ? "bg-[var(--erp-blue)] text-white shadow-lg"
-                          : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
-                      }`}
+                      className={`${linkClass(item.href)} px-3 py-2.5 text-sm font-semibold`}
                     >
                       <Icon className="h-5 w-5 flex-shrink-0" />
                       <span>{item.label}</span>
@@ -111,16 +114,15 @@ export default function Sidebar({
         </>
       )}
 
-      {/* ALWAYS VISIBLE Sidebar - Collapsed 64px on mobile, Full 260px on desktop */}
+      {/* Always-visible icon sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] block transition-[width] duration-300 ease-in-out overflow-hidden ${
-          collapsed ? "w-16" : "w-16 md:w-[260px]"
+        className={`sidebar-transition fixed left-0 top-0 z-30 h-full border-r border-[var(--border-subtle)] bg-[var(--surface-card)] ${
+          collapsed ? "w-16 md:w-[var(--sidebar-collapsed-width)]" : "w-16 md:w-[var(--sidebar-width)]"
         }`}
       >
-        <div className={`flex h-full flex-col ${collapsed ? "p-2" : "p-2 md:p-4"}`}>
-          {/* Hamburger button on mobile, Logo on desktop */}
+        <div className="flex h-full flex-col p-2 md:p-4">
+          {/* Logo / collapse toggle */}
           <div className="mb-6 border-b border-[var(--border-subtle)] pb-4">
-            {/* Mobile: Just hamburger */}
             <div className="md:hidden">
               <button
                 onClick={toggleCollapse}
@@ -129,8 +131,6 @@ export default function Sidebar({
                 <Menu className="h-5 w-5" />
               </button>
             </div>
-
-            {/* Desktop: Logo or collapsed toggle */}
             <div className="hidden md:block">
               {collapsed ? (
                 <button
@@ -165,27 +165,19 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Navigation - ALWAYS icons on mobile, icons+labels on desktop (if not collapsed) */}
+          {/* Navigation */}
           <nav className="flex-1 space-y-1">
-            {menuItems.map((item) => {
+            {MENU_ITEMS.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname.startsWith(item.href);
-
-              // Mobile: Always icon-only (64px)
-              // Desktop: Icon-only if collapsed, full if expanded
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={item.label}
-                  className={`transition-all ${
+                  className={`${linkClass(item.href)} ${
                     collapsed
-                      ? "flex h-12 w-12 items-center justify-center rounded-xl mx-auto"
-                      : "flex h-12 w-12 items-center justify-center gap-3 rounded-xl md:h-auto md:w-auto md:justify-start md:px-3 md:py-2.5"
-                  } ${
-                    isActive
-                      ? "bg-[var(--erp-blue)] text-white shadow-lg"
-                      : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                      ? "h-12 w-12 justify-center md:h-12 md:w-12"
+                      : "h-12 w-12 justify-center md:h-auto md:w-auto md:px-3 md:py-2.5"
                   }`}
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
