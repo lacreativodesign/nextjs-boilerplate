@@ -368,40 +368,32 @@ select option { color: var(--text-primary); background: var(--surface-card); }
 .admin-link.active { background: var(--erp-blue); color: #ffffff; }
 .admin-link.active svg { color: #ffffff; }
 
-.sidebar-transition { transition: width 280ms cubic-bezier(0.4, 0, 0.2, 1), transform 280ms cubic-bezier(0.4, 0, 0.2, 1); }
-.main-content-transition { transition: margin-left 280ms cubic-bezier(0.4, 0, 0.2, 1); }
+.sidebar-transition { transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1); }
+.main-content-transition { transition: margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1); }
 
-/* Mobile sidebar drawer — slide-in from left */
-@keyframes sidebar-slide-in {
-  from { transform: translateX(-100%); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
+.sidebar-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  transition:
+    max-width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity   200ms cubic-bezier(0.4, 0, 0.2, 1) 60ms;
 }
-@keyframes sidebar-slide-out {
-  from { transform: translateX(0);     opacity: 1; }
-  to   { transform: translateX(-100%); opacity: 0; }
+@media (max-width: 767px) {
+  .sidebar-mobile-open .sidebar-label {
+    max-width: 200px;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
-@keyframes overlay-fade-in {
-  from { opacity: 0; backdrop-filter: blur(0px); }
-  to   { opacity: 1; backdrop-filter: blur(8px); }
-}
-
-.sidebar-mobile-overlay {
-  animation: overlay-fade-in 240ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-.sidebar-mobile-panel {
-  animation: sidebar-slide-in 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: transform;
-}
-.sidebar-mobile-panel--closing {
-  animation: sidebar-slide-out 240ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes nav-item-enter {
-  from { transform: translateX(-12px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-.nav-item-enter {
-  animation: nav-item-enter 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+@media (min-width: 768px) {
+  .sidebar-desktop-open .sidebar-label {
+    max-width: 200px;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .sidebar-footer { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: auto; }
