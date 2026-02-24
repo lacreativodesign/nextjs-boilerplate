@@ -28,7 +28,9 @@ export default function PayrollSummary() {
   async function loadPayroll() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/hr/payroll?month=${month.format("YYYY-MM")}`);
+      const res = await fetch(`/api/finance/payroll/list?month=${month.format("YYYY-MM")}`, {
+        credentials: "include",
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -40,16 +42,6 @@ export default function PayrollSummary() {
       setLoading(false);
     }
   }
-
-  const btn = {
-    padding: "8px 14px",
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontSize: 13,
-  };
 
   const th: React.CSSProperties = {
     padding: 12,
@@ -73,28 +65,21 @@ export default function PayrollSummary() {
           Payroll — {month.format("MMMM YYYY")}
         </h2>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setMonth(month.subtract(1, "month"))} style={btn}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setMonth(month.subtract(1, "month"))} className="btn">
             Prev
           </button>
-          <button onClick={() => setMonth(dayjs())} style={btn}>
+          <button onClick={() => setMonth(dayjs())} className="btn">
             Current
           </button>
-          <button onClick={() => setMonth(month.add(1, "month"))} style={btn}>
+          <button onClick={() => setMonth(month.add(1, "month"))} className="btn">
             Next
           </button>
         </div>
       </div>
 
       {/* TABLE */}
-      <div
-        style={{
-          borderRadius: 12,
-          border: "1px solid #e5e7eb",
-          background: "white",
-          overflow: "hidden",
-        }}
-      >
+      <div className="w-full overflow-x-auto" style={{ borderRadius: 12, border: "1px solid #e5e7eb", background: "white" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ background: "#f9fafb" }}>
             <tr>

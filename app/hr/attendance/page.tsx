@@ -68,7 +68,7 @@ export default function AttendanceDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* HEADER */}
       <div
         style={{
@@ -86,7 +86,7 @@ export default function AttendanceDashboard() {
           Attendance — {month.format("MMMM YYYY")}
         </h2>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setMonth(month.subtract(1, "month"))}
             style={btn}
@@ -106,14 +106,7 @@ export default function AttendanceDashboard() {
       </div>
 
       {/* TABLE */}
-      <div
-        style={{
-          overflowX: "auto",
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          background: "#fff",
-        }}
-      >
+      <div className="w-full overflow-x-auto rounded-xl" style={{ border: "1px solid #e5e7eb", background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ background: "#f3f4f6" }}>
             <tr>
@@ -176,6 +169,7 @@ const btn = {
 const th = {
   padding: 10,
   fontSize: 13,
+  minWidth: "80px",
   fontWeight: 600,
   borderBottom: "1px solid #e5e7eb",
   whiteSpace: "nowrap" as const,
