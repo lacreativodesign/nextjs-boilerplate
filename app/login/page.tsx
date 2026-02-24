@@ -16,6 +16,30 @@ import { Button } from "@/components/ui/button";
 import { showToast } from "@/lib/utils/toast";
 import SSOLoginButtons from "@/components/auth/SSOLoginButtons";
 
+function getFriendlyAuthError(code?: string): string {
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/invalid-password":
+      return "Incorrect password. Please try again.";
+    case "auth/user-not-found":
+    case "auth/invalid-email":
+      return "No account found with this email address.";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please wait a few minutes and try again.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Contact your administrator.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection and try again.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    case "auth/weak-password":
+      return "Password is too weak. Please choose a stronger password.";
+    default:
+      return "Sign-in failed. Please check your credentials and try again.";
+  }
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -93,7 +117,7 @@ export default function LoginPage() {
 
         window.location.href = returnTo;
       } catch (err: any) {
-        setError(err?.message || "SSO sign-in failed.");
+        setError(getFriendlyAuthError(err?.code));
       }
     };
 
@@ -121,8 +145,9 @@ export default function LoginPage() {
         setMfaResolver(resolver);
         setError("Two-factor authentication required.");
       } else {
-        setError(err.message || "Login failed");
-        showToast.error(err.message || "Login failed");
+        const friendlyError = getFriendlyAuthError(err?.code);
+        setError(friendlyError);
+        showToast.error(friendlyError);
       }
     } finally {
       setLoading(false);
@@ -166,7 +191,7 @@ export default function LoginPage() {
       const credential = await verifyMFASignIn(mfaResolver, code);
       await completeLogin(credential);
     } catch (err: any) {
-      setError(err?.message || "MFA verification failed.");
+      setError("Invalid verification code. Please try again.");
       throw err;
     } finally {
       setLoading(false);
@@ -199,7 +224,7 @@ export default function LoginPage() {
 
       alert("If an account exists for this email, a reset link has been sent.");
     } catch (err: any) {
-      setError(err?.message || "Failed to send reset email.");
+      setError("Unable to send reset email. Please verify your email address.");
     }
   }
 
