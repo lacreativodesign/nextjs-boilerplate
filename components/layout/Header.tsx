@@ -1,54 +1,33 @@
 "use client";
-
-import { ChevronDown } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Bell, LogOut } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
+import type { ReactNode } from "react";
 
 type HeaderProps = {
   currentUser: { name: string; email: string; role: string; avatarUrl?: string };
   activityTrigger?: ReactNode;
 };
 
-const roleBasePaths: Record<string, string> = {
-  super_admin: "/super_admin",
-  admin: "/dashboard",
-  sales: "/sales",
-  sales_manager: "/sales_manager",
-  am: "/am",
-  am_manager: "/am_manager",
-  production: "/production",
-  production_manager: "/production_manager",
-  client: "/client",
-  hr: "/hr",
-  finance: "/finance",
-};
-
-const profileEnabledRoles = new Set(["sales", "client"]);
-
-const getBasePath = (role: string) => roleBasePaths[role] || "/";
-
 export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const router = useRouter();
-  const { locale, setLocale, t } = useI18n();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const { locale, setLocale } = useI18n();
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
 
-  const basePath = useMemo(() => getBasePath(currentUser.role), [currentUser.role]);
-  const profileHref = profileEnabledRoles.has(currentUser.role) ? `${basePath}/profile` : basePath;
-  const settingsHref = currentUser.role === "admin" || currentUser.role === "super_admin" ? `${basePath}/settings` : basePath;
-  const sessionsHref = currentUser.role === "admin" || currentUser.role === "super_admin" ? `${basePath}/settings/security` : profileHref;
+  const currentLocale =
+    SUPPORTED_LOCALES.find((l) => l.code === locale) || SUPPORTED_LOCALES[0];
 
   useEffect(() => {
-    const onClick = (event: MouseEvent) => {
-      if (!menuRef.current || !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
       }
     };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const handleLogout = async () => {
@@ -57,61 +36,89 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-[var(--page-padding-x)] py-2 shadow-sm">
+    <header
+      className="sticky top-0 z-30 border-b border-[var(--border-subtle)]
+      bg-[var(--surface-card)] px-4 shadow-sm"
+    >
       <div className="flex h-[var(--header-height)] items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="text-base font-semibold text-[var(--text-primary)] md:hidden">{t("common.appName")}</div>
-        </div>
+        {/* Left: empty / breadcrumbs area */}
+        <div className="flex-1" />
 
-        <div className="hidden flex-1 items-center justify-center md:flex">
-          <div className="w-full max-w-md">
-            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("bizosto:search-open"))} className="flex w-full items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-2 text-sm text-[var(--text-soft)]">
-              <span>{t("common.search")}</span>
-              <span className="rounded border border-[var(--border-subtle)] px-1.5 py-0.5 text-[10px] font-semibold">⌘K</span>
-            </button>
-          </div>
-        </div>
+        {/* Right: actions */}
+        <div className="flex items-center gap-2">
+          {activityTrigger || null}
 
-        <div className="flex items-center gap-3">{activityTrigger || null}
-          <select
-            value={locale}
-            onChange={(event) => setLocale(event.target.value as SupportedLocale)}
-            className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-card)] px-2 py-1 text-xs text-[var(--text-primary)]"
-            aria-label={t("common.language")}
+          {/* Bell notification */}
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("bizosto:notifications-open"))
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-full
+              border border-[var(--border-subtle)] bg-[var(--surface-card)]
+              hover:bg-[var(--surface-muted)] transition-colors"
+            aria-label="Notifications"
           >
-            {SUPPORTED_LOCALES.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.flag} {item.nativeName}
-              </option>
-            ))}
-          </select>
+            <Bell className="h-4 w-4 text-[var(--text-soft)]" />
+          </button>
 
-          <div className="relative" ref={menuRef}>
-            <button type="button" onClick={() => setMenuOpen((prev) => !prev)} className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5 text-sm shadow-sm" aria-haspopup="menu" aria-expanded={menuOpen}>
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--erp-blue)] text-sm font-bold text-white">
-                {currentUser.name.slice(0, 1).toUpperCase()}
-              </div>
-              <span className="hidden text-sm font-semibold md:inline">{currentUser.name}</span>
-              <ChevronDown className="h-4 w-4 text-[var(--text-soft)]" />
+          {/* Language switcher - flag only, dropdown with names */}
+          <div className="relative" ref={langRef}>
+            <button
+              type="button"
+              onClick={() => setLangOpen((p) => !p)}
+              className="flex h-9 w-9 items-center justify-center rounded-full
+                border border-[var(--border-subtle)] bg-[var(--surface-card)]
+                hover:bg-[var(--surface-muted)] transition-colors text-base"
+              aria-label="Language"
+            >
+              {currentLocale.flag}
             </button>
 
-            {menuOpen && (
-              <div role="menu" className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm shadow-lg">
-                <div className="border-b border-[var(--border-subtle)] px-4 py-3">
-                  <div className="font-semibold text-[var(--text-primary)]">{currentUser.name}</div>
-                  <div className="text-xs text-[var(--text-muted)]">{currentUser.email}</div>
-                </div>
-                <div className="flex flex-col">
-                  <Link href={profileHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">{t("common.profile")}</Link>
-                  <Link href={settingsHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">{t("common.settings")}</Link>
-                  <Link href={sessionsHref} className="px-4 py-2 hover:bg-[var(--surface-muted)]" role="menuitem">{t("common.activeSessions")}</Link>
-                </div>
-                <div className="border-t border-[var(--border-subtle)] px-4 py-2">
-                  <button type="button" onClick={handleLogout} className="w-full text-left text-[var(--danger)]" role="menuitem">{t("common.logout")}</button>
-                </div>
+            {langOpen && (
+              <div
+                className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl
+                border border-[var(--border-subtle)] bg-[var(--surface-card)]
+                shadow-lg z-50"
+              >
+                {SUPPORTED_LOCALES.map((item) => (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => {
+                      setLocale(item.code as SupportedLocale);
+                      setLangOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm
+                      hover:bg-[var(--surface-muted)] transition-colors text-left
+                      ${
+                        locale === item.code
+                          ? "text-[var(--erp-blue)] font-semibold"
+                          : "text-[var(--text-primary)]"
+                      }`}
+                  >
+                    <span>{item.flag}</span>
+                    <span>{item.nativeName}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
+
+          {/* Direct Logout button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex h-9 items-center gap-2 rounded-full
+              border border-[var(--border-subtle)] bg-[var(--surface-card)]
+              px-3 hover:bg-red-500/10 hover:border-red-500/30
+              hover:text-red-500 transition-colors text-sm
+              text-[var(--text-soft)]"
+            aria-label="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
       </div>
     </header>
