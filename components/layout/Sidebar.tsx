@@ -15,6 +15,7 @@ import {
   Settings,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 
@@ -41,10 +42,16 @@ type SidebarProps = {
 };
 
 export default function Sidebar({
+  currentRole,
   tenantName,
   tenantLogoUrl,
   collapsed,
 }: SidebarProps) {
+  const menuItems =
+    currentRole === "super_admin"
+      ? [{ href: "/super_admin", label: "Super Admin", icon: Shield }, ...MENU_ITEMS]
+      : MENU_ITEMS;
+
   const pathname = usePathname();
   const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
 
@@ -79,7 +86,7 @@ export default function Sidebar({
               </div>
 
               <nav className="flex-1 space-y-1">
-                {MENU_ITEMS.map((item) => {
+                {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname.startsWith(item.href);
                   return (
@@ -160,7 +167,7 @@ export default function Sidebar({
 
           {/* Navigation - ALWAYS icons on mobile, icons+labels on desktop (if not collapsed) */}
           <nav className="flex-1 space-y-1">
-            {MENU_ITEMS.map((item) => {
+            {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname.startsWith(item.href);
 
