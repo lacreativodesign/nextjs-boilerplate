@@ -18,8 +18,8 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
-  const currentLocale = SUPPORTED_LOCALES.find(l => l.code === locale)
-    ?? SUPPORTED_LOCALES[0];
+  const currentLocale =
+    SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -36,27 +36,22 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
     router.replace("/login");
   };
 
-  // Shared icon button style — matches ActivityFeedSidebar bell exactly
-  const iconBtn = "relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
+  const iconBtn =
+    "relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)]
-      bg-[var(--surface-card)] px-4 shadow-sm">
+    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
-
-        {/* Left: empty */}
         <div className="flex-1" />
 
-        {/* Right: activity bell (from AppShell) + language + logout */}
         <div className="flex items-center gap-2">
-          {/* Activity bell passed from AppShell — already has correct styling */}
           {activityTrigger || null}
 
-          {/* Language — flag only, dropdown shows names */}
+          {/* Language — flag only, names in dropdown */}
           <div className="relative" ref={langRef}>
             <button
               type="button"
-              onClick={() => setLangOpen(p => !p)}
+              onClick={() => setLangOpen((p) => !p)}
               className={`${iconBtn} text-base`}
               aria-label="Language"
             >
@@ -64,10 +59,8 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
             </button>
 
             {langOpen && (
-              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl
-                border border-[var(--border-subtle)] bg-[var(--surface-card)]
-                shadow-lg z-50">
-                {SUPPORTED_LOCALES.map(item => (
+              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50">
+                {SUPPORTED_LOCALES.map((item) => (
                   <button
                     key={item.code}
                     type="button"
@@ -75,11 +68,11 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
                       setLocale(item.code as SupportedLocale);
                       setLangOpen(false);
                     }}
-                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm
-                      hover:bg-[var(--surface-muted)] transition-colors text-left
-                      ${locale === item.code
+                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--surface-muted)] transition-colors text-left ${
+                      locale === item.code
                         ? "text-[var(--erp-blue)] font-semibold"
-                        : "text-[var(--text-primary)]"}`}
+                        : "text-[var(--text-primary)]"
+                    }`}
                   >
                     <span>{item.flag}</span>
                     <span>{item.nativeName}</span>
