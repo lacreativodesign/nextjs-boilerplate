@@ -13,6 +13,7 @@ import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
+import BugReportButton from "@/components/support/BugReportButton";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
@@ -133,6 +134,7 @@ function AppShellInner({
         </main>
       </div>
 
+      <BugReportButton />
       <GlobalSearchModal />
     </div>
   );
