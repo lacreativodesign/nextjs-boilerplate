@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    const current = await getCurrentUser();
+    const current = await getCurrentUser(req);
     if (!current || (!isAdminRole(current.role) && current.role !== 'super_admin')) {
       throw new AppError({ message: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
     }

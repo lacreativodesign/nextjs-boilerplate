@@ -157,11 +157,14 @@ export default function UsersPage() {
         setLoading(true);
         setError("");
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         const res = await fetch("/api/admin/users/list", {
           method: "GET",
           cache: "no-store",
           credentials: "include",
-        });
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
 
         const json = await res.json().catch(() => null);
 
