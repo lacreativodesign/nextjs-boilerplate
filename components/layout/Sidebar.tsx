@@ -10,17 +10,17 @@ import {
 import { useSidebar } from "@/lib/context/SidebarContext";
 
 const ALL_ITEMS = [
-  { href: "/dashboard",   label: "Overview",            icon: LayoutDashboard, roles: null            },
-  { href: "/users",       label: "Users",               icon: Users,           roles: null            },
-  { href: "/clients",     label: "Clients",             icon: Briefcase,       roles: null            },
-  { href: "/sales",       label: "Sales & Pipeline",    icon: TrendingUp,      roles: null            },
-  { href: "/projects",    label: "Projects & Delivery", icon: FolderKanban,    roles: null            },
-  { href: "/production",  label: "Production",          icon: Package,         roles: null            },
-  { href: "/finance",     label: "Finance",             icon: DollarSign,      roles: null            },
-  { href: "/hr",          label: "HR & Team",           icon: UserCircle,      roles: null            },
-  { href: "/reports",     label: "Reports",             icon: BarChart3,       roles: null            },
+  { href: "/dashboard",   label: "Overview",            icon: LayoutDashboard, roles: null },
+  { href: "/users",       label: "Users",               icon: Users,           roles: null },
+  { href: "/clients",     label: "Clients",             icon: Briefcase,       roles: null },
+  { href: "/sales",       label: "Sales & Pipeline",    icon: TrendingUp,      roles: null },
+  { href: "/projects",    label: "Projects & Delivery", icon: FolderKanban,    roles: null },
+  { href: "/production",  label: "Production",          icon: Package,         roles: null },
+  { href: "/finance",     label: "Finance",             icon: DollarSign,      roles: null },
+  { href: "/hr",          label: "HR & Team",           icon: UserCircle,      roles: null },
+  { href: "/reports",     label: "Reports",             icon: BarChart3,       roles: null },
   { href: "/super_admin", label: "Super Admin",         icon: Shield,          roles: ["super_admin"] },
-  { href: "/settings",    label: "Settings",            icon: Settings,        roles: null            },
+  { href: "/settings",    label: "Settings",            icon: Settings,        roles: null },
 ];
 
 type SidebarProps = {
@@ -46,8 +46,8 @@ export default function Sidebar({
   );
 
   const labelsClass = [
-    isMobileOpen ? "sidebar-mobile-open"  : "",
-    !collapsed   ? "sidebar-desktop-open" : "",
+    isMobileOpen ? "sidebar-mobile-open" : "",
+    !collapsed ? "sidebar-desktop-open" : "",
   ].filter(Boolean).join(" ");
 
   const initials = tenantName.slice(0, 2).toUpperCase();
@@ -60,8 +60,7 @@ export default function Sidebar({
         className="h-10 w-10 flex-shrink-0 rounded-xl object-cover"
       />
     ) : (
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center
-        rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md select-none">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md select-none">
         {initials}
       </div>
     );
@@ -86,7 +85,9 @@ export default function Sidebar({
           "fixed left-0 top-0 z-40 h-full",
           "border-r border-[var(--border-subtle)] bg-[var(--surface-card)]",
           isMobileOpen ? "w-[260px]" : "w-16",
-          collapsed ? "md:w-[var(--sidebar-collapsed-width)]" : "md:w-[var(--sidebar-width)]",
+          collapsed
+            ? "md:w-[var(--sidebar-collapsed-width)]"
+            : "md:w-[var(--sidebar-width)]",
           labelsClass,
         ].join(" ")}
       >
@@ -97,7 +98,7 @@ export default function Sidebar({
 
               <button
                 type="button"
-                onClick={() => isMobileOpen ? closeMobile() : openMobile()}
+                onClick={() => (isMobileOpen ? closeMobile() : openMobile())}
                 className="flex-shrink-0 focus:outline-none md:cursor-default md:pointer-events-none"
                 aria-label="Toggle sidebar"
               >
@@ -114,8 +115,7 @@ export default function Sidebar({
               {isMobileOpen && (
                 <button
                   onClick={closeMobile}
-                  className="ml-2 flex-shrink-0 flex h-8 w-8 items-center justify-center
-                    rounded-lg hover:bg-[var(--surface-muted)] transition-colors md:hidden"
+                  className="ml-2 flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--surface-muted)] transition-colors md:hidden"
                   aria-label="Close menu"
                 >
                   <X className="h-4 w-4 text-[var(--text-muted)]" />
@@ -124,14 +124,14 @@ export default function Sidebar({
 
               <button
                 onClick={toggleCollapse}
-                className="ml-2 flex-shrink-0 hidden md:flex h-8 w-8 items-center justify-center
-                  rounded-lg hover:bg-[var(--surface-muted)] transition-colors"
+                className="ml-2 flex-shrink-0 hidden md:flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--surface-muted)] transition-colors"
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                {collapsed
-                  ? <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-                  : <ChevronLeft  className="h-4 w-4 text-[var(--text-muted)]" />
-                }
+                {collapsed ? (
+                  <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4 text-[var(--text-muted)]" />
+                )}
               </button>
 
             </div>
@@ -140,7 +140,9 @@ export default function Sidebar({
           <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
