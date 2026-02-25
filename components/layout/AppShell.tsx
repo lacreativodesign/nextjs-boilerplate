@@ -33,14 +33,20 @@ function AppShellInner({
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
-  const [clientRole, setClientRole] = useState<string | null>(null);
+  const [clientRole, setClientRole] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("bizosto_role") || null;
+  });
   useEffect(() => {
     let cancelled = false;
     getFirebaseAuth().then((auth) => {
       const unsub = onAuthStateChanged(auth, async (user) => {
         if (user && !cancelled) {
           const role = await fetchUserRole(user.uid);
-          if (!cancelled) setClientRole(role);
+          if (!cancelled) {
+            setClientRole(role);
+            if (role) window.localStorage.setItem("bizosto_role", role);
+          }
         }
       });
       return () => { cancelled = true; unsub(); };
