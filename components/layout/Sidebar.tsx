@@ -60,9 +60,17 @@ export default function Sidebar({
         className="h-10 w-10 flex-shrink-0 rounded-xl object-cover"
       />
     ) : (
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md select-none">
-        {initials}
-      </div>
+      <div style={{
+          width: 40, height: 40, borderRadius: 4,
+          background: "linear-gradient(to bottom, #012167 0%, #6692f9 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
+          fontWeight: 700, fontSize: 26, color: "#ffffff",
+          userSelect: "none", flexShrink: 0,
+          letterSpacing: "-0.01em",
+        }}>
+          B
+        </div>
     );
 
   return (

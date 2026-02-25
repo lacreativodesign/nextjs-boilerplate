@@ -259,6 +259,14 @@ export default function LoginPage() {
         }}
       >
         <div className="login-brand-panel">
+          <div style={{
+            width: 56, height: 56, borderRadius: 8,
+            background: "linear-gradient(to bottom, #012167 0%, #6692f9 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
+            fontWeight: 700, fontSize: 36, color: "#ffffff",
+            marginBottom: 16, letterSpacing: "-0.01em",
+          }}>B</div>
           <div className="login-brand-pill">BIZOSTO</div>
           <h1 className="login-brand-title">Master UI access for your enterprise workspace.</h1>
           <p className="login-brand-subtitle">

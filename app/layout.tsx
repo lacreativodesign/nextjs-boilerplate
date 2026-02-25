@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   title: "Bizosto ERP",
   description: "Bizosto ERP multi-tenant operations platform",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon-32.png",  sizes: "32x32",   type: "image/png" },
+      { url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+    ],
+    apple: { url: "/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+  },
   appleWebApp: {
     capable: true,
     title: "Bizosto",
@@ -20,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#012167",
 };
 
 export default function RootLayout({
