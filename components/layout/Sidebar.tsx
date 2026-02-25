@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings,
-  Shield, ChevronLeft, ChevronRight,
+  Shield, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 
@@ -34,10 +34,12 @@ type SidebarProps = {
 
 export default function Sidebar({
   currentRole,
+  tenantName,
+  tenantLogoUrl,
   collapsed,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
+  const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
 
   const navItems = ALL_ITEMS.filter(
     (item) => item.roles === null || item.roles.includes(currentRole)
@@ -48,11 +50,27 @@ export default function Sidebar({
     !collapsed   ? "sidebar-desktop-open" : "",
   ].filter(Boolean).join(" ");
 
+  const initials = tenantName.slice(0, 2).toUpperCase();
+
+  const LogoIcon = () =>
+    tenantLogoUrl ? (
+      <img
+        src={tenantLogoUrl}
+        alt={tenantName}
+        className="h-10 w-10 flex-shrink-0 rounded-xl object-cover"
+      />
+    ) : (
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center
+        rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md select-none">
+        {initials}
+      </div>
+    );
+
   return (
     <>
       {isMobileOpen && (
         <div
-          className="fixed left-0 right-0 bottom-0 top-[56px] z-[25] md:hidden"
+          className="fixed inset-0 z-[25] md:hidden"
           style={{
             background: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(4px)",
@@ -65,29 +83,58 @@ export default function Sidebar({
       <aside
         className={[
           "sidebar-transition",
-          "fixed left-0 z-30",
-          "top-[56px] h-[calc(100vh-56px)]",
+          "fixed left-0 top-0 z-30 h-full",
           "border-r border-[var(--border-subtle)] bg-[var(--surface-card)]",
           isMobileOpen ? "w-[260px]" : "w-16",
           collapsed ? "md:w-[var(--sidebar-collapsed-width)]" : "md:w-[var(--sidebar-width)]",
           labelsClass,
         ].join(" ")}
       >
-        <div className="flex h-full flex-col py-3 px-2">
+        <div className="flex h-full flex-col p-2 md:p-3">
 
-          <div className="mb-2 hidden md:flex justify-end pr-1">
-            <button
-              onClick={toggleCollapse}
-              className="flex h-7 w-7 items-center justify-center rounded-lg
-                text-[var(--text-muted)] hover:bg-[var(--surface-muted)]
-                hover:text-[var(--text-primary)] transition-colors"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed
-                ? <ChevronRight className="h-4 w-4" />
-                : <ChevronLeft  className="h-4 w-4" />
-              }
-            </button>
+          <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
+            <div className="flex h-12 items-center">
+
+              <button
+                type="button"
+                onClick={() => isMobileOpen ? closeMobile() : openMobile()}
+                className="flex-shrink-0 focus:outline-none md:cursor-default md:pointer-events-none"
+                aria-label="Toggle sidebar"
+              >
+                <LogoIcon />
+              </button>
+
+              <div className="sidebar-label ml-3 min-w-0 flex-1">
+                <div className="truncate text-sm font-bold text-[var(--text-primary)] leading-tight">
+                  {tenantName}
+                </div>
+                <div className="text-xs text-[var(--text-muted)]">ERP Platform</div>
+              </div>
+
+              {isMobileOpen && (
+                <button
+                  onClick={closeMobile}
+                  className="ml-2 flex-shrink-0 flex h-8 w-8 items-center justify-center
+                    rounded-lg hover:bg-[var(--surface-muted)] transition-colors md:hidden"
+                  aria-label="Close menu"
+                >
+                  <X className="h-4 w-4 text-[var(--text-muted)]" />
+                </button>
+              )}
+
+              <button
+                onClick={toggleCollapse}
+                className="ml-2 flex-shrink-0 hidden md:flex h-8 w-8 items-center justify-center
+                  rounded-lg hover:bg-[var(--surface-muted)] transition-colors"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed
+                  ? <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
+                  : <ChevronLeft  className="h-4 w-4 text-[var(--text-muted)]" />
+                }
+              </button>
+
+            </div>
           </div>
 
           <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
