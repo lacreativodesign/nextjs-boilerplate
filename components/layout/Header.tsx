@@ -5,8 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
-import { useSidebar } from "@/lib/context/SidebarContext";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import type { ReactNode } from "react";
 
 type HeaderProps = {
@@ -20,13 +18,6 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const { locale, setLocale } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
-
-  const { openMobile, isMobileOpen, closeMobile } = useSidebar();
-
-  const { data } = useTenantContext();
-  const tenantLogoUrl = data?.tenant?.whiteLabel?.logoUrl || null;
-  const tenantName    = data?.tenant?.name || "Bizosto";
-  const initials      = tenantName.slice(0, 2).toUpperCase();
 
   const currentLocale =
     SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
@@ -54,25 +45,6 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
-
-        <button
-          type="button"
-          onClick={() => isMobileOpen ? closeMobile() : openMobile()}
-          aria-label="Toggle navigation"
-          className="md:hidden flex-shrink-0 flex h-10 w-10 items-center justify-center
-            rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md
-            hover:opacity-90 transition-opacity"
-        >
-          {tenantLogoUrl ? (
-            <img
-              src={tenantLogoUrl}
-              alt={tenantName}
-              className="h-10 w-10 rounded-xl object-cover"
-            />
-          ) : (
-            initials
-          )}
-        </button>
 
         <div className="flex-1" />
 
