@@ -1,4 +1,5 @@
 "use client";
+import BizostoSplash from "@/components/ui/BizostoSplash";
 
 import React, { useEffect, useState } from "react";
 import {
@@ -47,6 +48,8 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashDest, setSplashDest] = useState("");
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
   const [ssoProviders, setSsoProviders] = useState<Array<{ provider: "google" | "microsoft" | "okta" | "auth0" }>>([]);
@@ -173,9 +176,11 @@ export default function LoginPage() {
         throw new Error(errorData.error || 'Failed to create session. Please try again.');
       }
 
-      // Get user role and redirect
+      // Get user role and redirect with splash animation
       const role = await fetchUserRole(userCred.user.uid);
-      window.location.href = getRoleRoute(role);
+      const dest = getRoleRoute(role);
+      setSplashDest(dest);
+      setShowSplash(true);
     } finally {
       showToast.dismiss(sessionToast);
     }
@@ -230,6 +235,7 @@ export default function LoginPage() {
 
   // UI (unchanged)
   return (
+    <>
     <div
       className="login-root"
       style={{
@@ -826,5 +832,12 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+    {showSplash && (
+      <BizostoSplash
+        duration={1500}
+        onDone={() => { window.location.href = splashDest; }}
+      />
+    )}
+    </>
   );
 }
