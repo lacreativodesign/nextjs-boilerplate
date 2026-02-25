@@ -235,6 +235,7 @@ export default function LoginPage() {
 
   // UI (unchanged)
   return (
+    <>
     <div
       className="login-root"
       style={{
@@ -837,5 +838,6 @@ export default function LoginPage() {
         onDone={() => { window.location.href = splashDest; }}
       />
     )}
+    </>
   );
 }
