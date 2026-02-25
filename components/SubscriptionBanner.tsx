@@ -10,6 +10,7 @@ const BILLING_PATH = "/billing";
 export default function SubscriptionBanner() {
   const { data, loading } = useTenantContext();
 
+  if (loading && data === null) return null;
   if (loading) {
     return (
       <div className="sticky top-0 z-50 w-full border-b border-slate-200/70 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">
