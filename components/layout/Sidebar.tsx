@@ -70,7 +70,7 @@ export default function Sidebar({
     <>
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-[25] md:hidden"
+          className="fixed inset-0 z-[35] md:hidden"
           style={{
             background: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(4px)",
@@ -83,7 +83,7 @@ export default function Sidebar({
       <aside
         className={[
           "sidebar-transition",
-          "fixed left-0 top-0 z-30 h-full",
+          "fixed left-0 top-0 z-40 h-full",
           "border-r border-[var(--border-subtle)] bg-[var(--surface-card)]",
           isMobileOpen ? "w-[260px]" : "w-16",
           collapsed ? "md:w-[var(--sidebar-collapsed-width)]" : "md:w-[var(--sidebar-width)]",
