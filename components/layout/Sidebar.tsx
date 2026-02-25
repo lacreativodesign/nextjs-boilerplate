@@ -93,7 +93,7 @@ export default function Sidebar({
         <div className="flex h-full flex-col p-2 md:p-3">
 
           <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
-            <div className="flex h-12 items-center">
+            <div className="flex h-14 items-center">
 
               <button
                 type="button"

@@ -43,7 +43,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
     "shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
 
         <div className="flex-1" />
