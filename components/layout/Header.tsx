@@ -1,9 +1,12 @@
 "use client";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
+import { useSidebar } from "@/lib/context/SidebarContext";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import type { ReactNode } from "react";
 
 type HeaderProps = {
@@ -12,11 +15,18 @@ type HeaderProps = {
   onMenuToggle?: () => void;
 };
 
-export default function Header({ currentUser, activityTrigger, onMenuToggle }: HeaderProps) {
+export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const router = useRouter();
   const { locale, setLocale } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+
+  const { openMobile, isMobileOpen, closeMobile } = useSidebar();
+
+  const { data } = useTenantContext();
+  const tenantLogoUrl = data?.tenant?.whiteLabel?.logoUrl || null;
+  const tenantName    = data?.tenant?.name || "Bizosto";
+  const initials      = tenantName.slice(0, 2).toUpperCase();
 
   const currentLocale =
     SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
@@ -37,17 +47,38 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
   };
 
   const iconBtn =
-    "relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
+    "relative flex h-11 w-11 items-center justify-center rounded-xl border " +
+    "border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] " +
+    "shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
+    <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
       <div className="flex h-[var(--header-height)] items-center justify-between">
+
+        <button
+          type="button"
+          onClick={() => isMobileOpen ? closeMobile() : openMobile()}
+          aria-label="Toggle navigation"
+          className="md:hidden flex-shrink-0 flex h-10 w-10 items-center justify-center
+            rounded-xl bg-[var(--erp-blue)] text-white font-bold text-sm shadow-md
+            hover:opacity-90 transition-opacity"
+        >
+          {tenantLogoUrl ? (
+            <img
+              src={tenantLogoUrl}
+              alt={tenantName}
+              className="h-10 w-10 rounded-xl object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </button>
+
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
           {activityTrigger || null}
 
-          {/* Language — flag only, names in dropdown */}
           <div className="relative" ref={langRef}>
             <button
               type="button"
@@ -59,7 +90,8 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
             </button>
 
             {langOpen && (
-              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50">
+              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl
+                border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50">
                 {SUPPORTED_LOCALES.map((item) => (
                   <button
                     key={item.code}
@@ -68,11 +100,13 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
                       setLocale(item.code as SupportedLocale);
                       setLangOpen(false);
                     }}
-                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--surface-muted)] transition-colors text-left ${
+                    className={[
+                      "flex w-full items-center gap-3 px-4 py-2.5 text-sm",
+                      "hover:bg-[var(--surface-muted)] transition-colors text-left",
                       locale === item.code
                         ? "text-[var(--erp-blue)] font-semibold"
-                        : "text-[var(--text-primary)]"
-                    }`}
+                        : "text-[var(--text-primary)]",
+                    ].join(" ")}
                   >
                     <span>{item.flag}</span>
                     <span>{item.nativeName}</span>
@@ -82,7 +116,6 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
             )}
           </div>
 
-          {/* Logout */}
           <button
             type="button"
             onClick={handleLogout}
@@ -93,6 +126,7 @@ export default function Header({ currentUser, activityTrigger, onMenuToggle }: H
             <LogOut className="h-4 w-4" />
           </button>
         </div>
+
       </div>
     </header>
   );
