@@ -14,6 +14,8 @@ import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import BugReportButton from "@/components/support/BugReportButton";
+import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { onAuthStateChanged } from "firebase/auth";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
@@ -31,16 +33,34 @@ function AppShellInner({
   const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
+  const [clientRole, setClientRole] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getFirebaseAuth().then((auth) => {
+      const unsub = onAuthStateChanged(auth, async (user) => {
+        if (user && !cancelled) {
+          const role = await fetchUserRole(user.uid);
+          if (!cancelled) setClientRole(role);
+        }
+      });
+      return () => { cancelled = true; unsub(); };
+    }).catch(() => {});
+  }, []);
+
   const currentUser = useMemo(
-    () => ({
-      name:
-        data?.user?.displayName ||
-        (data?.user?.email ? data.user.email.split("@")[0] : "User"),
-      email: data?.user?.email || "",
-      role: normalizeRole(data?.user?.role || "") || "admin",
-      avatarUrl: undefined,
-    }),
-    [data?.user?.displayName, data?.user?.email, data?.user?.role],
+    () => {
+      const serverRole = normalizeRole(data?.user?.role || "");
+      const fallbackRole = normalizeRole(clientRole || "");
+      return {
+        name:
+          data?.user?.displayName ||
+          (data?.user?.email ? data.user.email.split("@")[0] : "User"),
+        email: data?.user?.email || "",
+        role: serverRole || fallbackRole || "admin",
+        avatarUrl: undefined,
+      };
+    },
+    [data?.user?.displayName, data?.user?.email, data?.user?.role, clientRole],
   );
 
   useEffect(() => {
