@@ -40,7 +40,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
 
   const doLogout = async () => {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
-    router.replace("/login");
+    window.location.href = "/login";
   };
 
   const iconBtn =
