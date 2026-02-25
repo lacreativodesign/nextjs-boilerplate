@@ -35,7 +35,7 @@ export default function SalesPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/sales/overview", { credentials: "include" })
+    fetch("/api/sales/overview", { credentials: "include" })
       .then(r => r.json())
       .then(res => {
         if (res.ok) {

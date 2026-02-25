@@ -62,7 +62,7 @@ export default function SalesDealsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/deals/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/sales/deals/list", { cache: "no-store", credentials: "include" });
       const data = (await res.json()) as DealResponseWithSettings;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load deals.");
@@ -183,7 +183,7 @@ export default function SalesDealsPage() {
   const closeDeal = async (deal: DealRecord, status: "Won" | "Lost") => {
     try {
       setActionLoading(deal.id + status);
-      const res = await fetch("/api/admin/sales/deals/update", {
+      const res = await fetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -207,7 +207,7 @@ export default function SalesDealsPage() {
     try {
       setDiscountSaving(true);
       setDiscountError(null);
-      const res = await fetch("/api/admin/sales/deals/update", {
+      const res = await fetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -265,11 +265,11 @@ export default function SalesDealsPage() {
     if (!window.confirm("Delete this deal?")) return;
     try {
       setActionLoading(`delete-${id}`);
-      const res = await fetch("/api/admin/sales/deals/delete", {
+      const res = await fetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, isDeleted: true }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to delete deal.");

@@ -64,7 +64,7 @@ export default function FinanceInvoicesPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/invoices/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/finance/invoices/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load invoices.");
@@ -85,7 +85,7 @@ export default function FinanceInvoicesPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -185,7 +185,7 @@ export default function FinanceInvoicesPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ id: invoice.id }),
+          body: JSON.stringify({ id: invoice.id, isDeleted: true }),
         }).then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok || !data?.ok) {
@@ -213,7 +213,7 @@ export default function FinanceInvoicesPage() {
     try {
       setActionLoading(`delete-${invoice.id}`);
       await toastPromise(
-        fetch("/api/admin/finance/invoices/delete", {
+        fetch("/api/finance/invoices/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
