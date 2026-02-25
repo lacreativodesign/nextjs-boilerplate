@@ -834,7 +834,7 @@ export default function LoginPage() {
     </div>
     {showSplash && (
       <BizostoSplash
-        duration={1500}
+        duration={2000}
         onDone={() => { window.location.href = splashDest; }}
       />
     )}
