@@ -1,4 +1,5 @@
 "use client";
+import BizostoSplash from "@/components/ui/BizostoSplash";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +18,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const router = useRouter();
   const { locale, setLocale } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
+  const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
   const currentLocale =
@@ -33,6 +35,10 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   }, []);
 
   const handleLogout = async () => {
+    setShowLogoutSplash(true);
+  };
+
+  const doLogout = async () => {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
     router.replace("/login");
   };
@@ -101,5 +107,11 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
 
       </div>
     </header>
+    {showLogoutSplash && (
+      <BizostoSplash
+        duration={1200}
+        onDone={doLogout}
+      />
+    )}
   );
 }
