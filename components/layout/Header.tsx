@@ -110,7 +110,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
     </header>
     {showLogoutSplash && (
       <BizostoSplash
-        duration={1200}
+        duration={2000}
         onDone={doLogout}
       />
     )}
