@@ -1,5 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="112" fill="#2563EB"/>
-  <path d="M130 138h142c61 0 110 45 110 106s-49 106-110 106H130V138Z" fill="#fff"/>
-  <circle cx="263" cy="245" r="52" fill="#2563EB"/>
+  <defs>
+    <linearGradient id="bg512" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="102" fill="url(#bg512)"/>
+  <text
+    x="256"
+    y="370"
+    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font-weight="900"
+    font-size="336"
+    text-anchor="middle"
+    fill="white"
+    letter-spacing="-6"
+  >B</text>
 </svg>
