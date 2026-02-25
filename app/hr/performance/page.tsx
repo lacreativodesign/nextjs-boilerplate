@@ -64,7 +64,7 @@ export default function PerformancePage() {
       try {
         setLoading(true);
         const [uRes, rRes] = await Promise.all([
-          fetch("/api/admin/users/list", { credentials: "include" }),
+          fetch("/api/admin/list-users", { credentials: "include" }),
           fetch("/api/hr/performance/list", { credentials: "include" }),
         ]);
         const uData = await uRes.json().catch(() => ({}));

@@ -250,7 +250,7 @@ export default function HrEmployeesPage() {
     if (!selectedUser) return;
     try {
       setSaving(true);
-      const res = await fetch("/api/admin/hr/employees/update", {
+      const res = await fetch("/api/hr/employees/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -30,7 +30,7 @@ export default function SalesLeadsPage() {
   const loadLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/sales/leads/list", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/sales/leads/list", { cache: "no-store", credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || "Failed to load leads.");
@@ -64,7 +64,7 @@ export default function SalesLeadsPage() {
     try {
       setActionLoading(`stage:${id}`);
       await toastPromise(
-        fetch("/api/admin/sales/leads/update", {
+        fetch("/api/sales/leads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -91,11 +91,11 @@ export default function SalesLeadsPage() {
     try {
       setActionLoading(`delete:${id}`);
       await toastPromise(
-        fetch("/api/admin/sales/leads/delete", {
+        fetch("/api/sales/leads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, isDeleted: true }),
         }).then(async (res) => {
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to delete lead.");
