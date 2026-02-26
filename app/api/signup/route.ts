@@ -3,27 +3,35 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { checkRateLimit } from "@/lib/security";
 import { WORKFLOW_TEMPLATES } from "@/lib/automation/workflow-templates";
 import { sendEmail } from "@/lib/email/email-service";
+import { sendWelcomeEmail } from "@/lib/email/onboarding-emails";
+import { DEFAULT_MODULES } from "@/lib/tenant/constants";
 import { createTenantWorkspace } from "@/lib/tenant/onboarding";
 
 export const runtime = "nodejs";
 
-const blockedDomains = new Set(["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com"]);
-
 const signupSchema = z.object({
-  name: z.string().trim().min(2, "Full name is required."),
-  email: z.string().trim().email("Invalid email address."),
-  company: z.string().trim().min(2, "Company name must be at least 2 characters."),
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
+  email: z.string().trim().email("Please enter a valid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters.")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
-    .regex(/\d/, "Password must contain at least one number.")
-    .regex(/[^A-Za-z\d]/, "Password must contain at least one special character."),
-  recaptchaToken: z.string().min(1, "reCAPTCHA is required."),
-  agreeToLegal: z.literal(true),
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must include at least one uppercase letter")
+    .regex(/[a-z]/, "Password must include at least one lowercase letter")
+    .regex(/\d/, "Password must include at least one number"),
+  companyName: z.string().trim().min(2, "Company name must be at least 2 characters"),
+  industry: z.string().trim().optional().default(""),
+  companySize: z.string().trim().optional().default(""),
+  country: z.string().trim().min(1, "Country is required"),
+  state: z.string().trim().optional().default(""),
+  timezone: z.string().trim().optional().default(""),
+  currency: z.string().trim().optional().default(""),
+  selectedModules: z.array(z.string().trim()).default([]),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the Terms and Conditions to continue" }),
+  }),
+  termsVersion: z.string().trim().min(1, "Terms version is required"),
 });
 
 type SignupVerificationRecord = {
@@ -39,182 +47,178 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function getEmailDomain(email: string) {
-  const normalized = normalizeEmail(email);
-  return normalized.slice(normalized.indexOf("@") + 1);
-}
-
-function slugifyCompany(company: string) {
-  return company
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 48);
-}
-
-async function verifyRecaptcha(token: string, remoteIp: string) {
-  const secret = process.env.RECAPTCHA_SECRET_KEY || "";
-  if (!secret) {
-    throw new Error("RECAPTCHA_MISCONFIGURED");
-  }
-
-  const body = new URLSearchParams({
-    secret,
-    response: token,
-    remoteip: remoteIp,
-  });
-
-  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-
-  const payload = (await response.json().catch(() => null)) as { success?: boolean } | null;
-  if (!response.ok || !payload?.success) {
-    throw new Error("RECAPTCHA_FAILED");
-  }
-}
-
 function resolveAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
 }
 
-function buildWelcomeHtml(name: string, verificationUrl: string, company: string) {
-  return `
-  <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">
-    <h1 style="font-size:24px;margin-bottom:12px;">Welcome to Bizosto ERP, ${name}</h1>
-    <p>Thanks for starting your 14-day free trial for <strong>${company}</strong>. No credit card is required.</p>
-    <p style="margin:24px 0;">
-      <a href="${verificationUrl}" style="background:#111827;color:#ffffff;padding:12px 20px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:600;">Verify email & activate trial</a>
-    </p>
-    <p>This verification link expires in 24 hours.</p>
-  </div>`;
+function slugifyCompany(companyName: string) {
+  const slug = companyName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+
+  return slug || "workspace";
+}
+
+function getClientIp(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for") || "";
+  const realIp = request.headers.get("x-real-ip") || "";
+  return forwardedFor.split(",")[0]?.trim() || realIp || "unknown";
+}
+
+function buildModulesEnabled(selectedModules: string[]) {
+  const normalizedSelection = new Set(
+    selectedModules
+      .map((moduleKey) => moduleKey.trim())
+      .filter(Boolean)
+  );
+
+  const modulesEnabled: Record<string, boolean> = {};
+
+  for (const moduleKey of Object.keys(DEFAULT_MODULES)) {
+    modulesEnabled[moduleKey] = normalizedSelection.has(moduleKey);
+  }
+
+  for (const moduleKey of normalizedSelection) {
+    modulesEnabled[moduleKey] = true;
+  }
+
+  return modulesEnabled;
+}
+
+async function generateUniqueTenantId(companyName: string) {
+  const base = slugifyCompany(companyName);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const suffix = crypto.randomBytes(2).toString("hex");
+    const candidate = `${base}-${suffix}`;
+    const tenantSnap = await adminDb.collection("tenants").doc(candidate).get();
+
+    if (!tenantSnap.exists) {
+      return candidate;
+    }
+  }
+
+  throw new Error("TENANT_ID_GENERATION_FAILED");
 }
 
 export async function POST(request: Request) {
+  let createdUid: string | null = null;
+
   try {
     const body = await request.json().catch(() => null);
     const parsed = signupSchema.safeParse(body);
 
     if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      return NextResponse.json({ success: false, error: issue?.message || "Invalid input." }, { status: 400 });
+      const firstIssue = parsed.error.issues[0];
+      return NextResponse.json({ ok: false, error: firstIssue?.message || "Invalid input" }, { status: 400 });
     }
 
-    const email = normalizeEmail(parsed.data.email);
-    const domain = getEmailDomain(email);
-    if (blockedDomains.has(domain)) {
-      return NextResponse.json(
-        { success: false, error: "Please use your work email address (personal email domains are not allowed)." },
-        { status: 400 }
-      );
-    }
-
-    await checkRateLimit(request, "strict", email);
-
-    const forwardedFor = request.headers.get("x-forwarded-for") || "";
-    const remoteIp = forwardedFor.split(",")[0]?.trim() || "127.0.0.1";
-    await verifyRecaptcha(parsed.data.recaptchaToken, remoteIp);
-
-    const existing = await adminAuth.getUserByEmail(email).catch(() => null);
-    if (existing) {
-      return NextResponse.json(
-        { success: false, error: "Email already exists. Please login.", loginUrl: "/login" },
-        { status: 409 }
-      );
-    }
-
-    const tenantId = `tenant_${slugifyCompany(parsed.data.company)}_${crypto.randomUUID().slice(0, 8)}`;
+    const payload = parsed.data;
+    const email = normalizeEmail(payload.email);
     const nowIso = new Date().toISOString();
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    const user = await adminAuth.createUser({
-      email,
-      password: parsed.data.password,
-      displayName: parsed.data.name,
-      emailVerified: false,
-      disabled: false,
-    });
+    const existingUserQuery = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+    if (!existingUserQuery.empty) {
+      return NextResponse.json({ ok: false, error: "Email already exists. Please login." }, { status: 409 });
+    }
 
-    await adminAuth.setCustomUserClaims(user.uid, {
-      tenantId,
-      role: "admin",
-      plan: "trial",
+    const tenantId = await generateUniqueTenantId(payload.companyName);
+
+    const authUser = await adminAuth.createUser({
+      email,
+      password: payload.password,
+      displayName: payload.fullName,
+      disabled: false,
+      emailVerified: false,
     });
+    createdUid = authUser.uid;
 
     await createTenantWorkspace({
       tenantId,
-      name: parsed.data.company,
+      name: payload.companyName,
       email,
       plan: "trial",
-      ownerId: user.uid,
+      ownerId: authUser.uid,
       trialEndsAt,
     });
 
-    await adminDb.collection("users").doc(user.uid).set({
-      uid: user.uid,
-      name: parsed.data.name,
-      email,
-      role: "admin",
+    await adminDb.collection("users").doc(authUser.uid).set({
+      uid: authUser.uid,
       tenantId,
+      email,
+      displayName: payload.fullName,
+      role: "admin",
       status: "active",
-      onboardingStatus: "pending_verification",
       createdAt: nowIso,
       updatedAt: nowIso,
+      isDeleted: false,
     });
+
+    await adminAuth.setCustomUserClaims(authUser.uid, {
+      role: "admin",
+      tenantId,
+    });
+
+    const modulesEnabled = buildModulesEnabled(payload.selectedModules);
+
+    await adminDb.collection("tenants").doc(tenantId).set(
+      {
+        termsAcceptedAt: nowIso,
+        termsAcceptedIp: getClientIp(request),
+        termsVersion: payload.termsVersion,
+        settings: {
+          timezone: payload.timezone,
+          currency: payload.currency,
+          country: payload.country,
+          state: payload.state,
+        },
+        industry: payload.industry,
+        companySize: payload.companySize,
+        selectedModules: payload.selectedModules,
+        modulesEnabled,
+        updatedAt: nowIso,
+      },
+      { merge: true }
+    );
+
+    await sendWelcomeEmail(email, payload.fullName, tenantId);
 
     const signupToken = crypto.randomUUID();
     const verificationDoc: SignupVerificationRecord = {
-      uid: user.uid,
+      uid: authUser.uid,
       email,
       tenantId,
       createdAt: FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       consumedAt: null,
-    };
+    } as SignupVerificationRecord;
 
     await adminDb.collection("signup_verifications").doc(signupToken).set(verificationDoc);
 
-    const verificationUrl = await adminAuth.generateEmailVerificationLink(email, {
-      url: `${resolveAppUrl()}/verify-email?signupToken=${encodeURIComponent(signupToken)}`,
-      handleCodeInApp: true,
-    });
-
-    await sendEmail({
-      to: email,
-      subject: "Verify your email to start your Bizosto ERP trial",
-      html: buildWelcomeHtml(parsed.data.name, verificationUrl, parsed.data.company),
-      text: `Welcome to Bizosto ERP. Verify your email and activate your trial: ${verificationUrl}`,
-    });
-
-    await adminDb.collection("signup_events").add({
-      type: "trial_signup_created",
-      uid: user.uid,
-      tenantId,
-      email,
-      company: parsed.data.company,
-      createdAt: nowIso,
-      metadata: {
-        source: "self_service_signup",
-      },
-    });
-
     return NextResponse.json({
-      success: true,
-      message: "Check your email to verify your account",
+      ok: true,
+      tenantId,
+      uid: authUser.uid,
+      message: "Account created successfully",
     });
-  } catch (error: any) {
-    if (error?.message === "RECAPTCHA_FAILED") {
-      return NextResponse.json({ success: false, error: "reCAPTCHA verification failed. Please retry." }, { status: 400 });
-    }
-    if (error?.message === "RECAPTCHA_MISCONFIGURED") {
-      return NextResponse.json({ success: false, error: "Signup is temporarily unavailable." }, { status: 503 });
+  } catch (error) {
+    console.error("signup POST error", error);
+
+    if (createdUid) {
+      try {
+        await adminAuth.deleteUser(createdUid);
+      } catch (cleanupError) {
+        console.error("signup POST cleanup error", cleanupError);
+      }
     }
 
-    console.error("signup POST error", error);
-    return NextResponse.json({ success: false, error: "Unable to complete signup." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Unable to complete signup." }, { status: 500 });
   }
 }
 
