@@ -16,6 +16,7 @@ import { verifyMFASignIn } from "@/lib/auth/mfa";
 import { Button } from "@/components/ui/button";
 import { showToast } from "@/lib/utils/toast";
 import SSOLoginButtons from "@/components/auth/SSOLoginButtons";
+import Link from "next/link";
 
 function getFriendlyAuthError(code?: string): string {
   switch (code) {
@@ -367,6 +368,12 @@ export default function LoginPage() {
 
               <div className="text-center text-xs opacity-70">or</div>
               <SSOLoginButtons tenantId={tenantId} providers={ssoProviders} />
+
+              <div className="text-center pt-2">
+                <Link href="/signup" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition">
+                  Don&apos;t have an account? Start your free trial →
+                </Link>
+              </div>
             </form>
           )}
 
