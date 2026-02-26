@@ -156,6 +156,26 @@ export async function POST(req: Request) {
         });
         break;
       }
+      case 'invoice.finalized': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
+        if (!tenantId) break;
+
+        await adminDb.collection('tenants').doc(tenantId).set(
+          {
+            lastInvoiceTax: Number(invoice.tax || 0),
+            lastInvoiceTotal: Number(invoice.total || 0),
+            lastInvoiceSubtotal: Number(invoice.subtotal || 0),
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true },
+        );
+        return NextResponse.json({ ok: true });
+      }
+      case 'customer.tax_id.created': {
+        console.info('[TAX] Tax ID created for customer', event.data.object);
+        return NextResponse.json({ ok: true });
+      }
       default:
         break;
     }

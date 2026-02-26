@@ -52,11 +52,16 @@ export async function POST(req: Request) {
     const name = String(
       tenantData.name || auth.user.displayName || auth.user.name || tenantId,
     ).trim();
+    const tenantSettings =
+      tenantData.settings && typeof tenantData.settings === 'object' ? tenantData.settings : {};
     if (!email) {
       return NextResponse.json({ ok: false, error: 'Tenant email is required' }, { status: 400 });
     }
 
-    const customerId = await getOrCreateStripeCustomer(tenantId, email, name);
+    const customerId = await getOrCreateStripeCustomer(tenantId, email, name, {
+      country: String(tenantSettings.country || 'US'),
+      state: String(tenantSettings.state || '').trim() || undefined,
+    });
     const stripe = getStripeClient();
 
     await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
@@ -67,7 +72,7 @@ export async function POST(req: Request) {
     const priceId = getStripePriceId(plan as 'starter' | 'pro' | 'enterprise');
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: priceId }],
+      items: [{ price: priceId, tax_rates: [] }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],

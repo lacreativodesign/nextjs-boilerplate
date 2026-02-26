@@ -44,6 +44,15 @@ type SubscriptionResponse = {
   cancelAtPeriodEnd?: boolean;
   trialEndsAt?: string | null;
   hasPaymentMethod?: boolean;
+  taxAmount?: number;
+  subtotalAmount?: number;
+  totalAmount?: number;
+  billingAddress?: {
+    country?: string;
+    state?: string;
+    city?: string;
+    postalCode?: string;
+  };
 };
 
 type InvoiceRecord = {
@@ -76,6 +85,28 @@ const ALL_ROLES = [
   'client',
 ];
 const PLAN_OPTIONS: Array<'starter' | 'pro' | 'enterprise'> = ['starter', 'pro', 'enterprise'];
+const countries = [
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Pakistan',
+  'India',
+  'Germany',
+  'France',
+  'Spain',
+  'Netherlands',
+  'Singapore',
+  'South Africa',
+  'Nigeria',
+  'Kenya',
+  'Brazil',
+  'Mexico',
+  'Japan',
+  'Other',
+];
 
 export default function BillingPage() {
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
@@ -89,6 +120,13 @@ export default function BillingPage() {
   const [setupClientSecret, setSetupClientSecret] = useState<string | null>(null);
   const [stripeReady, setStripeReady] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [billingAddress, setBillingAddress] = useState({
+    country: 'US',
+    state: '',
+    city: '',
+    postalCode: '',
+  });
   const stripeRef = useRef<StripeClient | null>(null);
   const cardRef = useRef<StripeCardElement | null>(null);
 
@@ -115,7 +153,18 @@ export default function BillingPage() {
     const usageJson = await usageRes.json();
     const invoicesJson = await invoicesRes.json();
 
-    if (subJson.ok) setSubscription(subJson.subscription || null);
+    if (subJson.ok) {
+      const nextSubscription = (subJson.subscription || null) as SubscriptionResponse | null;
+      setSubscription(nextSubscription);
+      if (nextSubscription?.billingAddress) {
+        setBillingAddress({
+          country: String(nextSubscription.billingAddress.country || 'US'),
+          state: String(nextSubscription.billingAddress.state || ''),
+          city: String(nextSubscription.billingAddress.city || ''),
+          postalCode: String(nextSubscription.billingAddress.postalCode || ''),
+        });
+      }
+    }
     if (usageJson.ok) setUsage(usageJson.usage || { api_calls: 0, storage: 0, users: 0 });
     if (invoicesJson.ok) setInvoices(invoicesJson.invoices || []);
   };
@@ -267,6 +316,39 @@ export default function BillingPage() {
     window.location.reload();
   }
 
+  const subtotal = Number(subscription?.subtotalAmount || plans[activePlan].price * 100);
+  const taxAmount = Number(subscription?.taxAmount || 0);
+  const totalAmount = Number(subscription?.totalAmount || subtotal + taxAmount);
+  const taxRate = subtotal > 0 ? (taxAmount / subtotal) * 100 : 0;
+
+  async function saveBillingAddress() {
+    if (!billingAddress.country.trim()) {
+      setError('Country is required');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setSuccess('');
+
+    const res = await fetch('/api/billing/address', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(billingAddress),
+    });
+    const json = await res.json();
+    setBusy(false);
+
+    if (!json.ok) {
+      setError(json.error || 'Unable to update billing address');
+      return;
+    }
+
+    setSuccess(json.message || 'Billing address updated');
+    setShowAddressForm(false);
+    void load();
+  }
+
   return (
     <RequireAuth allowed={ALL_ROLES}>
       <Script
@@ -319,7 +401,7 @@ export default function BillingPage() {
                       </span>
                     ) : null}
                     <div className="text-lg font-semibold">{plan.name}</div>
-                    <div className="mt-1 text-2xl font-bold">${plan.price}/month</div>
+                    <div className="mt-1 text-2xl font-bold">${plan.price}/month + applicable tax</div>
                     <ul className="mt-3 list-disc pl-5 text-sm text-[var(--text-muted)]">
                       {plan.features.map((feature) => (
                         <li key={feature}>{feature}</li>
@@ -336,6 +418,10 @@ export default function BillingPage() {
                 );
               })}
             </div>
+            <p className="mt-3 text-xs text-[var(--text-muted)]">
+              Tax is calculated automatically based on your billing location. The exact tax amount
+              will appear on your invoice.
+            </p>
             {setupClientSecret ? (
               <div className="mt-4 rounded border border-[var(--border-subtle)] p-4">
                 <div className="mb-2 text-sm font-medium">
@@ -380,6 +466,24 @@ export default function BillingPage() {
               </div>
             </div>
           </div>
+          <div className="mt-4 grid gap-2 text-sm md:grid-cols-3">
+            <div>
+              <div className="text-[var(--text-muted)]">Base price</div>
+              <div className="font-medium">${(subtotal / 100).toFixed(2)}</div>
+            </div>
+            {taxAmount > 0 ? (
+              <div>
+                <div className="text-[var(--text-muted)]">Tax</div>
+                <div className="font-medium">
+                  ${(taxAmount / 100).toFixed(2)} ({taxRate.toFixed(2)}%)
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <div className="text-[var(--text-muted)]">Total</div>
+              <div className="font-medium">${(totalAmount / 100).toFixed(2)}</div>
+            </div>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               disabled={busy}
@@ -418,7 +522,9 @@ export default function BillingPage() {
                   className="rounded border border-[var(--border-subtle)] p-4 text-left disabled:opacity-60"
                 >
                   <div className="text-lg font-semibold">{plans[key].name}</div>
-                  <div className="text-sm text-[var(--text-muted)]">${plans[key].price}/month</div>
+                  <div className="text-sm text-[var(--text-muted)]">
+                    ${plans[key].price}/month + applicable tax
+                  </div>
                 </button>
               ))}
             </div>
@@ -437,7 +543,7 @@ export default function BillingPage() {
                   className={`rounded border p-4 ${isCurrent ? 'border-[var(--erp-blue)]' : 'border-[var(--border-subtle)]'}`}
                 >
                   <div className="text-lg font-semibold">{plan.name}</div>
-                  <div className="mt-1 text-2xl font-bold">${plan.price}/mo</div>
+                  <div className="mt-1 text-2xl font-bold">${plan.price}/month + applicable tax</div>
                   <ul className="mt-3 list-disc pl-5 text-sm text-[var(--text-muted)]">
                     {plan.features.map((feature) => (
                       <li key={feature}>{feature}</li>
@@ -455,6 +561,71 @@ export default function BillingPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
+          <h2 className="mb-4 text-lg font-semibold">Billing Address</h2>
+          <p className="mb-3 text-sm text-[var(--text-muted)]">
+            Your billing address determines the tax rate applied to your subscription.
+          </p>
+          <div className="grid gap-2 text-sm md:grid-cols-2">
+            <div>
+              <div className="text-[var(--text-muted)]">Country</div>
+              <div className="font-medium">{billingAddress.country || '-'}</div>
+            </div>
+            <div>
+              <div className="text-[var(--text-muted)]">State</div>
+              <div className="font-medium">{billingAddress.state || '-'}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAddressForm((prev) => !prev)}
+            className="mt-4 rounded bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white"
+          >
+            Update Billing Address
+          </button>
+          {showAddressForm ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <select
+                value={billingAddress.country}
+                onChange={(e) => setBillingAddress((prev) => ({ ...prev, country: e.target.value }))}
+                className="rounded border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+              >
+                {countries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+              {billingAddress.country === 'US' || billingAddress.country === 'United States' ? (
+                <input
+                  value={billingAddress.state}
+                  onChange={(e) => setBillingAddress((prev) => ({ ...prev, state: e.target.value }))}
+                  placeholder="State"
+                  className="rounded border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+                />
+              ) : null}
+              <input
+                value={billingAddress.city}
+                onChange={(e) => setBillingAddress((prev) => ({ ...prev, city: e.target.value }))}
+                placeholder="City (optional)"
+                className="rounded border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+              />
+              <input
+                value={billingAddress.postalCode}
+                onChange={(e) => setBillingAddress((prev) => ({ ...prev, postalCode: e.target.value }))}
+                placeholder="Postal Code (optional)"
+                className="rounded border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+              />
+              <button
+                disabled={busy}
+                onClick={saveBillingAddress}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              >
+                Save Address
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">

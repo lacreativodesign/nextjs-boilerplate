@@ -53,6 +53,15 @@ export async function GET() {
         cancelAtPeriodEnd: Boolean(tenantData.cancelAtPeriodEnd ?? subscription?.cancelAtPeriodEnd),
         trialEndsAt: tenantData.trialEndsAt || null,
         hasPaymentMethod,
+        taxAmount: Number(tenantData.lastInvoiceTax || 0),
+        subtotalAmount: Number(tenantData.lastInvoiceSubtotal || 0),
+        totalAmount: Number(tenantData.lastInvoiceTotal || 0),
+        billingAddress: {
+          country: String(tenantData.settings?.country || 'US'),
+          state: String(tenantData.settings?.state || ''),
+          city: String(tenantData.settings?.city || ''),
+          postalCode: String(tenantData.settings?.postalCode || ''),
+        },
       },
     });
   } catch (error: any) {
