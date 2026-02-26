@@ -8,20 +8,7 @@ import {
   Shield, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
-
-const ALL_ITEMS = [
-  { href: "/dashboard",   label: "Overview",            icon: LayoutDashboard, roles: null },
-  { href: "/users",       label: "Users",               icon: Users,           roles: null },
-  { href: "/clients",     label: "Clients",             icon: Briefcase,       roles: null },
-  { href: "/sales",       label: "Sales & Pipeline",    icon: TrendingUp,      roles: null },
-  { href: "/projects",    label: "Projects & Delivery", icon: FolderKanban,    roles: null },
-  { href: "/production",  label: "Production",          icon: Package,         roles: null },
-  { href: "/finance",     label: "Finance",             icon: DollarSign,      roles: null },
-  { href: "/hr",          label: "HR & Team",           icon: UserCircle,      roles: null },
-  { href: "/reports",     label: "Reports",             icon: BarChart3,       roles: null },
-  { href: "/super_admin", label: "Super Admin",         icon: Shield,          roles: ["super_admin"] },
-  { href: "/settings",    label: "Settings",            icon: Settings,        roles: null },
-];
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 type SidebarProps = {
   currentRole: string;
@@ -40,6 +27,21 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
+  const { t } = useI18n();
+
+  const ALL_ITEMS = [
+    { href: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard, roles: null },
+    { href: "/users", label: t("navigation.users"), icon: Users, roles: null },
+    { href: "/clients", label: t("navigation.clients"), icon: Briefcase, roles: null },
+    { href: "/sales", label: t("navigation.sales"), icon: TrendingUp, roles: null },
+    { href: "/projects", label: t("navigation.projects"), icon: FolderKanban, roles: null },
+    { href: "/production", label: t("navigation.production"), icon: Package, roles: null },
+    { href: "/finance", label: t("navigation.finance"), icon: DollarSign, roles: null },
+    { href: "/hr", label: t("navigation.hr"), icon: UserCircle, roles: null },
+    { href: "/reports", label: t("navigation.reports"), icon: BarChart3, roles: null },
+    { href: "/super_admin", label: t("navigation.superAdmin"), icon: Shield, roles: ["super_admin"] },
+    { href: "/settings", label: t("common.settings"), icon: Settings, roles: null },
+  ];
 
   const navItems = ALL_ITEMS.filter(
     (item) => item.roles === null || item.roles.includes(currentRole)
