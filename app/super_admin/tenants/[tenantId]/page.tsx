@@ -14,27 +14,47 @@ type Tenant = {
   status: "active" | "suspended";
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   modulesEnabled: Record<string, boolean>;
+  rolesEnabled: Record<string, boolean>;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
   planSetBy?: { uid: string; role: "super_admin" } | null;
   planUpdatedAt?: string | null;
 };
 
-const moduleGroups = {
-  Core: [
-    "admin",
-    "clients",
-    "users",
-    "sales",
-    "accountManager",
-    "production",
-    "finance",
-    "humanResource",
-    "dashboard",
-    "notifications",
+const moduleGroups: Record<string, Array<{ key: string; label: string }>> = {
+  "Core Modules": [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "clients", label: "Clients" },
+    { key: "sales", label: "Sales" },
+    { key: "finance", label: "Finance" },
+    { key: "hr", label: "Human Resources" },
+    { key: "production", label: "Production" },
+    { key: "admin", label: "Admin" },
+    { key: "notifications", label: "Notifications" },
   ],
-  "Management Add-ons": ["salesManager", "headOfProjectManagement", "headOfProduction"],
+  "Add-on Modules": [
+    { key: "projects", label: "Projects" },
+    { key: "reports", label: "Reports" },
+    { key: "crm", label: "CRM" },
+    { key: "inventory", label: "Inventory" },
+    { key: "approvals", label: "Approvals" },
+    { key: "billing", label: "Billing" },
+    { key: "support", label: "Support" },
+  ],
 };
+
+const roleList: Array<{ key: string; label: string }> = [
+  { key: "admin", label: "Admin" },
+  { key: "sales_manager", label: "Sales Manager" },
+  { key: "sales", label: "Sales" },
+  { key: "am_manager", label: "Account Manager (Head)" },
+  { key: "am", label: "Account Manager" },
+  { key: "production_manager", label: "Production Manager" },
+  { key: "production", label: "Production" },
+  { key: "finance", label: "Finance" },
+  { key: "hr", label: "HR" },
+  { key: "client", label: "Client Portal" },
+];
 
 const planModules = [
   { key: "crm", label: "CRM" },
@@ -56,10 +76,12 @@ export default function TenantDetailPage() {
   const [logoMetadata, setLogoMetadata] = useState<{ width: number; height: number; format: string } | null>(null);
   const [savingBrand, setSavingBrand] = useState(false);
   const [savingModules, setSavingModules] = useState(false);
+  const [savingRoles, setSavingRoles] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingPlanModules, setSavingPlanModules] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "pro" | "enterprise">("pro");
+  const [rolesEnabled, setRolesEnabled] = useState<Record<string, boolean>>({});
 
   const loadTenant = async () => {
     const res = await fetch(`/api/super_admin/tenants/${tenantId}`, {
@@ -68,7 +90,7 @@ export default function TenantDetailPage() {
     });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
-      setTenant(json.tenant);
+      setTenant({ ...json.tenant, rolesEnabled: json.tenant?.rolesEnabled || {} });
       setBrandName(json.tenant?.brand?.name || json.tenant?.name || "");
       if (json.tenant?.plan) {
         setSelectedPlan(json.tenant.plan);
@@ -81,6 +103,12 @@ export default function TenantDetailPage() {
       loadTenant();
     }
   }, [tenantId]);
+
+  useEffect(() => {
+    if (tenant?.rolesEnabled) {
+      setRolesEnabled(tenant.rolesEnabled);
+    }
+  }, [tenant]);
 
   const moduleState = useMemo(() => tenant?.modulesEnabled || {}, [tenant]);
   const planModuleState = useMemo(() => tenant?.modules || {}, [tenant]);
@@ -133,6 +161,27 @@ export default function TenantDetailPage() {
       await loadTenant();
     } finally {
       setSavingModules(false);
+    }
+  };
+
+  const updateRoles = async (roles: Record<string, boolean>) => {
+    if (!tenant) return;
+    setSavingRoles(true);
+
+    try {
+      const res = await fetch(`/api/super_admin/tenants/${tenant.id}/roles`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ rolesEnabled: roles }),
+      });
+      const json = await res.json().catch(() => null);
+      if (json?.ok) {
+        setTenant((prev) => (prev ? { ...prev, rolesEnabled: json.rolesEnabled || roles } : prev));
+        alert("Role settings updated.");
+      }
+    } finally {
+      setSavingRoles(false);
     }
   };
 
@@ -320,14 +369,14 @@ export default function TenantDetailPage() {
             <div key={group} className="rounded-2xl border border-[var(--border-subtle)] p-4">
               <div className="text-sm font-semibold mb-3">{group}</div>
               <div className="space-y-3">
-                {modules.map((moduleKey) => (
-                  <label key={moduleKey} className="flex items-center justify-between text-sm">
-                    <span>{moduleKey}</span>
+                {modules.map((module) => (
+                  <label key={module.key} className="flex items-center justify-between text-sm">
+                    <span>{module.label}</span>
                     <input
                       type="checkbox"
-                      checked={moduleState[moduleKey] !== false}
+                      checked={moduleState[module.key] !== false}
                       onChange={(e) => {
-                        const nextModules = { ...moduleState, [moduleKey]: e.target.checked };
+                        const nextModules = { ...moduleState, [module.key]: e.target.checked };
                         setTenant((prev) => (prev ? { ...prev, modulesEnabled: nextModules } : prev));
                       }}
                     />
@@ -345,6 +394,43 @@ export default function TenantDetailPage() {
             disabled={savingModules}
           >
             {savingModules ? "Saving..." : "Save Modules"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <div>
+          <h3 className="section-title">Role Access</h3>
+          <p className="section-subtitle">Enable or disable roles for this tenant. Disabled roles cannot be assigned to users.</p>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--border-subtle)] p-4">
+          <div className="space-y-3">
+            {roleList.map((role) => (
+              <label key={role.key} className="flex items-center justify-between text-sm">
+                <span>{role.label}</span>
+                <input
+                  type="checkbox"
+                  checked={rolesEnabled[role.key] !== false}
+                  onChange={(e) => {
+                    setRolesEnabled((prev) => ({
+                      ...prev,
+                      [role.key]: e.target.checked,
+                    }));
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            className="rounded-xl bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => updateRoles(rolesEnabled)}
+            disabled={savingRoles}
+          >
+            {savingRoles ? "Saving..." : "Save Role Settings"}
           </button>
         </div>
       </div>

@@ -17,6 +17,80 @@ import { verifyRequestSignature, verifyRotatingApiKey } from "@/lib/security/req
 import { buildRateLimitHeaders, checkRateLimit } from "@/lib/rate-limit/limiter";
 import { applyVersionHeaders, getApiVersion } from "@/lib/api/versioning";
 
+const PATH_TO_MODULE: Record<string, string> = {
+  "/finance": "finance",
+  "/sales": "sales",
+  "/sales_manager": "sales",
+  "/hr": "hr",
+  "/production": "production",
+  "/production_manager": "production",
+  "/am": "sales",
+  "/am_manager": "sales",
+  "/clients": "clients",
+  "/projects": "projects",
+  "/reports": "reports",
+  "/billing": "billing",
+  "/crm": "crm",
+  "/inventory": "inventory",
+  "/approvals": "approvals",
+  "/support": "support",
+  "/notifications": "notifications",
+};
+
+function resolveModuleForPath(pathname: string): string | null {
+  const matched = Object.entries(PATH_TO_MODULE).find(([path]) => pathname === path || pathname.startsWith(`${path}/`));
+  return matched?.[1] || null;
+}
+
+function shouldSkipModuleCheck(pathname: string): boolean {
+  return pathname.startsWith("/super_admin")
+    || pathname.startsWith("/dashboard")
+    || pathname.startsWith("/login")
+    || pathname.startsWith("/signup")
+    || pathname.startsWith("/module-disabled")
+    || pathname.startsWith("/api")
+    || pathname.startsWith("/unauthorized")
+    || pathname.startsWith("/forbidden")
+    || pathname.startsWith("/offline");
+}
+
+function parseModuleCache(value: string | undefined): { tenantId: string; moduleKey: string; enabled: boolean; expiresAt: number } | null {
+  if (!value) return null;
+  const [tenantId, moduleKey, enabledValue, expiresAtValue] = value.split(":");
+  const expiresAt = Number(expiresAtValue || 0);
+  if (!tenantId || !moduleKey || Number.isNaN(expiresAt)) return null;
+  return {
+    tenantId,
+    moduleKey,
+    enabled: enabledValue === "1",
+    expiresAt,
+  };
+}
+
+async function fetchModuleEnabled(req: NextRequest, tenantId: string, moduleKey: string): Promise<boolean | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180);
+
+  try {
+    const url = new URL(`/api/tenant/module-check?tenantId=${encodeURIComponent(tenantId)}&module=${encodeURIComponent(moduleKey)}`, req.url);
+    const res = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    if (!json?.ok || typeof json?.enabled !== "boolean") return null;
+    return json.enabled;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+
 async function fetchSubscriptionStatus(req: NextRequest) {
   try {
     const res = await fetch(new URL("/api/subscription/status", req.url), {
@@ -324,6 +398,42 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
   }
 
+  if (!isApiRequest && sessionToken && !shouldSkipModuleCheck(pathname)) {
+    const moduleKey = resolveModuleForPath(pathname);
+    const cookieTenantId = req.cookies.get("tenant_id")?.value;
+
+    if (moduleKey && cookieTenantId) {
+      const cacheKey = `module_gate_${moduleKey}`;
+      const cached = parseModuleCache(req.cookies.get(cacheKey)?.value);
+      let moduleEnabled: boolean | null = null;
+
+      if (cached && cached.tenantId === cookieTenantId && cached.moduleKey === moduleKey && cached.expiresAt > Date.now()) {
+        moduleEnabled = cached.enabled;
+      } else {
+        moduleEnabled = await fetchModuleEnabled(req, cookieTenantId, moduleKey);
+      }
+
+      if (moduleEnabled === false) {
+        const redirectUrl = req.nextUrl.clone();
+        redirectUrl.pathname = "/module-disabled";
+        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+      }
+
+      if (moduleEnabled !== null) {
+        const response = applyRateHeaders(pathname, NextResponse.next(), rateContext);
+        response.headers.set("x-module-check", `${moduleKey}:${moduleEnabled ? "enabled" : "disabled"}`);
+        response.cookies.set(cacheKey, `${cookieTenantId}:${moduleKey}:${moduleEnabled ? "1" : "0"}:${Date.now() + 30_000}`, {
+          path: "/",
+          maxAge: 30,
+          sameSite: "lax",
+          httpOnly: true,
+          secure: true,
+        });
+        return response;
+      }
+    }
+  }
+
   if (isApiRequest && sessionRole) {
     const allowedRoles = rolesAllowedForApi(pathname);
     if (allowedRoles && !allowedRoles.includes(sessionRole)) {
@@ -379,6 +489,15 @@ export const config = {
     "/production-manager/:path*",
     "/production_manager/:path*",
     "/hr/:path*",
+    "/dashboard/:path*",
+    "/clients/:path*",
+    "/projects/:path*",
+    "/reports/:path*",
+    "/crm/:path*",
+    "/inventory/:path*",
+    "/approvals/:path*",
+    "/support/:path*",
+    "/notifications/:path*",
     "/client/:path*",
   ],
 };

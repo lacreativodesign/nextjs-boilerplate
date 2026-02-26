@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../../_utils";
-import { DEFAULT_MODULES } from "@/lib/tenant/constants";
+import { DEFAULT_MODULES, DEFAULT_ROLES } from "@/lib/tenant/constants";
 import { writeAuditLog } from "@/lib/tenant/audit";
 import { normalizePlan, resolveTenantModules } from "@/app/lib/plan-enforcement";
 
@@ -28,6 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
         status: data.status || "active",
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
+        rolesEnabled: data.rolesEnabled || DEFAULT_ROLES,
         plan,
         modules: resolveTenantModules({
           plan,

@@ -9,6 +9,7 @@ import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
 import { logActivity } from '@/lib/activity/tracker';
+import { isRoleEnabled } from '@/lib/tenant/access';
 
 export const runtime = 'nodejs';
 
@@ -74,6 +75,16 @@ export async function POST(req: Request) {
 
     const targetRole = (role || '').toLowerCase();
     const passwordToUse = String(password || '').trim() || crypto.randomBytes(16).toString('hex');
+
+    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantData = tenantDoc.data() || {};
+    const rolesEnabled = (tenantData.rolesEnabled || {}) as Record<string, boolean>;
+    if (!isRoleEnabled(rolesEnabled, targetRole)) {
+      return NextResponse.json(
+        { error: 'This role is not enabled for your workspace. Contact your administrator.' },
+        { status: 400 }
+      );
+    }
 
     // 5) Check duplicate email
     const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);

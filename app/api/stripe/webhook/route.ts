@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
-import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
+import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
 import { PLAN_MODULES } from "../../../../app/config/plans";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
 import { createRoleNotifications } from "@/lib/notifications";
@@ -240,6 +240,7 @@ async function ensureTenantForCheckout({
         name,
       },
       modulesEnabled: DEFAULT_MODULES,
+      rolesEnabled: DEFAULT_ROLES,
       plan: "pro",
       modules: PLAN_MODULES.pro,
       planSetBy: { uid: "system", role: "super_admin" },
