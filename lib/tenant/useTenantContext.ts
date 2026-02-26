@@ -34,6 +34,7 @@ export type TenantContext = {
     }>;
   } | null;
   modulesEnabled: Record<string, boolean>;
+  rolesEnabled?: Record<string, boolean>;
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
   subscriptionState?: SubscriptionState;

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import * as admin from "firebase-admin";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../_utils";
-import { DEFAULT_MODULES, DEFAULT_TENANT_BRAND } from "@/lib/tenant/constants";
+import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "@/lib/tenant/constants";
 import { writeAuditLog } from "@/lib/tenant/audit";
 import { queueEmailEvent } from "@/lib/emailEvents";
 import { normalizePlan, resolvePlanModules, resolveTenantModules } from "@/app/lib/plan-enforcement";
@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         status: data.status || "active",
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
+        rolesEnabled: data.rolesEnabled || DEFAULT_ROLES,
         plan,
         modules: resolveTenantModules({
           plan,
@@ -82,6 +83,9 @@ export async function POST(req: NextRequest) {
       modulesEnabled: {
         ...DEFAULT_MODULES,
         ...modulesEnabled,
+      },
+      rolesEnabled: {
+        ...DEFAULT_ROLES,
       },
       plan,
       modules,

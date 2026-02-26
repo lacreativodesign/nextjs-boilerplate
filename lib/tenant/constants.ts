@@ -7,17 +7,32 @@ export const DEFAULT_TENANT_BRAND = {
 };
 
 export const DEFAULT_MODULES = {
-  admin: true,
+  dashboard: true,
   clients: true,
-  users: true,
   sales: true,
-  accountManager: true,
+  finance: true,
+  hr: true,
+  production: true,
+  projects: true,
+  reports: true,
+  notifications: true,
+  admin: true,
+  crm: true,
+  inventory: true,
+  approvals: true,
+  billing: true,
+  support: true,
+};
+
+export const DEFAULT_ROLES = {
+  admin: true,
+  sales_manager: true,
+  sales: true,
+  am_manager: true,
+  am: true,
+  production_manager: true,
   production: true,
   finance: true,
-  humanResource: true,
-  dashboard: true,
-  notifications: true,
-  salesManager: true,
-  headOfProjectManagement: true,
-  headOfProduction: true,
+  hr: true,
+  client: true,
 };

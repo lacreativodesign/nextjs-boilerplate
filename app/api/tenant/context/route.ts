@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
             brand: tenant.brand || null,
             whiteLabel: tenant.whiteLabel || null,
             modulesEnabled: tenant.modulesEnabled || {},
+            rolesEnabled: tenant.rolesEnabled || {},
             plan: planState?.plan || "pro",
             modules: planState?.modules || {},
             subscriptionState,

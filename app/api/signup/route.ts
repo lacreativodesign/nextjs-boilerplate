@@ -6,7 +6,7 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { WORKFLOW_TEMPLATES } from "@/lib/automation/workflow-templates";
 import { sendEmail } from "@/lib/email/email-service";
 import { sendWelcomeEmail } from "@/lib/email/onboarding-emails";
-import { DEFAULT_MODULES } from "@/lib/tenant/constants";
+import { DEFAULT_MODULES, DEFAULT_ROLES } from "@/lib/tenant/constants";
 import { createTenantWorkspace } from "@/lib/tenant/onboarding";
 
 export const runtime = "nodejs";
@@ -182,6 +182,7 @@ export async function POST(request: Request) {
         companySize: payload.companySize,
         selectedModules: payload.selectedModules,
         modulesEnabled,
+        rolesEnabled: DEFAULT_ROLES,
         updatedAt: nowIso,
       },
       { merge: true }
