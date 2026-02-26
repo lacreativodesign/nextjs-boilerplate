@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 type Stats = {
   users: number;
@@ -41,6 +42,7 @@ function StatCard({
 }
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -89,13 +91,13 @@ export default function DashboardPage() {
         <StatCard label="Team Members" value={val(stats?.users ?? 0)} sub="Active users" href="/users" />
         <StatCard label="Clients" value={val(stats?.clients ?? 0)} sub="Total accounts" href="/clients" />
         <StatCard
-          label="Active Projects"
+          label={t("dashboard.widgets.activeProjects")}
           value={val(stats?.activeProjects ?? 0)}
           sub="In progress"
           href="/projects"
         />
         <StatCard
-          label="Open Invoices"
+          label={t("dashboard.widgets.openInvoices")}
           value={val(stats?.openInvoices ?? 0)}
           sub="Pending payment"
           href="/finance/invoices"

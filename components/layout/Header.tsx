@@ -16,7 +16,7 @@ type HeaderProps = {
 
 export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const router = useRouter();
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -63,7 +63,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
               type="button"
               onClick={() => setLangOpen((p) => !p)}
               className={`${iconBtn} text-base`}
-              aria-label="Language"
+              aria-label={t("common.language")}
             >
               {currentLocale.flag}
             </button>
@@ -99,8 +99,8 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
             type="button"
             onClick={handleLogout}
             className={iconBtn}
-            aria-label="Logout"
-            title="Logout"
+            aria-label={t("common.logout")}
+            title={t("common.logout")}
           >
             <LogOut className="h-4 w-4" />
           </button>
