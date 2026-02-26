@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type SystemHealth = {
@@ -38,6 +39,12 @@ export default function SuperAdminSystemHealthPage() {
           <h1 className="page-title">System Health</h1>
           <p className="page-subtitle">Notification + email delivery telemetry.</p>
         </div>
+        <Link
+          href="/super_admin/system-health/full"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm font-medium hover:border-[var(--erp-blue)]"
+        >
+          Run Full System Health Check
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -26,7 +26,7 @@ const ACTION_LINKS = [
     desc: "View, create, and manage tenant workspaces." },
   { title: "All Users", href: "/super_admin/users",
     desc: "View every user across all tenants." },
-  { title: "System Health", href: "/super_admin/system-health",
+  { title: "System Health", href: "/super_admin/system-health/full",
     desc: "Monitor Firebase, API, and service status." },
   { title: "Audit Logs", href: "/super_admin/audit",
     desc: "Review all platform activity and changes." },
