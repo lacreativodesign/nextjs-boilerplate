@@ -1,77 +1,56 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb } from "../../../../../lib/firebaseAdmin";
-import { createRoleNotifications } from "../../../../../lib/notifications";
-import { writeAuditLog } from "../../../../../lib/tenant/audit";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { disconnectConnectAccount } from "@/lib/stripe/connect";
 import { requireTenantStripeConnect } from "../_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   try {
     const auth = await requireTenantStripeConnect();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantRef = adminDb.collection("tenants").doc(auth.user.tenantId);
+    const tenantId = String(auth.user.tenantId || "");
+    const tenantRef = adminDb.collection("tenants").doc(tenantId);
     const tenantSnap = await tenantRef.get();
-    if (!tenantSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Tenant not found." }, { status: 404 });
+    const tenantData = tenantSnap.data() || {};
+    const accountId = typeof tenantData.stripeConnectAccountId === "string" ? tenantData.stripeConnectAccountId : "";
+
+    if (!accountId) {
+      return NextResponse.json({ ok: false, error: "No Stripe account connected" }, { status: 400 });
     }
 
-    const stripeConnect = (tenantSnap.data()?.stripeConnect || {}) as Record<string, any>;
-    if (stripeConnect.status !== "connected") {
-      return NextResponse.json({ ok: true, status: "disconnected" });
-    }
+    await disconnectConnectAccount(accountId);
 
+    const now = new Date().toISOString();
     await tenantRef.set(
       {
-        "stripeConnect.enabled": false,
-        "stripeConnect.status": "disconnected",
-        "stripeConnect.accountId": null,
-        "stripeConnect.accountEmail": null,
-        "stripeConnect.disconnectedAt": admin.firestore.FieldValue.serverTimestamp(),
+        stripeConnectAccountId: null,
+        stripeConnectStatus: "disconnected",
+        stripeConnectEmail: null,
+        stripeConnectBusinessName: null,
+        stripeConnectConnectedAt: null,
+        stripeConnectChargesEnabled: false,
+        stripeConnectPayoutsEnabled: false,
+        updatedAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
 
-    await writeAuditLog({
-      tenantId: auth.user.tenantId,
-      actorUserId: auth.user.uid,
-      actorName: auth.user.displayName || auth.user.email || null,
-      actorRole: auth.user.role,
-      actionType: "stripe_connect_disconnected",
-      entityType: "tenant",
-      entityId: auth.user.tenantId,
-      metadata: {
-        stripeAccountId: stripeConnect.accountId || null,
-        stripeAccountEmail: stripeConnect.accountEmail || null,
-      },
+    await adminDb.collection("audit_logs").add({
+      tenantId,
+      action: "stripe_connect_disconnected",
+      performedBy: auth.user.uid,
+      details: { accountId },
+      timestamp: now,
     });
 
-    await createRoleNotifications({
-      tenantId: auth.user.tenantId,
-      roles: ["admin"],
-      title: "Stripe disconnected",
-      body: "Stripe Connect has been disconnected. You can reconnect anytime.",
-      type: "warning",
-      priority: "normal",
-      entityType: "tenant",
-      entityId: auth.user.tenantId,
-      deepLink: "/settings/payments",
-      createdBy: { uid: auth.user.uid, name: auth.user.displayName || auth.user.email || "Tenant admin" },
-      metadata: {
-        stripeAccountId: stripeConnect.accountId || null,
-        stripeAccountEmail: stripeConnect.accountEmail || null,
-      },
-    });
-
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    const message = err?.message || "Unable to disconnect Stripe.";
+    return NextResponse.json({ ok: true, message: "Stripe account disconnected" });
+  } catch (error: any) {
+    const message = error?.message || "Unable to disconnect Stripe account.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
