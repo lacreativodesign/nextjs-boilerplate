@@ -30,6 +30,8 @@ const ACTION_LINKS = [
     desc: "Monitor Firebase, API, and service status." },
   { title: "Audit Logs", href: "/super_admin/audit",
     desc: "Review all platform activity and changes." },
+  { title: "Payment Terminal", href: "/super_admin/payments",
+    desc: "Subscription revenue, billing status, and transaction history." },
   { title: "Activity Feed", href: "/super_admin/activity",
     desc: "Live stream of platform-wide events." },
   { title: "Backups", href: "/super_admin/backups",
