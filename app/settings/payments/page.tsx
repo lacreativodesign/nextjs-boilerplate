@@ -1,165 +1,218 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 
-type StripeConnectState = {
-  enabled?: boolean;
-  accountId?: string | null;
-  accountEmail?: string | null;
-  status?: "connected" | "disconnected";
-  connectedAt?: string | null;
-  disconnectedAt?: string | null;
-};
-
-type TenantContext = {
-  tenant?: {
-    id: string;
-    name: string;
-    modules?: Record<string, boolean>;
-    stripeConnect?: StripeConnectState | null;
-  } | null;
+type ConnectStatusResponse = {
+  ok: boolean;
+  connected: boolean;
+  accountId: string | null;
+  email: string | null;
+  businessName: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  connectedAt: string | null;
+  error?: string;
 };
 
 export default function SettingsPaymentsPage() {
-  const [context, setContext] = useState<TenantContext | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<ConnectStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadContext = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch("/api/tenant/context", { credentials: "include", cache: "no-store" });
-    const data = (await res.json().catch(() => null)) as TenantContext | null;
-    setContext(data);
-    setLoading(false);
+  const loadStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/stripe/connect/status", {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const payload = (await response.json()) as ConnectStatusResponse;
+      if (!response.ok || !payload.ok) {
+        setError(payload.error || "Unable to load Stripe connection status.");
+        return;
+      }
+      setStatus(payload);
+      setError(null);
+    } catch {
+      setError("Unable to load Stripe connection status.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadStatus();
   }, []);
 
   useEffect(() => {
-    loadContext();
-  }, [loadContext]);
+    const connectResult = searchParams.get("connect");
+    if (!connectResult) {
+      return;
+    }
 
-  const stripeConnect = context?.tenant?.stripeConnect || null;
-  const moduleEnabled = context?.tenant?.modules?.client_stripe_connect !== false;
+    if (connectResult === "success") {
+      toast.success("Stripe account connected successfully!");
+    }
 
-  const statusLabel = useMemo(() => {
-    if (!moduleEnabled) return "Locked";
-    if (stripeConnect?.status === "connected") return "Connected";
-    return "Disconnected";
-  }, [moduleEnabled, stripeConnect?.status]);
+    if (connectResult === "error") {
+      toast.error("Failed to connect Stripe account. Please try again.");
+    }
 
-  const startConnect = useCallback(() => {
-    setError(null);
-    if (!moduleEnabled) return;
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "/api/stripe/connect/start";
-    document.body.appendChild(form);
-    form.submit();
-  }, [moduleEnabled]);
+    router.replace("/settings/payments");
+  }, [router, searchParams]);
 
-  const disconnect = useCallback(async () => {
+  const connectedDate = useMemo(() => {
+    if (!status?.connectedAt) {
+      return "-";
+    }
+    const date = new Date(status.connectedAt);
+    if (Number.isNaN(date.getTime())) {
+      return status.connectedAt;
+    }
+    return date.toLocaleString();
+  }, [status?.connectedAt]);
+
+  const handleConnect = async () => {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/stripe/connect/disconnect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch("/api/stripe/connect/start", {
+        method: "GET",
         credentials: "include",
       });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        setError(payload?.error || "Unable to disconnect.");
+      const payload = await response.json();
+      if (!response.ok || !payload.ok || !payload.url) {
+        setError(payload.error || "Unable to start Stripe Connect.");
+        return;
       }
-      await loadContext();
+      window.location.href = payload.url;
+    } catch {
+      setError("Unable to start Stripe Connect.");
     } finally {
       setBusy(false);
     }
-  }, [loadContext]);
+  };
+
+  const handleDisconnect = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to disconnect your Stripe account? Your clients will no longer be able to make payments until you reconnect.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/stripe/connect/disconnect", {
+        method: "POST",
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        setError(payload.error || "Unable to disconnect Stripe account.");
+        return;
+      }
+
+      toast.success("Stripe account disconnected");
+      await loadStatus();
+    } catch {
+      setError("Unable to disconnect Stripe account.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      <h2 style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>Payments</h2>
-      <p style={{ marginTop: 8, color: "#6b7280", fontSize: 15 }}>
-        Connect your Stripe account to collect payments directly into your own Stripe account.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Payment Settings</h2>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          Connect your Stripe account to accept payments from your clients
+        </p>
+      </div>
 
-      <div
-        style={{
-          marginTop: 24,
-          background: "#fff",
-          borderRadius: 16,
-          padding: 24,
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 6px 16px rgba(15, 23, 42, 0.05)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>Stripe Connect</div>
-            <div style={{ marginTop: 6, color: "#6b7280", fontSize: 14 }}>
-              Status:{" "}
-              <span style={{ fontWeight: 600, color: moduleEnabled ? "#111827" : "#9ca3af" }}>
-                {loading ? "Loading..." : statusLabel}
-              </span>
+      <section className="card space-y-4 p-6">
+        {loading ? (
+          <p className="text-sm text-[var(--text-muted)]">Loading Stripe Connect status...</p>
+        ) : status?.connected ? (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                  Connected
+                </div>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Stripe account connected</h3>
+                <p className="text-sm text-[var(--text-muted)]">Business: {status.businessName || "-"}</p>
+                <p className="text-sm text-[var(--text-muted)]">Email: {status.email || "-"}</p>
+                <p className="text-sm text-[var(--text-muted)]">Connected: {connectedDate}</p>
+              </div>
+
+              <button className="btn" onClick={handleDisconnect} disabled={busy}>
+                {busy ? "Disconnecting..." : "Disconnect"}
+              </button>
             </div>
-            {stripeConnect?.status === "connected" && (
-              <div style={{ marginTop: 6, color: "#6b7280", fontSize: 14 }}>
-                Connected account:{" "}
-                <span style={{ fontWeight: 600, color: "#111827" }}>
-                  {stripeConnect?.accountEmail || "Stripe account linked"}
-                </span>
-              </div>
-            )}
-            {!moduleEnabled && (
-              <div style={{ marginTop: 10, color: "#ef4444", fontSize: 13, fontWeight: 600 }}>
-                Module disabled by super admin. Contact Bizosto to enable.
-              </div>
-            )}
-          </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            {stripeConnect?.status === "connected" ? (
-              <button
-                onClick={disconnect}
-                disabled={!moduleEnabled || busy}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ef4444",
-                  background: "transparent",
-                  color: "#ef4444",
-                  fontWeight: 600,
-                  cursor: moduleEnabled ? "pointer" : "not-allowed",
-                }}
-              >
-                {busy ? "Disconnecting..." : "Disconnect Stripe"}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm">
+                Charges Enabled: {status.chargesEnabled ? "✅ Yes" : "❌ No"}
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm">
+                Payouts Enabled: {status.payoutsEnabled ? "✅ Yes" : "❌ No"}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              Platform Handling Fee: 0.5% is automatically deducted from each transaction processed through Bizosto.
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-3">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#635BFF] text-sm font-bold text-white">S</div>
+              <h3 className="text-lg font-semibold text-[var(--text-primary)]">Accept Payments from Clients</h3>
+              <p className="text-sm text-[var(--text-muted)]">
+                Connect your Stripe account to start accepting invoice payments. A 0.5% platform handling fee applies to all transactions.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button className="btn" onClick={handleConnect} disabled={busy}>
+                {busy ? "Redirecting..." : "Connect Stripe Account"}
               </button>
-            ) : (
-              <button
-                onClick={startConnect}
-                disabled={!moduleEnabled || busy}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: moduleEnabled ? "#111827" : "#e5e7eb",
-                  color: moduleEnabled ? "#fff" : "#9ca3af",
-                  fontWeight: 600,
-                  cursor: moduleEnabled ? "pointer" : "not-allowed",
-                }}
-              >
-                {busy ? "Please wait..." : "Connect Stripe"}
-              </button>
-            )}
+              <p className="text-xs text-[var(--text-muted)]">
+                You&apos;ll be redirected to Stripe to authorize the connection. You&apos;ll return here when complete.
+              </p>
+            </div>
+          </>
+        )}
+
+        {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
+      </section>
+
+      <section className="card p-6">
+        <h3 className="text-lg font-semibold text-[var(--text-primary)]">How it works</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">1. Connect</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Link your Stripe account securely via OAuth</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">2. Invoice</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Send invoices to your clients through Bizosto</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">3. Get Paid</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Clients pay online, funds go directly to your Stripe account</p>
           </div>
         </div>
-
-        {error && (
-          <div style={{ marginTop: 16, color: "#ef4444", fontSize: 14, fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   );
 }

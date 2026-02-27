@@ -19,6 +19,11 @@ type Tenant = {
   modules?: Record<string, boolean>;
   planSetBy?: { uid: string; role: "super_admin" } | null;
   planUpdatedAt?: string | null;
+  stripeConnectAccountId?: string | null;
+  stripeConnectStatus?: string | null;
+  stripeConnectEmail?: string | null;
+  stripeConnectChargesEnabled?: boolean;
+  stripeConnectPayoutsEnabled?: boolean;
 };
 
 const moduleGroups: Record<string, Array<{ key: string; label: string }>> = {
@@ -355,6 +360,46 @@ export default function TenantDetailPage() {
               Brand settings are locked for tenant admins and updated centrally by Super Admin.
             </div>
           </div>
+        </div>
+
+        <div className="card p-6 space-y-4">
+          <div>
+            <h3 className="section-title">Stripe Connect</h3>
+            <p className="section-subtitle">Read-only tenant payment connection status.</p>
+          </div>
+          {tenant.stripeConnectAccountId ? (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
+                <span className="text-[var(--text-muted)]">Status</span>
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                  {tenant.stripeConnectStatus || "active"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
+                <span className="text-[var(--text-muted)]">Account ID</span>
+                <span>
+                  {tenant.stripeConnectAccountId.slice(0, 8)}...
+                  {tenant.stripeConnectAccountId.slice(-4)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
+                <span className="text-[var(--text-muted)]">Email</span>
+                <span>{tenant.stripeConnectEmail || "-"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
+                <span className="text-[var(--text-muted)]">Charges Enabled</span>
+                <span>{tenant.stripeConnectChargesEnabled ? "Yes" : "No"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
+                <span className="text-[var(--text-muted)]">Payouts Enabled</span>
+                <span>{tenant.stripeConnectPayoutsEnabled ? "Yes" : "No"}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm text-[var(--text-muted)]">
+              Not connected
+            </div>
+          )}
         </div>
       </div>
 
