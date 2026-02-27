@@ -14,6 +14,7 @@ type InvoiceDoc = {
   amountSubtotalUsd?: number;
   amountTaxUsd?: number;
   amountTotalUsd?: number;
+  taxRateName?: string;
   totalPaid?: number;
   status?: string;
   dueDate?: unknown;
@@ -125,6 +126,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           discount: 0,
           tax,
           taxRate,
+          taxLabel: invoice.taxRateName ? `${String(invoice.taxRateName)} (${taxRate}%)` : undefined,
           total,
           amountPaid,
           notes: invoice.notes || null,

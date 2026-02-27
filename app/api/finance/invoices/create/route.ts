@@ -20,7 +20,7 @@ import { validateRequest } from "@/lib/validations/validate";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
-import { calculateTax } from "@/lib/finance/tax";
+import { calculateTax } from "@/lib/tax/calculator";
 import { incrementTenantStats } from "@/lib/tenant/stats";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +133,7 @@ export async function POST(req: Request) {
     let taxRate = 0;
     let taxRateName = "No Tax";
     let taxRateId = parseString(body?.taxRateId).trim() || null;
+    let taxInclusive = false;
 
     const exemptionsSnap = await adminDb
       .collection("tax_exemptions")
@@ -148,9 +149,10 @@ export async function POST(req: Request) {
         const taxRateDoc = await adminDb.collection("tax_rates").doc(taxRateId).get();
         if (taxRateDoc.exists) {
           const rateData = taxRateDoc.data();
-          if (rateData && rateData.tenantId === tenantId && rateData.isActive) {
+          if (rateData && rateData.tenantId === tenantId && rateData.isActive && rateData.isDeleted !== true) {
             taxRate = parseNumber(rateData.rate, 0);
             taxRateName = parseString(rateData.name).trim() || "Tax";
+            taxInclusive = Boolean(rateData.inclusive);
           } else {
             taxRateId = null;
           }
@@ -171,16 +173,32 @@ export async function POST(req: Request) {
         if (!defaultTaxSnap.empty) {
           const defaultRateDoc = defaultTaxSnap.docs[0];
           const rateData = defaultRateDoc.data();
-          taxRate = parseNumber(rateData.rate, 0);
-          taxRateName = parseString(rateData.name).trim() || "Tax";
-          taxRateId = defaultRateDoc.id;
+          if (rateData?.isDeleted !== true) {
+            taxRate = parseNumber(rateData.rate, 0);
+            taxRateName = parseString(rateData.name).trim() || "Tax";
+            taxRateId = defaultRateDoc.id;
+            taxInclusive = Boolean(rateData.inclusive);
+          }
         }
       }
     }
 
-    const subtotalInCurrency = sanitizedItems.reduce((sum, item) => sum + item.qty * item.unitPriceUsd, 0);
-    const taxCalculation = calculateTax(subtotalInCurrency, taxRate);
-    const taxAmountInCurrency = taxCalculation.taxAmount;
+    const taxCalculation = calculateTax(
+      sanitizedItems.map((item) => ({ description: item.name, quantity: item.qty, unitPrice: item.unitPriceUsd })),
+      taxRateId
+        ? [
+            {
+              id: taxRateId,
+              name: taxRateName,
+              rate: taxRate,
+              inclusive: taxInclusive,
+            },
+          ]
+        : [],
+      { roundToTwoDecimals: true },
+    );
+    const subtotalInCurrency = parseFloat(taxCalculation.subtotal.toFixed(2));
+    const taxAmountInCurrency = parseFloat(taxCalculation.taxAmount.toFixed(2));
     if (taxAmountInCurrency < 0) {
       throw new AppError({
         message: "Tax amount cannot be negative.",
@@ -189,7 +207,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const totalInCurrency = taxCalculation.total;
+    const totalInCurrency = parseFloat(taxCalculation.total.toFixed(2));
     if (totalInCurrency <= 0) {
       throw new AppError({
         message: "Invoice total must be greater than zero.",
@@ -271,9 +289,14 @@ export async function POST(req: Request) {
       amountTax: taxAmountInCurrency,
       amountTotal: totalInCurrency,
 
+      subtotal: subtotalInCurrency,
+      taxAmount: taxAmountInCurrency,
+      totalAmount: totalInCurrency,
+
       taxRate,
       taxRateName,
       taxRateId,
+      taxInclusive,
       taxExempt: hasFullExemption,
 
       amountSubtotalBase: subtotalInBase,
