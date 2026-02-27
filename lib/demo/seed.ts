@@ -1,3 +1,6 @@
+// This file is server-only. Never import in client components.
+import "server-only";
+
 import admin from "firebase-admin";
 import { adminAuth, adminDb } from "../firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_ROLES } from "../tenant/constants";
@@ -122,7 +125,7 @@ async function upsertByUnique(collectionName: string, tenantId: string, uniqueKe
   return ref.id;
 }
 
-export async function seedDemoEnvironment(options: SeedOptions = {}) {
+export async function seedDemoTenant(options: SeedOptions = {}) {
   const tenantId = options.tenantId || DEMO_TENANT_DEFAULT;
   if (options.reset) {
     await Promise.all([
@@ -271,3 +274,5 @@ export async function seedDemoEnvironment(options: SeedOptions = {}) {
     users: DEMO_USERS,
   };
 }
+
+export const seedDemoEnvironment = seedDemoTenant;
