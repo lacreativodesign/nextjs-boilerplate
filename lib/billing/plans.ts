@@ -12,6 +12,7 @@ export type BillingPlanDefinition = {
     api_calls: number;
   };
   stripePriceIdEnv: string;
+  taxBehavior: 'exclusive' | 'inclusive';
 };
 
 export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
@@ -27,6 +28,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     ],
     limits: { users: 10, storage: 5368709120, api_calls: 10000 },
     stripePriceIdEnv: '',
+    taxBehavior: 'exclusive',
   },
   starter: {
     name: 'Starter',
@@ -36,6 +38,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     features: ['10 users', '5GB storage', 'Basic support'],
     limits: { users: 10, storage: 5368709120, api_calls: 10000 },
     stripePriceIdEnv: 'STRIPE_PRICE_STARTER_MONTHLY',
+    taxBehavior: 'exclusive',
   },
   pro: {
     name: 'Pro',
@@ -45,6 +48,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     features: ['50 users', '50GB storage', 'Priority support', 'Advanced reports'],
     limits: { users: 50, storage: 53687091200, api_calls: 100000 },
     stripePriceIdEnv: 'STRIPE_PRICE_PRO_MONTHLY',
+    taxBehavior: 'exclusive',
   },
   enterprise: {
     name: 'Enterprise',
@@ -54,6 +58,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     features: ['Unlimited users', 'Unlimited storage', 'Dedicated support', 'Custom integrations'],
     limits: { users: -1, storage: -1, api_calls: -1 },
     stripePriceIdEnv: 'STRIPE_PRICE_ENTERPRISE_MONTHLY',
+    taxBehavior: 'exclusive',
   },
 };
 
