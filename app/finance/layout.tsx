@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
-const TABS = [
+const BASE_TABS = [
   { href: "/finance", label: "Overview" },
   { href: "/finance/invoices", label: "Invoices" },
   { href: "/finance/payments", label: "Payments" },
@@ -17,6 +18,9 @@ const TABS = [
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data } = useTenantContext();
+  const taxEnabled = Boolean(data?.tenant?.modulesEnabled?.tax || data?.tenant?.modules?.tax);
+  const tabs = taxEnabled ? [...BASE_TABS, { href: "/finance/tax", label: "Tax" }] : BASE_TABS;
 
   return (
     <RequireAuth allowed={["finance", "admin", "super_admin"]}>
@@ -29,7 +33,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
             </div>
 
             <div className="tabs-bar">
-              {TABS.map((tab) => {
+              {tabs.map((tab) => {
                 const isActive = pathname === tab.href || (tab.href !== "/finance" && pathname.startsWith(tab.href));
                 return (
                   <Link

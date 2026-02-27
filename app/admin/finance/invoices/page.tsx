@@ -16,6 +16,8 @@ import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { CurrencyDisplay } from "@/components/finance/CurrencyDisplay";
 import { CurrencySelector } from "@/components/finance/CurrencySelector";
 import { InvoiceDownloadButton } from "@/components/finance/InvoiceDownloadButton";
+import { TaxRateSelector } from "@/components/finance/TaxRateSelector";
+import { calculateTax } from "@/lib/tax/calculator";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
@@ -841,15 +843,23 @@ function CreateInvoiceDrawer({
   const [clientName, setClientName] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [tax, setTax] = useState("0");
+  const [applyTax, setApplyTax] = useState(false);
+  const [taxRateId, setTaxRateId] = useState<string | null>(null);
+  const [selectedTaxRate, setSelectedTaxRate] = useState<{ id: string; name: string; rate: number; inclusive: boolean } | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
     { name: "", qty: 1, unitPriceUsd: 0 },
   ]);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.qty * item.unitPriceUsd, 0);
-  const total = subtotal + Number(tax || 0);
+  const taxPreview = calculateTax(
+    lineItems.map((item) => ({ description: item.name || "Item", quantity: item.qty, unitPrice: item.unitPriceUsd })),
+    applyTax && selectedTaxRate ? [selectedTaxRate] : [],
+    { roundToTwoDecimals: true },
+  );
+  const subtotal = taxPreview.subtotal;
+  const taxAmount = taxPreview.taxAmount;
+  const total = taxPreview.total;
 
   const clientOptions = useMemo(
     () => [{ label: "Select Client", value: "" }, ...clients.map((c) => ({ label: c.companyName, value: c.id }))],
@@ -894,7 +904,7 @@ function CreateInvoiceDrawer({
             clientName,
             dueDate,
             notes,
-            amountTaxUsd: Number(tax || 0),
+            taxRateId: applyTax ? taxRateId : null,
             currency,
             lineItems,
           }),
@@ -1039,19 +1049,27 @@ function CreateInvoiceDrawer({
         <div className="card" style={{ padding: 16, borderRadius: 14 }}>
           <div className="space-y-2">
             <Row label="Subtotal" value={<CurrencyDisplay amount={subtotal} currency={currency} />} />
-            <Row
-              label={`Tax (${currency})`}
-              value={
-                <input
-                  className="input"
-                  style={{ maxWidth: 140 }}
-                  type="number"
-                  min={0}
-                  value={tax}
-                  onChange={(e) => setTax(e.target.value)}
+            <div className="space-y-2">
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={applyTax} onChange={(e) => { setApplyTax(e.target.checked); if (!e.target.checked) { setTaxRateId(null); setSelectedTaxRate(null); } }} />
+                Apply Tax
+              </label>
+              {applyTax ? (
+                <TaxRateSelector
+                  value={taxRateId}
+                  onChange={async (value) => {
+                    setTaxRateId(value);
+                    if (!value) { setSelectedTaxRate(null); return; }
+                    const res = await fetch(`/api/finance/tax-rates/${value}`, { cache: "no-store" });
+                    const data = await res.json().catch(() => null);
+                    if (res.ok && data?.ok && data.taxRate) {
+                      setSelectedTaxRate({ id: data.taxRate.id, name: data.taxRate.name, rate: Number(data.taxRate.rate || 0), inclusive: Boolean(data.taxRate.inclusive) });
+                    }
+                  }}
                 />
-              }
-            />
+              ) : null}
+            </div>
+            <Row label={selectedTaxRate ? `Tax (${selectedTaxRate.rate}%):` : `Tax (${currency})`} value={<CurrencyDisplay amount={taxAmount} currency={currency} />} />
             <Row label="Total" value={<CurrencyDisplay amount={total} currency={currency} />} />
           </div>
         </div>

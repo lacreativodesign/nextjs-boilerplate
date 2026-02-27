@@ -19,6 +19,7 @@ type InvoicePdfData = {
   discount: number;
   tax: number;
   taxRate: number;
+  taxLabel?: string | null;
   total: number;
   amountPaid: number;
   notes?: string | null;
@@ -230,7 +231,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, tenant, client 
 
           {invoice.tax > 0 ? (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Tax ({invoice.taxRate || 0}%):</Text>
+              <Text style={styles.totalLabel}>{invoice.taxLabel || `Tax (${invoice.taxRate || 0}%)`}:</Text>
               <Text style={styles.totalValue}>{formatMoney(invoice.tax)}</Text>
             </View>
           ) : null}

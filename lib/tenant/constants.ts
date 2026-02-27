@@ -22,6 +22,7 @@ export const DEFAULT_MODULES = {
   approvals: true,
   billing: true,
   support: true,
+  tax: false,
 };
 
 export const DEFAULT_ROLES = {
