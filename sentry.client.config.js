@@ -55,8 +55,8 @@ if (typeof window !== "undefined") {
             user
               .getIdTokenResult()
               .then((tokenResult) => {
-                const tenantId = tokenResult.claims?.tenantId as string | undefined;
-                const role = tokenResult.claims?.role as string | undefined;
+                const tenantId = tokenResult.claims?.tenantId;
+                const role = tokenResult.claims?.role;
                 if (tenantId) {
                   Sentry.setTag("tenant_id", tenantId);
                 }
