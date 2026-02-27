@@ -10,6 +10,7 @@ import { formatDate, formatDateTime, formatUsd, useIsSystemDark } from "@/compon
 import type { InvoiceRecord } from "@/lib/finance/types";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
+import { generatePaymentLink } from "@/lib/payments/payment-link";
 
 const STATUS_OPTIONS = [
   "",
@@ -528,6 +529,32 @@ function InvoiceDrawer({
   const subtotal = Number(invoice.amountSubtotal || invoice.amountSubtotalUsd || 0);
   const tax = Number(invoice.amountTax || invoice.amountTaxUsd || 0);
   const total = Number(invoice.amountTotal || invoice.amountTotalUsd || 0);
+  const [copied, setCopied] = useState(false);
+  const normalizedStatus = String(invoice.status || "").toLowerCase();
+  const canShowPaymentLink = normalizedStatus === "sent" || normalizedStatus === "pending";
+  const paymentLink = canShowPaymentLink
+    ? (() => {
+        try {
+          return generatePaymentLink(invoice.id);
+        } catch {
+          if (typeof window !== "undefined") {
+            return `${window.location.origin}/pay/${invoice.id}`;
+          }
+          return `/pay/${invoice.id}`;
+        }
+      })()
+    : "";
+
+  const handleCopyLink = async () => {
+    if (!paymentLink) return;
+    try {
+      await navigator.clipboard.writeText(paymentLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <div
@@ -600,6 +627,22 @@ function InvoiceDrawer({
           <Row label="Tax" value={<span>{getCurrencySymbol(invoice.currency)}{tax.toFixed(2)}</span>} />
           <Row label="Total" value={<span>{getCurrencySymbol(invoice.currency)}{total.toFixed(2)}</span>} />
         </div>
+
+
+        <div style={{ height: 16 }} />
+
+        {canShowPaymentLink && (
+          <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Payment Link</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <code style={{ fontSize: 12, padding: "8px 10px", borderRadius: 8, background: isDark ? "rgba(15,23,42,0.6)" : "#f3f4f6" }}>{paymentLink}</code>
+              <button type="button" className="btn ghost" style={{ borderRadius: 999, height: 32 }} onClick={handleCopyLink}>
+                Copy Link
+              </button>
+              {copied && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>Copied!</span>}
+            </div>
+          </div>
+        )}
 
         {invoice.notes && (
           <>
