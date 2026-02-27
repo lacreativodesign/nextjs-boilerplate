@@ -36,6 +36,8 @@ const ACTION_LINKS = [
     desc: "Live stream of platform-wide events." },
   { title: "Backups", href: "/super_admin/backups",
     desc: "Manage data exports and backup schedules." },
+  { title: "Demo Environment", href: "/super_admin/demo",
+    desc: "Manage demo tenant and reset sample data for sales demos." },
 ];
 
 export default function SuperAdminPage() {
