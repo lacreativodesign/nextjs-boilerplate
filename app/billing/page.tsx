@@ -1,6 +1,7 @@
 'use client';
 
 import Script from 'next/script';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import RequireAuth from '@/components/RequireAuth';
 import { plans, type BillingPlanKey } from '@/lib/billing/plans';
@@ -357,6 +358,15 @@ export default function BillingPage() {
         onLoad={() => setStripeReady(true)}
       />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-6 py-8">
+        <div className="flex gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-medium">
+          <Link href="/billing" className="rounded-md bg-[var(--erp-blue)] px-3 py-2 text-white">
+            Subscription
+          </Link>
+          <Link href="/billing/terminal" className="rounded-md px-3 py-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]">
+            Payment Terminal
+          </Link>
+        </div>
+
         <header>
           <h1 className="text-2xl font-semibold">Billing & Subscription</h1>
           <p className="text-sm text-[var(--text-muted)]">

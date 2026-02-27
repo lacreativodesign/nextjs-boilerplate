@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
-  Package, DollarSign, UserCircle, BarChart3, Settings,
+  Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
   Shield, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
@@ -37,6 +37,7 @@ export default function Sidebar({
     { href: "/projects", label: t("navigation.projects"), icon: FolderKanban, roles: null },
     { href: "/production", label: t("navigation.production"), icon: Package, roles: null },
     { href: "/finance", label: t("navigation.finance"), icon: DollarSign, roles: null },
+    { href: "/billing/terminal", label: "Payment Terminal", icon: CreditCard, roles: ["admin", "super_admin"] },
     { href: "/hr", label: t("navigation.hr"), icon: UserCircle, roles: null },
     { href: "/reports", label: t("navigation.reports"), icon: BarChart3, roles: null },
     { href: "/super_admin", label: t("navigation.superAdmin"), icon: Shield, roles: ["super_admin"] },
