@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
+import PeriodSelector from "@/components/performance/PeriodSelector";
+import PerformanceCard from "@/components/performance/PerformanceCard";
+import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
 
 type UserRecord = { uid: string; name?: string; role?: string; department?: string };
 type ReviewRecord = { id: string; userId: string; period: string; rating: number | null; notes: string };
@@ -58,6 +61,12 @@ export default function PerformancePage() {
   const [form, setForm] = useState({ userId: "", metric: "Revenue", target: "", achieved: "", period: "" });
   const [saving, setSaving] = useState(false);
 
+  const [periodType, setPeriodType] = useState<PeriodType>("monthly");
+  const [period, setPeriod] = useState(getCurrentPeriod("monthly"));
+  const [myTargets, setMyTargets] = useState<Record<string, { target: number }>>({});
+  const [myActuals, setMyActuals] = useState<Record<string, number>>({});
+  const [targetsLoading, setTargetsLoading] = useState(true);
+
   useEffect(() => {
     let alive = true;
     async function load() {
@@ -92,6 +101,25 @@ export default function PerformancePage() {
     return () => { alive = false; };
   }, []);
 
+
+
+  useEffect(() => {
+    setPeriod(getCurrentPeriod(periodType));
+  }, [periodType]);
+
+  useEffect(() => {
+    let alive = true;
+    setTargetsLoading(true);
+    Promise.all([
+      fetch(`/api/performance/targets?period=${period}&periodType=${periodType}`, { credentials: "include" }).then((r) => r.json()),
+      fetch(`/api/performance/actuals?period=${period}&periodType=${periodType}&role=hr`, { credentials: "include" }).then((r) => r.json()),
+    ]).then(([t, a]) => {
+      if (!alive) return;
+      setMyTargets(t.targets?.[0]?.metrics || {});
+      setMyActuals(a.actuals || {});
+    }).finally(() => { if (alive) setTargetsLoading(false); });
+    return () => { alive = false; };
+  }, [period, periodType]);
   const departments = useMemo(() => {
     const depts = new Set(users.map(u => u.department || "Unassigned").filter(Boolean));
     return Array.from(depts);
@@ -162,6 +190,22 @@ export default function PerformancePage() {
 
   return (
     <div className="space-y-6">
+      <PeriodSelector period={period} periodType={periodType} onTypeChange={setPeriodType} onPeriodChange={setPeriod} />
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">My Targets</h2>
+        {targetsLoading ? <div className="card p-5 animate-pulse h-24" /> : Object.keys(myTargets).length === 0 ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-800 p-4 text-sm">
+            Contact your admin to set HR targets for this period.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <PerformanceCard metricKey="employeesOnboarded" label="Employees Onboarded" actual={Number(myActuals.employeesOnboarded || 0)} target={Number(myTargets.employeesOnboarded?.target || 0)} unit="count" />
+            <PerformanceCard metricKey="tasksCompleted" label="Tasks Completed" actual={Number(myActuals.tasksCompleted || 0)} target={Number(myTargets.tasksCompleted?.target || 0)} unit="count" />
+          </div>
+        )}
+      </section>
+
       {/* KPI Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Reviews" value={reviews.length} sub="All time" />
