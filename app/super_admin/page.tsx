@@ -28,6 +28,8 @@ const ACTION_LINKS = [
     desc: "View every user across all tenants." },
   { title: "System Health", href: "/super_admin/system-health/full",
     desc: "Monitor Firebase, API, and service status." },
+  { title: "Error Monitoring", href: "/super_admin/monitoring",
+    desc: "Sentry integration status and error tracking dashboard." },
   { title: "Audit Logs", href: "/super_admin/audit",
     desc: "Review all platform activity and changes." },
   { title: "Payment Terminal", href: "/super_admin/payments",

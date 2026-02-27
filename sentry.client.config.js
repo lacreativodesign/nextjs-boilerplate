@@ -38,3 +38,40 @@ Sentry.init({
     return event;
   },
 });
+
+// Capture user context from Firebase Auth if available
+if (typeof window !== "undefined") {
+  import("@/lib/firebaseClient")
+    .then(({ getFirebaseAuth }) => {
+      try {
+        const auth = getFirebaseAuth();
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            Sentry.setUser({
+              id: user.uid,
+              email: user.email || undefined,
+            });
+            // Set tenant context from custom claims
+            user
+              .getIdTokenResult()
+              .then((tokenResult) => {
+                const tenantId = tokenResult.claims?.tenantId as string | undefined;
+                const role = tokenResult.claims?.role as string | undefined;
+                if (tenantId) {
+                  Sentry.setTag("tenant_id", tenantId);
+                }
+                if (role) {
+                  Sentry.setTag("user_role", role);
+                }
+              })
+              .catch(() => undefined);
+          } else {
+            Sentry.setUser(null);
+          }
+        });
+      } catch {
+        // Auth not available
+      }
+    })
+    .catch(() => undefined);
+}

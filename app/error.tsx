@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorFallback } from "@/components/errors/ErrorFallback";
+import * as Sentry from "@sentry/nextjs";
 
 export default function Error({
   error,
@@ -11,6 +12,12 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    if (error) {
+      Sentry.captureException(error, {
+        tags: { errorBoundary: "route" },
+        extra: { digest: error.digest },
+      });
+    }
     console.error("Global Error:", error);
   }, [error]);
 
