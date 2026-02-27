@@ -177,6 +177,10 @@ function redirectLegacyPath(req: NextRequest, from: RegExp, to: string) {
   return NextResponse.redirect(redirectUrl, 308);
 }
 
+function isPublicPagePath(pathname: string) {
+  return pathname.startsWith("/pay");
+}
+
 function isPublicApiPath(pathname: string) {
   return (
     pathname.startsWith("/api/stripe")
@@ -331,7 +335,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
-  if (pathname === "/" || pathname.startsWith("/set-password")) {
+  if (pathname === "/" || pathname.startsWith("/set-password") || isPublicPagePath(pathname)) {
     return applyRateHeaders(pathname, NextResponse.next(), rateContext);
   }
 
@@ -499,5 +503,6 @@ export const config = {
     "/support/:path*",
     "/notifications/:path*",
     "/client/:path*",
+    "/pay/:path*",
   ],
 };
