@@ -114,6 +114,7 @@ export async function GET(req: NextRequest) {
           "UPLOADCARE_PUBLIC_KEY",
           "EXCHANGE_RATE_API_KEY",
           "NEXT_PUBLIC_DEFAULT_TENANT_ID",
+          "NEXT_PUBLIC_SENTRY_DSN",
         ];
 
         const missing = envVars.filter((envVar) => !process.env[envVar]);
@@ -135,6 +136,28 @@ export async function GET(req: NextRequest) {
           status: "pass" as const,
           message: "All required environment variables are configured",
           value: envVars.length + 1,
+        };
+      }),
+      runWithTimeout({ id: "sentry", name: "Sentry Error Monitoring" }, async () => {
+        const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+        if (!dsn) {
+          return {
+            status: "warning" as const,
+            message: "NEXT_PUBLIC_SENTRY_DSN is not set. Error monitoring is disabled.",
+            value: "Not configured",
+          };
+        }
+        if (!dsn.startsWith("https://") || !dsn.includes("@sentry.io")) {
+          return {
+            status: "warning" as const,
+            message: "NEXT_PUBLIC_SENTRY_DSN appears to be malformed.",
+            value: "Invalid format",
+          };
+        }
+        return {
+          status: "pass" as const,
+          message: "Sentry DSN is configured. Error monitoring is active.",
+          value: dsn.split("@")[1] || "configured",
         };
       }),
       runWithTimeout({ id: "stripe-connectivity", name: "Stripe Connectivity" }, async () => {
@@ -243,6 +266,13 @@ export async function GET(req: NextRequest) {
       checkedAt: new Date().toISOString(),
       summary,
       checks: results,
+      sentryConfig: {
+        NEXT_PUBLIC_SENTRY_DSN: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
+        SENTRY_ORG: Boolean(process.env.SENTRY_ORG),
+        SENTRY_PROJECT: Boolean(process.env.SENTRY_PROJECT),
+        NEXT_PUBLIC_SENTRY_ENVIRONMENT: Boolean(process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT),
+        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: Boolean(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Server error";

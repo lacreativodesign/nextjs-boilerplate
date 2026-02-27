@@ -17,3 +17,5 @@ Sentry.init({
     return event;
   },
 });
+
+Sentry.setTag("runtime", "edge");
