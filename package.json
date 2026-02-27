@@ -25,7 +25,9 @@
     "load:test:search": "k6 run tests/load/search.js",
     "load:test:api": "k6 run tests/load/api-endpoints.js",
     "load:test:upload": "k6 run tests/load/file-upload.js",
-    "load:test:all": "bash -lc 'set -euo pipefail; mkdir -p load-results; for scenario in login-flow dashboard-load invoice-list search api-endpoints file-upload; do echo \"Running $scenario\"; LOAD_TEST_RESULTS_DIR=load-results k6 run tests/load/$scenario.js; done'"
+    "load:test:all": "bash -lc 'set -euo pipefail; mkdir -p load-results; for scenario in login-flow dashboard-load invoice-list search api-endpoints file-upload; do echo \"Running $scenario\"; LOAD_TEST_RESULTS_DIR=load-results k6 run tests/load/$scenario.js; done'",
+    "seed:demo": "tsx scripts/seedDemoTenant.ts",
+    "seed:demo:reset": "tsx scripts/seedDemoTenant.ts --reset"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
