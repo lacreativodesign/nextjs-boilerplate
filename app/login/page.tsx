@@ -509,7 +509,7 @@ export default function LoginPage() {
             height: 44px;
             border: 1px solid var(--border-subtle);
             border-radius: 8px;
-            background: #fff;
+            background: var(--input-bg);
             transition: all 0.2s ease;
           }
 
@@ -518,8 +518,8 @@ export default function LoginPage() {
             height: 44px;
             border: 1px solid var(--border-subtle);
             border-radius: 8px;
-            background: #fff;
-            color: var(--text-primary);
+            background: var(--input-bg);
+            color: var(--input-text);
             font-size: 14px;
             outline: none;
             padding: 0 12px;

@@ -164,7 +164,7 @@ export default function Sidebar({
                     "flex items-center rounded-xl transition-colors px-[11px] py-2.5",
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
-                      : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]",
+                      : "text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100",
                   ].join(" ")}
                 >
                   <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">

@@ -272,8 +272,11 @@ table tbody tr:hover { background: var(--table-row-hover); }
 .btn-danger:hover { background: #dc2626; }
 
 .input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); }
+.input::placeholder { color: var(--text-muted); opacity: 1; }
+select.input option { background: var(--surface-card); color: var(--text-primary); }
+label.field-label { color: var(--text-primary); font-weight: 500; }
 .input:disabled { background: var(--surface-muted); border-color: var(--border-subtle); color: var(--text-muted); cursor: not-allowed; }
-.input::placeholder { color: var(--text-soft); }
+.input::placeholder { color: var(--text-muted); opacity: 1; }
 .input:focus { outline: none; border-color: var(--erp-blue); box-shadow: var(--focus-ring); }
 select.input {
   appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 42px;
