@@ -75,7 +75,12 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const snap = await db.collection("clients").orderBy("createdAt", "desc").limit(500).get();
+    const snap = await db
+      .collection("clients")
+      .where("tenantId", "==", me.tenantId)
+      .orderBy("createdAt", "desc")
+      .limit(500)
+      .get();
 
     const clients = snap.docs
       .map((doc) => {

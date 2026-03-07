@@ -304,19 +304,24 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   }
 
   if (isApiRequest && isSensitiveApiPath(pathname)) {
-    const apiKey = req.headers.get("x-api-key");
-    const keyValidation = verifyRotatingApiKey(apiKey);
-    if (!keyValidation.valid) {
-      return applyRateHeaders(pathname, jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
-    }
+    // If request comes from a browser session (has lac_session cookie), skip rotating key check.
+    // The route handler's requireSuperAdmin() will enforce authorization.
+    const hasSessionCookie = Boolean(req.cookies.get("lac_session")?.value);
+    if (!hasSessionCookie) {
+      const apiKey = req.headers.get("x-api-key");
+      const keyValidation = verifyRotatingApiKey(apiKey);
+      if (!keyValidation.valid) {
+        return applyRateHeaders(pathname, jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
+      }
 
-    const signature = req.headers.get("x-signature");
-    const timestamp = req.headers.get("x-signature-timestamp");
-    const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
-    const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
+      const signature = req.headers.get("x-signature");
+      const timestamp = req.headers.get("x-signature-timestamp");
+      const signingSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || null;
+      const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
 
-    if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
-      return applyRateHeaders(pathname, jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
+      if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
+        return applyRateHeaders(pathname, jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
+      }
     }
   }
 
@@ -397,9 +402,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   }
 
   if (pageRole && sessionRole && pageRole !== sessionRole) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = "/unauthorized";
-    return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+    // admin and super_admin can access all module paths
+    if (sessionRole !== "admin" && sessionRole !== "super_admin") {
+      const redirectUrl = req.nextUrl.clone();
+      redirectUrl.pathname = "/unauthorized";
+      return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+    }
   }
 
   if (!isApiRequest && sessionToken && !shouldSkipModuleCheck(pathname)) {

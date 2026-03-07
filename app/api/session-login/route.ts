@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     const response = NextResponse.json({ success: true });
-    
-    // Set session cookie with correct domain
+
+    // Set session cookie
     response.cookies.set('lac_session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
@@ -29,6 +29,18 @@ export async function POST(req: NextRequest) {
       sameSite: 'lax',
       path: '/',
     });
+
+    // Set tenant_id cookie from custom claims so middleware can scope data per tenant
+    const tenantId = (decodedToken as any).tenantId || (decodedToken as any).tenant_id || '';
+    if (tenantId) {
+      response.cookies.set('tenant_id', tenantId, {
+        maxAge: expiresIn / 1000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
+    }
 
     return response;
 
