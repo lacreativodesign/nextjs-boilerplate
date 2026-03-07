@@ -19,7 +19,10 @@ export async function GET(req: NextRequest) {
 
     void validateQuery(paginationSchema, req.nextUrl.searchParams);
 
-    const snap = await adminDb.collection("users").get();
+    const snap = await adminDb
+      .collection("users")
+      .where("tenantId", "==", current.tenantId)
+      .get();
 
     const list = snap.docs.map((d) => ({
       uid: d.id,

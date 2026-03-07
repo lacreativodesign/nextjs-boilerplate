@@ -81,15 +81,15 @@ export function roleFromPath(pathname: string): ErpRole | null {
 export function rolesAllowedForApi(pathname: string): ErpRole[] | null {
   if (pathname.startsWith("/api/super_admin")) return ["super_admin"];
   if (pathname.startsWith("/api/admin")) return ["admin", "super_admin"];
-  if (pathname.startsWith("/api/sales_manager")) return ["sales_manager"];
-  if (pathname.startsWith("/api/sales")) return ["sales"];
-  if (pathname.startsWith("/api/am_manager")) return ["am_manager"];
-  if (pathname.startsWith("/api/am")) return ["am"];
-  if (pathname.startsWith("/api/production_manager")) return ["production_manager"];
-  if (pathname.startsWith("/api/production")) return ["production"];
-  if (pathname.startsWith("/api/finance")) return ["finance"];
-  if (pathname.startsWith("/api/hr")) return ["hr"];
-  if (pathname.startsWith("/api/client")) return ["client"];
-  if (pathname.startsWith("/api/crm")) return ["sales", "sales_manager", "admin"];
+  if (pathname.startsWith("/api/sales_manager")) return ["sales_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/sales")) return ["sales", "sales_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/am_manager")) return ["am_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/am")) return ["am", "am_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/production_manager")) return ["production_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/production")) return ["production", "production_manager", "admin", "super_admin"];
+  if (pathname.startsWith("/api/finance")) return ["finance", "admin", "super_admin"];
+  if (pathname.startsWith("/api/hr")) return ["hr", "admin", "super_admin"];
+  if (pathname.startsWith("/api/client")) return ["client", "admin", "super_admin"];
+  if (pathname.startsWith("/api/crm")) return ["sales", "sales_manager", "am", "am_manager", "admin", "super_admin"];
   return null;
 }
