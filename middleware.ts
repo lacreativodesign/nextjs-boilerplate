@@ -48,6 +48,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const token = req.cookies.get("lac_session")?.value;
+  const hasSessionCookie = Boolean(token);
   const { pathname } = req.nextUrl;
   const isApiRequest = pathname.startsWith("/api");
 
@@ -78,11 +79,11 @@ export async function middleware(req: NextRequest) {
 
   const pageRole = roleFromPath(pathname);
 
-  if ((pageRole || isApiRequest) && !token) {
+  if ((pageRole || isApiRequest) && !hasSessionCookie) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const requiresSubscriptionCheck = Boolean(token) && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
+  const requiresSubscriptionCheck = hasSessionCookie && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
 
   let sessionRole = normalizeRole(null);
 
@@ -114,6 +115,10 @@ export async function middleware(req: NextRequest) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = "/unauthorized";
     return NextResponse.redirect(redirectUrl);
+  }
+
+  if (hasSessionCookie && !sessionRole && !pathname.startsWith("/login") && !isApiRequest) {
+    return NextResponse.next();
   }
 
   if (isApiRequest && sessionRole) {
