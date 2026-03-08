@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "Bizosto",
+    "home": "Inicio",
+    "loading": "Cargando...",
+    "search": "Buscar",
+    "logout": "Cerrar sesión",
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "activeSessions": "Sesiones activas",
+    "openMenu": "Abrir menú",
+    "language": "Idioma",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar"
+  },
+  "navigation": {
+    "superAdmin": "Superadministrador",
+    "tenants": "Inquilinos",
+    "plans": "Planes",
+    "system": "Sistema",
+    "administration": "Administración",
+    "dashboard": "Panel",
+    "users": "Usuarios",
+    "clients": "Clientes",
+    "automation": "Automatización",
+    "sales": "Ventas",
+    "leads": "Prospectos",
+    "deals": "Oportunidades",
+    "finance": "Finanzas",
+    "invoices": "Facturas",
+    "reports": "Informes",
+    "accountMgmt": "Gestión de cuentas",
+    "production": "Producción",
+    "resources": "Recursos",
+    "hr": "RR. HH.",
+    "leave": "Permisos",
+    "myPortal": "Mi portal",
+    "projects": "Proyectos"
+  },
+  "validation": {
+    "required": "Este campo es obligatorio.",
+    "invalidEmail": "Introduce un correo válido.",
+    "minLength": "Debe tener al menos {{count}} caracteres.",
+    "maxLength": "Debe tener {{count}} caracteres o menos."
+  },
+  "errors": {
+    "generic": "Algo salió mal.",
+    "unauthorized": "No estás autorizado para realizar esta acción.",
+    "forbidden": "Acceso denegado.",
+    "notFound": "No se encontró el recurso solicitado.",
+    "network": "Error de red. Inténtalo de nuevo."
+  },
+  "dashboard": { "widgets": { "revenue": "Ingresos", "openInvoices": "Facturas abiertas", "pipeline": "Canal", "activeProjects": "Proyectos activos" } },
+  "reports": { "titles": { "paymentsByMonth": "Pagos por mes", "payrollByMonth": "Nómina por mes", "salesPipeline": "Canal de ventas" } },
+  "email": {
+    "subjects": { "welcome": "Bienvenido a Bizosto", "invoiceReminder": "Recordatorio de factura" },
+    "body": { "greeting": "Hola {{name}},", "footer": "Gracias,\nEquipo de Bizosto" }
+  },
+  "i18n": {
+    "progress": "Cobertura de traducción",
+    "missing": "Traducción faltante",
+    "complete": "Completo",
+    "itemsRemaining": { "zero": "No faltan claves", "one": "Falta {{count}} clave", "other": "Faltan {{count}} claves" }
+  }
+}

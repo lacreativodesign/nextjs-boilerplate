@@ -1,0 +1,56 @@
+name: Staging Load Tests
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    environment: staging
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - login-flow
+          - dashboard-load
+          - invoice-list
+          - search
+          - api-endpoints
+          - file-upload
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Prepare output directory
+        run: mkdir -p load-results
+
+      - name: Execute ${{ matrix.scenario }} scenario
+        env:
+          LOAD_TEST_BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
+          API_TOKEN: ${{ secrets.LOAD_TEST_API_TOKEN }}
+          LOAD_TEST_USER_EMAIL: ${{ secrets.LOAD_TEST_USER_EMAIL }}
+          LOAD_TEST_USER_PASSWORD: ${{ secrets.LOAD_TEST_USER_PASSWORD }}
+          LOAD_TEST_RESULTS_DIR: load-results
+        run: |
+          test -n "$LOAD_TEST_BASE_URL"
+          test -n "$API_TOKEN"
+          if [ "${{ matrix.scenario }}" = "login-flow" ]; then
+            test -n "$LOAD_TEST_USER_EMAIL"
+            test -n "$LOAD_TEST_USER_PASSWORD"
+          fi
+
+          k6 run \
+            --summary-export "load-results/${{ matrix.scenario }}-summary.json" \
+            "tests/load/${{ matrix.scenario }}.js"
+
+      - name: Upload load test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-${{ matrix.scenario }}-${{ github.run_id }}
+          path: load-results/*
+          retention-days: 30
