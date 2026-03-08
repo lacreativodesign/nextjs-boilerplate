@@ -47,10 +47,12 @@ export default function LoginPage() {
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-      const uid = userCred.user.uid;
-
-      const role = await fetchUserRole(uid);
-      if (!role) throw new Error("No role assigned");
+      let role = await fetchUserRole(userCred.user.uid);
+      if (!role) {
+        const tokenResult = await userCred.user.getIdTokenResult(true);
+        role = (tokenResult.claims.role as string) || null;
+      }
+      const dest = role ? getRoleRoute(role) : "/super_admin";
 
       const idToken = await userCred.user.getIdToken(true);
 
@@ -67,7 +69,7 @@ export default function LoginPage() {
         throw new Error(j?.error || "Session error");
       }
 
-      window.location.href = getRoleRoute(role);
+      window.location.href = dest;
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
