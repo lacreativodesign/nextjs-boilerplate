@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await adminAuth.setCustomUserClaims("3NaI798Lcahia7fuDuDTzj2hF", {
+    const user = await adminAuth.getUserByEmail("admin@bizosto.com");
+    await adminAuth.setCustomUserClaims(user.uid, {
       role: "super_admin",
       tenantId: "bizosto",
     });
-    return NextResponse.json({ ok: true, message: "Claims set successfully" });
+    await adminDb
+      .collection("users")
+      .doc(user.uid)
+      .set(
+        {
+          uid: user.uid,
+          email: "admin@bizosto.com",
+          role: "super_admin",
+          tenantId: "bizosto",
+          name: "Super Admin",
+          status: "active",
+          createdAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    return NextResponse.json({ ok: true, uid: user.uid });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }
