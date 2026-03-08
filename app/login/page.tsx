@@ -35,6 +35,39 @@ export default function LoginPage() {
     };
   }, []);
 
+  async function completeLogin(userCred: {
+    user: {
+      uid: string;
+      getIdToken: (forceRefresh: boolean) => Promise<string>;
+      getIdTokenResult: (forceRefresh: boolean) => Promise<{ claims: Record<string, unknown> }>;
+    };
+  }) {
+    // Get user role and redirect with splash animation
+    let role = await fetchUserRole(userCred.user.uid);
+    if (!role) {
+      const tokenResult = await userCred.user.getIdTokenResult(true);
+      role = (tokenResult.claims.role as string) || null;
+    }
+    const dest = role ? getRoleRoute(role) : "/super_admin";
+
+    const idToken = await userCred.user.getIdToken(true);
+
+    // Send to server to make secure cookie
+    const cookieRes = await fetch("/api/session-login", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, rememberMe: remember }),
+    });
+
+    if (!cookieRes.ok) {
+      const j = await cookieRes.json().catch(() => null);
+      throw new Error(j?.error || "Session error");
+    }
+
+    window.location.href = dest;
+  }
+
   // HANDLE LOGIN (same logic as before, no changes)
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,29 +80,7 @@ export default function LoginPage() {
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-      let role = await fetchUserRole(userCred.user.uid);
-      if (!role) {
-        const tokenResult = await userCred.user.getIdTokenResult(true);
-        role = (tokenResult.claims.role as string) || null;
-      }
-      const dest = role ? getRoleRoute(role) : "/super_admin";
-
-      const idToken = await userCred.user.getIdToken(true);
-
-      // Send to server to make secure cookie
-      const cookieRes = await fetch("/api/session-login", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, rememberMe: remember }),
-    });
-
-      if (!cookieRes.ok) {
-        const j = await cookieRes.json().catch(() => null);
-        throw new Error(j?.error || "Session error");
-      }
-
-      window.location.href = dest;
+      await completeLogin(userCred);
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
@@ -151,6 +162,7 @@ export default function LoginPage() {
               <p className="metric-value">Global</p>
             </div>
           </div>
+          <p className="login-brand-footer">A product of BIZOSTO</p>
         </div>
 
         <div className="login-card" aria-live="polite" aria-busy={!firebaseAuth}>
