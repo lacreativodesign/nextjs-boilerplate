@@ -47,14 +47,14 @@ export default function PayrollSummary() {
     padding: 12,
     fontSize: 13,
     fontWeight: 700,
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom: "1px solid var(--border-subtle)",
     textAlign: "left",
   };
 
   const td: React.CSSProperties = {
     padding: 12,
     fontSize: 14,
-    borderBottom: "1px solid #f3f4f6",
+    borderBottom: "1px solid var(--border-subtle)",
   };
 
   return (
@@ -79,9 +79,9 @@ export default function PayrollSummary() {
       </div>
 
       {/* TABLE */}
-      <div className="w-full overflow-x-auto" style={{ borderRadius: 12, border: "1px solid #e5e7eb", background: "white" }}>
+      <div className="w-full overflow-x-auto" style={{ borderRadius: 12, border: "1px solid var(--border-subtle)", background: "var(--surface-card)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "#f9fafb" }}>
+          <thead style={{ background: "var(--surface-muted)" }}>
             <tr>
               <th style={th}>Employee</th>
               <th style={th}>Email</th>

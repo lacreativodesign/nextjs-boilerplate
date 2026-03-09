@@ -76,10 +76,10 @@ export default function AttendanceDashboard() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "#fff",
+          background: "var(--surface-card)",
           padding: 20,
           borderRadius: 10,
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-subtle)",
         }}
       >
         <h2 style={{ fontSize: 24, fontWeight: 700 }}>
@@ -106,9 +106,9 @@ export default function AttendanceDashboard() {
       </div>
 
       {/* TABLE */}
-      <div className="w-full overflow-x-auto rounded-xl" style={{ border: "1px solid #e5e7eb", background: "#fff" }}>
+      <div className="w-full overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-card)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "#f3f4f6" }}>
+          <thead style={{ background: "var(--surface-muted)" }}>
             <tr>
               <th style={th}>Employee</th>
               {Array.from({ length: daysInMonth }).map((_, i) => (
@@ -130,16 +130,16 @@ export default function AttendanceDashboard() {
                     month.date(dayIndex + 1).day() === 0 ||
                     month.date(dayIndex + 1).day() === 6;
 
-                  let bg = "#ffffff";
-                  let text = "#111827";
+                  let bg = "var(--surface-card)";
+                  let text = "var(--text-primary)";
 
                   if (isWeekend) {
-                    bg = "#f3f4f6";
+                    bg = "var(--surface-muted)";
                   }
 
                   if (info?.hrs) {
-                    bg = "#dcfce7"; // green
-                    text = "#166534";
+                    bg = "var(--status-success-bg, #dcfce7)"; // green
+                    text = "var(--status-success-text, #166534)";
                   }
 
                   return (
@@ -159,8 +159,8 @@ export default function AttendanceDashboard() {
 
 const btn = {
   padding: "8px 16px",
-  background: "#2563eb",
-  color: "white",
+  background: "var(--erp-blue)",
+  color: "var(--text-on-inverse, #fff)",
   border: "none",
   borderRadius: 8,
   cursor: "pointer",
@@ -171,7 +171,7 @@ const th = {
   fontSize: 13,
   minWidth: "80px",
   fontWeight: 600,
-  borderBottom: "1px solid #e5e7eb",
+  borderBottom: "1px solid var(--border-subtle)",
   whiteSpace: "nowrap" as const,
 };
 
@@ -179,13 +179,13 @@ const td = {
   padding: 10,
   fontSize: 13,
   textAlign: "center" as const,
-  borderBottom: "1px solid #f3f4f6",
+  borderBottom: "1px solid var(--border-subtle)",
 };
 
 const tdLabel = {
   padding: 10,
   fontSize: 14,
   fontWeight: 600,
-  borderBottom: "1px solid #f3f4f6",
+  borderBottom: "1px solid var(--border-subtle)",
   whiteSpace: "nowrap" as const,
 };
