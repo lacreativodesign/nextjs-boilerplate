@@ -135,7 +135,7 @@ export default function Sidebar({
 
               <button
                 onClick={toggleCollapse}
-                className="ml-2 flex-shrink-0 hidden md:flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--surface-muted)] transition-colors"
+                className="ml-auto flex-shrink-0 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)] transition-colors shadow-sm"
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {collapsed ? (
