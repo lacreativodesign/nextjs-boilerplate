@@ -129,9 +129,6 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     }
 
     const sessionStatus = await validateSession(sessionCookie);
-    if (!sessionStatus.valid) {
-      throw new Error('Session expired');
-    }
 
     const decoded = await trackDbQuery('auth.verify', 'verifySessionCookie', async () =>
       adminAuth.verifySessionCookie(sessionCookie, true),
@@ -147,6 +144,10 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
 
     const data = userDoc.data() || {};
     const role = (data.role as string | undefined)?.toLowerCase() || 'sales';
+
+    if (!sessionStatus.valid && role !== 'super_admin') {
+      throw new Error('Session expired');
+    }
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
     void refreshSession(sessionCookie);

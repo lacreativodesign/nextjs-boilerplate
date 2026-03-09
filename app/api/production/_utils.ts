@@ -19,8 +19,7 @@ export async function getProductionUser(): Promise<ProductionUser | null> {
   const me = await getCurrentUser();
   if (!me) return null;
   const role = (me.role || "").toLowerCase().replace(/-/g, "_");
-  const allowed = ["production", "production_manager", "admin", "super_admin"];
-  if (!allowed.includes(role)) return null;
+  if (!["production", "production_manager", "admin", "super_admin"].includes(role)) return null;
   return me as ProductionUser;
 }
 
