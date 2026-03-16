@@ -1,5 +1,11 @@
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebaseAdmin";
+import {
+  welcomeEmailHtml,
+  welcomeEmailSubject,
+  trialReminderEmailHtml,
+  trialReminderEmailSubject,
+} from "@/lib/email/html-templates";
 
 const onboardingFrom = process.env.ONBOARDING_FROM_EMAIL || "Bizosto <welcome@bizosto.com>";
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://bizosto.com";
@@ -48,18 +54,13 @@ export async function sendWelcomeEmail(to: string, name: string, tenantId: strin
   await resend.emails.send({
     from: onboardingFrom,
     to,
-    subject: "Welcome to Bizosto! 🎉",
-    html: `
-      <h1>Welcome to Bizosto, ${name}!</h1>
-      <p>Your workspace is ready. Here's what to do next:</p>
-      <ol>
-        <li>Complete your profile</li>
-        <li>Invite your team</li>
-        <li>Add your first client</li>
-        <li>Create your first invoice</li>
-      </ol>
-      <a href="${appUrl}/login?tenant=${encodeURIComponent(tenantId)}">Get Started →</a>
-    `,
+    subject: welcomeEmailSubject(name),
+    html: welcomeEmailHtml({
+      name,
+      companyName: name,
+      loginUrl: `${appUrl}/login?tenant=${encodeURIComponent(tenantId)}`,
+      trialDays: 14,
+    }),
   });
 }
 
@@ -71,19 +72,13 @@ export async function sendTrialDaySevenEmail(to: string, name: string, tenantId:
     await resend.emails.send({
       from: onboardingFrom,
       to,
-      subject: "Your Bizosto trial — 7 days to go 🚀",
-      html: getEmailShell(`
-        <p>Hi ${name},</p>
-        <p>You're one week into your Bizosto trial. Here's what to make the most of your remaining 7 days:</p>
-        <ul style="padding-left: 20px; margin: 16px 0;">
-          <li style="margin-bottom: 8px;">Connect your team — invite your colleagues to collaborate</li>
-          <li style="margin-bottom: 8px;">Add your first client — start managing your relationships</li>
-          <li style="margin-bottom: 8px;">Create an invoice — see the finance module in action</li>
-        </ul>
-        <div style="margin: 24px 0;">${ctaButton("Go to Dashboard", `${appUrl}/dashboard`)}</div>
-        <p>Your trial ends on ${formattedDate}.</p>
-        ${emailFooter("Questions? Reply to this email. — The Bizosto Team")}
-      `),
+      subject: trialReminderEmailSubject(7),
+      html: trialReminderEmailHtml({
+        name,
+        daysLeft: 7,
+        upgradeUrl: `${appUrl}/billing`,
+        trialEndsAt: formatTrialDate(trialEndsAt),
+      }),
     });
   } catch (error) {
     console.error("[EMAIL] Failed to send trial day 7 email", { to, tenantId, error });
@@ -99,15 +94,13 @@ export async function sendTrialDayThreeEmail(to: string, name: string, tenantId:
     await resend.emails.send({
       from: onboardingFrom,
       to,
-      subject: "Your Bizosto trial ends in 3 days",
-      html: getEmailShell(`
-        <p>Hi ${name},</p>
-        <p>Your free trial ends in 3 days. Add your payment details now to keep uninterrupted access to your workspace.</p>
-        <p>If no payment method is added before your trial ends, your account will enter a grace period.</p>
-        <div style="margin: 24px 0;">${ctaButton("Add Payment Method", `${appUrl}/billing`)}</div>
-        <p>Trial ends: ${formattedDate}</p>
-        ${emailFooter("The Bizosto Team")}
-      `),
+      subject: trialReminderEmailSubject(3),
+      html: trialReminderEmailHtml({
+        name,
+        daysLeft: 3,
+        upgradeUrl: `${appUrl}/billing`,
+        trialEndsAt: formatTrialDate(trialEndsAt),
+      }),
     });
   } catch (error) {
     console.error("[EMAIL] Failed to send trial day 3 email", { to, tenantId, error });
@@ -122,17 +115,13 @@ export async function sendTrialDayOneEmail(to: string, name: string, tenantId: s
     await resend.emails.send({
       from: onboardingFrom,
       to,
-      subject: "⚠️ Your Bizosto trial ends tomorrow",
-      html: getEmailShell(`
-        <p>Hi ${name},</p>
-        <p>Your 14-day free trial ends tomorrow. Add your payment method today to avoid any interruption to your workspace.</p>
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 14px; border-radius: 8px; margin: 16px 0 24px;">
-          Without a payment method, your account will enter read-only mode after your trial ends.
-        </div>
-        <div style="margin: 24px 0;">${ctaButton("Add Payment Method Now", `${appUrl}/billing`)}</div>
-        <p style="font-size: 14px; color: #6b7280;">Trial ends: ${formatTrialDate(trialEndsAt)}</p>
-        ${emailFooter("The Bizosto Team")}
-      `),
+      subject: trialReminderEmailSubject(1),
+      html: trialReminderEmailHtml({
+        name,
+        daysLeft: 1,
+        upgradeUrl: `${appUrl}/billing`,
+        trialEndsAt: formatTrialDate(trialEndsAt),
+      }),
     });
   } catch (error) {
     console.error("[EMAIL] Failed to send trial day 1 email", { to, tenantId, error });
