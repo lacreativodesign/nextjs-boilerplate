@@ -116,7 +116,7 @@ function statusClass(status: string) {
   if (status === "failed") return "bg-red-100 text-red-800";
   if (status === "refunded" || status === "pending") return "bg-amber-100 text-amber-800";
   if (status === "in_transit") return "bg-blue-100 text-blue-800";
-  return "bg-slate-100 text-slate-700";
+  return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
 export default function BillingTerminalPage() {
@@ -256,7 +256,7 @@ export default function BillingTerminalPage() {
               </article>
               <article className="rounded-xl border border-[var(--border-subtle)] p-4">
                 <p className="text-sm text-[var(--text-muted)]">Platform Fees Paid</p>
-                <p className="mt-2 text-2xl font-semibold text-gray-500">{formatMoney(data?.metrics?.totalFees || 0)}</p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--text-muted)]">{formatMoney(data?.metrics?.totalFees || 0)}</p>
                 <p className="text-xs text-[var(--text-muted)]">0.5% per transaction</p>
               </article>
               <article className="rounded-xl border border-[var(--border-subtle)] p-4">
@@ -400,7 +400,7 @@ export default function BillingTerminalPage() {
                             <td className="px-2 py-3">{formatDate(transaction.createdAt)}</td>
                             <td className="px-2 py-3">{transaction.customerEmail || "Unknown"}</td>
                             <td className="px-2 py-3">{formatMoney(transaction.amount)}</td>
-                            <td className="px-2 py-3 text-gray-500">-{formatMoney(transaction.platformFee)}</td>
+                            <td className="px-2 py-3 text-[var(--text-muted)]">-{formatMoney(transaction.platformFee)}</td>
                             <td className="px-2 py-3 text-emerald-600">{formatMoney(transaction.netAmount)}</td>
                             <td className="px-2 py-3">
                               <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(transactionStatus)}`}>

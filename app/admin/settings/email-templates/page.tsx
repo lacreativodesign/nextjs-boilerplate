@@ -340,7 +340,7 @@ export default function EmailTemplatesSettingsPage() {
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
-                className="mt-3 rounded-xl border p-3 min-h-[260px] bg-white"
+                className="mt-3 rounded-xl border p-3 min-h-[260px]" style={{ background: "#ffffff" }}
                 onInput={() => setDraft((p) => ({ ...p, body: editorRef.current?.innerHTML || "" }))}
               />
               <div className="mt-3 text-xs opacity-80">
@@ -368,12 +368,12 @@ export default function EmailTemplatesSettingsPage() {
                 </div>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border p-3 bg-white">
+                <div className="rounded-xl border p-3" style={{ background: "#ffffff" }}>
                   <div className="text-xs font-semibold mb-2">Desktop</div>
                   <div className="text-sm font-semibold mb-2">{preview?.renderedSubject || "Preview subject"}</div>
                   <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: preview?.renderedHtml || "<p>Preview email content.</p>" }} />
                 </div>
-                <div className="rounded-xl border p-3 bg-white max-w-[320px]">
+                <div className="rounded-xl border p-3 max-w-[320px]" style={{ background: "#ffffff" }}>
                   <div className="text-xs font-semibold mb-2">Mobile</div>
                   <div className="text-sm font-semibold mb-2">{preview?.renderedSubject || "Preview subject"}</div>
                   <div className="text-xs" dangerouslySetInnerHTML={{ __html: preview?.renderedHtml || "<p>Preview email content.</p>" }} />
@@ -421,11 +421,11 @@ export default function EmailTemplatesSettingsPage() {
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border p-3 bg-white">
+              <div className="rounded-xl border p-3" style={{ background: "#ffffff" }}>
                 <div className="text-xs font-semibold">Version {comparedVersions.a?.version ?? "-"}</div>
                 <pre className="text-xs whitespace-pre-wrap mt-2">{comparedVersions.a?.body || "No version selected"}</pre>
               </div>
-              <div className="rounded-xl border p-3 bg-white">
+              <div className="rounded-xl border p-3" style={{ background: "#ffffff" }}>
                 <div className="text-xs font-semibold">Version {comparedVersions.b?.version ?? "-"}</div>
                 <pre className="text-xs whitespace-pre-wrap mt-2">{comparedVersions.b?.body || "No version selected"}</pre>
               </div>
