@@ -1,0 +1,33 @@
+name: Deploy Firestore Indexes
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'firestore.indexes.json'
+  workflow_dispatch:
+
+jobs:
+  deploy-indexes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
+      - name: Deploy Firestore Indexes
+        run: |
+          firebase deploy --only firestore:indexes \
+            --project la-creativo-erp \
+            --token "${{ secrets.FIREBASE_TOKEN }}" \
+            --non-interactive
+
+      - name: Confirm deployment
+        run: echo "Firestore indexes deployed successfully"
