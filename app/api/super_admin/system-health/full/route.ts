@@ -138,6 +138,35 @@ export async function GET(req: NextRequest) {
           value: envVars.length + 1,
         };
       }),
+      runWithTimeout({ id: "env_vars", name: "Environment Variables" }, async () => {
+        const requiredEnv = [
+          "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+          "FIREBASE_PRIVATE_KEY",
+          "FIREBASE_CLIENT_EMAIL",
+          "STRIPE_SECRET_KEY",
+          "STRIPE_WEBHOOK_SECRET",
+          "RESEND_API_KEY",
+          "NEXT_PUBLIC_SENTRY_DSN",
+          "NEXT_PUBLIC_APP_URL",
+        ];
+
+        const configured = requiredEnv.filter((key) => Boolean(process.env[key])).length;
+        const missing = requiredEnv.length - configured;
+
+        return {
+          status: missing === 0 ? ("pass" as const) : missing <= 2 ? ("warning" as const) : ("fail" as const),
+          message: `${configured}/${requiredEnv.length} required environment variables configured`,
+          value: configured,
+        };
+      }),
+      runWithTimeout({ id: "app_url", name: "App URL" }, async () => {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+
+        return {
+          status: appUrl.startsWith("https://") ? ("pass" as const) : appUrl ? ("warning" as const) : ("fail" as const),
+          message: appUrl || "Not configured",
+        };
+      }),
       runWithTimeout({ id: "sentry", name: "Sentry Error Monitoring" }, async () => {
         const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
         if (!dsn) {
