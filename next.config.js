@@ -25,10 +25,10 @@ const nextConfig = {
   reactStrictMode: false,
   productionBrowserSourceMaps: true,
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     domains: ['ucarecdn.com', 'firebasestorage.googleapis.com', 'imagedelivery.net'],
