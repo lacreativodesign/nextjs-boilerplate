@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /help
+Allow: /help/
+Disallow: /admin
+Disallow: /super_admin
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /billing
+Disallow: /sales
+Disallow: /finance
+Disallow: /hr
+Disallow: /production
+Disallow: /client
+
+Sitemap: https://bizosto.com/sitemap.xml
