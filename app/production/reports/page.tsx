@@ -49,28 +49,21 @@ export default function ProductionReportsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold">Reports</h1>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
+        <h1 className="page-title">Reports</h1>
+        <p className="page-subtitle">
           Production analytics to track performance and workload.
         </p>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpis">
         {kpis.map((kpi, i) => (
-          <div
-            key={i}
-            className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-5 shadow-sm"
-          >
-            <p className="text-xs text-gray-500 dark:text-neutral-400 font-medium">
-              {kpi.label}
-            </p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {kpi.value}
-            </p>
+          <div key={i} className="card">
+            <div className="helper-text mb-2">{kpi.label}</div>
+            <div className="text-3xl font-bold text-[var(--text-primary)]">{kpi.value}</div>
           </div>
         ))}
       </div>

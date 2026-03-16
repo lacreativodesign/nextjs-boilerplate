@@ -37,9 +37,9 @@ const getBadgeConfig = (subscriptionState: SubscriptionState): { label: string; 
     case 'past_due':
       return { label: 'Past Due', className: 'bg-red-100 text-red-800' };
     case 'canceled':
-      return { label: 'Cancelled', className: 'bg-gray-100 text-gray-700' };
+      return { label: 'Cancelled', className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
     default:
-      return { label: subscriptionState, className: 'bg-gray-100 text-gray-700' };
+      return { label: subscriptionState, className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
   }
 };
 

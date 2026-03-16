@@ -80,12 +80,27 @@ export default function VerifyEmailPage() {
   }, [params.oobCode, params.signupToken]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Email verification</h1>
-        <p className={`mt-4 text-sm ${status === "error" ? "text-red-600" : "text-slate-600"}`}>{message}</p>
+    <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-4">
+      <section className="card w-full max-w-md p-8 text-center">
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+          Email verification
+        </h1>
+        <p
+          className={`mt-4 text-sm ${
+            status === "error"
+              ? "text-red-500"
+              : "text-[var(--text-muted)]"
+          }`}
+        >
+          {message}
+        </p>
         {status === "error" ? (
-          <a href="/login" className="mt-6 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Go to login</a>
+          <a
+            href="/login"
+            className="btn mt-6 inline-flex"
+          >
+            Go to login
+          </a>
         ) : null}
       </section>
     </main>

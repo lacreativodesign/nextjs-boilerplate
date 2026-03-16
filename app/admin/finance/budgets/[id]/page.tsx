@@ -72,7 +72,7 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
   return (
     <div className="p-6">
       <h1 className="mb-2 text-3xl font-bold">{budget.name}</h1>
-      <p className="mb-6 text-sm text-gray-500">
+      <p className="mb-6 text-sm text-[var(--text-muted)]">
         Fiscal Year: {budget.fiscalYear} • Status: {budget.status} • Currency: {budget.currency}
       </p>
 
@@ -83,25 +83,25 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-4">
             <div>
-              <p className="text-xs text-gray-500">Current Year ({comparison.currentYear})</p>
+              <p className="text-xs text-[var(--text-muted)]">Current Year ({comparison.currentYear})</p>
               <p className="text-xl font-semibold">
                 {budget.currency} {comparison.currentTotalBudget.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Previous Year ({comparison.previousYear})</p>
+              <p className="text-xs text-[var(--text-muted)]">Previous Year ({comparison.previousYear})</p>
               <p className="text-xl font-semibold">
                 {budget.currency} {comparison.previousTotalBudget.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Change Amount</p>
+              <p className="text-xs text-[var(--text-muted)]">Change Amount</p>
               <p className={`text-xl font-semibold ${comparison.changeAmount < 0 ? "text-red-500" : "text-green-500"}`}>
                 {budget.currency} {Math.abs(comparison.changeAmount).toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Change %</p>
+              <p className="text-xs text-[var(--text-muted)]">Change %</p>
               <p className={`text-xl font-semibold ${comparison.changeAmount < 0 ? "text-red-500" : "text-green-500"}`}>
                 {comparison.changePercentage.toFixed(1)}%
               </p>
@@ -118,25 +118,25 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
           <CardContent>
             <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div className="text-center">
-                <p className="text-sm text-gray-500">Budgeted</p>
+                <p className="text-sm text-[var(--text-muted)]">Budgeted</p>
                 <p className="text-2xl font-bold">
                   {budget.currency} {category.totalBudget.toLocaleString()}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Actual</p>
+                <p className="text-sm text-[var(--text-muted)]">Actual</p>
                 <p className="text-2xl font-bold">
                   {budget.currency} {category.totalActual.toLocaleString()}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Variance</p>
+                <p className="text-sm text-[var(--text-muted)]">Variance</p>
                 <p className={`text-2xl font-bold ${category.variance < 0 ? "text-red-500" : "text-green-500"}`}>
                   {budget.currency} {Math.abs(category.variance).toLocaleString()}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Variance %</p>
+                <p className="text-sm text-[var(--text-muted)]">Variance %</p>
                 <p className={`text-2xl font-bold ${category.variance < 0 ? "text-red-500" : "text-green-500"}`}>
                   {category.variancePercentage.toFixed(1)}%
                 </p>
