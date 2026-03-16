@@ -5,14 +5,17 @@ import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
 const TABS = [
-  { href: "/super_admin", label: "Overview" },
-  { href: "/super_admin/tenants", label: "Tenants" },
-  { href: "/super_admin/users", label: "All Users" },
-  { href: "/super_admin/system-health", label: "System Health" },
-  { href: "/super_admin/audit", label: "Audit Logs" },
-  { href: "/super_admin/payments", label: "Payment Terminal" },
-  { href: "/super_admin/activity", label: "Activity" },
-  { href: "/super_admin/backups", label: "Backups" },
+  { href: "/super_admin",               label: "Overview"          },
+  { href: "/super_admin/tenants",       label: "Tenants"           },
+  { href: "/super_admin/users",         label: "All Users"         },
+  { href: "/super_admin/payments",      label: "Revenue"           },
+  { href: "/super_admin/monitoring",    label: "Monitoring"        },
+  { href: "/super_admin/system-health", label: "System Health"     },
+  { href: "/super_admin/audit",         label: "Audit Logs"        },
+  { href: "/super_admin/backups",       label: "Backups"           },
+  { href: "/super_admin/demo",          label: "Demo"              },
+  { href: "/super_admin/migration",     label: "Migration"         },
+  { href: "/super_admin/settings",      label: "Platform Settings" },
 ];
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
