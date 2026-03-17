@@ -33,9 +33,9 @@ export default function ProjectsPage() {
   }, [filter]);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Projects</h1>
+        <h1 className="page-title">Projects</h1>
         <CreateProjectDialog onSuccess={fetchProjects} />
       </div>
 
@@ -44,9 +44,7 @@ export default function ProjectsPage() {
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 font-medium ${
-              filter === status ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-gray-900"
-            }`}
+            className={`tab-pill ${filter === status ? "active" : ""}`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </button>

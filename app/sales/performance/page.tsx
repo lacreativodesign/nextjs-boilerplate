@@ -135,14 +135,14 @@ export default function SalesPerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, idx) => (
               <div key={idx} className="card p-5 space-y-3 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded" />
-                <div className="h-8 bg-gray-200 rounded" />
-                <div className="h-2 bg-gray-200 rounded" />
+                <div className="h-4 bg-[var(--surface-muted)] rounded" />
+                <div className="h-8 bg-[var(--surface-muted)] rounded" />
+                <div className="h-2 bg-[var(--surface-muted)] rounded" />
               </div>
             ))}
           </div>
         ) : Object.keys(targets).length === 0 ? (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-800 p-4 text-sm">
+          <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-4 text-sm">
             Your manager hasn&apos;t set targets for this period yet.
           </div>
         ) : (

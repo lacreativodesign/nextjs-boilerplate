@@ -66,43 +66,36 @@ export default function SalesReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-10">
-      <h1 className="text-2xl font-bold">Sales Reports</h1>
+    <div className="space-y-6">
+      <h1 className="page-title">Sales Reports</h1>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 border border-gray-200 dark:border-neutral-800 space-y-6">
-        <h2 className="text-lg font-semibold">Filters</h2>
-
+      <div className="card p-6 space-y-6">
+        <h2 className="section-title">Filters</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Date Start */}
           <div>
-            <label className="text-sm font-medium">Start Date</label>
+            <label className="field-label text-sm">Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="input mt-2"
             />
           </div>
-
-          {/* Date End */}
           <div>
-            <label className="text-sm font-medium">End Date</label>
+            <label className="field-label text-sm">End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="input mt-2"
             />
           </div>
-
-          {/* Deal Type */}
           <div>
-            <label className="text-sm font-medium">Deal Type</label>
+            <label className="field-label text-sm">Deal Type</label>
             <select
               value={dealType}
               onChange={(e) => setDealType(e.target.value)}
-              className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              className="input mt-2"
             >
               <option value="all">All</option>
               <option value="website">Website</option>
@@ -111,52 +104,43 @@ export default function SalesReportsPage() {
             </select>
           </div>
         </div>
-
-        <button
-          onClick={exportCSV}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-        >
+        <button onClick={exportCSV} className="btn">
           Export CSV
         </button>
       </div>
 
-      {/* Report Table */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 border border-gray-200 dark:border-neutral-800">
-        <h2 className="text-lg font-semibold mb-4">Deals Report</h2>
-
+      <div className="table-shell">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-100 dark:bg-neutral-800">
-              <th className="p-3 text-left">ID</th>
-              <th className="p-3 text-left">Client</th>
-              <th className="p-3 text-left">Amount</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Date</th>
+            <tr className="bg-[var(--table-header-bg)]">
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">ID</th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Client</th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Type</th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Date</th>
             </tr>
           </thead>
-
           <tbody>
             {filteredDeals.map((deal) => (
               <tr
                 key={deal.id}
-                className="border-b border-gray-200 dark:border-neutral-800"
+                className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
               >
-                <td className="p-3">{deal.id}</td>
-                <td className="p-3">{deal.client}</td>
-                <td className="p-3">${deal.amount.toLocaleString()}</td>
-                <td className="p-3 capitalize">{deal.type}</td>
-                <td className="p-3">{deal.date}</td>
+                <td className="p-3 text-[var(--text-primary)]">{deal.id}</td>
+                <td className="p-3 text-[var(--text-primary)]">{deal.client}</td>
+                <td className="p-3 text-[var(--text-primary)]">${deal.amount.toLocaleString()}</td>
+                <td className="p-3 capitalize text-[var(--text-primary)]">{deal.type}</td>
+                <td className="p-3 text-[var(--text-primary)]">{deal.date}</td>
               </tr>
             ))}
           </tbody>
         </table>
-
         {filteredDeals.length === 0 && (
-          <p className="text-center text-gray-500 mt-6">
+          <p className="p-8 text-center text-[var(--text-muted)]">
             No deals found for this filter.
           </p>
         )}
       </div>
     </div>
   );
-                                     }
+}

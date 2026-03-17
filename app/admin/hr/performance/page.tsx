@@ -255,15 +255,15 @@ export default function HrPerformancePage() {
             <div style={{ height: 16 }} />
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-500">Employee</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Employee</label>
                 <MasterSelect value={form.userId} onChange={(value) => setForm((prev) => ({ ...prev, userId: value }))} options={userOptions.slice(1)} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Period (YYYY-MM or YYYY-Q#)</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Period (YYYY-MM or YYYY-Q#)</label>
                 <input className="input" value={form.period} onChange={(e) => setForm((prev) => ({ ...prev, period: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Rating</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Rating</label>
                 <MasterSelect
                   value={form.rating}
                   onChange={(value) => setForm((prev) => ({ ...prev, rating: value }))}
@@ -271,11 +271,11 @@ export default function HrPerformancePage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Tags (comma separated)</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Tags (comma separated)</label>
                 <input className="input" value={form.tags} onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Notes</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Notes</label>
                 <textarea className="input" rows={4} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
               </div>
             </div>

@@ -259,7 +259,7 @@ export default function SalesProfilePage() {
         </div>
         <div className="settings-divider" />
         <h2 className="text-lg font-semibold">Basic Information</h2>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
+        <p className="text-sm text-[var(--text-muted)]">
           These details are synchronized with your enterprise account. Contact HR for changes.
         </p>
 
@@ -287,12 +287,12 @@ export default function SalesProfilePage() {
 
       <section className="card p-6 space-y-4 settings-section">
         <h2 className="text-lg font-semibold">Profile Picture</h2>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
+        <p className="text-sm text-[var(--text-muted)]">
           Upload a square image (e.g. 400×400). Save to update your profile.
         </p>
 
         <div className="flex items-center gap-6 mt-4">
-          <div className="w-20 h-20 rounded-full bg-indigo-100 dark:bg-neutral-800 flex items-center justify-center overflow-hidden text-xl font-semibold text-indigo-700 dark:text-indigo-300">
+          <div className="w-20 h-20 rounded-2xl bg-[var(--erp-blue-soft)] flex items-center justify-center overflow-hidden text-xl font-semibold text-[var(--erp-blue)]">
             {avatarPreview ? (
               <OptimizedImage
                 src={avatarPreview}
@@ -310,12 +310,12 @@ export default function SalesProfilePage() {
 
           <div className="space-y-2">
             <label className="inline-block">
-              <span className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium cursor-pointer hover:bg-black transition">
+              <span className="btn">
                 Choose Image
               </span>
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </label>
-            <p className="text-xs text-gray-500 dark:text-neutral-400">JPG or PNG, max 2 MB recommended.</p>
+            <p className="helper-text">JPG or PNG, max 2 MB recommended.</p>
           </div>
         </div>
       </section>
@@ -324,13 +324,13 @@ export default function SalesProfilePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Multi-Factor Authentication</h2>
-            <p className="text-sm text-gray-500 dark:text-neutral-400">
+            <p className="text-sm text-[var(--text-muted)]">
               Add an extra layer of security with an authenticator app.
             </p>
           </div>
           <span
             className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              mfaEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"
+              mfaEnabled ? "bg-emerald-500/20 text-emerald-400 dark:text-emerald-300" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
             }`}
           >
             {mfaEnabled ? "Enabled" : "Disabled"}
@@ -385,7 +385,7 @@ export default function SalesProfilePage() {
 
       <section className="card p-6 space-y-4 settings-section">
         <h2 className="text-lg font-semibold">Change Password</h2>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
+        <p className="text-sm text-[var(--text-muted)]">
           Use a strong password that matches the enterprise security policy.
         </p>
 

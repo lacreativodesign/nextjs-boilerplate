@@ -78,10 +78,10 @@ export default function NotificationsPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">All Notifications</h1>
-          <p className="text-sm text-gray-500">{unreadCount} unread notifications</p>
+          <h1 className="page-title">All Notifications</h1>
+          <p className="page-subtitle">{unreadCount} unread notifications</p>
         </div>
-        <button onClick={markAllAsRead} className="rounded bg-blue-600 px-4 py-2 text-white">
+        <button onClick={markAllAsRead} className="btn">
           Mark all as read
         </button>
       </div>
@@ -89,22 +89,20 @@ export default function NotificationsPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFilter("all")}
-          className={`rounded px-3 py-1 ${filter === "all" ? "bg-blue-100 text-blue-600" : "bg-gray-100"}`}
+          className={`rounded-xl px-3 py-1 text-sm font-medium transition ${filter === "all" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}
         >
           All
         </button>
         <button
           onClick={() => setFilter("unread")}
-          className={`rounded px-3 py-1 ${
-            filter === "unread" ? "bg-blue-100 text-blue-600" : "bg-gray-100"
-          }`}
+          className={`rounded-xl px-3 py-1 text-sm font-medium transition ${filter === "unread" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}
         >
           Unread
         </button>
         <select
           value={category}
           onChange={(event) => setCategory(event.target.value as "all" | NotificationCategory)}
-          className="rounded border border-gray-200 px-3 py-1 text-sm"
+          className="input"
         >
           <option value="all">All categories</option>
           {categories.map((cat) => (
@@ -115,23 +113,23 @@ export default function NotificationsPage() {
         </select>
       </div>
 
-      <div className="divide-y rounded-lg border bg-white">
+      <div className="table-shell">
         {notifications.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No notifications</div>
+          <div className="p-8 text-center text-[var(--text-muted)]">No notifications</div>
         ) : (
           notifications.map((notification) => (
             <div
               key={notification.id}
               onClick={() => !notification.isRead && markAsRead(notification.id)}
-              className={`cursor-pointer p-4 transition hover:bg-gray-50 ${
-                !notification.isRead ? "bg-blue-50" : ""
+              className={`cursor-pointer p-4 transition hover:bg-[var(--table-row-hover)] ${
+                !notification.isRead ? "bg-[var(--erp-blue-soft)]" : ""
               }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{notification.title}</h3>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
                       {notification.category}
                     </span>
                     <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
@@ -148,7 +146,7 @@ export default function NotificationsPage() {
                     </a>
                   )}
                 </div>
-                <div className="text-right text-xs text-gray-400">
+                <div className="text-right text-xs text-[var(--text-soft)]">
                   <p>{formatTimestamp(notification.createdAt)}</p>
                   {!notification.isRead && <p className="mt-2 font-semibold text-blue-600">Unread</p>}
                 </div>

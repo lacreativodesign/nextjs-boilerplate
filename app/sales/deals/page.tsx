@@ -314,7 +314,7 @@ export default function SalesDealsPage() {
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
         <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Search</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -323,7 +323,7 @@ export default function SalesDealsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Status</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -434,27 +434,27 @@ export default function SalesDealsPage() {
         >
           <div className="grid gap-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-500">Client</span>
+              <span className="text-[var(--text-muted)]">Client</span>
               <span>{selected.clientName || "-"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Stage</span>
+              <span className="text-[var(--text-muted)]">Stage</span>
               <span>{selected.stage || "Open"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Value</span>
+              <span className="text-[var(--text-muted)]">Value</span>
               <span>{formatUsd(selected.valueUsd)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Probability</span>
+              <span className="text-[var(--text-muted)]">Probability</span>
               <span>{selected.probability}%</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Expected Close</span>
+              <span className="text-[var(--text-muted)]">Expected Close</span>
               <span>{formatDate(selected.expectedCloseDate)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-500">Discount Status</span>
+              <span className="text-[var(--text-muted)]">Discount Status</span>
               <span
                 style={{
                   padding: "4px 10px",
@@ -474,11 +474,11 @@ export default function SalesDealsPage() {
             {discountError && <div className="mt-2 text-xs text-red-400">{discountError}</div>}
             <div className="mt-3 grid gap-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">List Price (USD)</span>
+                <span className="text-[var(--text-muted)]">List Price (USD)</span>
                 <span>{formatUsd(selected.listPriceUsd ?? selected.valueUsd)}</span>
               </div>
               <label className="grid gap-2">
-                <span className="text-slate-500">Discount %</span>
+                <span className="text-[var(--text-muted)]">Discount %</span>
                 <input
                   className="input"
                   type="number"
@@ -490,7 +490,7 @@ export default function SalesDealsPage() {
               </label>
               {discountPct > 0 && (
                 <label className="grid gap-2">
-                  <span className="text-slate-500">Reason</span>
+                  <span className="text-[var(--text-muted)]">Reason</span>
                   <textarea
                     className="input"
                     rows={3}
@@ -500,7 +500,7 @@ export default function SalesDealsPage() {
                 </label>
               )}
               <div className="flex justify-between">
-                <span className="text-slate-500">Final Price</span>
+                <span className="text-[var(--text-muted)]">Final Price</span>
                 <span>{formatUsd(previewFinalPrice(selected, discountPct))}</span>
               </div>
             </div>
