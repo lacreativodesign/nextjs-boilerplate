@@ -480,15 +480,12 @@ export default function UsersPage() {
   );
 
   return (
-    <div>
-      <div className="page-header mb-6">
-        <div>
-          <h1 className="page-title">Users</h1>
-          <p className="page-subtitle">Manage team members, roles, and access.</p>
-        </div>
+    <div style={{ width: "100%" }}>
+      <div className="mb-6">
+        <h1 className="page-title">Users</h1>
+        <p className="page-subtitle">Manage team members, roles, and access.</p>
       </div>
-      <div style={{ width: "100%" }}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4">
         <div style={{ display: "flex", gap: 10 }}>
           <button
             type="button"
