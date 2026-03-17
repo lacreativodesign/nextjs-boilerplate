@@ -69,7 +69,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
             </button>
 
             {langOpen && (
-              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl
+              <div className="absolute right-0 mt-2 w-14 overflow-hidden rounded-xl
                 border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50">
                 {SUPPORTED_LOCALES.map((item) => (
                   <button
@@ -80,15 +80,14 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
                       setLangOpen(false);
                     }}
                     className={[
-                      "flex w-full items-center gap-3 px-4 py-2.5 text-sm",
-                      "hover:bg-[var(--surface-muted)] transition-colors text-left",
+                      "flex w-full items-center justify-center py-2.5 text-base",
+                      "hover:bg-[var(--surface-muted)] transition-colors",
                       locale === item.code
-                        ? "text-[var(--erp-blue)] font-semibold"
-                        : "text-[var(--text-primary)]",
+                        ? "bg-[var(--erp-blue-soft)]"
+                        : "",
                     ].join(" ")}
                   >
                     <span>{item.flag}</span>
-                    <span>{item.nativeName}</span>
                   </button>
                 ))}
               </div>
