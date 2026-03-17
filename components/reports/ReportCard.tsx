@@ -13,15 +13,15 @@ export function ReportCard({ report, onRun }: { report: Report | any; onRun: () 
               <p className="mt-1 text-sm text-[var(--text-muted)]">{report.description}</p>
             ) : null}
           </div>
-          <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-1 text-xs font-medium text-[var(--text-muted)]">
             {report.type === "preset" ? "Preset" : "Custom"}
           </span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
-          <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
+          <span className="rounded-full bg-[var(--erp-blue-soft)] px-2 py-1 text-[var(--erp-blue)]">
             {report.category}
           </span>
-          <span className="rounded-full bg-neutral-100 px-2 py-1 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-200">
+          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-1 text-[var(--text-muted)]">
             {report.dataSource}
           </span>
           {report.isScheduled ? (
@@ -34,7 +34,7 @@ export function ReportCard({ report, onRun }: { report: Report | any; onRun: () 
       <button
         type="button"
         onClick={onRun}
-        className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="btn w-full"
       >
         View Report
       </button>

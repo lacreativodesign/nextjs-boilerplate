@@ -51,9 +51,9 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white shadow-sm flex flex-col gap-3">
+    <div className="card flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full bg-[var(--surface-muted)] overflow-hidden flex items-center justify-center">
           {user.profile?.avatar ? (
             <OptimizedImage
               src={user.profile.avatar}
@@ -64,29 +64,31 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
               sizes="48px"
             />
           ) : (
-            <span className="text-sm font-semibold text-gray-500">
+            <span className="text-sm font-semibold text-[var(--text-muted)]">
               {displayName.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
         <div>
-          <div className="text-sm font-semibold text-gray-900">{displayName}</div>
-          <div className="text-xs text-gray-500">{user.email}</div>
+          <div className="text-sm font-semibold text-[var(--text-primary)]">{displayName}</div>
+          <div className="text-xs text-[var(--text-muted)]">{user.email}</div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-600">
+      <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
         <span className="uppercase tracking-wide">{user.role || "staff"}</span>
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium ${
-            isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+            isActive
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+              : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
           }`}
         >
           {isActive ? "Active" : "Inactive"}
         </span>
       </div>
 
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-[var(--text-muted)]">
         {user.profile?.title || "No title"}
         {user.profile?.department ? ` • ${user.profile.department}` : ""}
       </div>
@@ -94,10 +96,10 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
       <button
         onClick={handleStatusChange}
         disabled={isLoading}
-        className={`mt-auto rounded border px-3 py-2 text-sm font-medium ${
+        className={`btn ghost mt-auto ${
           isActive
-            ? "border-red-200 text-red-600 hover:bg-red-50"
-            : "border-green-200 text-green-600 hover:bg-green-50"
+            ? "border-red-200 text-red-500 hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-900/20"
+            : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-900/40 dark:hover:bg-green-900/20"
         }`}
       >
         {isLoading ? "Updating..." : isActive ? "Deactivate" : "Reactivate"}

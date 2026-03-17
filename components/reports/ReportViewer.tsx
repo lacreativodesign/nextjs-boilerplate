@@ -49,8 +49,8 @@ export function ReportViewer({
     const headers = Object.keys(data[0] || {});
     return (
       <div className="card overflow-hidden">
-        <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-          <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
+        <table className="min-w-full divide-y divide-[var(--border-subtle)] text-sm">
+          <thead className="bg-[var(--table-header-bg)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
             <tr>
               {headers.map((header) => (
                 <th key={header} className="px-4 py-3">
@@ -59,9 +59,9 @@ export function ReportViewer({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <tbody className="divide-y divide-[var(--border-subtle)]">
             {data.map((row, idx) => (
-              <tr key={idx} className="text-neutral-700 dark:text-neutral-200">
+              <tr key={idx} className="text-[var(--text-primary)] hover:bg-[var(--table-row-hover)] transition">
                 {headers.map((header) => (
                   <td key={header} className="px-4 py-3">
                     {String(row[header] ?? "")}

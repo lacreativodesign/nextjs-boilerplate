@@ -46,44 +46,48 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
+        className="btn"
       >
         + Invite User
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Invite Team Member</h2>
+        <div className="drawer-overlay fixed inset-0 flex items-center justify-center z-50">
+          <div className="card w-full max-w-md p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">
+              Invite Team Member
+            </h2>
 
             {error && (
-              <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-900/40 px-3 py-2 text-sm text-red-600">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Email Address</label>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="field-label block text-sm mb-2">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(event) =>
                     setFormData({ ...formData, email: event.target.value })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="input"
                   required
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Role</label>
+              <div>
+                <label className="field-label block text-sm mb-2">Role</label>
                 <select
                   value={formData.role}
                   onChange={(event) =>
                     setFormData({ ...formData, role: event.target.value })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="input"
                 >
                   <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
@@ -92,18 +96,18 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
                 </select>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 px-4 py-2 border rounded"
+                  className="btn ghost flex-1"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded"
+                  className="btn flex-1"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Sending..." : "Send Invitation"}

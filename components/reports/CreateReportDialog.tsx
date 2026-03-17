@@ -189,7 +189,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="btn"
       >
         New Report
       </button>
@@ -197,7 +197,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
       <Dialog open={open} onClose={closeDialog} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
+          <Dialog.Panel className="h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-6 shadow-xl border border-[var(--border-subtle)]">
             <Dialog.Title className="text-xl font-semibold text-[var(--text-primary)]">
               Create Report
             </Dialog.Title>
@@ -213,7 +213,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <input
                       value={name}
                       onChange={(event) => setName(event.target.value)}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                       placeholder="Quarterly Revenue"
                     />
                   </div>
@@ -222,7 +222,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <select
                       value={category}
                       onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                     >
                       {CATEGORY_OPTIONS.map((option) => (
                         <option key={option} value={option}>
@@ -238,7 +238,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                   <textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                    className="input"
                     rows={3}
                   />
                 </div>
@@ -249,7 +249,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <select
                       value={dataSource}
                       onChange={(event) => setDataSource(event.target.value)}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                     >
                       {DATA_SOURCES.map((source) => (
                         <option key={source} value={source}>
@@ -263,7 +263,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <select
                       value={chartType}
                       onChange={(event) => setChartType(event.target.value as (typeof CHART_TYPES)[number])}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                     >
                       {CHART_TYPES.map((type) => (
                         <option key={type} value={type}>
@@ -280,7 +280,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <input
                       value={xAxis}
                       onChange={(event) => setXAxis(event.target.value)}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                       placeholder="month"
                     />
                   </div>
@@ -289,7 +289,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <input
                       value={yAxis.join(",")}
                       onChange={(event) => setYAxis(event.target.value.split(",").map((v) => v.trim()).filter(Boolean))}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                       placeholder="revenue"
                     />
                   </div>
@@ -306,7 +306,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         type="text"
                         value={groupByInput}
                         onChange={(event) => setGroupByInput(event.target.value)}
-                        className="rounded border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="input"
                         placeholder="Field"
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
@@ -322,7 +322,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                           addGroupBy(groupByInput);
                           setGroupByInput("");
                         }}
-                        className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                        className="btn subtle"
                       >
                         Add
                       </button>
@@ -343,7 +343,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                             const sourceId = event.dataTransfer.getData("text/plain");
                             updateGroupByOrder(sourceId, item.id);
                           }}
-                          className="flex items-center justify-between rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                          className="flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
                         >
                           <span className="cursor-move">{item.label}</span>
                           <button
@@ -368,7 +368,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <button
                       type="button"
                       onClick={addAggregation}
-                      className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                      className="btn subtle"
                     >
                       + Add
                     </button>
@@ -382,13 +382,13 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                           <input
                             value={agg.field}
                             onChange={(event) => updateAggregation(index, "field", event.target.value)}
-                            className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                             placeholder="Field"
                           />
                           <select
                             value={agg.function}
                             onChange={(event) => updateAggregation(index, "function", event.target.value)}
-                            className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                           >
                             {"sum,avg,count,min,max".split(",").map((fn) => (
                               <option key={fn} value={fn}>
@@ -399,13 +399,13 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                           <input
                             value={agg.alias || ""}
                             onChange={(event) => updateAggregation(index, "alias", event.target.value)}
-                            className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                             placeholder="Alias"
                           />
                           <button
                             type="button"
                             onClick={() => removeAggregation(index)}
-                            className="rounded border border-neutral-200 px-3 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                            className="btn ghost"
                           >
                             Remove
                           </button>
@@ -424,7 +424,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <button
                       type="button"
                       onClick={addFilter}
-                      className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                      className="btn subtle"
                     >
                       + Add Filter
                     </button>
@@ -434,13 +434,13 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                       <input
                         value={filter.field}
                         onChange={(event) => updateFilter(filter.id, "field", event.target.value)}
-                        className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="input"
                         placeholder="Field"
                       />
                       <select
                         value={filter.operator}
                         onChange={(event) => updateFilter(filter.id, "operator", event.target.value)}
-                        className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="input"
                       >
                         {[
                           "equals",
@@ -467,14 +467,14 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                       <input
                         value={String(filter.value ?? "")}
                         onChange={(event) => updateFilter(filter.id, "value", event.target.value)}
-                        className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="input"
                         placeholder="Value"
                         disabled={filter.operator === "isNull" || filter.operator === "isNotNull"}
                       />
                       <button
                         type="button"
                         onClick={() => removeFilter(filter.id)}
-                        className="rounded border border-neutral-200 px-3 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        className="btn ghost"
                       >
                         Remove
                       </button>
@@ -495,7 +495,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <input
                       value={sharedWith}
                       onChange={(event) => setSharedWith(event.target.value)}
-                      className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="input"
                       placeholder="User IDs (comma-separated)"
                     />
                   </div>
@@ -527,7 +527,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                             onChange={(event) =>
                               setSchedule((prev) => ({ ...prev, frequency: event.target.value as ReportSchedule["frequency"] }))
                             }
-                            className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                           >
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
@@ -540,7 +540,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                             type="time"
                             value={schedule.time}
                             onChange={(event) => setSchedule((prev) => ({ ...prev, time: event.target.value }))}
-                            className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                           />
                         </div>
                       </div>
@@ -551,7 +551,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                           <select
                             value={schedule.dayOfWeek}
                             onChange={(event) => setSchedule((prev) => ({ ...prev, dayOfWeek: Number(event.target.value) }))}
-                            className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                           >
                             {[
                               "Sunday",
@@ -579,7 +579,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                             max={31}
                             value={schedule.dayOfMonth || 1}
                             onChange={(event) => setSchedule((prev) => ({ ...prev, dayOfMonth: Number(event.target.value) }))}
-                            className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="input"
                           />
                         </div>
                       ) : null}
@@ -589,7 +589,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         <input
                           value={schedule.timezone}
                           onChange={(event) => setSchedule((prev) => ({ ...prev, timezone: event.target.value }))}
-                          className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                          className="input"
                           placeholder="UTC"
                         />
                       </div>
@@ -599,7 +599,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         <input
                           value={recipients}
                           onChange={(event) => setRecipients(event.target.value)}
-                          className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                          className="input"
                           placeholder="email@company.com, exec@company.com"
                         />
                       </div>
@@ -613,7 +613,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
               <button
                 type="button"
                 onClick={closeDialog}
-                className="rounded border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className="btn ghost"
               >
                 Cancel
               </button>
@@ -621,7 +621,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 type="button"
                 disabled={!isValid || loading}
                 onClick={handleSubmit}
-                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn"
               >
                 {loading ? "Creating..." : "Create Report"}
               </button>
