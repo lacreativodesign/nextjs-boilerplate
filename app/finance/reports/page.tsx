@@ -51,10 +51,8 @@ export default function FinanceReportsPage() {
   return (
     <div>
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Reports</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
-          Export finance data in CSV format. USD revenue and PKR expense reporting.
-        </p>
+        <h1 className="page-title">Reports</h1>
+        <p className="page-subtitle">Export finance data in CSV format. USD revenue and PKR expense reporting.</p>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">

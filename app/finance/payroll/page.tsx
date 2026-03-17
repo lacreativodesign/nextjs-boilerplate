@@ -178,8 +178,8 @@ export default function FinancePayrollPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payroll</h3>
-          <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>PKR salary runs, approvals, and payments.</p>
+          <h1 className="page-title">Payroll</h1>
+          <p className="page-subtitle">PKR salary runs, approvals, and payments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input className="input" type="month" value={runMonth} onChange={(e) => setRunMonth(e.target.value)} />
