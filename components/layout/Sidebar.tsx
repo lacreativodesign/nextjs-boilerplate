@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, ChevronLeft, ChevronRight, X, FileText, Bell, Search as SearchIcon,
+  Shield, X, FileText, Bell, Search as SearchIcon,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -108,12 +108,20 @@ export default function Sidebar({
         <div className="flex h-full flex-col p-2 md:p-3">
 
           <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
-            <div className="flex h-14 items-center">
+            <div className={`flex h-14 items-center ${collapsed ? "justify-center" : ""}`}>
 
               <button
                 type="button"
-                onClick={() => (isMobileOpen ? closeMobile() : openMobile())}
-                className="flex-shrink-0 focus:outline-none md:cursor-default md:pointer-events-none"
+                onClick={() => {
+                  if (isMobileOpen) {
+                    closeMobile();
+                  } else if (typeof window !== "undefined" && window.innerWidth >= 768) {
+                    toggleCollapse();
+                  } else {
+                    openMobile();
+                  }
+                }}
+                className="flex-shrink-0 focus:outline-none cursor-pointer hover:opacity-80 transition-opacity"
                 aria-label="Toggle sidebar"
               >
                 <LogoIcon />
@@ -136,18 +144,6 @@ export default function Sidebar({
                 </button>
               )}
 
-              <button
-                onClick={toggleCollapse}
-                className="ml-auto flex-shrink-0 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)] transition-colors shadow-sm"
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {collapsed ? (
-                  <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4 text-[var(--text-muted)]" />
-                )}
-              </button>
-
             </div>
           </div>
 
@@ -164,7 +160,8 @@ export default function Sidebar({
                   title={item.label}
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
-                    "flex items-center rounded-xl transition-colors px-[11px] py-2.5",
+                    "flex items-center rounded-xl transition-colors py-2.5",
+                    collapsed ? "justify-center px-0" : "px-[11px]",
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
                       : "text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100",
