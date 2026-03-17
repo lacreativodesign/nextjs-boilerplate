@@ -130,6 +130,156 @@ export default function DashboardPage() {
           </a>
         ))}
       </div>
+
+      {/* Admin Tools — only visible to admin and super_admin */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="section-title">Admin Tools</h2>
+          <p className="page-subtitle">Utilities, monitoring, and platform management.</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              title: "Monitoring",
+              href: "/admin/monitoring",
+              desc: "Error rates, response times, and system alerts.",
+              icon: "📡",
+            },
+            {
+              title: "Support Tickets",
+              href: "/admin/support",
+              desc: "View and manage internal support requests.",
+              icon: "🎫",
+            },
+            {
+              title: "Launch Checklist",
+              href: "/admin/launch-checklist",
+              desc: "Track production readiness and env configuration.",
+              icon: "✅",
+            },
+            {
+              title: "Automation",
+              href: "/admin/automation",
+              desc: "Configure workflow automation rules.",
+              icon: "⚡",
+            },
+            {
+              title: "Data Import",
+              href: "/admin/import",
+              desc: "Bulk import clients, invoices, and employees.",
+              icon: "📥",
+            },
+            {
+              title: "Jobs Queue",
+              href: "/admin/jobs",
+              desc: "Background job status and retry management.",
+              icon: "⚙️",
+            },
+            {
+              title: "Activity Log",
+              href: "/admin/activity",
+              desc: "Full audit trail of platform-wide events.",
+              icon: "🕐",
+            },
+            {
+              title: "API Docs",
+              href: "/api-docs",
+              desc: "Interactive API documentation and testing.",
+              icon: "📖",
+            },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-xl border border-[var(--border-subtle)]
+                bg-[var(--surface-card)] p-5
+                hover:border-[var(--erp-blue)] transition-all group"
+            >
+              <div className="mb-2 text-2xl">{item.icon}</div>
+              <p
+                className="font-semibold text-[var(--text-primary)]
+                group-hover:text-[var(--erp-blue)]"
+              >
+                {item.title}
+              </p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* Extended Modules */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="section-title">Extended Modules</h2>
+          <p className="page-subtitle">Additional platform capabilities.</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              title: "Documents",
+              href: "/dashboard/documents",
+              desc: "File uploads, folders, and version control.",
+              icon: "📁",
+            },
+            {
+              title: "CRM — Customers",
+              href: "/dashboard/crm/customers",
+              desc: "Customer profiles and relationship tracking.",
+              icon: "🤝",
+            },
+            {
+              title: "CRM — Deals",
+              href: "/dashboard/crm/deals",
+              desc: "Deal pipeline and sales opportunities.",
+              icon: "💼",
+            },
+            {
+              title: "Inventory",
+              href: "/dashboard/inventory/products",
+              desc: "Products, stock levels, and variants.",
+              icon: "📦",
+            },
+            {
+              title: "Audit Logs",
+              href: "/dashboard/audit-logs",
+              desc: "Immutable record of all system changes.",
+              icon: "🔍",
+            },
+            {
+              title: "Compliance",
+              href: "/dashboard/compliance",
+              desc: "Policy management and data retention rules.",
+              icon: "🛡️",
+            },
+            {
+              title: "Notifications",
+              href: "/dashboard/notifications",
+              desc: "View and manage all platform notifications.",
+              icon: "🔔",
+            },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-xl border border-[var(--border-subtle)]
+                bg-[var(--surface-card)] p-5
+                hover:border-[var(--erp-blue)] transition-all group"
+            >
+              <div className="mb-2 text-2xl">{item.icon}</div>
+              <p
+                className="font-semibold text-[var(--text-primary)]
+                group-hover:text-[var(--erp-blue)]"
+              >
+                {item.title}
+              </p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
+            </a>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
