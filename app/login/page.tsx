@@ -241,7 +241,15 @@ export default function LoginPage() {
         <aside className="login-brand" aria-hidden="true">
           <div className="login-brand-inner">
             <div className="login-logo-wrap">
-              <span className="login-logo-mark">BIZOSTO</span>
+              <div className="login-logo-lockup">
+                <div className="login-logo-icon">
+                  <span className="login-logo-b">B</span>
+                </div>
+                <div className="login-logo-text-group">
+                  <span className="login-logo-mark">BIZOSTO</span>
+                  <span className="login-logo-descriptor">ERP Platform</span>
+                </div>
+              </div>
             </div>
             <p className="login-tagline">The complete business operating system</p>
 
@@ -257,7 +265,15 @@ export default function LoginPage() {
 
         <section className="login-form-panel">
           <div className="login-mobile-header" aria-hidden="true">
-            <span className="login-logo-mark">BIZOSTO</span>
+            <div className="login-logo-lockup login-logo-lockup--mobile">
+              <div className="login-logo-icon login-logo-icon--sm">
+                <span className="login-logo-b">B</span>
+              </div>
+              <div className="login-logo-text-group">
+                <span className="login-logo-mark">BIZOSTO</span>
+                <span className="login-logo-descriptor">ERP Platform</span>
+              </div>
+            </div>
           </div>
 
           <div className="login-form-shell">
@@ -379,7 +395,67 @@ export default function LoginPage() {
           }
 
           .login-logo-wrap {
-            margin-bottom: 12px;
+            margin-bottom: 20px;
+          }
+
+          .login-logo-lockup {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+          }
+
+          .login-logo-lockup--mobile {
+            gap: 12px;
+          }
+
+          .login-logo-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+          }
+
+          .login-logo-icon--sm {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+          }
+
+          .login-logo-b {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            line-height: 1;
+            font-family: system-ui, -apple-system, sans-serif;
+          }
+
+          .login-logo-icon--sm .login-logo-b {
+            font-size: 1.2rem;
+          }
+
+          .login-logo-text-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          .login-logo-descriptor {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 500;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1;
           }
 
           .login-logo-mark {
