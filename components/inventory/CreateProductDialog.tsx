@@ -59,14 +59,14 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        className="btn"
       >
         Create Product
       </button>
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-lg bg-white p-6">
+          <div className="card w-full max-w-xl p-6">
             <h2 className="mb-4 text-xl font-semibold">Create Product</h2>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -76,26 +76,26 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.name}
                   onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                   placeholder="Product name"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   required
                   value={form.sku}
                   onChange={(event) => setForm((prev) => ({ ...prev, sku: event.target.value }))}
                   placeholder="SKU"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   required
                   value={form.category}
                   onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
                   placeholder="Category"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <select
                   value={form.type}
                   onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as typeof form.type }))}
-                  className="rounded-md border p-2"
+                  className="input"
                 >
                   <option value="physical">Physical</option>
                   <option value="digital">Digital</option>
@@ -110,7 +110,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.costPrice}
                   onChange={(event) => setForm((prev) => ({ ...prev, costPrice: Number(event.target.value) }))}
                   placeholder="Cost price"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   type="number"
@@ -120,7 +120,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.sellingPrice}
                   onChange={(event) => setForm((prev) => ({ ...prev, sellingPrice: Number(event.target.value) }))}
                   placeholder="Selling price"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   type="number"
@@ -129,7 +129,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.minStockLevel}
                   onChange={(event) => setForm((prev) => ({ ...prev, minStockLevel: Number(event.target.value) }))}
                   placeholder="Min stock level"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   type="number"
@@ -138,7 +138,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.reorderPoint}
                   onChange={(event) => setForm((prev) => ({ ...prev, reorderPoint: Number(event.target.value) }))}
                   placeholder="Reorder point"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
                 <input
                   type="number"
@@ -147,9 +147,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   value={form.reorderQuantity}
                   onChange={(event) => setForm((prev) => ({ ...prev, reorderQuantity: Number(event.target.value) }))}
                   placeholder="Reorder quantity"
-                  className="rounded-md border p-2"
+                  className="input"
                 />
-                <label className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                <label className="flex items-center gap-2 input text-sm">
                   <input
                     type="checkbox"
                     checked={form.trackInventory}
@@ -163,7 +163,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                 value={form.description}
                 onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
                 placeholder="Description"
-                className="w-full rounded-md border p-2"
+                className="w-full input"
               />
 
               {error ? <p className="text-sm text-red-600">{error}</p> : null}

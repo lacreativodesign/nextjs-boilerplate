@@ -161,7 +161,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="rounded border border-slate-300 px-4 py-2 text-sm"
+              className="btn ghost"
             >
               Cancel
             </button>

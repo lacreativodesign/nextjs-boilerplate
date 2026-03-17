@@ -68,7 +68,7 @@ export function NotificationCenter() {
     <div className="relative">
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative rounded-full p-2 hover:bg-gray-100"
+        className="notification-bell"
         aria-label="Notifications"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,7 @@ export function NotificationCenter() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-96 rounded-lg bg-white shadow-xl">
+        <div className="absolute right-0 z-50 mt-2 w-96 rounded-2xl bg-[var(--surface-card)] shadow-xl border border-[var(--border-subtle)]">
           <div className="border-b p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold">Notifications</h3>
@@ -100,7 +100,7 @@ export function NotificationCenter() {
               <button
                 onClick={() => setFilter("all")}
                 className={`rounded px-3 py-1 ${
-                  filter === "all" ? "bg-blue-100 text-blue-600" : "bg-gray-100"
+                  filter === "all" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                 }`}
               >
                 All
@@ -108,7 +108,7 @@ export function NotificationCenter() {
               <button
                 onClick={() => setFilter("unread")}
                 className={`rounded px-3 py-1 ${
-                  filter === "unread" ? "bg-blue-100 text-blue-600" : "bg-gray-100"
+                  filter === "unread" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                 }`}
               >
                 Unread ({unreadCount})
@@ -118,20 +118,20 @@ export function NotificationCenter() {
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No notifications</div>
+              <div className="p-8 text-center text-[var(--text-muted)]">No notifications</div>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
                   onClick={() => !notification.isRead && markAsRead(notification.id)}
-                  className={`cursor-pointer border-b p-4 hover:bg-gray-50 ${
+                  className={`cursor-pointer border-b border-[var(--border-subtle)] p-4 hover:bg-[var(--table-row-hover)] ${
                     !notification.isRead ? "bg-blue-50" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-medium">{notification.title}</h4>
-                      <p className="mt-1 text-sm text-gray-600">{notification.message}</p>
+                      <p className="mt-1 text-sm text-[var(--text-muted)]">{notification.message}</p>
                       {notification.actionUrl && (
                         <a
                           href={notification.actionUrl}
@@ -143,7 +143,7 @@ export function NotificationCenter() {
                     </div>
                     {!notification.isRead && <span className="ml-2 h-2 w-2 rounded-full bg-blue-600" />}
                   </div>
-                  <p className="mt-2 text-xs text-gray-400">{formatTimestamp(notification.createdAt)}</p>
+                  <p className="mt-2 text-xs text-[var(--text-soft)]">{formatTimestamp(notification.createdAt)}</p>
                 </div>
               ))
             )}

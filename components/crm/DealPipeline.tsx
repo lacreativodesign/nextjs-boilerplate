@@ -23,16 +23,16 @@ export function DealPipeline({ deals }: DealPipelineProps) {
       {STAGES.map((stage) => {
         const stageDeals = deals.filter((deal) => deal.stage === stage);
         return (
-          <section key={stage} className="rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase text-gray-700">{stage}</h3>
+          <section key={stage} className="card p-4">
+            <h3 className="mb-3 text-sm font-semibold uppercase text-[var(--text-muted)]">{stage}</h3>
             <div className="space-y-2">
               {stageDeals.map((deal) => (
-                <div key={deal.id} className="rounded border border-gray-100 bg-gray-50 p-3 text-sm">
-                  <p className="font-medium text-gray-900">{deal.name || deal.title}</p>
-                  <p className="text-gray-600">${(deal.value || deal.valueUSD || 0).toLocaleString()}</p>
+                <div key={deal.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 text-sm">
+                  <p className="font-medium text-[var(--text-primary)]">{deal.name || deal.title}</p>
+                  <p className="text-[var(--text-muted)]">${(deal.value || deal.valueUSD || 0).toLocaleString()}</p>
                 </div>
               ))}
-              {stageDeals.length === 0 && <p className="text-xs text-gray-400">No deals</p>}
+              {stageDeals.length === 0 && <p className="text-xs text-[var(--text-soft)]">No deals</p>}
             </div>
           </section>
         );

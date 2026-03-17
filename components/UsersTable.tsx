@@ -28,7 +28,7 @@ export default function UsersTable({
 
   return (
     <ErrorBoundary fallbackComponent={UsersTableErrorFallback}>
-      <div className="overflow-x-auto rounded-lg border bg-white dark:bg-neutral-900">
+      <div className="table-shell">
         <table className="min-w-full text-sm">
           <thead className="bg-neutral-100 dark:bg-neutral-800">
             <tr>

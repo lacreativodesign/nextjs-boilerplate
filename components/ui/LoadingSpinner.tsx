@@ -18,11 +18,11 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       <div
-        className={cn("animate-spin rounded-full border-gray-300 border-t-blue-600", sizeClasses[size], className)}
+        className={cn("animate-spin rounded-full border-[var(--border-subtle)] border-t-[var(--erp-blue)]", sizeClasses[size], className)}
         role="status"
         aria-label={label || "Loading"}
       />
-      {label && <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>}
+      {label && <span className="text-sm text-[var(--text-muted)]">{label}</span>}
     </div>
   );
 }

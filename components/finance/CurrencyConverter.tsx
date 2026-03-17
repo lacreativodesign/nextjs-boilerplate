@@ -42,17 +42,17 @@ export function CurrencyConverter() {
   }, [amount, fromCurrency, toCurrency]);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-      <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Currency Converter</h3>
+    <div className="card p-6">
+      <h3 className="mb-4 section-title">Currency Converter</h3>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Amount</label>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="input"
             min="0"
             step="0.01"
           />
@@ -75,7 +75,7 @@ export function CurrencyConverter() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Converted Amount</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Converted Amount</label>
           <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700">
             {loading ? (
               <span className="text-gray-400">Converting...</span>

@@ -16,7 +16,7 @@ export function CurrencyDisplay({ amount, currency, className, showCode = false 
   return (
     <span className={className}>
       {formatted}
-      {showCode && <span className="ml-1 text-xs text-gray-500">{currency}</span>}
+      {showCode && <span className="ml-1 text-xs text-[var(--text-muted)]">{currency}</span>}
     </span>
   );
 }

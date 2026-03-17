@@ -365,7 +365,7 @@ export default function AdvancedSearchBuilder() {
                 onChange={(event) => setQuery(event.target.value)}
               />
               {suggestions.length > 0 ? (
-                <div className="mt-1 rounded border border-[var(--border-subtle)] bg-white p-1 text-sm dark:bg-[var(--surface)]">
+                <div className="mt-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-1 text-sm">
                   {suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
@@ -384,14 +384,14 @@ export default function AdvancedSearchBuilder() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className={`rounded px-3 py-1 text-sm ${logic === 'AND' ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}
+              className={`rounded px-3 py-1 text-sm ${logic === 'AND' ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'}`}
               onClick={() => setLogic('AND')}
             >
               AND
             </button>
             <button
               type="button"
-              className={`rounded px-3 py-1 text-sm ${logic === 'OR' ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}
+              className={`rounded px-3 py-1 text-sm ${logic === 'OR' ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'}`}
               onClick={() => setLogic('OR')}
             >
               OR
@@ -480,7 +480,7 @@ export default function AdvancedSearchBuilder() {
             />
             <button
               type="button"
-              className="rounded bg-neutral-900 px-4 py-2 text-sm text-white"
+              className="btn"
               onClick={handleSave}
             >
               Save search

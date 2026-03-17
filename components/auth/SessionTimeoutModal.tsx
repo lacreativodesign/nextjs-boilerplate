@@ -20,7 +20,7 @@ export default function SessionTimeoutModal({ open, timeRemaining, onStayLoggedI
     <Dialog open={open} onClose={() => {}} className="relative z-50">
       <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
+        <Dialog.Panel className="card w-full max-w-md p-6 shadow-xl">
           <Dialog.Title className="text-lg font-semibold text-[var(--text-primary)]">
             Your session is about to expire
           </Dialog.Title>

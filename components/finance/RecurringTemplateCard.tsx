@@ -25,7 +25,7 @@ interface RecurringTemplateCardProps {
 }
 
 const statusColors: Record<TemplateStatus, string> = {
-  draft: "bg-gray-100 text-gray-800",
+  draft: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
   active: "bg-green-100 text-green-800",
   paused: "bg-yellow-100 text-yellow-800",
   cancelled: "bg-red-100 text-red-800",
@@ -44,33 +44,33 @@ export function RecurringTemplateCard({ template, onEdit, onActivate, onPause, o
   const isOverdue = template.status === "active" && nextGenDateCompare < today;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <div className="card p-6">
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{template.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{template.clientName}</p>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{template.name}</h3>
+          <p className="text-sm text-[var(--text-muted)]">{template.clientName}</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[template.status]}`}>{template.status}</span>
       </div>
 
       <div className="mb-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Frequency</span>
+          <span className="text-[var(--text-muted)]">Frequency</span>
           <span className="font-medium text-gray-900 dark:text-white">{frequencyText}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Amount</span>
+          <span className="text-[var(--text-muted)]">Amount</span>
           <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(totalAmount, template.currency)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Next Invoice</span>
+          <span className="text-[var(--text-muted)]">Next Invoice</span>
           <span className={`font-medium ${isOverdue ? "text-red-600" : "text-gray-900 dark:text-white"}`}>
             {nextGenDate.toLocaleDateString()}
             {isOverdue ? <span className="ml-2 text-xs">(Overdue)</span> : null}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Generated</span>
+          <span className="text-[var(--text-muted)]">Generated</span>
           <span className="font-medium text-gray-900 dark:text-white">{template.generatedCount} invoices</span>
         </div>
       </div>

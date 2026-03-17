@@ -47,17 +47,17 @@ export function ProgressChecklist() {
   if (!checklist || checklist.progress >= 100) return null;
 
   return (
-    <div className="mb-6 rounded-lg border bg-white p-6">
+    <div className="card mb-6 p-6">
       <h3 className="mb-4 font-semibold">Get Started with Bizosto</h3>
       <div className="space-y-3">
         {checklist.steps.map((step) => (
           <div key={step.id} className="flex items-center gap-3">
-            {step.completed ? <CheckCircle className="text-green-600" size={20} /> : <Circle className="text-gray-400" size={20} />}
-            <span className={step.completed ? "text-gray-500 line-through" : ""}>{step.title}</span>
+            {step.completed ? <CheckCircle className="text-green-600" size={20} /> : <Circle className="text-[var(--text-soft)]" size={20} />}
+            <span className={step.completed ? "text-[var(--text-muted)] line-through" : ""}>{step.title}</span>
           </div>
         ))}
       </div>
-      <div className="mt-4 h-2 rounded-full bg-gray-200">
+      <div className="mt-4 h-2 rounded-full bg-[var(--surface-muted)]">
         <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${checklist.progress}%` }} />
       </div>
     </div>

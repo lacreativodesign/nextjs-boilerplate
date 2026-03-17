@@ -41,16 +41,16 @@ export function ActivityItem({ activity }: { activity: ActivityFeedItem }) {
   const timestamp = toDateValue(activity.timestamp);
 
   return (
-    <div className="flex items-start gap-3 rounded-md border border-gray-100 bg-white p-3">
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-3">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
         {avatarLabel}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-900">
+        <p className="text-sm text-[var(--text-primary)]">
           <strong>{actorName}</strong> {activity.action} {activity.entityType}{' '}
           <strong>{entityName}</strong>
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--text-muted)]">
           {timestamp ? `${formatDistanceToNow(timestamp)} ago` : 'Unknown time'}
         </p>
       </div>

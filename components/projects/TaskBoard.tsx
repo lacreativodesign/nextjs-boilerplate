@@ -42,13 +42,13 @@ export function TaskBoard({
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       {statuses.map((status) => (
-        <div key={status} className="rounded border bg-gray-50 p-3">
+        <div key={status} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
           <h3 className="mb-3 font-semibold capitalize">{status.replace("_", " ")}</h3>
           <div className="space-y-2">
             {(grouped[status] || []).map((task) => (
-              <div key={task.id} className="rounded border bg-white p-3 text-sm">
+              <div key={task.id} className="card p-3 text-sm">
                 <p className="font-medium">{task.title}</p>
-                <p className="text-xs text-gray-500">{task.assignedToName || "Unassigned"}</p>
+                <p className="text-xs text-[var(--text-muted)]">{task.assignedToName || "Unassigned"}</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {statuses
                     .filter((nextStatus) => nextStatus !== status)
