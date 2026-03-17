@@ -42,7 +42,7 @@ function FolderNode({
         <button
           type="button"
           onClick={toggleExpanded}
-          className="text-xs text-gray-500"
+          className="text-xs text-[var(--text-muted)]"
           aria-label={expanded ? "Collapse folder" : "Expand folder"}
         >
           {expanded ? "▾" : "▸"}
@@ -50,7 +50,7 @@ function FolderNode({
         <button
           type="button"
           onClick={() => onFolderSelect(folder.id)}
-          className={`text-sm ${currentFolder === folder.id ? "font-semibold text-blue-600" : "text-gray-700"}`}
+          className={`text-sm ${currentFolder === folder.id ? "font-semibold text-[var(--erp-blue)]" : "text-[var(--text-primary)]"}`}
         >
           {folder.name}
         </button>
@@ -58,7 +58,7 @@ function FolderNode({
       {expanded && (
         <div className="ml-4 space-y-2">
           {loading ? (
-            <p className="text-xs text-gray-400">Loading...</p>
+            <p className="text-xs text-[var(--text-soft)]">Loading...</p>
           ) : (
             children.map((child) => (
               <FolderNode
@@ -103,7 +103,7 @@ export function FolderTree({
       <button
         type="button"
         onClick={() => onFolderSelect(null)}
-        className={`text-sm ${currentFolder === null ? "font-semibold text-blue-600" : "text-gray-700"}`}
+        className={`text-sm ${currentFolder === null ? "font-semibold text-[var(--erp-blue)]" : "text-[var(--text-primary)]"}`}
       >
         All Documents
       </button>

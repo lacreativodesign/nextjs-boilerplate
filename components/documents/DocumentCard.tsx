@@ -58,7 +58,7 @@ export function DocumentCard({
 
   return (
     <div
-      className={`border rounded-lg p-4 bg-white shadow-sm ${
+      className={`card p-4 ${
         view === "list" ? "flex items-center justify-between" : "space-y-3"
       }`}
     >
@@ -70,7 +70,7 @@ export function DocumentCard({
           className="h-4 w-4"
         />
 
-        <div className="h-20 w-20 rounded border bg-gray-50 flex items-center justify-center overflow-hidden">
+        <div className="h-20 w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] flex items-center justify-center overflow-hidden">
           {isImage && document.previewUrl ? (
             <OptimizedImage
               src={document.previewUrl}
@@ -81,16 +81,16 @@ export function DocumentCard({
               sizes="80px"
             />
           ) : isPdf ? (
-            <span className="text-xs font-medium text-gray-600">PDF</span>
+            <span className="text-xs font-medium text-[var(--text-muted)]">PDF</span>
           ) : (
-            <span className="text-xs font-medium text-gray-600">FILE</span>
+            <span className="text-xs font-medium text-[var(--text-muted)]">FILE</span>
           )}
         </div>
 
         <div>
-          <div className="font-medium text-gray-900">{document.title || document.originalFileName}</div>
-          <div className="text-xs text-gray-500">{document.category}</div>
-          <div className="text-xs text-gray-500">{(document.fileSize / 1024).toFixed(1)} KB</div>
+          <div className="font-medium text-[var(--text-primary)]">{document.title || document.originalFileName}</div>
+          <div className="text-xs text-[var(--text-muted)]">{document.category}</div>
+          <div className="text-xs text-[var(--text-muted)]">{(document.fileSize / 1024).toFixed(1)} KB</div>
         </div>
       </div>
 

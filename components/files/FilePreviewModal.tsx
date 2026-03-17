@@ -11,7 +11,7 @@ export function FilePreviewModal({ open, onClose, file }: { open: boolean; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="max-h-[90vh] w-[90vw] overflow-auto rounded bg-white p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="card max-h-[90vh] w-[90vw] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="font-semibold">{file.name}</h3>
           <button className="btn ghost" onClick={onClose}>Close</button>

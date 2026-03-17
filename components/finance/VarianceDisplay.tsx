@@ -32,7 +32,7 @@ export function VarianceDisplay({ allocated, actual, currency, showPercentage = 
       <div>
         <div className={`text-sm font-medium ${statusColor}`}>{formatCurrency(Math.abs(variance), currency)}</div>
         {showPercentage ? (
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs text-[var(--text-muted)]">
             {Math.abs(variancePercentage).toFixed(1)}% {statusText}
           </div>
         ) : null}

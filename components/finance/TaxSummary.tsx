@@ -22,14 +22,14 @@ export function TaxSummary({
   taxExempt,
 }: TaxSummaryProps) {
   return (
-    <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+    <div className="space-y-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-        <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(subtotal, currency)}</span>
+        <span className="text-[var(--text-muted)]">Subtotal</span>
+        <span className="font-medium text-[var(--text-primary)]">{formatCurrency(subtotal, currency)}</span>
       </div>
 
       <div className="flex justify-between text-sm">
-        <span className="text-gray-600 dark:text-gray-400">
+        <span className="text-[var(--text-muted)]">
           {taxExempt ? (
             <>
               Tax <span className="ml-1 text-xs text-green-600">(Exempt)</span>
@@ -41,7 +41,7 @@ export function TaxSummary({
             </>
           )}
         </span>
-        <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(taxAmount, currency)}</span>
+        <span className="font-medium text-[var(--text-primary)]">{formatCurrency(taxAmount, currency)}</span>
       </div>
 
       <div className="border-t border-gray-200 pt-2 dark:border-gray-700">

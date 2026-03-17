@@ -60,7 +60,7 @@ export function TimeTracker({ projectId, projectName = "Project" }: { projectId:
           Stop Timer
         </button>
       </div>
-      {entryId && <p className="mt-2 text-sm text-gray-600">Running entry: {entryId}</p>}
+      {entryId && <p className="mt-2 text-sm text-[var(--text-muted)]">Running entry: {entryId}</p>}
     </div>
   );
 }

@@ -72,11 +72,11 @@ export function ActivityFeed({ tenantId, maxItems = 10 }: ActivityFeedProps) {
 
   const content = useMemo(() => {
     if (loading) {
-      return <p className="text-sm text-gray-500">Loading activity…</p>;
+      return <p className="text-sm text-[var(--text-muted)]">Loading activity…</p>;
     }
 
     if (!activities.length) {
-      return <p className="text-sm text-gray-500">No recent activity.</p>;
+      return <p className="text-sm text-[var(--text-muted)]">No recent activity.</p>;
     }
 
     return (
@@ -89,8 +89,8 @@ export function ActivityFeed({ tenantId, maxItems = 10 }: ActivityFeedProps) {
   }, [activities, loading]);
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-base font-semibold text-gray-900">Recent Activity</h3>
+    <section className="card p-4">
+      <h3 className="mb-4 text-base font-semibold text-[var(--text-primary)]">Recent Activity</h3>
       {content}
     </section>
   );

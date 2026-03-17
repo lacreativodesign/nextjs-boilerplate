@@ -15,7 +15,7 @@ export function PageLoader({ message = "Loading..." }: PageLoaderProps) {
 
 export function FullScreenLoader({ message }: PageLoaderProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--surface-card)]">
       <LoadingSpinner size="xl" label={message} />
     </div>
   );

@@ -47,7 +47,7 @@ export default function ProgressBar({
           <span>{label}</span>
           {periodLabel ? <span>{periodLabel}</span> : null}
         </div>
-        <p className="text-xs text-gray-500">No target set</p>
+        <p className="text-xs text-[var(--text-muted)]">No target set</p>
       </div>
     );
   }

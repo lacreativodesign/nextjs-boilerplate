@@ -65,17 +65,17 @@ export function TicketThread({ ticketId, messages, onRefresh }: TicketThreadProp
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Conversation</h2>
+      <div className="card p-4">
+        <h2 className="mb-3 section-title">Conversation</h2>
         <div className="space-y-3">
           {messages.length === 0 ? (
-            <p className="text-sm text-slate-500">No messages yet.</p>
+            <p className="text-sm text-[var(--text-muted)]">No messages yet.</p>
           ) : (
             messages.map((message) => (
-              <article key={message.id} className="rounded border border-slate-200 p-3">
+              <article key={message.id} className="rounded-xl border border-[var(--border-subtle)] p-3">
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-slate-800">{message.author?.name || "Unknown"}</span>
-                  <span className="text-xs text-slate-500">{formatDate(message.createdAt)}</span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{message.author?.name || "Unknown"}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{formatDate(message.createdAt)}</span>
                 </div>
                 {message.isInternal ? (
                   <span className="mb-1 inline-flex rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">Internal</span>
@@ -87,7 +87,7 @@ export function TicketThread({ ticketId, messages, onRefresh }: TicketThreadProp
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-4">
+      <form onSubmit={handleSubmit} className="card p-4">
         <h3 className="mb-2 text-base font-semibold text-slate-900">Add Message</h3>
         <textarea
           value={content}
