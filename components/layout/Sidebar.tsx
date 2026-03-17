@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, ChevronLeft, ChevronRight, X,
+  Shield, ChevronLeft, ChevronRight, X, FileText, Bell, Search as SearchIcon,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -41,6 +41,9 @@ export default function Sidebar({
     { href: "/hr", label: t("navigation.hr"), icon: UserCircle, roles: null },
     { href: "/reports", label: t("navigation.reports"), icon: BarChart3, roles: null },
     { href: "/super_admin", label: t("navigation.superAdmin"), icon: Shield, roles: ["super_admin"] },
+    { href: "/dashboard/documents", label: "Documents", icon: FileText, roles: ["admin", "super_admin"] },
+    { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
+    { href: "/search", label: "Search", icon: SearchIcon, roles: ["admin", "super_admin"] },
     { href: "/settings", label: t("common.settings"), icon: Settings, roles: null },
   ];
 
