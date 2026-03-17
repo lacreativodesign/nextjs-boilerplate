@@ -37,7 +37,7 @@ const ROLE_BADGE: Record<string, string> = {
   production_manager: "bg-amber-100 text-amber-700",
   finance: "bg-cyan-100 text-cyan-700",
   hr: "bg-pink-100 text-pink-700",
-  client: "bg-slate-100 text-slate-700",
+  client: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
 };
 
 export default function DemoEnvironmentPage() {
@@ -119,7 +119,7 @@ export default function DemoEnvironmentPage() {
                 <tr key={user.email} className="border-t">
                   <td className="py-2">{user.name}</td>
                   <td>{user.email}</td>
-                  <td><span className={`rounded-full px-2 py-1 text-xs font-medium ${ROLE_BADGE[user.role] || "bg-slate-100 text-slate-700"}`}>{user.role}</span></td>
+                  <td><span className={`rounded-full px-2 py-1 text-xs font-medium ${ROLE_BADGE[user.role] || "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}>{user.role}</span></td>
                   <td>
                     <div className="flex items-center gap-2">
                       <span>••••••••••••••••</span>
@@ -155,7 +155,7 @@ export default function DemoEnvironmentPage() {
 
       {confirmOpen ? (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5">
+          <div className="card w-full max-w-md p-5">
             <h3 className="font-semibold">Are you sure you want to reset all demo data? Type RESET to confirm.</h3>
             <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="mt-3 w-full rounded border px-3 py-2" />
             <div className="mt-4 flex justify-end gap-2">

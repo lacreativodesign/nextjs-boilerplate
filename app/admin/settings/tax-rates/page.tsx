@@ -235,18 +235,18 @@ export default function TaxRatesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-500">Loading tax rates...</p>
+            <p className="text-sm text-[var(--text-muted)]">Loading tax rates...</p>
           ) : (
             <div className="space-y-3">
               {taxRates.map((rate) => (
                 <div key={rate.id} className="flex items-center justify-between rounded border p-4">
                   <div className="flex-1">
                     <h3 className="font-semibold">{rate.name}</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-[var(--text-muted)]">
                       {rate.rate}% • {rate.type === "simple" ? "Simple" : "Compound"} • {" "}
                       {rate.applies_to === "subtotal" ? "Base: subtotal" : "Base: subtotal + tax"}
                     </p>
-                    {rate.description && <p className="text-xs text-gray-500 mt-1">{rate.description}</p>}
+                    {rate.description && <p className="text-xs text-[var(--text-muted)] mt-1">{rate.description}</p>}
                   </div>
                   <div className="flex items-center gap-4">
                     <Switch checked={rate.enabled} onCheckedChange={() => handleToggle(rate)} />
@@ -257,7 +257,7 @@ export default function TaxRatesPage() {
                 </div>
               ))}
 
-              {taxRates.length === 0 && <p className="py-8 text-center text-gray-500">No tax rates configured</p>}
+              {taxRates.length === 0 && <p className="py-8 text-center text-[var(--text-muted)]">No tax rates configured</p>}
             </div>
           )}
         </CardContent>
@@ -275,7 +275,7 @@ export default function TaxRatesPage() {
             </div>
 
             {preview.taxDetails.map((tax) => (
-              <div key={tax.name} className="flex justify-between text-sm text-gray-600">
+              <div key={tax.name} className="flex justify-between text-sm text-[var(--text-muted)]">
                 <span>
                   {tax.name} ({tax.rate}%):
                 </span>

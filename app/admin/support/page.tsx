@@ -95,35 +95,35 @@ export default function SupportTicketsPage() {
 
       {error ? <p className="mb-3 text-sm text-red-600">{error}</p> : null}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="table-shell">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left">
+          <thead className="bg-[var(--table-header-bg)] text-left">
             <tr>
-              <th className="px-4 py-3 font-semibold text-slate-700">Ticket #</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Title</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Priority</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Created</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Assigned To</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Ticket #</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Title</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Status</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Priority</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Created</th>
+              <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Assigned To</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {!loading && tickets.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
+                <td className="px-4 py-8 text-center text-[var(--text-muted)]" colSpan={6}>
                   No support tickets found.
                 </td>
               </tr>
             ) : null}
 
             {tickets.map((ticket) => (
-              <tr key={ticket.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">
+              <tr key={ticket.id} className="hover:bg-[var(--table-row-hover)]">
+                <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                   <Link href={`/admin/support/${ticket.id}`} className="text-blue-700 hover:underline">
                     {ticket.ticketNumber}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-700">{ticket.title}</td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">{ticket.title}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${badgeClass(ticket.status)}`}>
                     {ticket.status}
@@ -134,8 +134,8 @@ export default function SupportTicketsPage() {
                     {ticket.priority}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-700">{formatDate(ticket.createdAt)}</td>
-                <td className="px-4 py-3 text-slate-700">{ticket.assignedTo?.name || "Unassigned"}</td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(ticket.createdAt)}</td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">{ticket.assignedTo?.name || "Unassigned"}</td>
               </tr>
             ))}
           </tbody>

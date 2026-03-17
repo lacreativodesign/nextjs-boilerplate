@@ -109,7 +109,7 @@ export default function AdminLaunchChecklistPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-8">
-      <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <header className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Production Launch Checklist</h1>
@@ -130,19 +130,19 @@ export default function AdminLaunchChecklistPage() {
           ["Error Rate", `${data.metrics.errorRate}%`],
           ["API P95", `${data.metrics.apiResponseTimeP95} ms`],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div key={String(label)} className="card p-4">
             <p className="text-xs text-slate-500">{label}</p>
             <p className="mt-2 text-xl font-semibold text-slate-900">{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="card p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Automated Checks</h2>
           <button
             type="button"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="btn"
             onClick={() => void execute("run-final-tests")}
             disabled={busyAction === "run-final-tests"}
           >
@@ -151,7 +151,7 @@ export default function AdminLaunchChecklistPage() {
         </div>
         <div className="space-y-3">
           {data.automatedChecks.map((check) => (
-            <div key={check.key} className="rounded-lg border border-slate-200 p-3">
+            <div key={check.key} className="rounded-xl border border-[var(--border-subtle)] p-3">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-slate-900">{check.name}</p>
                 <span
@@ -173,11 +173,11 @@ export default function AdminLaunchChecklistPage() {
             max={100}
             value={lighthouseInput}
             onChange={(event) => setLighthouseInput(event.target.value)}
-            className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="input w-28"
           />
           <button
             type="button"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            className="btn ghost"
             onClick={() => void execute("set-lighthouse-score", { score: Number(lighthouseInput) })}
             disabled={busyAction === "set-lighthouse-score"}
           >
@@ -187,7 +187,7 @@ export default function AdminLaunchChecklistPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="card p-5">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Manual Verification</h2>
           <div className="space-y-4">
             {MANUAL_CHECKS.map((category) => (
@@ -215,7 +215,7 @@ export default function AdminLaunchChecklistPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="card p-5">
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Production Configuration</h2>
             <div className="space-y-2">
               {PRODUCTION_CONFIGURATION_ITEMS.map((item) => {
@@ -235,12 +235,12 @@ export default function AdminLaunchChecklistPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="card p-5">
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Launch Actions</h2>
             <div className="space-y-3">
               <button
                 type="button"
-                className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                 onClick={() => void execute("set-production-ready", { checked: !data.isProductionReady })}
                 disabled={busyAction === "set-production-ready"}
               >
@@ -248,13 +248,13 @@ export default function AdminLaunchChecklistPage() {
               </button>
               <button
                 type="button"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                className="btn ghost w-full"
                 onClick={() => void execute("send-launch-announcement")}
                 disabled={busyAction === "send-launch-announcement"}
               >
                 Launch Announcement Email
               </button>
-              <label className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
+              <label className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3 text-sm text-[var(--text-muted)]">
                 <span>Enable Public Signups</span>
                 <input
                   type="checkbox"
@@ -270,12 +270,12 @@ export default function AdminLaunchChecklistPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="card p-5">
         <h2 className="text-lg font-semibold text-slate-900">Documentation Export</h2>
         <p className="mt-2 text-sm text-slate-600">Export the launch report and attach architecture diagram, API docs, deployment guide, and runbook from /docs.</p>
         <button
           type="button"
-          className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700"
+          className="btn ghost mt-3"
           onClick={() => {
             const report = {
               generatedAt: data.generatedAt,

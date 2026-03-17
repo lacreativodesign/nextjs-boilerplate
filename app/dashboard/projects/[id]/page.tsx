@@ -49,7 +49,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{project.name}</h1>
-        <div className="mt-2 flex gap-4 text-sm text-gray-600">
+        <div className="mt-2 flex gap-4 text-sm text-[var(--text-muted)]">
           <span>Code: {project.code}</span>
           <span>Progress: {project.progress}%</span>
           <span>
@@ -59,10 +59,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div className="mb-6 flex gap-2">
-        <button onClick={() => setView("board")} className={`rounded px-4 py-2 ${view === "board" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+        <button onClick={() => setView("board")} className={`rounded-xl px-4 py-2 transition ${view === "board" ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}>
           Board
         </button>
-        <button onClick={() => setView("list")} className={`rounded px-4 py-2 ${view === "list" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+        <button onClick={() => setView("list")} className={`rounded-xl px-4 py-2 transition ${view === "list" ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}>
           List
         </button>
       </div>
@@ -74,7 +74,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           {tasks.map((task) => (
             <div key={task.id} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0">
               <span>{task.title}</span>
-              <span className="text-gray-500">{task.status}</span>
+              <span className="text-[var(--text-muted)]">{task.status}</span>
             </div>
           ))}
         </div>

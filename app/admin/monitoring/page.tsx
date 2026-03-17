@@ -23,7 +23,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 function MetricCard({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="card p-4">
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-slate-900">
         {value}
@@ -79,14 +79,14 @@ export default function AdminMonitoringPage() {
   }
 
   if (!data) {
-    return <div className="text-sm text-slate-500">Loading monitoring dashboard…</div>;
+    return <div className="text-sm text-[var(--text-muted)]">Loading monitoring dashboard…</div>;
   }
 
   return (
     <div className="space-y-6 p-4 md:p-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Monitoring Dashboard</h1>
-        <p className="text-sm text-slate-500">Auto-refresh every 30 seconds · Last update: {new Date(data.generatedAt).toLocaleString()}</p>
+        <h1 className="page-title">Monitoring Dashboard</h1>
+        <p className="page-subtitle">Auto-refresh every 30 seconds · Last update: {new Date(data.generatedAt).toLocaleString()}</p>
       </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -99,8 +99,8 @@ export default function AdminMonitoringPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Response Time & Error Trend</h2>
+        <div className="card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Response Time & Error Trend</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={timeline}>
@@ -117,8 +117,8 @@ export default function AdminMonitoringPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Database / Cache / Users</h2>
+        <div className="card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Database / Cache / Users</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timeline}>
@@ -137,11 +137,11 @@ export default function AdminMonitoringPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Endpoint Metrics</h2>
+        <div className="card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Endpoint Metrics</h2>
           <div className="max-h-80 overflow-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-slate-500">
+              <thead className="text-[var(--text-muted)]">
                 <tr>
                   <th className="py-2">Endpoint</th>
                   <th className="py-2">P95 (ms)</th>
@@ -151,7 +151,7 @@ export default function AdminMonitoringPage() {
               </thead>
               <tbody>
                 {data.endpointMetrics.map((metric) => (
-                  <tr key={metric.endpoint} className="border-t border-slate-100">
+                  <tr key={metric.endpoint} className="border-t border-[var(--border-subtle)]">
                     <td className="py-2 font-mono text-xs">{metric.endpoint}</td>
                     <td className="py-2">{metric.p95ResponseMs}</td>
                     <td className="py-2">{metric.errorRate}</td>
@@ -163,19 +163,19 @@ export default function AdminMonitoringPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Alert Configuration</h2>
+        <div className="card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Alert Configuration</h2>
           <div className="space-y-2">
             {data.alerts.map((alert) => (
               <div
                 key={alert.id}
-                className={`rounded-lg border p-3 text-sm ${alert.active ? "border-red-200 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                className={`rounded-lg border p-3 text-sm ${alert.active ? "border-red-200 bg-red-50" : "border-[var(--border-subtle)] bg-[var(--surface-muted)]"}`}
               >
-                <p className="font-medium text-slate-800">{alert.label}</p>
-                <p className="text-slate-600">
+                <p className="font-medium text-[var(--text-primary)]">{alert.label}</p>
+                <p className="text-[var(--text-muted)]">
                   Channel: {alert.channel.toUpperCase()} · Threshold: {alert.comparison} {alert.threshold}
                 </p>
-                <p className="text-slate-600">
+                <p className="text-[var(--text-muted)]">
                   Current: {alert.currentValue.toFixed(2)}
                   {alert.lastTriggeredAt ? ` · Last triggered: ${new Date(alert.lastTriggeredAt).toLocaleString()}` : ""}
                 </p>

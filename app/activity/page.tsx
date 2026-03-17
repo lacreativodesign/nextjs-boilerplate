@@ -90,12 +90,14 @@ export default function ActivityPage() {
   }, [activities]);
 
   return (
-    <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Activity Timeline</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Activity Timeline</h1>
+      </div>
 
-      <div className="mb-6 flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-3">
         <select
-          className="rounded border border-gray-300 px-3 py-2"
+          className="input"
           value={category}
           onChange={(event) => {
             setCategory(event.target.value as CategoryFilter);
@@ -110,7 +112,7 @@ export default function ActivityPage() {
         </select>
 
         <select
-          className="rounded border border-gray-300 px-3 py-2"
+          className="input"
           value={actorUid}
           onChange={(event) => {
             setActorUid(event.target.value);
@@ -127,11 +129,11 @@ export default function ActivityPage() {
       </div>
 
       {tenantLoading || listLoading ? (
-        <p className="text-sm text-gray-500">Loading activity…</p>
+        <p className="text-sm text-[var(--text-muted)]">Loading activity…</p>
       ) : null}
 
       {!tenantLoading && !listLoading && !tenantId ? (
-        <p className="text-sm text-red-600">Unable to resolve tenant context.</p>
+        <p className="text-sm text-red-500">Unable to resolve tenant context.</p>
       ) : null}
 
       {!tenantLoading && !listLoading && tenantId ? (
@@ -139,14 +141,14 @@ export default function ActivityPage() {
           {activities.length ? (
             activities.map((activity) => <ActivityItem key={activity.id} activity={activity} />)
           ) : (
-            <p className="text-sm text-gray-500">No activity found for current filters.</p>
+            <p className="text-sm text-[var(--text-muted)]">No activity found for current filters.</p>
           )}
         </div>
       ) : null}
 
       {activities.length >= itemLimit ? (
         <button
-          className="mt-6 rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          className="btn ghost mt-2"
           onClick={() => setItemLimit((prev) => prev + PAGE_STEP)}
           type="button"
         >

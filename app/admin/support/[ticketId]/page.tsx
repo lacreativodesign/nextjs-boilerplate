@@ -124,17 +124,17 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      {!loading && !ticket ? <p className="text-sm text-slate-600">Ticket not found.</p> : null}
+      {!loading && !ticket ? <p className="text-sm text-[var(--text-muted)]">Ticket not found.</p> : null}
 
       {ticket ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="card p-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">{ticket.title}</h1>
-            <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{ticket.ticketNumber}</span>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">{ticket.title}</h1>
+            <span className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-muted)]">{ticket.ticketNumber}</span>
           </div>
-          <p className="mb-4 whitespace-pre-wrap text-sm text-slate-700">{ticket.description}</p>
+          <p className="mb-4 whitespace-pre-wrap text-sm text-[var(--text-primary)]">{ticket.description}</p>
 
-          <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 text-sm text-[var(--text-muted)] md:grid-cols-2">
             <p>
               <strong>Status:</strong> {ticket.status}
             </p>
@@ -158,7 +158,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
           {tagList.length ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {tagList.map((tag) => (
-                <span key={tag} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                <span key={tag} className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-muted)]">
                   {tag}
                 </span>
               ))}

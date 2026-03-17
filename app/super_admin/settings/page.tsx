@@ -88,10 +88,10 @@ export default function SuperAdminSettingsPage() {
             </div>
             <button
               onClick={() => set('allowPublicSignup', !settings.allowPublicSignup)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.allowPublicSignup ? 'bg-[var(--erp-blue)]' : 'bg-gray-300'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.allowPublicSignup ? 'bg-[var(--erp-blue)]' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.allowPublicSignup ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.allowPublicSignup ? 'translate-x-6' : 'translate-x-1'}`}
               />
             </button>
           </div>
@@ -102,10 +102,10 @@ export default function SuperAdminSettingsPage() {
             </div>
             <button
               onClick={() => set('maintenanceMode', !settings.maintenanceMode)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.maintenanceMode ? 'bg-red-500' : 'bg-gray-300'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.maintenanceMode ? 'bg-red-500' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.maintenanceMode ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.maintenanceMode ? 'translate-x-6' : 'translate-x-1'}`}
               />
             </button>
           </div>
@@ -168,10 +168,10 @@ export default function SuperAdminSettingsPage() {
             </div>
             <button
               onClick={() => set('announcementEnabled', !settings.announcementEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.announcementEnabled ? 'bg-[var(--erp-blue)]' : 'bg-gray-300'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.announcementEnabled ? 'bg-[var(--erp-blue)]' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.announcementEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.announcementEnabled ? 'translate-x-6' : 'translate-x-1'}`}
               />
             </button>
           </div>
