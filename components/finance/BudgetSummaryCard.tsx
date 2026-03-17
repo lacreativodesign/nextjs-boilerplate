@@ -26,10 +26,10 @@ export function BudgetSummaryCard({
   const utilizationPercentage = totalAmount > 0 ? (spentAmount / totalAmount) * 100 : 0;
 
   const statusColors = {
-    draft: "bg-gray-100 text-gray-800",
-    active: "bg-green-100 text-green-800",
-    closed: "bg-red-100 text-red-800",
-    revised: "bg-yellow-100 text-yellow-800",
+    draft: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
+    active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    closed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    revised: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   };
 
   const utilizationColor =
@@ -38,12 +38,12 @@ export function BudgetSummaryCard({
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+      className="card cursor-pointer transition-all hover:shadow-[var(--shadow-lift)] hover:-translate-y-0.5"
     >
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{name}</h3>
-          <p className="text-sm capitalize text-gray-500 dark:text-gray-400">{period}</p>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{name}</h3>
+          <p className="text-sm capitalize text-[var(--text-muted)]">{period}</p>
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-medium ${
@@ -56,25 +56,25 @@ export function BudgetSummaryCard({
 
       <div className="mb-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Allocated</span>
-          <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(totalAmount, currency)}</span>
+          <span className="text-[var(--text-muted)]">Allocated</span>
+          <span className="font-medium text-[var(--text-primary)]">{formatCurrency(totalAmount, currency)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Spent</span>
-          <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(spentAmount, currency)}</span>
+          <span className="text-[var(--text-muted)]">Spent</span>
+          <span className="font-medium text-[var(--text-primary)]">{formatCurrency(spentAmount, currency)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Remaining</span>
-          <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(remainingAmount, currency)}</span>
+          <span className="text-[var(--text-muted)]">Remaining</span>
+          <span className="font-medium text-[var(--text-primary)]">{formatCurrency(remainingAmount, currency)}</span>
         </div>
       </div>
 
       <div>
         <div className="mb-1 flex justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Utilization</span>
-          <span className="font-medium text-gray-900 dark:text-white">{utilizationPercentage.toFixed(1)}%</span>
+          <span className="text-[var(--text-muted)]">Utilization</span>
+          <span className="font-medium text-[var(--text-primary)]">{utilizationPercentage.toFixed(1)}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
           <div
             className={`h-full ${utilizationColor} transition-all duration-300`}
             style={{ width: `${Math.min(utilizationPercentage, 100)}%` }}

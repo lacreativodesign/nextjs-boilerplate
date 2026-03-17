@@ -76,7 +76,7 @@ export function ReportFilters({
         <button
           type="button"
           onClick={addFilter}
-          className="rounded bg-neutral-100 px-3 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+          className="btn subtle"
         >
           + Add Filter
         </button>
@@ -89,13 +89,13 @@ export function ReportFilters({
               type="text"
               value={filter.field}
               onChange={(event) => updateFilter(filter.id, "field", event.target.value)}
-              className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="input"
               placeholder="Field (e.g. status)"
             />
             <select
               value={filter.operator}
               onChange={(event) => updateFilter(filter.id, "operator", event.target.value)}
-              className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="input"
             >
               {OPERATORS.map((op) => (
                 <option key={op.value} value={op.value}>
@@ -107,14 +107,14 @@ export function ReportFilters({
               type="text"
               value={String(filter.value ?? "")}
               onChange={(event) => updateFilter(filter.id, "value", event.target.value)}
-              className="rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="input"
               placeholder="Value"
               disabled={filter.operator === "isNull" || filter.operator === "isNotNull"}
             />
             <button
               type="button"
               onClick={() => removeFilter(filter.id)}
-              className="rounded border border-neutral-200 px-3 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="btn ghost"
             >
               Remove
             </button>
@@ -126,7 +126,7 @@ export function ReportFilters({
         <button
           type="button"
           onClick={onApply}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="btn"
         >
           Apply Filters
         </button>
