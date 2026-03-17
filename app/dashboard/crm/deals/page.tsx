@@ -51,7 +51,7 @@ export default function DealsPage() {
           {pipelines.map((pipeline) => (
             <button
               key={pipeline.id}
-              className={`rounded px-4 py-2 text-sm ${activePipeline === pipeline.id ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"}`}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activePipeline === pipeline.id ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}
               onClick={() => setActivePipeline(pipeline.id)}
             >
               {pipeline.name}

@@ -120,7 +120,7 @@ export default function SalesInboxPage() {
       </div>
 
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
-        <label className="text-xs font-semibold text-slate-500">Search</label>
+        <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}

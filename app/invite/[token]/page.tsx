@@ -51,62 +51,59 @@ export default function InvitePage({ params }: InvitePageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6">Accept Invitation</h1>
+    <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4">
+      <div className="card w-full max-w-md p-8">
+        <h1 className="page-title mb-6">Accept Invitation</h1>
 
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Full Name</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="field-label block text-sm mb-2">Full Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="input"
               required
             />
           </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Password</label>
+          <div>
+            <label className="field-label block text-sm mb-2">Password</label>
             <input
               type="password"
               value={formData.password}
               onChange={(event) => setFormData({ ...formData, password: event.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="input"
               required
               minLength={8}
             />
           </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Confirm Password</label>
+          <div>
+            <label className="field-label block text-sm mb-2">Confirm Password</label>
             <input
               type="password"
               value={formData.confirmPassword}
               onChange={(event) =>
                 setFormData({ ...formData, confirmPassword: event.target.value })
               }
-              className="w-full border rounded px-3 py-2"
+              className="input"
               required
             />
           </div>
-
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded"
+            className="btn w-full"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

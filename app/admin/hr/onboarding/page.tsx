@@ -247,7 +247,7 @@ export default function HrOnboardingPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-500">Template name</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Template name</label>
                 <input
                   className="input"
                   value={templateForm.name}
@@ -255,7 +255,7 @@ export default function HrOnboardingPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Role</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Role</label>
                 <MasterSelect
                   value={templateForm.role}
                   onChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value }))}
@@ -263,7 +263,7 @@ export default function HrOnboardingPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Steps</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Steps</label>
                 <div className="space-y-3">
                   {templateForm.steps.map((step, idx) => (
                     <div key={`${step.title}-${idx}`} className="grid gap-2 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
@@ -289,7 +289,7 @@ export default function HrOnboardingPage() {
                           }))
                         }
                       />
-                      <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                      <label className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={step.required}
@@ -328,7 +328,7 @@ export default function HrOnboardingPage() {
                   </button>
                 </div>
               </div>
-              <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+              <label className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={templateForm.isActive}
@@ -400,15 +400,15 @@ export default function HrOnboardingPage() {
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Assign Onboarding</div>
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <label className="text-xs font-semibold text-slate-500">Employee</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Employee</label>
               <MasterSelect value={assignUserId} onChange={setAssignUserId} options={userOptions} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Template</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Template</label>
               <MasterSelect value={assignTemplateId} onChange={setAssignTemplateId} options={templateOptions} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Due date</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Due date</label>
               <input className="input" type="date" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)} />
             </div>
           </div>
@@ -567,7 +567,7 @@ export default function HrOnboardingPage() {
             </div>
             <div style={{ height: 16 }} />
             <div>
-              <label className="text-xs font-semibold text-slate-500">Status</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
               <MasterSelect
                 value={selectedTask.status}
                 onChange={(value) =>

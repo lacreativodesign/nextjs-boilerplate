@@ -228,7 +228,7 @@ export default function SalesCampaignsPage() {
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
         <div className="grid gap-4 md:grid-cols-[1.2fr_0.6fr]">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Search</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -237,7 +237,7 @@ export default function SalesCampaignsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Status</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -321,7 +321,7 @@ export default function SalesCampaignsPage() {
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold text-slate-500">Campaign Name</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Campaign Name</label>
               <input
                 className="input mt-2"
                 value={form.name}
@@ -329,7 +329,7 @@ export default function SalesCampaignsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Channel</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Channel</label>
               <input
                 className="input mt-2"
                 value={form.channel}
@@ -337,7 +337,7 @@ export default function SalesCampaignsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Status</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
               <select
                 className="input mt-2"
                 value={form.status}

@@ -172,15 +172,15 @@ export default function HrDocumentsPage() {
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Employee</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Employee</label>
             <MasterSelect value={selectedUserId} onChange={setSelectedUserId} options={userOptions} />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Document type</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Document type</label>
             <MasterSelect value={selectedDocType} onChange={setSelectedDocType} options={DOC_TYPES} />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">File</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">File</label>
             <input className="input" type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
           </div>
           <div className="flex items-end">

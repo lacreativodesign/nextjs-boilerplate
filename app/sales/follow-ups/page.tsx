@@ -297,7 +297,7 @@ export default function SalesFollowUpsPage() {
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
         <div className="grid gap-4 md:grid-cols-[1.2fr_0.6fr_0.6fr]">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Search</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -306,7 +306,7 @@ export default function SalesFollowUpsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Type</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Type</label>
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
@@ -320,7 +320,7 @@ export default function SalesFollowUpsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Status</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -428,7 +428,7 @@ export default function SalesFollowUpsPage() {
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold text-slate-500">Related Type</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Related Type</label>
               <select
                 className="input mt-2"
                 value={form.relatedType}
@@ -439,7 +439,7 @@ export default function SalesFollowUpsPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Related Name</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Related Name</label>
               <input
                 className="input mt-2"
                 value={form.relatedName}
@@ -447,7 +447,7 @@ export default function SalesFollowUpsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Type</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Type</label>
               <select
                 className="input mt-2"
                 value={form.type}
@@ -461,7 +461,7 @@ export default function SalesFollowUpsPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Due Date & Time</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Due Date & Time</label>
               <input
                 className="input mt-2"
                 type="datetime-local"
@@ -470,7 +470,7 @@ export default function SalesFollowUpsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Status</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
               <select
                 className="input mt-2"
                 value={form.status}

@@ -316,11 +316,11 @@ export default function HrEmployeesPage() {
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Joined from</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Joined from</label>
             <input className="input" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Joined to</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Joined to</label>
             <input className="input" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
           </div>
         </div>
@@ -448,7 +448,7 @@ export default function HrEmployeesPage() {
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Full name</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Full name</label>
                   <input
                     className="input"
                     value={formState.name}
@@ -456,11 +456,11 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Email (locked)</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Email (locked)</label>
                   <input className="input" value={formState.email} disabled />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Phone</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Phone</label>
                   <input
                     className="input"
                     value={formState.phone}
@@ -468,7 +468,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Role</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Role</label>
                   <MasterSelect
                     value={formState.role}
                     onChange={(value) => setFormState((prev) => ({ ...prev, role: value }))}
@@ -476,7 +476,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Department</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Department</label>
                   <MasterSelect
                     value={formState.department}
                     onChange={(value) => setFormState((prev) => ({ ...prev, department: value }))}
@@ -484,7 +484,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Designation</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Designation</label>
                   <input
                     className="input"
                     value={formState.designation}
@@ -492,7 +492,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Joining Date</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Joining Date</label>
                   <input
                     className="input"
                     type="date"
@@ -501,7 +501,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Salary (PKR)</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Salary (PKR)</label>
                   <input
                     className="input"
                     value={formState.salary}
@@ -509,7 +509,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Target (USD)</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Target (USD)</label>
                   <input
                     className="input"
                     value={formState.monthlyTarget}
@@ -517,7 +517,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Commission (%)</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Commission (%)</label>
                   <input
                     className="input"
                     value={formState.commission}
@@ -525,7 +525,7 @@ export default function HrEmployeesPage() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-slate-500">Status</label>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
                   <MasterSelect
                     value={formState.status}
                     onChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
