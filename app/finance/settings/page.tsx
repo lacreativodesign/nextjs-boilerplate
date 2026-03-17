@@ -10,10 +10,8 @@ export default function FinanceSettingsPage() {
   return (
     <div className="space-y-4">
       <div className="settings-section">
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Settings</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
-          Finance role settings (read-only). Contact Admin for workflow-level changes.
-        </p>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Finance role settings (read-only). Contact Admin for workflow-level changes.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 settings-section">

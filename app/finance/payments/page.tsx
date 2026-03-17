@@ -215,10 +215,8 @@ export default function FinancePaymentsPage() {
       )}
 
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payments</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
-          USD receipts, methods, and settlement status.
-        </p>
+        <h1 className="page-title">Payments</h1>
+        <p className="page-subtitle">USD receipts, methods, and settlement status.</p>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">

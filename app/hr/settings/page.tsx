@@ -83,10 +83,8 @@ export default function HrSettingsPage() {
   return (
     <div className="space-y-6">
       <section className="card settings-section" style={{ padding: 18, borderRadius: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>Settings</div>
-        <div style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-          Manage default HR policies and onboarding behavior.
-        </div>
+        <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Manage default HR policies and onboarding behavior.</p>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2 settings-section">

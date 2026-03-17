@@ -262,8 +262,8 @@ export default function FinanceInvoicesPage() {
       )}
 
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Invoices</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>USD invoicing with live Firestore sync.</p>
+        <h1 className="page-title">Invoices</h1>
+        <p className="page-subtitle">USD invoicing with live Firestore sync.</p>
       </div>
 
       <div style={{ marginTop: 12 }}>

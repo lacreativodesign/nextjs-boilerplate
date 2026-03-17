@@ -308,10 +308,8 @@ export default function HrEmployeesPage() {
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>Employees</div>
-            <div style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
-              Keep employee records accurate and up to date.
-            </div>
+            <h1 className="page-title">Employees</h1>
+            <p className="page-subtitle">Keep employee records accurate and up to date.</p>
           </div>
           <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Click a row to view details.</div>
         </div>
