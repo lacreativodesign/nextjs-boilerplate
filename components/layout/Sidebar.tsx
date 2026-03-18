@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, X, FileText, Bell, Search as SearchIcon,
+  Shield, X, FileText,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -42,8 +42,6 @@ export default function Sidebar({
     { href: "/reports", label: t("navigation.reports"), icon: BarChart3, roles: null },
     { href: "/super_admin", label: t("navigation.superAdmin"), icon: Shield, roles: ["super_admin"] },
     { href: "/dashboard/documents", label: "Documents", icon: FileText, roles: ["admin", "super_admin"] },
-    { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
-    { href: "/search", label: "Search", icon: SearchIcon, roles: ["admin", "super_admin"] },
     { href: "/settings", label: t("common.settings"), icon: Settings, roles: null },
   ];
 
@@ -55,8 +53,6 @@ export default function Sidebar({
     isMobileOpen ? "sidebar-mobile-open" : "",
     !collapsed ? "sidebar-desktop-open" : "",
   ].filter(Boolean).join(" ");
-
-  const initials = tenantName.slice(0, 2).toUpperCase();
 
   const LogoIcon = () =>
     tenantLogoUrl ? (
@@ -105,23 +101,21 @@ export default function Sidebar({
           labelsClass,
         ].join(" ")}
       >
-        <div className="flex h-full flex-col p-2 md:p-3">
+        <div className="flex h-full flex-col py-3">
 
-          <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
+          <div className="mb-4 border-b border-[var(--border-subtle)] pb-3 px-3">
             <div className={`flex h-14 items-center ${collapsed ? "justify-center" : ""}`}>
 
               <button
                 type="button"
                 onClick={() => {
-                  if (isMobileOpen) {
-                    closeMobile();
-                  } else if (typeof window !== "undefined" && window.innerWidth >= 768) {
+                  if (typeof window !== "undefined" && window.innerWidth >= 768) {
                     toggleCollapse();
                   } else {
-                    openMobile();
+                    isMobileOpen ? closeMobile() : openMobile();
                   }
                 }}
-                className="flex-shrink-0 focus:outline-none cursor-pointer hover:opacity-80 transition-opacity"
+                className="flex-shrink-0 focus:outline-none cursor-pointer"
                 aria-label="Toggle sidebar"
               >
                 <LogoIcon />
@@ -160,8 +154,8 @@ export default function Sidebar({
                   title={item.label}
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
-                    "flex items-center rounded-xl transition-colors py-2.5",
-                    collapsed ? "justify-center px-0" : "px-[11px]",
+                    "flex items-center rounded-xl transition-colors px-4 py-2.5",
+                    collapsed ? "justify-center px-0" : "",
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
                       : "text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100",
