@@ -63,16 +63,16 @@ export default function Sidebar({
       />
     ) : (
       <div style={{
-          width: 40, height: 40, borderRadius: 4,
-          background: "linear-gradient(to bottom, #012167 0%, #6692f9 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
-          fontWeight: 700, fontSize: 26, color: "#ffffff",
-          userSelect: "none", flexShrink: 0,
-          letterSpacing: "-0.01em",
-        }}>
-          B
-        </div>
+        width: 40, height: 40, borderRadius: 4,
+        background: "linear-gradient(to bottom, #012167 0%, #6692f9 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
+        fontWeight: 700, fontSize: 26, color: "#ffffff",
+        userSelect: "none", flexShrink: 0,
+        letterSpacing: "-0.01em",
+      }}>
+        B
+      </div>
     );
 
   return (
@@ -101,11 +101,14 @@ export default function Sidebar({
           labelsClass,
         ].join(" ")}
       >
+        {/* No horizontal padding on outer — icons must center in 64px */}
         <div className="flex h-full flex-col py-3">
 
+          {/* px-3 on header keeps B icon at 12px left → center = 12+20 = 32px = half of 64px */}
           <div className="mb-4 border-b border-[var(--border-subtle)] pb-3 px-3">
-            <div className={`flex h-14 items-center ${collapsed ? "justify-center" : ""}`}>
+            <div className="flex h-14 items-center">
 
+              {/* B icon is the ONLY toggle — desktop: collapse, mobile: open/close drawer */}
               <button
                 type="button"
                 onClick={() => {
@@ -115,7 +118,7 @@ export default function Sidebar({
                     isMobileOpen ? closeMobile() : openMobile();
                   }
                 }}
-                className="flex-shrink-0 focus:outline-none cursor-pointer"
+                className="flex-shrink-0 cursor-pointer focus:outline-none"
                 aria-label="Toggle sidebar"
               >
                 <LogoIcon />
@@ -141,6 +144,7 @@ export default function Sidebar({
             </div>
           </div>
 
+          {/* px-4 on links → icon starts at 16px, center = 16+16 = 32px = half of 64px */}
           <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -155,7 +159,6 @@ export default function Sidebar({
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
                     "flex w-full items-center rounded-xl transition-colors px-4 py-2.5",
-                    collapsed ? "justify-center px-0" : "",
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
                       : "text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100",
