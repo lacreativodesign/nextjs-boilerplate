@@ -399,31 +399,6 @@ select option { color: var(--text-primary); background: var(--surface-card); }
   }
 }
 
-.sidebar-label {
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  white-space: nowrap;
-  pointer-events: none;
-  transition:
-    max-width 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity   200ms cubic-bezier(0.4, 0, 0.2, 1) 60ms;
-}
-@media (max-width: 767px) {
-  .sidebar-mobile-open .sidebar-label {
-    max-width: 200px;
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-@media (min-width: 768px) {
-  .sidebar-desktop-open .sidebar-label {
-    max-width: 200px;
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-
 .sidebar-footer { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: auto; }
 .sidebar-footer--collapsed { align-items: center; }
 .sidebar-profile { display: flex; align-items: center; gap: 12px; }
