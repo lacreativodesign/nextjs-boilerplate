@@ -154,7 +154,7 @@ export default function Sidebar({
                   title={item.label}
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
-                    "flex items-center rounded-xl transition-colors px-4 py-2.5",
+                    "flex w-full items-center rounded-xl transition-colors px-4 py-2.5",
                     collapsed ? "justify-center px-0" : "",
                     isActive
                       ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
