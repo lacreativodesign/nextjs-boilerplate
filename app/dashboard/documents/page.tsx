@@ -59,14 +59,17 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold">Advanced File Management</h1>
+    <div className="space-y-6">
+      <div className="mb-6">
+        <h1 className="page-title">Documents</h1>
+        <p className="page-subtitle">Manage files, folders, uploads, and shared documents.</p>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         <div className="space-y-4">
           <FolderTreeNavigation currentFolderId={folderId} onSelect={setFolderId} />
 
-          <div className="space-y-2 rounded border p-3">
+          <div className="card space-y-3">
             <h3 className="text-sm font-semibold">Create folder</h3>
             <input className="input" placeholder="Folder name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} />
             <PermissionSelector value={visibility} onChange={setVisibility} />
@@ -88,7 +91,7 @@ export default function DocumentsPage() {
           />
 
           {selectedFile ? (
-            <div className="space-y-3 rounded border p-3">
+            <div className="card space-y-3">
               <TagManager fileId={selectedFile.id} onUpdated={loadFiles} />
               <ShareLinkGenerator fileId={selectedFile.id} />
             </div>
