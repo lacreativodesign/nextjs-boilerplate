@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
 type Profile = { name: string; email: string; role: string; department: string };
 
 export default function SettingsGeneralPage() {
+  const { data: tenantData, loading: tenantLoading } = useTenantContext();
   const [profile, setProfile] = useState<Profile>({
     name: "", email: "", role: "", department: ""
   });
@@ -12,21 +14,17 @@ export default function SettingsGeneralPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/users/list", { credentials: "include" })
-      .then(r => r.json())
-      .then(data => {
-        const users = Array.isArray(data) ? data : data?.users || [];
-        const me = users[0];
-        if (me) setProfile({
-          name: me.name || me.displayName || "",
-          email: me.email || "",
-          role: me.role || "",
-          department: me.department || "",
-        });
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    if (tenantLoading) return;
+    if (tenantData?.user) {
+      setProfile({
+        name: tenantData.user.displayName || "",
+        email: tenantData.user.email || "",
+        role: tenantData.user.role || "",
+        department: "",
+      });
+    }
+    setLoading(false);
+  }, [tenantData, tenantLoading]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
