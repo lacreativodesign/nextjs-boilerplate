@@ -201,23 +201,16 @@ export default function BillingTerminalPage() {
   const pendingBalance = data?.balance?.pending?.[0] || { amount: 0, currency: "usd" };
 
   return (
-    <RequireAuth allowed={ADMIN_ROLES}>
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-6 py-8">
-        <div className="flex gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-medium">
-          <Link href="/billing" className="rounded-md px-3 py-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]">
-            Subscription
-          </Link>
-          <Link href="/billing/terminal" className="rounded-md bg-[var(--erp-blue)] px-3 py-2 text-white">
-            Payment Terminal
-          </Link>
+    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-6 py-8">
+        <div className="tabs-bar">
+          <Link href="/billing" className="tab-pill">Subscription</Link>
+          <Link href="/billing/terminal" className="tab-pill active">Payment Terminal</Link>
         </div>
 
-        <header>
-          <h1 className="text-2xl font-semibold">Payment Terminal</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            Your client payment activity, payouts, and revenue summary
-          </p>
-        </header>
+        <div className="mb-6">
+          <h1 className="page-title">Payment Terminal</h1>
+          <p className="page-subtitle">Your client payment activity, payouts, and revenue summary.</p>
+        </div>
 
         {error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -249,34 +242,34 @@ export default function BillingTerminalPage() {
         ) : (
           <>
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">Total Revenue</p>
                 <p className="mt-2 text-2xl font-semibold text-emerald-600">{formatMoney(data?.metrics?.totalRevenue || 0)}</p>
                 <p className="text-xs text-[var(--text-muted)]">{data?.metrics?.transactionCount || 0} transactions</p>
               </article>
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">Platform Fees Paid</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--text-muted)]">{formatMoney(data?.metrics?.totalFees || 0)}</p>
                 <p className="text-xs text-[var(--text-muted)]">0.5% per transaction</p>
               </article>
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">Net Revenue</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--erp-blue)]">{formatMoney(data?.metrics?.netRevenue || 0)}</p>
                 <p className="text-xs text-[var(--text-muted)]">After platform fee</p>
               </article>
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">This Month</p>
                 <p className="mt-2 text-2xl font-semibold text-violet-700">{formatMoney(data?.metrics?.thisMonthRevenue || 0)}</p>
                 <p className="text-xs text-[var(--text-muted)]">Fees: {formatMoney(data?.metrics?.thisMonthFees || 0)}</p>
               </article>
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">Available Balance</p>
                 <p className="mt-2 text-2xl font-semibold text-green-600">
                   {formatMoney(availableBalance.amount)} {availableBalance.currency.toUpperCase()}
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">Ready for payout</p>
               </article>
-              <article className="rounded-xl border border-[var(--border-subtle)] p-4">
+              <article className="card">
                 <p className="text-sm text-[var(--text-muted)]">Pending Balance</p>
                 <p className="mt-2 text-2xl font-semibold text-amber-600">
                   {formatMoney(pendingBalance.amount)} {pendingBalance.currency.toUpperCase()}
@@ -285,9 +278,9 @@ export default function BillingTerminalPage() {
               </article>
             </section>
 
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
+            <section className="card">
               <div className="mb-4 flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Revenue Summary</h2>
+                <h2 className="section-title mb-4">Revenue Summary</h2>
                 <div className="flex gap-2">
                   {PERIODS.map((key) => (
                     <button
@@ -343,9 +336,9 @@ export default function BillingTerminalPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
+            <section className="card">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Transactions</h2>
+                <h2 className="section-title mb-4">Transactions</h2>
                 <input
                   value={query}
                   onChange={(event) => {
@@ -452,8 +445,8 @@ export default function BillingTerminalPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
-              <h2 className="text-lg font-semibold">Payouts</h2>
+            <section className="card">
+              <h2 className="section-title mb-4">Payouts</h2>
               <p className="text-sm text-[var(--text-muted)]">Funds transferred to your bank account</p>
 
               <div className="mt-4 overflow-x-auto">
@@ -503,8 +496,8 @@ export default function BillingTerminalPage() {
             </section>
 
             {(data?.disputes || []).length > 0 ? (
-              <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
-                <h2 className="text-lg font-semibold">Disputes</h2>
+              <section className="card">
+                <h2 className="section-title mb-4">Disputes</h2>
                 <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   ⚠ You have {(data?.disputes || []).length} open dispute(s). Disputes must be responded to in your Stripe Dashboard.
                 </div>
@@ -563,6 +556,5 @@ export default function BillingTerminalPage() {
           </>
         )}
       </div>
-    </RequireAuth>
   );
 }
