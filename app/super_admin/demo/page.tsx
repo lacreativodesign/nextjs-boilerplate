@@ -87,16 +87,16 @@ export default function DemoEnvironmentPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Demo Environment</h1>
-        <p className="text-sm text-[var(--text-muted)]">Manage the Bizosto demo tenant used for sales demonstrations</p>
+      <div className="mb-6">
+        <h1 className="page-title">Demo Environment</h1>
+        <p className="page-subtitle">Manage the Bizosto demo tenant used for sales demonstrations.</p>
       </div>
 
       {statusMessage ? <div className="rounded-xl border border-green-300 bg-green-50 p-4 text-green-700">{statusMessage}</div> : null}
       {errorMessage ? <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{errorMessage}</div> : null}
 
-      <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
-        <h2 className="font-semibold">Demo Tenant Status</h2>
+      <section className="card">
+        <h2 className="section-title mb-4">Demo Tenant Status</h2>
         <div className="mt-3 grid gap-2 text-sm text-[var(--text-muted)] sm:grid-cols-2">
           <p>Tenant ID: <span className="font-medium text-[var(--text-primary)]">bizosto-demo</span></p>
           <p>Plan: <span className="font-medium text-[var(--text-primary)]">Pro</span></p>
@@ -104,15 +104,15 @@ export default function DemoEnvironmentPage() {
           <p>All modules: <span className="font-medium text-[var(--text-primary)]">Enabled</span></p>
           <p>All roles: <span className="font-medium text-[var(--text-primary)]">Enabled</span></p>
         </div>
-        <Link href="/super_admin/tenants/bizosto-demo" className="mt-4 inline-flex rounded-lg border px-3 py-2 text-sm font-medium">View Tenant</Link>
+        <Link href="/super_admin/tenants/bizosto-demo" className="btn ghost mt-4">View Tenant</Link>
       </section>
 
-      <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
-        <h2 className="font-semibold">Demo User Accounts</h2>
+      <section className="card">
+        <h2 className="section-title mb-4">Demo User Accounts</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-[var(--text-muted)]"><th>Name</th><th>Email</th><th>Role</th><th>Password</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Password</th></tr>
             </thead>
             <tbody>
               {DEMO_USERS.map((user) => (
@@ -123,7 +123,7 @@ export default function DemoEnvironmentPage() {
                   <td>
                     <div className="flex items-center gap-2">
                       <span>••••••••••••••••</span>
-                      <button onClick={() => copy(DEMO_PASSWORD)} className="rounded border px-2 py-1 text-xs">Copy</button>
+                      <button onClick={() => copy(DEMO_PASSWORD)} className="btn ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Copy</button>
                     </div>
                   </td>
                 </tr>
@@ -133,8 +133,8 @@ export default function DemoEnvironmentPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
-        <h2 className="font-semibold">Demo Data Counts</h2>
+      <section className="card">
+        <h2 className="section-title mb-4">Demo Data Counts</h2>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Count label="Clients" value={counts?.clients} />
           <Count label="Leads" value={counts?.leads} />
@@ -145,10 +145,10 @@ export default function DemoEnvironmentPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-amber-400 bg-amber-50 p-5">
-        <h2 className="font-semibold text-amber-900">Reset Demo Data</h2>
+      <section className="card" style={{ borderColor: "#f59e0b", background: "rgba(254,243,199,0.5)" }}>
+        <h2 className="section-title mb-4 text-amber-900">Reset Demo Data</h2>
         <p className="mt-2 text-sm text-amber-900">This will delete all current demo data and re-seed with fresh sample data. Demo user accounts will not be affected. This cannot be undone.</p>
-        <button className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => setConfirmOpen(true)}>
+        <button className="btn btn-danger mt-4" onClick={() => setConfirmOpen(true)}>
           Reset Demo Environment
         </button>
       </section>
@@ -157,11 +157,11 @@ export default function DemoEnvironmentPage() {
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
           <div className="card w-full max-w-md p-5">
             <h3 className="font-semibold">Are you sure you want to reset all demo data? Type RESET to confirm.</h3>
-            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="mt-3 w-full rounded border px-3 py-2" />
+            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="input mt-3" />
             <div className="mt-4 flex justify-end gap-2">
-              <button className="rounded border px-3 py-2" onClick={() => setConfirmOpen(false)}>Cancel</button>
+              <button className="btn ghost" onClick={() => setConfirmOpen(false)}>Cancel</button>
               <button
-                className="rounded bg-red-600 px-3 py-2 text-white disabled:opacity-50"
+                className="btn btn-danger"
                 disabled={confirmText !== "RESET" || isResetting}
                 onClick={handleReset}
               >
@@ -172,18 +172,18 @@ export default function DemoEnvironmentPage() {
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
-        <h2 className="font-semibold">Demo Login Links</h2>
+      <section className="card">
+        <h2 className="section-title mb-4">Demo Login Links</h2>
         <div className="mt-3 space-y-2">
           {DEMO_USERS.map((user) => {
             const loginUrl = `${appUrl}/login?email=${encodeURIComponent(user.email)}`;
             return (
-              <div key={`link-${user.email}`} className="flex flex-wrap items-center justify-between rounded border p-3 text-sm">
+              <div key={`link-${user.email}`} className="card flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-medium">{user.role}</p>
                   <p className="text-[var(--text-muted)]">{user.email}</p>
                 </div>
-                <button onClick={() => copy(loginUrl)} className="rounded border px-2 py-1 text-xs">Copy Login URL</button>
+                <button onClick={() => copy(loginUrl)} className="btn ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Copy Login URL</button>
               </div>
             );
           })}
@@ -195,9 +195,9 @@ export default function DemoEnvironmentPage() {
 
 function Count({ label, value }: { label: string; value?: number }) {
   return (
-    <div className="rounded-lg border p-3">
-      <p className="text-xs text-[var(--text-muted)]">{label}</p>
-      <p className="text-xl font-bold">{typeof value === "number" ? value : "—"}</p>
+    <div className="card kpi-card">
+      <p className="helper-text mb-1">{label}</p>
+      <p className="text-3xl font-bold text-[var(--text-primary)]">{typeof value === "number" ? value : "—"}</p>
     </div>
   );
 }
