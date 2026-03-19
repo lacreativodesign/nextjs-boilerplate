@@ -3,6 +3,14 @@ import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../_utils";
 
+function toIso(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value?._seconds === "number") return new Date(value._seconds * 1000).toISOString();
+  return null;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -29,7 +37,7 @@ export async function GET(req: NextRequest) {
         entityType: data.entityType || "",
         entityId: data.entityId || "",
         metadata: data.metadata || {},
-        createdAt: data.createdAt || null,
+        createdAt: toIso(data.createdAt),
       };
     });
 
