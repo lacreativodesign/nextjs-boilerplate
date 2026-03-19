@@ -69,7 +69,6 @@ type UtilizationResponse = {
   }>;
 };
 
-
 export default function ProductionResourcesPage() {
   const [workload, setWorkload] = useState<WorkloadResponse | null>(null);
   const [utilization, setUtilization] = useState<UtilizationResponse | null>(null);
@@ -126,7 +125,12 @@ export default function ProductionResourcesPage() {
     return Array.from(buckets);
   }, [workload]);
 
-  if (loading) return <div className="card"><p className="text-[var(--text-muted)] text-sm">Loading resource planning...</p></div>;
+  if (loading)
+    return (
+      <div className="card">
+        <p className="text-[var(--text-muted)] text-sm">Loading resource planning...</p>
+      </div>
+    );
   if (error) return <div className="card text-[var(--danger)] text-sm font-medium">{error}</div>;
   if (!workload || !utilization) return <div className="card table-empty">No data available.</div>;
 
