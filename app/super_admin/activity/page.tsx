@@ -57,8 +57,13 @@ export default function SuperAdminActivityPage() {
   });
 
   return (
+ codex/fix-login-page-to-prefill-email-from-url-param-y8squo
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-3">
+
     <div className="space-y-4">
       <div className="flex items-center justify-between">
+
         <div className="mb-6">
           <h1 className="page-title">Activity</h1>
           <p className="page-subtitle">Tenant-scoped audit activity across core workflows.</p>
