@@ -3,6 +3,14 @@ import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../_utils";
 
+function toIso(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value?._seconds === "number") return new Date(value._seconds * 1000).toISOString();
+  return null;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -24,8 +32,8 @@ export async function GET(req: NextRequest) {
       {} as Record<string, number>
     );
 
-    const lastNotificationAt = notificationsSnap.docs[0]?.data()?.createdAt || null;
-    const lastEmailAt = emailsSnap.docs[0]?.data()?.createdAt || null;
+    const lastNotificationAt = toIso(notificationsSnap.docs[0]?.data()?.createdAt);
+    const lastEmailAt = toIso(emailsSnap.docs[0]?.data()?.createdAt);
 
     return NextResponse.json({
       ok: true,
