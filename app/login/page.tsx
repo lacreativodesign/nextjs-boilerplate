@@ -101,6 +101,10 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const ssoToken = params.get("ssoToken");
     const returnTo = params.get("returnTo") || "/";
+    const emailParam = params.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+    }
     if (!ssoToken) return;
 
     const completeSso = async () => {

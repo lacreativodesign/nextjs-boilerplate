@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import RequireAuth from '@/components/RequireAuth';
 import { plans, type BillingPlanKey } from '@/lib/billing/plans';
 
 type SubscriptionState = 'trial' | 'active' | 'past_due' | 'canceled' | string;
@@ -123,94 +122,99 @@ export default function BillingOverviewPage() {
   }, [data?.plan]);
 
   return (
-    <RequireAuth allowedRoles={['admin', 'super_admin']}>
-      <main className="mx-auto max-w-4xl px-4 py-8 text-[var(--text-primary)]">
-        <h1 className="mb-6 text-3xl font-bold">Billing</h1>
+    <main className="mx-auto max-w-4xl px-4 py-8 text-[var(--text-primary)]">
+      <div className="tabs-bar">
+        <Link href="/billing" className="tab-pill active">Subscription</Link>
+        <Link href="/billing/terminal" className="tab-pill">Payment Terminal</Link>
+      </div>
+      <div className="mb-6">
+        <h1 className="page-title">Billing</h1>
+        <p className="page-subtitle">Manage your subscription plan and billing details.</p>
+      </div>
 
-        {loading ? (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 text-[var(--text-muted)]">
-            Loading billing info...
-          </div>
-        ) : fetchError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <p className="text-sm text-red-700">{fetchError}</p>
-            <button
-              type="button"
-              onClick={() => {
-                void loadStatus();
-              }}
-              className="mt-4 rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white"
-            >
-              Retry
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-[var(--text-muted)]">Current Plan</p>
-                  <h2 className="text-2xl font-bold capitalize">{data?.plan ?? 'Unknown'}</h2>
-                </div>
-                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badgeConfig.className}`}>
-                  {badgeConfig.label}
-                </span>
+      {loading ? (
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 text-[var(--text-muted)]">
+          Loading billing info...
+        </div>
+      ) : fetchError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <p className="text-sm text-red-700">{fetchError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              void loadStatus();
+            }}
+            className="mt-4 rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-[var(--text-muted)]">Current Plan</p>
+                <h2 className="text-2xl font-bold capitalize">{data?.plan ?? 'Unknown'}</h2>
               </div>
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badgeConfig.className}`}>
+                {badgeConfig.label}
+              </span>
+            </div>
 
-              {data?.trialEndsAt && data.subscriptionState === 'trial' ? (
-                <p className="mt-4 text-sm text-[var(--text-muted)]">Trial ends: {formatDate(data.trialEndsAt)}</p>
-              ) : null}
+            {data?.trialEndsAt && data.subscriptionState === 'trial' ? (
+              <p className="mt-4 text-sm text-[var(--text-muted)]">Trial ends: {formatDate(data.trialEndsAt)}</p>
+            ) : null}
 
-              {data?.currentPeriodEnd && data.subscriptionState === 'active' ? (
-                <p className="mt-4 text-sm text-[var(--text-muted)]">Next billing date: {formatDate(data.currentPeriodEnd)}</p>
-              ) : null}
-            </section>
+            {data?.currentPeriodEnd && data.subscriptionState === 'active' ? (
+              <p className="mt-4 text-sm text-[var(--text-muted)]">Next billing date: {formatDate(data.currentPeriodEnd)}</p>
+            ) : null}
+          </section>
 
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-              <h3 className="mb-4 text-lg font-semibold">Actions</h3>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleManageBilling();
-                  }}
-                  disabled={portalLoading}
-                  className="rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {portalLoading ? 'Opening...' : 'Manage Billing'}
-                </button>
+          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
+            <h3 className="mb-4 text-lg font-semibold">Actions</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleManageBilling();
+                }}
+                disabled={portalLoading}
+                className="rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {portalLoading ? 'Opening...' : 'Manage Billing'}
+              </button>
 
-                <Link
-                  href="/pricing"
-                  className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
-                >
-                  View Plans
-                </Link>
-              </div>
+              <Link
+                href="/pricing"
+                className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
+              >
+                View Plans
+              </Link>
+            </div>
 
-              {portalError ? <p className="mt-3 text-sm text-red-600">{portalError}</p> : null}
-            </section>
+            {portalError ? <p className="mt-3 text-sm text-red-600">{portalError}</p> : null}
+          </section>
 
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-              <h3 className="mb-4 text-lg font-semibold">Plan Features</h3>
-              {planConfig ? (
-                <ul className="space-y-2 text-sm text-[var(--text-primary)]">
-                  {planConfig.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <span className="text-green-600">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-[var(--text-muted)]">
-                  You are on a free trial. Upgrade to access all features.
-                </p>
-              )}
-            </section>
-          </div>
-        )}
-      </main>
-    </RequireAuth>
+          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
+            <h3 className="mb-4 text-lg font-semibold">Plan Features</h3>
+            {planConfig ? (
+              <ul className="space-y-2 text-sm text-[var(--text-primary)]">
+                {planConfig.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-[var(--text-muted)]">
+                You are on a free trial. Upgrade to access all features.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+    </main>
   );
 }
