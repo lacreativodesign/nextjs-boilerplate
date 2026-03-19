@@ -87,11 +87,6 @@ export default function ProductionQueuePage() {
     boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
   };
 
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 18,
-    fontWeight: 700,
-    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.9)",
-  };
 
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
@@ -261,7 +256,7 @@ export default function ProductionQueuePage() {
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={sectionTitleStyle}>Filters</div>
+        <h2 className="section-title mb-2">Filters</h2>
         <div
           className="card"
           style={{
@@ -314,7 +309,7 @@ export default function ProductionQueuePage() {
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={sectionTitleStyle}>Queue KPIs</div>
+        <h2 className="section-title mb-2">Queue KPIs</h2>
         <div className="kpis">
           <KpiCard label="Total Assigned" value={totals.total} />
           <KpiCard label="At Risk" value={totals.atRisk} />
@@ -324,7 +319,7 @@ export default function ProductionQueuePage() {
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
-        <div style={sectionTitleStyle}>My Queue</div>
+        <h2 className="section-title mb-2">My Queue</h2>
         {loading ? (
           <div style={{ fontSize: 14, opacity: 0.7 }}>Loading queue…</div>
         ) : error ? (
@@ -422,9 +417,9 @@ export default function ProductionQueuePage() {
 
 function KpiCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card kpi-card" style={{ padding: 14, borderRadius: 16 }}>
-      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
+    <div className="card kpi-card">
+      <p className="helper-text mb-1">{label}</p>
+      <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
     </div>
   );
 }
