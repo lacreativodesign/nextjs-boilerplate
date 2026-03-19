@@ -69,12 +69,6 @@ type UtilizationResponse = {
   }>;
 };
 
-const cardStyle: React.CSSProperties = {
-  background: "var(--card-bg)",
-  border: "1px solid var(--border-color)",
-  borderRadius: 14,
-  padding: 16,
-};
 
 export default function ProductionResourcesPage() {
   const [workload, setWorkload] = useState<WorkloadResponse | null>(null);
@@ -132,9 +126,9 @@ export default function ProductionResourcesPage() {
     return Array.from(buckets);
   }, [workload]);
 
-  if (loading) return <div style={{ padding: 20 }}>Loading resource planning...</div>;
-  if (error) return <div style={{ padding: 20, color: "var(--error)" }}>{error}</div>;
-  if (!workload || !utilization) return <div style={{ padding: 20 }}>No data available.</div>;
+  if (loading) return <div className="card"><p className="text-[var(--text-muted)] text-sm">Loading resource planning...</p></div>;
+  if (error) return <div className="card text-[var(--danger)] text-sm font-medium">{error}</div>;
+  if (!workload || !utilization) return <div className="card table-empty">No data available.</div>;
 
   const taskRows = new Map<string, { taskName: string; byResource: Map<string, number> }>();
   for (const row of workload.workloads) {
@@ -147,32 +141,34 @@ export default function ProductionResourcesPage() {
   }
 
   return (
-    <div style={{ padding: 20, display: "grid", gap: 16 }}>
-      <h1 style={{ margin: 0 }}>Resource Management & Capacity Planning</h1>
+    <div className="space-y-6">
+      <div className="mb-2">
+        <h2 className="section-title">Resource Management & Capacity Planning</h2>
+      </div>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        <div style={cardStyle}>
-          <div>Total resources</div>
-          <strong style={{ fontSize: 28 }}>{utilization.summary.resources}</strong>
+      <section className="kpis">
+        <div className="card kpi-card">
+          <p className="helper-text mb-1">Total resources</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.resources}</p>
         </div>
-        <div style={cardStyle}>
-          <div>Capacity hours</div>
-          <strong style={{ fontSize: 28 }}>{utilization.summary.totalCapacityHours.toFixed(1)}</strong>
+        <div className="card kpi-card">
+          <p className="helper-text mb-1">Capacity hours</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.totalCapacityHours.toFixed(1)}</p>
         </div>
-        <div style={cardStyle}>
-          <div>Allocated hours</div>
-          <strong style={{ fontSize: 28 }}>{utilization.summary.totalAllocatedHours.toFixed(1)}</strong>
+        <div className="card kpi-card">
+          <p className="helper-text mb-1">Allocated hours</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.totalAllocatedHours.toFixed(1)}</p>
         </div>
-        <div style={cardStyle}>
-          <div>Utilization</div>
-          <strong style={{ fontSize: 28 }}>{utilization.summary.utilizationPercent.toFixed(1)}%</strong>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Target: {utilization.summary.targetBand}</div>
+        <div className="card kpi-card">
+          <p className="helper-text mb-1">Utilization</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.utilizationPercent.toFixed(1)}%</p>
+          <p className="helper-text">{utilization.summary.targetBand}</p>
         </div>
       </section>
 
       {workload.warnings.length > 0 && (
-        <section style={{ ...cardStyle, borderColor: "#f59e0b" }}>
-          <h3 style={{ marginTop: 0 }}>Over-allocation warnings (&gt;8h/day)</h3>
+        <section className="card" style={{ borderColor: "#f59e0b" }}>
+          <h3 className="section-title mb-3">Over-allocation warnings (&gt;8h/day)</h3>
           {workload.warnings.map((warning) => (
             <div key={`${warning.resourceId}_${warning.date}`} style={{ fontSize: 13, marginBottom: 6 }}>
               {warning.resourceName} on {warning.date}: {warning.allocatedHours.toFixed(1)}h allocated ({warning.overflowHours.toFixed(1)}h over)
@@ -181,8 +177,8 @@ export default function ProductionResourcesPage() {
         </section>
       )}
 
-      <section style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Resource workload chart (stacked weekly bars)</h3>
+      <section className="card">
+        <h3 className="section-title mb-4">Resource workload chart (stacked weekly bars)</h3>
         <div style={{ display: "grid", gap: 10 }}>
           {workload.workloads.map((row) => (
             <div key={row.resourceId}>
@@ -208,8 +204,8 @@ export default function ProductionResourcesPage() {
         </div>
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Resource allocation grid (task × resource)</h3>
+      <section className="card">
+        <h3 className="section-title mb-4">Resource allocation grid (task × resource)</h3>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -238,8 +234,8 @@ export default function ProductionResourcesPage() {
         </div>
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Capacity heatmap</h3>
+      <section className="card">
+        <h3 className="section-title mb-4">Capacity heatmap</h3>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -283,8 +279,8 @@ export default function ProductionResourcesPage() {
       </section>
 
       {workload.levelingSuggestions.length > 0 && (
-        <section style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Resource leveling suggestions</h3>
+        <section className="card">
+          <h3 className="section-title mb-4">Resource leveling suggestions</h3>
           {workload.levelingSuggestions.map((suggestion, idx) => (
             <div key={idx} style={{ marginBottom: 8, fontSize: 13 }}>
               {suggestion.date}: move {suggestion.transferableHours.toFixed(1)}h from {suggestion.sourceResourceName} to {suggestion.targetResourceName}.

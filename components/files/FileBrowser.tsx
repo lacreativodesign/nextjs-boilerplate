@@ -31,12 +31,14 @@ export function FileBrowser({ files, onOpenPreview, onOpenVersions, onRefresh }:
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <button className={`btn ${view === "grid" ? "" : "ghost"}`} onClick={() => setView("grid")}>Grid</button>
-        <button className={`btn ${view === "list" ? "" : "ghost"}`} onClick={() => setView("list")}>List</button>
-        <input className="input" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <input className="input" placeholder="Tag filter" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} />
-        <button className="btn ghost" onClick={onRefresh}>Refresh</button>
+      <div className="card">
+        <div className="flex flex-wrap items-center gap-2">
+          <button className={`btn ${view === "grid" ? "" : "ghost"}`} onClick={() => setView("grid")}>Grid</button>
+          <button className={`btn ${view === "list" ? "" : "ghost"}`} onClick={() => setView("list")}>List</button>
+          <input className="input" style={{ maxWidth: 160 }} placeholder="Search files" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="input" style={{ maxWidth: 140 }} placeholder="Filter by tag" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} />
+          <button className="btn ghost" onClick={onRefresh}>Refresh</button>
+        </div>
       </div>
 
       <div className={view === "grid" ? "grid grid-cols-1 gap-3 md:grid-cols-2" : "space-y-2"}>

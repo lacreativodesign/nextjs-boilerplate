@@ -18,7 +18,7 @@ export function FolderTreeNavigation({ currentFolderId, onSelect }: { currentFol
   }, []);
 
   return (
-    <div className="space-y-2 rounded border p-3">
+    <div className="card space-y-2">
       <button className={`block text-sm ${!currentFolderId ? "font-bold" : ""}`} onClick={() => onSelect(undefined)}>All files</button>
       {folders.map((folder) => (
         <button key={folder.id} className={`block text-sm ${currentFolderId === folder.id ? "font-bold" : ""}`} onClick={() => onSelect(folder.id)}>
