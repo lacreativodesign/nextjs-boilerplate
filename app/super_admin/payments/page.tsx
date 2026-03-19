@@ -229,12 +229,12 @@ export default function PaymentTerminalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Payment Terminal</h1>
-          <p className="page-subtitle">Subscription revenue, billing status, and transaction history across all tenants</p>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+      <div className="mb-6">
+        <h1 className="page-title">Payment Terminal</h1>
+        <p className="page-subtitle">Subscription revenue, billing status, and transaction history across all tenants</p>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
           <span>Last updated: {data?.fetchedAt ? formatDateTime(data.fetchedAt) : "—"}</span>
           <button
             onClick={() => loadPayments(true)}
@@ -243,7 +243,6 @@ export default function PaymentTerminalPage() {
           >
             {refreshing ? "Refreshing..." : "Refresh"}
           </button>
-        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
