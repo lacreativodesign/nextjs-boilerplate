@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import RequireAuth from "@/components/RequireAuth";
 import {
   Bar,
   BarChart,
@@ -87,10 +86,13 @@ type SummaryResponse = {
 type TerminalTransaction = NonNullable<TerminalResponse["transactions"]>[number];
 
 const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
-const ADMIN_ROLES = ["admin", "super_admin"];
 
 const usdFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
 function formatMoney(value: number) {
   return usdFormatter.format(value || 0);
@@ -98,16 +100,12 @@ function formatMoney(value: number) {
 
 function formatDate(iso: string) {
   const dt = new Date(iso);
-  if (Number.isNaN(dt.getTime())) {
-    return "-";
-  }
+  if (Number.isNaN(dt.getTime())) return "-";
   return dateFormatter.format(dt);
 }
 
 function getTransactionStatus(transaction: TerminalTransaction) {
-  if (transaction.refunded || transaction.amountRefunded > 0) {
-    return "refunded";
-  }
+  if (transaction.refunded || transaction.amountRefunded > 0) return "refunded";
   return transaction.status;
 }
 
@@ -182,9 +180,7 @@ export default function BillingTerminalPage() {
       const derivedStatus = getTransactionStatus(item);
       const statusMatch = filter === "all" ? true : derivedStatus === filter;
       const textMatch =
-        !term ||
-        item.customerEmail?.toLowerCase().includes(term) ||
-        item.invoiceId?.toLowerCase().includes(term);
+        !term || item.customerEmail?.toLowerCase().includes(term) || item.invoiceId?.toLowerCase().includes(term);
       return Boolean(statusMatch && textMatch);
     });
   }, [transactions, query, filter]);
@@ -192,196 +188,199 @@ export default function BillingTerminalPage() {
   const pageSize = 20;
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
+  const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const availableBalance = data?.balance?.available?.[0] || { amount: 0, currency: "usd" };
   const pendingBalance = data?.balance?.pending?.[0] || { amount: 0, currency: "usd" };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-6 py-8">
-        <div className="tabs-bar">
-          <Link href="/billing" className="tab-pill">Subscription</Link>
-          <Link href="/billing/terminal" className="tab-pill active">Payment Terminal</Link>
+    <div className="space-y-6">
+      <div className="tabs-bar">
+        <Link href="/billing" className="tab-pill">
+          Subscription
+        </Link>
+        <Link href="/billing/terminal" className="tab-pill active">
+          Payment Terminal
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <h1 className="page-title">Payment Terminal</h1>
+        <p className="page-subtitle">Your client payment activity, payouts, and revenue summary.</p>
+      </div>
+
+      {error && (
+        <div className="card border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>{error}</p>
+          <button className="btn btn-danger mt-3" onClick={() => void loadTerminal()}>
+            Retry
+          </button>
         </div>
+      )}
 
-        <div className="mb-6">
-          <h1 className="page-title">Payment Terminal</h1>
-          <p className="page-subtitle">Your client payment activity, payouts, and revenue summary.</p>
+      {loading ? (
+        <div className="kpis">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="card h-28 skeleton-shimmer" />
+          ))}
         </div>
-
-        {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <p>{error}</p>
-            <button className="mt-3 rounded bg-red-600 px-3 py-2 text-white" onClick={() => void loadTerminal()}>
-              Retry
-            </button>
-          </div>
-        ) : null}
-
-        {loading ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="h-28 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
-            ))}
-          </div>
-        ) : data?.connected === false ? (
-          <section className="mx-auto w-full max-w-xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-8 text-center">
-            <div className="text-4xl">💳</div>
-            <h2 className="mt-4 text-xl font-semibold">Connect Stripe to Accept Payments</h2>
-            <p className="mt-2 text-sm text-[var(--text-muted)]">
-              You haven&apos;t connected a Stripe account yet. Connect your account to start accepting payments from your clients.
-            </p>
-            <Link href="/settings/payments" className="mt-5 inline-flex rounded bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white">
-              Connect Stripe Account
-            </Link>
-            <p className="mt-3 text-xs text-[var(--text-muted)]">A 0.5% platform handling fee applies to all transactions.</p>
+      ) : data?.connected === false ? (
+        <section className="card mx-auto max-w-xl text-center">
+          <div className="text-4xl">💳</div>
+          <h2 className="mt-4 section-title">Connect Stripe to Accept Payments</h2>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            You haven&apos;t connected a Stripe account yet. Connect your account to start accepting payments from your
+            clients.
+          </p>
+          <Link href="/settings/payments" className="btn mt-5 inline-flex">
+            Connect Stripe Account
+          </Link>
+          <p className="mt-3 text-xs text-[var(--text-muted)]">
+            A 0.5% platform handling fee applies to all transactions.
+          </p>
+        </section>
+      ) : (
+        <>
+          <section className="kpis">
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">Total Revenue</p>
+              <p className="text-3xl font-bold text-emerald-600">{formatMoney(data?.metrics?.totalRevenue || 0)}</p>
+              <p className="helper-text">{data?.metrics?.transactionCount || 0} transactions</p>
+            </article>
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">Platform Fees Paid</p>
+              <p className="text-3xl font-bold text-[var(--text-muted)]">{formatMoney(data?.metrics?.totalFees || 0)}</p>
+              <p className="helper-text">0.5% per transaction</p>
+            </article>
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">Net Revenue</p>
+              <p className="text-3xl font-bold text-[var(--erp-blue)]">{formatMoney(data?.metrics?.netRevenue || 0)}</p>
+              <p className="helper-text">After platform fee</p>
+            </article>
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">This Month</p>
+              <p className="text-3xl font-bold text-violet-700">{formatMoney(data?.metrics?.thisMonthRevenue || 0)}</p>
+              <p className="helper-text">Fees: {formatMoney(data?.metrics?.thisMonthFees || 0)}</p>
+            </article>
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">Available Balance</p>
+              <p className="text-3xl font-bold text-green-600">
+                {formatMoney(availableBalance.amount)} {availableBalance.currency.toUpperCase()}
+              </p>
+              <p className="helper-text">Ready for payout</p>
+            </article>
+            <article className="card kpi-card">
+              <p className="helper-text mb-1">Pending Balance</p>
+              <p className="text-3xl font-bold text-amber-600">
+                {formatMoney(pendingBalance.amount)} {pendingBalance.currency.toUpperCase()}
+              </p>
+              <p className="helper-text">In transit</p>
+            </article>
           </section>
-        ) : (
-          <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">Total Revenue</p>
-                <p className="mt-2 text-2xl font-semibold text-emerald-600">{formatMoney(data?.metrics?.totalRevenue || 0)}</p>
-                <p className="text-xs text-[var(--text-muted)]">{data?.metrics?.transactionCount || 0} transactions</p>
-              </article>
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">Platform Fees Paid</p>
-                <p className="mt-2 text-2xl font-semibold text-[var(--text-muted)]">{formatMoney(data?.metrics?.totalFees || 0)}</p>
-                <p className="text-xs text-[var(--text-muted)]">0.5% per transaction</p>
-              </article>
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">Net Revenue</p>
-                <p className="mt-2 text-2xl font-semibold text-[var(--erp-blue)]">{formatMoney(data?.metrics?.netRevenue || 0)}</p>
-                <p className="text-xs text-[var(--text-muted)]">After platform fee</p>
-              </article>
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">This Month</p>
-                <p className="mt-2 text-2xl font-semibold text-violet-700">{formatMoney(data?.metrics?.thisMonthRevenue || 0)}</p>
-                <p className="text-xs text-[var(--text-muted)]">Fees: {formatMoney(data?.metrics?.thisMonthFees || 0)}</p>
-              </article>
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">Available Balance</p>
-                <p className="mt-2 text-2xl font-semibold text-green-600">
-                  {formatMoney(availableBalance.amount)} {availableBalance.currency.toUpperCase()}
-                </p>
-                <p className="text-xs text-[var(--text-muted)]">Ready for payout</p>
-              </article>
-              <article className="card">
-                <p className="text-sm text-[var(--text-muted)]">Pending Balance</p>
-                <p className="mt-2 text-2xl font-semibold text-amber-600">
-                  {formatMoney(pendingBalance.amount)} {pendingBalance.currency.toUpperCase()}
-                </p>
-                <p className="text-xs text-[var(--text-muted)]">In transit</p>
-              </article>
-            </section>
 
-            <section className="card">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <h2 className="section-title mb-4">Revenue Summary</h2>
-                <div className="flex gap-2">
-                  {PERIODS.map((key) => (
-                    <button
-                      key={key}
-                      className={`rounded-md px-3 py-1 text-xs font-medium ${period === key ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}
-                      onClick={() => {
-                        setPeriod(key);
-                        void loadSummary(key);
-                      }}
-                    >
-                      {key.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {summaryError ? (
-                <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  <p>{summaryError}</p>
-                  <button className="mt-2 rounded bg-red-600 px-3 py-1 text-white" onClick={() => void loadSummary(period)}>
-                    Retry
-                  </button>
-                </div>
-              ) : summaryLoading ? (
-                <div className="h-72 animate-pulse rounded bg-[var(--surface-muted)]" />
-              ) : (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={summary?.chartData || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis tickFormatter={(v) => `$${v}`} />
-                      <Tooltip
-                        formatter={(value, name, item) => {
-                          if (name === "count") {
-                            return [String(value), "Transactions"];
-                          }
-                          return [formatMoney(Number(value || 0)), String(name).toUpperCase()];
-                        }}
-                        labelFormatter={(label, payload) => {
-                          const row = payload?.[0]?.payload as { revenue: number; fees: number; count: number } | undefined;
-                          if (!row) return label;
-                          const net = row.revenue - row.fees;
-                          return `${label} • Net: ${formatMoney(net)} • Transactions: ${row.count}`;
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="revenue" fill="#2563eb" name="revenue" />
-                      <Bar dataKey="fees" fill="#6b7280" name="fees" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </section>
-
-            <section className="card">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="section-title mb-4">Transactions</h2>
-                <input
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Search by customer email or invoice ID"
-                  className="w-full max-w-xs rounded border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="mb-3 flex gap-2">
-                {(["all", "succeeded", "failed", "refunded"] as const).map((tab) => (
+          <section className="card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="section-title">Revenue Summary</h2>
+              <div className="tabs-bar" style={{ marginBottom: 0, borderBottom: "none" }}>
+                {PERIODS.map((key) => (
                   <button
-                    key={tab}
+                    key={key}
+                    className={`tab-pill ${period === key ? "active" : ""}`}
                     onClick={() => {
-                      setFilter(tab);
-                      setPage(1);
+                      setPeriod(key);
+                      void loadSummary(key);
                     }}
-                    className={`rounded px-3 py-1 text-xs font-medium ${filter === tab ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}
                   >
-                    {tab === "all" ? "All" : tab[0].toUpperCase() + tab.slice(1)}
+                    {key.toUpperCase()}
                   </button>
                 ))}
               </div>
+            </div>
+            {summaryError ? (
+              <div className="card border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <p>{summaryError}</p>
+                <button className="btn btn-danger mt-2" onClick={() => void loadSummary(period)}>
+                  Retry
+                </button>
+              </div>
+            ) : summaryLoading ? (
+              <div className="h-72 skeleton-shimmer rounded-xl" />
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summary?.chartData || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(v) => `$${v}`} />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === "count") return [String(value), "Transactions"];
+                        return [formatMoney(Number(value || 0)), String(name).toUpperCase()];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        const row = payload?.[0]?.payload as
+                          | { revenue: number; fees: number; count: number }
+                          | undefined;
+                        if (!row) return label;
+                        return `${label} • Net: ${formatMoney(row.revenue - row.fees)} • Transactions: ${row.count}`;
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="revenue" fill="#2563eb" name="revenue" />
+                    <Bar dataKey="fees" fill="#6b7280" name="fees" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-[var(--border-subtle)] text-xs uppercase text-[var(--text-muted)]">
+          <section className="card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="section-title">Transactions</h2>
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by email or invoice ID"
+                className="input"
+                style={{ maxWidth: 280 }}
+              />
+            </div>
+            <div className="tabs-bar" style={{ marginBottom: 12 }}>
+              {(["all", "succeeded", "failed", "refunded"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setFilter(tab);
+                    setPage(1);
+                  }}
+                  className={`tab-pill ${filter === tab ? "active" : ""}`}
+                >
+                  {tab === "all" ? "All" : tab[0].toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="table-shell">
+              <div>
+                <table>
+                  <thead>
                     <tr>
-                      <th className="px-2 py-3">Date</th>
-                      <th className="px-2 py-3">Customer</th>
-                      <th className="px-2 py-3">Amount</th>
-                      <th className="px-2 py-3">Platform Fee</th>
-                      <th className="px-2 py-3">Net</th>
-                      <th className="px-2 py-3">Status</th>
-                      <th className="px-2 py-3">Invoice</th>
-                      <th className="px-2 py-3">Receipt</th>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Amount</th>
+                      <th>Platform Fee</th>
+                      <th>Net</th>
+                      <th>Status</th>
+                      <th>Invoice</th>
+                      <th>Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-2 py-8 text-center text-sm text-[var(--text-muted)]">
+                        <td colSpan={8} className="table-empty">
                           No transactions yet. Payments from your clients will appear here.
                         </td>
                       </tr>
@@ -389,29 +388,39 @@ export default function BillingTerminalPage() {
                       paginatedTransactions.map((transaction) => {
                         const transactionStatus = getTransactionStatus(transaction);
                         return (
-                          <tr key={transaction.id} className="border-b border-[var(--border-subtle)]">
-                            <td className="px-2 py-3">{formatDate(transaction.createdAt)}</td>
-                            <td className="px-2 py-3">{transaction.customerEmail || "Unknown"}</td>
-                            <td className="px-2 py-3">{formatMoney(transaction.amount)}</td>
-                            <td className="px-2 py-3 text-[var(--text-muted)]">-{formatMoney(transaction.platformFee)}</td>
-                            <td className="px-2 py-3 text-emerald-600">{formatMoney(transaction.netAmount)}</td>
-                            <td className="px-2 py-3">
-                              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(transactionStatus)}`}>
+                          <tr key={transaction.id}>
+                            <td>{formatDate(transaction.createdAt)}</td>
+                            <td>{transaction.customerEmail || "Unknown"}</td>
+                            <td>{formatMoney(transaction.amount)}</td>
+                            <td className="text-[var(--text-muted)]">-{formatMoney(transaction.platformFee)}</td>
+                            <td className="text-emerald-600">{formatMoney(transaction.netAmount)}</td>
+                            <td>
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(transactionStatus)}`}
+                              >
                                 {transactionStatus}
                               </span>
                             </td>
-                            <td className="px-2 py-3">
+                            <td>
                               {transaction.invoiceId ? (
-                                <Link href={`/finance/invoices/${transaction.invoiceId}`} className="text-[var(--erp-blue)] hover:underline">
+                                <Link
+                                  href={`/finance/invoices/${transaction.invoiceId}`}
+                                  className="text-[var(--erp-blue)] hover:underline"
+                                >
                                   {transaction.invoiceId}
                                 </Link>
                               ) : (
                                 "-"
                               )}
                             </td>
-                            <td className="px-2 py-3">
+                            <td>
                               {transaction.receiptUrl ? (
-                                <a href={transaction.receiptUrl} target="_blank" rel="noreferrer" className="text-[var(--erp-blue)] hover:underline">
+                                <a
+                                  href={transaction.receiptUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[var(--erp-blue)] hover:underline"
+                                >
                                   View
                                 </a>
                               ) : (
@@ -425,92 +434,91 @@ export default function BillingTerminalPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <button className="btn ghost" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Prev
+              </button>
+              <span className="text-sm text-[var(--text-muted)]">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="btn ghost"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </section>
 
-              <div className="mt-4 flex items-center justify-between text-sm">
-                <button
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  className="rounded border border-[var(--border-subtle)] px-3 py-1 disabled:opacity-50"
-                >
-                  Prev
-                </button>
-                <span>Page {currentPage} of {totalPages}</span>
-                <button
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  className="rounded border border-[var(--border-subtle)] px-3 py-1 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </section>
-
-            <section className="card">
-              <h2 className="section-title mb-4">Payouts</h2>
-              <p className="text-sm text-[var(--text-muted)]">Funds transferred to your bank account</p>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-[var(--border-subtle)] text-xs uppercase text-[var(--text-muted)]">
+          <section className="card">
+            <h2 className="section-title mb-4">Payouts</h2>
+            <p className="page-subtitle mb-4">Funds transferred to your bank account</p>
+            <div className="table-shell">
+              <div>
+                <table>
+                  <thead>
                     <tr>
-                      <th className="px-2 py-3">Date</th>
-                      <th className="px-2 py-3">Amount</th>
-                      <th className="px-2 py-3">Status</th>
-                      <th className="px-2 py-3">Description</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Description</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(data?.payouts || []).length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-2 py-8 text-center text-sm text-[var(--text-muted)]">
+                        <td colSpan={4} className="table-empty">
                           No payouts yet. Payouts are processed automatically by Stripe.
                         </td>
                       </tr>
                     ) : (
                       (data?.payouts || []).map((payout) => (
-                        <tr key={payout.id} className="border-b border-[var(--border-subtle)]">
-                          <td className="px-2 py-3">{formatDate(payout.arrivalDate)}</td>
-                          <td className="px-2 py-3">{formatMoney(payout.amount)}</td>
-                          <td className="px-2 py-3">
+                        <tr key={payout.id}>
+                          <td>{formatDate(payout.arrivalDate)}</td>
+                          <td>{formatMoney(payout.amount)}</td>
+                          <td>
                             <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(payout.status)}`}>
                               {payout.status}
                             </span>
                           </td>
-                          <td className="px-2 py-3">{payout.description || "-"}</td>
+                          <td>{payout.description || "-"}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
               </div>
+            </div>
+            <p className="mt-4 text-sm text-[var(--text-muted)]">Payout schedules are managed in your Stripe Dashboard.</p>
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block text-sm font-medium text-[var(--erp-blue)] hover:underline"
+            >
+              Manage Payout Schedule →
+            </a>
+          </section>
 
-              <p className="mt-4 text-sm text-[var(--text-muted)]">Payout schedules are managed in your Stripe Dashboard.</p>
-              <a
-                href="https://dashboard.stripe.com"
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-block text-sm font-medium text-[var(--erp-blue)] hover:underline"
-              >
-                Manage Payout Schedule →
-              </a>
-            </section>
-
-            {(data?.disputes || []).length > 0 ? (
-              <section className="card">
-                <h2 className="section-title mb-4">Disputes</h2>
-                <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  ⚠ You have {(data?.disputes || []).length} open dispute(s). Disputes must be responded to in your Stripe Dashboard.
-                </div>
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="border-b border-[var(--border-subtle)] text-xs uppercase text-[var(--text-muted)]">
+          {(data?.disputes || []).length > 0 && (
+            <section className="card">
+              <h2 className="section-title mb-4">Disputes</h2>
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                ⚠ You have {(data?.disputes || []).length} open dispute(s). Respond in your Stripe Dashboard.
+              </div>
+              <div className="table-shell mt-4">
+                <div>
+                  <table>
+                    <thead>
                       <tr>
-                        <th className="px-2 py-3">Date</th>
-                        <th className="px-2 py-3">Amount</th>
-                        <th className="px-2 py-3">Reason</th>
-                        <th className="px-2 py-3">Status</th>
-                        <th className="px-2 py-3">Response Due</th>
-                        <th className="px-2 py-3">Action</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Response Due</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -519,13 +527,13 @@ export default function BillingTerminalPage() {
                         const daysLeft = dueDate ? (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) : null;
                         const urgentClass = daysLeft !== null && daysLeft <= 3 ? "text-red-600 font-semibold" : "";
                         return (
-                          <tr key={dispute.id} className="border-b border-[var(--border-subtle)]">
-                            <td className="px-2 py-3">{formatDate(dispute.createdAt)}</td>
-                            <td className="px-2 py-3">{formatMoney(dispute.amount)}</td>
-                            <td className="px-2 py-3">{dispute.reason.replace(/_/g, " ").replace(/\b\w/g, (s) => s.toUpperCase())}</td>
-                            <td className="px-2 py-3">{dispute.status}</td>
-                            <td className={`px-2 py-3 ${urgentClass}`}>{dispute.dueBy ? formatDate(dispute.dueBy) : "-"}</td>
-                            <td className="px-2 py-3">
+                          <tr key={dispute.id}>
+                            <td>{formatDate(dispute.createdAt)}</td>
+                            <td>{formatMoney(dispute.amount)}</td>
+                            <td>{dispute.reason.replace(/_/g, " ").replace(/\b\w/g, (s) => s.toUpperCase())}</td>
+                            <td>{dispute.status}</td>
+                            <td className={urgentClass}>{dispute.dueBy ? formatDate(dispute.dueBy) : "-"}</td>
+                            <td>
                               <a
                                 href={`https://dashboard.stripe.com/disputes/${dispute.id}`}
                                 target="_blank"
@@ -541,20 +549,29 @@ export default function BillingTerminalPage() {
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-4 text-sm text-[var(--text-muted)]">
-                  Bizosto does not manage disputes. You are the merchant of record and must handle disputes directly with Stripe.
-                </p>
-              </section>
-            ) : null}
-
-            <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 text-sm text-[var(--text-muted)]">
-              Stripe Account: {data?.connectStatus?.businessName || data?.connectStatus?.email || "-"} | Status: Connected ✓ | Charges: {data?.connectStatus?.chargesEnabled ? "enabled" : "disabled"} | Payouts: {data?.connectStatus?.payoutsEnabled ? "enabled" : "disabled"}
-              <Link href="/settings/payments" className="ml-2 font-medium text-[var(--erp-blue)] hover:underline">
-                Manage Connection →
-              </Link>
+              </div>
+              <p className="mt-4 text-sm text-[var(--text-muted)]">
+                Bizosto does not manage disputes. You are the merchant of record and must handle disputes directly with
+                Stripe.
+              </p>
             </section>
-          </>
-        )}
-      </div>
+          )}
+
+          <section className="card">
+            <p className="text-sm text-[var(--text-muted)]">
+              Stripe Account: {data?.connectStatus?.businessName || data?.connectStatus?.email || "-"} | Status:
+              Connected ✓ | Charges: {data?.connectStatus?.chargesEnabled ? "enabled" : "disabled"} | Payouts:{" "}
+              {data?.connectStatus?.payoutsEnabled ? "enabled" : "disabled"}
+            </p>
+            <Link
+              href="/settings/payments"
+              className="mt-2 inline-block text-sm font-medium text-[var(--erp-blue)] hover:underline"
+            >
+              Manage Connection →
+            </Link>
+          </section>
+        </>
+      )}
+    </div>
   );
 }
