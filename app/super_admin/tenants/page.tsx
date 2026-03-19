@@ -94,11 +94,9 @@ export default function SuperAdminTenantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Tenants</h1>
-          <p className="page-subtitle">Create and manage companies across the platform.</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="page-title">Tenants</h1>
+        <p className="page-subtitle">Create and manage companies across the platform.</p>
       </div>
 
       <div className="card p-5">

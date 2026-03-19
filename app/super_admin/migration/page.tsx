@@ -32,11 +32,9 @@ export default function SuperAdminMigrationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Tenant Migration</h1>
-          <p className="page-subtitle">Backfill tenantId on legacy documents safely.</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="page-title">Tenant Migration</h1>
+        <p className="page-subtitle">Backfill tenantId on legacy documents safely.</p>
       </div>
 
       <div className="card p-6 space-y-4">

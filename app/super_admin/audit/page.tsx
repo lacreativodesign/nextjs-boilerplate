@@ -36,11 +36,9 @@ export default function SuperAdminAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Audit Log</h1>
-          <p className="page-subtitle">Platform-level actions for tenants and users.</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="page-title">Audit Log</h1>
+        <p className="page-subtitle">Platform-level actions for tenants and users.</p>
       </div>
 
       <div className="card p-5">

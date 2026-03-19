@@ -58,11 +58,12 @@ export default function SuperAdminActivityPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="mb-6">
-          <h1 className="page-title">Activity</h1>
-          <p className="page-subtitle">Tenant-scoped audit activity across core workflows.</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="page-title">Activity</h1>
+        <p className="page-subtitle">Tenant-scoped audit activity across core workflows.</p>
+      </div>
+
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={load}
