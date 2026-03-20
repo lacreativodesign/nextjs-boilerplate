@@ -290,8 +290,12 @@ export default function SignupPage() {
         authPassword
       );
 
-      // Get the ID token and create the server-side session cookie
-      // Without this, the middleware will block access to the dashboard
+      // Wait for custom claims (role + tenantId) to propagate
+      // Firebase requires a short delay after setCustomUserClaims before
+      // the claims appear in a refreshed token
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Force refresh the token to pick up the custom claims
       const idToken = await userCred.user.getIdToken(true);
       const sessionRes = await fetch("/api/session-login", {
         method: "POST",
