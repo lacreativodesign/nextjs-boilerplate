@@ -254,12 +254,6 @@ export default function DashboardPage() {
               desc: "Policy management and data retention rules.",
               icon: "🛡️",
             },
-            {
-              title: "Notifications",
-              href: "/dashboard/notifications",
-              desc: "View and manage all platform notifications.",
-              icon: "🔔",
-            },
           ].map((item) => (
             <a
               key={item.href}
