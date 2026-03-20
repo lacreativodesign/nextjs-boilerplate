@@ -135,28 +135,16 @@ export default function DashboardPage() {
       <section className="space-y-4">
         <div>
           <h2 className="section-title">Admin Tools</h2>
-          <p className="page-subtitle">Utilities, monitoring, and platform management.</p>
+          <p className="page-subtitle">Workspace utilities, automation, and team management.</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
-              title: "Monitoring",
-              href: "/admin/monitoring",
-              desc: "Error rates, response times, and system alerts.",
-              icon: "📡",
-            },
-            {
               title: "Support Tickets",
               href: "/admin/support",
               desc: "View and manage internal support requests.",
               icon: "🎫",
-            },
-            {
-              title: "Launch Checklist",
-              href: "/admin/launch-checklist",
-              desc: "Track production readiness and env configuration.",
-              icon: "✅",
             },
             {
               title: "Automation",
@@ -171,22 +159,10 @@ export default function DashboardPage() {
               icon: "📥",
             },
             {
-              title: "Jobs Queue",
-              href: "/admin/jobs",
-              desc: "Background job status and retry management.",
-              icon: "⚙️",
-            },
-            {
               title: "Activity Log",
               href: "/admin/activity",
               desc: "Full audit trail of platform-wide events.",
               icon: "🕐",
-            },
-            {
-              title: "API Docs",
-              href: "/api-docs",
-              desc: "Interactive API documentation and testing.",
-              icon: "📖",
             },
           ].map((item) => (
             <a
