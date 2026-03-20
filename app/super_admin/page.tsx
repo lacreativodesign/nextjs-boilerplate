@@ -50,8 +50,8 @@ export default function SuperAdminPage() {
     async function load() {
       try {
         const [usersRes, tenantsRes] = await Promise.all([
-          fetch("/api/admin/users/list", { credentials: "include" }),
-          fetch("/api/super_admin/tenants/list", { credentials: "include" })
+          fetch("/api/super_admin/users", { credentials: "include" }),
+          fetch("/api/super_admin/tenants", { credentials: "include" })
             .catch(() => null),
         ]);
         const usersData = await usersRes.json().catch(() => ({}));
@@ -59,9 +59,7 @@ export default function SuperAdminPage() {
           ? await tenantsRes.json().catch(() => ({}))
           : {};
 
-        const userList = Array.isArray(usersData)
-          ? usersData
-          : usersData?.users || [];
+        const userList = Array.isArray(usersData?.users) ? usersData.users : [];
         const tenantList = Array.isArray(tenantsData?.tenants)
           ? tenantsData.tenants
           : [];
