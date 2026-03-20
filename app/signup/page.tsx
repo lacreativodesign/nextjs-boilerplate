@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -284,17 +284,43 @@ export default function SignupPage() {
 
     try {
       const auth = await getFirebaseAuth();
-      await signInWithEmailAndPassword(auth, formState.email.trim().toLowerCase(), authPassword);
+      const userCred = await signInWithEmailAndPassword(
+        auth,
+        formState.email.trim().toLowerCase(),
+        authPassword
+      );
+
+      // Get the ID token and create the server-side session cookie
+      // Without this, the middleware will block access to the dashboard
+      const idToken = await userCred.user.getIdToken(true);
+      const sessionRes = await fetch("/api/session-login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, rememberMe: true }),
+      });
+
+      if (!sessionRes.ok) {
+        throw new Error("Failed to create session. Please log in manually.");
+      }
+
       setAuthPassword("");
       router.push("/dashboard");
     } catch (signInError) {
       console.error("Auto sign-in failed", signInError);
-      setError("Workspace created, but auto sign-in failed. Please login manually.");
+      setError("Workspace created! Please log in with your credentials.");
       router.push("/login");
     } finally {
       setRedirecting(false);
     }
   };
+
+  useEffect(() => {
+    if (step === 5 && authPassword) {
+      void goToDashboard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-3 py-6 sm:px-4">
