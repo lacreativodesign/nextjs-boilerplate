@@ -190,6 +190,8 @@ function isPublicApiPath(pathname: string) {
     || pathname.startsWith("/api/tenant/context")
     || pathname.startsWith("/api/subscription/status")
     || pathname.startsWith("/api/public")
+    || pathname.startsWith("/api/signup")
+    || pathname.startsWith("/api/auth")
   );
 }
 
