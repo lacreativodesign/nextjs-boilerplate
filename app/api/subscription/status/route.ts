@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUserOrThrow, getTenantIdForRequestOrThrow } from "@/lib/tenant/server";
-import { deriveSubscriptionState } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -11,18 +10,32 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUserOrThrow(req);
     const tenantId = await getTenantIdForRequestOrThrow(req);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
-    const tenant = tenantSnap.exists ? tenantSnap.data() : null;
+    const tenant = tenantSnap.exists ? (tenantSnap.data() as any) : null;
 
-    const subscriptionState = tenant
-      ? deriveSubscriptionState({
-          subscriptionState: (tenant as any).subscriptionState,
-          billingStatus: (tenant as any).billingStatus,
-        })
-      : "active";
+    const trialEndsAt = tenant?.trialEndsAt || null;
+    const now = new Date();
+
+    // Derive subscription state — check trial expiry explicitly
+    let subscriptionState: string;
+    if (tenant?.subscriptionState) {
+      subscriptionState = tenant.subscriptionState;
+    } else if (tenant?.billingStatus === "past_due") {
+      subscriptionState = "grace";
+    } else if (tenant?.billingStatus === "canceled") {
+      subscriptionState = "hard_locked";
+    } else if (tenant?.plan === "trial" && trialEndsAt && new Date(trialEndsAt) < now) {
+      subscriptionState = "grace";
+    } else {
+      subscriptionState = "active";
+    }
 
     return NextResponse.json({
       ok: true,
+      plan: tenant?.plan || "trial",
       subscriptionState,
+      billingStatus: tenant?.billingStatus || null,
+      currentPeriodEnd: tenant?.currentPeriodEnd || null,
+      trialEndsAt,
       role: user.role || "unknown",
     });
   } catch (err: any) {

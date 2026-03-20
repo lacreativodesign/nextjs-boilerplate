@@ -146,7 +146,11 @@ export async function GET(request: NextRequest) {
         if (daysRemaining <= 0 && daysRemaining >= -7 && !scheduledState.expiredSent) {
           await sendTrialExpiredEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ expiredSent: true, expiredSentAt: now, email: ownerData.email }, { merge: true });
-          await adminDb.collection("tenants").doc(tenantId).set({ status: "grace_period" }, { merge: true });
+          await adminDb.collection("tenants").doc(tenantId).set({
+            status: "grace_period",
+            subscriptionState: "grace",
+            billingStatus: "past_due",
+          }, { merge: true });
           emailsSent += 1;
           continue;
         }
@@ -154,6 +158,11 @@ export async function GET(request: NextRequest) {
         if (daysRemaining < -12 && daysRemaining >= -14 && !scheduledState.gracePeriodEndSent) {
           await sendTrialGracePeriodEndingEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ gracePeriodEndSent: true, gracePeriodEndSentAt: now, email: ownerData.email }, { merge: true });
+          await adminDb.collection("tenants").doc(tenantId).set({
+            status: "hard_locked",
+            subscriptionState: "hard_locked",
+            billingStatus: "canceled",
+          }, { merge: true });
           emailsSent += 1;
         }
       } catch (error) {
