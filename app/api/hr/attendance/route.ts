@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { getCurrentUser } from "@/app/api/admin/_utils";
 import dayjs from "dayjs";
 
 export async function GET(request: Request) {
   try {
+    const me = await getCurrentUser();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
 
@@ -27,6 +29,7 @@ export async function GET(request: Request) {
 
     const attendanceSnap = await adminDb
       .collection("attendance")
+      .where("tenantId", "==", me.tenantId)
       .where("date", ">=", start.format("YYYY-MM-DD"))
       .where("date", "<=", end.format("YYYY-MM-DD"))
       .get();

@@ -16,11 +16,28 @@ export async function GET() {
 
     const dealSnaps = salesRep
       ? await Promise.all([
-          adminDb.collection("deals").where("isDeleted", "==", false).where("ownerId", "==", auth.user.uid).limit(500).get(),
-          adminDb.collection("deals").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get(),
+          adminDb
+            .collection("deals")
+            .where("isDeleted", "==", false)
+            .where("tenantId", "==", auth.user.tenantId)
+            .where("ownerId", "==", auth.user.uid)
+            .limit(500)
+            .get(),
+          adminDb
+            .collection("deals")
+            .where("isDeleted", "==", false)
+            .where("tenantId", "==", auth.user.tenantId)
+            .where("createdBy", "==", auth.user.uid)
+            .limit(500)
+            .get(),
         ])
       : await Promise.all([
-          adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+          adminDb
+            .collection("deals")
+            .where("isDeleted", "==", false)
+            .where("tenantId", "==", auth.user.tenantId)
+            .limit(500)
+            .get(),
           Promise.resolve(null),
         ]);
 

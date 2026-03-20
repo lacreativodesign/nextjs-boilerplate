@@ -26,8 +26,19 @@ export async function GET() {
     const salesRep = isSales(role);
 
     const snap = salesRep
-      ? await adminDb.collection("campaigns").where("isDeleted", "==", false).where("createdBy", "==", auth.user.uid).limit(500).get()
-      : await adminDb.collection("campaigns").where("isDeleted", "==", false).limit(500).get();
+      ? await adminDb
+          .collection("campaigns")
+          .where("isDeleted", "==", false)
+          .where("tenantId", "==", auth.user.tenantId)
+          .where("createdBy", "==", auth.user.uid)
+          .limit(500)
+          .get()
+      : await adminDb
+          .collection("campaigns")
+          .where("isDeleted", "==", false)
+          .where("tenantId", "==", auth.user.tenantId)
+          .limit(500)
+          .get();
 
     const campaigns = snap.docs.map((doc) => {
       const data = (doc.data() || {}) as CampaignDoc;
