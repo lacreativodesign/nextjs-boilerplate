@@ -88,7 +88,10 @@ export async function GET(req: Request) {
     const priority = String(searchParams.get("priority") || "").trim();
     const healthFilter = String(searchParams.get("health") || "").trim();
 
-    let baseQuery: FirebaseFirestore.Query = adminDb.collection("projects").where("isDeleted", "==", false);
+    let baseQuery: FirebaseFirestore.Query = adminDb
+      .collection("projects")
+      .where("tenantId", "==", me.tenantId)
+      .where("isDeleted", "==", false);
 
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 

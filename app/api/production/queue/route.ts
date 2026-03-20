@@ -56,9 +56,7 @@ function parseDate(value: string | null) {
 export async function GET(req: Request) {
   try {
     const me = await getProductionUser();
-    if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    }
+    if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const q = String(searchParams.get("q") || "").trim().toLowerCase();
@@ -71,7 +69,12 @@ export async function GET(req: Request) {
     const sortDir = String(searchParams.get("dir") || "desc");
 
     const [snap, workflowSettings] = await Promise.all([
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
+      adminDb
+        .collection("projects")
+        .where("tenantId", "==", me.tenantId)
+        .where("isDeleted", "==", false)
+        .limit(500)
+        .get(),
       getWorkflowSettings(),
     ]);
 
