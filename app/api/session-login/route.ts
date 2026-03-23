@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { idToken, rememberMe } = await req.json();
+    const body = await req.json();
+    const { idToken, rememberMe, extendedSession } = body;
 
     if (!idToken) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
@@ -13,7 +14,13 @@ export async function POST(req: NextRequest) {
 
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    const expiresIn = rememberMe ? 60 * 60 * 24 * 5 * 1000 : 60 * 60 * 24 * 1000;
+    // 14 days if remember me checked, 5 days otherwise, 1 day if not logged in
+    const expiresIn = extendedSession
+      ? 60 * 60 * 24 * 14 * 1000
+      : rememberMe
+      ? 60 * 60 * 24 * 5 * 1000
+      : 60 * 60 * 24 * 1 * 1000;
+
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     const response = NextResponse.json({ success: true });
