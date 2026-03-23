@@ -46,7 +46,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("bizosto_remember") === "true";
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
@@ -172,7 +175,7 @@ export default function LoginPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, rememberMe: remember }),
+        body: JSON.stringify({ idToken, rememberMe: remember, extendedSession: remember }),
       });
 
       if (!cookieRes.ok) {
@@ -339,7 +342,11 @@ export default function LoginPage() {
 
                   <div className="login-row">
                     <label className="login-check">
-                      <input type="checkbox" checked={remember} onChange={() => setRemember(!remember)} />
+                      <input type="checkbox" checked={remember} onChange={() => {
+                          const next = !remember;
+                          setRemember(next);
+                          window.localStorage.setItem("bizosto_remember", String(next));
+                        }} />
                       <span>Remember me</span>
                     </label>
 
@@ -415,22 +422,20 @@ export default function LoginPage() {
           .login-logo-icon {
             width: 48px;
             height: 48px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1.5px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
           }
 
           .login-logo-icon--sm {
             width: 40px;
             height: 40px;
-            border-radius: 12px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
           }
 
           .login-logo-b {
