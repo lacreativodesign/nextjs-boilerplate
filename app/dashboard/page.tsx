@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
 type Stats = {
   users: number;
@@ -43,6 +44,12 @@ function StatCard({
 
 export default function DashboardPage() {
   const { t } = useI18n();
+  const { data: tenantData } = useTenantContext();
+  const modulesEnabled = tenantData?.tenant?.modulesEnabled || {};
+
+  function moduleEnabled(key: string): boolean {
+    return modulesEnabled[key] !== false;
+  }
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -106,13 +113,31 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
-          { title: "Sales & Pipeline", href: "/sales", desc: "Leads, deals, and revenue pipeline." },
-          { title: "HR & Team", href: "/hr", desc: "Attendance, leave, and performance." },
-          { title: "Production", href: "/production", desc: "Jobs, workload, and delivery." },
-          { title: "Finance", href: "/finance", desc: "Invoices, payments, and payroll." },
-          { title: "Reports", href: "/reports", desc: "Analytics across all departments." },
+          {
+            title: "Sales & Pipeline",
+            href: "/sales",
+            desc: "Leads, deals, and revenue pipeline.",
+            moduleKey: "sales",
+          },
+          { title: "Clients", href: "/clients", desc: "Client accounts and lifecycle management." },
+          { title: "HR & Team", href: "/hr", desc: "Attendance, leave, and performance.", moduleKey: "hr" },
+          {
+            title: "Production",
+            href: "/production",
+            desc: "Jobs, workload, and delivery.",
+            moduleKey: "production",
+          },
+          { title: "Finance", href: "/finance", desc: "Invoices, payments, and payroll.", moduleKey: "finance" },
+          {
+            title: "Reports",
+            href: "/reports",
+            desc: "Analytics across all departments.",
+            moduleKey: "reports",
+          },
           { title: "Settings", href: "/settings", desc: "System configuration and preferences." },
-        ].map((item) => (
+        ]
+          .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
+          .map((item) => (
           <a
             key={item.href}
             href={item.href}
@@ -151,12 +176,14 @@ export default function DashboardPage() {
               href: "/admin/automation",
               desc: "Configure workflow automation rules.",
               icon: "⚡",
+              moduleKey: "admin",
             },
             {
               title: "Data Import",
               href: "/admin/import",
               desc: "Bulk import clients, invoices, and employees.",
               icon: "📥",
+              moduleKey: "admin",
             },
             {
               title: "Activity Log",
@@ -164,7 +191,9 @@ export default function DashboardPage() {
               desc: "Full audit trail of platform-wide events.",
               icon: "🕐",
             },
-          ].map((item) => (
+          ]
+            .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
+            .map((item) => (
             <a
               key={item.href}
               href={item.href}
@@ -205,18 +234,21 @@ export default function DashboardPage() {
               href: "/dashboard/crm/customers",
               desc: "Customer profiles and relationship tracking.",
               icon: "🤝",
+              moduleKey: "crm",
             },
             {
               title: "CRM — Deals",
               href: "/dashboard/crm/deals",
               desc: "Deal pipeline and sales opportunities.",
               icon: "💼",
+              moduleKey: "crm",
             },
             {
               title: "Inventory",
               href: "/dashboard/inventory/products",
               desc: "Products, stock levels, and variants.",
               icon: "📦",
+              moduleKey: "inventory",
             },
             {
               title: "Audit Logs",
@@ -230,7 +262,9 @@ export default function DashboardPage() {
               desc: "Policy management and data retention rules.",
               icon: "🛡️",
             },
-          ].map((item) => (
+          ]
+            .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
+            .map((item) => (
             <a
               key={item.href}
               href={item.href}
