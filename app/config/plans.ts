@@ -2,6 +2,8 @@
 export const PLAN_MODULES = {
   starter: {
     crm: true,
+    sales: true,
+    production: true,
     projects: true,
     approvals: false,
     notifications: false,
@@ -12,6 +14,8 @@ export const PLAN_MODULES = {
   },
   pro: {
     crm: true,
+    sales: true,
+    production: true,
     projects: true,
     approvals: true,
     notifications: true,
@@ -22,13 +26,15 @@ export const PLAN_MODULES = {
   },
   enterprise: {
     crm: true,
+    sales: true,
+    production: true,
     projects: true,
     approvals: true,
     notifications: true,
     finance: true,
     hr: true,
     reports: true,
-    client_stripe_connect: false,
+    client_stripe_connect: true,
   },
 };
 
