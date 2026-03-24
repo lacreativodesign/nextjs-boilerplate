@@ -9,6 +9,7 @@ export type TenantPlan = "trial" | "starter" | "professional" | "enterprise";
 type CreateTenantWorkspaceInput = {
   tenantId: string;
   name: string;
+  fullName?: string;
   email: string;
   plan: TenantPlan;
   ownerId?: string;
@@ -29,7 +30,8 @@ const onboardingSteps: OnboardingStep[] = [
 ];
 
 export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
-  const { tenantId, name, email, plan, ownerId, trialEndsAt } = data;
+  const { tenantId, name, fullName, email, plan, ownerId, trialEndsAt } = data;
+  const recipientName = fullName || name;
 
   const tenantRef = adminDb.collection("tenants").doc(tenantId);
   const checklistRef = tenantRef.collection("onboarding_progress").doc("checklist");
@@ -47,7 +49,19 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
       slug: tenantId,
       ownerId: ownerId || null,
       status: plan === "trial" ? "trial" : "active",
-      plan,
+      plan: "trial",
+      modules: {
+        crm: true,
+        sales: true,
+        production: true,
+        projects: true,
+        approvals: true,
+        notifications: true,
+        finance: true,
+        hr: true,
+        reports: true,
+        client_stripe_connect: false,
+      },
       trialEndsAt: trialEndsAt || null,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -86,7 +100,7 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
   };
 
   try {
-    await sendWelcomeEmail(email, name, tenantId);
+    await sendWelcomeEmail(email, recipientName, tenantId);
     notifications.welcomeEmailSent = true;
   } catch (error) {
     console.error("[ONBOARDING] Failed to send welcome email", { tenantId, email, error });

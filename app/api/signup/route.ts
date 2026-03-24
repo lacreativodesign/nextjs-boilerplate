@@ -141,6 +141,7 @@ export async function POST(request: Request) {
     await createTenantWorkspace({
       tenantId,
       name: payload.companyName,
+      fullName: payload.fullName,
       email,
       plan: "trial",
       ownerId: authUser.uid,
@@ -183,6 +184,25 @@ export async function POST(request: Request) {
         modulesEnabled,
         rolesEnabled: DEFAULT_ROLES,
         updatedAt: nowIso,
+      },
+      { merge: true }
+    );
+
+    await adminDb.collection("tenants").doc(tenantId).set(
+      {
+        plan: "trial",
+        modules: {
+          crm: true,
+          sales: true,
+          production: true,
+          projects: true,
+          approvals: true,
+          notifications: true,
+          finance: true,
+          hr: true,
+          reports: true,
+          client_stripe_connect: false,
+        },
       },
       { merge: true }
     );
