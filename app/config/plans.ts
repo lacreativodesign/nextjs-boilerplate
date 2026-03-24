@@ -1,5 +1,17 @@
 // SaaS plan catalog (extend with new plans or modules as Bizosto grows).
 export const PLAN_MODULES = {
+  trial: {
+    crm: true,
+    sales: true,
+    production: true,
+    projects: true,
+    approvals: true,
+    notifications: true,
+    finance: true,
+    hr: true,
+    reports: true,
+    client_stripe_connect: false,
+  },
   starter: {
     crm: true,
     sales: true,
