@@ -6,7 +6,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useEffect, useMemo, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 type SignupState = {
   fullName: string;
@@ -122,11 +122,12 @@ Your data is securely stored and isolated from other tenants. Upon account cance
 
 By checking the box below, you confirm you have read and agree to these terms. You authorize automatic monthly billing after your free trial ends.`;
 
-const stepContent: Record<Exclude<Step, 5>, { title: string; subtitle: string }> = {
+const stepContent: Record<Exclude<Step, 6>, { title: string; subtitle: string }> = {
   1: { title: "Create Your Account", subtitle: "Set your admin login credentials to begin." },
-  2: { title: "Tell Us About Your Business", subtitle: "Help us configure your workspace defaults." },
-  3: { title: "Choose Your Modules", subtitle: "Pick the tools you want enabled from day one." },
-  4: { title: "Terms & Conditions", subtitle: "Review and accept to activate your free trial." },
+  2: { title: "Verify Your Email", subtitle: "Enter the 6-digit code we sent to your email." },
+  3: { title: "Tell Us About Your Business", subtitle: "Help us configure your workspace defaults." },
+  4: { title: "Choose Your Modules", subtitle: "Pick the tools you want enabled from day one." },
+  5: { title: "Terms & Conditions", subtitle: "Review and accept to activate your free trial." },
 };
 
 export default function SignupPage() {
@@ -138,6 +139,10 @@ export default function SignupPage() {
   const [fieldErrors, setFieldErrors] = useState<Errors>({});
   const [trialEndsAt, setTrialEndsAt] = useState<string>("");
   const [authPassword, setAuthPassword] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [formState, setFormState] = useState<SignupState>({
     fullName: "",
     email: "",
@@ -155,7 +160,14 @@ export default function SignupPage() {
     termsVersion: "1.0",
   });
 
-  const progress = useMemo(() => ((step - 1) / 4) * 100, [step]);
+  // OTP resend cooldown countdown
+  useEffect(() => {
+    if (otpResendCooldown <= 0) return;
+    const timer = setTimeout(() => setOtpResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpResendCooldown]);
+
+  const progress = useMemo(() => ((step - 1) / 5) * 100, [step]);
 
   const setValue = <K extends keyof SignupState>(key: K, value: SignupState[K]) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -185,19 +197,93 @@ export default function SignupPage() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  const sendOtp = async (isResend = false) => {
+    setOtpSending(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formState.email.trim().toLowerCase() }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        setOtpError(payload?.error || "Failed to send code. Please try again.");
+        return;
+      }
+      if (isResend) setOtpResendCooldown(60);
+    } catch {
+      setOtpError("Network error. Please try again.");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
   const nextStep = async () => {
     setError("");
 
-    if (step === 1 && !validateStep1()) return;
-    if (step === 2 && !validateStep2()) return;
-    if (step === 3) {
+    if (step === 1) {
+      if (!validateStep1()) return;
+      // Send OTP then advance to OTP step
+      setLoading(true);
+      try {
+        const res = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formState.email.trim().toLowerCase() }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload?.ok) {
+          setError(payload?.error || "Failed to send verification code. Please try again.");
+          return;
+        }
+        setOtpResendCooldown(60);
+        setStep(2);
+      } catch {
+        setError("Network error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (step === 2) {
+      // Verify OTP
+      if (!otpCode.trim()) {
+        setOtpError("Please enter the verification code.");
+        return;
+      }
+      setLoading(true);
+      setOtpError("");
+      try {
+        const res = await fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formState.email.trim().toLowerCase(), otp: otpCode.trim() }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload?.ok) {
+          setOtpError(payload?.error || "Invalid code. Please try again.");
+          return;
+        }
+        setStep(3);
+      } catch {
+        setOtpError("Network error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (step === 3 && !validateStep2()) return;
+    if (step === 4) {
       if (!formState.selectedModules.includes("dashboard") || !formState.selectedModules.includes("clients") || !formState.selectedModules.includes("admin")) {
         setError("Dashboard, Clients, and Admin modules are required.");
         return;
       }
     }
 
-    if (step === 4) {
+    if (step === 5) {
       if (!formState.termsAccepted) {
         setFieldErrors((prev) => ({ ...prev, termsAccepted: "You must accept the terms to continue." }));
         return;
@@ -235,7 +321,7 @@ export default function SignupPage() {
 
         setTrialEndsAt(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString());
         setFormState((prev) => ({ ...prev, password: "", confirmPassword: "" }));
-        setStep(5);
+        setStep(6);
       } catch (submitError: unknown) {
         setError(submitError instanceof Error ? submitError.message : "Unable to create your workspace. Please try again.");
       } finally {
@@ -245,11 +331,12 @@ export default function SignupPage() {
       return;
     }
 
-    setStep((prev) => Math.min(5, (prev + 1) as Step));
+    setStep((prev) => Math.min(6, (prev + 1) as Step));
   };
 
   const previousStep = () => {
     setError("");
+    setOtpError("");
     setStep((prev) => Math.max(1, (prev - 1) as Step));
   };
 
@@ -266,7 +353,7 @@ export default function SignupPage() {
 
   const handleBlur = (field: keyof SignupState) => {
     if (step === 1) validateStep1();
-    if (step === 2) validateStep2();
+    if (step === 3) validateStep2();
     if (field === "termsAccepted" && !formState.termsAccepted) {
       setFieldErrors((prev) => ({ ...prev, termsAccepted: "You must accept the terms to continue." }));
     }
@@ -320,7 +407,7 @@ export default function SignupPage() {
   };
 
   useEffect(() => {
-    if (step === 5 && authPassword) {
+    if (step === 6 && authPassword) {
       void goToDashboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,19 +422,19 @@ export default function SignupPage() {
             <p className="text-xs font-semibold tracking-[0.24em] text-[var(--text-muted)]">BIZOSTO</p>
           </div>
 
-          {step !== 5 ? (
+          {step !== 6 ? (
             <>
               <div className="mb-5">
                 <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-black/10">
                   <div className="h-full rounded-full bg-[var(--erp-blue)] transition-all" style={{ width: `${progress}%` }} />
                 </div>
                 <div className="mb-3 flex items-center justify-between">
-                  {[1, 2, 3, 4, 5].map((dot) => (
+                  {[1, 2, 3, 4, 5, 6].map((dot) => (
                     <span key={dot} className={`h-2.5 w-2.5 rounded-full ${step >= dot ? "bg-[var(--erp-blue)]" : "bg-black/20"}`} />
                   ))}
                 </div>
-                <h1 className="text-2xl font-semibold">{stepContent[step as Exclude<Step, 5>].title}</h1>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">{stepContent[step as Exclude<Step, 5>].subtitle}</p>
+                <h1 className="text-2xl font-semibold">{stepContent[step as Exclude<Step, 6>].title}</h1>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">{stepContent[step as Exclude<Step, 6>].subtitle}</p>
               </div>
 
               <div className="space-y-4">
@@ -361,6 +448,57 @@ export default function SignupPage() {
                 ) : null}
 
                 {step === 2 ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
+                      We sent a 6-digit code to{" "}
+                      <span className="font-semibold text-[var(--text-primary)]">
+                        {formState.email}
+                      </span>
+                      . Enter it below to verify your email address.
+                    </div>
+
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-medium">Verification Code</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={otpCode}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setOtpCode(val);
+                          setOtpError("");
+                        }}
+                        className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] text-[var(--text-primary)] outline-none focus:border-[var(--erp-blue)]"
+                        autoFocus
+                        autoComplete="one-time-code"
+                      />
+                      {otpError ? (
+                        <span className="mt-1 block text-xs text-red-600">{otpError}</span>
+                      ) : null}
+                    </label>
+
+                    <div className="flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
+                      <span>Didn&apos;t receive it?</span>
+                      <button
+                        type="button"
+                        disabled={otpSending || otpResendCooldown > 0}
+                        onClick={() => void sendOtp(true)}
+                        className="font-semibold text-[var(--erp-blue)] disabled:opacity-50"
+                      >
+                        {otpSending
+                          ? "Sending…"
+                          : otpResendCooldown > 0
+                          ? `Resend in ${otpResendCooldown}s`
+                          : "Resend code"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {step === 3 ? (
                   <>
                     <Input label="Company Name" value={formState.companyName} placeholder="Acme Corp" onChange={(value) => setValue("companyName", value)} onBlur={() => handleBlur("companyName")} error={fieldErrors.companyName} />
                     <Select label="Industry" value={formState.industry} options={industries} onChange={(value) => setValue("industry", value)} />
@@ -377,7 +515,7 @@ export default function SignupPage() {
                   </>
                 ) : null}
 
-                {step === 3 ? (
+                {step === 4 ? (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {modules.map((module) => {
                       const checked = formState.selectedModules.includes(module.key);
@@ -404,7 +542,7 @@ export default function SignupPage() {
                   </div>
                 ) : null}
 
-                {step === 4 ? (
+                {step === 5 ? (
                   <>
                     <div className="max-h-[200px] overflow-y-auto rounded-xl border border-[var(--border-subtle)] p-3 text-sm leading-6 text-[var(--text-muted)] whitespace-pre-line">
                       {termsText}
@@ -437,10 +575,20 @@ export default function SignupPage() {
                   onClick={() => {
                     void nextStep();
                   }}
-                  disabled={loading || (step === 4 && !formState.termsAccepted)}
+                  disabled={loading || (step === 5 && !formState.termsAccepted)}
                   className="rounded-lg bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {loading ? "Creating your workspace..." : step === 4 ? "Start Trial" : "Continue"}
+                  {loading
+                    ? step === 2
+                      ? "Verifying…"
+                      : step === 1
+                      ? "Sending code…"
+                      : "Creating your workspace…"
+                    : step === 5
+                    ? "Start Trial"
+                    : step === 1
+                    ? "Continue & Verify Email"
+                    : "Continue"}
                 </button>
               </div>
             </>
