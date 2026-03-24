@@ -17,6 +17,14 @@ const iconByAction = {
   assigned: UserRoundPlus,
 };
 
+const actionLabel: Record<string, string> = {
+  created: "created",
+  updated: "updated",
+  deleted: "deleted",
+  commented: "commented on",
+  assigned: "assigned",
+};
+
 function formatDate(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
@@ -27,6 +35,8 @@ function formatDate(value: string) {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
   return parsed.toLocaleDateString();
 }
 
@@ -41,8 +51,10 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   const [toDate, setToDate] = useState("");
   const [presence, setPresence] = useState<PresenceRecord[]>([]);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [markingAll, setMarkingAll] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchUnread = useCallback(async () => {
     const res = await fetch("/api/activities/unread-count", { cache: "no-store" });
@@ -67,7 +79,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   const load = useCallback(
     async (cursor?: string, append?: boolean) => {
       const params = new URLSearchParams();
-      params.set("limit", "30");
+      params.set("limit", "20");
       if (cursor) params.set("cursor", cursor);
       if (moduleFilter.trim()) params.set("module", moduleFilter.trim());
       if (userFilter.trim()) params.set("userId", userFilter.trim());
@@ -110,7 +122,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
     }, 8000);
     const feedInterval = window.setInterval(() => {
       void load();
-    }, 10000);
+    }, 15000);
     const presenceInterval = window.setInterval(() => {
       void sendPresence(true);
       void fetchPresence();
@@ -127,6 +139,18 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       void sendPresence(false);
     };
   }, [fetchPresence, fetchUnread, load, sendPresence]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (!endRef.current || !nextCursor) return;
@@ -162,125 +186,211 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   }, []);
 
   return (
-    <>
-      {/* Bell button in header */}
-      <button type="button" onClick={onClose} className="notification-bell" aria-label="Activity Feed">
+    <div className="relative" ref={dropdownRef}>
+      {/* Bell trigger */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="notification-bell"
+        aria-label="Notifications"
+        aria-expanded={open}
+      >
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="notification-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
-      {/* Overlay */}
-      {open && <div className="drawer-overlay" onClick={onClose} />}
-
-      {/* Panel */}
+      {/* Dropdown */}
       {open && (
-        <aside
-          className="drawer-panel drawer-panel--sm"
+        <div
+          className="absolute right-0 z-50 flex flex-col overflow-hidden"
           style={{
-            top: "var(--header-height)",
-            height: "calc(100dvh - var(--header-height))",
-            display: "flex",
-            flexDirection: "column",
+            top: "calc(100% + 10px)",
+            width: "min(400px, 96vw)",
+            maxHeight: "calc(100dvh - 80px)",
+            background: "var(--surface-card)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: 16,
+            boxShadow: "var(--shadow-lg)",
           }}
         >
+          {/* Arrow pointer */}
+          <div
+            style={{
+              position: "absolute",
+              top: -7,
+              right: 18,
+              width: 14,
+              height: 14,
+              background: "var(--surface-card)",
+              border: "1px solid var(--border-subtle)",
+              borderRight: "none",
+              borderBottom: "none",
+              transform: "rotate(45deg)",
+              zIndex: 1,
+            }}
+          />
+
           {/* Header */}
-          <div className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
-            <div>
-              <h2 className="drawer-title">Activity Feed</h2>
-              <p className="drawer-subtitle">
-                Live updates across modules
-                {unreadCount > 0 && (
-                  <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[11px] font-semibold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </p>
+          <div
+            className="flex flex-shrink-0 items-center justify-between px-4 pt-4 pb-3"
+            style={{ borderBottom: "1px solid var(--border-subtle)" }}
+          >
+            <div className="flex items-center gap-2">
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                Notifications
+              </h3>
+              {unreadCount > 0 && (
+                <span className="notification-badge" style={{ position: "static", transform: "none" }}>
+                  {unreadCount}
+                </span>
+              )}
             </div>
-            <button
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-muted)]"
-              onClick={onClose}
-              aria-label="Close"
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowFilters((f) => !f)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                aria-label="Toggle filters"
+                title="Filter notifications"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                  <line x1="12" y1="18" x2="12" y2="18" />
+                </svg>
+              </button>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filters (collapsible) */}
+          {showFilters && (
+            <div
+              className="grid grid-cols-2 gap-2 flex-shrink-0 px-4 py-3"
+              style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--surface-muted)" }}
             >
-              <X className="h-4 w-4 text-[var(--text-muted)]" />
-            </button>
-          </div>
+              <select className="input" style={{ fontSize: 13 }} value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
+                <option value="">All modules</option>
+                {modules.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="input"
+                style={{ fontSize: 13 }}
+                placeholder="Filter by user"
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+              />
+              <input className="input" style={{ fontSize: 13 }} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <input className="input" style={{ fontSize: 13 }} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+          )}
 
-          {/* Filters */}
-          <div className="mb-3 grid flex-shrink-0 grid-cols-2 gap-2">
-            <select className="input" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
-              <option value="">All modules</option>
-              {modules.map((module) => (
-                <option key={module} value={module}>
-                  {module}
-                </option>
-              ))}
-            </select>
-            <input
-              className="input"
-              placeholder="Filter by user"
-              value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value)}
-            />
-            <input className="input" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <input className="input" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-          </div>
-
-          {/* Online presence */}
+          {/* Online presence strip */}
           {presence.length > 0 && (
-            <div className="mb-3 flex flex-shrink-0 flex-wrap items-center gap-1.5 text-xs text-[var(--text-muted)]">
+            <div
+              className="flex flex-shrink-0 flex-wrap items-center gap-1.5 px-4 py-2 text-xs text-[var(--text-muted)]"
+              style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--surface-muted)" }}
+            >
               <span className="h-2 w-2 rounded-full bg-green-500" />
-              <span>{presence.length} online:</span>
-              {presence.slice(0, 4).map((entry) => (
-                <span key={entry.uid} className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5">
+              <span>{presence.length} online</span>
+              {presence.slice(0, 3).map((entry) => (
+                <span key={entry.uid} className="rounded-full bg-[var(--surface-card)] px-2 py-0.5 border border-[var(--border-subtle)]">
                   {entry.name}
                 </span>
               ))}
             </div>
           )}
 
-          {/* Feed — scrollable middle section */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Notification list — scrollable */}
+          <div className="flex-1 overflow-y-auto">
             {loading && (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
+              <div className="space-y-1 p-3">
+                {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="skeleton-shimmer h-16 rounded-xl" />
                 ))}
               </div>
             )}
 
-            {!loading && items.length === 0 && <div className="notification-empty">No activity found.</div>}
+            {!loading && items.length === 0 && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl"
+                  style={{ background: "var(--surface-muted)", border: "1.5px dashed var(--border-strong)" }}
+                >
+                  <Bell className="h-5 w-5 text-[var(--text-muted)]" />
+                </div>
+                <p className="text-sm font-medium text-[var(--text-muted)]">No notifications yet</p>
+                <p className="text-xs text-[var(--text-soft)]">Activity from your team will appear here.</p>
+              </div>
+            )}
 
-            <div className="notification-list" style={{ marginTop: 0 }}>
-              {items.map((item) => {
-                const Icon = iconByAction[item.action] || Clock3;
-                return (
-                  <button key={item.id} className="notification-row w-full text-left" onClick={() => void markRead(item.id)}>
-                    <div className="min-w-0 flex-1">
-                      <div className="notification-row__title flex items-center gap-2">
-                        <Icon className="h-4 w-4 flex-shrink-0 text-[var(--erp-blue)]" />
-                        <span className="truncate">
-                          {item.actor.name} {item.action} {item.entity.type}
-                        </span>
-                      </div>
-                      {item.metadata.description && <p className="notification-row__body">{item.metadata.description}</p>}
-                      <span className="notification-row__time">
-                        {item.metadata.module} · {formatDate(item.createdAt)}
-                      </span>
-                    </div>
-                    <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-[var(--text-soft)]" />
-                  </button>
-                );
-              })}
-            </div>
+            {items.map((item) => {
+              const Icon = iconByAction[item.action] || Clock3;
+              return (
+                <button
+                  key={item.id}
+                  className="notification-row w-full text-left"
+                  style={{ borderRadius: 0, borderLeft: "none", borderRight: "none" }}
+                  onClick={() => void markRead(item.id)}
+                >
+                  {/* Icon avatar */}
+                  <div
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{ background: "var(--erp-blue-soft)" }}
+                  >
+                    <Icon className="h-4 w-4 text-[var(--erp-blue)]" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <p className="notification-row__title" style={{ lineHeight: 1.4 }}>
+                      <span className="font-semibold">{item.actor.name}</span>
+                      {" "}
+                      {actionLabel[item.action] || item.action}{" "}
+                      <span style={{ color: "var(--erp-blue)" }}>{item.entity.type}</span>
+                    </p>
+                    {item.metadata.description && (
+                      <p className="notification-row__body line-clamp-2">{item.metadata.description}</p>
+                    )}
+                    <p className="notification-row__time">
+                      {item.metadata.module} · {formatDate(item.createdAt)}
+                    </p>
+                  </div>
+
+                  {/* Unread dot */}
+                  <div className="ml-2 flex-shrink-0">
+                    <span className="block h-2 w-2 rounded-full" style={{ background: "var(--erp-blue)", opacity: 0.9 }} />
+                  </div>
+                </button>
+              );
+            })}
 
             <div ref={endRef} className="py-2 text-center text-xs text-[var(--text-muted)]">
-              {loadingMore ? "Loading more…" : nextCursor ? "Scroll for more ↓" : ""}
+              {loadingMore ? "Loading…" : nextCursor ? "Scroll for more ↓" : ""}
             </div>
           </div>
 
-          {/* Footer — Mark all as read */}
-          <div className="mt-2 flex-shrink-0 border-t border-[var(--border-subtle)] pt-3">
-            <button className="btn ghost w-full" onClick={markAllRead} disabled={markingAll || unreadCount === 0}>
+          {/* Footer */}
+          <div className="flex-shrink-0 px-4 py-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+            <button
+              className="btn ghost w-full"
+              style={{ fontSize: 13, height: 36 }}
+              onClick={markAllRead}
+              disabled={markingAll || unreadCount === 0}
+            >
               {markingAll
                 ? "Marking all as read…"
                 : unreadCount > 0
@@ -288,8 +398,8 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
                   : "All caught up ✓"}
             </button>
           </div>
-        </aside>
+        </div>
       )}
-    </>
+    </div>
   );
 }
