@@ -40,7 +40,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const data = userDoc.data() || {};
     const role = normalizeRole((data.role as string | undefined) || 'sales');
 
-    if (sessionStatus && !sessionStatus.valid && role !== 'super_admin') {
+    if (sessionStatus?.expired === true && role !== 'super_admin') {
       return null;
     }
 

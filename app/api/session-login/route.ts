@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { createSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,18 @@ export async function POST(req: NextRequest) {
       : 60 * 60 * 24 * 1 * 1000;
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    try {
+      await createSession(decodedToken.uid, {
+        sessionCookie,
+        rememberMe: Boolean(rememberMe),
+        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          req.headers.get('x-real-ip') ||
+          null,
+        userAgent: req.headers.get('user-agent') || null,
+      });
+    } catch (sessionWriteError) {
+      console.error('session-login: failed to write session record', sessionWriteError);
+    }
 
     const response = NextResponse.json({ success: true });
 
