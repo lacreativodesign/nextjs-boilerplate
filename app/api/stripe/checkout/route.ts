@@ -135,6 +135,9 @@ export async function POST(req: Request) {
           source: "bizosto_website",
         },
       },
+      automatic_tax: { enabled: true },
+      billing_address_collection: "required",
+      customer_update: { address: "auto" },
     });
 
     return NextResponse.json({ ok: true, url: session.url, id: session.id });

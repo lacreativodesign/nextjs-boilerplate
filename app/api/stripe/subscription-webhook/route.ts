@@ -163,9 +163,10 @@ export async function POST(req: Request) {
 
         await adminDb.collection('tenants').doc(tenantId).set(
           {
-            lastInvoiceTax: Number(invoice.tax || 0),
-            lastInvoiceTotal: Number(invoice.total || 0),
-            lastInvoiceSubtotal: Number(invoice.subtotal || 0),
+            lastInvoiceTax: Number((invoice.tax || 0)) / 100,
+            lastInvoiceTotal: Number((invoice.total || 0)) / 100,
+            lastInvoiceSubtotal: Number((invoice.subtotal || 0)) / 100,
+            lastInvoiceTaxAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
           { merge: true },

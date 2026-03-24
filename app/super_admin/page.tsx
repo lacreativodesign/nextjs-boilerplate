@@ -34,6 +34,8 @@ const ACTION_LINKS = [
     desc: "Review all platform activity and changes." },
   { title: "Payment Terminal", href: "/super_admin/payments",
     desc: "Subscription revenue, billing status, and transaction history." },
+  { title: "Tax Filing", href: "/super_admin/tax",
+    desc: "Platform tax collected, quarterly breakdown, and CSV export for LA CREATIVO GROUP LLC." },
   { title: "Activity Feed", href: "/super_admin/activity",
     desc: "Live stream of platform-wide events." },
   { title: "Backups", href: "/super_admin/backups",
