@@ -52,6 +52,7 @@ export default function BillingOverviewPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [cardsLoading, setCardsLoading] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -155,6 +156,20 @@ export default function BillingOverviewPage() {
 
       {!loading && !fetchError && (
         <div className="space-y-5">
+          {data?.subscriptionState === 'trial' && data?.trialEndsAt && (() => {
+            const daysLeft = Math.ceil((new Date(data.trialEndsAt!).getTime() - Date.now()) / 86400000);
+            if (daysLeft > 5) return null;
+            return (
+              <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-[var(--danger)]">
+                  ⚠ Your trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}. Upgrade now to keep your data and access.
+                </p>
+                <Link href="/pricing" className="btn" style={{ borderRadius: 999, fontSize: 13 }}>
+                  Upgrade Now
+                </Link>
+              </div>
+            );
+          })()}
           {/* Current Plan */}
           <section className="card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -222,6 +237,140 @@ export default function BillingOverviewPage() {
 
             {portalError && <p className="mt-3 text-sm text-red-600">{portalError}</p>}
           </section>
+
+          {/* Upgrade Your Plan */}
+          {(data?.plan === 'trial' || data?.plan === 'starter') && (
+            <section className="card p-6">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="section-title">Upgrade Your Plan</h3>
+                  <p className="helper-text mt-1">Switch plans anytime. Cancel anytime. Your data is always safe.</p>
+                </div>
+                <div className="flex overflow-hidden rounded-xl border border-[var(--border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('monthly')}
+                    className={billingCycle === 'monthly' ? 'btn' : 'btn subtle'}
+                    style={{ borderRadius: 0, fontSize: 13, padding: '8px 16px' }}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle('annual')}
+                    className={billingCycle === 'annual' ? 'btn' : 'btn subtle'}
+                    style={{ borderRadius: 0, fontSize: 13, padding: '8px 16px' }}
+                  >
+                    Annual{' '}
+                    <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, color: '#16a34a' }}>
+                      SAVE 2 MONTHS
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {([
+                  {
+                    key: 'starter',
+                    name: 'Starter',
+                    monthly: 79,
+                    annual: 790,
+                    perMonth: 65.83,
+                    users: '10 users',
+                    storage: '20GB',
+                    features: ['CRM, Sales & Projects', '10 client portal seats', 'Notifications & Reports', 'Email support (48h)'],
+                  },
+                  {
+                    key: 'pro',
+                    name: 'Pro',
+                    monthly: 149,
+                    annual: 1490,
+                    perMonth: 124.17,
+                    users: '20 users',
+                    storage: '75GB',
+                    features: ['Finance & Production suite', 'Unlimited client portal seats', 'Approvals & full Reports', 'Priority support + chat'],
+                  },
+                  {
+                    key: 'enterprise',
+                    name: 'Enterprise',
+                    monthly: 299,
+                    annual: 2990,
+                    perMonth: 249.17,
+                    users: 'Unlimited users',
+                    storage: '250GB',
+                    features: ['HR module included', 'Client Stripe Connect', 'White-label options', 'Dedicated same-day support'],
+                  },
+                ] as const).map((plan) => {
+                  const isCurrent = data?.plan === plan.key;
+                  const currentOrder = ['trial', 'starter', 'pro', 'enterprise'].indexOf(data?.plan ?? 'trial');
+                  const planOrder = ['trial', 'starter', 'pro', 'enterprise'].indexOf(plan.key);
+                  const isUpgrade = planOrder > currentOrder;
+
+                  return (
+                    <div
+                      key={plan.key}
+                      className="card p-5"
+                      style={isCurrent ? { border: '2px solid var(--erp-blue)' } : {}}
+                    >
+                      {isCurrent && (
+                        <div className="mb-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]">
+                          Current Plan
+                        </div>
+                      )}
+                      <div className="font-black text-base">{plan.name}</div>
+                      <div className="mt-2">
+                        <span className="text-2xl font-black">
+                          ${billingCycle === 'monthly' ? plan.monthly : plan.perMonth.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">/mo</span>
+                      </div>
+                      {billingCycle === 'annual' && (
+                        <div className="text-xs font-semibold text-green-600 mb-1">
+                          ${plan.annual}/yr — save ${plan.monthly * 12 - plan.annual}
+                        </div>
+                      )}
+                      <div className="text-xs text-[var(--text-muted)] mt-1 mb-3">
+                        {plan.users} · {plan.storage}
+                      </div>
+                      <ul className="space-y-1 mb-4">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-center gap-2 text-xs">
+                            <span className="font-bold text-green-600">✓</span>
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {isCurrent ? (
+                        <div
+                          className="btn subtle w-full text-center"
+                          style={{ borderRadius: 999, fontSize: 13, cursor: 'default' }}
+                        >
+                          Your Plan
+                        </div>
+                      ) : isUpgrade ? (
+                        <Link
+                          href="/pricing"
+                          className="btn w-full text-center"
+                          style={{ borderRadius: 999, fontSize: 13 }}
+                        >
+                          Upgrade
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/pricing"
+                          className="btn ghost w-full text-center"
+                          style={{ borderRadius: 999, fontSize: 13 }}
+                        >
+                          Downgrade
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Manage Subscription */}
           <section className="card p-6">
