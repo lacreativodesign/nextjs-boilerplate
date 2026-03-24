@@ -168,9 +168,23 @@ export default function BillingTerminalPage() {
     }
   };
 
+  const loadData = async () => {
+    await Promise.all([loadTerminal(), loadSummary(period)]);
+  };
+
   useEffect(() => {
     void loadTerminal();
     void loadSummary("30d");
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connect_success")) {
+      void loadData();
+    }
+    if (params.get("connect_error")) {
+      setError("Stripe Connect failed. Please try again.");
+    }
   }, []);
 
   const transactions = data?.transactions || [];
@@ -229,9 +243,27 @@ export default function BillingTerminalPage() {
             You haven&apos;t connected a Stripe account yet. Connect your account to start accepting payments from your
             clients.
           </p>
-          <Link href="/settings/payments" className="btn mt-5 inline-flex">
+          <button
+            className="btn mt-5 inline-flex"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/billing/terminal/connect", {
+                  credentials: "include",
+                  cache: "no-store",
+                });
+                const payload = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+                if (payload.ok && payload.url) {
+                  window.location.href = payload.url;
+                  return;
+                }
+                setError(payload.error || "Unable to start Stripe Connect.");
+              } catch {
+                setError("Unable to start Stripe Connect.");
+              }
+            }}
+          >
             Connect Stripe Account
-          </Link>
+          </button>
           <p className="mt-3 text-xs text-[var(--text-muted)]">
             A 0.5% platform handling fee applies to all transactions.
           </p>
