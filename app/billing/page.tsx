@@ -14,57 +14,55 @@ type SubscriptionStatusResponse = {
   trialEndsAt: string | null;
 };
 
-const formatDate = (value: string): string => {
+function formatDate(value: string): string {
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
+  if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
-};
+}
 
-const getBadgeConfig = (subscriptionState: SubscriptionState): { label: string; className: string } => {
-  switch (subscriptionState) {
+function getBadgeConfig(state: SubscriptionState) {
+  switch (state) {
     case 'trial':
-      return { label: 'Trial', className: 'bg-amber-100 text-amber-800' };
+      return { label: 'Free Trial', cls: 'bg-amber-100 text-amber-800' };
     case 'active':
-      return { label: 'Active', className: 'bg-green-100 text-green-800' };
+      return { label: 'Active', cls: 'bg-green-100 text-green-800' };
     case 'past_due':
-      return { label: 'Past Due', className: 'bg-red-100 text-red-800' };
+      return { label: 'Past Due', cls: 'bg-red-100 text-red-800' };
     case 'canceled':
-      return { label: 'Cancelled', className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
+      return {
+        label: 'Cancelled',
+        cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
+      };
     default:
-      return { label: subscriptionState, className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
+      return {
+        label: state,
+        cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
+      };
   }
-};
+}
 
 export default function BillingOverviewPage() {
   const [data, setData] = useState<SubscriptionStatusResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState<boolean>(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  const [cardsLoading, setCardsLoading] = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
-
     try {
       const res = await fetch('/api/subscription/status', {
         method: 'GET',
         credentials: 'include',
       });
-
-      if (!res.ok) {
-        throw new Error('Failed to load billing info');
-      }
-
+      if (!res.ok) throw new Error('Failed to load billing info');
       const body = (await res.json()) as SubscriptionStatusResponse;
-
       setData({
         plan: body.plan,
         subscriptionState: body.subscriptionState,
@@ -73,8 +71,7 @@ export default function BillingOverviewPage() {
         trialEndsAt: body.trialEndsAt,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load billing info';
-      setFetchError(message);
+      setFetchError(err instanceof Error ? err.message : 'Failed to load billing info');
     } finally {
       setLoading(false);
     }
@@ -84,135 +81,168 @@ export default function BillingOverviewPage() {
     void loadStatus();
   }, [loadStatus]);
 
-  const handleManageBilling = useCallback(async () => {
+  const openPortal = useCallback(async () => {
     setPortalLoading(true);
     setPortalError(null);
-
     try {
       const res = await fetch('/api/billing/portal', {
         method: 'POST',
         credentials: 'include',
       });
-
       const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
-
-      if (!res.ok || !body.url) {
-        throw new Error(body.error ?? 'Failed to open billing portal');
-      }
-
+      if (!res.ok || !body.url) throw new Error(body.error ?? 'Failed to open billing portal');
       window.location.href = body.url;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to open billing portal';
-      setPortalError(message);
+      setPortalError(err instanceof Error ? err.message : 'Failed to open billing portal');
     } finally {
       setPortalLoading(false);
     }
   }, []);
 
-  const badgeConfig = useMemo(() => {
-    return getBadgeConfig(data?.subscriptionState ?? '');
-  }, [data?.subscriptionState]);
-
-  const planConfig = useMemo(() => {
-    if (!data?.plan) {
-      return null;
+  const openCardManager = useCallback(async () => {
+    setCardsLoading(true);
+    setPortalError(null);
+    try {
+      const res = await fetch('/api/billing/portal', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (!res.ok || !body.url) throw new Error(body.error ?? 'Failed to open card manager');
+      window.location.href = body.url;
+    } catch (err: unknown) {
+      setPortalError(err instanceof Error ? err.message : 'Failed to open card manager');
+    } finally {
+      setCardsLoading(false);
     }
+  }, []);
 
+  const badge = useMemo(() => getBadgeConfig(data?.subscriptionState ?? ''), [data?.subscriptionState]);
+  const planConfig = useMemo(() => {
+    if (!data?.plan) return null;
     return plans[data.plan as BillingPlanKey] ?? null;
   }, [data?.plan]);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 text-[var(--text-primary)]">
       <div className="tabs-bar">
-        <Link href="/billing" className="tab-pill active">Subscription</Link>
-        <Link href="/billing/invoices" className="tab-pill">Invoice History</Link>
-        <Link href="/billing/terminal" className="tab-pill">Payment Terminal</Link>
-      </div>
-      <div className="mb-6">
-        <h1 className="page-title">Billing</h1>
-        <p className="page-subtitle">Manage your subscription plan and billing details.</p>
+        <Link href="/billing" className="tab-pill active">
+          Subscription
+        </Link>
+        <Link href="/billing/invoices" className="tab-pill">
+          Invoice History
+        </Link>
+        <Link href="/billing/terminal" className="tab-pill">
+          Payment Terminal
+        </Link>
       </div>
 
-      {loading ? (
-        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 text-[var(--text-muted)]">
-          Loading billing info...
-        </div>
-      ) : fetchError ? (
+      <div className="mb-6">
+        <h1 className="page-title">Billing</h1>
+        <p className="page-subtitle">Manage your Bizosto subscription, payment methods, and billing history.</p>
+      </div>
+
+      {loading && <div className="card p-6 text-sm text-[var(--text-muted)]">Loading billing info…</div>}
+
+      {fetchError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6">
           <p className="text-sm text-red-700">{fetchError}</p>
-          <button
-            type="button"
-            onClick={() => {
-              void loadStatus();
-            }}
-            className="mt-4 rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white"
-          >
+          <button type="button" onClick={() => void loadStatus()} className="btn mt-4">
             Retry
           </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+      )}
+
+      {!loading && !fetchError && (
+        <div className="space-y-5">
+          {/* Current Plan */}
+          <section className="card p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-sm text-[var(--text-muted)]">Current Plan</p>
+                <p className="helper-text mb-1">Current Plan</p>
                 <h2 className="text-2xl font-bold capitalize">{data?.plan ?? 'Unknown'}</h2>
+                {data?.trialEndsAt && data.subscriptionState === 'trial' && (
+                  <p className="mt-2 text-sm text-[var(--text-muted)]">
+                    Trial ends: <strong>{formatDate(data.trialEndsAt)}</strong>
+                  </p>
+                )}
+                {data?.currentPeriodEnd && data.subscriptionState === 'active' && (
+                  <p className="mt-2 text-sm text-[var(--text-muted)]">
+                    Next billing date: <strong>{formatDate(data.currentPeriodEnd)}</strong>
+                  </p>
+                )}
               </div>
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badgeConfig.className}`}>
-                {badgeConfig.label}
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.cls}`}>
+                {badge.label}
               </span>
             </div>
 
-            {data?.trialEndsAt && data.subscriptionState === 'trial' ? (
-              <p className="mt-4 text-sm text-[var(--text-muted)]">Trial ends: {formatDate(data.trialEndsAt)}</p>
-            ) : null}
-
-            {data?.currentPeriodEnd && data.subscriptionState === 'active' ? (
-              <p className="mt-4 text-sm text-[var(--text-muted)]">Next billing date: {formatDate(data.currentPeriodEnd)}</p>
-            ) : null}
-          </section>
-
-          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-            <h3 className="mb-4 text-lg font-semibold">Actions</h3>
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleManageBilling();
-                }}
-                disabled={portalLoading}
-                className="rounded-md bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {portalLoading ? 'Opening...' : 'Manage Billing'}
-              </button>
-
-              <Link
-                href="/pricing"
-                className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
-              >
-                View Plans
-              </Link>
-            </div>
-
-            {portalError ? <p className="mt-3 text-sm text-red-600">{portalError}</p> : null}
-          </section>
-
-          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-            <h3 className="mb-4 text-lg font-semibold">Plan Features</h3>
-            {planConfig ? (
-              <ul className="space-y-2 text-sm text-[var(--text-primary)]">
+            {planConfig && (
+              <ul className="mt-5 grid gap-1.5 text-sm text-[var(--text-primary)] sm:grid-cols-2">
                 {planConfig.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
+                  <li key={feature} className="flex items-center gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
                     <span>{feature}</span>
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="text-sm text-[var(--text-muted)]">
-                You are on a free trial. Upgrade to access all features.
+            )}
+
+            {!planConfig && (
+              <p className="mt-4 text-sm text-[var(--text-muted)]">
+                You are on a free trial. Upgrade to unlock all features after your trial ends.
               </p>
             )}
+          </section>
+
+          {/* Payment Methods */}
+          <section className="card p-6">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="section-title">Payment Methods</h3>
+                <p className="helper-text mt-1">
+                  Add, remove, or update the cards used for your Bizosto subscription.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void openCardManager()}
+                disabled={cardsLoading}
+                className="btn"
+              >
+                {cardsLoading ? 'Opening…' : '💳 Manage Payment Methods'}
+              </button>
+              <p className="text-xs text-[var(--text-muted)]">
+                Secured by Stripe · Your card details are never stored on our servers.
+              </p>
+            </div>
+
+            {portalError && <p className="mt-3 text-sm text-red-600">{portalError}</p>}
+          </section>
+
+          {/* Manage Subscription */}
+          <section className="card p-6">
+            <h3 className="section-title mb-4">Manage Subscription</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void openPortal()}
+                disabled={portalLoading}
+                className="btn ghost"
+              >
+                {portalLoading ? 'Opening…' : 'Open Billing Portal'}
+              </button>
+              <Link href="/pricing" className="btn ghost">
+                View Plans
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-[var(--text-muted)]">
+              The billing portal lets you upgrade, downgrade, or cancel your plan, view past invoices, and update your
+              billing address.
+            </p>
           </section>
         </div>
       )}
