@@ -47,6 +47,9 @@ export default function DemoEnvironmentPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   const [appUrl, setAppUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || "");
 
@@ -64,6 +67,23 @@ export default function DemoEnvironmentPage() {
 
   async function copy(text: string) {
     await navigator.clipboard.writeText(text);
+  }
+
+  async function handleSeed() {
+    setIsSeeding(true);
+    setSeedMessage(null);
+    setSeedError(null);
+    try {
+      const res = await fetch("/api/super_admin/demo/seed", { method: "POST", credentials: "include" });
+      const payload = await res.json();
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Seed failed");
+      setSeedMessage(`Demo environment seeded successfully at ${new Date(payload.seededAt).toLocaleString()}`);
+      await loadCounts();
+    } catch (err: any) {
+      setSeedError(err?.message || "Seed failed");
+    } finally {
+      setIsSeeding(false);
+    }
   }
 
   async function handleReset() {
@@ -143,6 +163,24 @@ export default function DemoEnvironmentPage() {
           <Count label="Production Jobs" value={counts?.productionJobs} />
           <Count label="Employees" value={counts?.employees} />
         </div>
+      </section>
+
+      <section className="card">
+        <h2 className="section-title mb-4">Seed Demo Data</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
+          Creates all 10 demo Firebase Auth accounts and seeds sample data into the bizosto-demo tenant.
+          Safe to run multiple times — existing accounts are updated, not duplicated.
+        </p>
+        {seedMessage && <div className="mt-3 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-700">{seedMessage}</div>}
+        {seedError && <div className="mt-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">{seedError}</div>}
+        <button
+          className="btn mt-4"
+          style={{ borderRadius: 999 }}
+          onClick={handleSeed}
+          disabled={isSeeding}
+        >
+          {isSeeding ? "Seeding..." : "Seed Demo Data"}
+        </button>
       </section>
 
       <section className="card" style={{ borderColor: "#f59e0b", background: "rgba(254,243,199,0.5)" }}>
