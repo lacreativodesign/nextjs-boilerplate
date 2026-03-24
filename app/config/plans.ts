@@ -1,4 +1,8 @@
-// SaaS plan catalog (extend with new plans or modules as Bizosto grows).
+// Bizosto SaaS plan module access gates.
+// trial      = all modules for 14-day evaluation (client_stripe_connect excluded).
+// starter    = CRM, Sales, Projects, Notifications, basic Reports.
+// pro        = adds Finance, Production, Approvals, full Reports.
+// enterprise = adds HR, Client Stripe Connect, white-label.
 export const PLAN_MODULES = {
   trial: {
     crm: true,
@@ -15,13 +19,13 @@ export const PLAN_MODULES = {
   starter: {
     crm: true,
     sales: true,
-    production: true,
+    production: false,
     projects: true,
     approvals: false,
-    notifications: false,
+    notifications: true,
     finance: false,
     hr: false,
-    reports: false,
+    reports: true,
     client_stripe_connect: false,
   },
   pro: {
@@ -52,15 +56,15 @@ export const PLAN_MODULES = {
 
 export const PLAN_DETAILS = {
   starter: {
-    label: "Starter",
-    description: "Core CRM + project management for growing teams.",
+    label: 'Starter',
+    description: 'CRM, sales pipeline and project management for small teams.',
   },
   pro: {
-    label: "Pro",
-    description: "Full operations suite with finance and reporting.",
+    label: 'Pro',
+    description: 'Full operations including finance, production and reporting.',
   },
   enterprise: {
-    label: "Enterprise",
-    description: "All modules unlocked with HR and advanced governance.",
+    label: 'Enterprise',
+    description: 'Everything including HR, client payments and white-label.',
   },
 };
