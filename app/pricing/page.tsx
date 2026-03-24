@@ -42,11 +42,11 @@ const pricingStructuredData = {
     {
       "@type": "Offer",
       name: "Starter",
-      price: "99",
+      price: "79",
       priceCurrency: "USD",
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: "99",
+        price: "79",
         priceCurrency: "USD",
         billingDuration: "P1M",
       },
@@ -55,11 +55,11 @@ const pricingStructuredData = {
     {
       "@type": "Offer",
       name: "Pro",
-      price: "299",
+      price: "149",
       priceCurrency: "USD",
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: "299",
+        price: "149",
         priceCurrency: "USD",
         billingDuration: "P1M",
       },
@@ -68,11 +68,11 @@ const pricingStructuredData = {
     {
       "@type": "Offer",
       name: "Enterprise",
-      price: "799",
+      price: "299",
       priceCurrency: "USD",
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: "799",
+        price: "299",
         priceCurrency: "USD",
         billingDuration: "P1M",
       },
