@@ -125,6 +125,7 @@ export default function BillingOverviewPage() {
     <main className="mx-auto max-w-4xl px-4 py-8 text-[var(--text-primary)]">
       <div className="tabs-bar">
         <Link href="/billing" className="tab-pill active">Subscription</Link>
+        <Link href="/billing/invoices" className="tab-pill">Invoice History</Link>
         <Link href="/billing/terminal" className="tab-pill">Payment Terminal</Link>
       </div>
       <div className="mb-6">

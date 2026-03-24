@@ -196,12 +196,9 @@ export default function BillingTerminalPage() {
   return (
     <div className="space-y-6">
       <div className="tabs-bar">
-        <Link href="/billing" className="tab-pill">
-          Subscription
-        </Link>
-        <Link href="/billing/terminal" className="tab-pill active">
-          Payment Terminal
-        </Link>
+        <Link href="/billing" className="tab-pill">Subscription</Link>
+        <Link href="/billing/invoices" className="tab-pill">Invoice History</Link>
+        <Link href="/billing/terminal" className="tab-pill active">Payment Terminal</Link>
       </div>
 
       <div className="mb-6">
