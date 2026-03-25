@@ -15,38 +15,6 @@ type UserStatus = "active" | "disabled";
 type Role = InternalRole;
 type Department = UserDepartment;
 
-function useIsDarkMode() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const root = document.documentElement;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const read = () => {
-      const byClass = root.classList.contains("dark");
-      const bySystem = !!mql.matches;
-      setIsDark(byClass || bySystem);
-    };
-
-    read();
-
-    const obs = new MutationObserver(() => read());
-    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
-
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-
-    return () => {
-      obs.disconnect();
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function toNum(v: string) {
   const n = Number(String(v || "").replace(/,/g, ""));
@@ -79,7 +47,6 @@ async function postWithFallback(urls: string[], body: any) {
 }
 
 export default function CreateUserPage() {
-  const isDark = useIsDarkMode();
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
@@ -102,8 +69,8 @@ export default function CreateUserPage() {
   const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
 
-  const muted = isDark ? "rgba(255,255,255,0.70)" : "rgba(15,23,42,0.65)";
-  const titleCol = isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)";
+  const muted = "var(--text-muted)";
+  const titleCol = "var(--text-primary)";
 
   const headerStyle: React.CSSProperties = {
     fontSize: 34,
@@ -122,9 +89,9 @@ export default function CreateUserPage() {
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 18,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-md)",
   };
 
   const roles: Role[] = [...INTERNAL_ROLE_OPTIONS];
@@ -185,7 +152,7 @@ export default function CreateUserPage() {
 
       <form onSubmit={onSubmit} style={shellStyle}>
         <div style={{ display: "grid", gap: 12 }}>
-          <Section title="Personal Information" isDark={isDark}>
+          <Section title="Personal Information">
             <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Full Name" required />
@@ -223,7 +190,7 @@ export default function CreateUserPage() {
             </div>
           </Section>
 
-          <Section title="Job Details" isDark={isDark}>
+          <Section title="Job Details">
             <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Role" required />
@@ -268,7 +235,7 @@ export default function CreateUserPage() {
             </div>
           </Section>
 
-          <Section title="Payroll & Targets" isDark={isDark}>
+          <Section title="Payroll & Targets">
             <div style={grid6}>
               <div style={colSpan(2)}>
                 <Label text="Monthly Salary (PKR)" />
@@ -292,7 +259,7 @@ export default function CreateUserPage() {
               {error ? (
                 <span style={{ color: "#EF4444" }}>{error}</span>
               ) : okMsg ? (
-                <span style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.75)" }}>{okMsg}</span>
+                <span style={{ color: "var(--text-muted)" }}>{okMsg}</span>
               ) : null}
             </div>
 
@@ -325,15 +292,11 @@ const grid6: React.CSSProperties = {
 
 const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
 
-function Section({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
-      style={{
-        padding: 14,
-        borderRadius: 16,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-      }}
+      style={{ padding: 14, borderRadius: 16 }}
     >
       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10 }}>{children}</div>
