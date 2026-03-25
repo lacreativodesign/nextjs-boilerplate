@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
 type SystemSettings = {
   maintenanceMode?: boolean;
@@ -11,6 +12,20 @@ type SystemSettings = {
 };
 
 export default function SettingsSystemPage() {
+  const { data } = useTenantContext();
+  const role = data?.user?.role;
+
+  if (role && role !== "super_admin") {
+    return (
+      <div className="card p-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">Access Restricted</h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          System settings are only available to super admins.
+        </p>
+      </div>
+    );
+  }
+
   const [settings, setSettings] = useState<SystemSettings>({
     maintenanceMode: false,
     allowSignups: true,
