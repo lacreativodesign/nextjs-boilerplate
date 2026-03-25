@@ -102,25 +102,6 @@ const CHANGE_REQUEST_STATUSES: ChangeRequestStatus[] = [
 ];
 const CHANGE_REQUEST_PRIORITIES: ChangeRequestPriority[] = ["Low", "Medium", "High"];
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -144,52 +125,17 @@ function fmtMoney(n?: number | null) {
   }
 }
 
-function statusStyles(status: string, isDark: boolean) {
-  const base = {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 90,
-  } as const;
-
-  const token = status.toLowerCase();
-  if (token.includes("rejected")) {
-    return {
-      ...base,
-      color: isDark ? "#fecaca" : "#b91c1c",
-      background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-      border: "1px solid rgba(239,68,68,0.35)",
-    };
-  }
-
-  if (token.includes("approved") || token.includes("completed")) {
-    return {
-      ...base,
-      color: isDark ? "#bbf7d0" : "#047857",
-      background: isDark ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
-      border: "1px solid rgba(34,197,94,0.30)",
-    };
-  }
-
-  if (token.includes("progress") || token.includes("review")) {
-    return {
-      ...base,
-      color: isDark ? "#fde68a" : "#b45309",
-      background: isDark ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.12)",
-      border: "1px solid rgba(245,158,11,0.35)",
-    };
-  }
-
-  return {
-    ...base,
-    color: isDark ? "#bfdbfe" : "#1d4ed8",
-    background: isDark ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.10)",
-    border: "1px solid rgba(59,130,246,0.28)",
-  };
+function getBadgeClass(value: string): string {
+  const t = (value || "").toLowerCase();
+  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
+  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
+  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
+  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
+  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
 function approvalStyles(status?: string | null) {
@@ -221,45 +167,6 @@ function approvalLabel(status?: string | null) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function priorityStyles(priority: string, isDark: boolean) {
-  const base = {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 70,
-  } as const;
-
-  const token = priority.toLowerCase();
-  if (token === "high") {
-    return {
-      ...base,
-      color: isDark ? "#fecaca" : "#b91c1c",
-      background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-      border: "1px solid rgba(239,68,68,0.35)",
-    };
-  }
-
-  if (token === "medium") {
-    return {
-      ...base,
-      color: isDark ? "#fde68a" : "#b45309",
-      background: isDark ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.12)",
-      border: "1px solid rgba(245,158,11,0.35)",
-    };
-  }
-
-  return {
-    ...base,
-    color: isDark ? "#bbf7d0" : "#047857",
-    background: isDark ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
-    border: "1px solid rgba(34,197,94,0.30)",
-  };
-}
-
 function canCreate(role?: string) {
   const r = (role || "").toLowerCase();
   return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
@@ -286,8 +193,6 @@ function canEditCommercial(role?: string) {
 }
 
 export default function ChangeRequestsPage() {
-  const isDark = useIsSystemDark();
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
 
@@ -331,8 +236,8 @@ export default function ChangeRequestsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -340,8 +245,8 @@ export default function ChangeRequestsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -785,7 +690,7 @@ export default function ChangeRequestsPage() {
           className="input"
           value={projectFilter}
           onChange={setProjectFilter}
-          isDark={isDark}
+          
           placeholder="All Projects"
           options={[
             { label: "All Projects", value: "" },
@@ -799,7 +704,7 @@ export default function ChangeRequestsPage() {
           className="input"
           value={statusFilter}
           onChange={setStatusFilter}
-          isDark={isDark}
+          
           placeholder="All Statuses"
           options={[
             { label: "All Statuses", value: "" },
@@ -810,7 +715,7 @@ export default function ChangeRequestsPage() {
           className="input"
           value={typeFilter}
           onChange={setTypeFilter}
-          isDark={isDark}
+          
           placeholder="All Types"
           options={[
             { label: "All Types", value: "" },
@@ -821,7 +726,7 @@ export default function ChangeRequestsPage() {
           className="input"
           value={priorityFilter}
           onChange={setPriorityFilter}
-          isDark={isDark}
+          
           placeholder="All Priorities"
           options={[
             { label: "All Priorities", value: "" },
@@ -832,7 +737,7 @@ export default function ChangeRequestsPage() {
           className="input"
           value={assignedFilter}
           onChange={setAssignedFilter}
-          isDark={isDark}
+          
           placeholder="Assigned To"
           options={[
             { label: "Assigned To", value: "" },
@@ -846,7 +751,7 @@ export default function ChangeRequestsPage() {
 
       <div style={{ marginTop: 20 }}>
         {loading ? (
-          <div style={{ padding: 30, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <div style={{ padding: 30, color: "var(--text-muted)" }}>
             Loading change requests...
           </div>
         ) : error ? (
@@ -855,8 +760,8 @@ export default function ChangeRequestsPage() {
             style={{
               padding: 16,
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
-              background: isDark ? "rgba(127,29,29,0.25)" : "rgba(254,226,226,0.45)",
+              border: "1px solid var(--border-subtle)",
+              background: "var(--danger-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -913,29 +818,14 @@ export default function ChangeRequestsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, idx) => {
-                    const rowBg = isDark
-                      ? idx % 2 === 0
-                        ? "rgba(255,255,255,0.015)"
-                        : "rgba(255,255,255,0.00)"
-                      : idx % 2 === 0
-                      ? "rgba(15,23,42,0.015)"
-                      : "rgba(15,23,42,0.00)";
-                    const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                  {filteredRows.map((row) => {
                     return (
-                      <tr
-                        key={row.id}
-                        onClick={() => openDrawer(row)}
-                        style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                        onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                        onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                      >
+                      <tr key={row.id} onClick={() => openDrawer(row)} style={{ cursor: "pointer" }}>
                       <td style={{ ...cellStyle, textAlign: "left", whiteSpace: "normal" }}>{row.title}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{row.projectName || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{row.type}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span style={statusStyles(row.status, isDark)}>{row.status}</span>
+                        <span className={getBadgeClass(row.status)}>{row.status}</span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
                         <span style={approvalStyles(row.approvalStatus)}>
@@ -943,7 +833,7 @@ export default function ChangeRequestsPage() {
                         </span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span style={priorityStyles(row.priority, isDark)}>{row.priority}</span>
+                        <span className={getBadgeClass(row.priority)}>{row.priority}</span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(row.estimatedCost)}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>
@@ -975,9 +865,9 @@ export default function ChangeRequestsPage() {
                 style={{
                   padding: 16,
                   borderRadius: 16,
-                  border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-                  background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-                  color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.7)",
+                  border: "1px solid var(--border-subtle)",
+                  background: "var(--surface-card)",
+                  color: "var(--text-muted)",
                   fontSize: 14,
                   marginTop: 12,
                   textAlign: "center",
@@ -995,10 +885,10 @@ export default function ChangeRequestsPage() {
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.title}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selected.projectName} · {selected.clientName}
                 </div>
               </div>
@@ -1013,25 +903,25 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Overview" isDark={isDark}>
-              <Row label="Type" value={selected.type || "-"} isDark={isDark} />
-              <Row label="Status" value={selected.status || "-"} isDark={isDark} />
-              <Row label="Approval" value={approvalLabel(selected.approvalStatus)} isDark={isDark} />
-              <Row label="Priority" value={selected.priority || "-"} isDark={isDark} />
-              <Row label="Requested By" value={selected.requestedByRole || "-"} isDark={isDark} />
+            <Section title="Overview" >
+              <Row label="Type" value={selected.type || "-"}  />
+              <Row label="Status" value={selected.status || "-"}  />
+              <Row label="Approval" value={approvalLabel(selected.approvalStatus)}  />
+              <Row label="Priority" value={selected.priority || "-"}  />
+              <Row label="Requested By" value={selected.requestedByRole || "-"}  />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Description" isDark={isDark}>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: isDark ? "rgba(226,232,240,0.9)" : "#0f172a" }}>
+            <Section title="Description" >
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-primary)" }}>
                 {selected.description || "-"}
               </div>
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Commercial" isDark={isDark}>
+            <Section title="Commercial" >
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700 }}>Estimated Cost (USD)</label>
@@ -1069,7 +959,7 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Attached Files" isDark={isDark}>
+            <Section title="Attached Files" >
               {attachedFiles.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--sidebar-text)" }}>No files attached.</div>
               ) : (
@@ -1083,9 +973,9 @@ export default function ChangeRequestsPage() {
                       style={{
                         padding: "10px 12px",
                         borderRadius: 10,
-                        border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.12)",
+                        border: "1px solid var(--border-subtle)",
                         textDecoration: "none",
-                        color: isDark ? "#e2e8f0" : "#0f172a",
+                        color: "var(--text-primary)",
                         fontSize: 13,
                       }}
                     >
@@ -1098,7 +988,7 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Status History" isDark={isDark}>
+            <Section title="Status History" >
               {selected.statusHistory.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--sidebar-text)" }}>No updates yet.</div>
               ) : (
@@ -1109,7 +999,7 @@ export default function ChangeRequestsPage() {
                       style={{
                         padding: 12,
                         borderRadius: 12,
-                        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+                        border: "1px solid var(--border-subtle)",
                       }}
                     >
                       <div style={{ fontWeight: 800, fontSize: 13 }}>
@@ -1119,7 +1009,7 @@ export default function ChangeRequestsPage() {
                         {entry.byRole || ""} · {fmtDateTime(entry.at)}
                       </div>
                       {entry.note && (
-                        <div style={{ fontSize: 12, marginTop: 6, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                        <div style={{ fontSize: 12, marginTop: 6, color: "var(--text-primary)" }}>
                           Note: {entry.note}
                         </div>
                       )}
@@ -1131,7 +1021,7 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Actions" isDark={isDark}>
+            <Section title="Actions" >
               <div style={{ display: "grid", gap: 10 }}>
                 <textarea
                   className="input"
@@ -1204,10 +1094,10 @@ export default function ChangeRequestsPage() {
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   Create Change Request
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   Submit a new scope update for review.
                 </div>
               </div>
@@ -1222,7 +1112,7 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Details" isDark={isDark}>
+            <Section title="Details" >
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700 }}>Project</label>
@@ -1230,7 +1120,7 @@ export default function ChangeRequestsPage() {
                     className="input"
                     value={createProjectId}
                     onChange={setCreateProjectId}
-                    isDark={isDark}
+                    
                     placeholder="Select project"
                     buttonStyle={{ height: 38, borderRadius: 10 }}
                     options={[
@@ -1249,7 +1139,7 @@ export default function ChangeRequestsPage() {
                     className="input"
                     value={createType}
                     onChange={(next) => setCreateType(next as ChangeRequestType)}
-                    isDark={isDark}
+                    
                     buttonStyle={{ height: 38, borderRadius: 10 }}
                     options={CHANGE_REQUEST_TYPES.map((type) => ({ label: type, value: type }))}
                   />
@@ -1281,7 +1171,7 @@ export default function ChangeRequestsPage() {
                     className="input"
                     value={createPriority}
                     onChange={(next) => setCreatePriority(next as ChangeRequestPriority)}
-                    isDark={isDark}
+                    
                     buttonStyle={{ height: 38, borderRadius: 10 }}
                     options={CHANGE_REQUEST_PRIORITIES.map((priority) => ({ label: priority, value: priority }))}
                   />
@@ -1291,7 +1181,7 @@ export default function ChangeRequestsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Attach Files" isDark={isDark}>
+            <Section title="Attach Files" >
               {createProjectId ? (
                 availableFiles.length === 0 ? (
                   <div style={{ fontSize: 13, color: "var(--sidebar-text)" }}>No files for this project yet.</div>
@@ -1306,7 +1196,7 @@ export default function ChangeRequestsPage() {
                           gap: 10,
                           padding: "10px 12px",
                           borderRadius: 10,
-                          border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.12)",
+                          border: "1px solid var(--border-subtle)",
                         }}
                       >
                         <input
@@ -1351,29 +1241,22 @@ function KpiCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Section({ title, children, isDark }: { title: string; children: React.ReactNode; isDark: boolean }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 14,
-        borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-      }}
-    >
+    <div className="card" style={{ padding: 14, borderRadius: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,

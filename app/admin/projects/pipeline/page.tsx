@@ -89,25 +89,6 @@ const HEALTH_OPTIONS: ProjectHealth[] = ["On Track", "At Risk", "Overdue"];
 const ACCOUNT_MANAGER_STAGES: ProjectStage[] = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 const PRODUCTION_STAGES: ProjectStage[] = ["Draft", "Review", "Revisions", "Final"];
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -141,53 +122,17 @@ function computeHealth(dueDate?: string | null, stage?: string): ProjectHealth {
   return "On Track";
 }
 
-function getStatusStyles(label: string, isDark: boolean) {
-  const base = {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 500,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 82,
-  } as const;
-
-  const token = label.toLowerCase();
-
-  if (token.includes("overdue") || token.includes("urgent")) {
-    return {
-      ...base,
-      color: isDark ? "#fecaca" : "#b91c1c",
-      background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-      border: "1px solid rgba(239,68,68,0.35)",
-    };
-  }
-
-  if (token.includes("risk") || token.includes("high")) {
-    return {
-      ...base,
-      color: isDark ? "#fde68a" : "#b45309",
-      background: isDark ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.12)",
-      border: "1px solid rgba(245,158,11,0.35)",
-    };
-  }
-
-  if (token.includes("delivered") || token.includes("final")) {
-    return {
-      ...base,
-      color: isDark ? "#bbf7d0" : "#047857",
-      background: isDark ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
-      border: "1px solid rgba(34,197,94,0.30)",
-    };
-  }
-
-  return {
-    ...base,
-    color: isDark ? "#bfdbfe" : "#1d4ed8",
-    background: isDark ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.10)",
-    border: "1px solid rgba(59,130,246,0.28)",
-  };
+function getBadgeClass(value: string): string {
+  const t = (value || "").toLowerCase();
+  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
+  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
+  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
+  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
+  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
 function normalizeRole(role?: string) {
@@ -256,8 +201,6 @@ function getAllowedStages(project: ProjectRecord, currentUser: CurrentUser | nul
 }
 
 export default function DeliveryPipelinePage() {
-  const isDark = useIsSystemDark();
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
 
@@ -523,7 +466,7 @@ export default function DeliveryPipelinePage() {
             value={ownerFilter}
             onChange={setOwnerFilter}
             placeholder="Owner (AM)"
-            isDark={isDark}
+            
             options={[
               { value: "", label: "All Owners" },
               { value: "unassigned", label: "Unassigned" },
@@ -536,7 +479,7 @@ export default function DeliveryPipelinePage() {
             value={productionFilter}
             onChange={setProductionFilter}
             placeholder="Production"
-            isDark={isDark}
+            
             options={[
               { value: "", label: "All Production" },
               { value: "unassigned", label: "Unassigned" },
@@ -548,7 +491,7 @@ export default function DeliveryPipelinePage() {
           value={priorityFilter}
           onChange={setPriorityFilter}
           placeholder="Priority"
-          isDark={isDark}
+          
           options={[
             { value: "", label: "All Priorities" },
             ...PRIORITIES.map((priority) => ({ value: priority, label: priority })),
@@ -558,7 +501,7 @@ export default function DeliveryPipelinePage() {
           value={healthFilter}
           onChange={setHealthFilter}
           placeholder="Health"
-          isDark={isDark}
+          
           options={[{ value: "", label: "All Health" }, ...HEALTH_OPTIONS.map((h) => ({ value: h, label: h }))]}
         />
         <label
@@ -567,7 +510,7 @@ export default function DeliveryPipelinePage() {
             alignItems: "center",
             gap: 8,
             fontSize: 13,
-            color: isDark ? "rgba(226,232,240,0.8)" : "rgba(15,23,42,0.7)",
+            color: "var(--text-muted)",
           }}
         >
           <input type="checkbox" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} />
@@ -575,7 +518,8 @@ export default function DeliveryPipelinePage() {
         </label>
       </div>
 
-      <div className="table-shell" style={{ marginTop: 18, padding: 14 }}>
+      <div className="table-shell">
+        <div style={{ marginTop: 18, padding: 14 }}>
         {loading ? (
           <p style={{ fontSize: 14 }}>
             Loading pipeline...
@@ -586,8 +530,8 @@ export default function DeliveryPipelinePage() {
             style={{
               padding: 16,
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
-              background: isDark ? "rgba(127,29,29,0.25)" : "rgba(254,226,226,0.45)",
+              border: "1px solid var(--border-subtle)",
+              background: "var(--danger-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -639,9 +583,9 @@ export default function DeliveryPipelinePage() {
                     style={{
                       padding: 14,
                       borderRadius: 16,
-                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-                      background: isDark ? "rgba(28,28,28,0.92)" : "rgba(255,255,255,0.92)",
-                      boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.3)" : "0 12px 24px rgba(15,23,42,0.06)",
+                      border: "1px solid var(--border-subtle)",
+                      background: "var(--surface-card)",
+                      boxShadow: "var(--shadow-md)",
                       display: "grid",
                       gap: 12,
                     }}
@@ -657,8 +601,8 @@ export default function DeliveryPipelinePage() {
                             padding: "4px 10px",
                             borderRadius: 999,
                             fontSize: 11,
-                            background: isDark ? "rgba(148,163,184,0.2)" : "rgba(37,99,235,0.1)",
-                            color: isDark ? "rgba(226,232,240,0.8)" : "rgba(37,99,235,0.9)",
+                            background: "var(--surface-muted)",
+                            color: "var(--text-muted)",
                           }}
                         >
                           WIP {items.length}
@@ -676,8 +620,8 @@ export default function DeliveryPipelinePage() {
                             style={{
                               padding: 12,
                               borderRadius: 12,
-                              border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.08)",
-                              background: isDark ? "rgba(20,20,20,0.9)" : "rgba(248,250,252,0.9)",
+                              border: "1px solid var(--border-subtle)",
+                              background: "var(--surface-muted)",
                               display: "grid",
                               gap: 10,
                             }}
@@ -708,11 +652,11 @@ export default function DeliveryPipelinePage() {
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                                 <span style={{ opacity: 0.65 }}>Priority</span>
-                                <span style={getStatusStyles(project.priority || "Normal", isDark)}>{project.priority || "Normal"}</span>
+                                <span className={getBadgeClass(project.priority || "Normal")}>{project.priority || "Normal"}</span>
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                                 <span style={{ opacity: 0.65 }}>Health</span>
-                                <span style={getStatusStyles(project.health || "On Track", isDark)}>
+                                <span className={getBadgeClass(project.health || "On Track")}>
                                   {project.health || "On Track"}
                                 </span>
                               </div>
@@ -758,47 +702,48 @@ export default function DeliveryPipelinePage() {
           </div>
         )}
       </div>
+      </div>
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.projectName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selected.clientName} · {selected.projectType}
                 </div>
               </div>
 
-              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999, fontWeight: 400 }}>
+              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999, fontWeight: 900 }}>
                 Close
               </button>
             </div>
 
             <div style={{ height: 16 }} />
 
-            <Section title="Project Details" isDark={isDark}>
-              <InfoRow label="Stage" value={selected.stage || "-"} isDark={isDark} />
-              <InfoRow label="Owner (AM)" value={selected.ownerAmName || "Unassigned"} isDark={isDark} />
-              <InfoRow label="Production" value={selected.productionName || "Unassigned"} isDark={isDark} />
-              <InfoRow label="Priority" value={selected.priority || "Normal"} isDark={isDark} />
-              <InfoRow label="Health" value={selected.health || "On Track"} isDark={isDark} />
-              <InfoRow label="Due Date" value={fmtDate(selected.dueDate)} isDark={isDark} />
+            <Section title="Project Details" >
+              <InfoRow label="Stage" value={selected.stage || "-"}  />
+              <InfoRow label="Owner (AM)" value={selected.ownerAmName || "Unassigned"}  />
+              <InfoRow label="Production" value={selected.productionName || "Unassigned"}  />
+              <InfoRow label="Priority" value={selected.priority || "Normal"}  />
+              <InfoRow label="Health" value={selected.health || "On Track"}  />
+              <InfoRow label="Due Date" value={fmtDate(selected.dueDate)}  />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Activity" isDark={isDark}>
-              <InfoRow label="Created" value={fmtDateTime(selected.createdAt)} isDark={isDark} />
-              <InfoRow label="Updated" value={fmtDateTime(selected.updatedAt)} isDark={isDark} />
-              <InfoRow label="Last Activity" value={fmtDateTime(selected.lastActivityAt)} isDark={isDark} />
+            <Section title="Activity" >
+              <InfoRow label="Created" value={fmtDateTime(selected.createdAt)}  />
+              <InfoRow label="Updated" value={fmtDateTime(selected.updatedAt)}  />
+              <InfoRow label="Last Activity" value={fmtDateTime(selected.lastActivityAt)}  />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Stage History" isDark={isDark}>
+            <Section title="Stage History" >
               {selected.stageHistory && selected.stageHistory.length > 0 ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   {[...selected.stageHistory]
@@ -809,7 +754,7 @@ export default function DeliveryPipelinePage() {
                         style={{
                           padding: 10,
                           borderRadius: 10,
-                          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                          border: "1px solid var(--border-subtle)",
                           display: "grid",
                           gap: 4,
                           fontSize: 12,
@@ -842,39 +787,35 @@ export default function DeliveryPipelinePage() {
   );
 }
 
-function Section({ title, children, isDark }: { title: string; children: React.ReactNode; isDark: boolean }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
-        border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
-        display: "grid",
-        gap: 12,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      {children}
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function InfoRow({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{label}</div>
-      <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
@@ -884,13 +825,11 @@ function FilterSelect({
   onChange,
   options,
   placeholder,
-  isDark,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: FilterOption[];
   placeholder: string;
-  isDark: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -939,7 +878,7 @@ function FilterSelect({
       >
         <span
           style={{
-            color: isPlaceholder ? (isDark ? "rgba(226,232,240,0.55)" : "rgba(100,116,139,0.9)") : "inherit",
+            color: isPlaceholder ? "var(--text-muted)" : "inherit",
           }}
         >
           {label}
@@ -950,7 +889,7 @@ function FilterSelect({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: isDark ? "rgba(148,163,184,0.9)" : "rgba(100,116,139,0.9)",
+            color: "var(--text-muted)",
           }}
         >
           ▾
@@ -969,9 +908,9 @@ function FilterSelect({
             zIndex: 20,
             padding: 8,
             borderRadius: 12,
-            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-            background: isDark ? "rgba(22,22,22,0.98)" : "#ffffff",
-            boxShadow: isDark ? "0 20px 40px rgba(0,0,0,0.45)" : "0 18px 30px rgba(15,23,42,0.12)",
+            border: "1px solid var(--border-subtle)",
+            background: "var(--surface-card)",
+            boxShadow: "var(--shadow-md)",
             display: "grid",
             gap: 4,
           }}
@@ -997,23 +936,15 @@ function FilterSelect({
                   padding: "8px 10px",
                   borderRadius: 10,
                   border: "none",
-                  background: active
-                    ? isDark
-                      ? "rgba(148,163,184,0.20)"
-                      : "rgba(37,99,235,0.10)"
-                    : "transparent",
-                  color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.9)",
+                  background: active ? "var(--surface-muted)" : "transparent",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = isDark ? "rgba(148,163,184,0.16)" : "rgba(15,23,42,0.06)";
+                  event.currentTarget.style.background = "var(--surface-muted)";
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = active
-                    ? isDark
-                      ? "rgba(148,163,184,0.20)"
-                      : "rgba(37,99,235,0.10)"
-                    : "transparent";
+                  event.currentTarget.style.background = active ? "var(--surface-muted)" : "transparent";
                 }}
               >
                 {option.label}

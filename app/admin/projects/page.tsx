@@ -97,25 +97,6 @@ const PIPELINE_STAGES: ProjectStage[] = [
 const CREATE_PIPELINE_STAGES: ProjectStage[] = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 const PRIORITIES: ProjectPriority[] = ["Low", "Normal", "High", "Urgent"];
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -143,53 +124,17 @@ function computeHealth(dueDate?: string | null): ProjectHealth {
   return "On Track";
 }
 
-function getStatusStyles(label: string, isDark: boolean) {
-  const base = {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 500,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 82,
-  } as const;
-
-  const token = label.toLowerCase();
-
-  if (token.includes("overdue") || token.includes("urgent")) {
-    return {
-      ...base,
-      color: isDark ? "#fecaca" : "#b91c1c",
-      background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-      border: "1px solid rgba(239,68,68,0.35)",
-    };
-  }
-
-  if (token.includes("risk") || token.includes("high")) {
-    return {
-      ...base,
-      color: isDark ? "#fde68a" : "#b45309",
-      background: isDark ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.12)",
-      border: "1px solid rgba(245,158,11,0.35)",
-    };
-  }
-
-  if (token.includes("delivered") || token.includes("final")) {
-    return {
-      ...base,
-      color: isDark ? "#bbf7d0" : "#047857",
-      background: isDark ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
-      border: "1px solid rgba(34,197,94,0.30)",
-    };
-  }
-
-  return {
-    ...base,
-    color: isDark ? "#bfdbfe" : "#1d4ed8",
-    background: isDark ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.10)",
-    border: "1px solid rgba(59,130,246,0.28)",
-  };
+function getBadgeClass(value: string): string {
+  const t = (value || "").toLowerCase();
+  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
+  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
+  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
+  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
+  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
 function canCreate(role?: string) {
@@ -203,8 +148,6 @@ function isAdmin(role?: string) {
 }
 
 export default function AllProjectsPage() {
-  const isDark = useIsSystemDark();
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
 
@@ -473,8 +416,8 @@ export default function AllProjectsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -483,10 +426,10 @@ export default function AllProjectsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
-    fontWeight: 400,
+    fontWeight: 900,
   };
 
   const headerLabel = (label: string, badge?: string) => (
@@ -699,21 +642,21 @@ export default function AllProjectsPage() {
           value={stageFilter}
           onChange={setStageFilter}
           placeholder="All Stages"
-          isDark={isDark}
+          
           options={[{ value: "", label: "All Stages" }, ...PIPELINE_STAGES.map((stage) => ({ value: stage, label: stage }))]}
         />
         <FilterSelect
           value={typeFilter}
           onChange={setTypeFilter}
           placeholder="All Types"
-          isDark={isDark}
+          
           options={[{ value: "", label: "All Types" }, ...PROJECT_TYPES.map((type) => ({ value: type, label: type }))]}
         />
         <FilterSelect
           value={priorityFilter}
           onChange={setPriorityFilter}
           placeholder="All Priorities"
-          isDark={isDark}
+          
           options={[
             { value: "", label: "All Priorities" },
             ...PRIORITIES.map((priority) => ({ value: priority, label: priority })),
@@ -723,7 +666,7 @@ export default function AllProjectsPage() {
           value={ownerFilter}
           onChange={setOwnerFilter}
           placeholder="All Owners"
-          isDark={isDark}
+          
           options={[
             { value: "", label: "All Owners" },
             { value: "unassigned", label: "Unassigned" },
@@ -737,7 +680,7 @@ export default function AllProjectsPage() {
           style={{
             marginTop: 14,
             fontSize: 12,
-            color: isDark ? "rgba(226,232,240,0.68)" : "rgba(15,23,42,0.6)",
+            color: "var(--text-muted)",
             textAlign: "right",
             paddingRight: 6,
           }}
@@ -746,7 +689,8 @@ export default function AllProjectsPage() {
         </div>
       )}
 
-      <div className="table-shell" style={{ marginTop: 18 }}>
+      <div className="table-shell">
+        <div style={{ marginTop: 18 }}>
         {loading ? (
           <p style={{ padding: 16, fontSize: 14 }}>
             Loading projects...
@@ -758,8 +702,8 @@ export default function AllProjectsPage() {
               margin: 16,
               padding: 16,
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(248,113,113,0.35)" : "1px solid rgba(248,113,113,0.4)",
-              background: isDark ? "rgba(127,29,29,0.25)" : "rgba(254,226,226,0.45)",
+              border: "1px solid var(--border-subtle)",
+              background: "var(--danger-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -836,37 +780,21 @@ export default function AllProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((project, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                {sorted.map((project) => {
                   return (
-                    <tr
-                      key={project.id}
-                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                      onClick={() => openDrawer(project)}
-                    >
+                    <tr key={project.id} onClick={() => openDrawer(project)} style={{ cursor: "pointer" }}>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{project.projectName || "-"}</td>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{project.clientName || "-"}</td>
                       <td style={cellStyle}>{project.projectType || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span style={getStatusStyles(project.stage || "", isDark)}>{project.stage || "-"}</span>
+                        <span className={getBadgeClass(project.stage || "")}>{project.stage || "-"}</span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span style={getStatusStyles(project.priority || "", isDark)}>{project.priority || "-"}</span>
+                        <span className={getBadgeClass(project.priority || "")}>{project.priority || "-"}</span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.dueDate)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span style={getStatusStyles(project.health || "", isDark)}>{project.health || "-"}</span>
+                        <span className={getBadgeClass(project.health || "")}>{project.health || "-"}</span>
                       </td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
                       <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -893,7 +821,7 @@ export default function AllProjectsPage() {
                                 borderRadius: 999,
                                 fontWeight: 400,
                                 border: "1px solid rgba(239,68,68,0.35)",
-                                background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.08)",
+                                background: "var(--danger-soft)",
                               }}
                               disabled={deletingId === project.id}
                             >
@@ -910,16 +838,17 @@ export default function AllProjectsPage() {
           </div>
         )}
       </div>
+      </div>
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.projectName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selected.clientName} · {selected.projectType}
                 </div>
               </div>
@@ -935,7 +864,7 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 16 }} />
 
-            <Section title="Project Details" isDark={isDark}>
+            <Section title="Project Details" >
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Name</span>
                 <input
@@ -997,7 +926,7 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Ownership & Dates" isDark={isDark}>
+            <Section title="Ownership & Dates" >
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Owner (AM)</span>
                 <select
@@ -1053,7 +982,7 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Internal Notes" isDark={isDark}>
+            <Section title="Internal Notes" >
               <textarea
                 className="input"
                 style={{ minHeight: 120, resize: "vertical" }}
@@ -1065,11 +994,11 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="System" isDark={isDark}>
-              <InfoRow label="Project ID" value={selected.id} isDark={isDark} />
-              <InfoRow label="Created By" value={selected.createdByName || "-"} isDark={isDark} />
-              <InfoRow label="Updated" value={fmtDate(selected.updatedAt)} isDark={isDark} />
-              <InfoRow label="Last Activity" value={fmtDate(selected.lastActivityAt)} isDark={isDark} />
+            <Section title="System" >
+              <InfoRow label="Project ID" value={selected.id}  />
+              <InfoRow label="Created By" value={selected.createdByName || "-"}  />
+              <InfoRow label="Updated" value={fmtDate(selected.updatedAt)}  />
+              <InfoRow label="Last Activity" value={fmtDate(selected.lastActivityAt)}  />
             </Section>
 
             <div style={{ height: 16 }} />
@@ -1084,9 +1013,9 @@ export default function AllProjectsPage() {
                   style={{
                     borderRadius: 12,
                     fontWeight: 400,
-                    background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.10)",
+                    background: "var(--danger-soft)",
                     border: "1px solid rgba(239,68,68,0.35)",
-                    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+                    color: "var(--text-primary)",
                     opacity: deletingId === selected.id ? 0.7 : 1,
                   }}
                 >
@@ -1112,10 +1041,10 @@ export default function AllProjectsPage() {
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   Create Project
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   Add a new delivery project in seconds.
                 </div>
               </div>
@@ -1252,39 +1181,35 @@ export default function AllProjectsPage() {
   );
 }
 
-function Section({ title, children, isDark }: { title: string; children: React.ReactNode; isDark: boolean }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
-        border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
-        display: "grid",
-        gap: 12,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      {children}
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function InfoRow({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{label}</div>
-      <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
@@ -1294,13 +1219,11 @@ function FilterSelect({
   onChange,
   options,
   placeholder,
-  isDark,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: FilterOption[];
   placeholder: string;
-  isDark: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -1347,7 +1270,7 @@ function FilterSelect({
           cursor: "pointer",
         }}
       >
-        <span style={{ color: isPlaceholder ? (isDark ? "rgba(226,232,240,0.55)" : "rgba(100,116,139,0.9)") : "inherit" }}>
+        <span style={{ color: isPlaceholder ? "var(--text-muted)" : "inherit" }}>
           {label}
         </span>
         <span
@@ -1356,7 +1279,7 @@ function FilterSelect({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: isDark ? "rgba(148,163,184,0.9)" : "rgba(100,116,139,0.9)",
+            color: "var(--text-muted)",
           }}
         >
           ▾
@@ -1375,9 +1298,9 @@ function FilterSelect({
             zIndex: 20,
             padding: 8,
             borderRadius: 12,
-            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-            background: isDark ? "rgba(22,22,22,0.98)" : "#ffffff",
-            boxShadow: isDark ? "0 20px 40px rgba(0,0,0,0.45)" : "0 18px 30px rgba(15,23,42,0.12)",
+            border: "1px solid var(--border-subtle)",
+            background: "var(--surface-card)",
+            boxShadow: "var(--shadow-md)",
             display: "grid",
             gap: 4,
           }}
@@ -1403,23 +1326,15 @@ function FilterSelect({
                   padding: "8px 10px",
                   borderRadius: 10,
                   border: "none",
-                  background: active
-                    ? isDark
-                      ? "rgba(148,163,184,0.20)"
-                      : "rgba(37,99,235,0.10)"
-                    : "transparent",
-                  color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.9)",
+                  background: active ? "var(--surface-muted)" : "transparent",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = isDark ? "rgba(148,163,184,0.16)" : "rgba(15,23,42,0.06)";
+                  event.currentTarget.style.background = "var(--surface-muted)";
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = active
-                    ? isDark
-                      ? "rgba(148,163,184,0.20)"
-                      : "rgba(37,99,235,0.10)"
-                    : "transparent";
+                  event.currentTarget.style.background = active ? "var(--surface-muted)" : "transparent";
                 }}
               >
                 {option.label}
