@@ -87,29 +87,7 @@ function normalizeOrderId(orderId?: string) {
   return `LC-${up}`;
 }
 
-/** OS/Browser theme only */
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 export default function KeyAccountsPage() {
-  const isDark = useIsSystemDark();
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,21 +100,13 @@ export default function KeyAccountsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -146,8 +116,8 @@ export default function KeyAccountsPage() {
   // ✅ TABLE BODY MUST BE REGULAR (NOT BOLD)
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-muted)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -292,9 +262,9 @@ export default function KeyAccountsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-md)",
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))",
           gap: 12,
@@ -302,20 +272,21 @@ export default function KeyAccountsPage() {
         }}
       >
         <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${keyAccountsSorted.length} key account(s)`}
         </div>
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
+        <div>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             Loading key accounts...
           </p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : keyAccountsSorted.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             No key accounts found.
           </p>
         ) : (
@@ -345,26 +316,9 @@ export default function KeyAccountsPage() {
               </thead>
 
               <tbody>
-                {keyAccountsSorted.map((c, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                {keyAccountsSorted.map((c) => {
                   return (
-                    <tr
-                      key={c.id}
-                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                      onClick={() => openDrawer(c)}
-                      title="View details"
-                    >
+                    <tr key={c.id} onClick={() => openDrawer(c)} title="View details">
                       <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
@@ -391,6 +345,7 @@ export default function KeyAccountsPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
 
       {drawerOpen && selected && (
@@ -398,10 +353,10 @@ export default function KeyAccountsPage() {
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.companyName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selected.primaryContactName} · {selected.primaryContactEmail}
                 </div>
               </div>
@@ -413,30 +368,30 @@ export default function KeyAccountsPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Company" isDark={isDark}>
-              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} isDark={isDark} />
-              <Row label="Website" value={selected.website || "-"} isDark={isDark} />
-              <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
-              <Row label="Country" value={selected.country || "-"} isDark={isDark} />
-              <Row label="Timezone" value={selected.timezone || "-"} isDark={isDark} />
+            <Section title="Company">
+              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} />
+              <Row label="Website" value={selected.website || "-"} />
+              <Row label="Industry" value={selected.industry || "-"} />
+              <Row label="Country" value={selected.country || "-"} />
+              <Row label="Timezone" value={selected.timezone || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Contact" isDark={isDark}>
-              <Row label="Name" value={selected.primaryContactName || "-"} isDark={isDark} />
-              <Row label="Title" value={selected.primaryContactTitle || "-"} isDark={isDark} />
-              <Row label="Email" value={selected.primaryContactEmail || "-"} isDark={isDark} />
-              <Row label="Phone" value={selected.primaryContactPhone || "-"} isDark={isDark} />
+            <Section title="Contact">
+              <Row label="Name" value={selected.primaryContactName || "-"} />
+              <Row label="Title" value={selected.primaryContactTitle || "-"} />
+              <Row label="Email" value={selected.primaryContactEmail || "-"} />
+              <Row label="Phone" value={selected.primaryContactPhone || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Finance" isDark={isDark}>
-              <Row label="Payment Status" value={selected.paymentStatus || "-"} isDark={isDark} />
-              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} isDark={isDark} />
-              <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
-              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
+            <Section title="Finance">
+              <Row label="Payment Status" value={selected.paymentStatus || "-"} />
+              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} />
+              <Row label="Created" value={fmtDate(selected.createdAt)} />
+              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} />
             </Section>
           </div>
         </div>
@@ -448,11 +403,9 @@ export default function KeyAccountsPage() {
 function Section({
   title,
   children,
-  isDark,
 }: {
   title: string;
   children: React.ReactNode;
-  isDark: boolean;
 }) {
   return (
     <div
@@ -460,7 +413,7 @@ function Section({
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+        background: "var(--surface-muted)",
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
@@ -469,13 +422,13 @@ function Section({
   );
 }
 
-function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,

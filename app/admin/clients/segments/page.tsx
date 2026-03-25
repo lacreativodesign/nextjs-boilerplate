@@ -44,7 +44,6 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function ClientSegmentsPage() {
-  const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState<SegmentType>("service");
   const [segments, setSegments] = useState<SegmentDefinition[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
@@ -62,19 +61,6 @@ export default function ClientSegmentsPage() {
   const [sortKey, setSortKey] = useState<"name" | "type" | "clients" | "status" | "updated">("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // OS-level theme only
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setIsDark(!!mql.matches);
-    onChange();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
-    };
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -282,46 +268,25 @@ export default function ClientSegmentsPage() {
     });
   }, [clientSearch, drawerClients]);
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     whiteSpace: "nowrap",
     textAlign: "left",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-muted)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
 
-  const sortableHeaderButtonStyle: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    background: "transparent",
-    border: "none",
-    padding: 0,
-    font: "inherit",
-    color: "inherit",
-    cursor: "pointer",
-    textTransform: "inherit",
-    letterSpacing: "inherit",
-  };
 
   function toggleSort(nextKey: "name" | "type" | "clients" | "status" | "updated") {
     setSortKey((prevKey) => {
@@ -457,7 +422,7 @@ export default function ClientSegmentsPage() {
       </div>
 
       {error ? (
-        <div style={{ marginBottom: 12, color: "#ef4444" }}>{error}</div>
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">{error}</div>
       ) : null}
 
       <div
@@ -480,22 +445,18 @@ export default function ClientSegmentsPage() {
             style={{
               padding: 18,
               borderRadius: 16,
-              background: isDark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.9)",
-              border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-              boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.35)" : "0 12px 24px rgba(15,23,42,0.08)",
+              background: "var(--surface-card)",
+              border: "1px solid var(--border-subtle)",
+              boxShadow: "var(--shadow-md)",
               transition: "transform 160ms ease, box-shadow 160ms ease",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 20px 36px rgba(0,0,0,0.4)"
-                : "0 18px 30px rgba(15,23,42,0.12)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-md)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = isDark
-                ? "0 14px 28px rgba(0,0,0,0.35)"
-                : "0 12px 24px rgba(15,23,42,0.08)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-md)";
             }}
           >
             <div
@@ -503,7 +464,7 @@ export default function ClientSegmentsPage() {
                 fontSize: 12,
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+                color: "var(--text-muted)",
               }}
             >
               {card.label}
@@ -512,7 +473,7 @@ export default function ClientSegmentsPage() {
               style={{
                 fontSize: 22,
                 marginTop: 8,
-                color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.85)",
+                color: "var(--text-primary)",
                 fontWeight: 700,
               }}
             >
@@ -522,9 +483,10 @@ export default function ClientSegmentsPage() {
         ))}
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
+        <div>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             Loading segments...
           </p>
         ) : (
@@ -533,27 +495,27 @@ export default function ClientSegmentsPage() {
               <thead>
                 <tr>
                   <th style={headerCellStyle}>
-                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("name")}>
+                    <button type="button" className="table-sort" onClick={() => toggleSort("name")}>
                       Segment Name {sortIndicator("name")}
                     </button>
                   </th>
                   <th style={headerCellStyle}>
-                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("type")}>
+                    <button type="button" className="table-sort" onClick={() => toggleSort("type")}>
                       Type {sortIndicator("type")}
                     </button>
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("clients")}>
+                    <button type="button" className="table-sort" onClick={() => toggleSort("clients")}>
                       Clients {sortIndicator("clients")}
                     </button>
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("status")}>
+                    <button type="button" className="table-sort" onClick={() => toggleSort("status")}>
                       Status {sortIndicator("status")}
                     </button>
                   </th>
                   <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleSort("updated")}>
+                    <button type="button" className="table-sort" onClick={() => toggleSort("updated")}>
                       Updated {sortIndicator("updated")}
                     </button>
                   </th>
@@ -561,23 +523,9 @@ export default function ClientSegmentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedSegmentRows.map((row, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                {sortedSegmentRows.map((row) => {
                   return (
-                    <tr
-                      key={row.id}
-                      style={{ background: rowBg, transition: "background 120ms ease" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                    >
+                    <tr key={row.id}>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{row.name}</td>
                       <td style={{ ...cellStyle, textAlign: "left" }}>
                         {row.type === "business_type" ? "Business Type" : row.type}
@@ -601,6 +549,7 @@ export default function ClientSegmentsPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
 
       {drawerOpen && selectedSegment && (
@@ -608,14 +557,14 @@ export default function ClientSegmentsPage() {
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selectedSegment.name}
                 </div>
                 <div
                   style={{
                     opacity: 0.75,
                     fontSize: 12,
-                    color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                    color: "var(--text-muted)",
                   }}
                 >
                   {selectedSegment.type}
@@ -637,8 +586,8 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.02)",
-                border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
+                background: "var(--surface-muted)",
+                border: "1px solid var(--border-subtle)",
               }}
             >
               <div
@@ -647,7 +596,7 @@ export default function ClientSegmentsPage() {
                   letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   opacity: 0.75,
-                  color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                  color: "var(--text-muted)",
                 }}
               >
                 Segment Details
@@ -664,7 +613,7 @@ export default function ClientSegmentsPage() {
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+                      border: "1px solid var(--border-subtle)",
                       display: "flex",
                       justifyContent: "space-between",
                       gap: 12,
@@ -675,7 +624,7 @@ export default function ClientSegmentsPage() {
                         fontSize: 11,
                         opacity: 0.7,
                         fontWeight: 400,
-                        color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.7)",
+                        color: "var(--text-muted)",
                       }}
                     >
                       {row.label}
@@ -684,7 +633,7 @@ export default function ClientSegmentsPage() {
                       style={{
                         fontWeight: 400,
                         textAlign: "right",
-                        color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+                        color: "var(--text-primary)",
                       }}
                     >
                       {row.value}
@@ -700,8 +649,8 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.02)",
-                border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
+                background: "var(--surface-muted)",
+                border: "1px solid var(--border-subtle)",
               }}
             >
               <div
@@ -710,7 +659,7 @@ export default function ClientSegmentsPage() {
                   letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   opacity: 0.75,
-                  color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.65)",
+                  color: "var(--text-muted)",
                 }}
               >
                 Clients in Segment
@@ -728,7 +677,7 @@ export default function ClientSegmentsPage() {
                   <div
                     style={{
                       fontSize: 13,
-                      color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.65)",
+                      color: "var(--text-muted)",
                     }}
                   >
                     No clients found.
@@ -740,7 +689,7 @@ export default function ClientSegmentsPage() {
                       style={{
                         padding: 10,
                         borderRadius: 12,
-                        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+                        border: "1px solid var(--border-subtle)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 4,
@@ -750,7 +699,7 @@ export default function ClientSegmentsPage() {
                         style={{
                           fontSize: 13,
                           fontWeight: 400,
-                          color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {client.companyName || "-"}
@@ -758,7 +707,7 @@ export default function ClientSegmentsPage() {
                       <div
                         style={{
                           fontSize: 12,
-                          color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.65)",
+                          color: "var(--text-muted)",
                         }}
                       >
                         {client.primaryContactName || "-"} · {client.primaryContactEmail || "-"}
@@ -767,7 +716,7 @@ export default function ClientSegmentsPage() {
                   ))
                 )}
                 {filteredDrawerClients.length > 10 ? (
-                  <div style={{ fontSize: 12, color: isDark ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.55)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Showing 10 of {filteredDrawerClients.length} clients
                   </div>
                 ) : null}
@@ -800,7 +749,7 @@ export default function ClientSegmentsPage() {
             position: "fixed",
             inset: 0,
             zIndex: 60,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.4)",
+            background: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(4px)",
             WebkitBackdropFilter: "blur(4px)",
           }}
@@ -811,11 +760,11 @@ export default function ClientSegmentsPage() {
             style={{
               maxWidth: 420,
               margin: "10vh auto",
-              background: isDark ? "rgba(18,18,18,0.96)" : "#fff",
+              background: "var(--surface-card)",
               borderRadius: 16,
               padding: 18,
-              border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.12)",
-              boxShadow: isDark ? "0 20px 45px rgba(0,0,0,0.5)" : "0 20px 45px rgba(15,23,42,0.12)",
+              border: "1px solid var(--border-subtle)",
+              boxShadow: "var(--shadow-md)",
             }}
           >
             <div
@@ -823,7 +772,7 @@ export default function ClientSegmentsPage() {
                 fontSize: 18,
                 fontWeight: 600,
                 marginBottom: 12,
-                color: isDark ? "rgba(255,255,255,0.9)" : "rgba(15,23,42,0.9)",
+                color: "var(--text-primary)",
               }}
             >
               Manage Segment
@@ -834,7 +783,7 @@ export default function ClientSegmentsPage() {
                 <div
                   style={{
                     fontSize: 12,
-                    color: isDark ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.6)",
+                    color: "var(--text-muted)",
                     marginBottom: 6,
                   }}
                 >
@@ -849,7 +798,7 @@ export default function ClientSegmentsPage() {
                   alignItems: "center",
                   gap: 8,
                   fontSize: 13,
-                  color: isDark ? "rgba(255,255,255,0.8)" : "rgba(15,23,42,0.8)",
+                  color: "var(--text-muted)",
                 }}
               >
                 <input
