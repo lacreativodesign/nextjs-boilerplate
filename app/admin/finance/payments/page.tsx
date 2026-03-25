@@ -6,8 +6,7 @@ import {
   formatDate,
   formatDateTime,
   formatUsd,
-  useIsSystemDark,
-} from "@/components/finance/financeUtils";
+  } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 
@@ -40,7 +39,6 @@ type CurrentUser = { uid: string; role: string; name?: string };
 type ErrorState = { title: string; message: string };
 
 export default function FinancePaymentsPage() {
-  const isDark = useIsSystemDark();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -188,18 +186,7 @@ export default function FinancePaymentsPage() {
   return (
     <div>
       {error && (
-        <div
-          className="card"
-          style={{
-            borderRadius: 14,
-            padding: 16,
-            border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
-            fontWeight: 600,
-            marginBottom: 16,
-          }}
-        >
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           <div style={{ fontWeight: 700 }}>{error.title}</div>
           <div style={{ fontSize: 13, opacity: 0.9 }}>{error.message}</div>
         </div>
@@ -246,54 +233,43 @@ export default function FinancePaymentsPage() {
         </button>
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("id")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("id")} className="table-sort">
                     Payment ID {sortKey === "id" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("clientName")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("clientName")} className="table-sort">
                     Client {sortKey === "clientName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("method")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("method")} className="table-sort">
                     Method {sortKey === "method" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("amountUsd")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("amountUsd")} className="table-sort">
                     Amount (USD) {sortKey === "amountUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("paidAt")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("paidAt")} className="table-sort">
                     Paid At {sortKey === "paidAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("createdAt")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("createdAt")} className="table-sort">
                     Created {sortKey === "createdAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
                 <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("status")} style={headerButtonStyle}>
+                  <button type="button" onClick={() => toggleSort("status")} className="table-sort">
                     Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
                 </th>
@@ -314,25 +290,9 @@ export default function FinancePaymentsPage() {
                   </td>
                 </tr>
               ) : (
-                sortedPayments.map((payment, idx) => {
-                  const rowBg =
-                    idx % 2 === 0
-                      ? isDark
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(15,23,42,0.02)"
-                      : "transparent";
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
+                sortedPayments.map((payment) => {
                   return (
-                    <tr
-                      key={payment.id}
-                      style={{ background: rowBg, transition: "background 120ms ease" }}
-                      onMouseEnter={(event) => {
-                        (event.currentTarget as HTMLTableRowElement).style.background = hoverBg;
-                      }}
-                      onMouseLeave={(event) => {
-                        (event.currentTarget as HTMLTableRowElement).style.background = rowBg;
-                      }}
-                    >
+                    <tr key={payment.id}>
                       <td style={{ padding: "14px 16px", textAlign: "left" }}>
                         <div style={{ fontWeight: 600 }}>{payment.id}</div>
                         <div style={{ fontSize: 12, opacity: 0.65 }}>{payment.orderId || payment.invoiceId || ""}</div>
@@ -342,7 +302,7 @@ export default function FinancePaymentsPage() {
                       <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatUsd(payment.amountUsd)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.paidAt)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(payment.createdAt)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(payment.status, isDark)}</td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(payment.status)}</td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>
                         <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                           <button
@@ -378,8 +338,7 @@ export default function FinancePaymentsPage() {
       {drawerOpen && selectedPayment && (
         <PaymentDrawer
           payment={selectedPayment}
-          isDark={isDark}
-          canAdmin={canAdmin}
+                    canAdmin={canAdmin}
           onClose={closeDrawer}
           onAction={handleAction}
           actionLoading={actionLoading === selectedPayment.id}
@@ -389,80 +348,30 @@ export default function FinancePaymentsPage() {
   );
 }
 
-const headerButtonStyle = {
-  background: "none",
-  border: "none",
-  fontWeight: 700,
-  cursor: "pointer",
-} as const;
 
-function renderStatus(status: string, isDark: boolean) {
-  const base = {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 90,
-  } as const;
-
-  const token = status.toLowerCase();
-  if (token.includes("paid")) {
-    return (
-      <span
-        style={{
-          ...base,
-          color: isDark ? "#bbf7d0" : "#047857",
-          background: isDark ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
-          border: "1px solid rgba(34,197,94,0.3)",
-        }}
-      >
-        {status}
-      </span>
-    );
-  }
-
-  if (token.includes("failed") || token.includes("refund")) {
-    return (
-      <span
-        style={{
-          ...base,
-          color: isDark ? "#fecaca" : "#b91c1c",
-          background: isDark ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.12)",
-          border: "1px solid rgba(239,68,68,0.35)",
-        }}
-      >
-        {status}
-      </span>
-    );
-  }
-
-  return (
-    <span
-      style={{
-        ...base,
-        color: isDark ? "#e2e8f0" : "#1f2937",
-        background: isDark ? "rgba(148,163,184,0.15)" : "rgba(148,163,184,0.2)",
-        border: "1px solid rgba(148,163,184,0.3)",
-      }}
-    >
-      {status}
-    </span>
-  );
+function renderStatus(status: string) {
+  const base = "inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold min-w-[80px]";
+  const t = (status || "").toLowerCase();
+  if (t.includes("paid") || t.includes("completed") || t.includes("approved") || t.includes("active"))
+    return <span className={`${base} bg-green-500/10 text-green-600`}>{status}</span>;
+  if (t.includes("overdue") || t.includes("failed") || t.includes("rejected") || t.includes("void"))
+    return <span className={`${base} bg-red-500/10 text-red-500`}>{status}</span>;
+  if (t.includes("pending") || t.includes("draft") || t.includes("processing") || t.includes("sent"))
+    return <span className={`${base} bg-amber-500/10 text-amber-600`}>{status}</span>;
+  if (t.includes("partial"))
+    return <span className={`${base} bg-purple-500/10 text-purple-600`}>{status}</span>;
+  return <span className={`${base} bg-[var(--surface-muted)] text-[var(--text-muted)]`}>{status}</span>;
 }
+
 
 function PaymentDrawer({
   payment,
-  isDark,
   canAdmin,
   onClose,
   onAction,
   actionLoading,
 }: {
   payment: PaymentRecord;
-  isDark: boolean;
   canAdmin: boolean;
   onClose: () => void;
   onAction: (payment: PaymentRecord, action: "mark_paid" | "refund") => void;
@@ -474,7 +383,7 @@ function PaymentDrawer({
         position: "fixed",
         inset: 0,
         zIndex: 60,
-        background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+        background: "rgba(0,0,0,0.45)",
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
       }}
@@ -490,7 +399,7 @@ function PaymentDrawer({
           height: "100%",
           padding: 18,
           background: "var(--card-bg)",
-          borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+          borderLeft: "1px solid var(--border-subtle)",
           overflowY: "auto",
         }}
       >
