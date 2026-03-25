@@ -62,25 +62,6 @@ type SortDir = "asc" | "desc";
 
 const FILE_CATEGORIES: FileCategory[] = ["Draft", "Revision", "Final", "Asset", "Other"];
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -121,51 +102,17 @@ function canDelete(role?: string) {
   return r === "admin" || r === "super_admin";
 }
 
-function categoryBadge(category: string, isDark: boolean) {
-  const palette: Record<string, { bg: string; text: string; border: string }> = {
-    Draft: {
-      bg: isDark ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.12)",
-      text: isDark ? "#bfdbfe" : "#1d4ed8",
-      border: isDark ? "rgba(59,130,246,0.35)" : "rgba(59,130,246,0.25)",
-    },
-    Revision: {
-      bg: isDark ? "rgba(248,113,113,0.18)" : "rgba(248,113,113,0.16)",
-      text: isDark ? "#fecaca" : "#b91c1c",
-      border: isDark ? "rgba(248,113,113,0.35)" : "rgba(248,113,113,0.25)",
-    },
-    Final: {
-      bg: isDark ? "rgba(34,197,94,0.2)" : "rgba(34,197,94,0.16)",
-      text: isDark ? "#bbf7d0" : "#15803d",
-      border: isDark ? "rgba(34,197,94,0.35)" : "rgba(34,197,94,0.25)",
-    },
-    Asset: {
-      bg: isDark ? "rgba(251,191,36,0.2)" : "rgba(251,191,36,0.16)",
-      text: isDark ? "#fde68a" : "#b45309",
-      border: isDark ? "rgba(251,191,36,0.35)" : "rgba(251,191,36,0.25)",
-    },
-    Other: {
-      bg: isDark ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.16)",
-      text: isDark ? "#e2e8f0" : "#475569",
-      border: isDark ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.25)",
-    },
-  };
-  const theme = palette[category] || palette.Other;
-  return (
-    <span
-      style={{
-        padding: "4px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 600,
-        background: theme.bg,
-        color: theme.text,
-        border: `1px solid ${theme.border}`,
-        display: "inline-flex",
-      }}
-    >
-      {category}
-    </span>
-  );
+function getBadgeClass(value: string): string {
+  const t = (value || "").toLowerCase();
+  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
+  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
+  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
+  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
+    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
+  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
 function AlertCard({ error }: { error: ErrorState }) {
@@ -188,7 +135,6 @@ function AlertCard({ error }: { error: ErrorState }) {
 }
 
 export default function GlobalFilesPage() {
-  const isDark = useIsSystemDark();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [totals, setTotals] = useState<Totals>({ total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 });
   const [projects, setProjects] = useState<ProjectOption[]>([]);
@@ -483,7 +429,7 @@ export default function GlobalFilesPage() {
           className="input"
           value={projectFilter}
           onChange={setProjectFilter}
-          isDark={isDark}
+          
           placeholder="All Projects"
           options={[
             { label: "All Projects", value: "" },
@@ -494,7 +440,7 @@ export default function GlobalFilesPage() {
           className="input"
           value={categoryFilter}
           onChange={setCategoryFilter}
-          isDark={isDark}
+          
           placeholder="All Categories"
           options={[
             { label: "All Categories", value: "" },
@@ -505,7 +451,7 @@ export default function GlobalFilesPage() {
           className="input"
           value={uploaderFilter}
           onChange={setUploaderFilter}
-          isDark={isDark}
+          
           placeholder="Uploaded By"
           options={[
             { label: "Uploaded By", value: "" },
@@ -536,7 +482,8 @@ export default function GlobalFilesPage() {
         </button>
       </div>
 
-      <div className="table-shell" style={{ marginTop: 20 }}>
+      <div className="table-shell">
+        <div style={{ marginTop: 20 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
             <thead>
@@ -545,7 +492,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("fileName")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     File Name {sortKey === "fileName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -554,7 +501,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("projectName")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     Project {sortKey === "projectName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -563,7 +510,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("category")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     Category {sortKey === "category" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -572,7 +519,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("version")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     Version {sortKey === "version" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -581,7 +528,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("uploadedBy")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     Uploaded By {sortKey === "uploadedBy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -590,7 +537,7 @@ export default function GlobalFilesPage() {
                   <button
                     type="button"
                     onClick={() => toggleSort("uploadedAt")}
-                    style={{ background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}
+                    className="table-sort"
                   >
                     Uploaded At {sortKey === "uploadedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                   </button>
@@ -622,7 +569,7 @@ export default function GlobalFilesPage() {
                       <div style={{ fontWeight: 600 }}>{file.projectName}</div>
                       <div style={{ fontSize: 12, opacity: 0.65 }}>{file.clientName || ""}</div>
                     </td>
-                    <td style={{ textAlign: "left" }}>{categoryBadge(file.category, isDark)}</td>
+                    <td style={{ textAlign: "left" }}><span className={getBadgeClass(file.category)}>{file.category}</span></td>
                     <td style={{ textAlign: "right" }}>{file.version || "-"}</td>
                     <td style={{ textAlign: "left" }}>
                       <div style={{ fontWeight: 600 }}>{file.uploadedByName || "-"}</div>
@@ -666,6 +613,7 @@ export default function GlobalFilesPage() {
           </table>
         </div>
       </div>
+      </div>
 
       {uploadOpen && (
         <div
@@ -686,9 +634,9 @@ export default function GlobalFilesPage() {
               width: "min(680px, 100%)",
               borderRadius: 20,
               padding: 24,
-              background: isDark ? "rgba(18,18,18,0.98)" : "white",
-              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(15,23,42,0.12)",
-              boxShadow: isDark ? "0 25px 60px rgba(0,0,0,0.45)" : "0 24px 50px rgba(15,23,42,0.2)",
+              background: "var(--surface-card)",
+              border: "1px solid var(--border-subtle)",
+              boxShadow: "var(--shadow-md)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -732,7 +680,7 @@ export default function GlobalFilesPage() {
                   className="input"
                   value={uploadProjectId}
                   onChange={setUploadProjectId}
-                  isDark={isDark}
+                  
                   placeholder="Select project"
                   buttonStyle={{ height: 38, borderRadius: 10 }}
                   options={[
@@ -747,7 +695,7 @@ export default function GlobalFilesPage() {
                   className="input"
                   value={uploadCategory}
                   onChange={(next) => setUploadCategory(next as FileCategory)}
-                  isDark={isDark}
+                  
                   buttonStyle={{ height: 38, borderRadius: 10 }}
                   options={FILE_CATEGORIES.map((category) => ({ label: category, value: category }))}
                 />
