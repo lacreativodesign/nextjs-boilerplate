@@ -5,7 +5,6 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from "@/lib/sales/utils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const TYPE_OPTIONS = [{ label: "All Types", value: "" }, ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))];
 const STATUS_OPTIONS = [{ label: "All Status", value: "" }, ...FOLLOW_UP_STATUS.map((status) => ({ label: status, value: status }))];
@@ -50,7 +49,6 @@ const defaultForm: FollowUpFormState = {
 };
 
 export default function SalesFollowUpsPage() {
-  const isDark = useIsDarkMode();
   const [followUps, setFollowUps] = useState<FollowUpRecord[]>([]);
   const [owners, setOwners] = useState<UserOption[]>([]);
   const [query, setQuery] = useState("");
@@ -235,8 +233,8 @@ export default function SalesFollowUpsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -284,22 +282,11 @@ export default function SalesFollowUpsPage() {
         </button>
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--surface-muted)" }}>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Related Lead/Deal</th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Type</th>
                 <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Due Date</th>
@@ -325,7 +312,7 @@ export default function SalesFollowUpsPage() {
                 filteredFollowUps.map((item) => {
                   const overdue = item.status !== "Done" && isOverdue(item.dueDate);
                   return (
-                    <tr key={item.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
+                    <tr key={item.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                       <td style={{ padding: "14px 16px", fontWeight: 600 }}>{item.relatedName}</td>
                       <td style={{ padding: "14px 16px" }}>{item.type}</td>
                     <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatDateTime(item.dueDate)}</td>
@@ -377,7 +364,7 @@ export default function SalesFollowUpsPage() {
           title={drawerMode === "create" ? "Create Follow-Up" : "Follow-Up Details"}
           subtitle={drawerMode === "create" ? "Schedule a follow-up" : formatDateTime(form.id ? followUps.find((f) => f.id === form.id)?.updatedAt : null)}
           onClose={() => setDrawerOpen(false)}
-          isDark={isDark}
+         
           actions={
             <button className="btn" onClick={handleSave} disabled={actionLoading === "save"} style={{ borderRadius: 999 }}>
               {actionLoading === "save" ? "Saving" : "Save Follow-Up"}

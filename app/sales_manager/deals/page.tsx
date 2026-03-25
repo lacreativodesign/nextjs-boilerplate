@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatDate, formatUsd, toInputDate } from "@/components/finance/financeUtils";
 
 const STAGE_OPTIONS = [
@@ -59,7 +58,6 @@ type DealFormState = {
 };
 
 export default function SalesManagerDealsPage() {
-  const isDark = useIsDarkMode();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
   const [rows, setRows] = useState<DealRecord[]>([]);
@@ -100,21 +98,13 @@ export default function SalesManagerDealsPage() {
     };
   }, []);
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     userSelect: "none",
     whiteSpace: "nowrap",
     textAlign: "left",
@@ -122,8 +112,8 @@ export default function SalesManagerDealsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -262,8 +252,8 @@ export default function SalesManagerDealsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -273,13 +263,13 @@ export default function SalesManagerDealsPage() {
         </div>
       )}
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             Loading deals...
           </p>
         ) : sortedDeals.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             No deals found.
           </p>
         ) : (
@@ -300,22 +290,12 @@ export default function SalesManagerDealsPage() {
               </thead>
               <tbody>
                 {sortedDeals.map((deal, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
 
                   return (
                     <tr
                       key={deal.id}
-                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                      onClick={() => openDrawer(deal)}
+                      style={{ cursor: "pointer" }}
+                                                                  onClick={() => openDrawer(deal)}
                     >
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{deal.dealName || "-"}</td>
                       <td style={cellStyle}>{deal.clientName || "-"}</td>
@@ -353,10 +333,10 @@ export default function SalesManagerDealsPage() {
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.dealName || "Deal"}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "#334155" }}>
                   {selected.clientName || "Client"} · {selected.ownerName || "Unassigned"}
                 </div>
               </div>
@@ -368,7 +348,7 @@ export default function SalesManagerDealsPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Deal Details" isDark={isDark}>
+            <Section title="Deal Details">
               <Label>Deal Name</Label>
               <input
                 className="input"
@@ -438,25 +418,25 @@ export default function SalesManagerDealsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Discount Approval" isDark={isDark}>
-              <InfoRow label="List Price" value={formatUsd(selected.listPriceUsd || selected.valueUsd)} isDark={isDark} />
-              <InfoRow label="Discount %" value={`${Number(selected.discountPct || 0)}%`} isDark={isDark} />
-              <InfoRow label="Final Price" value={formatUsd(selected.finalPriceUsd || selected.valueUsd)} isDark={isDark} />
-              <InfoRow label="Status" value={selected.discountStatus || "none"} isDark={isDark} />
+            <Section title="Discount Approval">
+              <InfoRow label="List Price" value={formatUsd(selected.listPriceUsd || selected.valueUsd)} />
+              <InfoRow label="Discount %" value={`${Number(selected.discountPct || 0)}%`} />
+              <InfoRow label="Final Price" value={formatUsd(selected.finalPriceUsd || selected.valueUsd)} />
+              <InfoRow label="Status" value={selected.discountStatus || "none"} />
               {selected.discountReason && (
-                <InfoRow label="Reason" value={selected.discountReason} isDark={isDark} />
+                <InfoRow label="Reason" value={selected.discountReason} />
               )}
               <InfoRow
                 label="Requested At"
                 value={formatDate(selected.discountRequestedAt)}
-                isDark={isDark}
+               
               />
               <InfoRow
                 label="Approved By"
                 value={selected.discountApprovedByName || selected.discountApprovedByUid || "—"}
-                isDark={isDark}
+               
               />
-              <InfoRow label="Approved At" value={formatDate(selected.discountApprovedAt)} isDark={isDark} />
+              <InfoRow label="Approved At" value={formatDate(selected.discountApprovedAt)} />
               {selected.discountStatus === "pending" && (
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                   <button
@@ -475,12 +455,12 @@ export default function SalesManagerDealsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Linked Delivery" isDark={isDark}>
+            <Section title="Linked Delivery">
               {selected.stage === "Closed Won" || selected.clientId || selected.projectId ? (
                 <>
-                  <InfoRow label="Client ID" value={selected.clientId || "—"} isDark={isDark} />
-                  <InfoRow label="Project ID" value={selected.projectId || "—"} isDark={isDark} />
-                  <InfoRow label="Payment Status" value={selected.paymentStatus || "Unpaid"} isDark={isDark} />
+                  <InfoRow label="Client ID" value={selected.clientId || "—"} />
+                  <InfoRow label="Project ID" value={selected.projectId || "—"} />
+                  <InfoRow label="Payment Status" value={selected.paymentStatus || "Unpaid"} />
                 </>
               ) : (
                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Linked records appear once a deal is won.</div>
@@ -504,48 +484,20 @@ export default function SalesManagerDealsPage() {
   );
 }
 
-function Section({
-  title,
-  children,
-  isDark,
-}: {
-  title: string;
-  children: React.ReactNode;
-  isDark: boolean;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 14,
-        borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-      }}
-    >
+    <div className="card" style={{ padding: 14, borderRadius: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function InfoRow({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
-    >
+    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", gap: 12 }}>
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
       <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>{children}</div>;
 }

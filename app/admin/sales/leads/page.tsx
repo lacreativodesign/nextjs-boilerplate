@@ -5,7 +5,6 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatDateTime } from "@/components/finance/financeUtils";
 import { LEAD_STAGES } from "@/lib/sales/utils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STAGE_OPTIONS = [{ label: "All Stages", value: "" }, ...LEAD_STAGES.map((stage) => ({ label: stage, value: stage }))];
 
@@ -48,7 +47,6 @@ const defaultForm: LeadFormState = {
 };
 
 export default function SalesLeadsPage() {
-  const isDark = useIsDarkMode();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [owners, setOwners] = useState<UserOption[]>([]);
   const [query, setQuery] = useState("");
@@ -240,8 +238,8 @@ export default function SalesLeadsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -287,22 +285,11 @@ export default function SalesLeadsPage() {
         </button>
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--surface-muted)" }}>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Name</th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Email</th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Phone</th>
@@ -328,7 +315,7 @@ export default function SalesLeadsPage() {
                 </tr>
               ) : (
                 filteredLeads.map((lead) => (
-                  <tr key={lead.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
+                  <tr key={lead.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                     <td style={{ padding: "14px 16px", fontWeight: 600 }}>{lead.name}</td>
                     <td style={{ padding: "14px 16px" }}>{lead.email || "-"}</td>
                     <td style={{ padding: "14px 16px" }}>{lead.phone || "-"}</td>
@@ -379,7 +366,7 @@ export default function SalesLeadsPage() {
           title={drawerMode === "create" ? "Create Lead" : "Lead Details"}
           subtitle={drawerMode === "create" ? "Capture a new lead" : formatDateTime(form.id ? leads.find((l) => l.id === form.id)?.updatedAt : null)}
           onClose={() => setDrawerOpen(false)}
-          isDark={isDark}
+         
           actions={
             <>
               <button className="btn" onClick={handleSave} disabled={actionLoading === "save"} style={{ borderRadius: 999 }}>

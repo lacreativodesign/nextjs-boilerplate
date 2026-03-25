@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatUsd, toInputMonth } from "@/components/finance/financeUtils";
 
 type TargetRow = {
@@ -19,7 +18,6 @@ type TargetsResponse = {
 };
 
 export default function SalesManagerTargetsPage() {
-  const isDark = useIsDarkMode();
   const [month, setMonth] = useState(() => toInputMonth(new Date().toISOString()));
   const [targets, setTargets] = useState<TargetRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,8 +109,8 @@ export default function SalesManagerTargetsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -123,11 +121,11 @@ export default function SalesManagerTargetsPage() {
 
       <div className="card" style={{ padding: 16, borderRadius: 16 }}>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             Loading targets...
           </p>
         ) : targets.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             No targets configured for this month.
           </p>
         ) : (

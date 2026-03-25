@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatDateTime, formatUsd } from "@/components/finance/financeUtils";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -30,7 +29,6 @@ type OverviewResponse = {
 type ErrorState = { title: string; message: string };
 
 export default function SalesOverviewPage() {
-  const isDark = useIsDarkMode();
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
@@ -87,8 +85,8 @@ export default function SalesOverviewPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
