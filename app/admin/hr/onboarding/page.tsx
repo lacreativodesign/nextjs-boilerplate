@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { useIsSystemDark, formatDate } from "@/components/finance/financeUtils";
+import { formatDate } from "@/components/finance/financeUtils";
 import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
 
 const STATUS_OPTIONS = [
@@ -51,8 +51,7 @@ function formatRole(value: string) {
 }
 
 export default function HrOnboardingPage() {
-  const isDark = useIsSystemDark();
-  const [tab, setTab] = useState<TabKey>("templates");
+    const [tab, setTab] = useState<TabKey>("templates");
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [templates, setTemplates] = useState<TemplateRecord[]>([]);
@@ -366,7 +365,7 @@ export default function HrOnboardingPage() {
                   <div
                     key={template.id}
                     className="rounded-xl border p-3"
-                    style={{ borderColor: "var(--border)", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)" }}
+                    style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
                   >
                     <div style={{ fontWeight: 600 }}>{template.name}</div>
                     <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>
@@ -434,7 +433,7 @@ export default function HrOnboardingPage() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
               <thead>
-                <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                <tr style={{ background: "var(--table-header-bg)" }}>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Employee</th>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Template</th>
                   <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>Progress</th>
@@ -463,11 +462,11 @@ export default function HrOnboardingPage() {
                     const totalSteps = task.steps.length || 1;
                     const doneSteps = task.steps.filter((s) => s.isDone).length;
                     const progress = Math.round((doneSteps / totalSteps) * 100);
-                    const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+
                     return (
                       <tr
                         key={task.id}
-                        style={{ background: rowBg, cursor: "pointer" }}
+                        style={{ cursor: "pointer" }}
                         onClick={() => {
                           setSelectedTaskId(task.id);
                           setTaskDrawerOpen(true);
@@ -499,7 +498,7 @@ export default function HrOnboardingPage() {
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+            background: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
           }}
@@ -518,7 +517,7 @@ export default function HrOnboardingPage() {
               height: "100%",
               padding: 20,
               background: "var(--card-bg)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              borderLeft: "1px solid var(--border-subtle)",
               overflowY: "auto",
             }}
           >

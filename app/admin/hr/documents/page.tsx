@@ -5,7 +5,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { ListSkeleton } from "@/components/ui/Skeleton";
-import { formatDate, useIsSystemDark } from "@/components/finance/financeUtils";
+import { formatDate } from "@/components/finance/financeUtils";
 
 const DOC_TYPES = [
   { label: "Contract", value: "Contract" },
@@ -32,8 +32,7 @@ type DocumentRecord = {
 };
 
 export default function HrDocumentsPage() {
-  const isDark = useIsSystemDark();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+    const [users, setUsers] = useState<UserRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,7 +203,7 @@ export default function HrDocumentsPage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 780 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--table-header-bg)" }}>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Employee</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Doc Type</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>File</th>
@@ -227,11 +226,11 @@ export default function HrDocumentsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredDocuments.map((doc, idx) => {
+                filteredDocuments.map((doc) => {
                   const user = users.find((u) => u.uid === doc.userId);
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+
                   return (
-                    <tr key={doc.id} style={{ background: rowBg }}>
+                    <tr key={doc.id}>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>{user?.name || "Employee"}</td>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>{doc.docType}</td>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>{doc.fileName}</td>

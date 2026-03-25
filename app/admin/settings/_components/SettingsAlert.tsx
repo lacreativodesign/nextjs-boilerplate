@@ -1,8 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
-
 const alertStyles = {
   error: {
     light: {
@@ -43,8 +41,7 @@ const alertStyles = {
 };
 
 export function SettingsAlert({ tone, children }: { tone: "error" | "success" | "info"; children: ReactNode }) {
-  const isDark = useIsSystemDark();
-  const palette = alertStyles[tone][isDark ? "dark" : "light"];
+  const palette = alertStyles[tone].light;
 
   return (
     <div className="card" style={{ borderRadius: 14, padding: 16, fontWeight: 600, ...palette }}>

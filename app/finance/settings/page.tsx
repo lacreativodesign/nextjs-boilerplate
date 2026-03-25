@@ -1,11 +1,9 @@
 "use client";
 
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 
 const PAYMENT_METHODS = ["Card", "Bank", "Cash", "PayPal", "Wise", "Other"];
 
 export default function FinanceSettingsPage() {
-  const isDark = useIsSystemDark();
 
   return (
     <div className="space-y-4">
@@ -42,7 +40,7 @@ export default function FinanceSettingsPage() {
                   justifyContent: "space-between",
                   padding: "10px 12px",
                   borderRadius: 12,
-                  background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+                  background: "var(--surface-muted)",
                 }}
               >
                 <span>{method}</span>

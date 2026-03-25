@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import {
   INTERNAL_ROLE_OPTIONS,
@@ -82,8 +81,7 @@ function toInputDate(iso?: string | null) {
 }
 
 export default function HrEmployeesPage() {
-  const isDark = useIsSystemDark();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+    const [users, setUsers] = useState<UserRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -335,7 +333,7 @@ export default function HrEmployeesPage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--table-header-bg)" }}>
                 <th style={headerCell} onClick={() => handleSort(setSortKey, setSortDir, sortKey, "name")}>Name</th>
                 <th style={headerCell} onClick={() => handleSort(setSortKey, setSortDir, sortKey, "email")}>Email</th>
                 <th style={headerCell} onClick={() => handleSort(setSortKey, setSortDir, sortKey, "role")}>Role</th>
@@ -369,17 +367,15 @@ export default function HrEmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                sorted.map((user, idx) => {
+                sorted.map((user) => {
                   const rowId = getRowId(user);
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+
                   return (
                     <tr
                       key={rowId}
-                      style={{ background: rowBg, cursor: "pointer" }}
+                      style={{ cursor: "pointer" }}
                       onClick={() => openDrawer(rowId)}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = isDark ? "rgba(148,163,184,0.12)" : "rgba(148,163,184,0.18)")}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                    >
+                                                                >
                       <td style={cell}>{user.name || "-"}</td>
                       <td style={cell}>{user.email || "-"}</td>
                       <td style={cell}>{formatRole(String(user.role || ""))}</td>
@@ -409,7 +405,7 @@ export default function HrEmployeesPage() {
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+            background: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
           }}
@@ -425,7 +421,7 @@ export default function HrEmployeesPage() {
               height: "100%",
               padding: 20,
               background: "var(--card-bg)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              borderLeft: "1px solid var(--border-subtle)",
               overflowY: "auto",
             }}
           >
@@ -444,7 +440,7 @@ export default function HrEmployeesPage() {
             <div style={{ height: 16 }} />
 
             {!editMode ? (
-              <EmployeeProfile user={selectedUser} isDark={isDark} />
+              <EmployeeProfile user={selectedUser} />
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-3">
@@ -579,18 +575,18 @@ export default function HrEmployeesPage() {
   );
 }
 
-function EmployeeProfile({ user, isDark }: { user: UserRecord; isDark: boolean }) {
+function EmployeeProfile({ user }: { user: UserRecord }) {
   const safe = (value: any) => (value === null || value === undefined || value === "" ? "-" : String(value));
   return (
     <div className="space-y-4">
-      <ProfileSection title="Profile" isDark={isDark}>
+      <ProfileSection title="Profile">
         <ProfileRow label="Designation" value={safe(user.designation)} />
         <ProfileRow label="Role" value={formatRole(String(user.role || ""))} />
         <ProfileRow label="Department" value={formatRole(String(user.department || ""))} />
         <ProfileRow label="Joining Date" value={formatDate(user.joiningDate)} />
         <ProfileRow label="Status" value={normalizeStatus(user.status) === "active" ? "Active" : "Inactive"} />
       </ProfileSection>
-      <ProfileSection title="Compensation" isDark={isDark}>
+      <ProfileSection title="Compensation">
         <ProfileRow label="Salary (PKR)" value={formatPkr(user.salary)} />
         <ProfileRow label="Target (USD)" value={formatNumber(user.monthlyTarget)} />
         <ProfileRow
@@ -598,7 +594,7 @@ function EmployeeProfile({ user, isDark }: { user: UserRecord; isDark: boolean }
           value={user.commission !== undefined && user.commission !== null && user.commission !== "" ? `${user.commission}%` : "-"}
         />
       </ProfileSection>
-      <ProfileSection title="System" isDark={isDark}>
+      <ProfileSection title="System">
         <ProfileRow label="Created" value={formatDate(user.createdAt)} />
         <ProfileRow label="Updated" value={formatDate(user.updatedAt)} />
         <ProfileRow label="User ID" value={safe(getRowId(user))} />
@@ -607,22 +603,14 @@ function EmployeeProfile({ user, isDark }: { user: UserRecord; isDark: boolean }
   );
 }
 
-function ProfileSection({
-  title,
-  children,
-  isDark,
-}: {
-  title: string;
-  children: React.ReactNode;
-  isDark: boolean;
-}) {
+function ProfileSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       style={{
         borderRadius: 14,
         padding: 14,
-        border: isDark ? "1px solid rgba(148,163,184,0.18)" : "1px solid rgba(15,23,42,0.08)",
-        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
+        border: "1px solid var(--border-subtle)",
+        background: "var(--surface-muted)",
       }}
     >
       <div style={{ fontWeight: 700, marginBottom: 10 }}>{title}</div>

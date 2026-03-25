@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { useIsSystemDark, formatDate } from "@/components/finance/financeUtils";
+import { formatDate } from "@/components/finance/financeUtils";
 import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
 
 const STATUS_OPTIONS = [
@@ -64,8 +64,7 @@ const sortIndicator = (active: boolean, dir: SortDir) => (
 );
 
 export default function HrOnboardingPage() {
-  const isDark = useIsSystemDark();
-  const [tab, setTab] = useState<TabKey>("templates");
+    const [tab, setTab] = useState<TabKey>("templates");
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [templates, setTemplates] = useState<TemplateRecord[]>([]);
@@ -403,7 +402,7 @@ export default function HrOnboardingPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
                 <thead>
-                  <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                  <tr style={{ background: "var(--table-header-bg)" }}>
                     <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
                       <button type="button" className="table-sort" onClick={() => toggleTemplateSort("name")}>
                         Template
@@ -451,11 +450,9 @@ export default function HrOnboardingPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredTemplates.map((template, idx) => {
-                      const rowBg =
-                        idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
-                      return (
-                        <tr key={template.id} style={{ background: rowBg }}>
+                    filteredTemplates.map((template) => {
+                                            return (
+                        <tr key={template.id}>
                           <td style={{ textAlign: "left", padding: "12px 16px" }}>{template.name}</td>
                           <td style={{ textAlign: "left", padding: "12px 16px" }}>{formatRole(template.role || "all")}</td>
                           <td style={{ textAlign: "right", padding: "12px 16px" }}>{template.steps?.length || 0}</td>
@@ -532,7 +529,7 @@ export default function HrOnboardingPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
                 <thead>
-                  <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                  <tr style={{ background: "var(--table-header-bg)" }}>
                     <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
                       <button type="button" className="table-sort" onClick={() => toggleTaskSort("employee")}>
                         Employee
@@ -586,12 +583,10 @@ export default function HrOnboardingPage() {
                       const totalSteps = task.steps.length || 1;
                       const doneSteps = task.steps.filter((s) => s.isDone).length;
                       const progress = Math.round((doneSteps / totalSteps) * 100);
-                      const rowBg =
-                        idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
-                      return (
+                                            return (
                         <tr
                           key={task.id}
-                          style={{ background: rowBg, cursor: "pointer" }}
+                          style={{ cursor: "pointer" }}
                           onClick={() => {
                             setSelectedTaskId(task.id);
                             setTaskDrawerOpen(true);

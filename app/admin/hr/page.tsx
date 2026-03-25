@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDateTime, useInterval, useIsSystemDark } from "@/components/finance/financeUtils";
+import { formatDateTime, useInterval } from "@/components/finance/financeUtils";
 
 type HrOverview = {
   kpis: {
@@ -37,8 +37,7 @@ const emptyOverview: HrOverview = {
 };
 
 export default function HrOverviewPage() {
-  const isDark = useIsSystemDark();
-  const [overview, setOverview] = useState<HrOverview>(emptyOverview);
+    const [overview, setOverview] = useState<HrOverview>(emptyOverview);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,8 +87,8 @@ export default function HrOverviewPage() {
             padding: 16,
             borderRadius: 16,
             border: "1px solid rgba(248,113,113,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.9)",
-            color: isDark ? "#fecaca" : "#b91c1c",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
           }}
         >
           {error}
@@ -111,7 +110,7 @@ export default function HrOverviewPage() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead>
-                <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                <tr style={{ background: "var(--table-header-bg)" }}>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Event</th>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Details</th>
                   <th style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700 }}>Timestamp</th>
@@ -131,10 +130,10 @@ export default function HrOverviewPage() {
                     </td>
                   </tr>
                 ) : (
-                  overview.recentActivity.map((event, idx) => {
-                    const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+                  overview.recentActivity.map((event) => {
+
                     return (
-                      <tr key={event.id} style={{ background: rowBg }}>
+                      <tr key={event.id}>
                         <td style={{ padding: "12px 16px", textAlign: "left" }}>
                           <div style={{ fontWeight: 600 }}>{event.title || event.type}</div>
                           <div style={{ fontSize: 12, opacity: 0.7 }}>{event.type}</div>
@@ -162,7 +161,7 @@ export default function HrOverviewPage() {
                   alignItems: "center",
                   padding: "10px 12px",
                   borderRadius: 12,
-                  background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+                  background: "var(--surface-muted)",
                 }}
               >
                 <div style={{ fontWeight: 600 }}>{row.label}</div>

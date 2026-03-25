@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { formatDateTime, useIsSystemDark } from "@/components/finance/financeUtils";
+import { formatDateTime } from "@/components/finance/financeUtils";
 
 const TYPE_OPTIONS = [
   { label: "All Types", value: "all" },
@@ -26,8 +26,7 @@ type ActivityRecord = {
 };
 
 export default function HrActivityPage() {
-  const isDark = useIsSystemDark();
-  const [activity, setActivity] = useState<ActivityRecord[]>([]);
+    const [activity, setActivity] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -94,7 +93,7 @@ export default function HrActivityPage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--table-header-bg)" }}>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Event</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Actor</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Summary</th>
@@ -121,10 +120,10 @@ export default function HrActivityPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((event, idx) => {
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+                filtered.map((event) => {
+
                   return (
-                    <tr key={event.id} style={{ background: rowBg }}>
+                    <tr key={event.id}>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>
                         <div style={{ fontWeight: 600 }}>{event.title || event.type}</div>
                         <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{event.type}</div>
