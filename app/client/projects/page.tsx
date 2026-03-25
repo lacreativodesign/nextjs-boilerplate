@@ -37,24 +37,6 @@ type ProjectDetailPayload = {
   messages: Array<{ id: string; senderName: string; senderRole: string; body: string; createdAt: string | null }>;
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
@@ -64,7 +46,6 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function ClientProjectsPage() {
-  const isDark = useIsSystemDark();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,16 +64,16 @@ export default function ClientProjectsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     whiteSpace: "nowrap",
     textAlign: "left",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -224,13 +205,13 @@ export default function ClientProjectsPage() {
       <div className="card p-4">
         <div className="filter-bar filter-bar--search">
           <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.7)" : "rgba(15,23,42,0.65)" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
             {loading ? "Loading..." : `${filtered.length} project(s)`}
           </div>
         </div>
       </div>
 
-      <div className="card table-shell">
+      <div className="table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading projects...</div>
         ) : error ? (
@@ -252,18 +233,11 @@ export default function ClientProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((project, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
+                {filtered.map((project) => {
                   return (
                     <tr
                       key={project.id}
-                      style={{ background: rowBg, cursor: "pointer" }}
+                      style={{ cursor: "pointer" }}
                       onClick={() => void openDrawer(project)}
                     >
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{project.projectName}</td>
@@ -314,21 +288,20 @@ export default function ClientProjectsPage() {
 
                 <div style={{ height: 16 }} />
 
-                <Section title="Project Summary" isDark={isDark}>
-                  <Row label="Stage" value={selected.project.stage || "-"} isDark={isDark} />
-                  <Row label="Due Date" value={fmtDate(selected.project.dueDate)} isDark={isDark} />
-                  <Row label="Account Manager" value={selected.project.ownerAmName || "-"} isDark={isDark} />
-                  <Row label="Production Lead" value={selected.project.productionName || "-"} isDark={isDark} />
+                <Section title="Project Summary">
+                  <Row label="Stage" value={selected.project.stage || "-"} />
+                  <Row label="Due Date" value={fmtDate(selected.project.dueDate)} />
+                  <Row label="Account Manager" value={selected.project.ownerAmName || "-"} />
+                  <Row label="Production Lead" value={selected.project.productionName || "-"} />
                   <Row
                     label="Client Approval"
                     value={selected.project.clientApprovalStatus === "approved" ? "Approved" : "Pending"}
-                    isDark={isDark}
                   />
                 </Section>
 
                 <div style={{ height: 12 }} />
 
-                <Section title="Timeline" isDark={isDark}>
+                <Section title="Timeline">
                   <div style={{ display: "grid", gap: 8 }}>
                     {PIPELINE_STAGES.map((stage) => {
                       const isCurrent = stage === selected.project.stage;
@@ -355,7 +328,7 @@ export default function ClientProjectsPage() {
 
                 <div style={{ height: 12 }} />
 
-                <Section title="Key Files" isDark={isDark}>
+                <Section title="Key Files">
                   {selected.files.length ? (
                     selected.files.map((file) => (
                       <div key={file.id} className="flex items-center justify-between gap-3">
@@ -375,7 +348,7 @@ export default function ClientProjectsPage() {
 
                 <div style={{ height: 12 }} />
 
-                <Section title="Latest Messages" isDark={isDark}>
+                <Section title="Latest Messages">
                   {selected.messages.length ? (
                     selected.messages.map((message) => (
                       <div key={message.id} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(148,163,184,0.2)" }}>
@@ -393,7 +366,7 @@ export default function ClientProjectsPage() {
                 <div style={{ height: 16 }} />
 
                 {["Draft", "Review", "Final"].includes(selected.project.stage) && (
-                  <div className="card p-4" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.03)" }}>
+                  <div className="card p-4" style={{ background: "var(--surface-muted)" }}>
                     <div className="text-sm font-semibold">Client Actions</div>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
                       Approve the current stage or request revisions for your team.
@@ -450,34 +423,18 @@ export default function ClientProjectsPage() {
   );
 }
 
-function Section({ title, children, isDark }: { title: string; children: React.ReactNode; isDark: boolean }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 14,
-        borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
-      }}
-    >
+    <div className="card" style={{ padding: 14, borderRadius: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
     </div>
   );
 }
 
-function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
-    >
+    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", gap: 12 }}>
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
       <div style={{ fontWeight: 600, textAlign: "right" }}>{value}</div>
     </div>

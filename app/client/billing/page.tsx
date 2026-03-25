@@ -47,24 +47,6 @@ type ChangeRequestRecord = {
   createdAt?: string | null;
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function fmtMoney(n: number) {
   try {
@@ -90,7 +72,6 @@ function safeLower(s?: string | null) {
 }
 
 export default function ClientBillingPage() {
-  const isDark = useIsSystemDark();
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -111,16 +92,16 @@ export default function ClientBillingPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     whiteSpace: "nowrap",
     textAlign: "left",
   };
 
   const cellStyle: CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -303,7 +284,7 @@ export default function ClientBillingPage() {
         />
       </div>
 
-      <div className="card table-shell">
+      <div className="table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading invoices...</div>
         ) : error ? (
@@ -324,16 +305,9 @@ export default function ClientBillingPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map((invoice, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
+                {filteredInvoices.map((invoice) => {
                   return (
-                    <tr key={invoice.id} style={{ background: rowBg }}>
+                    <tr key={invoice.id} >
                       <td style={cellStyle}>{invoice.orderId || "-"}</td>
                       <td style={cellStyle}>{invoice.status || "-"}</td>
                       <td style={{ ...cellStyle, textAlign: "right" }}>{fmtMoney(invoice.amountUsd || 0)}</td>
@@ -354,7 +328,7 @@ export default function ClientBillingPage() {
       </div>
 
       {payments.length > 0 && (
-        <div className="card table-shell">
+        <div className="table-shell">
           <div className="p-4">
             <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Payment History</div>
           </div>
@@ -372,16 +346,9 @@ export default function ClientBillingPage() {
                 </tr>
               </thead>
               <tbody>
-                {payments.slice(0, 50).map((p, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
+                {payments.slice(0, 50).map((p) => {
                   return (
-                    <tr key={p.id} style={{ background: rowBg }}>
+                    <tr key={p.id} >
                       <td style={cellStyle}>{p.orderId || "-"}</td>
                       <td style={cellStyle}>{p.status || "-"}</td>
                       <td style={cellStyle}>{p.method || "-"}</td>
