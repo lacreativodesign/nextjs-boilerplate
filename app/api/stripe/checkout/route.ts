@@ -4,97 +4,109 @@ import Stripe from "stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PRODUCT_NAME = "Bizosto Pro";
-const PRODUCT_METADATA = {
-  bizosto_plan: "pro",
-  source: "bizosto_platform",
-};
-
-const PRICE_LOOKUP_KEYS = {
-  monthly: "bizosto_pro_monthly",
-  annual: "bizosto_pro_annual",
-} as const;
-
+// One product per plan. Each has monthly + annual pricing.
 const PLAN_CONFIGS = {
-  pro_monthly: {
+  starter_monthly: {
+    plan: "starter",
     billingCycle: "monthly",
-    amount: 9900,
-    interval: "month",
-    lookupKey: PRICE_LOOKUP_KEYS.monthly,
+    amount: 7900,
+    interval: "month" as const,
+    lookupKey: "bizosto_starter_monthly",
+    productName: "Bizosto Starter",
+  },
+  starter_annual: {
+    plan: "starter",
+    billingCycle: "annual",
+    amount: 79000,
+    interval: "year" as const,
+    lookupKey: "bizosto_starter_annual",
+    productName: "Bizosto Starter",
+  },
+  pro_monthly: {
+    plan: "pro",
+    billingCycle: "monthly",
+    amount: 14900,
+    interval: "month" as const,
+    lookupKey: "bizosto_pro_monthly",
+    productName: "Bizosto Pro",
   },
   pro_annual: {
+    plan: "pro",
     billingCycle: "annual",
-    amount: 99000,
-    interval: "year",
-    lookupKey: PRICE_LOOKUP_KEYS.annual,
+    amount: 149000,
+    interval: "year" as const,
+    lookupKey: "bizosto_pro_annual",
+    productName: "Bizosto Pro",
+  },
+  enterprise_monthly: {
+    plan: "enterprise",
+    billingCycle: "monthly",
+    amount: 29900,
+    interval: "month" as const,
+    lookupKey: "bizosto_enterprise_monthly",
+    productName: "Bizosto Enterprise",
+  },
+  enterprise_annual: {
+    plan: "enterprise",
+    billingCycle: "annual",
+    amount: 299000,
+    interval: "year" as const,
+    lookupKey: "bizosto_enterprise_annual",
+    productName: "Bizosto Enterprise",
   },
 } as const;
 
 type PlanKey = keyof typeof PLAN_CONFIGS;
 
-type PlanConfig = (typeof PLAN_CONFIGS)[PlanKey];
-
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured.");
-  }
+  if (!secretKey) throw new Error("STRIPE_SECRET_KEY is not configured.");
   return new Stripe(secretKey, { apiVersion: "2024-06-20" });
 }
 
-async function ensureProduct(stripe: Stripe): Promise<Stripe.Product> {
+async function ensureProduct(
+  stripe: Stripe,
+  productName: string,
+  plan: string
+): Promise<Stripe.Product> {
   const products = await stripe.products.list({ active: true, limit: 100 });
   const existing = products.data.find(
-    (product) => product.name === PRODUCT_NAME || product.metadata?.bizosto_plan === PRODUCT_METADATA.bizosto_plan
+    (p) => p.name === productName || p.metadata?.bizosto_plan === plan
   );
-
-  if (existing) {
-    return existing;
-  }
-
+  if (existing) return existing;
   return stripe.products.create({
-    name: PRODUCT_NAME,
-    metadata: PRODUCT_METADATA,
+    name: productName,
+    metadata: { bizosto_plan: plan, source: "bizosto_platform" },
   });
 }
 
-async function ensurePrice({
-  stripe,
-  productId,
-  config,
-}: {
-  stripe: Stripe;
-  productId: string;
-  config: PlanConfig;
-}): Promise<Stripe.Price> {
+async function ensurePrice(
+  stripe: Stripe,
+  productId: string,
+  config: (typeof PLAN_CONFIGS)[PlanKey]
+): Promise<Stripe.Price> {
   const prices = await stripe.prices.list({
     lookup_keys: [config.lookupKey],
     active: true,
     limit: 1,
   });
-
-  const existing = prices.data[0];
-  if (existing) {
-    return existing;
-  }
+  if (prices.data[0]) return prices.data[0];
 
   return stripe.prices.create({
     currency: "usd",
     unit_amount: config.amount,
-    recurring: {
-      interval: config.interval,
-    },
+    recurring: { interval: config.interval },
     product: productId,
     lookup_key: config.lookupKey,
     metadata: {
-      plan: "pro",
+      bizosto_plan: config.plan,
       billingCycle: config.billingCycle,
       source: "bizosto_platform",
     },
   });
 }
 
-function parsePlan(value: unknown): PlanKey | null {
+function parsePlanKey(value: unknown): PlanKey | null {
   if (typeof value !== "string") return null;
   return value in PLAN_CONFIGS ? (value as PlanKey) : null;
 }
@@ -102,48 +114,54 @@ function parsePlan(value: unknown): PlanKey | null {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const planKey = parsePlan(body?.plan);
+    const planKey = parsePlanKey(body?.plan);
 
     if (!planKey) {
-      return NextResponse.json({ ok: false, error: "Invalid plan." }, { status: 400 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Invalid plan. Valid values: ${Object.keys(PLAN_CONFIGS).join(", ")}`,
+        },
+        { status: 400 }
+      );
     }
 
-    const stripe = getStripeClient();
+    const tenantId = typeof body?.tenantId === "string" ? body.tenantId.trim() : "";
     const config = PLAN_CONFIGS[planKey];
-    const product = await ensureProduct(stripe);
-    const price = await ensurePrice({ stripe, productId: product.id, config });
+    const stripe = getStripeClient();
+    const product = await ensureProduct(stripe, config.productName, config.plan);
+    const price = await ensurePrice(stripe, product.id, config);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [
-        {
-          price: price.id,
-          quantity: 1,
-        },
-      ],
-      success_url: "https://login.bizosto.com/welcome",
-      cancel_url: "https://www.bizosto.com/pricing",
-      metadata: {
-        plan: "pro",
-        billingCycle: config.billingCycle,
-        source: "bizosto_website",
-      },
-      subscription_data: {
-        metadata: {
-          plan: "pro",
-          billingCycle: config.billingCycle,
-          source: "bizosto_website",
-        },
-      },
+      line_items: [{ price: price.id, quantity: 1 }],
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.bizosto.com"}/billing?upgraded=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.bizosto.com"}/billing`,
       automatic_tax: { enabled: true },
       billing_address_collection: "required",
       customer_update: { address: "auto" },
+      metadata: {
+        bizosto_plan: config.plan,
+        billingCycle: config.billingCycle,
+        tenantId,
+        source: "bizosto_app",
+      },
+      subscription_data: {
+        metadata: {
+          bizosto_plan: config.plan,
+          billingCycle: config.billingCycle,
+          tenantId,
+          source: "bizosto_app",
+        },
+      },
     });
 
     return NextResponse.json({ ok: true, url: session.url, id: session.id });
   } catch (err: any) {
-    const message = err?.message || "Stripe checkout error";
-    console.error("stripe checkout error:", err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[STRIPE_CHECKOUT]", err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || "Stripe checkout error" },
+      { status: 500 }
+    );
   }
 }

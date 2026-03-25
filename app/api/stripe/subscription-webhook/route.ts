@@ -82,6 +82,7 @@ export async function POST(req: Request) {
         const tenantId = String(subscription.metadata?.tenantId || '').trim();
         if (!tenantId) break;
 
+        const updatedPlan = String(subscription.metadata?.bizosto_plan || '').trim();
         await adminDb
           .collection('tenants')
           .doc(tenantId)
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
                 ? new Date(subscription.current_period_end * 1000).toISOString()
                 : null,
               cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+              stripeSubscriptionId: subscription.id,
+              ...(updatedPlan ? { plan: updatedPlan } : {}),
               updatedAt: new Date().toISOString(),
             },
             { merge: true },
