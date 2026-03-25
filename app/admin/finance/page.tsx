@@ -6,8 +6,7 @@ import {
   formatPkr,
   formatUsd,
   useInterval,
-  useIsSystemDark,
-} from "@/components/finance/financeUtils";
+  } from "@/components/finance/financeUtils";
 import { SkeletonDashboard } from "@/components/ui/Skeleton";
 import type { FinanceOverview } from "@/lib/finance/types";
 import { toastError } from "@/lib/toast";
@@ -34,7 +33,6 @@ const emptyOverview: FinanceOverview = {
 };
 
 export default function FinanceOverviewPage() {
-  const isDark = useIsSystemDark();
   const [overview, setOverview] = useState<FinanceOverview>(emptyOverview);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,17 +76,7 @@ export default function FinanceOverviewPage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div
-          className="card"
-          style={{
-            borderRadius: 14,
-            padding: 16,
-            border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
-            fontWeight: 600,
-          }}
-        >
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           {error}
         </div>
       )}
@@ -143,13 +131,13 @@ export default function FinanceOverviewPage() {
                         label="Invoices"
                         value={row.invoices}
                         max={max}
-                        color={isDark ? "rgba(148,163,184,0.8)" : "rgba(100,116,139,0.6)"}
+                        color={"rgba(100,116,139,0.6)"}
                       />
                       <BarMeter
                         label="Payments"
                         value={row.payments}
                         max={max}
-                        color={isDark ? "rgba(34,197,94,0.7)" : "rgba(22,163,74,0.65)"}
+                        color={"rgba(22,163,74,0.65)"}
                       />
                     </div>
                   </div>
@@ -172,7 +160,7 @@ export default function FinanceOverviewPage() {
                     alignItems: "center",
                     padding: "10px 12px",
                     borderRadius: 12,
-                    background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+                    background: "var(--surface-muted)",
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>{row.label}</div>
@@ -184,12 +172,12 @@ export default function FinanceOverviewPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
+      <div className="table-shell">
         <div style={{ padding: 18, fontWeight: 700 }}>Recent Finance Activity</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Event</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Details</th>
                 <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>Timestamp</th>
@@ -209,10 +197,9 @@ export default function FinanceOverviewPage() {
                   </td>
                 </tr>
               ) : (
-                overview.recentEvents.map((event, idx) => {
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+                overview.recentEvents.map((event) => {
                   return (
-                    <tr key={event.id} style={{ background: rowBg }}>
+                    <tr key={event.id}>
                       <td style={{ padding: "12px 16px", textAlign: "left" }}>
                         <div style={{ fontWeight: 600 }}>{event.title || event.type}</div>
                         <div style={{ fontSize: 12, opacity: 0.7 }}>{event.type}</div>
@@ -226,7 +213,7 @@ export default function FinanceOverviewPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="card" style={{ padding: 20, borderRadius: 18 }}>
