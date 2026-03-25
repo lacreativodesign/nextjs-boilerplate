@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 import { exportProfitLossToPDF } from "@/lib/exports/pdfExport";
 import type { ProfitLossReport } from "@/lib/reports/profitLoss";
 
@@ -51,8 +50,7 @@ function toIsoDateInput(value: Date) {
 }
 
 export default function FinanceReportsPage() {
-  const isDark = useIsSystemDark();
-  const defaultStart = useMemo(() => toIsoDateInput(new Date(new Date().getFullYear(), 0, 1)), []);
+    const defaultStart = useMemo(() => toIsoDateInput(new Date(new Date().getFullYear(), 0, 1)), []);
   const defaultEnd = useMemo(() => toIsoDateInput(new Date()), []);
 
   const [startDate, setStartDate] = useState(defaultStart);
@@ -289,7 +287,7 @@ export default function FinanceReportsPage() {
           marginTop: 20,
           padding: 16,
           borderRadius: 16,
-          background: isDark ? "rgba(30,30,30,0.6)" : "rgba(248,250,252,0.8)",
+          background: "var(--table-header-bg)",
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Export Notes</div>

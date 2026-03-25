@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 
 const REPORTS = [
   {
@@ -37,8 +36,7 @@ const REPORTS = [
 ];
 
 export default function FinanceReportsPage() {
-  const isDark = useIsSystemDark();
-  const [startDate, setStartDate] = useState("");
+    const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   const handleDownload = (endpoint: string) => {
@@ -84,7 +82,7 @@ export default function FinanceReportsPage() {
           marginTop: 20,
           padding: 16,
           borderRadius: 16,
-          background: isDark ? "rgba(30,30,30,0.6)" : "rgba(248,250,252,0.8)",
+          background: "var(--table-header-bg)",
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Export Notes</div>

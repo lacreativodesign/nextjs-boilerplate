@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 import {
   INTERNAL_ROLE_OPTIONS,
   USER_DEPARTMENT_VALUES,
@@ -108,8 +107,7 @@ const sortIndicator = (active: boolean, dir: "asc" | "desc") => (
 );
 
 export default function HrEmployeesPage() {
-  const isDark = useIsSystemDark();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+    const [users, setUsers] = useState<UserRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -287,9 +285,9 @@ export default function HrEmployeesPage() {
 
   const cell: CSSProperties = {
     padding: "12px 16px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.12)",
+    borderBottom: "1px dashed var(--border-subtle)",
     fontSize: 14,
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    color: "var(--text-primary)",
     textAlign: "left",
   };
 
@@ -299,8 +297,8 @@ export default function HrEmployeesPage() {
     letterSpacing: "0.08em",
     textTransform: "uppercase",
     fontWeight: 700,
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
   };
 
   return (
@@ -332,7 +330,7 @@ export default function HrEmployeesPage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1080 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--table-header-bg)" }}>
                 <th style={headerCell}>
                   <button type="button" className="table-sort" onClick={() => toggleSort("name")}>
                     Name
@@ -404,21 +402,14 @@ export default function HrEmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                sorted.map((user, idx) => {
+                sorted.map((user) => {
                   const rowId = getRowId(user);
-                  const rowBg =
-                    idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
-                  return (
+                                    return (
                     <tr
                       key={rowId}
-                      style={{ background: rowBg, cursor: "pointer" }}
+                      style={{ cursor: "pointer" }}
                       onClick={() => openDrawer(rowId)}
-                      onMouseEnter={(e) =>
-                        ((e.currentTarget as HTMLTableRowElement).style.background =
-                          isDark ? "rgba(148,163,184,0.12)" : "rgba(148,163,184,0.18)")
-                      }
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                    >
+                                                                >
                       <td style={cell}>{user.name || "-"}</td>
                       <td style={cell}>{user.email || "-"}</td>
                       <td style={cell}>{formatRole(String(user.role || ""))}</td>
@@ -461,7 +452,7 @@ export default function HrEmployeesPage() {
             <div style={{ height: 16 }} />
 
             {!editMode ? (
-              <EmployeeProfile user={selectedUser} isDark={isDark} />
+              <EmployeeProfile user={selectedUser} />
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-3">
@@ -578,10 +569,8 @@ export default function HrEmployeesPage() {
 
 function EmployeeProfile({
   user,
-  isDark,
 }: {
   user: UserRecord;
-  isDark: boolean;
 }) {
   const info = [
     { label: "Email", value: user.email || "-" },
@@ -602,7 +591,7 @@ function EmployeeProfile({
         <div
           key={item.label}
           className="flex items-center justify-between rounded-xl border px-4 py-3"
-          style={{ borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.12)" }}
+          style={{ borderColor: "var(--border-subtle)" }}
         >
           <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{item.label}</div>
           <div style={{ fontWeight: 600 }}>{item.value}</div>

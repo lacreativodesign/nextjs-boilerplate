@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { formatDate, useIsSystemDark } from "@/components/finance/financeUtils";
+import { formatDate } from "@/components/finance/financeUtils";
 
 const RATING_OPTIONS = [
   { label: "All Ratings", value: "all" },
@@ -30,8 +30,7 @@ type ReviewRecord = {
 };
 
 export default function HrPerformancePage() {
-  const isDark = useIsSystemDark();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+    const [users, setUsers] = useState<UserRecord[]>([]);
   const [reviews, setReviews] = useState<ReviewRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +167,7 @@ export default function HrPerformancePage() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--table-header-bg)" }}>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Employee</th>
                 <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>Period</th>
                 <th style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700 }}>Rating</th>
@@ -197,11 +196,11 @@ export default function HrPerformancePage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((review, idx) => {
+                filtered.map((review) => {
                   const user = users.find((u) => u.uid === review.userId);
-                  const rowBg = idx % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)") : "transparent";
+
                   return (
-                    <tr key={review.id} style={{ background: rowBg }}>
+                    <tr key={review.id}>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>{user?.name || "Employee"}</td>
                       <td style={{ textAlign: "left", padding: "12px 16px" }}>{review.period}</td>
                       <td style={{ textAlign: "right", padding: "12px 16px" }}>{review.rating ?? "-"}</td>
@@ -223,7 +222,7 @@ export default function HrPerformancePage() {
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.35)",
+            background: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
           }}
@@ -239,7 +238,7 @@ export default function HrPerformancePage() {
               height: "100%",
               padding: 20,
               background: "var(--card-bg)",
-              borderLeft: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+              borderLeft: "1px solid var(--border-subtle)",
               overflowY: "auto",
             }}
           >

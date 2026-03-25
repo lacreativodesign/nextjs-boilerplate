@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
-import { useIsSystemDark } from "@/components/finance/financeUtils";
 
 type Settings = {
   defaultOnboardingTemplateId: string | null;
@@ -15,8 +14,7 @@ type Template = {
 };
 
 export default function HrSettingsPage() {
-  const isDark = useIsSystemDark();
-  const [settings, setSettings] = useState<Settings>({
+    const [settings, setSettings] = useState<Settings>({
     defaultOnboardingTemplateId: null,
     retentionNote: "Documents are retained for 7 years by default.",
   });
@@ -93,7 +91,7 @@ export default function HrSettingsPage() {
           style={{
             padding: 18,
             borderRadius: 18,
-            border: isDark ? "1px solid rgba(148,163,184,0.18)" : "1px solid rgba(15,23,42,0.08)",
+            border: "1px solid var(--border-subtle)",
           }}
         >
           <div style={{ fontWeight: 700, marginBottom: 10 }}>Role Permissions Summary</div>
