@@ -105,27 +105,8 @@ const ROLE_DEFINITIONS: RoleMeta[] = [
    PAGE COMPONENT
 ------------------------------*/
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 export default function UserRolesPage() {
-  const isDark = useIsSystemDark();
   const [users, setUsers] = useState<{ role: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -164,21 +145,21 @@ export default function UserRolesPage() {
     fontSize: 34,
     fontWeight: 900,
     margin: "0 0 8px 0",
-    color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+    color: "var(--text-primary)",
   };
 
   const subStyle: React.CSSProperties = {
     margin: "0 0 18px 0",
-    color: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.65)",
+    color: "var(--text-muted)",
     fontSize: 14,
   };
 
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
-    border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-md)",
   };
 
   return (
@@ -187,21 +168,21 @@ export default function UserRolesPage() {
       <p style={subStyle}>Overview of system roles, hierarchy and permissions inside the ERP.</p>
 
       {loading && (
-        <p style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.60)", marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
           Loading data...
         </p>
       )}
 
       <div style={shellStyle}>
-        <RoleSection title="Top Leadership" roles={top} counts={counts} isDark={isDark} />
-        <RoleSection title="Department Heads" roles={heads} counts={counts} isDark={isDark} />
-        <RoleSection title="Team Roles" roles={teams} counts={counts} isDark={isDark} />
+        <RoleSection title="Top Leadership" roles={top} counts={counts} />
+        <RoleSection title="Department Heads" roles={heads} counts={counts} />
+        <RoleSection title="Team Roles" roles={teams} counts={counts} />
       </div>
 
       <div style={{ height: 16 }} />
 
       <div style={shellStyle}>
-        <PermissionsMatrix isDark={isDark} />
+        <PermissionsMatrix />
       </div>
     </div>
   );
@@ -215,12 +196,10 @@ function RoleSection({
   title,
   roles,
   counts,
-  isDark,
 }: {
   title: string;
   roles: RoleMeta[];
   counts: Record<string, number>;
-  isDark: boolean;
 }) {
   if (!roles.length) return null;
 
@@ -236,23 +215,23 @@ function RoleSection({
             key={r.id}
             style={{
               borderRadius: 16,
-              border: isDark ? "1px solid rgba(148,163,184,0.20)" : "1px solid rgba(15,23,42,0.08)",
-              background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
+              border: "1px solid var(--border-subtle)",
+              background: "var(--surface-muted)",
               overflow: "hidden",
             }}
           >
             <div style={{ background: r.accent, height: 3, width: "100%" }} />
 
             <div style={{ padding: 14 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: isDark ? "rgba(255,255,255,0.9)" : "#111827" }}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: "var(--text-primary)" }}>
                 {r.label}
               </div>
-              <div style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.55)", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>
                 {r.description}
               </div>
 
-              <div style={{ fontSize: 13, color: isDark ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.55)" }}>
-                Users in this role: <span style={{ fontWeight: 600, color: isDark ? "rgba(255,255,255,0.9)" : "#111827" }}>{counts[r.id]}</span>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Users in this role: <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{counts[r.id]}</span>
               </div>
 
               <a
@@ -262,7 +241,7 @@ function RoleSection({
                   marginTop: 10,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: isDark ? "#93c5fd" : "#2563eb",
+                  color: "#2563eb",
                   textDecoration: "none",
                 }}
               >
@@ -280,7 +259,7 @@ function RoleSection({
    PERMISSIONS MATRIX
 ------------------------------*/
 
-function PermissionsMatrix({ isDark }: { isDark: boolean }) {
+function PermissionsMatrix() {
   const roles = [
     "super_admin",
     "admin",
@@ -368,8 +347,7 @@ function PermissionsMatrix({ isDark }: { isDark: boolean }) {
           <thead>
             <tr
               style={{
-                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
-                borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid rgba(15,23,42,0.10)",
+                borderBottom: "1px solid var(--border-subtle)",
               }}
             >
               <th style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
@@ -390,13 +368,13 @@ function PermissionsMatrix({ isDark }: { isDark: boolean }) {
               <tr
                 key={row.p}
                 style={{
-                  borderBottom: isDark ? "1px dashed rgba(148,163,184,0.22)" : "1px dashed rgba(15,23,42,0.10)",
+                  borderBottom: "1px dashed var(--border-subtle)",
                 }}
               >
                 <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{row.p}</td>
                 {roles.map((r) => (
                   <td key={r} style={{ textAlign: "center", padding: "10px 12px" }}>
-                    {row.m[r] ? formatCell(row.m[r], isDark) : "—"}
+                    {row.m[r] ? formatCell(row.m[r]) : "—"}
                   </td>
                 ))}
               </tr>
@@ -408,22 +386,13 @@ function PermissionsMatrix({ isDark }: { isDark: boolean }) {
   );
 }
 
-function formatCell(val: string, isDark: boolean) {
+function formatCell(val: string) {
   if (val === "✓") {
-    return <span style={{ color: isDark ? "#86efac" : "#16a34a", fontWeight: 700 }}>✓</span>;
+    return <span style={{ color: "#16a34a", fontWeight: 700 }}>✓</span>;
   }
   if (val === "—") return "—";
-
   return (
-    <span
-      style={{
-        fontSize: 11,
-        padding: "2px 8px",
-        borderRadius: 999,
-        border: isDark ? "1px solid rgba(148,163,184,0.35)" : "1px solid rgba(148,163,184,0.55)",
-        color: isDark ? "rgba(226,232,240,0.7)" : "rgba(15,23,42,0.55)",
-      }}
-    >
+    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
       {val}
     </span>
   );

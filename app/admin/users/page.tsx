@@ -75,28 +75,8 @@ const normalizeFilterValue = (value: string | undefined, type?: SearchField["typ
 const getRowId = (u: any) =>
   (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
 
-/** OS/Browser theme only */
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 export default function UsersPage() {
-  const isDark = useIsSystemDark();
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -442,21 +422,14 @@ export default function UsersPage() {
     }
   };
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
 
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -466,8 +439,8 @@ export default function UsersPage() {
   // Regular body text (not bold)
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -524,9 +497,9 @@ export default function UsersPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-md)",
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))",
           gap: 12,
@@ -549,17 +522,18 @@ export default function UsersPage() {
             {advancedActive ? "Reset Search" : "Reset Filters"}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${sorted.length} user(s)`}
         </div>
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
+        <div>
         {/* Loading state: keep table structure stable with skeletons. */}
         {loading ? (
           <SkeletonTable rows={6} columns={7} />
         ) : error ? (
-          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
+          <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">{error}</div>
         ) : sorted.length === 0 ? (
           <EmptyState
             title="No users found"
@@ -571,21 +545,11 @@ export default function UsersPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
               <thead>
                 <tr>
-                  <th style={headerCellStyle} onClick={() => handleSort("name")}>
-                    {headerLabel("Name", sortKey === "name", sortDir)}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("email")}>
-                    {headerLabel("Email", sortKey === "email", sortDir)}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("phone")}>
-                    {headerLabel("Phone", sortKey === "phone", sortDir)}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("department")}>
-                    {headerLabel("Department", sortKey === "department", sortDir)}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => handleSort("status")}>
-                    {headerLabel("Status", sortKey === "status", sortDir)}
-                  </th>
+                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("name")}>{headerLabel("Name", sortKey === "name", sortDir)}</button></th>
+                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("email")}>{headerLabel("Email", sortKey === "email", sortDir)}</button></th>
+                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("phone")}>{headerLabel("Phone", sortKey === "phone", sortDir)}</button></th>
+                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("department")}>{headerLabel("Department", sortKey === "department", sortDir)}</button></th>
+                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("status")}>{headerLabel("Status", sortKey === "status", sortDir)}</button></th>
                   <th style={{ ...headerCellStyle, cursor: "default" }}>MFA</th>
                   <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
                     {headerLabel("Action")}
@@ -597,22 +561,10 @@ export default function UsersPage() {
                 {sorted.map((u, idx) => {
                   const rowId = getRowId(u);
 
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
                   return (
                     <tr
                       key={rowId || `${idx}`}
-                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
+                      style={{ cursor: "pointer" }}
                       onClick={() => openDrawer(rowId)}
                       title="View details"
                     >
@@ -630,7 +582,7 @@ export default function UsersPage() {
                             fontWeight: 600,
                             textTransform: "uppercase",
                             background: u.mfaEnabled ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.2)",
-                            color: u.mfaEnabled ? "#10b981" : isDark ? "#cbd5f5" : "#475569",
+                            color: u.mfaEnabled ? "#10b981" : "var(--text-muted)",
                           }}
                         >
                           {u.mfaEnabled ? "Enabled" : "Disabled"}
@@ -658,6 +610,7 @@ export default function UsersPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
 
       <AdvancedSearchDialog
@@ -674,10 +627,10 @@ export default function UsersPage() {
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selectedUser.name || "Untitled User"}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selectedUser.email || "No email"} · {(selectedUser.role || "No role").toString()}
                 </div>
               </div>
@@ -691,7 +644,6 @@ export default function UsersPage() {
 
             <UserDrawerContent
               user={selectedUser}
-              isDark={isDark}
               deleting={deletingUid === getRowId(selectedUser)}
               onDelete={(id) => handleDelete(id)}
               onEdit={(id) => router.push(`/admin/users/${id}/edit`)}
@@ -707,7 +659,6 @@ export default function UsersPage() {
 
 function UserDrawerContent({
   user,
-  isDark,
   deleting,
   onDelete,
   onEdit,
@@ -715,7 +666,6 @@ function UserDrawerContent({
   resettingMfa,
 }: {
   user: UserRecord;
-  isDark: boolean;
   deleting: boolean;
   onDelete: (uid: string) => void;
   onEdit: (uid: string) => void;
@@ -744,45 +694,45 @@ function UserDrawerContent({
 
   return (
     <>
-      <Section title="Profile" isDark={isDark}>
-        <Row label="Designation" value={safe(user.designation)} isDark={isDark} />
-        <Row label="Role" value={safe(user.role)} isDark={isDark} />
-        <Row label="Department" value={safe(user.department)} isDark={isDark} />
-        <Row label="Joining Date" value={formatDate(user.joiningDate)} isDark={isDark} />
-        <Row label="Status" value={safe(user.status)} isDark={isDark} />
+      <Section title="Profile">
+        <Row label="Designation" value={safe(user.designation)} />
+        <Row label="Role" value={safe(user.role)} />
+        <Row label="Department" value={safe(user.department)} />
+        <Row label="Joining Date" value={formatDate(user.joiningDate)} />
+        <Row label="Status" value={safe(user.status)} />
       </Section>
 
       <div style={{ height: 12 }} />
 
-      <Section title="Compensation" isDark={isDark}>
-        <Row label="Monthly Salary (PKR)" value={formatPKR(user.salary)} isDark={isDark} />
-        <Row label="Monthly Target (USD)" value={formatUSD(user.monthlyTarget)} isDark={isDark} />
+      <Section title="Compensation">
+        <Row label="Monthly Salary (PKR)" value={formatPKR(user.salary)} />
+        <Row label="Monthly Target (USD)" value={formatUSD(user.monthlyTarget)} />
         <Row
           label="Commission (%)"
           value={user.commission !== undefined && user.commission !== null && user.commission !== "" ? `${user.commission}%` : "-"}
-          isDark={isDark}
+         
         />
       </Section>
 
       <div style={{ height: 12 }} />
 
-      <Section title="Identity" isDark={isDark}>
-        <Row label="CNIC" value={safe(user.cnic)} isDark={isDark} />
-        <Row label="Date of Birth" value={formatDate(user.dob)} isDark={isDark} />
+      <Section title="Identity">
+        <Row label="CNIC" value={safe(user.cnic)} />
+        <Row label="Date of Birth" value={formatDate(user.dob)} />
       </Section>
 
       <div style={{ height: 12 }} />
 
-      <Section title="System" isDark={isDark}>
-        <Row label="Created At" value={formatDate(user.createdAt)} isDark={isDark} />
-        <Row label="Updated At" value={formatDate(user.updatedAt)} isDark={isDark} />
-        <Row label="User ID" value={uid || "-"} isDark={isDark} />
+      <Section title="System">
+        <Row label="Created At" value={formatDate(user.createdAt)} />
+        <Row label="Updated At" value={formatDate(user.updatedAt)} />
+        <Row label="User ID" value={uid || "-"} />
       </Section>
 
       <div style={{ height: 12 }} />
 
-      <Section title="Security" isDark={isDark}>
-        <Row label="MFA Status" value={user.mfaEnabled ? "Enabled" : "Disabled"} isDark={isDark} />
+      <Section title="Security">
+        <Row label="MFA Status" value={user.mfaEnabled ? "Enabled" : "Disabled"} />
       </Section>
 
       <div style={{ height: 12 }} />
@@ -826,7 +776,7 @@ function UserDrawerContent({
             border: "1px solid rgba(239,68,68,0.35)",
             opacity: deleting ? 0.7 : 1,
             cursor: deleting ? "not-allowed" : "pointer",
-            color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+            color: "var(--text-primary)",
           }}
         >
           Delete User
@@ -839,11 +789,9 @@ function UserDrawerContent({
 function Section({
   title,
   children,
-  isDark,
 }: {
   title: string;
   children: React.ReactNode;
-  isDark: boolean;
 }) {
   return (
     <div
@@ -851,7 +799,7 @@ function Section({
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+        background: "var(--surface-muted)",
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
@@ -860,20 +808,20 @@ function Section({
   );
 }
 
-function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontWeight: 500, textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
+      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
     </div>
   );
 }
