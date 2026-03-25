@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
 import { FOLLOW_UP_STATUS, FOLLOW_UP_TYPES, isOverdue, toInputDateTime } from "@/lib/sales/utils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const TYPE_OPTIONS = ["All", ...FOLLOW_UP_TYPES];
 const STATUS_OPTIONS = ["All", ...FOLLOW_UP_STATUS];
@@ -48,7 +47,6 @@ const defaultForm: FollowUpForm = {
 };
 
 export default function SalesFollowUpsPage() {
-  const isDark = useIsDarkMode();
   const [followUps, setFollowUps] = useState<FollowUpRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
@@ -136,21 +134,13 @@ export default function SalesFollowUpsPage() {
     </span>
   );
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -159,8 +149,8 @@ export default function SalesFollowUpsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -271,8 +261,8 @@ export default function SalesFollowUpsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -337,11 +327,11 @@ export default function SalesFollowUpsPage() {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <div style={tableShellStyle}>
+        <div className="table-shell">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
               <thead>
-                <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+                <tr style={{ background: "var(--surface-muted)" }}>
                   <th style={headerCellStyle} onClick={() => toggleSort("relatedName")}>
                     {headerLabel("Lead/Deal", sortBadge("relatedName"))}
                   </th>

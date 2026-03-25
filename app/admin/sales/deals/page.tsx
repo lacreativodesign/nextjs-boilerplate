@@ -8,7 +8,6 @@ import TableSkeleton from "@/components/ui/skeleton/TableSkeleton";
 import { toastError } from "@/lib/toast";
 import { useOptimisticUpdate } from "@/lib/hooks/useOptimisticUpdate";
 import { PIPELINE_STAGES, toInputDate } from "@/lib/sales/utils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STAGE_OPTIONS = [{ label: "All Stages", value: "" }, ...PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }))];
 
@@ -58,7 +57,6 @@ const defaultForm: DealFormState = {
 };
 
 export default function SalesDealsPage() {
-  const isDark = useIsDarkMode();
   const [deals, setDeals] = useState<DealRecord[]>([]);
   const [owners, setOwners] = useState<UserOption[]>([]);
   const [query, setQuery] = useState("");
@@ -322,8 +320,8 @@ export default function SalesDealsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -369,22 +367,11 @@ export default function SalesDealsPage() {
         </button>
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1080 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--surface-muted)" }}>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Deal Name</th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Client / Lead</th>
                 <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Stage</th>
@@ -411,7 +398,7 @@ export default function SalesDealsPage() {
                 </tr>
               ) : (
                 visibleDeals.map((deal) => (
-                  <tr key={deal.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
+                  <tr key={deal.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                     <td style={{ padding: "14px 16px", fontWeight: 600 }}>{deal.dealName}</td>
                     <td style={{ padding: "14px 16px" }}>{deal.clientName || deal.leadName || "-"}</td>
                     <td style={{ padding: "14px 16px", textAlign: "right" }}>{deal.stage}</td>
@@ -490,7 +477,7 @@ export default function SalesDealsPage() {
           title={drawerMode === "create" ? "Create Deal" : "Deal Details"}
           subtitle={drawerMode === "create" ? "Add a new deal" : formatDateTime(form.id ? deals.find((d) => d.id === form.id)?.updatedAt : null)}
           onClose={() => setDrawerOpen(false)}
-          isDark={isDark}
+         
           actions={
             <>
               <button className="btn" onClick={handleSave} disabled={actionLoading === "save"} style={{ borderRadius: 999 }}>

@@ -6,7 +6,6 @@ import SalesDrawer from "@/components/sales/SalesDrawer";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
 import { PIPELINE_STAGES } from "@/lib/sales/utils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STAGE_OPTIONS = PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }));
 
@@ -22,7 +21,6 @@ type DealRecord = PipelineDeal & {
 type ErrorState = { title: string; message: string };
 
 export default function SalesPipelinePage() {
-  const isDark = useIsDarkMode();
   const [deals, setDeals] = useState<DealRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
@@ -144,8 +142,8 @@ export default function SalesPipelinePage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -177,7 +175,7 @@ export default function SalesPipelinePage() {
             deals={pipelineDeals}
             onStageChange={handleStageChange}
             onCardClick={(deal) => openDeal(deal as DealRecord)}
-            isDark={isDark}
+           
           />
         </div>
       )}
@@ -187,7 +185,7 @@ export default function SalesPipelinePage() {
           title={selectedDeal.dealName}
           subtitle={selectedDeal.clientName}
           onClose={() => setDrawerOpen(false)}
-          isDark={isDark}
+         
           actions={
             <>
               <button className="btn" onClick={handleFieldUpdate} disabled={actionLoading === "update"} style={{ borderRadius: 999 }}>

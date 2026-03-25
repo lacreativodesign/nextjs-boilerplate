@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 import { formatDate } from "@/components/finance/financeUtils";
 
 const STATUS_OPTIONS = [
@@ -36,7 +35,6 @@ type LeadListResponse = { ok: boolean; leads: LeadRecord[] };
 type OwnerListResponse = { ok: boolean; owners: OwnerOption[] };
 
 export default function SalesManagerLeadsPage() {
-  const isDark = useIsDarkMode();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LeadRecord[]>([]);
@@ -162,21 +160,13 @@ export default function SalesManagerLeadsPage() {
     return list;
   }, [rows, statusFilter, sourceFilter, ownerFilter, dateFrom, dateTo, query]);
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     userSelect: "none",
     whiteSpace: "nowrap",
     textAlign: "left",
@@ -184,8 +174,8 @@ export default function SalesManagerLeadsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -302,9 +292,9 @@ export default function SalesManagerLeadsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-md)",
           display: "grid",
           gridTemplateColumns: "minmax(200px, 1.2fr) repeat(auto-fit, minmax(160px, 1fr))",
           gap: 12,
@@ -337,20 +327,20 @@ export default function SalesManagerLeadsPage() {
         </select>
         <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <div style={{ fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
           {loading ? "Loading..." : `${filtered.length} lead(s)`}
         </div>
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             Loading leads...
           </p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
             No leads found.
           </p>
         ) : (
@@ -368,24 +358,8 @@ export default function SalesManagerLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
-                  return (
-                    <tr
-                      key={lead.id}
-                      style={{ background: rowBg, transition: "background 120ms ease" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                    >
+                {filtered.map((lead) => (
+                  <tr key={lead.id}>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{lead.name || "-"}</td>
                       <td style={cellStyle}>{lead.company || "-"}</td>
                       <td style={cellStyle}>{lead.status || "-"}</td>
@@ -417,9 +391,8 @@ export default function SalesManagerLeadsPage() {
                           Convert
                         </button>
                       </td>
-                    </tr>
-                  );
-                })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

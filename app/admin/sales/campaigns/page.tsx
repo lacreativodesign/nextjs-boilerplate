@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUsd } from "@/components/finance/financeUtils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const toPercent = (value: number) => `${Number(value || 0).toFixed(1)}%`;
 
@@ -19,7 +18,6 @@ type CampaignRecord = {
 type ErrorState = { title: string; message: string };
 
 export default function SalesCampaignsPage() {
-  const isDark = useIsDarkMode();
   const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
@@ -65,8 +63,8 @@ export default function SalesCampaignsPage() {
             borderRadius: 14,
             padding: 16,
             border: "1px solid rgba(239,68,68,0.35)",
-            background: isDark ? "rgba(127,29,29,0.2)" : "rgba(254,226,226,0.6)",
-            color: isDark ? "#fecaca" : "#991b1b",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -98,22 +96,11 @@ export default function SalesCampaignsPage() {
         />
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 0,
-          borderRadius: 18,
-          background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.95)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.35)" : "0 18px 40px rgba(15,23,42,0.08)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="table-shell">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
             <thead>
-              <tr style={{ background: isDark ? "rgba(30,30,30,0.9)" : "rgba(248,250,252,0.9)" }}>
+              <tr style={{ background: "var(--surface-muted)" }}>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Source / Campaign</th>
                 <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Channel</th>
                 <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Leads Count</th>
@@ -137,7 +124,7 @@ export default function SalesCampaignsPage() {
                 </tr>
               ) : (
                 filteredCampaigns.map((item) => (
-                  <tr key={item.id} style={{ borderTop: isDark ? "1px solid rgba(148,163,184,0.15)" : "1px solid #e2e8f0" }}>
+                  <tr key={item.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                     <td style={{ padding: "14px 16px", fontWeight: 600 }}>{item.name}</td>
                     <td style={{ padding: "14px 16px" }}>{item.channel || "-"}</td>
                     <td style={{ padding: "14px 16px", textAlign: "right" }}>{item.leadsCount}</td>
