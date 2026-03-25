@@ -141,8 +141,6 @@ function normalizeOrderId(orderId?: string) {
 
 export default function ClientsPage() {
   const router = useRouter();
-  const [isDark, setIsDark] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,20 +190,6 @@ export default function ClientsPage() {
           value: normalizeFilterValue(trimmed, fieldConfig?.type),
         };
       });
-  }, []);
-
-  // OS-level theme only
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setIsDark(!!mql.matches);
-    onChange();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
-    };
   }, []);
 
   // Load Clients from API
@@ -533,21 +517,13 @@ export default function ClientsPage() {
     }
   }
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
@@ -556,8 +532,8 @@ export default function ClientsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-muted)",
     whiteSpace: "nowrap",
     fontWeight: 400, // IMPORTANT: body text regular (not bold)
   };
@@ -614,9 +590,9 @@ export default function ClientsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-md)",
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))",
           gap: 12,
@@ -634,12 +610,13 @@ export default function ClientsPage() {
             {advancedActive ? "Reset Search" : "Reset Filters"}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${sorted.length} client(s)`}
         </div>
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
+        <div>
         {/* Loading state: keep table structure stable with skeletons. */}
         {loading ? (
           <SkeletonTable rows={6} columns={6} />
@@ -678,25 +655,9 @@ export default function ClientsPage() {
               </thead>
 
               <tbody>
-                {sorted.map((c, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                {sorted.map((c) => {
                   return (
-                    <tr
-                      key={c.id}
-                      style={{ background: rowBg, transition: "background 120ms ease", cursor: "pointer" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                      onClick={() => openDrawer(c)}
-                    >
+                    <tr key={c.id} onClick={() => openDrawer(c)}>
                       <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
                       <td style={cellStyle}>{c.primaryContactName || "-"}</td>
@@ -723,6 +684,7 @@ export default function ClientsPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
 
       <AdvancedSearchDialog
@@ -739,10 +701,10 @@ export default function ClientsPage() {
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? "#fff" : "#0f172a" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
                   {selected.companyName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: isDark ? "rgba(255,255,255,0.75)" : "#334155" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
                   {selected.primaryContactName} · {selected.primaryContactEmail}
                 </div>
               </div>
@@ -758,19 +720,19 @@ export default function ClientsPage() {
 
             <div style={{ height: 14 }} />
 
-            <Section title="Company" isDark={isDark}>
-              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} isDark={isDark} />
-              <Row label="Website" value={selected.website || "-"} isDark={isDark} />
-              <Row label="Industry" value={selected.industry || "-"} isDark={isDark} />
-              <Row label="Business Type" value={selected.businessType || "-"} isDark={isDark} />
-              <Row label="Country" value={selected.country || "-"} isDark={isDark} />
-              <Row label="City" value={selected.city || "-"} isDark={isDark} />
-              <Row label="Timezone" value={selected.timezone || "-"} isDark={isDark} />
+            <Section title="Company">
+              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} />
+              <Row label="Website" value={selected.website || "-"} />
+              <Row label="Industry" value={selected.industry || "-"} />
+              <Row label="Business Type" value={selected.businessType || "-"} />
+              <Row label="Country" value={selected.country || "-"} />
+              <Row label="City" value={selected.city || "-"} />
+              <Row label="Timezone" value={selected.timezone || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Profile" isDark={isDark}>
+            <Section title="Profile">
               <Row
                 label="Services"
                 value={
@@ -779,59 +741,55 @@ export default function ClientsPage() {
                     .filter(Boolean)
                     .join(", ") || "-"
                 }
-                isDark={isDark}
               />
               <Row
                 label="Segment (Industry)"
                 value={segmentMap[selected.segmentIndustry || ""]?.name || selected.segmentIndustry || "-"}
-                isDark={isDark}
               />
               <Row
                 label="Segment (Business)"
                 value={segmentMap[selected.segmentBusinessType || ""]?.name || selected.segmentBusinessType || "-"}
-                isDark={isDark}
               />
               <Row
                 label="Segment (Geo)"
                 value={segmentMap[selected.segmentGeo || ""]?.name || selected.segmentGeo || "-"}
-                isDark={isDark}
               />
-              <Row label="Employee Count" value={selected.employeeCountRange || "-"} isDark={isDark} />
-              <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} isDark={isDark} />
+              <Row label="Employee Count" value={selected.employeeCountRange || "-"} />
+              <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Contact" isDark={isDark}>
-              <Row label="Name" value={selected.primaryContactName || "-"} isDark={isDark} />
-              <Row label="Title" value={selected.primaryContactTitle || "-"} isDark={isDark} />
-              <Row label="Email" value={selected.primaryContactEmail || "-"} isDark={isDark} />
-              <Row label="Phone" value={selected.primaryContactPhone || "-"} isDark={isDark} />
+            <Section title="Contact">
+              <Row label="Name" value={selected.primaryContactName || "-"} />
+              <Row label="Title" value={selected.primaryContactTitle || "-"} />
+              <Row label="Email" value={selected.primaryContactEmail || "-"} />
+              <Row label="Phone" value={selected.primaryContactPhone || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Finance" isDark={isDark}>
-              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} isDark={isDark} />
-              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} isDark={isDark} />
-              <Row label="Created" value={fmtDate(selected.createdAt)} isDark={isDark} />
-              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} isDark={isDark} />
+            <Section title="Finance">
+              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
+              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} />
+              <Row label="Created" value={fmtDate(selected.createdAt)} />
+              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Ownership" isDark={isDark}>
-              <Row label="Sales Owner" value={selected.salesOwner || "-"} isDark={isDark} />
-              <Row label="Account Manager" value={selected.accountManager || "-"} isDark={isDark} />
-              <Row label="Production Owner" value={selected.productionOwner || "-"} isDark={isDark} />
+            <Section title="Ownership">
+              <Row label="Sales Owner" value={selected.salesOwner || "-"} />
+              <Row label="Account Manager" value={selected.accountManager || "-"} />
+              <Row label="Production Owner" value={selected.productionOwner || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Pipeline" isDark={isDark}>
-              <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} isDark={isDark} />
-              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} isDark={isDark} />
-              <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} isDark={isDark} />
+            <Section title="Pipeline">
+              <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} />
+              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
+              <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} />
             </Section>
 
             <div style={{ height: 12 }} />
@@ -866,9 +824,9 @@ export default function ClientsPage() {
                 style={{
                   borderRadius: 12,
                   fontWeight: 400,
-                  background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.10)",
+                  background: "rgba(239,68,68,0.10)",
                   border: "1px solid rgba(239,68,68,0.35)",
-                  color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.86)",
+                  color: "rgba(15,23,42,0.86)",
                   opacity: deletingId === selected.id ? 0.7 : 1,
                 }}
               >
@@ -885,11 +843,9 @@ export default function ClientsPage() {
 function Section({
   title,
   children,
-  isDark,
 }: {
   title: string;
   children: React.ReactNode;
-  isDark: boolean;
 }) {
   return (
     <div
@@ -897,7 +853,7 @@ function Section({
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+        background: "var(--surface-muted)",
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
@@ -906,13 +862,13 @@ function Section({
   );
 }
 
-function Row({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
+        border: "1px solid var(--border-subtle)",
         display: "flex",
         justifyContent: "space-between",
         gap: 12,

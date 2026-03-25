@@ -17,49 +17,9 @@ type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
 
 type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
-/**
- * Works with BOTH:
- * 1) Manual toggle (.dark on html)
- * 2) System dark mode (prefers-color-scheme)
- */
-function useIsDarkMode() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const root = document.documentElement;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const read = () => {
-      const byClass = root.classList.contains("dark");
-      const bySystem = !!mql.matches;
-      setIsDark(byClass || bySystem);
-    };
-
-    read();
-
-    const obs = new MutationObserver(() => read());
-    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
-
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-
-    return () => {
-      obs.disconnect();
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 export default function EditClientPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ? String(params.id) : "";
-  const isDark = useIsDarkMode();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,12 +120,12 @@ export default function EditClientPage() {
       fontSize: 34,
       fontWeight: 900,
       marginBottom: 8,
-      color: isDark ? "rgba(255,255,255,0.95)" : "rgba(15,23,42,0.95)",
+      color: "var(--text-primary)",
     };
 
     const pageSub: React.CSSProperties = {
       marginBottom: 18,
-      color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.65)",
+      color: "var(--text-muted)",
       fontSize: 14,
       lineHeight: 1.5,
     };
@@ -180,17 +140,17 @@ export default function EditClientPage() {
     const formShell: React.CSSProperties = {
       borderRadius: 20,
       padding: 18,
-      border: isDark ? "1px solid rgba(148,163,184,0.28)" : "1px solid rgba(15,23,42,0.10)",
-      background: isDark ? "rgba(38,38,38,0.55)" : "rgba(255,255,255,0.85)",
-      boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.55)" : "0 18px 55px rgba(15,23,42,0.10)",
+      border: "1px solid var(--border-subtle)",
+      background: "var(--surface-card)",
+      boxShadow: "var(--shadow-md)",
     };
 
     // inner section surfaces MUST be grey in dark mode (not blue)
     const sectionCard: React.CSSProperties = {
       borderRadius: 16,
       padding: 14,
-      border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(15,23,42,0.10)",
-      background: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+      border: "1px solid var(--border-subtle)",
+      background: "var(--surface-muted)",
     };
 
     const sectionTitle: React.CSSProperties = {
@@ -198,9 +158,9 @@ export default function EditClientPage() {
       fontWeight: 900,
       letterSpacing: "0.06em",
       textTransform: "uppercase",
-      opacity: isDark ? 0.8 : 0.72,
+      opacity: 0.72,
       marginBottom: 10,
-      color: isDark ? "rgba(226,232,240,0.92)" : "rgba(15,23,42,0.70)",
+      color: "var(--text-muted)",
     };
 
     const label: React.CSSProperties = {
@@ -209,13 +169,13 @@ export default function EditClientPage() {
       textTransform: "uppercase",
       fontWeight: 900,
       marginBottom: 6,
-      color: isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.55)",
+      color: "var(--text-muted)",
     };
 
     const help: React.CSSProperties = {
       fontSize: 12,
       marginTop: 6,
-      color: isDark ? "rgba(226,232,240,0.60)" : "rgba(15,23,42,0.55)",
+      color: "var(--text-muted)",
     };
 
     const actions: React.CSSProperties = {
@@ -233,7 +193,7 @@ export default function EditClientPage() {
 
     const okText: React.CSSProperties = {
       fontSize: 14,
-      color: isDark ? "rgba(226,232,240,0.85)" : "rgba(15,23,42,0.70)",
+      color: "var(--text-muted)",
       marginBottom: 12,
     };
 
@@ -250,7 +210,7 @@ export default function EditClientPage() {
       errorText,
       okText,
     };
-  }, [isDark]);
+  }, []);
 
   function toMoneyNumber(v: string) {
     const cleaned = (v || "").replace(/[^0-9.]/g, "");
@@ -393,7 +353,7 @@ export default function EditClientPage() {
   }
 
   if (loading) {
-    return <div style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>Loading...</div>;
+    return <div style={{ color: "var(--text-muted)" }}>Loading...</div>;
   }
 
   return (

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/components/finance/financeUtils";
-import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -33,7 +32,6 @@ type LeadListResponse = { ok: boolean; leads: LeadRecord[] };
 type OwnerListResponse = { ok: boolean; users: OwnerOption[] };
 
 export default function AdminLeadsPage() {
-  const isDark = useIsDarkMode();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [owners, setOwners] = useState<OwnerOption[]>([]);
@@ -109,21 +107,13 @@ export default function AdminLeadsPage() {
     }
   };
 
-  const tableShellStyle: React.CSSProperties = {
-    borderRadius: 20,
-    padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     userSelect: "none",
     whiteSpace: "nowrap",
     textAlign: "left",
@@ -131,8 +121,8 @@ export default function AdminLeadsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-muted)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -154,9 +144,9 @@ export default function AdminLeadsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: isDark ? "rgba(24,24,24,0.9)" : "rgba(255,255,255,0.85)",
-          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
-          boxShadow: isDark ? "0 14px 28px rgba(0,0,0,0.32)" : "0 12px 24px rgba(15,23,42,0.06)",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-md)",
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.2fr) repeat(auto-fit, minmax(180px, 1fr))",
           gap: 12,
@@ -179,20 +169,21 @@ export default function AdminLeadsPage() {
             </option>
           ))}
         </select>
-        <div style={{ fontSize: 12, color: isDark ? "rgba(226,232,240,0.75)" : "rgba(15,23,42,0.65)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${filtered.length} lead(s)`}
         </div>
       </div>
 
-      <div style={tableShellStyle}>
+      <div className="table-shell">
+        <div>
         {loading ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             Loading leads...
           </p>
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.70)" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             No leads found.
           </p>
         ) : (
@@ -209,24 +200,9 @@ export default function AdminLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
-
-                  const hoverBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)";
-
+                {filtered.map((lead) => {
                   return (
-                    <tr
-                      key={lead.id}
-                      style={{ background: rowBg, transition: "background 120ms ease" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = hoverBg)}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowBg)}
-                    >
+                    <tr key={lead.id}>
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{lead.name || "-"}</td>
                       <td style={cellStyle}>{lead.company || "-"}</td>
                       <td style={cellStyle}>{lead.status || "-"}</td>
@@ -255,6 +231,7 @@ export default function AdminLeadsPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
