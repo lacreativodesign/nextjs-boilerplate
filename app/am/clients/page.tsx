@@ -20,24 +20,6 @@ type ClientsPayload = {
   clients: ClientRecord[];
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
@@ -47,7 +29,6 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function AMClientsPage() {
-  const isDark = useIsSystemDark();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +39,9 @@ export default function AMClientsPage() {
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-md)",
   };
 
   const headerCellStyle: React.CSSProperties = {
@@ -68,8 +49,8 @@ export default function AMClientsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     userSelect: "none",
     whiteSpace: "nowrap",
     textAlign: "left",
@@ -77,8 +58,8 @@ export default function AMClientsPage() {
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };

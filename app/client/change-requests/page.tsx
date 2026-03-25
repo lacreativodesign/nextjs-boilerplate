@@ -23,24 +23,6 @@ type ChangeRequestRecord = {
 
 type ProjectOption = { value: string; label: string };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
@@ -50,7 +32,6 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function ClientChangeRequestsPage() {
-  const isDark = useIsSystemDark();
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,16 +55,16 @@ export default function ClientChangeRequestsPage() {
     fontSize: 11,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: isDark ? "rgba(226,232,240,0.66)" : "rgba(15,23,42,0.55)",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    color: "var(--text-muted)",
+    borderBottom: "1px solid var(--border-subtle)",
     whiteSpace: "nowrap",
     textAlign: "left",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "12px 14px",
-    borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px dashed rgba(15,23,42,0.10)",
-    color: isDark ? "rgba(226,232,240,0.86)" : "rgba(15,23,42,0.85)",
+    borderBottom: "1px dashed var(--border-subtle)",
+    color: "var(--text-primary)",
     whiteSpace: "nowrap",
     fontWeight: 400,
   };
@@ -214,7 +195,7 @@ export default function ClientChangeRequestsPage() {
         </div>
       </div>
 
-      <div className="card table-shell">
+      <div className="table-shell">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading change requests...</div>
         ) : error ? (
@@ -235,16 +216,9 @@ export default function ClientChangeRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((request, idx) => {
-                  const rowBg = isDark
-                    ? idx % 2 === 0
-                      ? "rgba(255,255,255,0.015)"
-                      : "rgba(255,255,255,0.00)"
-                    : idx % 2 === 0
-                    ? "rgba(15,23,42,0.015)"
-                    : "rgba(15,23,42,0.00)";
+                {filtered.map((request) => {
                   return (
-                    <tr key={request.id} style={{ background: rowBg }}>
+                    <tr key={request.id} >
                       <td style={{ ...cellStyle, whiteSpace: "normal" }}>{request.title}</td>
                       <td style={cellStyle}>{request.projectName || "-"}</td>
                       <td style={cellStyle}>{request.type}</td>

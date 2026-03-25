@@ -11,24 +11,6 @@ type PipelinePayload = {
   projects: AMProject[];
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
@@ -38,7 +20,6 @@ function fmtDate(iso?: string | null) {
 }
 
 export default function AMPipelinePage() {
-  const isDark = useIsSystemDark();
   const [projects, setProjects] = useState<AMProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +32,9 @@ export default function AMPipelinePage() {
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.85)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-md)",
   };
 
   useEffect(() => {
@@ -195,7 +176,7 @@ export default function AMPipelinePage() {
                         textAlign: "left",
                         padding: 12,
                         borderRadius: 12,
-                        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.12)",
+                        border: "1px solid var(--border-subtle)",
                       }}
                     >
                       <div style={{ fontWeight: 600 }}>{project.projectName}</div>
