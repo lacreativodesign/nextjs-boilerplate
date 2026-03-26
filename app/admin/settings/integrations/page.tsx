@@ -90,34 +90,51 @@ export default function IntegrationSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [subRes, deliveryRes, googleRes, slackRes, microsoftRes] = await Promise.all([
+      // Webhooks are required — if these fail it is a real error
+      const [subRes, deliveryRes] = await Promise.all([
         fetch("/api/webhooks/subscriptions", { cache: "no-store", credentials: "include" }),
         fetch("/api/webhooks/deliveries?limit=100", { cache: "no-store", credentials: "include" }),
+      ]);
+
+      const subData = await subRes.json();
+      const deliveryData = await deliveryRes.json();
+
+      if (!subRes.ok || !subData?.ok) throw new Error(subData?.error || "Unable to load webhooks.");
+      if (!deliveryRes.ok || !deliveryData?.ok) throw new Error(deliveryData?.error || "Unable to load deliveries.");
+
+      setWebhooks(subData.subscriptions || []);
+      setHealth(subData.health || []);
+      setDeliveries(deliveryData.deliveries || []);
+
+      // Integration connections are optional — handle each independently
+      // A 500 or error just means "not connected yet", never crash the page
+      const safeJson = async (res: Response) => {
+        try { return await res.json(); } catch { return null; }
+      };
+
+      const [googleRes, slackRes, microsoftRes] = await Promise.allSettled([
         fetch("/api/integrations/google/connection", { cache: "no-store", credentials: "include" }),
         fetch("/api/integrations/slack/connection", { cache: "no-store", credentials: "include" }),
         fetch("/api/integrations/microsoft/connection", { cache: "no-store", credentials: "include" }),
       ]);
 
-      const subData = await subRes.json();
-      const deliveryData = await deliveryRes.json();
-      const googleData = await googleRes.json();
-      const slackData = await slackRes.json();
-      const microsoftData = await microsoftRes.json();
+      if (googleRes.status === "fulfilled") {
+        const googleData = await safeJson(googleRes.value);
+        setGoogleConnection(googleData?.ok ? (googleData.connection ?? null) : null);
+      }
 
-      if (!subRes.ok || !subData?.ok) throw new Error(subData?.error || "Unable to load webhooks.");
-      if (!deliveryRes.ok || !deliveryData?.ok) throw new Error(deliveryData?.error || "Unable to load deliveries.");
-      if (!googleRes.ok || !googleData?.ok) throw new Error(googleData?.error || "Unable to load Google Workspace connection.");
-      if (!slackRes.ok || !slackData?.ok) throw new Error(slackData?.error || "Unable to load Slack connection.");
-      if (!microsoftRes.ok || !microsoftData?.ok) throw new Error(microsoftData?.error || "Unable to load Microsoft connection.");
+      if (slackRes.status === "fulfilled") {
+        const slackData = await safeJson(slackRes.value);
+        setSlackConnection(slackData?.ok ? (slackData.connection ?? null) : null);
+      }
 
-      setWebhooks(subData.subscriptions || []);
-      setHealth(subData.health || []);
-      setDeliveries(deliveryData.deliveries || []);
-      setGoogleConnection(googleData.connection || null);
-      setSlackConnection(slackData.connection || null);
-      setMicrosoftConnection(microsoftData.connection || null);
+      if (microsoftRes.status === "fulfilled") {
+        const microsoftData = await safeJson(microsoftRes.value);
+        setMicrosoftConnection(microsoftData?.ok ? (microsoftData.connection ?? null) : null);
+      }
+
     } catch (err: any) {
-      setError(err.message || "Unable to load webhook settings.");
+      setError(err.message || "Unable to load integration settings.");
     } finally {
       setLoading(false);
     }
