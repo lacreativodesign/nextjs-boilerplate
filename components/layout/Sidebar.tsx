@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, X, FileText,
+  Shield, X, FileText, Zap,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -17,6 +17,8 @@ type SidebarProps = {
   tenantName: string;
   tenantLogoUrl: string | null;
   collapsed: boolean;
+  tenantPlan?: string;
+  tenantModules?: Record<string, boolean>;
 };
 
 export default function Sidebar({
@@ -24,30 +26,48 @@ export default function Sidebar({
   tenantName,
   tenantLogoUrl,
   collapsed,
+  tenantModules = {},
 }: SidebarProps) {
   const pathname = usePathname();
   const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
   const { t } = useI18n();
 
+  // module key → which sidebar item it gates (for admin role only)
+  // null means always visible regardless of plan
   const ALL_ITEMS = [
-    { href: "/dashboard",          label: t("navigation.dashboard"),  icon: LayoutDashboard, roles: ["admin", "super_admin"] },
-    { href: "/users",              label: t("navigation.users"),       icon: Users,           roles: ["admin", "super_admin", "hr"] },
-    { href: "/clients",            label: t("navigation.clients"),     icon: Briefcase,       roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager"] },
-    { href: "/sales",              label: t("navigation.sales"),       icon: TrendingUp,      roles: ["admin", "super_admin", "sales", "sales_manager"] },
-    { href: "/projects",           label: t("navigation.projects"),    icon: FolderKanban,    roles: ["admin", "super_admin", "am", "am_manager", "production", "production_manager"] },
-    { href: "/production",         label: t("navigation.production"),  icon: Package,         roles: ["admin", "super_admin", "production", "production_manager"] },
-    { href: "/finance",            label: t("navigation.finance"),     icon: DollarSign,      roles: ["admin", "super_admin", "finance"] },
-    { href: "/billing/terminal",   label: "Payment Terminal",          icon: CreditCard,      roles: ["admin", "super_admin"] },
-    { href: "/hr",                 label: t("navigation.hr"),          icon: UserCircle,      roles: ["admin", "super_admin", "hr"] },
-    { href: "/reports",            label: t("navigation.reports"),     icon: BarChart3,       roles: ["admin", "super_admin", "sales_manager", "am_manager", "production_manager", "finance", "hr"] },
-    { href: "/super_admin",        label: t("navigation.superAdmin"),  icon: Shield,          roles: ["super_admin"] },
-    { href: "/dashboard/documents",label: "Documents",                 icon: FileText,        roles: ["admin", "super_admin"] },
-    { href: "/settings",           label: t("common.settings"),        icon: Settings,        roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"] },
+    { href: "/dashboard",           label: t("navigation.dashboard"),  icon: LayoutDashboard, roles: ["admin", "super_admin"],                                                                                                                         module: null },
+    { href: "/users",               label: t("navigation.users"),       icon: Users,           roles: ["admin", "super_admin", "hr"],                                                                                                                    module: null },
+    { href: "/clients",             label: t("navigation.clients"),     icon: Briefcase,       roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager"],                                                                          module: "crm" },
+    { href: "/sales",               label: t("navigation.sales"),       icon: TrendingUp,      roles: ["admin", "super_admin", "sales", "sales_manager"],                                                                                               module: "sales" },
+    { href: "/projects",            label: t("navigation.projects"),    icon: FolderKanban,    roles: ["admin", "super_admin", "am", "am_manager", "production", "production_manager"],                                                                 module: "projects" },
+    { href: "/production",          label: t("navigation.production"),  icon: Package,         roles: ["admin", "super_admin", "production", "production_manager"],                                                                                     module: "production" },
+    { href: "/finance",             label: t("navigation.finance"),     icon: DollarSign,      roles: ["admin", "super_admin", "finance"],                                                                                                               module: "finance" },
+    { href: "/hr",                  label: t("navigation.hr"),          icon: UserCircle,      roles: ["admin", "super_admin", "hr"],                                                                                                                    module: "hr" },
+    { href: "/reports",             label: t("navigation.reports"),     icon: BarChart3,       roles: ["admin", "super_admin", "sales_manager", "am_manager", "production_manager", "finance", "hr"],                                                   module: "reports" },
+    { href: "/billing",             label: "Billing",                   icon: CreditCard,      roles: ["admin", "super_admin"],                                                                                                                          module: null },
+    { href: "/admin/settings/integrations", label: "Integrations",     icon: Zap,             roles: ["admin", "super_admin"],                                                                                                                          module: null },
+    { href: "/super_admin",         label: t("navigation.superAdmin"),  icon: Shield,          roles: ["super_admin"],                                                                                                                                   module: null },
+    { href: "/dashboard/documents", label: "Documents",                 icon: FileText,        roles: ["admin", "super_admin"],                                                                                                                          module: null },
+    { href: "/settings",            label: t("common.settings"),        icon: Settings,        roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"],             module: null },
   ];
 
-  const navItems = ALL_ITEMS.filter(
-    (item) => item.roles === null || item.roles.includes(currentRole)
-  );
+  const navItems = ALL_ITEMS.filter((item) => {
+    // Must match role
+    if (!item.roles.includes(currentRole)) return false;
+
+    // Module gating — only applies to admin role (other roles have their own dedicated dashboards)
+    // super_admin bypasses all module checks
+    // trial plan bypasses module checks (full access during trial)
+    if (
+      item.module &&
+      currentRole === "admin" &&
+      Object.keys(tenantModules).length > 0
+    ) {
+      return tenantModules[item.module] !== false;
+    }
+
+    return true;
+  });
 
   const labelsClass = [
     isMobileOpen ? "sidebar-mobile-open" : "",
