@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 
 type InvoiceRecord = {
   id: string;
@@ -87,22 +86,22 @@ export default function ClientBillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const headerCellStyle: CSSProperties = {
+  const headerCellStyle = {
     padding: "12px 14px",
     fontSize: 11,
     letterSpacing: "0.08em",
-    textTransform: "uppercase",
+    textTransform: "uppercase" as const,
     color: "var(--text-muted)",
     borderBottom: "1px solid var(--border-subtle)",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    whiteSpace: "nowrap" as const,
+    textAlign: "left" as const,
   };
 
-  const cellStyle: CSSProperties = {
+  const cellStyle = {
     padding: "12px 14px",
     borderBottom: "1px dashed var(--border-subtle)",
     color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    whiteSpace: "nowrap" as const,
     fontWeight: 400,
   };
 
