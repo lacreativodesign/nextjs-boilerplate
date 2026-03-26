@@ -9,6 +9,7 @@ const TABS = [
   { href: "/client/projects", label: "My Projects" },
   { href: "/client/files", label: "Files" },
   { href: "/client/change-requests", label: "Change Requests" },
+  { href: "/client/billing", label: "Billing" },
   { href: "/client/profile", label: "Profile" },
 ];
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
