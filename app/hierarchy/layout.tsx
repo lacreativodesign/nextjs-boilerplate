@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function HierarchyLayout({
   children,
@@ -21,6 +22,7 @@ export default function HierarchyLayout({
   ];
 
   return (
+    <RequireAuth allowed={["admin", "super_admin"]}>
     <div
       style={{
         minHeight: "100vh",
@@ -112,5 +114,6 @@ export default function HierarchyLayout({
         <main style={{ padding: "30px" }}>{children}</main>
       </div>
     </div>
+    </RequireAuth>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
 import clsx from "clsx";
 
 const tabs = [
@@ -21,6 +22,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   return (
+    <RequireAuth allowed={["admin", "super_admin"]}>
     <div className="w-full">
       <div className="mb-4">
         <h2 className="section-title mb-1">Admin Settings</h2>
@@ -40,5 +42,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
       <div>{children}</div>
     </div>
+    </RequireAuth>
   );
 }
