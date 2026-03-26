@@ -138,6 +138,8 @@ function AppShellInner({
         tenantName={data?.tenant?.name || "Bizosto"}
         tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || null}
         collapsed={isCollapsed}
+        tenantPlan={data?.tenant?.plan || "trial"}
+        tenantModules={data?.tenant?.modules || {}}
       />
 
       {/* Content always offset by sidebar */}
