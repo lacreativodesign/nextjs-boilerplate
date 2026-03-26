@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RequireAuth from "@/components/RequireAuth";
+import AppShell from "@/components/layout/AppShell";
 
 export default function ActivityLayout({
   children,
@@ -20,6 +22,7 @@ export default function ActivityLayout({
   ];
 
   return (
+    <RequireAuth allowed={["admin", "super_admin"]}>
     <div
       style={{
         minHeight: "100vh",
@@ -111,5 +114,6 @@ export default function ActivityLayout({
         <main style={{ padding: "30px" }}>{children}</main>
       </div>
     </div>
+    </RequireAuth>
   );
           }
