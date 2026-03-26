@@ -30,19 +30,19 @@ export default function Sidebar({
   const { t } = useI18n();
 
   const ALL_ITEMS = [
-    { href: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard, roles: null },
-    { href: "/users", label: t("navigation.users"), icon: Users, roles: null },
-    { href: "/clients", label: t("navigation.clients"), icon: Briefcase, roles: null },
-    { href: "/sales", label: t("navigation.sales"), icon: TrendingUp, roles: null },
-    { href: "/projects", label: t("navigation.projects"), icon: FolderKanban, roles: null },
-    { href: "/production", label: t("navigation.production"), icon: Package, roles: null },
-    { href: "/finance", label: t("navigation.finance"), icon: DollarSign, roles: null },
-    { href: "/billing/terminal", label: "Payment Terminal", icon: CreditCard, roles: ["admin", "super_admin"] },
-    { href: "/hr", label: t("navigation.hr"), icon: UserCircle, roles: null },
-    { href: "/reports", label: t("navigation.reports"), icon: BarChart3, roles: null },
-    { href: "/super_admin", label: t("navigation.superAdmin"), icon: Shield, roles: ["super_admin"] },
-    { href: "/dashboard/documents", label: "Documents", icon: FileText, roles: ["admin", "super_admin"] },
-    { href: "/settings", label: t("common.settings"), icon: Settings, roles: null },
+    { href: "/dashboard",          label: t("navigation.dashboard"),  icon: LayoutDashboard, roles: ["admin", "super_admin"] },
+    { href: "/users",              label: t("navigation.users"),       icon: Users,           roles: ["admin", "super_admin", "hr"] },
+    { href: "/clients",            label: t("navigation.clients"),     icon: Briefcase,       roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager"] },
+    { href: "/sales",              label: t("navigation.sales"),       icon: TrendingUp,      roles: ["admin", "super_admin", "sales", "sales_manager"] },
+    { href: "/projects",           label: t("navigation.projects"),    icon: FolderKanban,    roles: ["admin", "super_admin", "am", "am_manager", "production", "production_manager"] },
+    { href: "/production",         label: t("navigation.production"),  icon: Package,         roles: ["admin", "super_admin", "production", "production_manager"] },
+    { href: "/finance",            label: t("navigation.finance"),     icon: DollarSign,      roles: ["admin", "super_admin", "finance"] },
+    { href: "/billing/terminal",   label: "Payment Terminal",          icon: CreditCard,      roles: ["admin", "super_admin"] },
+    { href: "/hr",                 label: t("navigation.hr"),          icon: UserCircle,      roles: ["admin", "super_admin", "hr"] },
+    { href: "/reports",            label: t("navigation.reports"),     icon: BarChart3,       roles: ["admin", "super_admin", "sales_manager", "am_manager", "production_manager", "finance", "hr"] },
+    { href: "/super_admin",        label: t("navigation.superAdmin"),  icon: Shield,          roles: ["super_admin"] },
+    { href: "/dashboard/documents",label: "Documents",                 icon: FileText,        roles: ["admin", "super_admin"] },
+    { href: "/settings",           label: t("common.settings"),        icon: Settings,        roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"] },
   ];
 
   const navItems = ALL_ITEMS.filter(
