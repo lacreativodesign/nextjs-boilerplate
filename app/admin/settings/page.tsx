@@ -19,8 +19,7 @@ type SystemSettings = {
   dateFormat: string;
   workingDays: string[];
   workingHours: { start: string; end: string };
-  revenueCurrency: string;
-  expenseCurrency: string;
+  currency: string;
   fiscalMonthStart: number;
   updatedAt?: string | null;
   updatedBy?: string | null;
@@ -32,8 +31,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   dateFormat: "",
   workingDays: [],
   workingHours: { start: "", end: "" },
-  revenueCurrency: "USD",
-  expenseCurrency: "PKR",
+  currency: "USD",
   fiscalMonthStart: 1,
 };
 
@@ -65,7 +63,11 @@ export default function AdminSettingsPage() {
         throw new Error(data?.error || "Failed to load settings.");
       }
 
-      setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        ...data.settings,
+        currency: data.settings?.revenueCurrency || data.settings?.currency || "USD",
+      });
       setCanEdit(Boolean(data.canEdit));
     } catch (err: any) {
       setError(err.message || "Unable to load settings.");
@@ -175,6 +177,18 @@ export default function AdminSettingsPage() {
               disabled={disabled}
             />
             <p className="helper-text mt-2">Controls date display throughout the app.</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Base Currency</label>
+            <input
+              className="input mt-2"
+              placeholder="e.g. USD"
+              value={settings.currency}
+              onChange={(e) => setSettings({ ...settings, currency: e.target.value.toUpperCase() })}
+              disabled={disabled}
+            />
+            <p className="helper-text mt-2">Applied to all revenue, expenses, invoices, and reports.</p>
           </div>
 
           <div>

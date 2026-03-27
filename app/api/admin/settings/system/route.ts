@@ -25,6 +25,10 @@ export async function GET() {
     const snap = await adminDb.collection("settings").doc("system").get();
     const data = snap.exists ? snap.data() : {};
 
+    // Read tenant's chosen currency from signup
+    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
+
     const settings = {
       companyName: parseString(data?.companyName, DEFAULT_SYSTEM_SETTINGS.companyName),
       timezone: parseString(data?.timezone, DEFAULT_SYSTEM_SETTINGS.timezone),
@@ -34,8 +38,8 @@ export async function GET() {
         start: parseString(data?.workingHours?.start, DEFAULT_SYSTEM_SETTINGS.workingHours.start),
         end: parseString(data?.workingHours?.end, DEFAULT_SYSTEM_SETTINGS.workingHours.end),
       },
-      revenueCurrency: "USD",
-      expenseCurrency: "PKR",
+      revenueCurrency: tenantCurrency,
+      expenseCurrency: tenantCurrency,
       fiscalMonthStart: parseNumber(data?.fiscalMonthStart, DEFAULT_SYSTEM_SETTINGS.fiscalMonthStart),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,
@@ -74,8 +78,8 @@ export async function PUT(req: Request) {
         start: parseString(body?.workingHours?.start, DEFAULT_SYSTEM_SETTINGS.workingHours.start),
         end: parseString(body?.workingHours?.end, DEFAULT_SYSTEM_SETTINGS.workingHours.end),
       },
-      revenueCurrency: "USD",
-      expenseCurrency: "PKR",
+      revenueCurrency: parseString(body?.revenueCurrency, "USD"),
+      expenseCurrency: parseString(body?.revenueCurrency, "USD"),
       fiscalMonthStart: parseNumber(body?.fiscalMonthStart, DEFAULT_SYSTEM_SETTINGS.fiscalMonthStart),
       updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
