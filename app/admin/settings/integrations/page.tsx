@@ -307,7 +307,7 @@ export default function IntegrationSettingsPage() {
             <div style={{ fontSize: 16, fontWeight: 700 }}>QuickBooks Online</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Manage OAuth connection, sync settings, conflict mode, and accounting sync logs.</p>
           </div>
-          <a className="btn subtle" href="/settings/integrations/quickbooks">
+          <a className="btn subtle" href="/admin/settings/integrations/quickbooks">
             Open QuickBooks Sync
           </a>
         </div>
@@ -319,7 +319,7 @@ export default function IntegrationSettingsPage() {
             <div style={{ fontSize: 16, fontWeight: 700 }}>Xero</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Manage OAuth connection, sync settings, conflict mode, and accounting sync logs.</p>
           </div>
-          <a className="btn subtle" href="/settings/integrations/xero">
+          <a className="btn subtle" href="/admin/settings/integrations/xero">
             Open Xero Sync
           </a>
         </div>
@@ -332,7 +332,7 @@ export default function IntegrationSettingsPage() {
             <div style={{ fontSize: 16, fontWeight: 700 }}>Mailchimp</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Audience sync for CRM clients, tag mapping, segment sync, and unsubscribe-safe automation.</p>
           </div>
-          <a className="btn subtle" href="/settings/integrations/mailchimp">
+          <a className="btn subtle" href="/admin/settings/integrations/mailchimp">
             Open Mailchimp Sync
           </a>
         </div>
@@ -344,7 +344,7 @@ export default function IntegrationSettingsPage() {
             <div style={{ fontSize: 16, fontWeight: 700 }}>DocuSign</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth connection, signature workflow, status tracking, and signed document download.</p>
           </div>
-          <a className="btn subtle" href="/settings/integrations/docusign">
+          <a className="btn subtle" href="/admin/settings/integrations/docusign">
             Open DocuSign E-Signature
           </a>
         </div>
@@ -356,7 +356,7 @@ export default function IntegrationSettingsPage() {
             <div style={{ fontSize: 16, fontWeight: 700 }}>Twilio SMS</div>
             <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Configure account routing, SMS templates, trigger controls, delivery tracking, and opt-out handling.</p>
           </div>
-          <a className="btn subtle" href="/settings/integrations/twilio">
+          <a className="btn subtle" href="/admin/settings/integrations/twilio">
             Open Twilio SMS Setup
           </a>
         </div>
