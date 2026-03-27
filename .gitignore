@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+AUDIT_REPORT.md
+FIRESTORE_INDEXES_NEEDED.md
