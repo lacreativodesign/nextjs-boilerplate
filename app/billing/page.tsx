@@ -27,21 +27,21 @@ function formatDate(value: string): string {
 function getBadgeConfig(state: SubscriptionState) {
   switch (state) {
     case 'trial':
-      return { label: 'Free Trial', cls: 'bg-amber-100 text-amber-800' };
+      return { label: 'Free Trial', cls: 'bg-amber-500/10 text-amber-600' };
     case 'active':
-      return { label: 'Active', cls: 'bg-green-100 text-green-800' };
+      return { label: 'Active', cls: 'bg-green-500/10 text-green-600' };
     case 'past_due':
-      return { label: 'Past Due', cls: 'bg-red-100 text-red-800' };
+      return { label: 'Past Due', cls: 'bg-[var(--danger-soft)] text-[var(--danger)]' };
+    case 'grace':
+      return { label: 'Grace Period', cls: 'bg-amber-500/10 text-amber-600' };
+    case 'soft_locked':
+      return { label: 'Paused', cls: 'bg-[var(--danger-soft)] text-[var(--danger)]' };
+    case 'hard_locked':
+      return { label: 'Locked', cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
     case 'canceled':
-      return {
-        label: 'Cancelled',
-        cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
-      };
+      return { label: 'Cancelled', cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
     default:
-      return {
-        label: state,
-        cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
-      };
+      return { label: state, cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' };
   }
 }
 
@@ -146,8 +146,8 @@ export default function BillingOverviewPage() {
       {loading && <div className="card p-6 text-sm text-[var(--text-muted)]">Loading billing info…</div>}
 
       {fetchError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm text-red-700">{fetchError}</p>
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-6">
+          <p className="text-sm text-[var(--danger)]">{fetchError}</p>
           <button type="button" onClick={() => void loadStatus()} className="btn mt-4">
             Retry
           </button>
@@ -164,9 +164,9 @@ export default function BillingOverviewPage() {
                 <p className="text-sm font-semibold text-[var(--danger)]">
                   ⚠ Your trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}. Upgrade now to keep your data and access.
                 </p>
-                <Link href="/pricing" className="btn" style={{ borderRadius: 999, fontSize: 13 }}>
+                <a href="https://www.bizosto.com/pricing" className="btn" style={{ borderRadius: 999, fontSize: 13 }}>
                   Upgrade Now
-                </Link>
+                </a>
               </div>
             );
           })()}
@@ -349,21 +349,21 @@ export default function BillingOverviewPage() {
                           Your Plan
                         </div>
                       ) : isUpgrade ? (
-                        <Link
-                          href="/pricing"
+                        <a
+                          href="https://www.bizosto.com/pricing"
                           className="btn w-full text-center"
                           style={{ borderRadius: 999, fontSize: 13 }}
                         >
                           Upgrade
-                        </Link>
+                        </a>
                       ) : (
-                        <Link
-                          href="/pricing"
+                        <a
+                          href="https://www.bizosto.com/pricing"
                           className="btn ghost w-full text-center"
                           style={{ borderRadius: 999, fontSize: 13 }}
                         >
                           Downgrade
-                        </Link>
+                        </a>
                       )}
                     </div>
                   );
@@ -384,9 +384,9 @@ export default function BillingOverviewPage() {
               >
                 {portalLoading ? 'Opening…' : 'Open Billing Portal'}
               </button>
-              <Link href="/pricing" className="btn ghost">
+              <a href="https://www.bizosto.com/pricing" className="btn ghost">
                 View Plans
-              </Link>
+              </a>
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">
               The billing portal lets you upgrade, downgrade, or cancel your plan, view past invoices, and update your
