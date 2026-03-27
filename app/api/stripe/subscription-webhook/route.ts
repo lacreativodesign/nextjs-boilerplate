@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
+import { sendPaymentConfirmationEmail } from '@/lib/email/onboarding-emails';
 
 export const runtime = 'nodejs';
 
@@ -133,6 +134,38 @@ export async function POST(req: Request) {
           },
           { merge: true },
         );
+
+        // Send payment confirmation email to tenant admin
+        try {
+          const usersSnap = await adminDb
+            .collection('users')
+            .where('tenantId', '==', tenantId)
+            .where('role', '==', 'admin')
+            .limit(1)
+            .get();
+
+          if (!usersSnap.empty) {
+            const adminUser = usersSnap.docs[0].data();
+            const email = String(adminUser.email || '').trim();
+            const name = String(adminUser.displayName || adminUser.name || 'there').trim();
+
+            if (email) {
+              const amountPaid = invoice.amount_paid
+                ? new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: String(invoice.currency || 'usd').toUpperCase(),
+                  }).format(invoice.amount_paid / 100)
+                : '';
+
+              const invoiceUrl = invoice.hosted_invoice_url || null;
+
+              await sendPaymentConfirmationEmail(email, name, tenantId, amountPaid, invoiceUrl);
+            }
+          }
+        } catch (emailErr) {
+          console.error('[STRIPE] Failed to send payment confirmation email', emailErr);
+        }
+
         break;
       }
       case 'invoice.payment_failed': {
