@@ -7,6 +7,7 @@ import {
   sendTrialExpiredEmail,
   sendTrialGracePeriodEndingEmail,
 } from "@/lib/email/onboarding-emails";
+import { PLAN_MODULES } from "@/app/config/plans";
 
 export const runtime = "nodejs";
 
@@ -146,10 +147,14 @@ export async function GET(request: NextRequest) {
         if (daysRemaining <= 0 && daysRemaining >= -7 && !scheduledState.expiredSent) {
           await sendTrialExpiredEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ expiredSent: true, expiredSentAt: now, email: ownerData.email }, { merge: true });
+          // Downgrade to starter modules so sidebar hides Finance, Production, HR
+          // until the tenant upgrades to a paid plan
           await adminDb.collection("tenants").doc(tenantId).set({
             status: "grace_period",
             subscriptionState: "grace",
             billingStatus: "past_due",
+            plan: "starter",
+            modules: PLAN_MODULES.starter,
           }, { merge: true });
           emailsSent += 1;
           continue;
@@ -158,10 +163,14 @@ export async function GET(request: NextRequest) {
         if (daysRemaining < -12 && daysRemaining >= -14 && !scheduledState.gracePeriodEndSent) {
           await sendTrialGracePeriodEndingEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ gracePeriodEndSent: true, gracePeriodEndSentAt: now, email: ownerData.email }, { merge: true });
+          // Hard lock — middleware blocks all access, module state does not matter
+          // but set starter modules so if they reactivate they start from the right baseline
           await adminDb.collection("tenants").doc(tenantId).set({
             status: "hard_locked",
             subscriptionState: "hard_locked",
             billingStatus: "canceled",
+            plan: "starter",
+            modules: PLAN_MODULES.starter,
           }, { merge: true });
           emailsSent += 1;
         }
