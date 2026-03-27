@@ -189,3 +189,41 @@ export async function scheduleOnboardingEmails(email: string, tenantId: string) 
     { merge: true }
   );
 }
+
+export async function sendPaymentConfirmationEmail(
+  to: string,
+  name: string,
+  tenantId: string,
+  amount: string,
+  invoiceUrl: string | null,
+) {
+  try {
+    const resend = getResendClient();
+
+    await resend.emails.send({
+      from: onboardingFrom,
+      to,
+      subject: `Payment confirmed — your Bizosto subscription has been renewed`,
+      html: getEmailShell(`
+        <p style="font-size:16px;font-weight:600;margin:0 0 8px">Hi ${name},</p>
+        <p style="margin:0 0 16px">Your Bizosto subscription payment of <strong>${amount}</strong> was successfully processed. Your account is active and all modules are available.</p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 24px">
+          <tr>
+            <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Amount charged</td>
+            <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600;text-align:right">${amount}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Status</td>
+            <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600;color:#16a34a;text-align:right">Paid</td>
+          </tr>
+        </table>
+        ${invoiceUrl ? `<p style="margin:0 0 24px"><a href="${invoiceUrl}" style="display:inline-block;padding:12px 24px;background:#012167;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Download Invoice</a></p>` : ""}
+        <p style="margin:0 0 8px">You can view your full billing history and manage your subscription at any time:</p>
+        <p style="margin:0"><a href="${appUrl}/billing" style="color:#012167;font-weight:600">Manage Billing →</a></p>
+      `),
+    });
+  } catch (err) {
+    // Never let email failure break the webhook
+    console.error("[EMAIL] Failed to send payment confirmation email", err);
+  }
+}
