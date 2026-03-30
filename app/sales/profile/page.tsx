@@ -8,7 +8,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import MFASetup from "@/components/auth/MFASetup";
 import PasswordStrengthMeter from "@/components/auth/PasswordStrengthMeter";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebaseClient";
@@ -143,11 +143,6 @@ export default function SalesProfilePage() {
 
       await updatePassword(user, newPassword);
 
-      const db = await getFirebaseDb();
-      await updateDoc(doc(db, "users", user.uid), {
-        lastPasswordChange: serverTimestamp(),
-      });
-
       await fetch("/api/auth/sessions/invalidate-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,13 +191,8 @@ export default function SalesProfilePage() {
 
       await unenrollMFA(user);
 
-      const db = await getFirebaseDb();
-      await updateDoc(doc(db, "users", user.uid), {
-        mfaEnabled: false,
-        mfaUpdatedAt: serverTimestamp(),
-      });
-
       setMfaEnabled(false);
+      setMfaUpdatedAt(new Date().toLocaleString());
       setShowMfaSetup(false);
       setMfaDisablePassword("");
       setMfaDisableCode("");
