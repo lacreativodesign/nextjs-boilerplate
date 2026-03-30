@@ -67,6 +67,20 @@ function parseModuleCache(value: string | undefined): { tenantId: string; module
   };
 }
 
+function parseSubCache(value: string | undefined): { role: string; state: string; expiresAt: number } | null {
+  if (!value) return null;
+  const parts = value.split(":");
+  if (parts.length !== 3) return null;
+  const [role, state, expiresAtStr] = parts;
+  const expiresAt = Number(expiresAtStr);
+  if (!role || !state || isNaN(expiresAt)) return null;
+  return { role, state, expiresAt };
+}
+
+function buildSubCache(role: string, state: string): string {
+  return `${role}:${state}:${Date.now() + 5 * 60 * 1000}`;
+}
+
 async function fetchModuleEnabled(req: NextRequest, tenantId: string, moduleKey: string): Promise<boolean | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 180);
@@ -378,11 +392,21 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   const requiresSubscriptionCheck = Boolean(sessionToken) && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
 
   let sessionRole = normalizeRole(null);
+  let subCacheValue: string | null = null;
 
   if (requiresSubscriptionCheck) {
-    const status = await fetchSubscriptionStatus(req);
-    sessionRole = normalizeRole(status?.role);
-    const subscriptionState = normalizeSubscriptionState(status?.subscriptionState);
+    const cachedSub = parseSubCache(req.cookies.get("sub_cache")?.value);
+    let subscriptionState: ReturnType<typeof normalizeSubscriptionState>;
+
+    if (cachedSub && cachedSub.expiresAt > Date.now()) {
+      sessionRole = normalizeRole(cachedSub.role);
+      subscriptionState = normalizeSubscriptionState(cachedSub.state);
+    } else {
+      const status = await fetchSubscriptionStatus(req);
+      sessionRole = normalizeRole(status?.role);
+      subscriptionState = normalizeSubscriptionState(status?.subscriptionState);
+      subCacheValue = buildSubCache(sessionRole, subscriptionState);
+    }
 
     if (sessionRole !== "super_admin") {
       if (isHardLockedSubscription(subscriptionState)) {
@@ -443,6 +467,15 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
           httpOnly: true,
           secure: true,
         });
+        if (subCacheValue) {
+          response.cookies.set("sub_cache", subCacheValue, {
+            path: "/",
+            maxAge: 300,
+            sameSite: "lax",
+            httpOnly: true,
+            secure: true,
+          });
+        }
         return response;
       }
     }
@@ -456,6 +489,16 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   }
 
   const response = applyRateHeaders(pathname, NextResponse.next(), rateContext);
+
+  if (subCacheValue) {
+    response.cookies.set("sub_cache", subCacheValue, {
+      path: "/",
+      maxAge: 300,
+      sameSite: "lax",
+      httpOnly: true,
+      secure: true,
+    });
+  }
 
   if (isApiRequest) {
     queueUsageLog(event, req, {
