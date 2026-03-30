@@ -74,25 +74,6 @@ type Props = {
   onProjectUpdated?: (project: AMProject) => void;
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const date = new Date(iso);
@@ -112,7 +93,6 @@ function buildSafeName(name: string) {
 }
 
 export default function AMProjectDrawer({ open, project, onClose, onProjectUpdated }: Props) {
-  const isDark = useIsSystemDark();
   const [activeProject, setActiveProject] = useState<AMProject | null>(project);
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
@@ -211,15 +191,15 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
   const headerStyle: React.CSSProperties = {
     fontSize: 18,
     fontWeight: 700,
-    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.9)",
+    color: "var(--text-primary)",
   };
 
   const cardStyle: React.CSSProperties = {
     borderRadius: 16,
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.10)",
+    border: "1px solid var(--border-subtle)",
     padding: 16,
-    background: isDark ? "rgba(20,20,20,0.92)" : "rgba(255,255,255,0.9)",
-    boxShadow: isDark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 55px rgba(15,23,42,0.10)",
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-lg)",
   };
 
   const handleUploadClick = (category: string) => {
@@ -532,7 +512,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                       alignSelf: isMe ? "flex-end" : "flex-start",
                       maxWidth: "80%",
                       background: isMe ? "rgba(37,99,235,0.18)" : "rgba(148,163,184,0.18)",
-                      color: isDark ? "rgba(248,250,252,0.95)" : "rgba(15,23,42,0.9)",
+                      color: "var(--text-primary)",
                       borderRadius: 18,
                       padding: "10px 14px",
                       fontSize: 13,

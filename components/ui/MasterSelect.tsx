@@ -16,7 +16,6 @@ type MasterSelectProps = {
   placeholder?: string;
   className?: string;
   align?: MasterSelectAlign;
-  isDark?: boolean;
   buttonStyle?: CSSProperties;
 };
 
@@ -29,35 +28,17 @@ export default function MasterSelect({
   placeholder = "Select",
   className,
   align = "left",
-  isDark,
   buttonStyle,
 }: MasterSelectProps) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [placement, setPlacement] = useState<"bottom" | "top">("bottom");
-  const [systemDark, setSystemDark] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const listboxId = useId();
 
-  const darkMode = isDark ?? systemDark;
-
   const selectedIndex = useMemo(() => options.findIndex((option) => option.value === value), [options, value]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (isDark !== undefined) return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => setSystemDark(!!mql.matches);
-    update();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", update) : mql.addListener(update);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", update) : mql.removeListener(update);
-    };
-  }, [isDark]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -168,9 +149,7 @@ export default function MasterSelect({
         <span
           style={{
             color: isPlaceholder
-              ? darkMode
-                ? "rgba(226,232,240,0.55)"
-                : "rgba(100,116,139,0.9)"
+              ? "var(--text-muted)"
               : "inherit",
           }}
         >
@@ -182,7 +161,7 @@ export default function MasterSelect({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: darkMode ? "rgba(148,163,184,0.9)" : "rgba(100,116,139,0.9)",
+            color: "var(--text-muted)",
           }}
         >
           ▾
@@ -235,15 +214,11 @@ export default function MasterSelect({
                   textAlign: "left",
                   border: "none",
                   background: active
-                    ? darkMode
-                      ? "rgba(255,255,255,0.12)"
-                      : "rgba(15,23,42,0.08)"
+                    ? "var(--surface-muted)"
                     : highlighted
-                      ? darkMode
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(15,23,42,0.06)"
+                      ? "var(--table-row-hover)"
                       : "transparent",
-                  color: darkMode ? "rgba(226,232,240,0.92)" : "rgba(15,23,42,0.9)",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                 }}
               >
