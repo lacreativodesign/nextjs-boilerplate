@@ -319,7 +319,7 @@ export default function HrOnboardingPage() {
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-slate-500">Template name</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Template name</label>
                 <input
                   className="input"
                   value={templateForm.name}
@@ -327,7 +327,7 @@ export default function HrOnboardingPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500">Role</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Role</label>
                 <MasterSelect value={templateForm.role} onChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value }))} options={ROLE_OPTIONS} />
               </div>
             </div>
@@ -356,7 +356,7 @@ export default function HrOnboardingPage() {
                       }))
                     }
                   />
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
                     <input
                       type="checkbox"
                       checked={step.required}
@@ -489,15 +489,15 @@ export default function HrOnboardingPage() {
         <section className="card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label className="text-xs font-semibold text-slate-500">Employee</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Employee</label>
               <MasterSelect value={assignUserId} onChange={setAssignUserId} options={userOptions} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Template</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Template</label>
               <MasterSelect value={assignTemplateId} onChange={setAssignTemplateId} options={templateOptions} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">Due date</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Due date</label>
               <input className="input" type="date" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)} />
             </div>
           </div>
@@ -667,7 +667,7 @@ export default function HrOnboardingPage() {
             </div>
             <div style={{ height: 16 }} />
             <div>
-              <label className="text-xs font-semibold text-slate-500">Status</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
               <MasterSelect
                 value={selectedTask.status}
                 onChange={(value) =>
