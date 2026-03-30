@@ -83,7 +83,7 @@ export default function ProductionProjectsPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Production Gantt</h1>
         <select
-          className="rounded-md border border-gray-300 text-sm px-3 py-2"
+          className="rounded-md border border-[var(--border-subtle)] text-sm px-3 py-2"
           value={activeProjectId}
           onChange={(event) => setActiveProjectId(event.target.value)}
         >
@@ -97,7 +97,7 @@ export default function ProductionProjectsPage() {
       </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {loading ? <p className="text-sm text-gray-500">Loading gantt chart…</p> : null}
+      {loading ? <p className="text-sm text-[var(--text-muted)]">Loading gantt chart…</p> : null}
 
       {!loading && data ? (
         <GanttChart

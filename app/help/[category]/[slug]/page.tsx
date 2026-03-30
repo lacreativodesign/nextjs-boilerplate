@@ -39,7 +39,7 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 print:max-w-none print:px-0">
-      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-gray-500">
+      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--text-muted)]">
         <Link href="/help" className="hover:text-blue-700">Help</Link>
         <span className="mx-2">/</span>
         <Link href="/help" className="hover:text-blue-700">{category.name}</Link>
@@ -49,28 +49,28 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
         <article className="min-w-0">
-          <header className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h1 className="text-3xl font-semibold text-gray-900">{article.title}</h1>
-            <p className="mt-3 text-sm text-gray-600">{article.excerpt}</p>
+          <header className="card p-6">
+            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">{article.title}</h1>
+            <p className="mt-3 text-sm text-[var(--text-muted)]">{article.excerpt}</p>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-gray-500">Last updated: {article.lastUpdated} · {article.readTime} read</p>
+              <p className="text-xs text-[var(--text-muted)]">Last updated: {article.lastUpdated} · {article.readTime} read</p>
               <PrintActions />
             </div>
           </header>
 
-          <div className="mt-6 space-y-8 rounded-2xl border border-gray-200 bg-white p-6">
+          <div className="mt-6 space-y-8 card p-6">
             {article.sections.map((section) => (
               <section key={section.heading} id={slugifyHeading(section.heading)}>
-                <h2 className="text-2xl font-semibold text-gray-900">{section.heading}</h2>
+                <h2 className="text-2xl font-semibold text-[var(--text-primary)]">{section.heading}</h2>
                 <div className="mt-3 space-y-4">
                   {section.blocks.map((block, index) => {
                     if (block.type === "paragraph") {
-                      return <p key={`${section.heading}-p-${index}`} className="text-sm leading-6 text-gray-700">{block.content}</p>;
+                      return <p key={`${section.heading}-p-${index}`} className="text-sm leading-6 text-[var(--text-primary)]">{block.content}</p>;
                     }
 
                     if (block.type === "list") {
                       return (
-                        <ul key={`${section.heading}-ul-${index}`} className="list-disc space-y-2 pl-5 text-sm text-gray-700">
+                        <ul key={`${section.heading}-ul-${index}`} className="list-disc space-y-2 pl-5 text-sm text-[var(--text-primary)]">
                           {block.items.map((item) => <li key={item}>{item}</li>)}
                         </ul>
                       );
@@ -78,7 +78,7 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
                     if (block.type === "steps") {
                       return (
-                        <ol key={`${section.heading}-ol-${index}`} className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
+                        <ol key={`${section.heading}-ol-${index}`} className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-primary)]">
                           {block.items.map((item) => <li key={item}>{item}</li>)}
                         </ol>
                       );
@@ -95,8 +95,8 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
                     if (block.type === "video") {
                       return (
                         <div key={`${section.heading}-video-${index}`} className="space-y-2">
-                          <p className="text-sm font-medium text-gray-900">{block.title} ({block.duration})</p>
-                          <div className="aspect-video overflow-hidden rounded-xl border border-gray-200">
+                          <p className="text-sm font-medium text-[var(--text-primary)]">{block.title} ({block.duration})</p>
+                          <div className="aspect-video overflow-hidden rounded-xl border border-[var(--border-subtle)]">
                             <iframe
                               src={block.embedUrl}
                               title={block.title}
@@ -118,9 +118,9 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
                             alt={block.alt}
                             width={1120}
                             height={640}
-                            className="w-full rounded-xl border border-gray-200"
+                            className="w-full rounded-xl border border-[var(--border-subtle)]"
                           />
-                          <figcaption className="mt-2 text-xs text-gray-500">{block.caption}</figcaption>
+                          <figcaption className="mt-2 text-xs text-[var(--text-muted)]">{block.caption}</figcaption>
                         </figure>
                       );
                     }
@@ -141,8 +141,8 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
           <ArticleFeedback />
 
-          <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-900">Related articles</h2>
+          <section className="mt-8 card p-6">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Related articles</h2>
             <ul className="mt-3 space-y-2">
               {related.map((item) => (
                 <li key={`${item.categoryId}-${item.slug}`}>
@@ -155,12 +155,12 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
           </section>
         </article>
 
-        <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 lg:sticky lg:top-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Table of contents</h2>
+        <aside className="h-fit card p-5 lg:sticky lg:top-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">Table of contents</h2>
           <ul className="mt-3 space-y-2">
             {tableOfContents.map((item) => (
               <li key={item.id}>
-                <a href={`#${item.id}`} className="text-sm text-gray-700 hover:text-blue-700">
+                <a href={`#${item.id}`} className="text-sm text-[var(--text-muted)] hover:text-[var(--erp-blue)]">
                   {item.label}
                 </a>
               </li>

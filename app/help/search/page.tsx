@@ -14,14 +14,14 @@ export default function HelpSearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6">
-      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-gray-500">
+      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--text-muted)]">
         <Link href="/help" className="hover:text-blue-700">Help</Link>
         <span className="mx-2">/</span>
         <span>Search</span>
       </nav>
 
-      <h1 className="text-3xl font-semibold text-gray-900">Search documentation</h1>
-      <p className="mt-2 text-sm text-gray-600">Find articles by keywords and filter by category.</p>
+      <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Search documentation</h1>
+      <p className="mt-2 text-sm text-[var(--text-muted)]">Find articles by keywords and filter by category.</p>
 
       <div className="mt-6">
         <HelpSearch initialQuery={query} initialCategory={category} mode="full" />
