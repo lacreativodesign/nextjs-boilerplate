@@ -5,7 +5,6 @@ import React from "react";
 type SalesDrawerProps = {
   title: string;
   subtitle?: string;
-  isDark?: boolean;
   onClose: () => void;
   children: React.ReactNode;
   actions?: React.ReactNode;

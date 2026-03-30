@@ -75,25 +75,6 @@ type Props = {
   onRefresh?: () => void;
 };
 
-function useIsSystemDark() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => setIsDark(!!mql.matches);
-    read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
-    return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
-    };
-  }, []);
-
-  return isDark;
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return "-";
   const date = new Date(iso);
@@ -147,7 +128,6 @@ export default function ProductionProjectDrawer({
   onProjectUpdated,
   onRefresh,
 }: Props) {
-  const isDark = useIsSystemDark();
   const isProductionRole = role === "production";
   const [activeProject, setActiveProject] = useState<ProductionProject | null>(project);
   const [files, setFiles] = useState<FileRecord[]>([]);
@@ -492,8 +472,8 @@ export default function ProductionProjectDrawer({
     fontSize: 11,
     fontWeight: 600,
     textTransform: "uppercase",
-    background: isDark ? "rgba(148,163,184,0.2)" : "rgba(15,23,42,0.08)",
-    color: isDark ? "rgba(226,232,240,0.85)" : "rgba(15,23,42,0.7)",
+    background: "var(--surface-muted)",
+    color: "var(--text-muted)",
   };
 
   return (
@@ -540,8 +520,8 @@ export default function ProductionProjectDrawer({
               marginBottom: 12,
               padding: 10,
               borderRadius: 10,
-              background: isDark ? "rgba(248,113,113,0.15)" : "rgba(248,113,113,0.12)",
-              color: isDark ? "#fecaca" : "#7f1d1d",
+              background: "rgba(248,113,113,0.12)",
+              color: "var(--danger)",
               fontSize: 12,
             }}
           >
@@ -549,7 +529,7 @@ export default function ProductionProjectDrawer({
           </div>
         )}
 
-        <Section title="Quick Actions" isDark={isDark}>
+        <Section title="Quick Actions">
           <div style={{ display: "grid", gap: 12 }}>
             {!isProductionRole && (
               <div>
@@ -599,7 +579,7 @@ export default function ProductionProjectDrawer({
 
         <div style={{ height: 12 }} />
 
-        <Section title="Files" isDark={isDark}>
+        <Section title="Files">
           {loadingPanel ? (
             <div style={{ fontSize: 12, opacity: 0.7 }}>Loading files…</div>
           ) : (
@@ -624,7 +604,7 @@ export default function ProductionProjectDrawer({
                         style={{
                           padding: 10,
                           borderRadius: 10,
-                          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                          border: "1px solid var(--border-subtle)",
                           display: "grid",
                           gap: 4,
                         }}
@@ -653,7 +633,7 @@ export default function ProductionProjectDrawer({
 
         <div style={{ height: 12 }} />
 
-        <Section title="Change Requests" isDark={isDark}>
+        <Section title="Change Requests">
           {loadingPanel ? (
             <div style={{ fontSize: 12, opacity: 0.7 }}>Loading change requests…</div>
           ) : openChangeRequests.length > 0 ? (
@@ -664,7 +644,7 @@ export default function ProductionProjectDrawer({
                   style={{
                     padding: 10,
                     borderRadius: 10,
-                    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                    border: "1px solid var(--border-subtle)",
                     display: "grid",
                     gap: 4,
                   }}
@@ -678,7 +658,7 @@ export default function ProductionProjectDrawer({
               {!isProductionRole && (
                 <a
                   href={`/admin/projects/change-requests?projectId=${activeProject.id}`}
-                  style={{ fontSize: 12, color: isDark ? "#e2e8f0" : "#1f2937", textDecoration: "underline" }}
+                  style={{ fontSize: 12, color: "var(--text-primary)", textDecoration: "underline" }}
                 >
                   View all change requests
                 </a>
@@ -693,7 +673,7 @@ export default function ProductionProjectDrawer({
 
         {isProductionRole && (
           <>
-            <Section title="Override Requests" isDark={isDark}>
+            <Section title="Override Requests">
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 12, fontWeight: 600 }}>Approval status</span>
@@ -734,10 +714,10 @@ export default function ProductionProjectDrawer({
 
         {(mode === "qa" || (isProductionRole && activeProject.stage === "Final")) && (
           <>
-            <Section title="QA Checklist" isDark={isDark}>
+            <Section title="QA Checklist">
               <div style={{ display: "grid", gap: 10, fontSize: 12 }}>
-                <ChecklistRow label="Final file exists" ok={hasFinalFile} isDark={isDark} />
-                <ChecklistRow label="No open change requests" ok={noOpenCRs} isDark={isDark} />
+                <ChecklistRow label="Final file exists" ok={hasFinalFile} />
+                <ChecklistRow label="No open change requests" ok={noOpenCRs} />
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>Notes (optional)</span>
                   <textarea
@@ -753,7 +733,7 @@ export default function ProductionProjectDrawer({
 
             <div style={{ height: 12 }} />
 
-            <Section title="QA Actions" isDark={isDark}>
+            <Section title="QA Actions">
               <div style={{ display: "grid", gap: 12 }}>
                 <button
                   className="btn"
@@ -804,7 +784,7 @@ export default function ProductionProjectDrawer({
           </>
         )}
 
-        <Section title="Stage History" isDark={isDark}>
+        <Section title="Stage History">
           {activeProject.stageHistory && activeProject.stageHistory.length > 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
               {[...activeProject.stageHistory]
@@ -815,7 +795,7 @@ export default function ProductionProjectDrawer({
                     style={{
                       padding: 10,
                       borderRadius: 10,
-                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                      border: "1px solid var(--border-subtle)",
                       display: "grid",
                       gap: 4,
                       fontSize: 12,
@@ -847,15 +827,14 @@ export default function ProductionProjectDrawer({
   );
 }
 
-function Section({ title, children, isDark }: { title: string; children: React.ReactNode; isDark: boolean }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)",
-        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+        border: "1px solid var(--border-subtle)",
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>{title}</div>
@@ -864,7 +843,7 @@ function Section({ title, children, isDark }: { title: string; children: React.R
   );
 }
 
-function ChecklistRow({ label, ok, isDark }: { label: string; ok: boolean; isDark: boolean }) {
+function ChecklistRow({ label, ok }: { label: string; ok: boolean }) {
   return (
     <div
       style={{
@@ -873,7 +852,7 @@ function ChecklistRow({ label, ok, isDark }: { label: string; ok: boolean; isDar
         justifyContent: "space-between",
         padding: 10,
         borderRadius: 10,
-        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+        border: "1px solid var(--border-subtle)",
       }}
     >
       <span>{label}</span>
@@ -884,7 +863,7 @@ function ChecklistRow({ label, ok, isDark }: { label: string; ok: boolean; isDar
           fontSize: 11,
           fontWeight: 600,
           background: ok ? "rgba(34,197,94,0.15)" : "rgba(248,113,113,0.15)",
-          color: ok ? (isDark ? "#86efac" : "#15803d") : isDark ? "#fecaca" : "#7f1d1d",
+          color: ok ? "var(--success)" : "var(--danger)",
         }}
       >
         {ok ? "OK" : "Needs attention"}

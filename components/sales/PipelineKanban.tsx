@@ -19,10 +19,9 @@ type PipelineKanbanProps = {
   deals: PipelineDeal[];
   onStageChange: (deal: PipelineDeal, stage: string) => void;
   onCardClick: (deal: PipelineDeal) => void;
-  isDark: boolean;
 };
 
-export default function PipelineKanban({ deals, onStageChange, onCardClick, isDark }: PipelineKanbanProps) {
+export default function PipelineKanban({ deals, onStageChange, onCardClick }: PipelineKanbanProps) {
   const stages = PIPELINE_STAGES;
 
   const handleDrop = (event: DragEvent<HTMLDivElement>, stage: string) => {
@@ -63,7 +62,7 @@ export default function PipelineKanban({ deals, onStageChange, onCardClick, isDa
                     padding: 12,
                     borderRadius: 14,
                     cursor: "pointer",
-                    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.08)",
+                    border: "1px solid var(--border-subtle)",
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>{deal.dealName}</div>
@@ -80,8 +79,8 @@ export default function PipelineKanban({ deals, onStageChange, onCardClick, isDa
                         width: 26,
                         height: 26,
                         borderRadius: "50%",
-                        background: isDark ? "rgba(148,163,184,0.2)" : "rgba(59,130,246,0.12)",
-                        color: isDark ? "#e2e8f0" : "#1e3a8a",
+                        background: "var(--erp-blue-soft)",
+                        color: "var(--erp-blue)",
                         fontSize: 11,
                         display: "flex",
                         alignItems: "center",
