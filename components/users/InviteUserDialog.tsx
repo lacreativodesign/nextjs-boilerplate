@@ -53,7 +53,7 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 
       {isOpen && (
         <div className="drawer-overlay fixed inset-0 flex items-center justify-center z-50">
-          <div className="card w-full max-w-md p-6 shadow-xl">
+          <div className="modal-scale-enter card w-full max-w-md p-6 shadow-xl">
             <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">
               Invite Team Member
             </h2>
