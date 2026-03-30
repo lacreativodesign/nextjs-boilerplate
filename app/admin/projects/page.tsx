@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toastError } from "@/lib/toast";
 
 type ProjectStage =
   | "Inquiry"
@@ -525,7 +526,7 @@ export default function AllProjectsPage() {
       await refreshList();
       closeCreate();
     } catch (e: any) {
-      alert(e?.message || "Failed to create project");
+      toastError(e?.message || "Failed to create project");
     } finally {
       setCreateSaving(false);
     }
@@ -560,7 +561,7 @@ export default function AllProjectsPage() {
       await refreshList();
       closeDrawer();
     } catch (e: any) {
-      alert(e?.message || "Failed to update project");
+      toastError(e?.message || "Failed to update project");
     } finally {
       setSaving(false);
     }
@@ -585,7 +586,7 @@ export default function AllProjectsPage() {
       await refreshList();
       if (selected?.id === id) closeDrawer();
     } catch (e: any) {
-      alert(e?.message || "Failed to delete project");
+      toastError(e?.message || "Failed to delete project");
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));
     }

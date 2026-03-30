@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { toastError } from "@/lib/toast";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import {
@@ -244,7 +245,7 @@ export default function HrEmployeesPage() {
       setUsers((prev) => prev.map((user) => (getRowId(user) === payload.uid ? { ...user, ...data.user } : user)));
       setEditMode(false);
     } catch (err: any) {
-      alert(err?.message || "Unable to update employee.");
+      toastError(err?.message || "Unable to update employee.");
     } finally {
       setSaving(false);
     }
@@ -273,7 +274,7 @@ export default function HrEmployeesPage() {
       setUsers((prev) => prev.map((user) => (getRowId(user) === getRowId(selectedUser) ? { ...user, ...data.user } : user)));
       setFormState((prev) => ({ ...prev, status }));
     } catch (err: any) {
-      alert(err?.message || "Unable to update status.");
+      toastError(err?.message || "Unable to update status.");
     } finally {
       setSaving(false);
     }

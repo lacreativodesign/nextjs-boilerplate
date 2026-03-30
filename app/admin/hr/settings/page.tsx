@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
+import { toastError } from "@/lib/toast";
 
 type Settings = {
   defaultOnboardingTemplateId: string | null;
@@ -72,7 +73,7 @@ export default function HrSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to save settings.");
     } catch (err: any) {
-      alert(err?.message || "Unable to save settings.");
+      toastError(err?.message || "Unable to save settings.");
     } finally {
       setSaving(false);
     }

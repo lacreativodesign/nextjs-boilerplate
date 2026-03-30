@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toastError, toastWarning } from "@/lib/toast";
 import { Download, FileText } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { exportProfitLossToPDF } from "@/lib/exports/pdfExport";
@@ -72,7 +73,7 @@ export default function FinanceReportsPage() {
 
   const generateReport = async () => {
     if (reportType !== "profit-loss") {
-      alert("Balance Sheet and Cash Flow reports are scheduled next.");
+      toastWarning("Balance Sheet and Cash Flow reports are scheduled next.");
       return;
     }
 
@@ -92,7 +93,7 @@ export default function FinanceReportsPage() {
       setProfitLossReport(payload.report as ProfitLossReport);
     } catch (error) {
       console.error("Error generating Profit & Loss:", error);
-      alert(error instanceof Error ? error.message : "Failed to generate report");
+      toastError(error instanceof Error ? error.message : "Failed to generate report");
     } finally {
       setLoading(false);
     }

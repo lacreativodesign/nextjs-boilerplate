@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toastError } from "@/lib/toast";
 
 type ProjectStage =
   | "Inquiry"
@@ -424,7 +425,7 @@ export default function DeliveryPipelinePage() {
     } catch (e: any) {
       console.error("Move stage failed:", e);
       setProjects((prev) => prev.map((item) => (item.id === project.id ? { ...item, stage: prevStage } : item)));
-      alert(e?.message || "Unable to move stage right now.");
+      toastError(e?.message || "Unable to move stage right now.");
     } finally {
       setMovingProjectId(null);
     }
