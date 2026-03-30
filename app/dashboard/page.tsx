@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 
@@ -23,6 +24,9 @@ function StatCard({
   href?: string;
 }) {
   const router = useRouter();
+  const numericTarget = typeof value === "number" ? value : 0;
+  const animated = useCountUp(numericTarget);
+  const display = typeof value === "number" ? animated : value;
   return (
     <div
       onClick={() => href && router.push(href)}
@@ -35,7 +39,7 @@ function StatCard({
         className="mt-2 text-3xl font-bold text-[var(--text-primary)]
         group-hover:text-[var(--erp-blue)]"
       >
-        {value}
+        {display}
       </p>
       <p className="mt-1 text-xs text-[var(--text-soft)]">{sub}</p>
     </div>

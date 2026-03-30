@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCountUp } from "@/lib/hooks/useCountUp";
 
 type SalesStats = {
   totalLeads: number;
@@ -16,12 +17,15 @@ const fmt = (n: number) =>
 function StatCard({ label, value, sub, href, color }: {
   label: string; value: string | number; sub: string; href?: string; color?: string;
 }) {
+  const numericTarget = typeof value === "number" ? value : 0;
+  const animated = useCountUp(numericTarget);
+  const display = typeof value === "number" ? animated : value;
   const inner = (
     <div className={`card ${href ? "cursor-pointer hover:border-[var(--erp-blue)] transition-all group" : ""}`}>
       <div className="helper-text mb-2">{label}</div>
       <div className="text-3xl font-bold group-hover:text-[var(--erp-blue)]"
         style={{ color: color || "var(--text-primary)" }}>
-        {value}
+        {display}
       </div>
       <div className="mt-1 text-xs text-[var(--text-muted)]">{sub}</div>
     </div>
