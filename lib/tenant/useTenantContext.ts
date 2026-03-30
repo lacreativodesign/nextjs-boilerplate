@@ -55,6 +55,30 @@ export type TenantContextResponse = {
   tenant: TenantContext | null;
 };
 
+// Module-level cache — shared across all components in the same session.
+// Prevents re-fetching /api/tenant/context on every page navigation.
+// Cache is cleared after 5 minutes to pick up plan/module changes.
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let cachedContext: TenantContextResponse | null = null;
+let cacheTimestamp = 0;
+
+function getCached(): TenantContextResponse | null {
+  if (cachedContext && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedContext;
+  }
+  return null;
+}
+
+function setCached(data: TenantContextResponse) {
+  cachedContext = data;
+  cacheTimestamp = Date.now();
+}
+
+export function clearTenantContextCache() {
+  cachedContext = null;
+  cacheTimestamp = 0;
+}
+
 export function useTenantContext() {
   const [data, setData] = useState<TenantContextResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +88,16 @@ export function useTenantContext() {
     let active = true;
 
     async function load() {
+      // Return cached data immediately if still fresh
+      const cached = getCached();
+      if (cached) {
+        if (active) {
+          setData(cached);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -80,6 +114,7 @@ export function useTenantContext() {
           requestError.status = res.status;
           throw requestError;
         }
+        setCached(json);
         if (active) setData(json);
       } catch (err: any) {
         if (active) {
