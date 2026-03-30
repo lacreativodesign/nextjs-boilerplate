@@ -2,7 +2,6 @@ import Link from "next/link";
 import { HelpSearch } from "@/components/help-center/HelpSearch";
 import { CrispChatWidget } from "@/components/help-center/CrispChatWidget";
 import { helpCategories } from "@/lib/help-center/data";
-import AppShell from "@/components/layout/AppShell";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +12,7 @@ export const metadata = {
 
 export default function HelpCenterPage() {
   return (
-    <AppShell>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--erp-blue)] mb-1">
             Bizosto ERP Help Center
@@ -92,7 +90,6 @@ export default function HelpCenterPage() {
         </div>
 
         <CrispChatWidget />
-      </div>
-    </AppShell>
+    </div>
   );
 }
