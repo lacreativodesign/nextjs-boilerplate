@@ -131,7 +131,7 @@ export default function GlobalSearchModal() {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 px-4 py-12">
-      <div className="w-full max-w-4xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-2xl">
+      <div className="modal-scale-enter w-full max-w-4xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-2xl">
         <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] p-3">
           <Search className="h-5 w-5 text-[var(--text-soft)]" />
           <input

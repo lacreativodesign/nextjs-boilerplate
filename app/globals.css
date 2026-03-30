@@ -153,6 +153,12 @@ body { background: var(--app-bg); color: var(--text-primary); overflow-x: hidden
 @keyframes fadeRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes skeletonShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes modal-scale-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
 @keyframes badge-pulse {
   0%   { box-shadow: var(--shadow-sm), 0 0 0 0 rgba(102, 146, 249, 0.55); }
   70%  { box-shadow: var(--shadow-sm), 0 0 0 8px rgba(102, 146, 249, 0); }
@@ -298,13 +304,14 @@ select option { color: var(--text-primary); background: var(--surface-card); }
 .tab-pill:hover { background: var(--surface-muted); color: var(--text-primary); }
 .tab-pill.active { background: var(--erp-blue); color: #ffffff; box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35); }
 
-.drawer-overlay { position: fixed; inset: 0; z-index: 60; background: var(--drawer-overlay); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.drawer-overlay { position: fixed; inset: 0; z-index: 60; background: var(--drawer-overlay); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: overlay-enter 200ms ease both; }
 .drawer-panel {
   position: absolute; top: 0; right: 0; height: 100%; max-height: 100dvh; padding: 18px;
   padding-top: calc(18px + env(safe-area-inset-top)); padding-bottom: calc(18px + env(safe-area-inset-bottom));
   background: var(--surface-card); border-left: 1px solid var(--border-subtle); box-shadow: var(--shadow-lg);
   overflow-y: auto; overflow-x: hidden; border-top-left-radius: 22px; border-bottom-left-radius: 22px;
   word-break: break-word; overflow-wrap: anywhere;
+  animation: drawer-enter 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 .drawer-panel--sm { width: min(460px, 92vw); }
 .drawer-panel--md { width: min(520px, 96vw); }
@@ -313,6 +320,7 @@ select option { color: var(--text-primary); background: var(--surface-card); }
 .drawer-title { font-size: 20px; font-weight: 800; }
 .drawer-subtitle { font-size: 12px; color: var(--text-muted); }
 
+.modal-scale-enter { animation: modal-scale-enter 220ms cubic-bezier(0.32, 0.72, 0, 1) both; }
 .master-select-menu { border: 1px solid var(--border-subtle); background: var(--surface-elevated); box-shadow: var(--shadow-lg); }
 .master-select-option { border-radius: 10px; padding: 8px 10px; }
 
