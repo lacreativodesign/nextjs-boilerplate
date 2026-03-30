@@ -37,6 +37,7 @@ export default function SalesManagerPipelinePage() {
         </select>
       </div>
       <div className="card p-4">
+        <div style={{ overflowX: "auto" }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left"><th>Title</th><th>Stage</th><th>Value</th><th>Sales Rep</th><th /></tr>
@@ -50,6 +51,7 @@ export default function SalesManagerPipelinePage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
