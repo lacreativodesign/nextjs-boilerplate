@@ -39,38 +39,38 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 print:max-w-none print:px-0">
-      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-gray-500">
-        <Link href="/help" className="hover:text-blue-700">Help</Link>
+      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--text-muted)]">
+        <Link href="/help" className="hover:text-[var(--erp-blue)]">Help</Link>
         <span className="mx-2">/</span>
-        <Link href="/help" className="hover:text-blue-700">{category.name}</Link>
+        <Link href="/help" className="hover:text-[var(--erp-blue)]">{category.name}</Link>
         <span className="mx-2">/</span>
         <span>{article.title}</span>
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
         <article className="min-w-0">
-          <header className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h1 className="text-3xl font-semibold text-gray-900">{article.title}</h1>
-            <p className="mt-3 text-sm text-gray-600">{article.excerpt}</p>
+          <header className="card p-6">
+            <h1 className="page-title">{article.title}</h1>
+            <p className="mt-3 page-subtitle">{article.excerpt}</p>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-gray-500">Last updated: {article.lastUpdated} · {article.readTime} read</p>
+              <p className="helper-text">Last updated: {article.lastUpdated} · {article.readTime} read</p>
               <PrintActions />
             </div>
           </header>
 
-          <div className="mt-6 space-y-8 rounded-2xl border border-gray-200 bg-white p-6">
+          <div className="mt-6 space-y-8 card p-6">
             {article.sections.map((section) => (
               <section key={section.heading} id={slugifyHeading(section.heading)}>
-                <h2 className="text-2xl font-semibold text-gray-900">{section.heading}</h2>
+                <h2 className="text-2xl font-semibold text-[var(--text-primary)]">{section.heading}</h2>
                 <div className="mt-3 space-y-4">
                   {section.blocks.map((block, index) => {
                     if (block.type === "paragraph") {
-                      return <p key={`${section.heading}-p-${index}`} className="text-sm leading-6 text-gray-700">{block.content}</p>;
+                      return <p key={`${section.heading}-p-${index}`} className="text-sm leading-6 text-[var(--text-primary)]">{block.content}</p>;
                     }
 
                     if (block.type === "list") {
                       return (
-                        <ul key={`${section.heading}-ul-${index}`} className="list-disc space-y-2 pl-5 text-sm text-gray-700">
+                        <ul key={`${section.heading}-ul-${index}`} className="list-disc space-y-2 pl-5 text-sm text-[var(--text-primary)]">
                           {block.items.map((item) => <li key={item}>{item}</li>)}
                         </ul>
                       );
@@ -78,7 +78,7 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
                     if (block.type === "steps") {
                       return (
-                        <ol key={`${section.heading}-ol-${index}`} className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
+                        <ol key={`${section.heading}-ol-${index}`} className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-primary)]">
                           {block.items.map((item) => <li key={item}>{item}</li>)}
                         </ol>
                       );
@@ -141,12 +141,12 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
 
           <ArticleFeedback />
 
-          <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-900">Related articles</h2>
+          <section className="mt-8 card p-6">
+            <h2 className="section-title">Related articles</h2>
             <ul className="mt-3 space-y-2">
               {related.map((item) => (
                 <li key={`${item.categoryId}-${item.slug}`}>
-                  <Link href={`/help/${item.categoryId}/${item.slug}`} className="text-sm text-blue-700 hover:underline">
+                  <Link href={`/help/${item.categoryId}/${item.slug}`} className="text-sm text-[var(--erp-blue)] hover:underline">
                     {item.title}
                   </Link>
                 </li>
@@ -155,12 +155,12 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
           </section>
         </article>
 
-        <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 lg:sticky lg:top-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Table of contents</h2>
+        <aside className="h-fit card p-5 lg:sticky lg:top-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Table of contents</h2>
           <ul className="mt-3 space-y-2">
             {tableOfContents.map((item) => (
               <li key={item.id}>
-                <a href={`#${item.id}`} className="text-sm text-gray-700 hover:text-blue-700">
+                <a href={`#${item.id}`} className="text-sm text-[var(--text-muted)] hover:text-[var(--erp-blue)]">
                   {item.label}
                 </a>
               </li>
