@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { toastError } from "@/lib/toast";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { ListSkeleton } from "@/components/ui/Skeleton";
@@ -96,7 +97,7 @@ export default function HrDocumentsPage() {
 
   async function uploadDocument() {
     if (!selectedUserId || !selectedDocType || !selectedFile) {
-      alert("Select an employee, document type, and file.");
+      toastError("Select an employee, document type, and file.");
       return;
     }
 
@@ -133,7 +134,7 @@ export default function HrDocumentsPage() {
       setSelectedUserId("");
       setSelectedDocType("Contract");
     } catch (err: any) {
-      alert(err?.message || "Unable to upload document.");
+      toastError(err?.message || "Unable to upload document.");
     } finally {
       setUploading(false);
     }
@@ -152,7 +153,7 @@ export default function HrDocumentsPage() {
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to delete document.");
       setDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, isDeleted: true } : d)));
     } catch (err: any) {
-      alert(err?.message || "Unable to delete document.");
+      toastError(err?.message || "Unable to delete document.");
     }
   }
 

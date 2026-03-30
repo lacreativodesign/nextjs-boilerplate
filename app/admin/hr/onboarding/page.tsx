@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
 import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
+import { toastError } from "@/lib/toast";
 
 const STATUS_OPTIONS = [
   { label: "All Status", value: "all" },
@@ -155,7 +156,7 @@ export default function HrOnboardingPage() {
       setTemplates(refreshData.templates || []);
       setTemplateForm({ id: "", name: "", role: "all", isActive: true, steps: [{ title: "", description: "", required: true }] });
     } catch (err: any) {
-      alert(err?.message || "Unable to save template.");
+      toastError(err?.message || "Unable to save template.");
     }
   }
 
@@ -182,7 +183,7 @@ export default function HrOnboardingPage() {
       setAssignDueDate("");
       setTab("tasks");
     } catch (err: any) {
-      alert(err?.message || "Unable to assign onboarding.");
+      toastError(err?.message || "Unable to assign onboarding.");
     } finally {
       setSavingAssign(false);
     }
@@ -205,7 +206,7 @@ export default function HrOnboardingPage() {
       setTaskDrawerOpen(false);
       setSelectedTaskId(null);
     } catch (err: any) {
-      alert(err?.message || "Unable to update task.");
+      toastError(err?.message || "Unable to update task.");
     } finally {
       setTaskSaving(false);
     }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
+import { toastError } from "@/lib/toast";
 
 const RATING_OPTIONS = [
   { label: "All Ratings", value: "all" },
@@ -125,7 +126,7 @@ export default function HrPerformancePage() {
       setForm({ userId: "", period: "", rating: "", tags: "", notes: "" });
       setDrawerOpen(false);
     } catch (err: any) {
-      alert(err?.message || "Unable to add review.");
+      toastError(err?.message || "Unable to add review.");
     } finally {
       setSaving(false);
     }
