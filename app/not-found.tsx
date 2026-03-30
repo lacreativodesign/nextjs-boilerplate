@@ -16,12 +16,12 @@ export default function NotFound() {
           >
             Go to Dashboard
           </Link>
-          <Link
-            href="/pricing"
+          <a
+            href="https://www.bizosto.com/pricing"
             className="rounded-lg border border-[#E2E8F0] bg-white px-6 py-2.5 text-sm font-medium text-[#1E293B] hover:bg-[#F1F5F9]"
           >
             View Pricing
-          </Link>
+          </a>
         </div>
       </div>
     </div>
