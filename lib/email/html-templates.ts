@@ -6,9 +6,16 @@ function shell(body: string): string {
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:32px 16px;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-<tr><td style="background:linear-gradient(135deg,#1E3A5F,#2563EB);padding:28px 32px;">
-<span style="color:#FFFFFF;font-size:22px;font-weight:800;letter-spacing:0.1em;">BIZOSTO</span>
-<span style="color:rgba(255,255,255,0.7);font-size:13px;margin-left:12px;">Business Management Platform</span>
+<tr><td style="background:linear-gradient(135deg,#012167,#6692f9);padding:24px 32px;">
+<table cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="padding-right:14px;vertical-align:middle;">
+<div style="background:rgba(255,255,255,0.18);border-radius:10px;width:44px;height:44px;text-align:center;line-height:44px;font-size:26px;font-weight:900;color:#ffffff;font-family:Arial,sans-serif;">B</div>
+</td>
+<td style="vertical-align:middle;">
+<div style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:0.1em;font-family:Arial,sans-serif;">BIZOSTO</div>
+<div style="color:rgba(255,255,255,0.72);font-size:12px;margin-top:3px;font-family:Arial,sans-serif;">Business Management Platform</div>
+</td>
+</tr></table>
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">${body}</td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;">
@@ -230,4 +237,30 @@ export function passwordResetEmailHtml(data: PasswordResetEmailData): string {
 
 export function passwordResetEmailSubject(): string {
   return "Reset your Bizosto password";
+}
+
+
+export type SetPasswordEmailData = {
+  email: string;
+  setPasswordUrl: string;
+  expiresIn?: string;
+  isNewUser?: boolean;
+};
+
+export function setPasswordEmailHtml(data: SetPasswordEmailData): string {
+  const { email, setPasswordUrl, expiresIn = "24 hours", isNewUser = true } = data;
+  return shell(`
+    <h1 style="margin:0 0 20px;font-size:22px;font-weight:700;color:#1E3A5F;">${isNewUser ? "Welcome — set your password" : "Set a new password"}</h1>
+    <p>Hi,</p>
+    <p>${isNewUser ? `Your Bizosto account has been created for <strong>${email}</strong>. Click the button below to set your password and activate your account.` : `Click the button below to set a new password for <strong>${email}</strong>.`}</p>
+    <p style="font-size:13px;color:#64748B;">This link expires in <strong>${expiresIn}</strong>.</p>
+    ${btn("Set Password", setPasswordUrl)}
+    <div style="background:#F1F5F9;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#64748B;">
+    🔒 If you did not expect this email, you can safely ignore it. Your account will not be activated without clicking the link.
+    </div>
+  `);
+}
+
+export function setPasswordEmailSubject(isNewUser = true): string {
+  return isNewUser ? "Activate your Bizosto account — set your password" : "Set your new Bizosto password";
 }

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { setPasswordEmailHtml, setPasswordEmailSubject } from "@/lib/email/html-templates";
 
 const TOKEN_COLLECTION = "password_setup_tokens";
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -76,24 +77,11 @@ export async function sendSetPasswordEmail({
 
   const resend = new Resend(apiKey);
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #111827;">
-      <h2 style="margin: 0 0 12px;">Set your BIZOSTO Dashboard password</h2>
-      <p style="margin: 0 0 16px;">Welcome to BIZOSTO ERP. Click the button below to set your password.</p>
-      <p style="margin: 0 0 20px;">
-        <a href="${link}" style="display: inline-block; padding: 12px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
-          Set Password
-        </a>
-      </p>
-      <p style="margin: 0; font-size: 13px; color: #6b7280;">This link expires in 24 hours.</p>
-    </div>
-  `;
-
   await resend.emails.send({
     from: "Bizosto <no-reply@bizosto.com>",
     to: email,
-    subject: "Set your BIZOSTO Dashboard password",
-    html,
+    subject: setPasswordEmailSubject(true),
+    html: setPasswordEmailHtml({ email, setPasswordUrl: link, isNewUser: true }),
   });
 
   return { sent: true };
