@@ -148,7 +148,7 @@ export default function Sidebar({
                 <div className="truncate text-sm font-bold text-[var(--text-primary)] leading-tight">
                   {tenantName}
                 </div>
-                <div className="text-xs text-[var(--text-muted)]">ERP Platform</div>
+                <div className="text-xs text-[var(--text-muted)]">Operating System</div>
               </div>
 
               {isMobileOpen && (
