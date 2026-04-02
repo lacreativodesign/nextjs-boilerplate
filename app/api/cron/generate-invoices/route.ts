@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { invoiceEmailHtml, invoiceEmailSubject } from "@/lib/email/html-templates";
 import admin from "firebase-admin";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -269,18 +270,21 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
     return;
   }
 
+  const invoiceData = {
+    clientName: clientEmail,
+    invoiceNumber: invoice.invoiceNumber,
+    amount: invoice.total,
+    currency: "USD",
+    dueDate: new Date(invoice.dueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    viewUrl: `https://app.bizosto.com/client/invoices/${invoice.id}`,
+  };
+
   try {
     await resend.emails.send({
-      from: "Bizosto <noreply@bizosto.com>",
+      from: "Bizosto <invoices@bizosto.com>",
       to: clientEmail,
-      subject: `New Invoice ${invoice.invoiceNumber}`,
-      html: `
-        <h2>New Invoice Generated</h2>
-        <p>Invoice Number: ${invoice.invoiceNumber}</p>
-        <p>Amount: $${invoice.total.toFixed(2)}</p>
-        <p>Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}</p>
-        <p><a href="https://bizosto.com/client/invoices/${invoice.id}">View Invoice</a></p>
-      `,
+      subject: invoiceEmailSubject(invoiceData),
+      html: invoiceEmailHtml(invoiceData),
     });
 
     console.log(`[EMAIL] Sent invoice ${invoice.invoiceNumber} to ${clientEmail}`);

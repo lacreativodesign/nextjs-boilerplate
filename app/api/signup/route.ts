@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { WORKFLOW_TEMPLATES } from "@/lib/automation/workflow-templates";
 import { sendEmail } from "@/lib/email/email-service";
+import { welcomeEmailHtml, welcomeEmailSubject } from "@/lib/email/html-templates";
 import { DEFAULT_MODULES, DEFAULT_ROLES } from "@/lib/tenant/constants";
 import { createTenantWorkspace } from "@/lib/tenant/onboarding";
 
@@ -306,9 +307,13 @@ export async function PUT(request: Request) {
 
     await sendEmail({
       to: verification.email,
-      subject: "Welcome to Bizosto ERP — let’s get you onboarded",
-      html: `<p>Your trial is active. Next step: complete onboarding.</p><p><a href="${resolveAppUrl()}/onboarding">Go to onboarding</a></p>`,
-      text: `Your trial is active. Start onboarding: ${resolveAppUrl()}/onboarding`,
+      subject: welcomeEmailSubject(verification.email.split("@")[0]),
+      html: welcomeEmailHtml({
+        name: verification.email.split("@")[0],
+        companyName: verification.email.split("@")[0],
+        loginUrl: `${resolveAppUrl()}/onboarding`,
+        trialDays: 14,
+      }),
     });
 
     const customToken = await adminAuth.createCustomToken(verification.uid, {

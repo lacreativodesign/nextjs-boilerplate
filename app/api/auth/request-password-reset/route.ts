@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import { passwordResetEmailHtml, passwordResetEmailSubject } from "@/lib/email/html-templates";
 
 const DASHBOARD_URL = "https://app.bizosto.com";
 
@@ -31,24 +32,11 @@ export async function POST(req: Request) {
 
     const resend = new Resend(apiKey);
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; color: #111827;">
-        <h2 style="margin: 0 0 12px;">Reset your BIZOSTO Dashboard password</h2>
-        <p style="margin: 0 0 16px;">Click the button below to reset your password.</p>
-        <p style="margin: 0 0 20px;">
-          <a href="${resetLink}" style="display: inline-block; padding: 12px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
-            Reset Password
-          </a>
-        </p>
-        <p style="margin: 0; font-size: 13px; color: #6b7280;">If you did not request this, you can ignore this email.</p>
-      </div>
-    `;
-
     await resend.emails.send({
       from: "Bizosto <no-reply@bizosto.com>",
       to: email,
-      subject: "Reset your BIZOSTO Dashboard password",
-      html,
+      subject: passwordResetEmailSubject(),
+      html: passwordResetEmailHtml({ name: email, resetUrl: resetLink, expiresIn: "1 hour" }),
     });
 
     return NextResponse.json({ ok: true });
