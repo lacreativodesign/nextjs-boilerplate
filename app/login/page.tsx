@@ -254,7 +254,7 @@ export default function LoginPage() {
                 </div>
                 <div className="login-logo-text-group">
                   <span className="login-logo-mark">BIZOSTO</span>
-                  <span className="login-logo-descriptor">ERP Platform</span>
+                  <span className="login-logo-descriptor">Operating System</span>
                 </div>
               </div>
             </div>
@@ -278,7 +278,7 @@ export default function LoginPage() {
               </div>
               <div className="login-logo-text-group">
                 <span className="login-logo-mark">BIZOSTO</span>
-                <span className="login-logo-descriptor">ERP Platform</span>
+                <span className="login-logo-descriptor">Operating System</span>
               </div>
             </div>
           </div>
