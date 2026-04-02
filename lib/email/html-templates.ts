@@ -100,9 +100,9 @@ export function trialReminderEmailHtml(data: TrialReminderEmailData): string {
     ${badge}
     <table width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:8px;margin:16px 0;">
     <tr style="background:#F8FAFC;"><td style="font-weight:600;color:#1E3A5F;font-size:13px;">Plan</td><td style="font-weight:600;color:#1E3A5F;font-size:13px;text-align:right;">Price/mo</td></tr>
-    <tr><td style="font-size:14px;color:#1E293B;">Starter</td><td style="font-size:14px;color:#1E293B;text-align:right;font-weight:600;">$99</td></tr>
-    <tr style="background:#F0FDF4;"><td style="font-size:14px;color:#059669;font-weight:600;">Pro ⭐</td><td style="font-size:14px;color:#059669;text-align:right;font-weight:600;">$299</td></tr>
-    <tr><td style="font-size:14px;color:#1E293B;">Enterprise</td><td style="font-size:14px;color:#1E293B;text-align:right;font-weight:600;">$799</td></tr>
+    <tr><td style="font-size:14px;color:#1E293B;">Starter</td><td style="font-size:14px;color:#1E293B;text-align:right;font-weight:600;">$79</td></tr>
+    <tr style="background:#F0FDF4;"><td style="font-size:14px;color:#059669;font-weight:600;">Pro ⭐</td><td style="font-size:14px;color:#059669;text-align:right;font-weight:600;">$149</td></tr>
+    <tr><td style="font-size:14px;color:#1E293B;">Enterprise</td><td style="font-size:14px;color:#1E293B;text-align:right;font-weight:600;">$299</td></tr>
     </table>
     ${btn("Upgrade Now", upgradeUrl, "#059669")}
     <p style="font-size:13px;color:#94A3B8;">All your data is safe and will be preserved when you upgrade.</p>
