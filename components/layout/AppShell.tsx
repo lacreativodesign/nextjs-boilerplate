@@ -14,6 +14,7 @@ import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import BugReportButton from "@/components/support/BugReportButton";
+import NotificationToast from "@/components/notifications/NotificationToast";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -164,6 +165,7 @@ function AppShellInner({
       </div>
 
       <BugReportButton />
+      <NotificationToast />
       <GlobalSearchModal />
     </div>
   );
