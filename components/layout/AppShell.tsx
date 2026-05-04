@@ -15,6 +15,7 @@ import { generateThemeCssVariables } from "@/lib/white-label/theme";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import BugReportButton from "@/components/support/BugReportButton";
 import NotificationToast from "@/components/notifications/NotificationToast";
+import ImpersonationBanner from "@/components/super_admin/ImpersonationBanner";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -164,6 +165,7 @@ function AppShellInner({
         </main>
       </div>
 
+      <ImpersonationBanner />
       <BugReportButton />
       <NotificationToast />
       <GlobalSearchModal />

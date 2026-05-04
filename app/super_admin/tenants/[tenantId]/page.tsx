@@ -78,6 +78,35 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [brandName, setBrandName] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [impersonating, setImpersonating] = useState(false);
+
+  const handleImpersonate = async () => {
+    if (!tenantId) return;
+    setImpersonating(true);
+    try {
+      const res = await fetch(
+        `/api/super_admin/tenants/${tenantId}/impersonate`,
+        { method: "POST", credentials: "include" }
+      );
+      const json = await res.json().catch(() => null);
+      if (!json?.ok || !json?.customToken) {
+        alert(json?.error || "Failed to start impersonation");
+        return;
+      }
+
+      // Build the impersonation URL — opens in new tab
+      const params = new URLSearchParams({
+        impersonateToken: json.customToken,
+        tenantId,
+        tenantName: json.tenantName || tenantId,
+      });
+      window.open(`/impersonate?${params.toString()}`, "_blank");
+    } catch (err) {
+      alert("Failed to start impersonation session");
+    } finally {
+      setImpersonating(false);
+    }
+  };
   const [logoMetadata, setLogoMetadata] = useState<{ width: number; height: number; format: string } | null>(null);
   const [savingBrand, setSavingBrand] = useState(false);
   const [savingModules, setSavingModules] = useState(false);
@@ -247,6 +276,29 @@ export default function TenantDetailPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{tenant.name}</h1>
+          <button
+            type="button"
+            onClick={handleImpersonate}
+            disabled={impersonating}
+            style={{
+              marginTop: 8,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 16px",
+              background: "linear-gradient(135deg, #b45309, #d97706)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: impersonating ? "not-allowed" : "pointer",
+              opacity: impersonating ? 0.7 : 1,
+              boxShadow: "0 2px 6px rgba(180,83,9,0.3)",
+            }}
+          >
+            👁️ {impersonating ? "Opening..." : "Login as Tenant"}
+          </button>
           <p className="page-subtitle">Tenant ID: {tenant.id}</p>
         </div>
         <div className="flex items-center gap-3">
