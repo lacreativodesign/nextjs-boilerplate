@@ -69,6 +69,12 @@ export async function POST(req: NextRequest) {
         sameSite: 'lax',
         path: '/',
       });
+
+      // Stamp lastActiveAt on tenant doc — non-blocking, never fails the login
+      adminDb.collection('tenants').doc(tenantId).set(
+        { lastActiveAt: new Date().toISOString() },
+        { merge: true }
+      ).catch((err: any) => console.error('session-login: lastActiveAt stamp failed', err));
     }
 
     // Also set role cookie for client-side role caching

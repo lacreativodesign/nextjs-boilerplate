@@ -10,7 +10,42 @@ type Tenant = {
   status: string;
   modulesEnabled: Record<string, boolean>;
   plan?: "starter" | "pro" | "enterprise";
+  lastActiveAt?: string | null;
+  trialEndsAt?: string | null;
+  subscriptionState?: string;
 };
+
+function getHealthIndicator(tenant: Tenant): { dot: string; label: string; title: string } {
+  const now = Date.now();
+
+  // Trial ending in < 3 days = at risk
+  if (tenant.trialEndsAt) {
+    const trialMs = new Date(tenant.trialEndsAt).getTime() - now;
+    const trialDays = Math.floor(trialMs / (1000 * 60 * 60 * 24));
+    if (trialDays <= 3 && trialDays >= 0) {
+      return { dot: "🔴", label: `Trial ends in ${trialDays}d`, title: "Trial ending soon" };
+    }
+  }
+
+  // Locked or past due = at risk
+  if (
+    tenant.subscriptionState === "hard_locked" ||
+    tenant.subscriptionState === "soft_locked"
+  ) {
+    return { dot: "🔴", label: "Locked", title: "Account locked — billing issue" };
+  }
+
+  if (!tenant.lastActiveAt) {
+    return { dot: "⚪", label: "Never", title: "No login recorded yet" };
+  }
+
+  const lastMs = now - new Date(tenant.lastActiveAt).getTime();
+  const days = Math.floor(lastMs / (1000 * 60 * 60 * 24));
+
+  if (days <= 2) return { dot: "🟢", label: `${days === 0 ? "Today" : days + "d ago"}`, title: "Active recently" };
+  if (days <= 7) return { dot: "🟡", label: `${days}d ago`, title: "Quiet — check in" };
+  return { dot: "🔴", label: `${days}d ago`, title: "At risk — not logging in" };
+}
 
 const defaultModules = {
   admin: true,
@@ -153,6 +188,7 @@ export default function SuperAdminTenantsPage() {
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
                 <th className="px-4 py-3">Company</th>
+                <th className="px-4 py-3">Health</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Modules</th>
@@ -165,6 +201,17 @@ export default function SuperAdminTenantsPage() {
                   <td className="px-4 py-3">
                     <div className="font-semibold">{tenant.name}</div>
                     <div className="text-xs text-[var(--text-muted)]">{tenant.slug}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const h = getHealthIndicator(tenant);
+                      return (
+                        <span title={h.title} className="inline-flex items-center gap-1.5 text-xs">
+                          <span>{h.dot}</span>
+                          <span className="text-[var(--text-muted)]">{h.label}</span>
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -201,7 +248,7 @@ export default function SuperAdminTenantsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-sm text-[var(--text-muted)]" colSpan={5}>
+                  <td className="px-4 py-6 text-sm text-[var(--text-muted)]" colSpan={6}>
                     No tenants found.
                   </td>
                 </tr>

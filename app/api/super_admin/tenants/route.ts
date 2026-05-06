@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
         }),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
+        lastActiveAt: data.lastActiveAt || null,
+        trialEndsAt: data.trialEndsAt || null,
+        subscriptionState: data.subscriptionState || "active",
       };
     });
 
