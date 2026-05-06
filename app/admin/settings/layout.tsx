@@ -16,6 +16,7 @@ const tabs = [
   { label: "Workflows", path: "/admin/settings/workflows" },
   { label: "Integrations", path: "/admin/settings/integrations" },
   { label: "API Usage", path: "/admin/settings/api-usage" },
+  { label: "AI Workforce", path: "/admin/settings/ai-workforce" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
