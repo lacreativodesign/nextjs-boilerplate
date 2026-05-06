@@ -43,7 +43,10 @@ function getFriendlyAuthError(code?: string): string {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("bizosto_saved_email") || "";
+  });
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(() => {
@@ -147,6 +150,11 @@ export default function LoginPage() {
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      if (remember) {
+        window.localStorage.setItem("bizosto_saved_email", email);
+      } else {
+        window.localStorage.removeItem("bizosto_saved_email");
+      }
       await completeLogin(userCred);
       showToast.success("Login successful!");
     } catch (err: any) {
@@ -235,7 +243,7 @@ export default function LoginPage() {
         throw new Error(json?.error || "Failed to send reset email.");
       }
 
-      alert("If an account exists for this email, a reset link has been sent.");
+      showToast.success("If an account exists for this email, a reset link has been sent.");
     } catch (err: any) {
       setError("Unable to send reset email. Please verify your email address.");
     }
@@ -357,9 +365,9 @@ export default function LoginPage() {
 
                   <Button
                     type="submit"
-                    disabled={!firebaseAuth}
-                    loading={loading}
-                    loadingText="Signing in..."
+                    disabled={!firebaseAuth || loading}
+                    loading={loading || !firebaseAuth}
+                    loadingText={!firebaseAuth ? "Loading..." : "Signing in..."}
                     className="login-submit"
                     fullWidth
                   >
