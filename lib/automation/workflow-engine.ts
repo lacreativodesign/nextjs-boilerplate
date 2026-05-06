@@ -120,19 +120,69 @@ async function executeAction(action: WorkflowAction, context: WorkflowExecutionC
         acc[key] = interpolate(value, context);
         return acc;
       }, {});
-      await adminDb.collection(action.entity).add({ ...payload, tenantId: context.tenantId, createdByWorkflow: context.workflowId });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": process.env.INTERNAL_REQUEST_SIGNING_SECRET || "",
+        },
+        body: JSON.stringify({
+          action: "create_record",
+          entity: action.entity,
+          tenantId: context.tenantId,
+          payload,
+          workflowId: context.workflowId,
+          runId,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json?.error || "create_record mutation failed");
       return {};
     }
     case "update_field": {
       const recordId = String(getValue(context.record, "id") || "");
       if (!recordId) throw new Error("Missing record id for update_field action.");
-      await adminDb.collection(action.entity).doc(recordId).set({ [action.field]: interpolate(action.value, context) }, { merge: true });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": process.env.INTERNAL_REQUEST_SIGNING_SECRET || "",
+        },
+        body: JSON.stringify({
+          action: "update_field",
+          entity: action.entity,
+          tenantId: context.tenantId,
+          recordId,
+          field: action.field,
+          value: interpolate(action.value, context),
+          workflowId: context.workflowId,
+          runId,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json?.error || "update_field mutation failed");
       return {};
     }
     case "delete_record": {
       const recordId = String(getValue(context.record, action.recordIdField) || "");
       if (!recordId) throw new Error("Missing record id for delete action.");
-      await adminDb.collection(action.entity).doc(recordId).delete();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": process.env.INTERNAL_REQUEST_SIGNING_SECRET || "",
+        },
+        body: JSON.stringify({
+          action: "delete_record",
+          entity: action.entity,
+          tenantId: context.tenantId,
+          recordId,
+          workflowId: context.workflowId,
+          runId,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json?.error || "delete_record mutation failed");
       return {};
     }
     case "send_email": {
