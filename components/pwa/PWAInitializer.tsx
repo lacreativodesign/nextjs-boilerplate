@@ -8,10 +8,21 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-function InstallPromptBanner({ onInstall }: { onInstall: () => Promise<void> }) {
+function InstallPromptBanner({ onInstall, onDismiss }: { onInstall: () => Promise<void>; onDismiss: () => void }) {
   return (
     <div className="fixed inset-x-4 bottom-24 z-50 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 shadow-[var(--shadow-md)] md:inset-x-auto md:right-6 md:w-[360px]">
-      <p className="text-sm font-semibold text-[var(--text-primary)]">Install Bizosto app</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Install Bizosto app</p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        >
+          <span style={{ fontSize: 18 }}>×</span>
+        </button>
+      </div>
       <p className="mt-1 text-xs text-[var(--text-muted)]">Install Bizosto for offline access, faster loading, and push notifications.</p>
       <button className="mt-3 min-h-11 w-full rounded-lg bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white" onClick={() => void onInstall()}>
         Install app
@@ -25,11 +36,22 @@ function OfflineIndicator({ offline }: { offline: boolean }) {
   return <div className="fixed inset-x-0 top-0 z-[60] bg-amber-500 px-4 py-2 text-center text-xs font-semibold text-white">Offline mode enabled</div>;
 }
 
-function NotificationPermissionPrompt({ canAsk, onEnable }: { canAsk: boolean; onEnable: () => Promise<void> }) {
+function NotificationPermissionPrompt({ canAsk, onEnable, onDismiss }: { canAsk: boolean; onEnable: () => Promise<void>; onDismiss: () => void }) {
   if (!canAsk) return null;
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 shadow-[var(--shadow-md)] md:inset-x-auto md:left-6 md:w-[360px]">
-      <p className="text-sm font-semibold text-[var(--text-primary)]">Enable push notifications</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Enable push notifications</p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        >
+          <span style={{ fontSize: 18 }}>×</span>
+        </button>
+      </div>
       <button className="mt-3 min-h-11 w-full rounded-lg border border-[var(--input-border)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)]" onClick={() => void onEnable()}>
         Enable notifications
       </button>
@@ -41,6 +63,8 @@ export default function PWAInitializer() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [offline, setOffline] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [installDismissed, setInstallDismissed] = useState(false);
+  const [notifDismissed, setNotifDismissed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -125,8 +149,14 @@ export default function PWAInitializer() {
   return (
     <>
       <OfflineIndicator offline={offline} />
-      {installEvent ? <InstallPromptBanner onInstall={handleInstall} /> : null}
-      <NotificationPermissionPrompt canAsk={canRequestPermission} onEnable={handleEnableNotifications} />
+      {installEvent && !installDismissed ? (
+        <InstallPromptBanner onInstall={handleInstall} onDismiss={() => setInstallDismissed(true)} />
+      ) : null}
+      <NotificationPermissionPrompt
+        canAsk={canRequestPermission && !notifDismissed}
+        onEnable={handleEnableNotifications}
+        onDismiss={() => setNotifDismissed(true)}
+      />
     </>
   );
 }
