@@ -17,6 +17,7 @@ import BugReportButton from "@/components/support/BugReportButton";
 import NotificationToast from "@/components/notifications/NotificationToast";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
+import ImpersonationBanner from "@/components/super_admin/ImpersonationBanner";
 
 const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
   ssr: false,
@@ -164,6 +165,7 @@ function AppShellInner({
         </main>
       </div>
 
+      <ImpersonationBanner />
       <BugReportButton />
       <NotificationToast />
       <GlobalSearchModal />

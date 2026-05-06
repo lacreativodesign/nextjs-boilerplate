@@ -80,6 +80,33 @@ export default function TenantDetailPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoMetadata, setLogoMetadata] = useState<{ width: number; height: number; format: string } | null>(null);
   const [savingBrand, setSavingBrand] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+
+  const handleImpersonate = async () => {
+    if (!tenantId) return;
+    setImpersonating(true);
+    try {
+      const res = await fetch(
+        `/api/super_admin/tenants/${tenantId}/impersonate`,
+        { method: "POST", credentials: "include" }
+      );
+      const json = await res.json().catch(() => null);
+      if (!json?.ok || !json?.customToken) {
+        alert(json?.error || "Failed to start impersonation");
+        return;
+      }
+      const qs = new URLSearchParams({
+        impersonateToken: json.customToken,
+        tenantId,
+        tenantName: json.tenantName || tenantId,
+      });
+      window.open(`/impersonate?${qs.toString()}`, "_blank");
+    } catch {
+      alert("Failed to start impersonation session");
+    } finally {
+      setImpersonating(false);
+    }
+  };
   const [savingModules, setSavingModules] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -259,6 +286,21 @@ export default function TenantDetailPage() {
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
           </select>
+          <button
+            type="button"
+            onClick={handleImpersonate}
+            disabled={impersonating}
+            className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            style={{
+              background: "linear-gradient(135deg,#b45309,#d97706)",
+              opacity: impersonating ? 0.7 : 1,
+              cursor: impersonating ? "not-allowed" : "pointer",
+              border: "none",
+              boxShadow: "0 2px 6px rgba(180,83,9,0.3)",
+            }}
+          >
+            👁️ {impersonating ? "Opening..." : "Login as Tenant"}
+          </button>
         </div>
       </div>
 
