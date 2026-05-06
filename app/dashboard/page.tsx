@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import dynamic from "next/dynamic";
+const COOSummaryWidget = dynamic(() => import("@/components/ai/COOSummaryWidget"), { ssr: false });
 
 type Stats = {
   users: number;
@@ -288,6 +290,9 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+      <div className="mt-6">
+        <COOSummaryWidget />
+      </div>
     </div>
   );
 }
