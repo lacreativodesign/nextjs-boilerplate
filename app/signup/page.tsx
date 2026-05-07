@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useEffect, useMemo, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
@@ -130,8 +132,9 @@ const stepContent: Record<Exclude<Step, 6>, { title: string; subtitle: string }>
   5: { title: "Terms & Conditions", subtitle: "Review and accept to activate your free trial." },
 };
 
-export default function SignupPage() {
+function SignupInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -144,11 +147,11 @@ export default function SignupPage() {
   const [otpError, setOtpError] = useState("");
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [formState, setFormState] = useState<SignupState>({
-    fullName: "",
-    email: "",
+    fullName: searchParams.get("name") || "",
+    email: searchParams.get("email") || "",
     password: "",
     confirmPassword: "",
-    companyName: "",
+    companyName: searchParams.get("company") || "",
     industry: industries[0],
     companySize: companySizes[0],
     country: countries[0],
@@ -425,14 +428,74 @@ export default function SignupPage() {
           {step !== 6 ? (
             <>
               <div className="mb-5">
-                <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-black/10">
-                  <div className="h-full rounded-full bg-[var(--erp-blue)] transition-all" style={{ width: `${progress}%` }} />
+                {/* Progress bar */}
+                <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progress}%`,
+                      background: "linear-gradient(90deg, #012167, #6692f9)",
+                    }}
+                  />
                 </div>
-                <div className="mb-3 flex items-center justify-between">
-                  {[1, 2, 3, 4, 5, 6].map((dot) => (
-                    <span key={dot} className={`h-2.5 w-2.5 rounded-full ${step >= dot ? "bg-[var(--erp-blue)]" : "bg-black/20"}`} />
-                  ))}
+
+                {/* Step indicators with labels */}
+                {(() => {
+                  const stepLabels = ["Account", "Verify", "Business", "Modules", "Terms", "Done"];
+                  return (
+                    <div className="mb-4 flex items-start justify-between">
+                      {stepLabels.map((label, i) => {
+                        const dotStep = i + 1;
+                        const isComplete = step > dotStep;
+                        const isActive = step === dotStep;
+                        return (
+                          <div key={label} className="flex flex-col items-center gap-1" style={{ width: "14%" }}>
+                            <span
+                              className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all duration-300"
+                              style={{
+                                background: isComplete
+                                  ? "linear-gradient(135deg, #012167, #6692f9)"
+                                  : isActive
+                                  ? "linear-gradient(135deg, #012167, #6692f9)"
+                                  : "rgba(0,0,0,0.12)",
+                                color: isComplete || isActive ? "#fff" : "rgba(0,0,0,0.35)",
+                                transform: isActive ? "scale(1.2)" : "scale(1)",
+                                boxShadow: isActive ? "0 0 0 3px rgba(102,146,249,0.3)" : "none",
+                              }}
+                            >
+                              {isComplete ? "✓" : dotStep}
+                            </span>
+                            <span
+                              className="text-center text-[9px] font-semibold uppercase tracking-wider transition-all"
+                              style={{
+                                color: isActive ? "var(--erp-blue)" : isComplete ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.25)",
+                              }}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Step counter */}
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-[var(--text-muted)]">
+                    {step < 6 ? `Step ${step} of 5` : "Almost there!"}
+                  </p>
+                  {step < 6 && (
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {step === 1 && "🔐 Secure setup"}
+                      {step === 2 && "📬 Check your inbox"}
+                      {step === 3 && "🏢 Tell us about you"}
+                      {step === 4 && "⚙️ Pick your tools"}
+                      {step === 5 && "✅ Almost done"}
+                    </p>
+                  )}
                 </div>
+
                 <h1 className="text-2xl font-semibold">{stepContent[step as Exclude<Step, 6>].title}</h1>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">{stepContent[step as Exclude<Step, 6>].subtitle}</p>
               </div>
@@ -621,6 +684,23 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="flex min-h-screen items-center justify-center"
+          style={{ background: "linear-gradient(180deg,#012167 0%,#6692f9 100%)" }}
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        </div>
+      }
+    >
+      <SignupInner />
+    </Suspense>
   );
 }
 
