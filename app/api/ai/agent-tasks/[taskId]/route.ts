@@ -6,7 +6,7 @@ import { getAgentTask } from "@/lib/ai/agent-task";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = new Set(["admin", "super_admin"]);
+const ALLOWED_ROLES = new Set(["admin", "super_admin", "finance"]);
 
 export async function GET(
   _req: NextRequest,
