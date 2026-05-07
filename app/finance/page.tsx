@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+
+const FinanceAgentWidget = dynamic(
+  () => import("@/components/ai/FinanceAgentWidget"),
+  { ssr: false }
+);
 
 type Overview = {
   kpisUsd: {
@@ -71,6 +77,10 @@ export default function FinanceOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <FinanceAgentWidget />
+      </div>
+
       <section>
         <h2 className="section-title mb-4">USD Performance</h2>
         <div className="kpis">

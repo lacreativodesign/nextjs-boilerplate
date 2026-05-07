@@ -9,7 +9,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = new Set(["admin", "super_admin"]);
+const ALLOWED_ROLES = new Set(["admin", "super_admin", "finance"]);
 const ALLOWED_AGENT_TYPES = new Set<AgentType>(["coo", "finance", "sales"]);
 
 export async function GET() {
