@@ -22,6 +22,11 @@ const REPORT_SECTIONS = [
     href: "/reports/finance",
     desc: "Revenue, outstanding invoices, payroll.",
   },
+  {
+    title: "🤖 AI Reports",
+    href: "/reports/ai",
+    desc: "Ask any question in plain English — get a chart or table powered by your live data.",
+  },
 ];
 
 export default function ReportsPage() {

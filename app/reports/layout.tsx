@@ -11,6 +11,7 @@ const TABS = [
   { href: "/reports/projects", label: "Projects" },
   { href: "/reports/team", label: "Team" },
   { href: "/reports/finance", label: "Finance" },
+  { href: "/reports/ai", label: "🤖 AI Reports" },
 ];
 
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
