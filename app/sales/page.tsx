@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCountUp } from "@/lib/hooks/useCountUp";
+import dynamic from "next/dynamic";
+const SalesAgentWidget = dynamic(
+  () => import("@/components/ai/SalesAgentWidget"),
+  { ssr: false }
+);
 
 type SalesStats = {
   totalLeads: number;
@@ -63,6 +68,10 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <SalesAgentWidget />
+      </div>
+
       <div className="kpis">
         <StatCard label="Total Leads" value={v(data?.totalLeads ?? 0)}
           sub="All time" href="/sales/leads" />
