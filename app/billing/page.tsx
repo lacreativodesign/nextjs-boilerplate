@@ -289,7 +289,7 @@ export default function BillingOverviewPage() {
                     perMonth: 124.17,
                     users: '20 users',
                     storage: '75GB',
-                    features: ['Finance & Production suite', 'Unlimited client portal seats', 'Approvals & full Reports', 'Priority support + chat'],
+                    features: ['Finance & Production suite', 'Unlimited client portal seats', 'Approvals & full Reports', 'AI Workforce agents (COO, Finance, Sales)', 'Natural language AI reports', 'Priority support + chat'],
                   },
                   {
                     key: 'enterprise',
@@ -299,7 +299,7 @@ export default function BillingOverviewPage() {
                     perMonth: 249.17,
                     users: 'Unlimited users',
                     storage: '250GB',
-                    features: ['HR module included', 'Client Stripe Connect', 'White-label options', 'Dedicated same-day support'],
+                    features: ['HR module included', 'Client Stripe Connect', 'AI Workforce — all 4 agents + AI Reports', 'Website embed integration', 'White-label options', 'Dedicated same-day support'],
                   },
                 ] as const).map((plan) => {
                   const isCurrent = data?.plan === plan.key;
