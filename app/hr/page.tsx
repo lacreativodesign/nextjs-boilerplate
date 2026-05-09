@@ -64,7 +64,7 @@ export default function HrOverviewPage() {
   const v = (n: number) => (loading ? "..." : n);
 
   return (
-    <div className="space-y-6">
+    <div className="page-frame space-y-6">
       <div className="kpis">
         <StatCard label="Total Employees" value={v(data?.totalEmployees ?? 0)} sub="All staff" href="/hr/employees" />
         <StatCard

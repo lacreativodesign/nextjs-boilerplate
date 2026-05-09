@@ -273,7 +273,7 @@ export default function SalesDealsPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="page-frame w-full">
       {error && (
         <div
           className="card"
