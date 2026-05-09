@@ -151,10 +151,11 @@ export default function EmployeeAttendanceDetail() {
           style={{
             padding: "8px 14px",
             borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
+            border: "1px solid var(--border-subtle)",
+            background: "var(--surface-card)",
             cursor: "pointer",
             fontSize: 13,
+            color: "var(--text-primary)",
           }}
         >
           ← Back to Attendance
@@ -182,8 +183,8 @@ export default function EmployeeAttendanceDetail() {
           marginBottom: 24,
           padding: 20,
           borderRadius: 12,
-          border: "1px solid #e5e7eb",
-          background: "#ffffff",
+          border: "1px solid var(--border-subtle)",
+          background: "var(--surface-card)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -195,10 +196,10 @@ export default function EmployeeAttendanceDetail() {
             {employee.name}
           </h2>
           {employee.email && (
-            <p style={{ fontSize: 14, color: "#6b7280" }}>{employee.email}</p>
+            <p style={{ fontSize: 14, color: "var(--text-muted)" }}>{employee.email}</p>
           )}
           {employee.role && (
-            <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
               Role: {employee.role}
             </p>
           )}
@@ -231,13 +232,13 @@ export default function EmployeeAttendanceDetail() {
       <div
         style={{
           borderRadius: 12,
-          border: "1px solid #e5e7eb",
-          background: "#ffffff",
+          border: "1px solid var(--border-subtle)",
+          background: "var(--surface-card)",
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "#f9fafb" }}>
+          <thead style={{ background: "var(--surface-muted)" }}>
             <tr>
               <th style={th}>Date</th>
               <th style={th}>Day</th>
@@ -257,22 +258,22 @@ export default function EmployeeAttendanceDetail() {
                 dateObj.day() === 0 || dateObj.day() === 6; // Sun / Sat
 
               let status = "Absent";
-              let badgeBg = "#fee2e2";
-              let badgeColor = "#b91c1c";
+              let badgeBg = "rgba(239,68,68,0.12)";
+              let badgeColor = "var(--danger, #dc2626)";
 
               if (isWeekend) {
                 status = "Weekend";
-                badgeBg = "#e5e7eb";
-                badgeColor = "#374151";
+                badgeBg = "var(--surface-muted)";
+                badgeColor = "var(--text-muted)";
               }
 
               if (info && info.hours) {
                 status = "Present";
-                badgeBg = "#dcfce7";
-                badgeColor = "#166534";
+                badgeBg = "rgba(34,197,94,0.12)";
+                badgeColor = "#16a34a";
               }
 
-              const rowBg = index % 2 === 0 ? "#ffffff" : "#f9fafb";
+              const rowBg = index % 2 === 0 ? "var(--surface-card)" : "var(--surface-muted)";
 
               return (
                 <tr key={day} style={{ background: rowBg }}>
@@ -319,8 +320,8 @@ export default function EmployeeAttendanceDetail() {
 
 const btn = {
   padding: "8px 14px",
-  background: "#2563eb",
-  color: "white",
+  background: "var(--erp-blue)",
+  color: "var(--text-on-inverse, #fff)",
   border: "none",
   borderRadius: 8,
   cursor: "pointer",
@@ -331,7 +332,8 @@ const th: React.CSSProperties = {
   padding: 10,
   fontSize: 12,
   fontWeight: 600,
-  borderBottom: "1px solid #e5e7eb",
+  borderBottom: "1px solid var(--border-subtle)",
+  color: "var(--text-muted)",
   textAlign: "left",
   whiteSpace: "nowrap",
 };
@@ -339,15 +341,16 @@ const th: React.CSSProperties = {
 const td: React.CSSProperties = {
   padding: 10,
   fontSize: 13,
-  borderBottom: "1px solid #f3f4f6",
+  borderBottom: "1px solid var(--border-subtle)",
+  color: "var(--text-primary)",
   whiteSpace: "nowrap",
 };
 
 const statCard: React.CSSProperties = {
   padding: "8px 14px",
   borderRadius: 10,
-  background: "#f9fafb",
-  border: "1px solid #e5e7eb",
+  background: "var(--surface-muted)",
+  border: "1px solid var(--border-subtle)",
   minWidth: 110,
 };
 
@@ -355,11 +358,11 @@ const statLabel: React.CSSProperties = {
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: 0.5,
-  color: "#6b7280",
+  color: "var(--text-muted)",
 };
 
 const statValue: React.CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
