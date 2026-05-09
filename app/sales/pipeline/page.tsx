@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { showToast } from "@/lib/utils/toast";
 
 const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
 
@@ -38,7 +39,7 @@ export default function SalesPipelinePage() {
     if (!next) return;
 
     if (next === "closed_won" && deal.discountPercent > 0 && !deal.discountApproved) {
-      alert("Discount approval is required before Closed Won.");
+      showToast.error("Discount approval is required before Closed Won.");
       return;
     }
 
@@ -49,7 +50,7 @@ export default function SalesPipelinePage() {
     });
     const data = await res.json();
     if (!data.ok) {
-      alert(data.error || "Failed to update stage");
+      showToast.error(data.error || "Failed to update stage");
       return;
     }
     await loadDeals();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { showToast } from "@/lib/utils/toast";
 
 const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
 
@@ -27,7 +28,7 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
     });
     const data = await res.json();
     if (!data.ok) {
-      alert(data.error || "Failed to update stage");
+      showToast.error(data.error || "Failed to update stage");
       return;
     }
     await loadDeal();
@@ -41,10 +42,10 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
     });
     const data = await res.json();
     if (!data.ok) {
-      alert(data.error || "Failed to request discount");
+      showToast.error(data.error || "Failed to request discount");
       return;
     }
-    alert(data.autoApproved ? "Discount auto-approved" : "Discount request sent to manager");
+    showToast.success(data.autoApproved ? "Discount auto-approved ✓" : "Discount request sent to manager");
     await loadDeal();
   }
 

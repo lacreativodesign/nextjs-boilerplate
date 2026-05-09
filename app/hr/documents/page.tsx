@@ -5,6 +5,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
+import { showToast } from "@/lib/utils/toast";
 
 const DOC_TYPES = [
   { label: "Contract", value: "Contract" },
@@ -125,7 +126,7 @@ export default function HrDocumentsPage() {
 
   async function uploadDocument() {
     if (!selectedUserId || !selectedDocType || !selectedFile) {
-      alert("Select an employee, document type, and file.");
+      showToast.error("Select an employee, document type, and file.");
       return;
     }
 
@@ -163,7 +164,7 @@ export default function HrDocumentsPage() {
       setSelectedUserId("");
       setSelectedDocType("Contract");
     } catch (err: any) {
-      alert(err?.message || "Unable to upload document.");
+      showToast.error(err?.message || "Unable to upload document.");
     } finally {
       setUploading(false);
     }
@@ -182,7 +183,7 @@ export default function HrDocumentsPage() {
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to delete document.");
       setDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, isDeleted: true } : d)));
     } catch (err: any) {
-      alert(err?.message || "Unable to delete document.");
+      showToast.error(err?.message || "Unable to delete document.");
     }
   }
 
