@@ -8,6 +8,7 @@ import {
   type InternalRole,
   type UserDepartment,
 } from "@/lib/userOptions";
+import { showToast } from "@/lib/utils/toast";
 
 const STATUS_OPTIONS = [
   { label: "All Status", value: "all" },
@@ -263,7 +264,7 @@ export default function HrEmployeesPage() {
       setUsers((prev) => prev.map((u) => (getRowId(u) === getRowId(selectedUser) ? { ...u, ...data.user } : u)));
       setEditMode(false);
     } catch (err: any) {
-      alert(err?.message || "Unable to update employee.");
+      showToast.error(err?.message || "Unable to update employee.");
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { showToast } from "@/lib/utils/toast";
 
 export default function AddEmployeePage() {
   const [loading, setLoading] = useState(false);
@@ -30,13 +31,13 @@ export default function AddEmployeePage() {
       const json = await res.json();
 
       if (json.success) {
-        alert("Employee created!");
+        showToast.success("Employee created!");
         window.location.href = "/hr/employees";
       } else {
-        alert("Failed: " + (json.message || "Unknown error"));
+        showToast.error("Failed: " + (json.message || "Unknown error"));
       }
     } catch (err) {
-      alert("Error creating employee.");
+      showToast.error("Error creating employee.");
     }
 
     setLoading(false);

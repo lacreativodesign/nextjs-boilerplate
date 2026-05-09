@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { showToast } from "@/lib/utils/toast";
 
 export default function EditEmployeePage() {
   const { id } = useParams();
@@ -39,7 +40,7 @@ export default function EditEmployeePage() {
       if (data.success) {
         router.push(`/hr/employees/${id}`);
       } else {
-        alert("Failed to update employee.");
+        showToast.error("Failed to update employee.");
       }
     } catch (err) {
       console.error("Save error:", err);

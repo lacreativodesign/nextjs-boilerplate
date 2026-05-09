@@ -1,210 +1,212 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { showToast } from "@/lib/utils/toast";
 
-// Same dropdown data used in Add Lead
-const serviceOptions = [
-  "Website Design",
-  "Branding",
-  "Social Media Marketing",
-  "SEO",
-  "Mobile App Development",
-  "Ecommerce Store",
-];
+const STAGES = ["New", "Contacted", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
+const SOURCES = ["Website", "Referral", "Cold Outreach", "LinkedIn", "Event", "Social Media", "Other"];
 
-const priorityOptions = ["Low", "Medium", "High", "Urgent"];
+type LeadForm = {
+  name: string;
+  email: string;
+  phone: string;
+  stage: string;
+  source: string;
+};
 
-const assignedUsers = [
-  "Unassigned",
-  "Zain Ahmed",
-  "Sarah Khan",
-  "Ali Raza",
-  "John Smith",
-];
-
-export default function EditLeadPage({ params }: any) {
+export default function EditLeadPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const { id } = params;
 
-  // PRE-FILLED DUMMY DATA UNTIL BACKEND IS CONNECTED
-  const [form, setForm] = useState({
-    fullName: "",
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [form, setForm] = useState<LeadForm>({
+    name: "",
     email: "",
     phone: "",
-    service: "",
-    source: "",
-    priority: "Medium",
-    assignedTo: "Unassigned",
-    notes: "",
+    stage: "New",
+    source: "Website",
   });
 
-  // Load dummy lead data (UI only)
   useEffect(() => {
-    // IN FUTURE: replace with API call
-    setForm({
-      fullName: "John Doe",
-      email: "john@example.com",
-      phone: "+1 555 900 233",
-      service: "Website Design",
-      source: "Website Form",
-      priority: "High",
-      assignedTo: "Zain Ahmed",
-      notes: "Interested in corporate website redesign.",
-    });
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/admin/sales/leads/list", { credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (!json?.ok) {
+          showToast.error("Failed to load lead.");
+          setNotFound(true);
+          return;
+        }
+        const lead = (json.leads || []).find((l: any) => l.id === id);
+        if (!lead) {
+          setNotFound(true);
+          return;
+        }
+        setForm({
+          name: lead.name || "",
+          email: lead.email || "",
+          phone: lead.phone || "",
+          stage: lead.stage || "New",
+          source: lead.source || "Website",
+        });
+      } catch {
+        showToast.error("Error loading lead.");
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
   }, [id]);
 
-  function updateField(key: string, value: string) {
-    setForm({ ...form, [key]: value });
+  const handleChange = (key: keyof LeadForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim()) {
+      showToast.error("Name and email are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/sales/leads/update", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...form }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        showToast.error(json?.error || "Failed to update lead.");
+        return;
+      }
+      showToast.success("Lead updated successfully.");
+      router.push("/sales/leads");
+    } catch {
+      showToast.error("Error saving lead.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="page-frame">
+        <p className="text-sm text-[var(--text-muted)]">Loading lead…</p>
+      </div>
+    );
   }
 
-  function handleSubmit(e: any) {
-    e.preventDefault();
-    alert("Lead updated (UI only). Backend will come later.");
+  if (notFound) {
+    return (
+      <div className="page-frame">
+        <p className="text-sm text-[var(--text-muted)]">Lead not found.</p>
+        <button type="button" onClick={() => router.push("/sales/leads")} className="btn mt-4">
+          Back to Leads
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="max-w-3xl mx-auto">
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-6 flex flex-col gap-6"
+    <div className="page-frame">
+      <div className="mb-6 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => router.push("/sales/leads")}
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
         >
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Edit Lead
-          </h1>
-
-          {/* FORM GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* FULL NAME */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Full Name
-              </label>
+          ← Back to Leads
+        </button>
+      </div>
+      <div className="max-w-2xl">
+        <h1 className="page-title mb-1">Edit Lead</h1>
+        <p className="page-subtitle mb-6">Update lead information and pipeline stage.</p>
+        <form onSubmit={handleSubmit} className="card p-6 space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="label" htmlFor="name">Full Name</label>
               <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => updateField("fullName", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                id="name"
+                className="input"
+                value={form.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="Jane Smith"
                 required
               />
             </div>
-
-            {/* EMAIL */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Email
-              </label>
+            <div className="flex flex-col gap-1.5">
+              <label className="label" htmlFor="email">Email</label>
               <input
+                id="email"
                 type="email"
+                className="input"
                 value={form.email}
-                onChange={(e) => updateField("email", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                onChange={(e) => handleChange("email", e.target.value)}
+                placeholder="jane@company.com"
                 required
               />
             </div>
-
-            {/* PHONE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Phone
-              </label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="label" htmlFor="phone">Phone</label>
               <input
-                type="text"
+                id="phone"
+                type="tel"
+                className="input"
                 value={form.phone}
-                onChange={(e) => updateField("phone", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-                required
+                onChange={(e) => handleChange("phone", e.target.value)}
+                placeholder="+1 (555) 000-0000"
               />
             </div>
-
-            {/* SERVICE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Service
-              </label>
+            <div className="flex flex-col gap-1.5">
+              <label className="label" htmlFor="stage">Stage</label>
               <select
-                value={form.service}
-                onChange={(e) => updateField("service", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-                required
+                id="stage"
+                className="input"
+                value={form.stage}
+                onChange={(e) => handleChange("stage", e.target.value)}
               >
-                <option value="">Select Service</option>
-                {serviceOptions.map((srv) => (
-                  <option key={srv}>{srv}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* SOURCE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Lead Source
-              </label>
-              <input
-                type="text"
-                value={form.source}
-                onChange={(e) => updateField("source", e.target.value)}
-                placeholder="Website / Referral / Social Media"
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-              />
-            </div>
-
-            {/* PRIORITY */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Priority
-              </label>
-              <select
-                value={form.priority}
-                onChange={(e) => updateField("priority", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-              >
-                {priorityOptions.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* ASSIGN TO */}
-            <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Assign To
-              </label>
-              <select
-                value={form.assignedTo}
-                onChange={(e) => updateField("assignedTo", e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-              >
-                {assignedUsers.map((usr) => (
-                  <option key={usr}>{usr}</option>
-                ))}
+                {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
-
-          {/* NOTES */}
-          <div>
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              Notes
-            </label>
-            <textarea
-              rows={4}
-              value={form.notes}
-              onChange={(e) => updateField("notes", e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
-            />
+          <div className="flex flex-col gap-1.5">
+            <label className="label" htmlFor="source">Source</label>
+            <select
+              id="source"
+              className="input"
+              value={form.source}
+              onChange={(e) => handleChange("source", e.target.value)}
+            >
+              {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
-
-          {/* SUBMIT BUTTON */}
-          <div className="flex justify-end">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
-              className="px-6 py-2 rounded-md bg-indigo-600 text-white text-sm shadow-sm hover:bg-indigo-700"
+              disabled={saving}
+              className="btn"
             >
-              Save Changes
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/sales/leads")}
+              className="btn-ghost"
+            >
+              Cancel
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-    }
+}
