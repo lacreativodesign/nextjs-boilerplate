@@ -57,7 +57,7 @@ export default function SalesPipelinePage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="page-frame space-y-4">
       <h1 className="text-xl font-bold">My Pipeline</h1>
       <div className="grid gap-4 lg:grid-cols-3">
         {grouped.map((column) => (

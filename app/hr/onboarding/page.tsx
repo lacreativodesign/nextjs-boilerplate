@@ -289,7 +289,7 @@ export default function HrOnboardingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-frame space-y-6">
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>Onboarding</div>
         <div style={{ color: "var(--sidebar-text)", fontSize: 14 }}>

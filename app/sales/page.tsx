@@ -67,7 +67,7 @@ export default function SalesPage() {
   const v = (val: any) => loading ? "..." : val;
 
   return (
-    <div className="space-y-6">
+    <div className="page-frame space-y-6">
       <div className="mb-6">
         <SalesAgentWidget />
       </div>
