@@ -457,8 +457,8 @@ function SignupInner() {
                                   ? "linear-gradient(135deg, #012167, #6692f9)"
                                   : isActive
                                   ? "linear-gradient(135deg, #012167, #6692f9)"
-                                  : "rgba(0,0,0,0.12)",
-                                color: isComplete || isActive ? "#fff" : "rgba(0,0,0,0.35)",
+                                  : "rgba(255,255,255,0.15)",
+                                color: isComplete || isActive ? "#fff" : "rgba(255,255,255,0.5)",
                                 transform: isActive ? "scale(1.2)" : "scale(1)",
                                 boxShadow: isActive ? "0 0 0 3px rgba(102,146,249,0.3)" : "none",
                               }}
@@ -468,7 +468,7 @@ function SignupInner() {
                             <span
                               className="text-center text-[9px] font-semibold uppercase tracking-wider transition-all"
                               style={{
-                                color: isActive ? "var(--erp-blue)" : isComplete ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.25)",
+                                color: isActive ? "#6692f9" : isComplete ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
                               }}
                             >
                               {label}
