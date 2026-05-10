@@ -43,7 +43,7 @@ export default function DealsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="page-frame">
       <h1 className="mb-6 text-2xl font-bold">Sales Pipeline</h1>
 
       {pipelines.length > 1 && (

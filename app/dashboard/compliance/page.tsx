@@ -161,9 +161,9 @@ export default function CompliancePage() {
   }
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="page-frame space-y-8">
       <h1 className="text-2xl font-semibold">Compliance Dashboard</h1>
-      {status && <div className="rounded border border-slate-300 bg-slate-50 p-3 text-sm">{status}</div>}
+      {status && <div className="rounded border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-primary)]">{status}</div>}
 
       <section className="rounded border p-4">
         <h2 className="mb-4 text-lg font-medium">Data retention policy manager</h2>
