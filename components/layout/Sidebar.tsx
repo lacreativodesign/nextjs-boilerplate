@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, X, FileText, Zap,
+  Shield, X, SlidersHorizontal, HelpCircle,
 } from "lucide-react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -45,9 +45,9 @@ export default function Sidebar({
     { href: "/hr",                  label: t("navigation.hr"),          icon: UserCircle,      roles: ["admin", "super_admin", "hr"],                                                                                                                    module: "hr" },
     { href: "/reports",             label: t("navigation.reports"),     icon: BarChart3,       roles: ["admin", "super_admin", "sales_manager", "am_manager", "production_manager", "finance", "hr"],                                                   module: "reports" },
     { href: "/billing",             label: "Billing",                   icon: CreditCard,      roles: ["admin", "super_admin"],                                                                                                                          module: null },
-    { href: "/admin/settings/integrations", label: "Integrations",     icon: Zap,             roles: ["admin", "super_admin"],                                                                                                                          module: null },
+    { href: "/admin/settings",              label: "Admin Settings",   icon: SlidersHorizontal, roles: ["admin", "super_admin"],                                                                                                                       module: null },
     { href: "/super_admin",         label: t("navigation.superAdmin"),  icon: Shield,          roles: ["super_admin"],                                                                                                                                   module: null },
-    { href: "/dashboard/documents", label: "Documents",                 icon: FileText,        roles: ["admin", "super_admin"],                                                                                                                          module: null },
+    { href: "/help",                label: "Help",                      icon: HelpCircle,      roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"],           module: null },
     { href: "/settings",            label: t("common.settings"),        icon: Settings,        roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"],             module: null },
   ];
 

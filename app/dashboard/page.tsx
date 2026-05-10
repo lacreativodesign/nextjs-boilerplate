@@ -5,6 +5,10 @@ import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import dynamic from "next/dynamic";
+import {
+  TrendingUp, Briefcase, UserCircle, Package,
+  DollarSign, BarChart3, Settings,
+} from "lucide-react";
 const COOSummaryWidget = dynamic(() => import("@/components/ai/COOSummaryWidget"), { ssr: false });
 
 type Stats = {
@@ -119,177 +123,38 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
-          {
-            title: "Sales & Pipeline",
-            href: "/sales",
-            desc: "Leads, deals, and revenue pipeline.",
-            moduleKey: "sales",
-          },
-          { title: "Clients", href: "/clients", desc: "Client accounts and lifecycle management." },
-          { title: "HR & Team", href: "/hr", desc: "Attendance, leave, and performance.", moduleKey: "hr" },
-          {
-            title: "Production",
-            href: "/production",
-            desc: "Jobs, workload, and delivery.",
-            moduleKey: "production",
-          },
-          { title: "Finance", href: "/finance", desc: "Invoices, payments, and payroll.", moduleKey: "finance" },
-          {
-            title: "Reports",
-            href: "/reports",
-            desc: "Analytics across all departments.",
-            moduleKey: "reports",
-          },
-          { title: "Settings", href: "/settings", desc: "System configuration and preferences." },
+          { title: "Sales & Pipeline", href: "/sales", desc: "Leads, deals, and revenue pipeline.", moduleKey: "sales", icon: TrendingUp },
+          { title: "Clients", href: "/clients", desc: "Client accounts and lifecycle management.", moduleKey: null, icon: Briefcase },
+          { title: "HR & Team", href: "/hr", desc: "Attendance, leave, and performance.", moduleKey: "hr", icon: UserCircle },
+          { title: "Production", href: "/production", desc: "Jobs, workload, and delivery.", moduleKey: "production", icon: Package },
+          { title: "Finance", href: "/finance", desc: "Invoices, payments, and payroll.", moduleKey: "finance", icon: DollarSign },
+          { title: "Reports", href: "/reports", desc: "Analytics across all departments.", moduleKey: "reports", icon: BarChart3 },
+          { title: "Settings", href: "/settings", desc: "System configuration and preferences.", moduleKey: null, icon: Settings },
         ]
           .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
-          .map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            className="rounded-xl border border-[var(--border-subtle)]
-              bg-[var(--surface-card)] p-5
-              hover:border-[var(--erp-blue)] transition-all group"
-          >
-            <p
-              className="font-semibold text-[var(--text-primary)]
-              group-hover:text-[var(--erp-blue)]"
-            >
-              {item.title}
-            </p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
-          </a>
-        ))}
+          .map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className="flex items-start gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 hover:border-[var(--erp-blue)] transition-all group"
+              >
+                <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--erp-blue)]">{item.title}</p>
+                  <p className="mt-0.5 text-sm text-[var(--text-muted)]">{item.desc}</p>
+                </div>
+              </a>
+            );
+          })}
       </div>
 
-      {/* Admin Tools — only visible to admin and super_admin */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="section-title">Admin Tools</h2>
-          <p className="page-subtitle">Workspace utilities, automation, and team management.</p>
-        </div>
+      {/* Admin Tools removed from dashboard — accessible via Admin Settings in sidebar */}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              title: "Support Tickets",
-              href: "/admin/support",
-              desc: "View and manage internal support requests.",
-              icon: "🎫",
-            },
-            {
-              title: "Automation",
-              href: "/admin/automation",
-              desc: "Configure workflow automation rules.",
-              icon: "⚡",
-              moduleKey: "admin",
-            },
-            {
-              title: "Data Import",
-              href: "/admin/import",
-              desc: "Bulk import clients, invoices, and employees.",
-              icon: "📥",
-              moduleKey: "admin",
-            },
-            {
-              title: "Activity Log",
-              href: "/admin/activity",
-              desc: "Full audit trail of platform-wide events.",
-              icon: "🕐",
-            },
-          ]
-            .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
-            .map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="rounded-xl border border-[var(--border-subtle)]
-                bg-[var(--surface-card)] p-5
-                hover:border-[var(--erp-blue)] transition-all group"
-            >
-              <div className="mb-2 text-2xl">{item.icon}</div>
-              <p
-                className="font-semibold text-[var(--text-primary)]
-                group-hover:text-[var(--erp-blue)]"
-              >
-                {item.title}
-              </p>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Extended Modules */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="section-title">Extended Modules</h2>
-          <p className="page-subtitle">Additional platform capabilities.</p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              title: "Documents",
-              href: "/dashboard/documents",
-              desc: "File uploads, folders, and version control.",
-              icon: "📁",
-            },
-            {
-              title: "CRM — Customers",
-              href: "/dashboard/crm/customers",
-              desc: "Customer profiles and relationship tracking.",
-              icon: "🤝",
-              moduleKey: "crm",
-            },
-            {
-              title: "CRM — Deals",
-              href: "/dashboard/crm/deals",
-              desc: "Deal pipeline and sales opportunities.",
-              icon: "💼",
-              moduleKey: "crm",
-            },
-            {
-              title: "Inventory",
-              href: "/dashboard/inventory/products",
-              desc: "Products, stock levels, and variants.",
-              icon: "📦",
-              moduleKey: "inventory",
-            },
-            {
-              title: "Audit Logs",
-              href: "/dashboard/audit-logs",
-              desc: "Immutable record of all system changes.",
-              icon: "🔍",
-            },
-            {
-              title: "Compliance",
-              href: "/dashboard/compliance",
-              desc: "Policy management and data retention rules.",
-              icon: "🛡️",
-            },
-          ]
-            .filter((item) => !item.moduleKey || moduleEnabled(item.moduleKey))
-            .map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="rounded-xl border border-[var(--border-subtle)]
-                bg-[var(--surface-card)] p-5
-                hover:border-[var(--erp-blue)] transition-all group"
-            >
-              <div className="mb-2 text-2xl">{item.icon}</div>
-              <p
-                className="font-semibold text-[var(--text-primary)]
-                group-hover:text-[var(--erp-blue)]"
-              >
-                {item.title}
-              </p>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
-            </a>
-          ))}
-        </div>
-      </section>
+      {/* Extended Modules removed — accessible via Admin Settings in sidebar */}
       <div className="mt-6">
         <COOSummaryWidget />
       </div>
