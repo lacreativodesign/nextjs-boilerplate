@@ -22,15 +22,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc("system").get();
-    const data = snap.exists ? snap.data() : {};
-
-    // Read tenant's chosen currency from signup
     const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
     const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
+    const tenantName = String(tenantSnap.data()?.name || "").trim();
+
+    const snap = await adminDb
+      .collection("tenants")
+      .doc(auth.user.tenantId)
+      .collection("settings")
+      .doc("system")
+      .get();
+    const data = snap.exists ? snap.data() : {};
 
     const settings = {
-      companyName: parseString(data?.companyName, DEFAULT_SYSTEM_SETTINGS.companyName),
+      companyName: parseString(data?.companyName, tenantName || DEFAULT_SYSTEM_SETTINGS.companyName),
       timezone: parseString(data?.timezone, DEFAULT_SYSTEM_SETTINGS.timezone),
       dateFormat: parseString(data?.dateFormat, DEFAULT_SYSTEM_SETTINGS.dateFormat),
       workingDays: parseStringArray(data?.workingDays),
@@ -85,7 +90,12 @@ export async function PUT(req: Request) {
       updatedBy: auth.user.uid,
     };
 
-    await adminDb.collection("settings").doc("system").set(payload, { merge: true });
+    await adminDb
+      .collection("tenants")
+      .doc(auth.user.tenantId)
+      .collection("settings")
+      .doc("system")
+      .set(payload, { merge: true });
 
     await logSettingsChange({
       user: auth.user,

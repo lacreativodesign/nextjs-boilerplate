@@ -174,6 +174,9 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
   }
 }
 
+/** Alias — all AI agent routes import getCurrentUser */
+export const getCurrentUser = getCurrentUserOrThrow;
+
 export async function ensureDefaultTenant() {
   const ref = adminDb.collection('tenants').doc(DEFAULT_TENANT_ID);
   const snap = await trackDbQuery('db.query', 'tenants.ensureDefaultTenant.get', async () =>
