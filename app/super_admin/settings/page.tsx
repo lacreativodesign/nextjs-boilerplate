@@ -91,7 +91,7 @@ export default function SuperAdminSettingsPage() {
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.allowPublicSignup ? 'bg-[var(--erp-blue)]' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.allowPublicSignup ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-3.5 w-6 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.allowPublicSignup ? 'translate-x-[14px]' : 'translate-x-0.5'}`}
               />
             </button>
           </div>
@@ -105,7 +105,7 @@ export default function SuperAdminSettingsPage() {
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.maintenanceMode ? 'bg-red-500' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.maintenanceMode ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-3.5 w-6 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.maintenanceMode ? 'translate-x-[14px]' : 'translate-x-0.5'}`}
               />
             </button>
           </div>
@@ -171,7 +171,7 @@ export default function SuperAdminSettingsPage() {
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.announcementEnabled ? 'bg-[var(--erp-blue)]' : 'bg-[var(--surface-muted)]'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.announcementEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-3.5 w-6 transform rounded-full bg-[var(--surface-card)] transition-transform ${settings.announcementEnabled ? 'translate-x-[14px]' : 'translate-x-0.5'}`}
               />
             </button>
           </div>

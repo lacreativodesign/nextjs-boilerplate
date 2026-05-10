@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BarChart3 } from "lucide-react";
 import type { SalesProposedAction } from "@/lib/ai/sales-agent";
 
 type TaskStatus = "queued" | "processing" | "completed" | "failed" | "awaiting_approval";
@@ -119,7 +120,7 @@ export default function SalesAgentWidget() {
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">📈 Sales Agent</p>
+          <p className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[var(--erp-blue)]" /> Sales Agent</p>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">
             Pipeline analysis · surfaces stalling leads · proposes stage updates
           </p>

@@ -125,7 +125,7 @@ export default function BillingOverviewPage() {
   }, [data?.plan]);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 text-[var(--text-primary)]">
+    <main className="page-frame text-[var(--text-primary)]">
       <div className="tabs-bar">
         <Link href="/billing" className="tab-pill active">
           Subscription

@@ -12,7 +12,7 @@ export const metadata = {
 
 export default function HelpCenterPage() {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6">
+    <main className="page-frame py-10">
       <header className="mb-8">
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--erp-blue)]">Bizosto ERP Help Center</p>
         <h1 className="mt-2 text-3xl font-semibold text-[var(--text-primary)] md:text-4xl">How can we help?</h1>

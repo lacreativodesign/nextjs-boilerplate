@@ -203,7 +203,7 @@ body { background: var(--app-bg); color: var(--text-primary); overflow-x: hidden
 .page-title { font-size: clamp(24px, 2.4vw, 34px); font-weight: 900; letter-spacing: -0.01em; }
 .page-subtitle { font-size: 14px; color: var(--text-muted); margin: 0; }
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.page-frame { width: min(var(--page-max-width), 100%); margin: 0 auto; padding-left: var(--page-padding-x); padding-right: var(--page-padding-x); animation: fadeRise 220ms ease both; }
+.page-frame { width: min(var(--page-max-width), 100%); margin: 0 auto; padding-left: var(--page-padding-x); padding-right: var(--page-padding-x); }
 .helper-text { font-size: 12px; color: var(--text-muted); }
 .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
 .section-subtitle { font-size: 13px; color: var(--text-muted); }
@@ -257,7 +257,7 @@ body { background: var(--app-bg); color: var(--text-primary); overflow-x: hidden
   100% { box-shadow: var(--shadow-sm), 0 0 0 0 rgba(102, 146, 249, 0); }
 }
 
-.settings-section { animation: fadeRise 220ms ease both; }
+.settings-section { }
 .fade-in { animation: fadeIn 180ms ease-out both; }
 .skeleton-shimmer {
   background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
@@ -469,8 +469,8 @@ select option { color: var(--text-primary); background: var(--surface-card); }
 .notification-row__link { display: block; font-size: 11px; font-weight: 600; color: var(--erp-blue); }
 .notification-empty { padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-.admin-shell main { animation: fadeRise 240ms ease both; }
-.admin-shell main > section { animation: fadeRise 220ms ease both; animation-delay: 40ms; }
+.admin-shell main { }
+.admin-shell main > section { }
 @media (prefers-reduced-motion: reduce) { .admin-shell main, .admin-shell main > section, .settings-section { animation: none; } }
 
 .admin-link { color: var(--text-muted); }

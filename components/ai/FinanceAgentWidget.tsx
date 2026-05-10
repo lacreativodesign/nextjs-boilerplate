@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import type { ProposedAction } from "@/lib/ai/finance-agent";
 
 type TaskStatus = "queued" | "processing" | "completed" | "failed" | "awaiting_approval";
@@ -126,7 +127,7 @@ export default function FinanceAgentWidget() {
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">💰 Finance Agent</p>
+          <p className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2"><TrendingUp className="h-4 w-4 text-[var(--erp-blue)]" /> Finance Agent</p>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">Analyses cash flow · proposes payment reminders</p>
         </div>
         {(widgetState === "idle" || widgetState === "done" || widgetState === "error") && (
