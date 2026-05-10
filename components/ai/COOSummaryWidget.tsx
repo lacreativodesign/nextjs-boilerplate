@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Bot } from "lucide-react";
 import type { AgentTask } from "@/lib/ai/agent-task";
 
 type WidgetState = "idle" | "creating" | "processing" | "done" | "error";
@@ -90,9 +91,7 @@ export default function COOSummaryWidget() {
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">
-            🤖 AI Business Summary
-          </p>
+          <p className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2"><Bot className="h-4 w-4 text-[var(--erp-blue)]" /> AI Business Summary</p>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">
             COO Agent — powered by your AI key
           </p>
