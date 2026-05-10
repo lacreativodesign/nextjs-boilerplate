@@ -7,6 +7,7 @@ import RouteProgress from "@/components/ui/RouteProgress";
 import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 import { PageErrorFallback } from "@/components/errors/ErrorFallback";
 import PWAInitializer from "@/components/pwa/PWAInitializer";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import ClientMonitoring from "@/components/monitoring/ClientMonitoring";
 
 const inter = Inter({
@@ -45,7 +46,8 @@ export default function RootLayout({
   return (
     <html lang="en-US" dir="ltr" className={inter.variable}>
       <body className={inter.className}>
-        <ErrorBoundary fallbackComponent={PageErrorFallback}>
+        <ThemeProvider>
+          <ErrorBoundary fallbackComponent={PageErrorFallback}>
           <ToastProvider />
           <PWAInitializer />
           <Suspense fallback={null}>
@@ -53,7 +55,8 @@ export default function RootLayout({
           </Suspense>
           <ClientMonitoring />
           {children}
-        </ErrorBoundary>
+          </ErrorBoundary>
+        </ThemeProvider>
       </body>
     </html>
   );

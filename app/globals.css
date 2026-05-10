@@ -128,6 +128,64 @@
     --skeleton-highlight: rgba(148, 163, 184, 0.32);
   }
 }
+/* Manual dark mode toggle — takes precedence over system preference */
+html.dark {
+  --app-bg: #0b0c0f;
+  --surface-card: #15171b;
+  --surface-muted: #101215;
+  --surface-elevated: #1b1e23;
+
+  --text-primary: #f8fafc;
+  --text-muted: rgba(226, 232, 240, 0.7);
+  --text-soft: rgba(148, 163, 184, 0.7);
+
+  --border-subtle: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(148, 163, 184, 0.28);
+
+  --sidebar-active: var(--erp-blue);
+
+  --shadow-sm: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 18px 40px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 30px 60px rgba(0, 0, 0, 0.6);
+  --shadow-lift: 0 24px 48px rgba(0, 0, 0, 0.6);
+
+  --table-header-bg: rgba(30, 30, 34, 0.9);
+  --table-row-hover: rgba(255, 255, 255, 0.06);
+  --table-row-alt: rgba(255, 255, 255, 0.02);
+
+  --drawer-overlay: rgba(5, 5, 5, 0.65);
+
+  --input-bg: rgba(20, 20, 22, 0.9);
+  --input-border: rgba(148, 163, 184, 0.28);
+  --input-text: #f8fafc;
+
+  --chart-track: rgba(148, 163, 184, 0.18);
+  --chart-fill: linear-gradient(90deg, rgba(37, 99, 235, 0.9), rgba(37, 99, 235, 0.35));
+  --chart-series-1: #3b82f6;
+  --chart-series-2: #2dd4bf;
+  --chart-series-3: #fbbf24;
+  --chart-series-4: #94a3b8;
+  --chart-series-5: #a78bfa;
+  --chart-series-6: #f87171;
+
+  --toast-bg: #111214;
+  --toast-text: #f8fafc;
+  --toast-border: rgba(148, 163, 184, 0.25);
+  --toast-shadow: 0 16px 32px rgba(0, 0, 0, 0.55);
+  --toast-success: #34d399;
+  --toast-error: #f87171;
+  --toast-warning: #fbbf24;
+  --toast-info: #60a5fa;
+
+  --skeleton-base: rgba(148, 163, 184, 0.18);
+  --skeleton-highlight: rgba(148, 163, 184, 0.32);
+}
+
+/* Force light mode when user explicitly chose light */
+html:not(.dark) {
+  color-scheme: light;
+}
+
 
 @media (max-width: 768px) {
   :root {

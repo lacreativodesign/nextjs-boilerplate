@@ -3,7 +3,8 @@ import BizostoSplash from "@/components/ui/BizostoSplash";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
 import type { ReactNode } from "react";
@@ -17,6 +18,7 @@ type HeaderProps = {
 export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const router = useRouter();
   const { locale, setLocale, t } = useI18n();
+  const { isDark, toggle } = useTheme();
   const [langOpen, setLangOpen] = useState(false);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -57,6 +59,16 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
 
         <div className="flex items-center gap-2">
           {activityTrigger || null}
+
+          <button
+            type="button"
+            onClick={toggle}
+            className={iconBtn}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDark ? "Light mode" : "Dark mode"}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
 
           <div className="relative" ref={langRef}>
             <button
