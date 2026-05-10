@@ -83,10 +83,10 @@ export default function WorkflowAutomationPage() {
   }, [selectedId]);
 
   const statusTone = (status?: string) => {
-    if (status === "active" || status === "success") return { bg: "#dcfce7", fg: "#166534" };
-    if (status === "awaiting_approval") return { bg: "#dbeafe", fg: "#1d4ed8" };
-    if (status === "failed") return { bg: "#fee2e2", fg: "#991b1b" };
-    return { bg: "#e5e7eb", fg: "#374151" };
+    if (status === "active" || status === "success") return { bg: "rgba(34,197,94,0.12)", fg: "var(--success, rgb(22, 163, 74))" };
+    if (status === "awaiting_approval") return { bg: "rgba(59,130,246,0.12)", fg: "var(--erp-blue)" };
+    if (status === "failed") return { bg: "rgba(239,68,68,0.12)", fg: "var(--danger)" };
+    return { bg: "var(--surface-muted)", fg: "var(--text-muted)" };
   };
 
   const saveWorkflow = async () => {
