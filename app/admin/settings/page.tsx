@@ -157,37 +157,81 @@ export default function AdminSettingsPage() {
 
           <div>
             <label className="text-sm font-medium">Timezone</label>
-            <input
+            <select
+              id="timezone"
               className="input mt-2"
-              placeholder="Timezone"
               value={settings.timezone}
               onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
               disabled={disabled}
-            />
+            >
+              <option value="">— Select timezone —</option>
+              {[
+                "Pacific/Honolulu", "America/Anchorage", "America/Los_Angeles",
+                "America/Denver", "America/Chicago", "America/New_York",
+                "America/Sao_Paulo", "Atlantic/Reykjavik", "Europe/London",
+                "Europe/Paris", "Europe/Berlin", "Europe/Madrid",
+                "Europe/Rome", "Europe/Amsterdam", "Africa/Cairo",
+                "Asia/Dubai", "Asia/Karachi", "Asia/Kolkata",
+                "Asia/Dhaka", "Asia/Bangkok", "Asia/Singapore",
+                "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland",
+              ].map((tz) => (
+                <option key={tz} value={tz}>{tz.replace("_", " ")}</option>
+              ))}
+            </select>
             <p className="helper-text mt-2">Affects scheduling across modules.</p>
           </div>
 
           <div>
             <label className="text-sm font-medium">Date Format</label>
-            <input
+            <select
+              id="dateFormat"
               className="input mt-2"
-              placeholder="Date Format"
               value={settings.dateFormat}
               onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
               disabled={disabled}
-            />
+            >
+              <option value="">— Select format —</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY (EU)</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+              <option value="DD MMM YYYY">DD MMM YYYY (e.g. 10 Jan 2026)</option>
+              <option value="MMM DD, YYYY">MMM DD, YYYY (e.g. Jan 10, 2026)</option>
+            </select>
             <p className="helper-text mt-2">Controls date display throughout the app.</p>
           </div>
 
           <div>
             <label className="text-sm font-medium">Base Currency</label>
-            <input
+            <select
+              id="currency"
               className="input mt-2"
-              placeholder="e.g. USD"
               value={settings.currency}
-              onChange={(e) => setSettings({ ...settings, currency: e.target.value.toUpperCase() })}
+              onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
               disabled={disabled}
-            />
+            >
+              {[
+                { code: "USD", label: "USD — US Dollar ($)" },
+                { code: "EUR", label: "EUR — Euro (€)" },
+                { code: "GBP", label: "GBP — British Pound (£)" },
+                { code: "CAD", label: "CAD — Canadian Dollar (CA$)" },
+                { code: "AUD", label: "AUD — Australian Dollar (A$)" },
+                { code: "CHF", label: "CHF — Swiss Franc (Fr)" },
+                { code: "JPY", label: "JPY — Japanese Yen (¥)" },
+                { code: "CNY", label: "CNY — Chinese Yuan (¥)" },
+                { code: "INR", label: "INR — Indian Rupee (₹)" },
+                { code: "AED", label: "AED — UAE Dirham (د.إ)" },
+                { code: "SAR", label: "SAR — Saudi Riyal (﷼)" },
+                { code: "SGD", label: "SGD — Singapore Dollar (S$)" },
+                { code: "MYR", label: "MYR — Malaysian Ringgit (RM)" },
+                { code: "ZAR", label: "ZAR — South African Rand (R)" },
+                { code: "BRL", label: "BRL — Brazilian Real (R$)" },
+                { code: "MXN", label: "MXN — Mexican Peso (Mex$)" },
+                { code: "NGN", label: "NGN — Nigerian Naira (₦)" },
+                { code: "EGP", label: "EGP — Egyptian Pound (E£)" },
+              ].map(({ code, label }) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
             <p className="helper-text mt-2">Applied to all revenue, expenses, invoices, and reports.</p>
           </div>
 
