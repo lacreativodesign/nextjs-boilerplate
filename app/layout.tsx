@@ -47,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en-US" dir="ltr" className={inter.variable}>
+    <html lang="en-US" dir="ltr" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
           <ErrorBoundary fallbackComponent={PageErrorFallback}>
