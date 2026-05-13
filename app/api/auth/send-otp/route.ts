@@ -19,7 +19,7 @@ function otpEmailHtml(otp: string, email: string): string {
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 <tr><td style="background:linear-gradient(135deg,#012167,#6692f9);padding:28px 32px;">
 <span style="color:#FFFFFF;font-size:22px;font-weight:800;letter-spacing:0.1em;">BIZOSTO</span>
-<span style="color:rgba(255,255,255,0.7);font-size:13px;margin-left:12px;">Business Management Platform</span>
+<span style="color:rgba(255,255,255,0.7);font-size:13px;margin-left:12px;">Operating System for Service Businesses</span>
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">
 <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#1E3A5F;">Verify your email address</h1>
@@ -103,7 +103,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("send-otp error:", err);
-    return NextResponse.json({ ok: false, error: "Failed to send verification code." }, { status: 500 });
+    console.error("send-otp error:", err?.message || err);
+    return NextResponse.json({
+      ok: false,
+      error: "Could not send verification code. Please check your email address and try again. If the problem continues, contact support@bizosto.com.",
+    }, { status: 500 });
   }
 }
