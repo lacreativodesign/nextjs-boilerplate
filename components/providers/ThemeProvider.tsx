@@ -30,8 +30,16 @@ function applyTheme(theme: Theme): boolean {
   const dark = theme === "dark" || (theme === "system" && prefersDark);
   if (dark) {
     document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("light");
   } else {
     document.documentElement.classList.remove("dark");
+    // Add .light class to override @media (prefers-color-scheme: dark)
+    // when user explicitly chooses light mode
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
   }
   return dark;
 }

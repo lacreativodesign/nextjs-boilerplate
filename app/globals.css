@@ -181,6 +181,42 @@ html.dark {
   --skeleton-highlight: rgba(148, 163, 184, 0.32);
 }
 
+html.light {
+  --app-bg: #ffffff;
+  --surface-card: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-elevated: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-muted: rgba(100, 116, 139, 0.9);
+  --text-soft: rgba(100, 116, 139, 0.7);
+
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.18);
+
+  --sidebar-active: var(--erp-blue);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --table-header-bg: #f8fafc;
+  --table-row-hover: rgba(15, 23, 42, 0.04);
+  --table-row-alt: rgba(15, 23, 42, 0.02);
+
+  --drawer-overlay: rgba(15, 23, 42, 0.35);
+
+  --input-bg: #ffffff;
+  --input-border: rgba(15, 23, 42, 0.2);
+  --input-text: #0f172a;
+
+  --chart-track: rgba(15, 23, 42, 0.1);
+  --chart-fill: linear-gradient(90deg, rgba(37, 99, 235, 0.9), rgba(37, 99, 235, 0.35));
+  --chart-series-1: #2563eb;
+  --chart-series-2: #0d9488;
+}
+
 /* Force light mode when user explicitly chose light */
 html:not(.dark) {
   color-scheme: light;
