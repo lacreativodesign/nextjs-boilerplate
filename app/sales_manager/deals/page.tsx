@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatDate, formatUsd, toInputDate } from "@/components/finance/financeUtils";
+import { Label } from "@/components/ui/label";
 
 const STAGE_OPTIONS = [
   "New Lead",
