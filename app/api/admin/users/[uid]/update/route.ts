@@ -115,6 +115,14 @@ export async function POST(
     }
 
     const newRole = String(body.role).toLowerCase();
+    if (newRole === "super_admin") {
+      if (!sessionUser || sessionUser.role !== "super_admin") {
+        return NextResponse.json(
+          { error: "Cannot assign super_admin role." },
+          { status: 403 }
+        );
+      }
+    }
     const targetSnap = await adminDb.collection("users").doc(uid).get();
     const target = targetSnap.exists ? targetSnap.data() : null;
     const existingUser = target || {};
