@@ -1,9 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import {
   formatDate,
   formatDateTime,
@@ -20,6 +20,14 @@ import { calculateTax } from "@/lib/tax/calculator";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
+
+const AdvancedSearchDialog = dynamic(
+  () => import("@/components/search/AdvancedSearchDialog").then((mod) => mod.AdvancedSearchDialog),
+  {
+    loading: () => null,
+    ssr: false,
+  },
+);
 
 const STATUS_OPTIONS = [
   "",
