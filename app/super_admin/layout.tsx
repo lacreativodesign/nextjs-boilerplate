@@ -1,9 +1,32 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+function SuperAdminAccessAuditLogger({ pathname }: { pathname: string }) {
+  useEffect(() => {
+    try {
+      void fetch("/api/audit/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "super_admin_page_access",
+          path: pathname,
+          timestamp: Date.now(),
+        }),
+      }).catch((error) => {
+        console.error("Failed to log super_admin page access", error);
+      });
+    } catch (error) {
+      console.error("Failed to log super_admin page access", error);
+    }
+  }, [pathname]);
+
+  return null;
+}
+
 const TABS = [
   { href: "/super_admin",               label: "Overview"          },
   { href: "/super_admin/tenants",       label: "Tenants"           },
@@ -22,6 +45,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
   return (
     <RequireAuth allowed={["super_admin"]}>
+      <SuperAdminAccessAuditLogger pathname={pathname} />
       <ModuleErrorBoundary moduleName="Super Admin">
         <AppShell>
           <div>
