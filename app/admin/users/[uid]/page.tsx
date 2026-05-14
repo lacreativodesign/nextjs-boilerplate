@@ -168,7 +168,6 @@ export default function EditUserPage() {
         value={form.role}
         onChange={(e) => setForm({ ...form, role: e.target.value })}
       >
-        <option value="super_admin">Super Admin</option>
         <option value="admin">Admin</option>
         <option value="sales_manager">Sales Manager</option>
         <option value="production_manager">Production Manager</option>
