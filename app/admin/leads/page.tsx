@@ -27,9 +27,9 @@ type LeadRecord = {
 
 type OwnerOption = { uid: string; name: string };
 
-type LeadListResponse = { ok: boolean; leads: LeadRecord[] };
+type LeadListResponse = { ok: boolean; leads: LeadRecord[]; error?: string };
 
-type OwnerListResponse = { ok: boolean; users: OwnerOption[] };
+type OwnerListResponse = { ok: boolean; users: OwnerOption[]; error?: string };
 
 export default function AdminLeadsPage() {
   const [loading, setLoading] = useState(true);
