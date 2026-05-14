@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 
@@ -48,6 +48,14 @@ export async function POST(req: Request) {
 
     // Mark verified
     await ref.set({ verified: true }, { merge: true });
+
+    try {
+      const firebaseUser = await adminAuth.getUserByEmail(email);
+      await adminAuth.updateUser(firebaseUser.uid, { emailVerified: true });
+    } catch (verifyErr) {
+      console.error("verify-otp: could not mark emailVerified on Firebase Auth:", verifyErr);
+      // Non-blocking — OTP is still valid even if this fails
+    }
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("verify-otp error:", err);
