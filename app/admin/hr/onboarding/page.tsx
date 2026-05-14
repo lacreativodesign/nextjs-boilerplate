@@ -571,7 +571,7 @@ export default function HrOnboardingPage() {
               <MasterSelect
                 value={selectedTask.status}
                 onChange={(value) =>
-                  setTasks((prev) => prev.map((task) => (task.id === selectedTask.id ? { ...task, status: value } : task)))
+                  setTasks((prev) => prev.map((task) => (task.id === selectedTask.id ? { ...task, status: value as TaskRecord["status"] } : task)))
                 }
                 options={STATUS_OPTIONS.filter((opt) => opt.value !== "all")}
               />
