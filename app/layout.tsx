@@ -49,6 +49,11 @@ export default function RootLayout({
   return (
     <html lang="en-US" dir="ltr" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('bizosto_theme')||'system';var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t==='system'&&d);document.documentElement.classList.toggle('dark',dark);if(!dark&&t==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
+          }}
+        />
         <ThemeProvider>
           <ErrorBoundary fallbackComponent={PageErrorFallback}>
           <ToastProvider />
