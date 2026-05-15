@@ -371,12 +371,26 @@ export default function EmailTemplatesSettingsPage() {
                 <div className="rounded-xl border p-3" style={{ background: "#ffffff" }}>
                   <div className="text-xs font-semibold mb-2">Desktop</div>
                   <div className="text-sm font-semibold mb-2">{preview?.renderedSubject || "Preview subject"}</div>
-                  <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: preview?.renderedHtml || "<p>Preview email content.</p>" }} />
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: (preview?.renderedHtml || "")
+                        .replace(/<script[\s\S]*?<\/script>/gi, "")
+                        .replace(/\son\w+="[^"]*"/gi, ""),
+                    }}
+                  />
                 </div>
                 <div className="rounded-xl border p-3 max-w-[320px]" style={{ background: "#ffffff" }}>
                   <div className="text-xs font-semibold mb-2">Mobile</div>
                   <div className="text-sm font-semibold mb-2">{preview?.renderedSubject || "Preview subject"}</div>
-                  <div className="text-xs" dangerouslySetInnerHTML={{ __html: preview?.renderedHtml || "<p>Preview email content.</p>" }} />
+                  <div
+                    className="text-xs"
+                    dangerouslySetInnerHTML={{
+                      __html: (preview?.renderedHtml || "")
+                        .replace(/<script[\s\S]*?<\/script>/gi, "")
+                        .replace(/\son\w+="[^"]*"/gi, ""),
+                    }}
+                  />
                 </div>
               </div>
             </section>
