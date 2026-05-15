@@ -18,8 +18,8 @@ export default function ERPLayout({
     {
       admin: [
         { label: "Overview", href: "/admin" },
-        { label: "Create User", href: "/admin/create-user" },
-        { label: "View Users", href: "/admin/view-users" },
+        { label: "Create User", href: "/admin/users/create" },
+        { label: "View Users", href: "/admin/users" },
         { label: "User Management", href: "/admin/user-management" },
       ],
       sales: [{ label: "Sales Dashboard", href: "/sales" }],
@@ -132,4 +132,4 @@ export default function ERPLayout({
       </main>
     </div>
   );
-    }
+}
