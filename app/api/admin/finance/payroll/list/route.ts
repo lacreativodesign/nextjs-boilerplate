@@ -31,7 +31,11 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const docs = await queryWithTenant(
-      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500),
+      adminDb
+        .collection("payroll")
+        .where("tenantId", "==", auth.user.tenantId)
+        .where("isDeleted", "==", false)
+        .limit(500),
       tenantId
     );
 
