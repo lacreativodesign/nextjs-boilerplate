@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const resend = new Resend(apiKey);
 
     await resend.emails.send({
-      from: "Bizosto <no-reply@bizosto.com>",
+      from: process.env.ONBOARDING_FROM_EMAIL || "Bizosto <onboarding@resend.dev>",
       to: email,
       subject: passwordResetEmailSubject(),
       html: passwordResetEmailHtml({ name: email, resetUrl: resetLink, expiresIn: "1 hour" }),
