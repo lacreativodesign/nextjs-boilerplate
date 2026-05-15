@@ -206,11 +206,10 @@ async function sendReminderEmail(
       "This invoice is now 30 days overdue. Immediate payment is required to avoid further action.",
   };
 
-  const tenantName = tenant.name?.trim() || "Bizosto";
   const total = Number.isFinite(invoice.total) ? invoice.total : 0;
 
   await resend.emails.send({
-    from: `${tenantName} <invoices@bizosto.com>`,
+    from: process.env.ONBOARDING_FROM_EMAIL || "Bizosto <onboarding@resend.dev>",
     to: client.email,
     subject: subjects[reminderType],
     html: `

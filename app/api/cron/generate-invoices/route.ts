@@ -281,7 +281,7 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
 
   try {
     await resend.emails.send({
-      from: "Bizosto <invoices@bizosto.com>",
+      from: process.env.ONBOARDING_FROM_EMAIL || "Bizosto <onboarding@resend.dev>",
       to: clientEmail,
       subject: invoiceEmailSubject(invoiceData),
       html: invoiceEmailHtml(invoiceData),
