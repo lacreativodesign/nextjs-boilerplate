@@ -209,7 +209,7 @@ async function sendReminderEmail(
   const total = Number.isFinite(invoice.total) ? invoice.total : 0;
 
   await resend.emails.send({
-    from: process.env.ONBOARDING_FROM_EMAIL || "Bizosto <onboarding@resend.dev>",
+    from: "Bizosto <invoices@bizosto.com>",
     to: client.email,
     subject: subjects[reminderType],
     html: `
