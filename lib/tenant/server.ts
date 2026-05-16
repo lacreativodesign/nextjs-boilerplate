@@ -189,7 +189,7 @@ export async function ensureDefaultTenant() {
     name: 'BIZOSTO',
     slug: 'bizosto',
     status: 'active',
-    brand: DEFAULT_TENANT_BRAND,
+    brand: { ...DEFAULT_TENANT_BRAND, locked: true as const },
     modulesEnabled: DEFAULT_MODULES,
     rolesEnabled: DEFAULT_ROLES,
     plan: 'pro',
