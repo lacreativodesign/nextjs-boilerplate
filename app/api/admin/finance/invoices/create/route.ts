@@ -12,12 +12,15 @@ import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
-async function generateNextInvoiceId() {
-  const ref = adminDb.collection("Invoice IDs").doc("counter");
+async function generateNextInvoiceId(tenantId: string): Promise<string> {
+  const ref = adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("counters")
+    .doc("invoices");
   const next = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const current = snap.exists ? Number(snap.data()?.value || 0) : 0;
-    const value = current + 1;
+    const value = snap.exists ? Number(snap.data()?.value || 0) + 1 : 1;
     tx.set(ref, { value }, { merge: true });
     return value;
   });
@@ -117,7 +120,7 @@ export async function POST(req: Request) {
       .get();
     const isFirstInvoice = existingInvoiceSnap.empty;
 
-    const orderId = await generateNextInvoiceId();
+    const orderId = await generateNextInvoiceId(auth.user.tenantId);
     const ref = adminDb.collection("invoices").doc();
 
     const invoiceData = {

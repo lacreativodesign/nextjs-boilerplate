@@ -196,7 +196,7 @@ async function handleUpdate(req: Request) {
 
     let newOrderId: string | null = null;
     if (shouldGenerateOrderId && canMarkPaid(me.role)) {
-      newOrderId = await generateNextOrderId();
+      newOrderId = await generateNextOrderId(tenantId);
       updateData.orderId = newOrderId;
     }
 
@@ -252,7 +252,7 @@ async function handleUpdate(req: Request) {
       const dealData = dealDoc?.data() || {};
 
       if (dealDoc && !dealData.orderId) {
-        const nextOrderId = newOrderId || (await generateNextOrderId());
+        const nextOrderId = newOrderId || (await generateNextOrderId(tenantId));
         await dealDoc.ref.set({ orderId: nextOrderId, updatedAt: now }, { merge: true });
       }
 
