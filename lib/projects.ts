@@ -77,7 +77,7 @@ export async function createProjectFromDeal({
     return { id: existingByOrder[0].id, data: existingByOrder[0].data() };
   }
 
-  const orderId = String(deal?.orderId || client?.orderId || "") || (await generateNextOrderId());
+  const orderId = String(deal?.orderId || client?.orderId || "") || (await generateNextOrderId(scopedTenantId));
   const ownerAmUid = String(deal?.ownerId || client?.ownerAmUid || client?.accountManager || "") || null;
   const ownerAmName = String(deal?.ownerName || client?.ownerAmName || "") || null;
   const clientName = String(client?.companyName || deal?.clientName || deal?.leadName || "Client");

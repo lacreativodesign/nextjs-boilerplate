@@ -174,7 +174,11 @@ export async function POST(req: Request) {
         if (existingOrderId) {
           usedOrderId = existingOrderId;
         } else {
-          const counterRef = adminDb.collection("Order IDs").doc("counter");
+          const counterRef = adminDb
+            .collection("tenants")
+            .doc(tenantId)
+            .collection("counters")
+            .doc("orders");
           const counterSnap = await tx.get(counterRef);
           const current = Number((counterSnap.data() || {}).seq ?? 0);
           const next = current + 1;
