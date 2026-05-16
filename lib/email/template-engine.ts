@@ -93,7 +93,7 @@ export function renderTemplate({
 export function generatePreviewPayload(context: RenderContext = {}) {
   return {
     tenant: { name: "BIZOSTO ERP" },
-    company: { name: "BIZOSTO ERP", supportEmail: "support@bizosto.test" },
+    company: { name: "BIZOSTO ERP", supportEmail: "support@bizosto.com" },
     date: { today: new Date().toISOString().slice(0, 10) },
     user: {
       name: "Ava Manager",

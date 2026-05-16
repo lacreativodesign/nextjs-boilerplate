@@ -48,8 +48,8 @@ export async function POST(req: Request) {
     const tenantId = normalizeTenantId(rawTenantId || DEFAULT_TENANT_ID);
     const apiKey = normalizeOptionalString(body.apiKey);
 
-    if (!apiKey || apiKey !== String(process.env.NEXT_PUBLIC_ERP_INGEST_KEY || "")) {
-      return NextResponse.json({ ok: false, error: "Invalid apiKey." }, { status: 401 });
+    if (!apiKey || apiKey !== String(process.env.ERP_INGEST_KEY || "")) {
+      return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
     }
 
     const lead = (body.lead || {}) as Record<string, any>;

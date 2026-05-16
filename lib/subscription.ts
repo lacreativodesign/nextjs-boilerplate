@@ -4,7 +4,7 @@ const VALID_STATES: SubscriptionState[] = ["active", "grace", "soft_locked", "ha
 
 export function normalizeSubscriptionState(value: unknown): SubscriptionState {
   const normalized = String(value || "").toLowerCase();
-  return VALID_STATES.includes(normalized as SubscriptionState) ? (normalized as SubscriptionState) : "active";
+  return VALID_STATES.includes(normalized as SubscriptionState) ? (normalized as SubscriptionState) : "hard_locked";
 }
 
 export function deriveSubscriptionState({
