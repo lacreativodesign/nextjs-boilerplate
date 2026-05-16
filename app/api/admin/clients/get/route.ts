@@ -31,6 +31,9 @@ export async function GET(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const data = snap.data() || {};
+    if ((data as any).tenantId && (data as any).tenantId !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     if ((data as any).deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     return NextResponse.json({
       ok: true,
