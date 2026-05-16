@@ -32,11 +32,11 @@ export async function GET() {
     const startMs = startOfMonth.getTime();
 
     const [invoiceSnap, paymentSnap, payrollSnap, expenseSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payments").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("expenses").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("events").orderBy("createdAt", "desc").limit(20).get(),
+      adminDb.collection("invoices").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("payments").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("payroll").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("expenses").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("events").where("tenantId", "==", auth.user.tenantId).orderBy("createdAt", "desc").limit(20).get(),
     ]);
 
     const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
