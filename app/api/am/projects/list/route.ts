@@ -61,7 +61,12 @@ export async function GET(req: Request) {
     const dueTo = String(searchParams.get("dueTo") || "").trim();
 
     const [snap, workflowSettings] = await Promise.all([
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
+      adminDb
+        .collection("projects")
+        .where("tenantId", "==", me.tenantId)
+        .where("isDeleted", "==", false)
+        .limit(500)
+        .get(),
       getWorkflowSettings(),
     ]);
 
