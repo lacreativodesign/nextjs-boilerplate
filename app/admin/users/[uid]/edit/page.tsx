@@ -13,6 +13,7 @@ import {
 } from "@/lib/userOptions";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Unsubscribe } from "firebase/auth";
+import { toastSuccess } from "@/lib/toast";
 
 type UserStatus = "active" | "disabled";
 
@@ -198,9 +199,9 @@ export default function EditUserPage() {
         setMonthlySalaryPkr(data?.salary == null ? "" : String(Number(data.salary)));
         setMonthlyTargetUsd(data?.monthlyTarget == null ? "" : String(Number(data.monthlyTarget)));
         setCommissionPct(data?.commission == null ? "" : String(Number(data.commission)));
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message || "Failed to fetch user details.");
+        setError(e instanceof Error ? e.message : "Failed to fetch user details.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -261,9 +262,10 @@ export default function EditUserPage() {
         throw new Error(json?.error || "Update failed.");
       }
 
-      router.push("/users");
-    } catch (e: any) {
-      setError(e?.message || "Update failed.");
+      toastSuccess("Saved successfully.");
+      setTimeout(() => router.push("/admin/users"), 800);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Update failed.");
     } finally {
       setSaving(false);
     }

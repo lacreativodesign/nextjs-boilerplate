@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { toastError, toastPromise } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { SegmentDefinition } from "@/lib/segments";
 
 type SalesStage =
@@ -68,6 +69,8 @@ type SalesUsersResp =
   | { ok?: false; error?: string };
 
 export default function AddClientPage() {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -328,25 +331,21 @@ export default function AddClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      await toastPromise(
-        fetch("/api/admin/clients/create", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        }).then(async (res) => {
-          const json = (await res.json().catch(() => ({}))) as ApiResp;
-          if (!res.ok || !("ok" in json) || !json.ok) {
-            throw new Error((json as any)?.error || "Failed to create client");
-          }
-          return json;
-        }),
-        {
-          loading: "Creating client...",
-          success: "Client created successfully.",
-          error: (err) => err?.message || "Failed to create client.",
-        }
-      );
+      const res = await fetch("/api/admin/clients/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+
+      const json = (await res.json().catch(() => ({}))) as ApiResp;
+      if (!res.ok || !("ok" in json) || !json.ok) {
+        const message = "error" in json ? json.error : undefined;
+        throw new Error(message || "Failed to create client");
+      }
+
+      toastSuccess("Saved successfully.");
+      setTimeout(() => router.push("/admin/clients"), 800);
 
       // reset
       setCompanyName("");
@@ -377,8 +376,8 @@ export default function AddClientPage() {
       setRetainerStatus("None");
 
       setTotalPaidUsd("0");
-    } catch (err: any) {
-      const message = err?.message || "Failed to create client";
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to create client";
       setError(message);
       toastError(message);
     } finally {
