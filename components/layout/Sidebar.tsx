@@ -162,11 +162,14 @@ export default function Sidebar({
               const isActive =
                 pathname === item.href ||
                 pathname.startsWith(item.href + "/");
+              const opensInNewTab = item.href === "/help";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={item.label}
+                  target={opensInNewTab ? "_blank" : undefined}
+                  rel={opensInNewTab ? "noopener noreferrer" : undefined}
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
                     "flex w-full items-center rounded-xl transition-colors px-4 py-2.5",
