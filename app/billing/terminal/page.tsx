@@ -110,10 +110,10 @@ function getTransactionStatus(transaction: TerminalTransaction) {
 }
 
 function statusClass(status: string) {
-  if (status === "succeeded" || status === "paid") return "bg-emerald-100 text-emerald-800";
-  if (status === "failed") return "bg-red-100 text-red-800";
-  if (status === "refunded" || status === "pending") return "bg-amber-100 text-amber-800";
-  if (status === "in_transit") return "bg-blue-100 text-blue-800";
+  if (status === "succeeded" || status === "paid") return "badge-success";
+  if (status === "failed") return "bg-[var(--danger-soft)] text-[var(--danger)]";
+  if (status === "refunded" || status === "pending") return "bg-[var(--surface-muted)] text-[var(--text-primary)]";
+  if (status === "in_transit") return "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
   return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
 }
 
@@ -208,7 +208,7 @@ export default function BillingTerminalPage() {
   const pendingBalance = data?.balance?.pending?.[0] || { amount: 0, currency: "usd" };
 
   return (
-    <div className="space-y-6">
+    <div className="page-frame space-y-6 text-[var(--text-primary)]">
       <div className="tabs-bar">
         <Link href="/billing" className="tab-pill">Subscription</Link>
         <Link href="/billing/invoices" className="tab-pill">Invoice History</Link>
@@ -221,9 +221,9 @@ export default function BillingTerminalPage() {
       </div>
 
       {error && (
-        <div className="card border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
           <p>{error}</p>
-          <button className="btn btn-danger mt-3" onClick={() => void loadTerminal()}>
+          <button className="btn danger mt-3" onClick={() => void loadTerminal()}>
             Retry
           </button>
         </div>
@@ -273,7 +273,7 @@ export default function BillingTerminalPage() {
           <section className="kpis">
             <article className="card kpi-card">
               <p className="helper-text mb-1">Total Revenue</p>
-              <p className="text-3xl font-bold text-emerald-600">{formatMoney(data?.metrics?.totalRevenue || 0)}</p>
+              <p className="text-3xl font-bold text-[var(--chart-series-2)]">{formatMoney(data?.metrics?.totalRevenue || 0)}</p>
               <p className="helper-text">{data?.metrics?.transactionCount || 0} transactions</p>
             </article>
             <article className="card kpi-card">
@@ -288,19 +288,19 @@ export default function BillingTerminalPage() {
             </article>
             <article className="card kpi-card">
               <p className="helper-text mb-1">This Month</p>
-              <p className="text-3xl font-bold text-violet-700">{formatMoney(data?.metrics?.thisMonthRevenue || 0)}</p>
+              <p className="text-3xl font-bold text-[var(--chart-series-5)]">{formatMoney(data?.metrics?.thisMonthRevenue || 0)}</p>
               <p className="helper-text">Fees: {formatMoney(data?.metrics?.thisMonthFees || 0)}</p>
             </article>
             <article className="card kpi-card">
               <p className="helper-text mb-1">Available Balance</p>
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-3xl font-bold text-[var(--chart-series-2)]">
                 {formatMoney(availableBalance.amount)} {availableBalance.currency.toUpperCase()}
               </p>
               <p className="helper-text">Ready for payout</p>
             </article>
             <article className="card kpi-card">
               <p className="helper-text mb-1">Pending Balance</p>
-              <p className="text-3xl font-bold text-amber-600">
+              <p className="text-3xl font-bold text-[var(--chart-series-3)]">
                 {formatMoney(pendingBalance.amount)} {pendingBalance.currency.toUpperCase()}
               </p>
               <p className="helper-text">In transit</p>
@@ -326,9 +326,9 @@ export default function BillingTerminalPage() {
               </div>
             </div>
             {summaryError ? (
-              <div className="card border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">
                 <p>{summaryError}</p>
-                <button className="btn btn-danger mt-2" onClick={() => void loadSummary(period)}>
+                <button className="btn danger mt-2" onClick={() => void loadSummary(period)}>
                   Retry
                 </button>
               </div>
@@ -355,8 +355,8 @@ export default function BillingTerminalPage() {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="revenue" fill="#2563eb" name="revenue" />
-                    <Bar dataKey="fees" fill="#6b7280" name="fees" />
+                    <Bar dataKey="revenue" fill="var(--chart-series-1)" name="revenue" />
+                    <Bar dataKey="fees" fill="var(--chart-series-4)" name="fees" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -422,7 +422,7 @@ export default function BillingTerminalPage() {
                             <td>{transaction.customerEmail || "Unknown"}</td>
                             <td>{formatMoney(transaction.amount)}</td>
                             <td className="text-[var(--text-muted)]">-{formatMoney(transaction.platformFee)}</td>
-                            <td className="text-emerald-600">{formatMoney(transaction.netAmount)}</td>
+                            <td className="text-[var(--chart-series-2)]">{formatMoney(transaction.netAmount)}</td>
                             <td>
                               <span
                                 className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(transactionStatus)}`}
@@ -534,7 +534,7 @@ export default function BillingTerminalPage() {
           {(data?.disputes || []).length > 0 && (
             <section className="card">
               <h2 className="section-title mb-4">Disputes</h2>
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">
                 ⚠ You have {(data?.disputes || []).length} open dispute(s). Respond in your Stripe Dashboard.
               </div>
               <div className="table-shell mt-4">
@@ -554,7 +554,7 @@ export default function BillingTerminalPage() {
                       {(data?.disputes || []).map((dispute) => {
                         const dueDate = dispute.dueBy ? new Date(dispute.dueBy) : null;
                         const daysLeft = dueDate ? (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) : null;
-                        const urgentClass = daysLeft !== null && daysLeft <= 3 ? "text-red-600 font-semibold" : "";
+                        const urgentClass = daysLeft !== null && daysLeft <= 3 ? "text-[var(--danger)] font-semibold" : "";
                         return (
                           <tr key={dispute.id}>
                             <td>{formatDate(dispute.createdAt)}</td>

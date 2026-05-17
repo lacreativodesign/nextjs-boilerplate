@@ -31,10 +31,10 @@ function money(amount: number, currency: string) {
 }
 
 const STATUS_CLASS: Record<string, string> = {
-  paid: 'bg-green-100 text-green-700',
-  open: 'bg-amber-100 text-amber-700',
+  paid: 'badge-success',
+  open: 'bg-[var(--surface-muted)] text-[var(--text-primary)]',
   void: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
-  uncollectible: 'bg-red-100 text-red-700',
+  uncollectible: 'bg-[var(--danger-soft)] text-[var(--danger)]',
 };
 
 export default function InvoicesPage() {
@@ -54,7 +54,7 @@ export default function InvoicesPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="page-frame text-[var(--text-primary)]">
       <div className="tabs-bar">
         <Link href="/billing" className="tab-pill">Subscription</Link>
         <Link href="/billing/invoices" className="tab-pill active">Invoice History</Link>

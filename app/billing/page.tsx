@@ -29,7 +29,7 @@ function getBadgeConfig(state: SubscriptionState) {
     case 'trial':
       return { label: 'Free Trial', cls: 'bg-amber-500/10 text-amber-600' };
     case 'active':
-      return { label: 'Active', cls: 'bg-green-500/10 text-green-600' };
+      return { label: 'Active', cls: 'badge-success' };
     case 'past_due':
       return { label: 'Past Due', cls: 'bg-[var(--danger-soft)] text-[var(--danger)]' };
     case 'grace':
@@ -196,7 +196,7 @@ export default function BillingOverviewPage() {
               <ul className="mt-5 grid gap-1.5 text-sm text-[var(--text-primary)] sm:grid-cols-2">
                 {planConfig.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-[var(--chart-series-2)] font-bold">✓</span>
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -235,7 +235,7 @@ export default function BillingOverviewPage() {
               </p>
             </div>
 
-            {portalError && <p className="mt-3 text-sm text-red-600">{portalError}</p>}
+            {portalError && <p className="mt-3 text-sm text-[var(--danger)]">{portalError}</p>}
           </section>
 
           {/* Upgrade Your Plan */}
@@ -250,7 +250,7 @@ export default function BillingOverviewPage() {
                   <button
                     type="button"
                     onClick={() => setBillingCycle('monthly')}
-                    className={billingCycle === 'monthly' ? 'btn' : 'btn subtle'}
+                    className={billingCycle === 'monthly' ? 'btn' : 'btn ghost'}
                     style={{ borderRadius: 0, fontSize: 13, padding: '8px 16px' }}
                   >
                     Monthly
@@ -258,11 +258,11 @@ export default function BillingOverviewPage() {
                   <button
                     type="button"
                     onClick={() => setBillingCycle('annual')}
-                    className={billingCycle === 'annual' ? 'btn' : 'btn subtle'}
+                    className={billingCycle === 'annual' ? 'btn' : 'btn ghost'}
                     style={{ borderRadius: 0, fontSize: 13, padding: '8px 16px' }}
                   >
                     Annual{' '}
-                    <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, color: '#16a34a' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, color: 'var(--chart-series-2)' }}>
                       SAVE 2 MONTHS
                     </span>
                   </button>
@@ -310,7 +310,7 @@ export default function BillingOverviewPage() {
                   return (
                     <div
                       key={plan.key}
-                      className="card p-5"
+                      className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-[var(--text-primary)] shadow-[var(--shadow-sm)]"
                       style={isCurrent ? { border: '2px solid var(--erp-blue)' } : {}}
                     >
                       {isCurrent && (
@@ -326,7 +326,7 @@ export default function BillingOverviewPage() {
                         <span className="text-xs text-[var(--text-muted)]">/mo</span>
                       </div>
                       {billingCycle === 'annual' && (
-                        <div className="text-xs font-semibold text-green-600 mb-1">
+                        <div className="text-xs font-semibold text-[var(--chart-series-2)] mb-1">
                           ${plan.annual}/yr — save ${plan.monthly * 12 - plan.annual}
                         </div>
                       )}
@@ -336,14 +336,14 @@ export default function BillingOverviewPage() {
                       <ul className="space-y-1 mb-4">
                         {plan.features.map((f) => (
                           <li key={f} className="flex items-center gap-2 text-xs">
-                            <span className="font-bold text-green-600">✓</span>
+                            <span className="font-bold text-[var(--chart-series-2)]">✓</span>
                             <span>{f}</span>
                           </li>
                         ))}
                       </ul>
                       {isCurrent ? (
                         <div
-                          className="btn subtle w-full text-center"
+                          className="btn ghost w-full text-center"
                           style={{ borderRadius: 999, fontSize: 13, cursor: 'default' }}
                         >
                           Your Plan
