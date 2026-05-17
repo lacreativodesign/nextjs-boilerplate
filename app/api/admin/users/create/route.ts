@@ -4,7 +4,6 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminRole } from '../_utils';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { assertPermission, Permission } from '../../../../lib/permissions';
-import { AppError, resolveErrorResponse } from '@/lib/errors';
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
@@ -89,7 +88,12 @@ export async function POST(req: Request) {
     }
 
     // 5) Check duplicate email
-    const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);
+    const existingUser = await adminAuth.getUserByEmail(email).catch((err: any) => {
+      if (err?.code === 'auth/user-not-found') {
+        return null;
+      }
+      throw err;
+    });
     if (existingUser) {
       return NextResponse.json({ error: 'User already exists' }, { status: 409 });
     }
@@ -204,22 +208,13 @@ export async function POST(req: Request) {
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error,
     });
-  } catch (e: any) {
-    console.error('Error create user:', e);
-    const finalError =
-      e instanceof SyntaxError
-        ? new AppError({
-            message: 'Invalid JSON body',
-            code: 'VALIDATION_ERROR',
-            status: 400,
-          })
-        : e;
-    const { status, body } = resolveErrorResponse(finalError, {
-      fallbackMessage: 'Unable to create user.',
-      fallbackCode: 'INTERNAL_SERVER_ERROR',
-      requestId: req.headers.get('x-request-id') || undefined,
-    });
-    return NextResponse.json(body, { status });
+  } catch (err: any) {
+    console.error('Error create user:', err);
+    return NextResponse.json({
+      error: err?.code === "auth/email-already-exists"
+        ? "This email address is already registered in the system."
+        : err?.message || "Failed to create user",
+    }, { status: 400 });
   }
 }
 
