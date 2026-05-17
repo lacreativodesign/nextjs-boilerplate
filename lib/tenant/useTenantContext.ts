@@ -12,6 +12,7 @@ export type TenantContext = {
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   whiteLabel?: {
     logoUrl: string | null;
+    tagline?: string | null;
     primaryColor: string;
     secondaryColor: string;
     accentColor: string;

@@ -5,6 +5,7 @@ import { getAllowedBrandFonts, getTenantBranding, updateTenantBranding } from "@
 
 const brandingSchema = z.object({
   logoUrl: z.string().url().nullable().optional(),
+  tagline: z.string().trim().max(80).nullable().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),

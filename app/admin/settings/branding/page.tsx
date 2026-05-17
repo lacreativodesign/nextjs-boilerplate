@@ -6,6 +6,7 @@ import { SettingsAlert } from "../_components/SettingsAlert";
 
 type BrandingState = {
   logoUrl: string | null;
+  tagline: string | null;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -28,6 +29,7 @@ type BrandingState = {
 
 const DEFAULT_STATE: BrandingState = {
   logoUrl: null,
+  tagline: null,
   primaryColor: "#2563eb",
   secondaryColor: "#1d4ed8",
   accentColor: "#14b8a6",
@@ -113,6 +115,7 @@ export default function BrandingSettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         logoUrl: state.logoUrl,
+        tagline: state.tagline?.trim() || null,
         primaryColor: state.primaryColor,
         secondaryColor: state.secondaryColor,
         accentColor: state.accentColor,
@@ -187,11 +190,23 @@ export default function BrandingSettingsPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium">Logo uploader</label>
-            <label className="mt-2 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] p-6 text-sm">
-              <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => e.target.files?.[0] && void onLogoChange(e.target.files[0])} />
-              Drag-and-drop or click to upload logo
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Logo uploader</label>
+              <label className="mt-2 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] p-6 text-sm">
+                <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => e.target.files?.[0] && void onLogoChange(e.target.files[0])} />
+                Drag-and-drop or click to upload logo
+              </label>
+            </div>
+            <label className="block text-sm font-medium">
+              Sidebar tagline
+              <input
+                className="input mt-2"
+                maxLength={80}
+                placeholder="Powered by Bizosto®"
+                value={state.tagline || ""}
+                onChange={(e) => setState((prev) => ({ ...prev, tagline: e.target.value }))}
+              />
             </label>
           </div>
 

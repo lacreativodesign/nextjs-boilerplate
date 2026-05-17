@@ -15,6 +15,7 @@ type SidebarProps = {
   userName: string;
   userEmail: string;
   tenantName: string;
+  brandTagline?: string;
   tenantLogoUrl: string | null;
   collapsed: boolean;
   tenantPlan?: string;
@@ -24,6 +25,7 @@ type SidebarProps = {
 export default function Sidebar({
   currentRole,
   tenantName,
+  brandTagline,
   tenantLogoUrl,
   collapsed,
   tenantModules = {},
@@ -74,26 +76,15 @@ export default function Sidebar({
     !collapsed ? "sidebar-desktop-open" : "",
   ].filter(Boolean).join(" ");
 
-  const LogoIcon = () =>
-    tenantLogoUrl ? (
-      <img
-        src={tenantLogoUrl}
-        alt={tenantName}
-        className="h-10 w-10 flex-shrink-0 rounded-xl object-cover"
-      />
-    ) : (
-      <div style={{
-        width: 40, height: 40, borderRadius: 4,
-        background: "linear-gradient(to bottom, #012167 0%, #6692f9 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif",
-        fontWeight: 700, fontSize: 26, color: "#ffffff",
-        userSelect: "none", flexShrink: 0,
-        letterSpacing: "-0.01em",
-      }}>
-        B
-      </div>
-    );
+  const sidebarTagline = brandTagline?.trim() || "Powered by Bizosto®";
+
+  const LogoIcon = () => (
+    <img
+      src={tenantLogoUrl || "/icons/icon-192.svg"}
+      alt={tenantLogoUrl ? tenantName : "Bizosto B-mark"}
+      className="h-10 w-10 flex-shrink-0 rounded-xl object-contain"
+    />
+  );
 
   return (
     <>
@@ -148,7 +139,7 @@ export default function Sidebar({
                 <div className="truncate text-sm font-bold text-[var(--text-primary)] leading-tight">
                   {tenantName}
                 </div>
-                <div className="text-xs text-[var(--text-muted)]">Operating System</div>
+                <div className="truncate text-xs text-[var(--text-muted)]">{sidebarTagline}</div>
               </div>
 
               {isMobileOpen && (
