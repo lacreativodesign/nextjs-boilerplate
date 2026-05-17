@@ -38,20 +38,13 @@ const leaveTypeLabels: Record<LeaveTypeCode, string> = {
   bereavement: "Bereavement",
 };
 
-const cardStyle: React.CSSProperties = {
-  border: "1px solid var(--border-subtle)",
-  borderRadius: 12,
-  padding: 16,
-  background: "var(--surface-card)",
-};
-
 const inputStyle: React.CSSProperties = {
   width: "100%",
   border: "1px solid var(--border-subtle)",
   borderRadius: 8,
   padding: "8px 10px",
   marginTop: 6,
-  background: "var(--surface-input)",
+  background: "var(--input-bg)",
   color: "var(--text-primary)",
 };
 
@@ -168,11 +161,10 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Leave Management</h1>
-      {error ? <div style={{ background: "var(--status-error-bg, #fee2e2)", color: "var(--status-error-text, #7f1d1d)", padding: 12, borderRadius: 8 }}>{error}</div> : null}
+    <div className="grid gap-4 text-[var(--text-primary)]">
+      {error ? <div style={{ background: "var(--surface-muted)", color: "var(--danger)", padding: 12, borderRadius: 8 }}>{error}</div> : null}
 
-      <section style={cardStyle}>
+      <div className="form-section">
         <h2 style={{ margin: 0, marginBottom: 12 }}>Leave Request Form</h2>
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label>
@@ -197,20 +189,20 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
             Reason
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, minHeight: 80 }} />
           </label>
-          <button type="submit" style={{ ...inputStyle, cursor: "pointer", background: "var(--surface-inverse)", color: "var(--text-on-inverse, #fff)", maxWidth: 220 }}>
+          <button type="submit" style={{ ...inputStyle, cursor: "pointer", background: "var(--erp-blue)", color: "var(--sidebar-active-text)", maxWidth: 220 }}>
             Submit Request
           </button>
         </form>
-      </section>
+      </div>
 
-      <section style={cardStyle}>
+      <section className="card">
         <h2 style={{ marginTop: 0 }}>Leave Balance Dashboard</h2>
         {loading ? (
           <p>Loading balances...</p>
         ) : (
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
             {balances.map((balance) => (
-              <div key={balance.id} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 10 }}>
+              <div key={balance.id} className="stat-card">
                 <strong>{leaveTypeLabels[balance.leaveType]}</strong>
                 <div>Available: {balance.availableHours}h</div>
                 <div>Accrued: {balance.accruedHours}h</div>
@@ -223,7 +215,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
         )}
       </section>
 
-      <section style={cardStyle}>
+      <section className="card">
         <h2 style={{ marginTop: 0 }}>Team Leave Calendar</h2>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
           <button onClick={() => setCalendarMonth(new Date(Date.UTC(calendarMonth.getUTCFullYear(), calendarMonth.getUTCMonth() - 1, 1)))} style={{ cursor: "pointer" }}>
@@ -246,7 +238,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
               <div key={iso} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, minHeight: 90, padding: 6, background: isCurrentMonth ? "var(--surface-card)" : "var(--surface-muted)" }}>
                 <div style={{ fontSize: 12, marginBottom: 4 }}>{day.getUTCDate()}</div>
                 {entries.slice(0, 2).map((entry) => (
-                  <div key={entry.id} style={{ fontSize: 11, borderRadius: 6, padding: "2px 6px", background: "var(--status-info-bg, #dbeafe)", marginBottom: 3 }}>
+                  <div key={entry.id} style={{ fontSize: 11, borderRadius: 6, padding: "2px 6px", background: "var(--erp-blue-soft)", marginBottom: 3 }}>
                     {entry.employeeName} · {leaveTypeLabels[entry.leaveType]}
                   </div>
                 ))}
@@ -256,7 +248,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
         </div>
       </section>
 
-      <section style={cardStyle}>
+      <section className="card">
         <h2 style={{ marginTop: 0 }}>Manager Approval Queue</h2>
         {pendingQueue.length === 0 ? (
           <p>No pending requests.</p>
@@ -286,7 +278,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
         )}
       </section>
 
-      <section style={cardStyle}>
+      <section className="card">
         <h2 style={{ marginTop: 0 }}>Leave History</h2>
         <div style={{ display: "grid", gap: 8 }}>
           {requests.map((req) => (
@@ -297,7 +289,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
               <div>
                 {dateOnly(req.startDate)} → {dateOnly(req.endDate)} ({req.totalHours}h)
               </div>
-              {req.rejectionReason ? <div style={{ color: "var(--status-error-text, #7f1d1d)" }}>Reason: {req.rejectionReason}</div> : null}
+              {req.rejectionReason ? <div style={{ color: "var(--danger)" }}>Reason: {req.rejectionReason}</div> : null}
             </div>
           ))}
         </div>
