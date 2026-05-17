@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { SegmentDefinition } from "@/lib/segments";
+import { toastSuccess } from "@/lib/toast";
 
 type SalesStage =
   | "New Lead"
@@ -18,12 +19,12 @@ type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
 type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
 
 export default function EditClientPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id ? String(params.id) : "";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
@@ -226,8 +227,6 @@ export default function EditClientPage() {
       if (!id) return;
       setLoading(true);
       setError(null);
-      setSuccess(null);
-
       try {
         const res = await fetch(`/api/admin/clients/get?id=${encodeURIComponent(id)}`, {
           method: "GET",
@@ -271,9 +270,9 @@ export default function EditClientPage() {
         setRetainerStatus((c.retainerStatus as RetainerStatus) || "None");
 
         setTotalPaidUsd(String(Number(c.totalPaidUsd ?? 0)));
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message || "Failed to load client");
+        setError(e instanceof Error ? e.message : "Failed to load client");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -289,8 +288,6 @@ export default function EditClientPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
-
     if (!id) return setError("Missing client id");
     if (!companyName.trim()) return setError("Company name is required.");
     if (!primaryContactName.trim()) return setError("Primary contact name is required.");
@@ -344,9 +341,10 @@ export default function EditClientPage() {
         throw new Error(json?.error || "Failed to update client");
       }
 
-      setSuccess("Client updated successfully.");
-    } catch (err: any) {
-      setError(err?.message || "Failed to update client");
+      toastSuccess("Saved successfully.");
+      setTimeout(() => router.push("/admin/clients"), 800);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update client");
     } finally {
       setSaving(false);
     }
@@ -363,8 +361,6 @@ export default function EditClientPage() {
 
       <div style={styles.formShell}>
         {error ? <div style={styles.errorText}>{error}</div> : null}
-        {success ? <div style={styles.okText}>{success}</div> : <div style={styles.okText} />}
-
         <form onSubmit={onSubmit}>
           {/* Company Information */}
           <div style={styles.sectionCard}>

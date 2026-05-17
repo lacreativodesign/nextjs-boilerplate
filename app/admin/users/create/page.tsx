@@ -9,20 +9,40 @@ import {
   type UserDepartment,
   getDefaultDepartmentForRole,
 } from "@/lib/userOptions";
+import { toastSuccess } from "@/lib/toast";
 
 type UserStatus = "active" | "disabled";
 
 type Role = InternalRole;
 type Department = UserDepartment;
 
+type UserCreatePayload = {
+  name: string;
+  email: string;
+  phone: string;
+  cnic: string;
+  dob: string | null;
+  status: UserStatus;
+  role: Role;
+  department: Department;
+  designation: string;
+  joiningDate: string | null;
+  salary: number | null;
+  monthlyTarget: number | null;
+  commission: number | null;
+};
+
+type PostWithFallbackResult =
+  | { ok: true; json: unknown }
+  | { ok: false; error: string };
 
 function toNum(v: string) {
   const n = Number(String(v || "").replace(/,/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 
-async function postWithFallback(urls: string[], body: any) {
-  let lastErr: any = null;
+async function postWithFallback(urls: string[], body: UserCreatePayload): Promise<PostWithFallbackResult> {
+  let lastErr: string | null = null;
 
   for (const url of urls) {
     try {
@@ -38,8 +58,8 @@ async function postWithFallback(urls: string[], body: any) {
 
       if (res.ok) return { ok: true, json };
       lastErr = json?.error || json?.message || res.statusText || "Request failed";
-    } catch (e: any) {
-      lastErr = e?.message || "Network error";
+    } catch (e: unknown) {
+      lastErr = e instanceof Error ? e.message : "Network error";
     }
   }
 
@@ -51,7 +71,6 @@ export default function CreateUserPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -107,8 +126,6 @@ export default function CreateUserPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setOkMsg(null);
-
     if (!canSubmit) {
       setError("Please fill required fields (Full Name, Email).");
       return;
@@ -137,12 +154,12 @@ export default function CreateUserPage() {
     setSaving(false);
 
     if (!result.ok) {
-      setError(String((result as any).error || "Failed to create user"));
+      setError(result.error || "Failed to create user");
       return;
     }
 
-    setOkMsg("User created successfully.");
-    setTimeout(() => router.push("/users"), 500);
+    toastSuccess("Saved successfully.");
+    setTimeout(() => router.push("/admin/users"), 800);
   }
 
   return (
@@ -258,8 +275,6 @@ export default function CreateUserPage() {
             <div style={{ minHeight: 18, fontSize: 13 }}>
               {error ? (
                 <span style={{ color: "#EF4444" }}>{error}</span>
-              ) : okMsg ? (
-                <span style={{ color: "var(--text-muted)" }}>{okMsg}</span>
               ) : null}
             </div>
 
