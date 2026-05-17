@@ -69,6 +69,7 @@ export default function COOSummaryWidget() {
       fetch(`/api/ai/agent-tasks/${taskId}/run`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
       }).catch(() => {});
 
       // 3. Start polling
