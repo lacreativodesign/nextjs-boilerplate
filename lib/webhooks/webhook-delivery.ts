@@ -417,14 +417,22 @@ export async function retryWebhookDeliveryManually(deliveryId: string, tenantId:
 }
 
 export async function listWebhookDeliveries(tenantId: string, limit = 100) {
-  const snap = await adminDb
-    .collection(DELIVERIES_COLLECTION)
-    .where("tenantId", "==", tenantId)
-    .orderBy("createdAt", "desc")
-    .limit(Math.min(limit, 200))
-    .get();
+  let deliveries: WebhookDeliveryRecord[] = [];
 
-  return snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => toRecord<WebhookDeliveryRecord>(doc.id, doc.data()));
+  try {
+    const snap = await adminDb
+      .collection(DELIVERIES_COLLECTION)
+      .where("tenantId", "==", tenantId)
+      .orderBy("createdAt", "desc")
+      .limit(Math.min(limit, 200))
+      .get();
+
+    deliveries = snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => toRecord<WebhookDeliveryRecord>(doc.id, doc.data()));
+  } catch {
+    deliveries = [];
+  }
+
+  return deliveries;
 }
 
 export function computeWebhookHealth(subscriptions: WebhookSubscriptionRecord[]) {
