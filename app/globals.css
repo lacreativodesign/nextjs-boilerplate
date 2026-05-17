@@ -420,8 +420,15 @@ table tbody tr:hover { background: var(--table-row-hover); }
 .btn.ghost:hover { background: var(--surface-muted); }
 .btn.subtle { background: var(--surface-muted); color: var(--text-primary); border: 1px solid var(--border-subtle); }
 .btn.subtle:hover { background: var(--surface-card); border-color: var(--border-strong); }
-.btn-danger { background: var(--danger); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25); }
-.btn-danger:hover { background: #dc2626; }
+.badge-success, .pill-active {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chart-series-2) 14%, transparent);
+  color: var(--chart-series-2);
+}
+.btn-danger, .btn.danger { background: var(--danger); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25); }
+.btn-danger:hover, .btn.danger:hover { background: var(--danger); filter: brightness(0.92); }
 
 .input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); }
 .input::placeholder { color: var(--text-muted); opacity: 1; }
