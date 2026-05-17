@@ -368,7 +368,7 @@ export default function DeliveryPipelinePage() {
 
   const pipelineStages = useMemo(() => [LEGACY_STAGE, ...LOCKED_STAGES], []);
   const columnTemplate = useMemo(
-    () => `repeat(${pipelineStages.length}, minmax(260px, 1fr))`,
+    () => `repeat(${pipelineStages.length}, minmax(280px, 1fr))`,
     [pipelineStages.length]
   );
 
@@ -440,7 +440,7 @@ export default function DeliveryPipelinePage() {
         </div>
       </div>
 
-      <div className="kpis" style={{ marginTop: 20 }}>
+      <div className="kpis pipeline-kpis" style={{ marginTop: 20 }}>
         {[
           { label: "Total Active", value: kpis.totalActive },
           { label: "Overdue", value: kpis.overdue },
@@ -566,13 +566,14 @@ export default function DeliveryPipelinePage() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ overflowX: "auto" }}>
+            <div className="overflow-x-auto" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <div
                 style={{
                   display: "grid",
                   gridTemplateColumns: columnTemplate,
                   gap: 14,
-                  minWidth: 260 * pipelineStages.length,
+                  minWidth: 280 * pipelineStages.length,
+                  whiteSpace: "nowrap",
                 }}
               >
               {pipelineStages.map((stage) => {
@@ -589,6 +590,7 @@ export default function DeliveryPipelinePage() {
                       boxShadow: "var(--shadow-md)",
                       display: "grid",
                       gap: 12,
+                      minWidth: 280,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
