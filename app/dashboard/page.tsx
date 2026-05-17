@@ -4,12 +4,27 @@ import { useRouter } from "next/navigation";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { normalizeRole, type ErpRole } from "@/lib/erpAccess";
 import dynamic from "next/dynamic";
 import {
   TrendingUp, Briefcase, UserCircle, Package,
   DollarSign, BarChart3, Settings,
 } from "lucide-react";
 const COOSummaryWidget = dynamic(() => import("@/components/ai/COOSummaryWidget"), { ssr: false });
+
+const ROLE_OVERVIEW_SUBTITLES: Record<ErpRole, string> = {
+  admin: "Your workspace overview.",
+  super_admin: "Platform-wide snapshot across all tenants.",
+  finance: "Financial overview for your workspace.",
+  hr: "HR overview for your workspace.",
+  sales: "Sales pipeline overview for your workspace.",
+  sales_manager: "Sales team and pipeline overview for your workspace.",
+  production: "Production overview for your workspace.",
+  production_manager: "Production team overview for your workspace.",
+  am: "Account management overview for your workspace.",
+  am_manager: "Account management team overview for your workspace.",
+  client: "Your client workspace overview.",
+};
 
 type Stats = {
   users: number;
@@ -56,6 +71,10 @@ export default function DashboardPage() {
   const { t } = useI18n();
   const { data: tenantData } = useTenantContext();
   const modulesEnabled = tenantData?.tenant?.modulesEnabled || {};
+  const currentRole = normalizeRole(tenantData?.user?.role || "");
+  const overviewSubtitle = currentRole
+    ? ROLE_OVERVIEW_SUBTITLES[currentRole]
+    : ROLE_OVERVIEW_SUBTITLES.admin;
 
   function moduleEnabled(key: string): boolean {
     return modulesEnabled[key] !== false;
@@ -101,7 +120,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="mb-6">
         <h1 className="page-title">Overview</h1>
-        <p className="page-subtitle">Platform-wide snapshot across all operations.</p>
+        <p className="page-subtitle">{overviewSubtitle}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
