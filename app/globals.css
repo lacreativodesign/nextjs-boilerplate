@@ -454,6 +454,30 @@ select option { color: var(--text-primary); background: var(--surface-card); }
 .drawer-panel--md { width: min(520px, 96vw); }
 .drawer-panel--lg { width: min(640px, 96vw); }
 @media (max-width: 640px) { .drawer-panel, .drawer-panel--sm, .drawer-panel--md, .drawer-panel--lg { width: 100%; border-radius: 0; } }
+
+.client-detail-drawer {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--surface-card);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.client-detail-drawer__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px;
+  padding-top: calc(18px + env(safe-area-inset-top));
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  background: var(--surface-card);
+  border-radius: 0;
+}
+@media (max-width: 640px) {
+  .client-detail-drawer { border-radius: 12px; }
+  .client-detail-drawer__delete { width: 100%; }
+}
 .drawer-title { font-size: 20px; font-weight: 800; }
 .drawer-subtitle { font-size: 12px; color: var(--text-muted); }
 

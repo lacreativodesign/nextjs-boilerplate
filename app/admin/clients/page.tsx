@@ -706,140 +706,145 @@ export default function ClientsPage() {
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
-          <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
-                  {selected.companyName}
+          <div
+            className="drawer-panel drawer-panel--sm client-detail-drawer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="client-detail-drawer__scroll">
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                    {selected.companyName}
+                  </div>
+                  <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
+                    {selected.primaryContactName} · {selected.primaryContactEmail}
+                  </div>
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
-                  {selected.primaryContactName} · {selected.primaryContactEmail}
-                </div>
+
+                <button
+                  className="btn ghost"
+                  onClick={closeDrawer}
+                  style={{ height: 34, borderRadius: 999, fontWeight: 400 }}
+                >
+                  Close
+                </button>
               </div>
 
-              <button
-                className="btn ghost"
-                onClick={closeDrawer}
-                style={{ height: 34, borderRadius: 999, fontWeight: 400 }}
+              <div style={{ height: 14 }} />
+
+              <Section title="Company">
+                <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} />
+                <Row label="Website" value={selected.website || "-"} />
+                <Row label="Industry" value={selected.industry || "-"} />
+                <Row label="Business Type" value={selected.businessType || "-"} />
+                <Row label="Country" value={selected.country || "-"} />
+                <Row label="City" value={selected.city || "-"} />
+                <Row label="Timezone" value={selected.timezone || "-"} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <Section title="Profile">
+                <Row
+                  label="Services"
+                  value={
+                    (selected.segmentServices || [])
+                      .map((slug) => segmentMap[slug]?.name || slug)
+                      .filter(Boolean)
+                      .join(", ") || "-"
+                  }
+                />
+                <Row
+                  label="Segment (Industry)"
+                  value={segmentMap[selected.segmentIndustry || ""]?.name || selected.segmentIndustry || "-"}
+                />
+                <Row
+                  label="Segment (Business)"
+                  value={segmentMap[selected.segmentBusinessType || ""]?.name || selected.segmentBusinessType || "-"}
+                />
+                <Row
+                  label="Segment (Geo)"
+                  value={segmentMap[selected.segmentGeo || ""]?.name || selected.segmentGeo || "-"}
+                />
+                <Row label="Employee Count" value={selected.employeeCountRange || "-"} />
+                <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <Section title="Contact">
+                <Row label="Name" value={selected.primaryContactName || "-"} />
+                <Row label="Title" value={selected.primaryContactTitle || "-"} />
+                <Row label="Email" value={selected.primaryContactEmail || "-"} />
+                <Row label="Phone" value={selected.primaryContactPhone || "-"} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <Section title="Finance">
+                <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
+                <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} />
+                <Row label="Created" value={fmtDate(selected.createdAt)} />
+                <Row label="Last Activity" value={fmtDate(selected.lastActivity)} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <Section title="Ownership">
+                <Row label="Sales Owner" value={selected.salesOwner || "-"} />
+                <Row label="Account Manager" value={selected.accountManager || "-"} />
+                <Row label="Production Owner" value={selected.productionOwner || "-"} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <Section title="Pipeline">
+                <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} />
+                <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
+                <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} />
+              </Section>
+
+              <div style={{ height: 12 }} />
+
+              <div
+                className="client-detail-drawer__actions"
+                style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}
               >
-                Close
-              </button>
-            </div>
-
-            <div style={{ height: 14 }} />
-
-            <Section title="Company">
-              <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} />
-              <Row label="Website" value={selected.website || "-"} />
-              <Row label="Industry" value={selected.industry || "-"} />
-              <Row label="Business Type" value={selected.businessType || "-"} />
-              <Row label="Country" value={selected.country || "-"} />
-              <Row label="City" value={selected.city || "-"} />
-              <Row label="Timezone" value={selected.timezone || "-"} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <Section title="Profile">
-              <Row
-                label="Services"
-                value={
-                  (selected.segmentServices || [])
-                    .map((slug) => segmentMap[slug]?.name || slug)
-                    .filter(Boolean)
-                    .join(", ") || "-"
-                }
-              />
-              <Row
-                label="Segment (Industry)"
-                value={segmentMap[selected.segmentIndustry || ""]?.name || selected.segmentIndustry || "-"}
-              />
-              <Row
-                label="Segment (Business)"
-                value={segmentMap[selected.segmentBusinessType || ""]?.name || selected.segmentBusinessType || "-"}
-              />
-              <Row
-                label="Segment (Geo)"
-                value={segmentMap[selected.segmentGeo || ""]?.name || selected.segmentGeo || "-"}
-              />
-              <Row label="Employee Count" value={selected.employeeCountRange || "-"} />
-              <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <Section title="Contact">
-              <Row label="Name" value={selected.primaryContactName || "-"} />
-              <Row label="Title" value={selected.primaryContactTitle || "-"} />
-              <Row label="Email" value={selected.primaryContactEmail || "-"} />
-              <Row label="Phone" value={selected.primaryContactPhone || "-"} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <Section title="Finance">
-              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
-              <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} />
-              <Row label="Created" value={fmtDate(selected.createdAt)} />
-              <Row label="Last Activity" value={fmtDate(selected.lastActivity)} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <Section title="Ownership">
-              <Row label="Sales Owner" value={selected.salesOwner || "-"} />
-              <Row label="Account Manager" value={selected.accountManager || "-"} />
-              <Row label="Production Owner" value={selected.productionOwner || "-"} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <Section title="Pipeline">
-              <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} />
-              <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
-              <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} />
-            </Section>
-
-            <div style={{ height: 12 }} />
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-              {!selected.portalUserUid && (
+                {!selected.portalUserUid && (
+                  <LoadingButton
+                    type="button"
+                    className="btn ghost"
+                    style={{ borderRadius: 12, fontWeight: 400 }}
+                    onClick={sendActivationInvite}
+                    loading={activationSending}
+                    loadingText="Sending..."
+                  >
+                    Send Client Activation Email
+                  </LoadingButton>
+                )}
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ borderRadius: 12, fontWeight: 400 }}
+                  onClick={() => router.push(`/clients/${selected.id}/edit`)}
+                >
+                  Edit Client
+                </button>
                 <LoadingButton
                   type="button"
-                  className="btn ghost"
-                  style={{ borderRadius: 12, fontWeight: 400 }}
-                  onClick={sendActivationInvite}
-                  loading={activationSending}
-                  loadingText="Sending..."
+                  className="btn btn-danger client-detail-drawer__delete"
+                  onClick={() => handleDelete(selected.id)}
+                  loading={deletingId === selected.id}
+                  loadingText="Deleting..."
+                  style={{
+                    borderRadius: 12,
+                    fontWeight: 400,
+                    opacity: deletingId === selected.id ? 0.7 : 1,
+                  }}
                 >
-                  Send Client Activation Email
+                  Delete Client
                 </LoadingButton>
-              )}
-              <button
-                type="button"
-                className="btn"
-                style={{ borderRadius: 12, fontWeight: 400 }}
-                onClick={() => router.push(`/clients/${selected.id}/edit`)}
-              >
-                Edit Client
-              </button>
-              <LoadingButton
-                type="button"
-                className="btn ghost"
-                onClick={() => handleDelete(selected.id)}
-                loading={deletingId === selected.id}
-                loadingText="Deleting..."
-                style={{
-                  borderRadius: 12,
-                  fontWeight: 400,
-                  background: "rgba(239,68,68,0.10)",
-                  border: "1px solid rgba(239,68,68,0.35)",
-                  color: "rgba(15,23,42,0.86)",
-                  opacity: deletingId === selected.id ? 0.7 : 1,
-                }}
-              >
-                Delete Client
-              </LoadingButton>
+              </div>
             </div>
           </div>
         </div>
