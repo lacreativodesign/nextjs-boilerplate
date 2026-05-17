@@ -277,6 +277,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       endpoint: pathname,
       method: req.method,
       timestamp: Date.now(),
+      authenticated: Boolean(sessionToken),
     });
 
     ruleId = decision.ruleId;
