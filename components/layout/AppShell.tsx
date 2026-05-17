@@ -33,7 +33,7 @@ function AppShellInner({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isCollapsed, openMobile, closeMobile, toggleCollapse } = useSidebar();
+  const { isCollapsed, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
   const [clientRole, setClientRole] = useState<string | null>(() => {
@@ -67,6 +67,7 @@ function AppShellInner({
         email: data?.user?.email || "",
         role: serverRole || fallbackRole || "admin",
         avatarUrl: undefined,
+        displayName: data?.user?.displayName || null,
       };
     },
     [data?.user?.displayName, data?.user?.email, data?.user?.role, clientRole],
