@@ -399,7 +399,28 @@ export default function EditClientPage() {
             <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Timezone</div>
-                <input className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+                <select className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                  <option value="">Select timezone (optional)</option>
+                  <option value="UTC">UTC</option>
+                  <option value="America/New_York">America/New_York</option>
+                  <option value="America/Chicago">America/Chicago</option>
+                  <option value="America/Denver">America/Denver</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles</option>
+                  <option value="America/Toronto">America/Toronto</option>
+                  <option value="America/Vancouver">America/Vancouver</option>
+                  <option value="America/Sao_Paulo">America/Sao_Paulo</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="Europe/Paris">Europe/Paris</option>
+                  <option value="Europe/Berlin">Europe/Berlin</option>
+                  <option value="Europe/Amsterdam">Europe/Amsterdam</option>
+                  <option value="Asia/Dubai">Asia/Dubai</option>
+                  <option value="Asia/Karachi">Asia/Karachi</option>
+                  <option value="Asia/Kolkata">Asia/Kolkata</option>
+                  <option value="Asia/Singapore">Asia/Singapore</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo</option>
+                  <option value="Australia/Sydney">Australia/Sydney</option>
+                  <option value="Pacific/Auckland">Pacific/Auckland</option>
+                </select>
                 <div style={styles.help}>Keep it short. Don’t stretch the field across the whole page.</div>
               </div>
 
