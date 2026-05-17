@@ -140,7 +140,8 @@ function AppShellInner({
         userName={currentUser.name}
         userEmail={currentUser.email}
         tenantName={data?.tenant?.name || "Bizosto"}
-        tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || null}
+        brandTagline={data?.tenant?.whiteLabel?.tagline || undefined}
+        tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || data?.tenant?.brand?.logoUrl || null}
         collapsed={isCollapsed}
         tenantPlan={data?.tenant?.plan || "trial"}
         tenantModules={data?.tenant?.modules || {}}

@@ -7,6 +7,7 @@ export { contrastRatio, generateThemeCssVariables, getAllowedBrandFonts, validat
 
 export type TenantBrandingSettings = {
   logoUrl: string | null;
+  tagline: string | null;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -31,8 +32,13 @@ export type TenantBrandingSettings = {
   updatedBy?: string;
 };
 
+export type TenantBrandingSettingsInput = Partial<Omit<TenantBrandingSettings, "emailBranding">> & {
+  emailBranding?: Partial<TenantBrandingSettings["emailBranding"]>;
+};
+
 const DEFAULT_BRANDING: TenantBrandingSettings = {
   logoUrl: null,
+  tagline: null,
   primaryColor: "#2563eb",
   secondaryColor: "#1d4ed8",
   accentColor: "#14b8a6",
@@ -70,7 +76,7 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
   };
 }
 
-export async function updateTenantBranding(tenantId: string, input: Partial<TenantBrandingSettings>, updatedBy: string) {
+export async function updateTenantBranding(tenantId: string, input: TenantBrandingSettingsInput, updatedBy: string) {
   const current = await getTenantBranding(tenantId);
   const next: TenantBrandingSettings = {
     ...current,
