@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import LoadingButton from "@/components/ui/LoadingButton";
 import {
@@ -93,6 +94,15 @@ const normalizeFilterValue = (value: string | undefined, type?: SearchField["typ
 };
 
 export default function FinanceInvoicesPage() {
+  return (
+    <Suspense fallback={null}>
+      <FinanceInvoicesContent />
+    </Suspense>
+  );
+}
+
+function FinanceInvoicesContent() {
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -269,6 +279,12 @@ export default function FinanceInvoicesPage() {
     loadInvoices();
     loadClients();
   }, [loadInvoices, loadClients]);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
 
   const canAdmin = useMemo(() => {
     const role = (currentUser?.role || "").toLowerCase();
