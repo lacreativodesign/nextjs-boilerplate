@@ -321,6 +321,8 @@ body { background: var(--app-bg); color: var(--text-primary); overflow-x: hidden
 }
 .card .card { background: var(--surface-muted); border: 1px solid var(--border-subtle); box-shadow: none; }
 @layer components { .card { padding: var(--card-padding); } }
+.stat-card { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 14px; color: var(--text-primary); min-width: 0; padding: 16px; box-shadow: var(--shadow-sm); }
+.form-section { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 16px; color: var(--text-primary); padding: var(--card-padding); box-shadow: var(--shadow-sm); }
 
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 1024px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
