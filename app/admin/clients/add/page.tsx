@@ -57,6 +57,16 @@ type ApiResp =
   | { ok: true; clientId?: string }
   | { ok?: false; error?: string };
 
+type SalesUser = {
+  uid: string;
+  name: string;
+  role?: string;
+};
+
+type SalesUsersResp =
+  | { ok: true; users?: SalesUser[] }
+  | { ok?: false; error?: string };
+
 export default function AddClientPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +93,7 @@ export default function AddClientPage() {
   const [primaryContactPhone, setPrimaryContactPhone] = useState("");
 
   const [salesOwner, setSalesOwner] = useState("");
+  const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
   const [accountManager, setAccountManager] = useState("");
   const [productionOwner, setProductionOwner] = useState("");
 
@@ -115,7 +126,27 @@ export default function AddClientPage() {
       }
     }
 
+    async function loadSalesUsers() {
+      try {
+        const res = await fetch("/api/admin/users/by-role?role=sales", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+        const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
+        if (!res.ok || !json?.ok) return;
+        const users = Array.isArray(json.users) ? json.users : [];
+        if (!alive) return;
+        setSalesUsers(users);
+      } catch {
+        if (!alive) return;
+        setSalesUsers([]);
+        toastError("Failed to load sales users.");
+      }
+    }
+
     loadSegments();
+    loadSalesUsers();
     return () => {
       alive = false;
     };
@@ -616,8 +647,22 @@ export default function AddClientPage() {
 
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
-                <div style={styles.label}>Sales Owner</div>
-                <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} />
+                <div style={styles.label}>
+                  Sales Owner <span style={{ color: "#EF4444" }}>*</span>
+                </div>
+                <select
+                  className="input"
+                  value={salesOwner}
+                  onChange={(e) => setSalesOwner(e.target.value)}
+                  required
+                >
+                  <option value="">Select sales owner</option>
+                  {salesUsers.map((user) => (
+                    <option key={user.uid} value={user.name}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
