@@ -29,6 +29,7 @@ export type RateLimitContext = {
   endpoint: string;
   method: string;
   timestamp: number;
+  authenticated?: boolean;
 };
 
 export type RateLimitDecision = {
@@ -54,6 +55,8 @@ type UpstashPipelineResult = Array<{ result?: unknown }>;
 
 const DEFAULT_WINDOW_SECONDS = 60;
 const DEFAULT_LIMIT = 120;
+const AUTHENTICATED_USER_LIMIT = 60;
+const AUTHENTICATED_USER_WINDOW_SECONDS = 60;
 const CACHE_TTL_SECONDS = 30;
 
 let configCache: {
@@ -143,7 +146,7 @@ function hash(value: string): string {
   return Math.abs(h).toString(36).padStart(8, "0").slice(0, 24);
 }
 
-function defaultRuleForEndpoint(pathname: string, method: string): RateLimitRule {
+function defaultRuleForEndpoint(pathname: string, method: string, authenticated = false): RateLimitRule {
   const normalizedMethod = method.toUpperCase();
   const isAuthEndpoint = pathname.startsWith("/api/auth") || pathname.startsWith("/api/session-login") || pathname.startsWith("/api/logout");
   const isRead = normalizedMethod === "GET" || normalizedMethod === "HEAD" || normalizedMethod === "OPTIONS";
@@ -157,6 +160,18 @@ function defaultRuleForEndpoint(pathname: string, method: string): RateLimitRule
       scope: "both",
       enabled: true,
       priority: 100,
+    };
+  }
+
+  if (authenticated) {
+    return {
+      id: "default-authenticated-user",
+      endpointPattern: pathname,
+      limit: AUTHENTICATED_USER_LIMIT,
+      windowSeconds: AUTHENTICATED_USER_WINDOW_SECONDS,
+      scope: "user",
+      enabled: true,
+      priority: 50,
     };
   }
 
@@ -211,12 +226,12 @@ function isException(exceptions: ThrottleException[], ip: string, userId: string
   });
 }
 
-function resolveRule(pathname: string, method: string, rules: RateLimitRule[]) {
+function resolveRule(pathname: string, method: string, rules: RateLimitRule[], authenticated = false) {
   const matched = rules
     .filter((rule) => rule.enabled && matchPattern(pathname, rule.endpointPattern))
     .sort((a, b) => b.priority - a.priority);
 
-  return matched[0] || defaultRuleForEndpoint(pathname, method);
+  return matched[0] || defaultRuleForEndpoint(pathname, method, authenticated);
 }
 
 async function slidingWindowCount(key: string, windowSeconds: number, nowMs: number) {
@@ -302,7 +317,7 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
     };
   }
 
-  const rule = resolveRule(context.endpoint, context.method, config.rules);
+  const rule = resolveRule(context.endpoint, context.method, config.rules, Boolean(context.authenticated));
   const nowMs = context.timestamp;
 
   let tenantResult = { allowed: true, remaining: rule.limit, resetSeconds: rule.windowSeconds };
