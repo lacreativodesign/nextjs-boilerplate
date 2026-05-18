@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { plans, type BillingPlanKey } from '@/lib/billing/plans';
 
@@ -46,6 +47,7 @@ function getBadgeConfig(state: SubscriptionState) {
 }
 
 export default function BillingOverviewPage() {
+  const router = useRouter();
   const [data, setData] = useState<SubscriptionStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -118,7 +120,10 @@ export default function BillingOverviewPage() {
     }
   }, []);
 
-  const badge = useMemo(() => getBadgeConfig(data?.subscriptionState ?? ''), [data?.subscriptionState]);
+  const badge = useMemo(
+    () => getBadgeConfig(data?.subscriptionState ?? ''),
+    [data?.subscriptionState],
+  );
   const planConfig = useMemo(() => {
     if (!data?.plan) return null;
     return plans[data.plan as BillingPlanKey] ?? null;
@@ -140,10 +145,14 @@ export default function BillingOverviewPage() {
 
       <div className="mb-6">
         <h1 className="page-title">Billing</h1>
-        <p className="page-subtitle">Manage your Bizosto subscription, payment methods, and billing history.</p>
+        <p className="page-subtitle">
+          Manage your Bizosto subscription, payment methods, and billing history.
+        </p>
       </div>
 
-      {loading && <div className="card p-6 text-sm text-[var(--text-muted)]">Loading billing info…</div>}
+      {loading && (
+        <div className="card p-6 text-sm text-[var(--text-muted)]">Loading billing info…</div>
+      )}
 
       {fetchError && (
         <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-6">
@@ -156,20 +165,30 @@ export default function BillingOverviewPage() {
 
       {!loading && !fetchError && (
         <div className="space-y-5">
-          {data?.subscriptionState === 'trial' && data?.trialEndsAt && (() => {
-            const daysLeft = Math.ceil((new Date(data.trialEndsAt!).getTime() - Date.now()) / 86400000);
-            if (daysLeft > 5) return null;
-            return (
-              <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-[var(--danger)]">
-                  ⚠ Your trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}. Upgrade now to keep your data and access.
-                </p>
-                <a href="https://www.bizosto.com/pricing" className="btn" style={{ borderRadius: 999, fontSize: 13 }}>
-                  Upgrade Now
-                </a>
-              </div>
-            );
-          })()}
+          {data?.subscriptionState === 'trial' &&
+            data?.trialEndsAt &&
+            (() => {
+              const daysLeft = Math.ceil(
+                (new Date(data.trialEndsAt!).getTime() - Date.now()) / 86400000,
+              );
+              if (daysLeft > 5) return null;
+              return (
+                <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-[var(--danger)]">
+                    ⚠ Your trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}. Upgrade now to
+                    keep your data and access.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/billing/upgrade')}
+                    className="btn"
+                    style={{ borderRadius: 999, fontSize: 13 }}
+                  >
+                    Upgrade Now
+                  </button>
+                </div>
+              );
+            })()}
           {/* Current Plan */}
           <section className="card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -187,7 +206,9 @@ export default function BillingOverviewPage() {
                   </p>
                 )}
               </div>
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.cls}`}>
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.cls}`}
+              >
                 {badge.label}
               </span>
             </div>
@@ -244,7 +265,9 @@ export default function BillingOverviewPage() {
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="section-title">Upgrade Your Plan</h3>
-                  <p className="helper-text mt-1">Switch plans anytime. Cancel anytime. Your data is always safe.</p>
+                  <p className="helper-text mt-1">
+                    Switch plans anytime. Cancel anytime. Your data is always safe.
+                  </p>
                 </div>
                 <div className="flex overflow-hidden rounded-xl border border-[var(--border-subtle)]">
                   <button
@@ -262,7 +285,14 @@ export default function BillingOverviewPage() {
                     style={{ borderRadius: 0, fontSize: 13, padding: '8px 16px' }}
                   >
                     Annual{' '}
-                    <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, color: 'var(--chart-series-2)' }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        marginLeft: 4,
+                        color: 'var(--chart-series-2)',
+                      }}
+                    >
                       SAVE 2 MONTHS
                     </span>
                   </button>
@@ -270,40 +300,63 @@ export default function BillingOverviewPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                {([
-                  {
-                    key: 'starter',
-                    name: 'Starter',
-                    monthly: 79,
-                    annual: 790,
-                    perMonth: 65.83,
-                    users: '10 users',
-                    storage: '20GB',
-                    features: ['CRM, Sales & Projects', '10 client portal seats', 'Notifications & Reports', 'Email support (48h)'],
-                  },
-                  {
-                    key: 'pro',
-                    name: 'Pro',
-                    monthly: 149,
-                    annual: 1490,
-                    perMonth: 124.17,
-                    users: '20 users',
-                    storage: '75GB',
-                    features: ['Finance & Production suite', 'Unlimited client portal seats', 'Approvals & full Reports', 'AI Workforce agents (COO, Finance, Sales)', 'Natural language AI reports', 'Priority support + chat'],
-                  },
-                  {
-                    key: 'enterprise',
-                    name: 'Enterprise',
-                    monthly: 299,
-                    annual: 2990,
-                    perMonth: 249.17,
-                    users: 'Unlimited users',
-                    storage: '250GB',
-                    features: ['HR module included', 'Client Stripe Connect', 'AI Workforce — all 4 agents + AI Reports', 'Website embed integration', 'White-label options', 'Dedicated same-day support'],
-                  },
-                ] as const).map((plan) => {
+                {(
+                  [
+                    {
+                      key: 'starter',
+                      name: 'Starter',
+                      monthly: 79,
+                      annual: 790,
+                      perMonth: 65.83,
+                      users: '10 users',
+                      storage: '20GB',
+                      features: [
+                        'CRM, Sales & Projects',
+                        '10 client portal seats',
+                        'Notifications & Reports',
+                        'Email support (48h)',
+                      ],
+                    },
+                    {
+                      key: 'pro',
+                      name: 'Pro',
+                      monthly: 149,
+                      annual: 1490,
+                      perMonth: 124.17,
+                      users: '20 users',
+                      storage: '75GB',
+                      features: [
+                        'Finance & Production suite',
+                        'Unlimited client portal seats',
+                        'Approvals & full Reports',
+                        'AI Workforce agents (COO, Finance, Sales)',
+                        'Natural language AI reports',
+                        'Priority support + chat',
+                      ],
+                    },
+                    {
+                      key: 'enterprise',
+                      name: 'Enterprise',
+                      monthly: 299,
+                      annual: 2990,
+                      perMonth: 249.17,
+                      users: 'Unlimited users',
+                      storage: '250GB',
+                      features: [
+                        'HR module included',
+                        'Client Stripe Connect',
+                        'AI Workforce — all 4 agents + AI Reports',
+                        'Website embed integration',
+                        'White-label options',
+                        'Dedicated same-day support',
+                      ],
+                    },
+                  ] as const
+                ).map((plan) => {
                   const isCurrent = data?.plan === plan.key;
-                  const currentOrder = ['trial', 'starter', 'pro', 'enterprise'].indexOf(data?.plan ?? 'trial');
+                  const currentOrder = ['trial', 'starter', 'pro', 'enterprise'].indexOf(
+                    data?.plan ?? 'trial',
+                  );
                   const planOrder = ['trial', 'starter', 'pro', 'enterprise'].indexOf(plan.key);
                   const isUpgrade = planOrder > currentOrder;
 
@@ -349,21 +402,23 @@ export default function BillingOverviewPage() {
                           Your Plan
                         </div>
                       ) : isUpgrade ? (
-                        <a
-                          href="https://www.bizosto.com/pricing"
+                        <button
+                          type="button"
+                          onClick={() => router.push('/billing/upgrade')}
                           className="btn w-full text-center"
                           style={{ borderRadius: 999, fontSize: 13 }}
                         >
                           Upgrade
-                        </a>
+                        </button>
                       ) : (
-                        <a
-                          href="https://www.bizosto.com/pricing"
+                        <button
+                          type="button"
+                          onClick={() => router.push('/billing/upgrade')}
                           className="btn ghost w-full text-center"
                           style={{ borderRadius: 999, fontSize: 13 }}
                         >
                           Downgrade
-                        </a>
+                        </button>
                       )}
                     </div>
                   );
@@ -384,13 +439,17 @@ export default function BillingOverviewPage() {
               >
                 {portalLoading ? 'Opening…' : 'Open Billing Portal'}
               </button>
-              <a href="https://www.bizosto.com/pricing" className="btn ghost">
+              <button
+                type="button"
+                onClick={() => router.push('/billing/upgrade')}
+                className="btn ghost"
+              >
                 View Plans
-              </a>
+              </button>
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">
-              The billing portal lets you upgrade, downgrade, or cancel your plan, view past invoices, and update your
-              billing address.
+              The billing portal lets you upgrade, downgrade, or cancel your plan, view past
+              invoices, and update your billing address.
             </p>
           </section>
         </div>
