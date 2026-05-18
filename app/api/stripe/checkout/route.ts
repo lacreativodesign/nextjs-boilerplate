@@ -108,7 +108,10 @@ async function ensurePrice(
 
 function parsePlanKey(value: unknown): PlanKey | null {
   if (typeof value !== "string") return null;
-  return value in PLAN_CONFIGS ? (value as PlanKey) : null;
+  if (value in PLAN_CONFIGS) return value as PlanKey;
+
+  const monthlyPlanKey = `${value}_monthly`;
+  return monthlyPlanKey in PLAN_CONFIGS ? (monthlyPlanKey as PlanKey) : null;
 }
 
 export async function POST(req: Request) {
