@@ -101,6 +101,7 @@ export default function Sidebar({
       )}
 
       <aside
+        id="main-sidebar"
         className={[
           "sidebar-transition",
           "fixed left-0 top-0 z-40 h-full",
@@ -166,6 +167,7 @@ export default function Sidebar({
               return (
                 <Link
                   key={item.href}
+                  id={item.href === "/dashboard" ? "sidebar-dashboard" : undefined}
                   href={item.href}
                   title={item.label}
                   target={opensInNewTab ? "_blank" : undefined}
