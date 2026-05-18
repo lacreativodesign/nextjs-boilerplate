@@ -1,10 +1,10 @@
-import { HelpCenterPageContent } from "@/components/help-center/HelpCenterPageContent";
+import { HelpCenterPageContent } from '@/components/help-center/HelpCenterPageContent';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Help Center",
-  description: "Documentation, video tutorials, FAQs, and support for BIZOSTO ERP.",
+  title: 'Help Center',
+  description: 'Role-specific guides, tutorials, and documentation for BIZOSTO ERP.',
 };
 
 export default function HelpCenterPage() {

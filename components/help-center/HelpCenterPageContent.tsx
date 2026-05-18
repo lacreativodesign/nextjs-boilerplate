@@ -1,10 +1,13 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import { HelpSearch } from '@/components/help-center/HelpSearch';
-import { CrispChatWidget } from '@/components/help-center/CrispChatWidget';
-import { helpCategories, type HelpArticle, type HelpCategory } from '@/lib/help-center/data';
+import { useMemo, useState } from 'react';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import {
+  helpCategories,
+  type HelpArticle,
+  type HelpCategory,
+  type HelpIcon,
+} from '@/lib/help-center/data';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
 
 const HELP_ROLE_TOPIC_ACCESS: Record<
@@ -23,6 +26,28 @@ const HELP_ROLE_TOPIC_ACCESS: Record<
   am_manager: { allowedTopics: ['projects', 'clients', 'files', 'change requests'] },
   client: { allowedTopics: ['client portal'] },
 };
+
+type ArticleCard = {
+  article: HelpArticle;
+  categoryId: string;
+  categoryName: string;
+  Icon: HelpIcon;
+};
+
+const quickLinks = [
+  {
+    label: '📖 Full Documentation',
+    href: 'https://docs.bizosto.com',
+  },
+  {
+    label: '🎥 Video Tutorials',
+    href: 'https://bizosto.com/tutorials',
+  },
+  {
+    label: '💬 Community',
+    href: 'https://bizosto.com/community',
+  },
+] as const;
 
 function normalizeTopic(topic: string) {
   return topic.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
@@ -85,9 +110,22 @@ function getRoleGuideName(role: string | null) {
     .join(' ');
 }
 
+function flattenArticleCards(categories: HelpCategory[]): ArticleCard[] {
+  return categories.flatMap((category) =>
+    category.articles.map((article) => ({
+      article,
+      categoryId: category.id,
+      categoryName: category.name,
+      Icon: category.icon,
+    })),
+  );
+}
+
 export function HelpCenterPageContent() {
   const { data, loading } = useTenantContext();
+  const [searchQuery, setSearchQuery] = useState('');
   const currentRole = data?.user.role ?? null;
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const filteredCategories = useMemo(
     () =>
@@ -102,130 +140,113 @@ export function HelpCenterPageContent() {
     [currentRole, loading],
   );
 
+  const articleCards = useMemo(() => flattenArticleCards(filteredCategories), [filteredCategories]);
+
+  const visibleArticleCards = useMemo(() => {
+    if (!normalizedSearchQuery) return articleCards;
+
+    return articleCards.filter(({ article }) =>
+      article.title.toLowerCase().includes(normalizedSearchQuery),
+    );
+  }, [articleCards, normalizedSearchQuery]);
+
   return (
     <main className="page-frame py-10">
-      <header className="mb-8">
+      <header className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)] md:p-8">
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--erp-blue)]">
           Bizosto ERP Help Center
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[var(--text-primary)] md:text-4xl">
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--text-primary)] md:text-4xl">
           Help Center — {getRoleGuideName(currentRole)} Guide
         </h1>
-        <p className="mt-3 max-w-2xl text-sm text-[var(--text-muted)] md:text-base">
-          Search product documentation, best-practice guides, videos, and FAQs. No login is
-          required.
+        <p className="mt-3 text-sm text-[var(--text-muted)] md:text-base">
+          Guides, tutorials, and docs for your role.
         </p>
+
+        <div className="mt-6">
+          <label htmlFor="help-guide-search" className="sr-only">
+            Search guides
+          </label>
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-soft)]" />
+            <input
+              id="help-guide-search"
+              type="search"
+              value={searchQuery}
+              placeholder="Search guides..."
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-3 pl-12 pr-4 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--erp-blue)] focus:bg-[var(--surface-card)] focus:shadow-[var(--focus-ring)]"
+              aria-label="Search guides"
+            />
+          </div>
+        </div>
       </header>
 
-      <HelpSearch categories={filteredCategories} />
+      <section className="mt-8">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">Guides</h2>
+            <p className="text-sm text-[var(--text-muted)]">
+              {visibleArticleCards.length} {visibleArticleCards.length === 1 ? 'guide' : 'guides'}
+              {normalizedSearchQuery ? ' matching your search' : ' available for your role'}.
+            </p>
+          </div>
+        </div>
 
-      <section className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredCategories.map((category) => {
-          const Icon = category.icon;
-          return (
-            <article key={category.id} className="card p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Icon className="h-5 w-5 text-[var(--erp-blue)]" />
-                <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                  {category.name}
-                </h2>
-              </div>
-              <ul className="space-y-2">
-                {category.articles.slice(0, 5).map((article) => (
-                  <li key={article.slug}>
-                    <Link
-                      href={`/help/${category.id}/${article.slug}`}
-                      className="text-sm text-[var(--text-muted)] hover:text-[var(--erp-blue)] hover:underline"
-                    >
+        {visibleArticleCards.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {visibleArticleCards.map(({ article, categoryId, categoryName, Icon }) => (
+              <article
+                key={`${categoryId}-${article.slug}`}
+                className="group flex h-full flex-col rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-1 hover:border-[var(--erp-blue)] hover:shadow-[var(--shadow-lift)]"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--erp-blue-soft)]">
+                    <Icon className="h-5 w-5 text-[var(--erp-blue)]" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-soft)]">
+                      {categoryName}
+                    </p>
+                    <h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">
                       {article.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          );
-        })}
+                    </h3>
+                  </div>
+                </div>
+                <p className="mt-4 truncate text-sm text-[var(--text-muted)]">{article.excerpt}</p>
+                <a
+                  href="#"
+                  className="mt-5 inline-flex text-sm font-semibold text-[var(--erp-blue)] transition hover:text-[var(--erp-blue-hover)]"
+                  aria-label={`Read ${article.title}`}
+                >
+                  Read Guide →
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-8 text-center shadow-[var(--shadow-sm)]">
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">No guides found</h3>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Try a different title search to find guides available for your role.
+            </p>
+          </div>
+        )}
       </section>
 
-      <section className="mt-8 card p-6">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-          Frequently asked questions
-        </h2>
-        <dl className="mt-4 space-y-4 text-sm">
-          <div>
-            <dt className="font-medium text-[var(--text-primary)]">
-              How quickly can I launch Bizosto ERP?
-            </dt>
-            <dd className="mt-1 text-[var(--text-muted)]">
-              Most tenants complete setup in under one day using the quick start checklist.
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium text-[var(--text-primary)]">
-              Can I export articles for compliance documentation?
-            </dt>
-            <dd className="mt-1 text-[var(--text-muted)]">
-              Yes. Every article includes Print and Download PDF actions for offline archiving.
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium text-[var(--text-primary)]">
-              Do you support guided onboarding calls?
-            </dt>
-            <dd className="mt-1 text-[var(--text-muted)]">
-              Enterprise plans include onboarding sessions coordinated through the support ticket
-              form.
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="mt-10 card p-6 grid gap-4 md:grid-cols-3">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Contact Support</h2>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Typical response time: 24–48 hours.
-          </p>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-[var(--text-primary)]">Live chat</p>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Crisp chat widget is available when configured.
-          </p>
-        </div>
-        <div className="space-y-3 text-sm text-[var(--text-primary)]">
-          <form
-            className="space-y-2 rounded-lg border border-gray-200 p-3"
-            action="mailto:support@bizosto.com"
-            method="post"
-            encType="text/plain"
+      <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Quick links">
+        {quickLinks.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-1 hover:border-[var(--erp-blue)] hover:text-[var(--erp-blue)] hover:shadow-[var(--shadow-lift)]"
           >
-            <p className="font-medium text-[var(--text-primary)]">Support ticket form</p>
-            <input
-              name="subject"
-              required
-              placeholder="Subject"
-              className="w-full rounded-md border border-gray-200 px-2 py-1.5"
-            />
-            <textarea
-              name="details"
-              required
-              placeholder="Describe your issue"
-              className="min-h-20 w-full rounded-md border border-gray-200 px-2 py-1.5"
-            />
-            <button type="submit" className="btn">
-              Submit ticket
-            </button>
-          </form>
-          <p>
-            Email support:{' '}
-            <a className="text-[var(--erp-blue)] hover:underline" href="mailto:support@bizosto.com">
-              support@bizosto.com
-            </a>
-          </p>
-        </div>
+            {link.label}
+          </a>
+        ))}
       </section>
-      <CrispChatWidget />
     </main>
   );
 }
