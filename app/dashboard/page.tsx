@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { PlatformTour } from "@/components/onboarding/PlatformTour";
 import { normalizeRole, type ErpRole } from "@/lib/erpAccess";
 import dynamic from "next/dynamic";
 import {
@@ -75,12 +76,22 @@ export default function DashboardPage() {
   const overviewSubtitle = currentRole
     ? ROLE_OVERVIEW_SUBTITLES[currentRole]
     : ROLE_OVERVIEW_SUBTITLES.admin;
+  const tourRole = currentRole?.replace(/_/g, " ") || tenantData?.user?.role || "team member";
+  const tourCompanyName = tenantData?.tenant?.brand?.name || tenantData?.tenant?.name || "your workspace";
 
   function moduleEnabled(key: string): boolean {
     return modulesEnabled[key] !== false;
   }
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    const toured = localStorage.getItem("bizosto_tour_complete");
+    if (!toured) {
+      setShowTour(true);
+    }
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -177,6 +188,14 @@ export default function DashboardPage() {
       <div className="mt-6">
         <COOSummaryWidget />
       </div>
+
+      {showTour && (
+        <PlatformTour
+          role={tourRole}
+          companyName={tourCompanyName}
+          onClose={() => setShowTour(false)}
+        />
+      )}
     </div>
   );
 }

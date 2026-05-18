@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import {
   helpCategories,
@@ -9,6 +10,7 @@ import {
   type HelpIcon,
 } from '@/lib/help-center/data';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { TOUR_COMPLETED_STORAGE_KEY } from '@/components/onboarding/PlatformTour';
 
 const HELP_ROLE_TOPIC_ACCESS: Record<
   string,
@@ -122,6 +124,7 @@ function flattenArticleCards(categories: HelpCategory[]): ArticleCard[] {
 }
 
 export function HelpCenterPageContent() {
+  const router = useRouter();
   const { data, loading } = useTenantContext();
   const [searchQuery, setSearchQuery] = useState('');
   const currentRole = data?.user.role ?? null;
@@ -150,6 +153,11 @@ export function HelpCenterPageContent() {
     );
   }, [articleCards, normalizedSearchQuery]);
 
+  const handleRetakeTour = () => {
+    localStorage.removeItem(TOUR_COMPLETED_STORAGE_KEY);
+    router.push('/dashboard');
+  };
+
   return (
     <main className="page-frame py-10">
       <header className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)] md:p-8">
@@ -162,6 +170,16 @@ export function HelpCenterPageContent() {
         <p className="mt-3 text-sm text-[var(--text-muted)] md:text-base">
           Guides, tutorials, and docs for your role.
         </p>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={handleRetakeTour}
+            className="inline-flex items-center justify-center rounded-2xl bg-[var(--erp-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-sm)] transition hover:bg-[var(--erp-blue-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--erp-blue)] focus:ring-offset-2"
+          >
+            Take the tour again
+          </button>
+        </div>
 
         <div className="mt-6">
           <label htmlFor="help-guide-search" className="sr-only">

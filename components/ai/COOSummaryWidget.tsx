@@ -89,7 +89,7 @@ export default function COOSummaryWidget() {
     : null;
 
   return (
-    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
+    <div id="ai-summary-widget" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2"><Bot className="h-4 w-4 text-[var(--erp-blue)]" /> AI Business Summary</p>
