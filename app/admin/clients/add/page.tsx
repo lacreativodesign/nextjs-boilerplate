@@ -68,6 +68,203 @@ type SalesUsersResp =
   | { ok: true; users?: SalesUser[] }
   | { ok?: false; error?: string };
 
+const COUNTRIES = [
+  "Afghanistan",
+  "Albania",
+  "Algeria",
+  "Andorra",
+  "Angola",
+  "Antigua and Barbuda",
+  "Argentina",
+  "Armenia",
+  "Australia",
+  "Austria",
+  "Azerbaijan",
+  "Bahamas",
+  "Bahrain",
+  "Bangladesh",
+  "Barbados",
+  "Belarus",
+  "Belgium",
+  "Belize",
+  "Benin",
+  "Bhutan",
+  "Bolivia",
+  "Bosnia and Herzegovina",
+  "Botswana",
+  "Brazil",
+  "Brunei",
+  "Bulgaria",
+  "Burkina Faso",
+  "Burundi",
+  "Cabo Verde",
+  "Cambodia",
+  "Cameroon",
+  "Canada",
+  "Central African Republic",
+  "Chad",
+  "Chile",
+  "China",
+  "Colombia",
+  "Comoros",
+  "Congo (DRC)",
+  "Congo (Republic)",
+  "Costa Rica",
+  "Croatia",
+  "Cuba",
+  "Cyprus",
+  "Czech Republic",
+  "Denmark",
+  "Djibouti",
+  "Dominica",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "El Salvador",
+  "Equatorial Guinea",
+  "Eritrea",
+  "Estonia",
+  "Eswatini",
+  "Ethiopia",
+  "Fiji",
+  "Finland",
+  "France",
+  "Gabon",
+  "Gambia",
+  "Georgia",
+  "Germany",
+  "Ghana",
+  "Greece",
+  "Grenada",
+  "Guatemala",
+  "Guinea",
+  "Guinea-Bissau",
+  "Guyana",
+  "Haiti",
+  "Honduras",
+  "Hungary",
+  "Iceland",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Jamaica",
+  "Japan",
+  "Jordan",
+  "Kazakhstan",
+  "Kenya",
+  "Kiribati",
+  "Korea (North)",
+  "Korea (South)",
+  "Kuwait",
+  "Kyrgyzstan",
+  "Laos",
+  "Latvia",
+  "Lebanon",
+  "Lesotho",
+  "Liberia",
+  "Libya",
+  "Liechtenstein",
+  "Lithuania",
+  "Luxembourg",
+  "Madagascar",
+  "Malawi",
+  "Malaysia",
+  "Maldives",
+  "Mali",
+  "Malta",
+  "Marshall Islands",
+  "Mauritania",
+  "Mauritius",
+  "Mexico",
+  "Micronesia",
+  "Moldova",
+  "Monaco",
+  "Mongolia",
+  "Montenegro",
+  "Morocco",
+  "Mozambique",
+  "Myanmar",
+  "Namibia",
+  "Nauru",
+  "Nepal",
+  "Netherlands",
+  "New Zealand",
+  "Nicaragua",
+  "Niger",
+  "Nigeria",
+  "North Macedonia",
+  "Norway",
+  "Oman",
+  "Pakistan",
+  "Palau",
+  "Panama",
+  "Papua New Guinea",
+  "Paraguay",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Qatar",
+  "Romania",
+  "Russia",
+  "Rwanda",
+  "Saint Kitts and Nevis",
+  "Saint Lucia",
+  "Saint Vincent and the Grenadines",
+  "Samoa",
+  "San Marino",
+  "Sao Tome and Principe",
+  "Saudi Arabia",
+  "Senegal",
+  "Serbia",
+  "Seychelles",
+  "Sierra Leone",
+  "Singapore",
+  "Slovakia",
+  "Slovenia",
+  "Solomon Islands",
+  "Somalia",
+  "South Africa",
+  "South Sudan",
+  "Spain",
+  "Sri Lanka",
+  "Sudan",
+  "Suriname",
+  "Sweden",
+  "Switzerland",
+  "Syria",
+  "Taiwan",
+  "Tajikistan",
+  "Tanzania",
+  "Thailand",
+  "Timor-Leste",
+  "Togo",
+  "Tonga",
+  "Trinidad and Tobago",
+  "Tunisia",
+  "Turkey",
+  "Turkmenistan",
+  "Tuvalu",
+  "Uganda",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Uruguay",
+  "Uzbekistan",
+  "Vanuatu",
+  "Vatican City",
+  "Venezuela",
+  "Vietnam",
+  "Yemen",
+  "Zambia",
+  "Zimbabwe"
+];
+
 export default function AddClientPage() {
   const router = useRouter();
 
@@ -98,7 +295,9 @@ export default function AddClientPage() {
   const [salesOwner, setSalesOwner] = useState("");
   const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
   const [accountManager, setAccountManager] = useState("");
+  const [amUsers, setAmUsers] = useState<SalesUser[]>([]);
   const [productionOwner, setProductionOwner] = useState("");
+  const [productionUsers, setProductionUsers] = useState<SalesUser[]>([]);
 
   const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
@@ -148,8 +347,48 @@ export default function AddClientPage() {
       }
     }
 
+    async function loadAmUsers() {
+      try {
+        const res = await fetch("/api/admin/users/by-role?role=am,am_manager", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+        const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
+        if (!res.ok || !json?.ok) return;
+        const users = Array.isArray(json.users) ? json.users : [];
+        if (!alive) return;
+        setAmUsers(users);
+      } catch {
+        if (!alive) return;
+        setAmUsers([]);
+        toastError("Failed to load account managers.");
+      }
+    }
+
+    async function loadProductionUsers() {
+      try {
+        const res = await fetch("/api/admin/users/by-role?role=production", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+        const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
+        if (!res.ok || !json?.ok) return;
+        const users = Array.isArray(json.users) ? json.users : [];
+        if (!alive) return;
+        setProductionUsers(users);
+      } catch {
+        if (!alive) return;
+        setProductionUsers([]);
+        toastError("Failed to load production users.");
+      }
+    }
+
     loadSegments();
     loadSalesUsers();
+    loadAmUsers();
+    loadProductionUsers();
     return () => {
       alive = false;
     };
@@ -415,7 +654,14 @@ export default function AddClientPage() {
 
               <div>
                 <div style={styles.label}>Country</div>
-                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
+                <select className="input" value={country} onChange={(e) => setCountry(e.target.value)}>
+                  <option value="">Select country (optional)</option>
+                  {COUNTRIES.map((countryName) => (
+                    <option key={countryName} value={countryName}>
+                      {countryName}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -687,20 +933,34 @@ export default function AddClientPage() {
 
               <div>
                 <div style={styles.label}>Account Manager</div>
-                <input
+                <select
                   className="input"
                   value={accountManager}
                   onChange={(e) => setAccountManager(e.target.value)}
-                />
+                >
+                  <option value="">Select account manager</option>
+                  {amUsers.map((user) => (
+                    <option key={user.uid} value={user.name}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <div style={styles.label}>Production Owner</div>
-                <input
+                <select
                   className="input"
                   value={productionOwner}
                   onChange={(e) => setProductionOwner(e.target.value)}
-                />
+                >
+                  <option value="">Select production owner</option>
+                  {productionUsers.map((user) => (
+                    <option key={user.uid} value={user.name}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
