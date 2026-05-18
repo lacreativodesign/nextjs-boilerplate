@@ -1,37 +1,39 @@
-import crypto from "crypto";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { FieldValue } from "firebase-admin/firestore";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { WORKFLOW_TEMPLATES } from "@/lib/automation/workflow-templates";
-import { sendEmail } from "@/lib/email/email-service";
-import { welcomeEmailHtml, welcomeEmailSubject } from "@/lib/email/html-templates";
-import { DEFAULT_MODULES, DEFAULT_ROLES } from "@/lib/tenant/constants";
-import { createTenantWorkspace } from "@/lib/tenant/onboarding";
+import crypto from 'crypto';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { FieldValue } from 'firebase-admin/firestore';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { WORKFLOW_TEMPLATES } from '@/lib/automation/workflow-templates';
+import { sendEmail } from '@/lib/email/email-service';
+import { welcomeEmailHtml, welcomeEmailSubject } from '@/lib/email/html-templates';
+import { DEFAULT_ROLES } from '@/lib/tenant/constants';
+import { createTenantWorkspace } from '@/lib/tenant/onboarding';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const signupSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
-  email: z.string().trim().email("Please enter a valid email address"),
+  fullName: z.string().trim().min(2, 'Full name must be at least 2 characters'),
+  email: z.string().trim().email('Please enter a valid email address'),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must include at least one uppercase letter")
-    .regex(/[a-z]/, "Password must include at least one lowercase letter")
-    .regex(/\d/, "Password must include at least one number"),
-  companyName: z.string().trim().min(2, "Company name must be at least 2 characters"),
-  industry: z.string().trim().optional().default(""),
-  companySize: z.string().trim().optional().default(""),
-  country: z.string().trim().min(1, "Country is required"),
-  state: z.string().trim().optional().default(""),
-  timezone: z.string().trim().optional().default(""),
-  currency: z.string().trim().optional().default(""),
-  selectedModules: z.array(z.string().trim()).default([]),
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must include at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must include at least one lowercase letter')
+    .regex(/\d/, 'Password must include at least one number'),
+  phone: z.string().trim().min(7, 'Phone number is required'),
+  companyName: z.string().trim().min(2, 'Company name must be at least 2 characters'),
+  industry: z.string().trim().optional().default(''),
+  companySize: z.string().trim().optional().default(''),
+  country: z.string().trim().min(1, 'Country is required'),
+  state: z.string().trim().optional().default(''),
+  timezone: z.string().trim().optional().default(''),
+  currency: z.string().trim().optional().default(''),
+  selectedPlan: z.enum(['starter', 'pro', 'enterprise']),
+  referredBy: z.string().trim().min(1).nullable().optional().default(null),
   termsAccepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the Terms and Conditions to continue" }),
+    errorMap: () => ({ message: 'You must accept the Terms and Conditions to continue' }),
   }),
-  termsVersion: z.string().trim().min(1, "Terms version is required"),
+  termsVersion: z.string().trim().min(1, 'Terms version is required'),
 });
 
 type SignupVerificationRecord = {
@@ -48,62 +50,72 @@ function normalizeEmail(email: string) {
 }
 
 function resolveAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
 }
 
 function slugifyCompany(companyName: string) {
   const slug = companyName
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .slice(0, 40);
 
-  return slug || "workspace";
+  return slug || 'workspace';
 }
 
 function getClientIp(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for") || "";
-  const realIp = request.headers.get("x-real-ip") || "";
-  return forwardedFor.split(",")[0]?.trim() || realIp || "unknown";
+  const forwardedFor = request.headers.get('x-forwarded-for') || '';
+  const realIp = request.headers.get('x-real-ip') || '';
+  return forwardedFor.split(',')[0]?.trim() || realIp || 'unknown';
 }
 
-function buildModulesEnabled(selectedModules: string[]) {
-  const normalizedSelection = new Set(
-    selectedModules
-      .map((moduleKey) => moduleKey.trim())
-      .filter(Boolean)
-  );
+function buildModulesEnabled(selectedPlan: 'starter' | 'pro' | 'enterprise') {
+  const starter = {
+    crm: true,
+    sales: true,
+    projects: true,
+    finance: true,
+    reports: true,
+    hr: false,
+    ai_workforce: false,
+  };
 
-  const modulesEnabled: Record<string, boolean> = {};
+  const pro = {
+    ...starter,
+    hr: true,
+    ai_workforce: true,
+    embed: true,
+  };
 
-  for (const moduleKey of Object.keys(DEFAULT_MODULES)) {
-    modulesEnabled[moduleKey] = normalizedSelection.has(moduleKey);
-  }
+  if (selectedPlan === 'starter') return starter;
+  if (selectedPlan === 'pro') return pro;
 
-  for (const moduleKey of normalizedSelection) {
-    modulesEnabled[moduleKey] = true;
-  }
-
-  return modulesEnabled;
+  return {
+    ...pro,
+    whitelabel: true,
+    custom_domain: true,
+    ai_reports: true,
+    client_stripe_connect: true,
+  };
 }
 
 async function generateUniqueTenantId(companyName: string) {
   const base = slugifyCompany(companyName);
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const suffix = crypto.randomBytes(2).toString("hex");
+    const suffix = crypto.randomBytes(2).toString('hex');
     const candidate = `${base}-${suffix}`;
-    const tenantSnap = await adminDb.collection("tenants").doc(candidate).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(candidate).get();
 
     if (!tenantSnap.exists) {
       return candidate;
     }
   }
 
-  throw new Error("TENANT_ID_GENERATION_FAILED");
+  throw new Error('TENANT_ID_GENERATION_FAILED');
 }
 
 export async function POST(request: Request) {
@@ -115,7 +127,10 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
-      return NextResponse.json({ ok: false, error: firstIssue?.message || "Invalid input" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: firstIssue?.message || 'Invalid input' },
+        { status: 400 },
+      );
     }
 
     const payload = parsed.data;
@@ -123,9 +138,16 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    const existingUserQuery = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+    const existingUserQuery = await adminDb
+      .collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
     if (!existingUserQuery.empty) {
-      return NextResponse.json({ ok: false, error: "Email already exists. Please login." }, { status: 409 });
+      return NextResponse.json(
+        { ok: false, error: 'Email already exists. Please login.' },
+        { status: 409 },
+      );
     }
 
     const tenantId = await generateUniqueTenantId(payload.companyName);
@@ -144,69 +166,68 @@ export async function POST(request: Request) {
       name: payload.companyName,
       fullName: payload.fullName,
       email,
-      plan: "trial",
+      plan: payload.selectedPlan,
       ownerId: authUser.uid,
       trialEndsAt,
     });
 
-    await adminDb.collection("users").doc(authUser.uid).set({
+    await adminDb.collection('users').doc(authUser.uid).set({
       uid: authUser.uid,
       tenantId,
       email,
       displayName: payload.fullName,
-      role: "admin",
-      status: "active",
+      phone: payload.phone,
+      role: 'admin',
+      status: 'active',
       createdAt: nowIso,
       updatedAt: nowIso,
       isDeleted: false,
     });
 
     await adminAuth.setCustomUserClaims(authUser.uid, {
-      role: "admin",
+      role: 'admin',
       tenantId,
     });
 
-    const modulesEnabled = buildModulesEnabled(payload.selectedModules);
+    const modulesEnabled = buildModulesEnabled(payload.selectedPlan);
 
-    await adminDb.collection("tenants").doc(tenantId).set(
-      {
-        termsAcceptedAt: nowIso,
-        termsAcceptedIp: getClientIp(request),
-        termsVersion: payload.termsVersion,
-        settings: {
-          timezone: payload.timezone,
-          currency: payload.currency,
-          country: payload.country,
-          state: payload.state,
+    await adminDb
+      .collection('tenants')
+      .doc(tenantId)
+      .set(
+        {
+          termsAcceptedAt: nowIso,
+          termsAcceptedIp: getClientIp(request),
+          termsVersion: payload.termsVersion,
+          settings: {
+            timezone: payload.timezone,
+            currency: payload.currency,
+            country: payload.country,
+            state: payload.state,
+          },
+          industry: payload.industry,
+          companySize: payload.companySize,
+          contactPhone: payload.phone,
+          modulesEnabled,
+          rolesEnabled: DEFAULT_ROLES,
+          updatedAt: nowIso,
         },
-        industry: payload.industry,
-        companySize: payload.companySize,
-        selectedModules: payload.selectedModules,
-        modulesEnabled,
-        rolesEnabled: DEFAULT_ROLES,
-        updatedAt: nowIso,
-      },
-      { merge: true }
-    );
+        { merge: true },
+      );
 
-    await adminDb.collection("tenants").doc(tenantId).set(
-      {
-        plan: "trial",
-        modules: {
-          crm: true,
-          sales: true,
-          production: true,
-          projects: true,
-          approvals: true,
-          notifications: true,
-          finance: true,
-          hr: true,
-          reports: true,
-          client_stripe_connect: false,
+    await adminDb
+      .collection('tenants')
+      .doc(tenantId)
+      .set(
+        {
+          plan: payload.selectedPlan,
+          trialEndsAt,
+          subscriptionState: 'trial',
+          referredBy: payload.referredBy || null,
+          modules: modulesEnabled,
         },
-      },
-      { merge: true }
-    );
+        { merge: true },
+      );
 
     const signupToken = crypto.randomUUID();
     const verificationDoc: SignupVerificationRecord = {
@@ -218,42 +239,48 @@ export async function POST(request: Request) {
       consumedAt: null,
     } as SignupVerificationRecord;
 
-    await adminDb.collection("signup_verifications").doc(signupToken).set(verificationDoc);
+    await adminDb.collection('signup_verifications').doc(signupToken).set(verificationDoc);
 
     return NextResponse.json({
       ok: true,
       tenantId,
       uid: authUser.uid,
-      message: "Account created successfully",
+      message: 'Account created successfully',
     });
   } catch (error) {
-    console.error("signup POST error", error);
+    console.error('signup POST error', error);
 
     if (createdUid) {
       try {
         await adminAuth.deleteUser(createdUid);
       } catch (cleanupError) {
-        console.error("signup POST cleanup error", cleanupError);
+        console.error('signup POST cleanup error', cleanupError);
       }
     }
 
-    return NextResponse.json({ ok: false, error: "Unable to complete signup." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Unable to complete signup.' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as { signupToken?: string } | null;
-    const signupToken = String(body?.signupToken || "").trim();
+    const signupToken = String(body?.signupToken || '').trim();
 
     if (!signupToken) {
-      return NextResponse.json({ success: false, error: "Invalid verification token." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Invalid verification token.' },
+        { status: 400 },
+      );
     }
 
-    const verificationRef = adminDb.collection("signup_verifications").doc(signupToken);
+    const verificationRef = adminDb.collection('signup_verifications').doc(signupToken);
     const verificationSnap = await verificationRef.get();
     if (!verificationSnap.exists) {
-      return NextResponse.json({ success: false, error: "Verification token not found." }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'Verification token not found.' },
+        { status: 404 },
+      );
     }
 
     const verification = verificationSnap.data() as {
@@ -265,22 +292,31 @@ export async function PUT(request: Request) {
     };
 
     if (verification.consumedAt) {
-      return NextResponse.json({ success: false, error: "Verification token already used." }, { status: 409 });
+      return NextResponse.json(
+        { success: false, error: 'Verification token already used.' },
+        { status: 409 },
+      );
     }
 
     if (new Date(verification.expiresAt).getTime() < Date.now()) {
-      return NextResponse.json({ success: false, error: "Verification token expired." }, { status: 410 });
+      return NextResponse.json(
+        { success: false, error: 'Verification token expired.' },
+        { status: 410 },
+      );
     }
 
     const user = await adminAuth.getUser(verification.uid);
     if (!user.emailVerified) {
-      return NextResponse.json({ success: false, error: "Email is not verified yet." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Email is not verified yet.' },
+        { status: 400 },
+      );
     }
 
     const nowIso = new Date().toISOString();
     const workflowTemplates = Object.values(WORKFLOW_TEMPLATES).slice(0, 3);
     const workflowOps = workflowTemplates.map((template) => {
-      const ref = adminDb.collection("automation_workflows").doc();
+      const ref = adminDb.collection('automation_workflows').doc();
       return ref.set({
         ...template,
         id: ref.id,
@@ -294,10 +330,13 @@ export async function PUT(request: Request) {
 
     await Promise.all([
       verificationRef.set({ consumedAt: nowIso }, { merge: true }),
-      adminDb.collection("users").doc(verification.uid).set({ onboardingStatus: "pending", updatedAt: nowIso }, { merge: true }),
+      adminDb
+        .collection('users')
+        .doc(verification.uid)
+        .set({ onboardingStatus: 'pending', updatedAt: nowIso }, { merge: true }),
       ...workflowOps,
-      adminDb.collection("signup_events").add({
-        type: "trial_signup_verified",
+      adminDb.collection('signup_events').add({
+        type: 'trial_signup_verified',
         uid: verification.uid,
         tenantId: verification.tenantId,
         email: verification.email,
@@ -307,10 +346,10 @@ export async function PUT(request: Request) {
 
     await sendEmail({
       to: verification.email,
-      subject: welcomeEmailSubject(verification.email.split("@")[0]),
+      subject: welcomeEmailSubject(verification.email.split('@')[0]),
       html: welcomeEmailHtml({
-        name: verification.email.split("@")[0],
-        companyName: verification.email.split("@")[0],
+        name: verification.email.split('@')[0],
+        companyName: verification.email.split('@')[0],
         loginUrl: `${resolveAppUrl()}/onboarding`,
         trialDays: 14,
       }),
@@ -318,7 +357,7 @@ export async function PUT(request: Request) {
 
     // Notify super admin of new signup — non-blocking
     sendEmail({
-      to: "admin@bizosto.com",
+      to: 'admin@bizosto.com',
       subject: `🆕 New tenant signed up — ${verification.tenantId}`,
       html: `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
@@ -346,17 +385,20 @@ export async function PUT(request: Request) {
 </table>
 </td></tr></table>
 </body></html>`,
-    }).catch((err) => console.error("[SIGNUP] Failed to notify super admin", err));
+    }).catch((err) => console.error('[SIGNUP] Failed to notify super admin', err));
 
     const customToken = await adminAuth.createCustomToken(verification.uid, {
       tenantId: verification.tenantId,
-      role: "admin",
-      plan: "trial",
+      role: 'admin',
+      plan: 'trial',
     });
 
-    return NextResponse.json({ success: true, customToken, redirectTo: "/onboarding" });
+    return NextResponse.json({ success: true, customToken, redirectTo: '/onboarding' });
   } catch (error) {
-    console.error("signup PUT error", error);
-    return NextResponse.json({ success: false, error: "Unable to complete verification." }, { status: 500 });
+    console.error('signup PUT error', error);
+    return NextResponse.json(
+      { success: false, error: 'Unable to complete verification.' },
+      { status: 500 },
+    );
   }
 }

@@ -1,20 +1,21 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useEffect, useMemo, useState } from "react";
-import { getFirebaseAuth } from "@/lib/firebaseClient";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useEffect, useMemo, useState } from 'react';
+import { getFirebaseAuth } from '@/lib/firebaseClient';
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type PlanKey = 'starter' | 'pro' | 'enterprise';
 
 type SignupState = {
   fullName: string;
   email: string;
   password: string;
-  confirmPassword: string;
+  phone: string;
   companyName: string;
   industry: string;
   companySize: string;
@@ -22,82 +23,78 @@ type SignupState = {
   state: string;
   timezone: string;
   currency: string;
-  selectedModules: string[];
+  selectedPlan: PlanKey;
   termsAccepted: boolean;
   termsVersion: string;
 };
 
 type Errors = Partial<Record<keyof SignupState, string>>;
 
-const REQUIRED_MODULES = new Set(["dashboard", "clients", "admin"]);
-
-const modules = [
-  { key: "dashboard", icon: "📊", name: "Dashboard", description: "Central hub for all your KPIs and activity" },
-  { key: "clients", icon: "🤝", name: "Clients", description: "Manage client relationships and contacts" },
-  { key: "sales", icon: "💼", name: "Sales", description: "Track leads, deals, and pipeline" },
-  { key: "finance", icon: "💰", name: "Finance", description: "Invoices, expenses, and financial reporting" },
-  { key: "humanResource", icon: "🧑‍💼", name: "Human Resources", description: "Employee management and payroll" },
-  { key: "production", icon: "🏭", name: "Production", description: "Job tracking and production workflows" },
-  { key: "projects", icon: "🗂️", name: "Projects", description: "Project management and timelines" },
-  { key: "reports", icon: "📈", name: "Reports", description: "Advanced analytics and custom reports" },
-  { key: "notifications", icon: "🔔", name: "Notifications", description: "Automated alerts and system notifications" },
-  { key: "admin", icon: "⚙️", name: "Admin", description: "User management and system configuration" },
+const plans: Array<{
+  key: PlanKey;
+  name: string;
+  price: number;
+  badge?: string;
+  features: string[];
+}> = [
+  {
+    key: 'starter',
+    name: 'Starter',
+    price: 79,
+    features: ['CRM', 'Projects', 'Finance', 'Reports', '10 users', '10GB'],
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    price: 149,
+    badge: 'Most Popular',
+    features: ['All Starter', 'HR', 'AI Workforce', 'Website Embed', '50 users', '50GB'],
+  },
+  {
+    key: 'enterprise',
+    name: 'Enterprise',
+    price: 299,
+    badge: 'Best Value',
+    features: ['All Pro', 'White-label', 'Custom Domain', 'Unlimited users', '250GB'],
+  },
 ];
 
 const industries = [
-  "Technology",
-  "Marketing & Creative",
-  "Finance",
-  "Healthcare",
-  "Retail & E-commerce",
-  "Manufacturing",
-  "Consulting",
-  "Education",
-  "Real Estate",
-  "Other",
+  'Technology',
+  'Marketing & Creative',
+  'Finance',
+  'Healthcare',
+  'Retail & E-commerce',
+  'Manufacturing',
+  'Consulting',
+  'Education',
+  'Real Estate',
+  'Other',
 ];
 
-const companySizes = ["Just me", "2–10", "11–50", "51–200", "201–500", "500+"];
-const countries = [
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Australia",
-  "United Arab Emirates",
-  "Saudi Arabia",
-  "Pakistan",
-  "India",
-  "Germany",
-  "France",
-  "Spain",
-  "Netherlands",
-  "Singapore",
-  "South Africa",
-  "Nigeria",
-  "Kenya",
-  "Brazil",
-  "Mexico",
-  "Japan",
-  "Other",
+const teamSizes = ['1-5', '6-20', '21-50', '51-200', '200+'];
+const COUNTRIES = [
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Pakistan',
+  'India',
+  'Germany',
+  'France',
+  'Spain',
+  'Netherlands',
+  'Singapore',
+  'South Africa',
+  'Nigeria',
+  'Kenya',
+  'Brazil',
+  'Mexico',
+  'Japan',
+  'Other',
 ];
-
-const usStates = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
-  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
-  "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
-  "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
-];
-
-const timezones = [
-  "UTC", "America/New_York (EST/EDT)", "America/Chicago (CST/CDT)", "America/Denver (MST/MDT)", "America/Los_Angeles (PST/PDT)",
-  "America/Phoenix", "America/Toronto", "America/Vancouver", "Europe/London (GMT/BST)", "Europe/Paris (CET/CEST)",
-  "Europe/Berlin", "Europe/Amsterdam", "Europe/Madrid", "Asia/Dubai (GST)", "Asia/Karachi (PKT)", "Asia/Kolkata (IST)",
-  "Asia/Singapore", "Asia/Tokyo (JST)", "Australia/Sydney (AEST/AEDT)", "Africa/Johannesburg (SAST)", "Africa/Lagos (WAT)",
-  "America/Sao_Paulo (BRT)", "America/Mexico_City", "Asia/Riyadh (AST)",
-];
-
-const currencies = ["USD", "EUR", "GBP", "AED", "SAR", "PKR", "INR", "CAD", "AUD", "SGD", "ZAR", "NGN", "BRL", "MXN", "JPY"];
 
 const termsText = `By creating a Bizosto account, you agree to the following:
 
@@ -124,12 +121,22 @@ Your data is securely stored and isolated from other tenants. Upon account cance
 
 By checking the box below, you confirm you have read and agree to these terms. You authorize automatic monthly billing after your free trial ends.`;
 
-const stepContent: Record<Exclude<Step, 6>, { title: string; subtitle: string }> = {
-  1: { title: "Create Your Account", subtitle: "Set your admin login credentials to begin." },
-  2: { title: "Verify Your Email", subtitle: "Enter the 6-digit code we sent to your email." },
-  3: { title: "Tell Us About Your Business", subtitle: "Help us configure your workspace defaults." },
-  4: { title: "Choose Your Modules", subtitle: "Pick the tools you want enabled from day one." },
-  5: { title: "Terms & Conditions", subtitle: "Review and accept to activate your free trial." },
+const stepContent: Record<Exclude<Step, 7>, { title: string; subtitle: string }> = {
+  1: { title: 'Create Your Account', subtitle: 'Set your admin login credentials to begin.' },
+  2: { title: 'Verify Your Email', subtitle: 'Enter the 6-digit code we sent to your email.' },
+  3: {
+    title: 'Tell Us About Your Business',
+    subtitle: 'Help us configure your workspace defaults.',
+  },
+  4: {
+    title: 'Choose Your Plan',
+    subtitle: 'Select the subscription your team will use after the trial.',
+  },
+  5: { title: 'Terms & Conditions', subtitle: 'Review and accept to activate your free trial.' },
+  6: {
+    title: 'Start Your Trial',
+    subtitle: 'Confirm checkout details before starting your 14-day free trial.',
+  },
 };
 
 function SignupInner() {
@@ -137,30 +144,31 @@ function SignupInner() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Errors>({});
-  const [trialEndsAt, setTrialEndsAt] = useState<string>("");
-  const [authPassword, setAuthPassword] = useState("");
+  const [trialEndsAt, setTrialEndsAt] = useState<string>('');
   const [otpSending, setOtpSending] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpError, setOtpError] = useState("");
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const initialPlan = plans.some((plan) => plan.key === searchParams.get('plan'))
+    ? (searchParams.get('plan') as PlanKey)
+    : 'pro';
   const [formState, setFormState] = useState<SignupState>({
-    fullName: searchParams.get("name") || "",
-    email: searchParams.get("email") || "",
-    password: "",
-    confirmPassword: "",
-    companyName: searchParams.get("company") || "",
+    fullName: searchParams.get('name') || '',
+    email: searchParams.get('email') || '',
+    password: '',
+    phone: '',
+    companyName: searchParams.get('company') || '',
     industry: industries[0],
-    companySize: companySizes[0],
-    country: countries[0],
-    state: "",
-    timezone: "UTC",
-    currency: "USD",
-    selectedModules: modules.map((module) => module.key),
+    companySize: teamSizes[0],
+    country: COUNTRIES[0],
+    state: '',
+    timezone: 'UTC',
+    currency: 'USD',
+    selectedPlan: initialPlan,
     termsAccepted: false,
-    termsVersion: "1.0",
+    termsVersion: '1.0',
   });
 
   // OTP resend cooldown countdown
@@ -170,80 +178,88 @@ function SignupInner() {
     return () => clearTimeout(timer);
   }, [otpResendCooldown]);
 
-  const progress = useMemo(() => ((step - 1) / 5) * 100, [step]);
+  const progress = useMemo(() => ((step - 1) / 6) * 100, [step]);
+  const selectedPlan = plans.find((plan) => plan.key === formState.selectedPlan) || plans[1];
+  const noChargeUntil = useMemo(
+    () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    [],
+  );
 
   const setValue = <K extends keyof SignupState>(key: K, value: SignupState[K]) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
-    setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+    setFieldErrors((prev) => ({ ...prev, [key]: '' }));
   };
 
   const validateStep1 = () => {
     const nextErrors: Errors = {};
-    if (formState.fullName.trim().length < 2) nextErrors.fullName = "Full name must be at least 2 characters.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim())) nextErrors.email = "Please enter a valid email address.";
+    if (formState.fullName.trim().length < 2)
+      nextErrors.fullName = 'Full name must be at least 2 characters.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim()))
+      nextErrors.email = 'Please enter a valid email address.';
     if (!/^.*(?=.{8,})(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$/.test(formState.password)) {
-      nextErrors.password = "Password must include uppercase, lowercase, and a number (min 8 chars).";
+      nextErrors.password =
+        'Password must include uppercase, lowercase, and a number (min 8 chars).';
     }
-    if (formState.confirmPassword !== formState.password) nextErrors.confirmPassword = "Passwords do not match.";
+    if (formState.phone.trim().length < 7) nextErrors.phone = 'Please enter a valid phone number.';
     setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
     return Object.keys(nextErrors).length === 0;
   };
 
-  const validateStep2 = () => {
+  const validateCompanyStep = () => {
     const nextErrors: Errors = {};
-    if (formState.companyName.trim().length < 2) nextErrors.companyName = "Company name must be at least 2 characters.";
-    if (!formState.country.trim()) nextErrors.country = "Country is required.";
-    if (!formState.timezone.trim()) nextErrors.timezone = "Timezone is required.";
-    if (!formState.currency.trim()) nextErrors.currency = "Currency is required.";
-    if (formState.country === "United States" && !formState.state.trim()) nextErrors.state = "State is required for United States.";
+    if (formState.companyName.trim().length < 2)
+      nextErrors.companyName = 'Company name must be at least 2 characters.';
+    if (!formState.country.trim()) nextErrors.country = 'Country is required.';
+    if (!formState.industry.trim()) nextErrors.industry = 'Industry is required.';
+    if (!formState.companySize.trim()) nextErrors.companySize = 'Team size is required.';
     setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
     return Object.keys(nextErrors).length === 0;
   };
 
   const sendOtp = async (isResend = false) => {
     setOtpSending(true);
-    setOtpError("");
+    setOtpError('');
     try {
-      const res = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formState.email.trim().toLowerCase() }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload?.ok) {
-        setOtpError(payload?.error || "Failed to send code. Please try again.");
+        setOtpError(payload?.error || 'Failed to send code. Please try again.');
         return;
       }
       if (isResend) setOtpResendCooldown(60);
     } catch {
-      setOtpError("Network error. Please try again.");
+      setOtpError('Network error. Please try again.');
     } finally {
       setOtpSending(false);
     }
   };
 
   const nextStep = async () => {
-    setError("");
+    setError('');
 
     if (step === 1) {
       if (!validateStep1()) return;
       // Send OTP then advance to OTP step
       setLoading(true);
       try {
-        const res = await fetch("/api/auth/send-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: formState.email.trim().toLowerCase() }),
         });
         const payload = await res.json().catch(() => null);
         if (!res.ok || !payload?.ok) {
-          setError(payload?.error || "Failed to send verification code. Please try again.");
+          setError(payload?.error || 'Failed to send verification code. Please try again.');
           return;
         }
         setOtpResendCooldown(60);
         setStep(2);
       } catch {
-        setError("Network error. Please try again.");
+        setError('Network error. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -253,57 +269,69 @@ function SignupInner() {
     if (step === 2) {
       // Verify OTP
       if (!otpCode.trim()) {
-        setOtpError("Please enter the verification code.");
+        setOtpError('Please enter the verification code.');
         return;
       }
       setLoading(true);
-      setOtpError("");
+      setOtpError('');
       try {
-        const res = await fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: formState.email.trim().toLowerCase(), otp: otpCode.trim() }),
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formState.email.trim().toLowerCase(),
+            otp: otpCode.trim(),
+          }),
         });
         const payload = await res.json().catch(() => null);
         if (!res.ok || !payload?.ok) {
-          setOtpError(payload?.error || "Invalid code. Please try again.");
+          setOtpError(payload?.error || 'Invalid code. Please try again.');
           return;
         }
         setStep(3);
       } catch {
-        setOtpError("Network error. Please try again.");
+        setOtpError('Network error. Please try again.');
       } finally {
         setLoading(false);
       }
       return;
     }
 
-    if (step === 3 && !validateStep2()) return;
-    if (step === 4) {
-      if (!formState.selectedModules.includes("dashboard") || !formState.selectedModules.includes("clients") || !formState.selectedModules.includes("admin")) {
-        setError("Dashboard, Clients, and Admin modules are required.");
-        return;
-      }
-    }
+    if (step === 3 && !validateCompanyStep()) return;
 
     if (step === 5) {
       if (!formState.termsAccepted) {
-        setFieldErrors((prev) => ({ ...prev, termsAccepted: "You must accept the terms to continue." }));
+        setFieldErrors((prev) => ({
+          ...prev,
+          termsAccepted: 'You must accept the terms to continue.',
+        }));
+        return;
+      }
+      setStep(6);
+      return;
+    }
+
+    if (step === 6) {
+      if (!formState.termsAccepted) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          termsAccepted: 'You must accept the terms to continue.',
+        }));
         return;
       }
 
       setLoading(true);
-      setAuthPassword(formState.password);
 
       try {
-        const response = await fetch("/api/signup", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fullName: formState.fullName.trim(),
             email: formState.email.trim().toLowerCase(),
             password: formState.password,
+            phone: formState.phone.trim(),
             companyName: formState.companyName.trim(),
             industry: formState.industry,
             companySize: formState.companySize,
@@ -311,22 +339,75 @@ function SignupInner() {
             state: formState.state,
             timezone: formState.timezone,
             currency: formState.currency,
-            selectedModules: formState.selectedModules,
+            selectedPlan: formState.selectedPlan,
+            referredBy: searchParams.get('ref') || null,
             termsAccepted: formState.termsAccepted,
-            termsVersion: "1.0",
+            termsVersion: '1.0',
           }),
         });
 
-        const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          tenantId?: string;
+        } | null;
         if (!response.ok || !payload?.ok) {
-          throw new Error(payload?.error || "Unable to create your workspace. Please try again.");
+          throw new Error(payload?.error || 'Unable to create your workspace. Please try again.');
+        }
+
+        const auth = await getFirebaseAuth();
+        const userCred = await signInWithEmailAndPassword(
+          auth,
+          formState.email.trim().toLowerCase(),
+          formState.password,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const idToken = await userCred.user.getIdToken(true);
+        const sessionRes = await fetch('/api/session-login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken, rememberMe: true }),
+        });
+
+        if (!sessionRes.ok) {
+          throw new Error(
+            'Workspace created, but we could not create your session. Please log in manually.',
+          );
+        }
+
+        const checkoutResponse = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plan: formState.selectedPlan,
+            tenantId: payload.tenantId,
+            customerEmail: formState.email.trim().toLowerCase(),
+            trialPeriodDays: 14,
+            successUrl: `${window.location.origin}/dashboard?signup=success`,
+            cancelUrl: `${window.location.origin}/signup?checkout=cancelled&plan=${formState.selectedPlan}`,
+          }),
+        });
+        const checkoutPayload = (await checkoutResponse.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          url?: string;
+        } | null;
+        if (!checkoutResponse.ok || !checkoutPayload?.ok || !checkoutPayload.url) {
+          throw new Error(checkoutPayload?.error || 'Unable to start Stripe Checkout.');
         }
 
         setTrialEndsAt(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString());
-        setFormState((prev) => ({ ...prev, password: "", confirmPassword: "" }));
-        setStep(6);
+        setFormState((prev) => ({ ...prev, password: '' }));
+        setStep(7);
+        window.location.assign(checkoutPayload.url);
       } catch (submitError: unknown) {
-        setError(submitError instanceof Error ? submitError.message : "Unable to create your workspace. Please try again.");
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : 'Unable to create your workspace. Please try again.',
+        );
       } finally {
         setLoading(false);
       }
@@ -334,98 +415,40 @@ function SignupInner() {
       return;
     }
 
-    setStep((prev) => Math.min(6, (prev + 1) as Step));
+    setStep((prev) => Math.min(7, prev + 1) as Step);
   };
 
   const previousStep = () => {
-    setError("");
-    setOtpError("");
-    setStep((prev) => Math.max(1, (prev - 1) as Step));
-  };
-
-  const toggleModule = (moduleKey: string) => {
-    if (REQUIRED_MODULES.has(moduleKey)) return;
-
-    setValue(
-      "selectedModules",
-      formState.selectedModules.includes(moduleKey)
-        ? formState.selectedModules.filter((key) => key !== moduleKey)
-        : [...formState.selectedModules, moduleKey]
-    );
+    setError('');
+    setOtpError('');
+    setStep((prev) => Math.max(1, prev - 1) as Step);
   };
 
   const handleBlur = (field: keyof SignupState) => {
     if (step === 1) validateStep1();
-    if (step === 3) validateStep2();
-    if (field === "termsAccepted" && !formState.termsAccepted) {
-      setFieldErrors((prev) => ({ ...prev, termsAccepted: "You must accept the terms to continue." }));
+    if (step === 3) validateCompanyStep();
+    if (field === 'termsAccepted' && !formState.termsAccepted) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        termsAccepted: 'You must accept the terms to continue.',
+      }));
     }
   };
-
-  const goToDashboard = async () => {
-    if (!authPassword) {
-      setError("Unable to complete auto sign-in. Please log in manually.");
-      router.push("/login");
-      return;
-    }
-
-    setRedirecting(true);
-    setError("");
-
-    try {
-      const auth = await getFirebaseAuth();
-      const userCred = await signInWithEmailAndPassword(
-        auth,
-        formState.email.trim().toLowerCase(),
-        authPassword
-      );
-
-      // Wait for custom claims (role + tenantId) to propagate
-      // Firebase requires a short delay after setCustomUserClaims before
-      // the claims appear in a refreshed token
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Force refresh the token to pick up the custom claims
-      const idToken = await userCred.user.getIdToken(true);
-      const sessionRes = await fetch("/api/session-login", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, rememberMe: true }),
-      });
-
-      if (!sessionRes.ok) {
-        throw new Error("Failed to create session. Please log in manually.");
-      }
-
-      setAuthPassword("");
-      router.push("/dashboard");
-    } catch (signInError) {
-      console.error("Auto sign-in failed", signInError);
-      setError("Workspace created! Please log in with your credentials.");
-      router.push("/login");
-    } finally {
-      setRedirecting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (step === 6 && authPassword) {
-      void goToDashboard();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-3 py-6 sm:px-4">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[480px] items-center justify-center">
         <div className="w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-[var(--text-primary)] shadow-2xl sm:p-8">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] text-3xl font-bold text-white">B</div>
-            <p className="text-xs font-semibold tracking-[0.24em] text-[var(--text-muted)]">BIZOSTO</p>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] text-3xl font-bold text-white">
+              B
+            </div>
+            <p className="text-xs font-semibold tracking-[0.24em] text-[var(--text-muted)]">
+              BIZOSTO
+            </p>
           </div>
 
-          {step !== 6 ? (
+          {step !== 7 ? (
             <>
               <div className="mb-5">
                 {/* Progress bar */}
@@ -434,14 +457,22 @@ function SignupInner() {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${progress}%`,
-                      background: "linear-gradient(90deg, #012167, #6692f9)",
+                      background: 'linear-gradient(90deg, #012167, #6692f9)',
                     }}
                   />
                 </div>
 
                 {/* Step indicators with labels */}
                 {(() => {
-                  const stepLabels = ["Account", "Verify", "Business", "Modules", "Terms", "Done"];
+                  const stepLabels = [
+                    'Account',
+                    'Verify',
+                    'Business',
+                    'Plan',
+                    'Terms',
+                    'Payment',
+                    'Done',
+                  ];
                   return (
                     <div className="mb-4 flex items-start justify-between">
                       {stepLabels.map((label, i) => {
@@ -449,26 +480,34 @@ function SignupInner() {
                         const isComplete = step > dotStep;
                         const isActive = step === dotStep;
                         return (
-                          <div key={label} className="flex flex-col items-center gap-1" style={{ width: "14%" }}>
+                          <div
+                            key={label}
+                            className="flex flex-col items-center gap-1"
+                            style={{ width: '12%' }}
+                          >
                             <span
                               className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all duration-300"
                               style={{
                                 background: isComplete
-                                  ? "linear-gradient(135deg, #012167, #6692f9)"
+                                  ? 'linear-gradient(135deg, #012167, #6692f9)'
                                   : isActive
-                                  ? "linear-gradient(135deg, #012167, #6692f9)"
-                                  : "rgba(255,255,255,0.15)",
-                                color: isComplete || isActive ? "#fff" : "rgba(255,255,255,0.5)",
-                                transform: isActive ? "scale(1.2)" : "scale(1)",
-                                boxShadow: isActive ? "0 0 0 3px rgba(102,146,249,0.3)" : "none",
+                                    ? 'linear-gradient(135deg, #012167, #6692f9)'
+                                    : 'rgba(255,255,255,0.15)',
+                                color: isComplete || isActive ? '#fff' : 'rgba(255,255,255,0.5)',
+                                transform: isActive ? 'scale(1.2)' : 'scale(1)',
+                                boxShadow: isActive ? '0 0 0 3px rgba(102,146,249,0.3)' : 'none',
                               }}
                             >
-                              {isComplete ? "✓" : dotStep}
+                              {isComplete ? '✓' : dotStep}
                             </span>
                             <span
                               className="text-center text-[9px] font-semibold uppercase tracking-wider transition-all"
                               style={{
-                                color: isActive ? "#6692f9" : isComplete ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
+                                color: isActive
+                                  ? '#6692f9'
+                                  : isComplete
+                                    ? 'rgba(255,255,255,0.6)'
+                                    : 'rgba(255,255,255,0.35)',
                               }}
                             >
                               {label}
@@ -483,37 +522,73 @@ function SignupInner() {
                 {/* Step counter */}
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-semibold text-[var(--text-muted)]">
-                    {step < 6 ? `Step ${step} of 5` : "Almost there!"}
+                    {step < 7 ? `Step ${step} of 6` : 'Almost there!'}
                   </p>
-                  {step < 6 && (
+                  {step < 7 && (
                     <p className="text-xs text-[var(--text-muted)]">
-                      {step === 1 && "🔐 Secure setup"}
-                      {step === 2 && "📬 Check your inbox"}
-                      {step === 3 && "🏢 Tell us about you"}
-                      {step === 4 && "⚙️ Pick your tools"}
-                      {step === 5 && "✅ Almost done"}
+                      {step === 1 && '🔐 Secure setup'}
+                      {step === 2 && '📬 Check your inbox'}
+                      {step === 3 && '🏢 Tell us about you'}
+                      {step === 4 && '💳 Pick your plan'}
+                      {step === 5 && '✅ Review terms'}
+                      {step === 6 && '🔒 Secure checkout'}
                     </p>
                   )}
                 </div>
 
-                <h1 className="text-2xl font-semibold">{stepContent[step as Exclude<Step, 6>].title}</h1>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">{stepContent[step as Exclude<Step, 6>].subtitle}</p>
+                <h1 className="text-2xl font-semibold">
+                  {stepContent[step as Exclude<Step, 7>].title}
+                </h1>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  {stepContent[step as Exclude<Step, 7>].subtitle}
+                </p>
               </div>
 
               <div className="space-y-4">
                 {step === 1 ? (
                   <>
-                    <Input label="Full Name" value={formState.fullName} placeholder="Jane Smith" onChange={(value) => setValue("fullName", value)} onBlur={() => handleBlur("fullName")} error={fieldErrors.fullName} />
-                    <Input label="Business Email" type="email" value={formState.email} placeholder="jane@company.com" onChange={(value) => setValue("email", value)} onBlur={() => handleBlur("email")} error={fieldErrors.email} />
-                    <Input label="Password" type="password" value={formState.password} placeholder="Min. 8 characters" onChange={(value) => setValue("password", value)} onBlur={() => handleBlur("password")} error={fieldErrors.password} />
-                    <Input label="Confirm Password" type="password" value={formState.confirmPassword} placeholder="Re-enter password" onChange={(value) => setValue("confirmPassword", value)} onBlur={() => handleBlur("confirmPassword")} error={fieldErrors.confirmPassword} />
+                    <Input
+                      label="Full Name"
+                      value={formState.fullName}
+                      placeholder="Jane Smith"
+                      onChange={(value) => setValue('fullName', value)}
+                      onBlur={() => handleBlur('fullName')}
+                      error={fieldErrors.fullName}
+                    />
+                    <Input
+                      label="Business Email"
+                      type="email"
+                      value={formState.email}
+                      placeholder="jane@company.com"
+                      onChange={(value) => setValue('email', value)}
+                      onBlur={() => handleBlur('email')}
+                      error={fieldErrors.email}
+                    />
+                    <Input
+                      label="Password"
+                      type="password"
+                      value={formState.password}
+                      placeholder="Min. 8 characters"
+                      onChange={(value) => setValue('password', value)}
+                      onBlur={() => handleBlur('password')}
+                      error={fieldErrors.password}
+                    />
+                    <Input
+                      label="Phone"
+                      type="tel"
+                      value={formState.phone}
+                      placeholder="+1 555 123 4567"
+                      onChange={(value) => setValue('phone', value)}
+                      onBlur={() => handleBlur('phone')}
+                      error={fieldErrors.phone}
+                    />
                   </>
                 ) : null}
 
                 {step === 2 ? (
                   <div className="space-y-4">
                     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
-                      We sent a 6-digit code to{" "}
+                      We sent a 6-digit code to{' '}
                       <span className="font-semibold text-[var(--text-primary)]">
                         {formState.email}
                       </span>
@@ -530,9 +605,9 @@ function SignupInner() {
                         placeholder="000000"
                         value={otpCode}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                           setOtpCode(val);
-                          setOtpError("");
+                          setOtpError('');
                         }}
                         className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] text-[var(--text-primary)] outline-none focus:border-[var(--erp-blue)]"
                         autoFocus
@@ -552,10 +627,10 @@ function SignupInner() {
                         className="font-semibold text-[var(--erp-blue)] disabled:opacity-50"
                       >
                         {otpSending
-                          ? "Sending…"
+                          ? 'Sending…'
                           : otpResendCooldown > 0
-                          ? `Resend in ${otpResendCooldown}s`
-                          : "Resend code"}
+                            ? `Resend in ${otpResendCooldown}s`
+                            : 'Resend code'}
                       </button>
                     </div>
                   </div>
@@ -563,45 +638,112 @@ function SignupInner() {
 
                 {step === 3 ? (
                   <>
-                    <Input label="Company Name" value={formState.companyName} placeholder="Acme Corp" onChange={(value) => setValue("companyName", value)} onBlur={() => handleBlur("companyName")} error={fieldErrors.companyName} />
-                    <Select label="Industry" value={formState.industry} options={industries} onChange={(value) => setValue("industry", value)} />
-                    <Select label="Company Size" value={formState.companySize} options={companySizes} onChange={(value) => setValue("companySize", value)} />
-                    <Select label="Country" value={formState.country} options={countries} onChange={(value) => {
-                      setValue("country", value);
-                      if (value !== "United States") setValue("state", "");
-                    }} error={fieldErrors.country} />
-                    {formState.country === "United States" ? (
-                      <Select label="State / Province" value={formState.state} options={usStates} onChange={(value) => setValue("state", value)} error={fieldErrors.state} />
-                    ) : null}
-                    <Select label="Timezone" value={formState.timezone} options={timezones} onChange={(value) => setValue("timezone", value)} error={fieldErrors.timezone} />
-                    <Select label="Base Currency" value={formState.currency} options={currencies} onChange={(value) => setValue("currency", value)} error={fieldErrors.currency} />
+                    <Input
+                      label="Company Name"
+                      value={formState.companyName}
+                      placeholder="Acme Corp"
+                      onChange={(value) => setValue('companyName', value)}
+                      onBlur={() => handleBlur('companyName')}
+                      error={fieldErrors.companyName}
+                    />
+                    <Select
+                      label="Country"
+                      value={formState.country}
+                      options={COUNTRIES}
+                      onChange={(value) => setValue('country', value)}
+                      error={fieldErrors.country}
+                    />
+                    <Select
+                      label="Industry"
+                      value={formState.industry}
+                      options={industries}
+                      onChange={(value) => setValue('industry', value)}
+                      error={fieldErrors.industry}
+                    />
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Team Size</legend>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {teamSizes.map((size) => (
+                          <label
+                            key={size}
+                            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${formState.companySize === size ? 'border-[var(--erp-blue)] bg-[var(--erp-blue)]/10' : 'border-[var(--border-subtle)]'}`}
+                          >
+                            <input
+                              type="radio"
+                              name="teamSize"
+                              value={size}
+                              checked={formState.companySize === size}
+                              onChange={(event) => setValue('companySize', event.target.value)}
+                            />
+                            <span>{size}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {fieldErrors.companySize ? (
+                        <p className="text-sm text-red-600">{fieldErrors.companySize}</p>
+                      ) : null}
+                    </fieldset>
                   </>
                 ) : null}
 
                 {step === 4 ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {modules.map((module) => {
-                      const checked = formState.selectedModules.includes(module.key);
-                      const isRequired = REQUIRED_MODULES.has(module.key);
+                  <div className="grid grid-cols-1 gap-3">
+                    {plans.map((plan) => {
+                      const selected = formState.selectedPlan === plan.key;
 
                       return (
                         <button
-                          key={module.key}
+                          key={plan.key}
                           type="button"
-                          title={isRequired ? "Required" : ""}
-                          onClick={() => toggleModule(module.key)}
-                          className={`rounded-xl border p-3 text-left transition ${checked ? "border-[var(--erp-blue)] bg-[var(--erp-blue)]/10" : "border-[var(--border-subtle)]"} ${isRequired ? "cursor-not-allowed" : "cursor-pointer"}`}
+                          onClick={() => setValue('selectedPlan', plan.key)}
+                          className={`rounded-xl border p-4 text-left transition ${selected ? 'border-[var(--erp-blue)] bg-[var(--erp-blue)]/10 shadow-lg' : 'border-[var(--border-subtle)]'}`}
+                          aria-pressed={selected}
                         >
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-lg">{module.icon}</span>
-                            <input type="checkbox" checked={checked} readOnly disabled={isRequired} />
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-lg font-semibold">{plan.name}</p>
+                              <p className="mt-1 text-2xl font-bold">
+                                ${plan.price}
+                                <span className="text-sm font-medium text-[var(--text-muted)]">
+                                  /mo
+                                </span>
+                              </p>
+                            </div>
+                            {plan.badge ? (
+                              <span className="rounded-full bg-[var(--erp-blue)]/15 px-2 py-1 text-xs font-semibold text-[var(--erp-blue)]">
+                                {plan.badge}
+                              </span>
+                            ) : null}
                           </div>
-                          <p className="font-medium">{module.name}</p>
-                          <p className="mt-1 text-xs text-[var(--text-muted)]">{module.description}</p>
-                          {isRequired ? <p className="mt-2 text-[11px] text-[var(--text-muted)]">Required</p> : null}
+                          <ul className="mt-3 grid grid-cols-1 gap-1 text-sm text-[var(--text-muted)] sm:grid-cols-2">
+                            {plan.features.map((feature) => (
+                              <li key={feature}>✓ {feature}</li>
+                            ))}
+                          </ul>
                         </button>
                       );
                     })}
+                  </div>
+                ) : null}
+
+                {step === 6 ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">
+                        Selected plan
+                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <span className="text-lg font-bold">{selectedPlan.name}</span>
+                        <span className="text-lg font-bold">${selectedPlan.price}/mo</span>
+                      </div>
+                      <p className="mt-3 text-sm text-[var(--text-muted)]">
+                        No charge until {noChargeUntil}. Cancel anytime.
+                      </p>
+                    </div>
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Start your 14-day free trial with Stripe Checkout. Your subscription remains
+                      in trial status until the trial period ends.
+                    </p>
                   </div>
                 ) : null}
 
@@ -614,15 +756,18 @@ function SignupInner() {
                       <input
                         type="checkbox"
                         checked={formState.termsAccepted}
-                        onChange={(event) => setValue("termsAccepted", event.target.checked)}
-                        onBlur={() => handleBlur("termsAccepted")}
+                        onChange={(event) => setValue('termsAccepted', event.target.checked)}
+                        onBlur={() => handleBlur('termsAccepted')}
                         className="mt-0.5"
                       />
                       <span>
-                        I have read and agree to the Bizosto Terms of Service. I authorize automatic monthly billing of my selected plan after my 14-day free trial ends.
+                        I have read and agree to the Bizosto Terms of Service. I authorize automatic
+                        monthly billing of my selected plan after my 14-day free trial ends.
                       </span>
                     </label>
-                    {fieldErrors.termsAccepted ? <p className="text-sm text-red-600">{fieldErrors.termsAccepted}</p> : null}
+                    {fieldErrors.termsAccepted ? (
+                      <p className="text-sm text-red-600">{fieldErrors.termsAccepted}</p>
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -630,7 +775,12 @@ function SignupInner() {
               {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
 
               <div className="mt-6 flex items-center justify-between gap-3">
-                <button type="button" onClick={previousStep} disabled={step === 1 || loading} className="rounded-lg border border-[var(--border-subtle)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={previousStep}
+                  disabled={step === 1 || loading}
+                  className="rounded-lg border border-[var(--border-subtle)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] disabled:opacity-50"
+                >
                   Back
                 </button>
                 <button
@@ -643,41 +793,53 @@ function SignupInner() {
                 >
                   {loading
                     ? step === 2
-                      ? "Verifying…"
+                      ? 'Verifying…'
                       : step === 1
-                      ? "Sending code…"
-                      : "Creating your workspace…"
-                    : step === 5
-                    ? "Start Trial"
-                    : step === 1
-                    ? "Continue & Verify Email"
-                    : "Continue"}
+                        ? 'Sending code…'
+                        : step === 6
+                          ? 'Opening Stripe Checkout…'
+                          : 'Creating your workspace…'
+                    : step === 6
+                      ? 'Start your 14-day free trial'
+                      : step === 5
+                        ? 'Continue to Payment'
+                        : step === 1
+                          ? 'Continue & Verify Email'
+                          : 'Continue'}
                 </button>
               </div>
             </>
           ) : (
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">✓</div>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+                ✓
+              </div>
               <h1 className="text-2xl font-semibold">Your workspace is ready!</h1>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
-                Your 14-day free trial has started. We&apos;ve sent a welcome email to {formState.email}.
+                Your 14-day free trial is ready. Stripe Checkout is opening for {formState.email}.
               </p>
               <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">
-                Trial ends on {new Date(trialEndsAt || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                Trial ends on{' '}
+                {new Date(
+                  trialEndsAt || Date.now() + 14 * 24 * 60 * 60 * 1000,
+                ).toLocaleDateString()}
               </p>
               {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
               <button
                 type="button"
                 onClick={() => {
-                  void goToDashboard();
+                  router.push('/dashboard');
                 }}
-                disabled={redirecting}
                 className="mt-6 w-full rounded-lg bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {redirecting ? "Signing you in..." : "Go to Dashboard"}
+                Go to Dashboard
               </button>
               <p className="mt-4 text-xs text-[var(--text-muted)]">
-                If you are not redirected, you can <Link href="/login" className="underline">sign in manually</Link>.
+                If you are not redirected, you can{' '}
+                <Link href="/login" className="underline">
+                  sign in manually
+                </Link>
+                .
               </p>
             </div>
           )}
@@ -693,7 +855,7 @@ export default function SignupPage() {
       fallback={
         <div
           className="flex min-h-screen items-center justify-center"
-          style={{ background: "linear-gradient(180deg,#012167 0%,#6692f9 100%)" }}
+          style={{ background: 'linear-gradient(180deg,#012167 0%,#6692f9 100%)' }}
         >
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         </div>
@@ -711,7 +873,7 @@ function Input({
   onBlur,
   placeholder,
   error,
-  type = "text",
+  type = 'text',
 }: {
   label: string;
   value: string;
@@ -719,10 +881,10 @@ function Input({
   onBlur?: () => void;
   placeholder?: string;
   error?: string;
-  type?: "text" | "email" | "password";
+  type?: 'text' | 'email' | 'password' | 'tel';
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const resolvedType = type === "password" && showPassword ? "text" : type;
+  const resolvedType = type === 'password' && showPassword ? 'text' : type;
 
   return (
     <label className="block">
@@ -736,13 +898,13 @@ function Input({
           placeholder={placeholder}
           className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2.5 pr-16 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--erp-blue)]"
         />
-        {type === "password" ? (
+        {type === 'password' ? (
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-[var(--text-muted)]"
           >
-            {showPassword ? "Hide" : "Show"}
+            {showPassword ? 'Hide' : 'Show'}
           </button>
         ) : null}
       </div>
