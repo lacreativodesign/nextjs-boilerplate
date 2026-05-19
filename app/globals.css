@@ -7,6 +7,7 @@
   --erp-blue-hover: #1d4ed8;
   --erp-blue-soft: rgba(37, 99, 235, 0.12);
   --danger: #ef4444;
+  --danger-soft: color-mix(in srgb, var(--danger) 14%, transparent);
 
   --color-purple: #7c3aed;
   --color-blue: #2563eb;
