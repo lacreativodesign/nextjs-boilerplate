@@ -11,7 +11,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const snap = await adminDb.collection("employeeDocuments").orderBy("createdAt", "desc").limit(500).get();
+    const snap = await adminDb
+      .collection("employeeDocuments")
+      .where("tenantId", "==", access.user.tenantId)
+      .where("isDeleted", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
     const documents = snap.docs.map((doc) => {
       const data = doc.data();
       return {
