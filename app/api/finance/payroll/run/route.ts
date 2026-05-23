@@ -19,7 +19,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Month is required." }, { status: 400 });
     }
 
-    const existingSnap = await adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get();
+    const existingSnap = await adminDb.collection("payroll")
+      .where("tenantId", "==", auth.user.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500).get();
     const existingUserIds = new Set(
       existingSnap.docs
         .map((doc) => doc.data() || {})
@@ -27,7 +30,10 @@ export async function POST(req: Request) {
         .map((row) => String(row.userId || ""))
     );
 
-    const usersSnap = await adminDb.collection("users").get();
+    const usersSnap = await adminDb.collection("users")
+      .where("tenantId", "==", auth.user.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(500).get();
     const batch = adminDb.batch();
     let created = 0;
 
@@ -51,6 +57,7 @@ export async function POST(req: Request) {
         paidAt: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        tenantId: auth.user.tenantId,
         isDeleted: false,
       });
       created += 1;
