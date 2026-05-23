@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email/email-service";
+import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,16 @@ export async function POST(req: Request) {
 
     if (created > 0) {
       await batch.commit();
+      await writeAuditLog({
+        tenantId: auth.user.tenantId || null,
+        actorUserId: auth.user.uid,
+        actorName: auth.user.name || auth.user.email || "",
+        actorRole: auth.user.role,
+        actionType: "payroll.run",
+        entityType: "payroll",
+        entityId: month,
+        metadata: { month, rowsCreated: created, tenantId: auth.user.tenantId },
+      }).catch(() => undefined);
     }
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
