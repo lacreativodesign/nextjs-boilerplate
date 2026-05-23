@@ -1,9 +1,10 @@
-export type SubscriptionState = "active" | "grace" | "soft_locked" | "hard_locked";
+export type SubscriptionState = "active" | "grace" | "soft_locked" | "hard_locked" | "trial";
 
-const VALID_STATES: SubscriptionState[] = ["active", "grace", "soft_locked", "hard_locked"];
+const VALID_STATES: SubscriptionState[] = ["active", "grace", "soft_locked", "hard_locked", "trial"];
 
 export function normalizeSubscriptionState(value: unknown): SubscriptionState {
   const normalized = String(value || "").toLowerCase();
+  if (normalized === "trial") return "active";
   return VALID_STATES.includes(normalized as SubscriptionState) ? (normalized as SubscriptionState) : "hard_locked";
 }
 
