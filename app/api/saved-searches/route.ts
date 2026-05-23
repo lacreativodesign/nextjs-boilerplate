@@ -37,11 +37,11 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const module = searchParams.get("module") as SearchModule | null;
+    const savedModule = searchParams.get("module") as SearchModule | null;
 
     let query = adminDb.collection("saved_searches").where("tenantId", "==", session.tenantId);
-    if (module) {
-      query = query.where("module", "==", module);
+    if (savedModule) {
+      query = query.where("module", "==", savedModule);
     }
 
     const userSearchesSnapshot = await query.where("userId", "==", session.uid).get();
@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
       .where("tenantId", "==", session.tenantId)
       .where("isShared", "==", true);
 
-    if (module) {
-      sharedQuery = sharedQuery.where("module", "==", module);
+    if (savedModule) {
+      sharedQuery = sharedQuery.where("module", "==", savedModule);
     }
 
     const sharedSearchesSnapshot = await sharedQuery.get();
