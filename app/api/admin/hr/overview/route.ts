@@ -26,11 +26,11 @@ export async function GET() {
     }
 
     const [usersSnap, tasksSnap, docsSnap, attendanceSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("users").limit(500).get(),
-      adminDb.collection("onboardingTasks").limit(500).get(),
-      adminDb.collection("employeeDocuments").limit(500).get(),
-      adminDb.collection("attendance_logs").orderBy("createdAt", "desc").limit(500).get(),
-      adminDb.collection("events").orderBy("createdAt", "desc").limit(200).get(),
+      adminDb.collection("users").where("tenantId", "==", access.user.tenantId).where("isDeleted", "==", false).limit(200).get(),
+      adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).where("isDeleted", "==", false).limit(200).get(),
+      adminDb.collection("employeeDocuments").where("tenantId", "==", access.user.tenantId).where("isDeleted", "==", false).limit(200).get(),
+      adminDb.collection("attendance_logs").where("tenantId", "==", access.user.tenantId).orderBy("createdAt", "desc").limit(200).get(),
+      adminDb.collection("events").where("tenantId", "==", access.user.tenantId).orderBy("createdAt", "desc").limit(50).get(),
     ]);
 
     const users = usersSnap.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
