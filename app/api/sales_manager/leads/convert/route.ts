@@ -52,6 +52,7 @@ export async function POST(req: Request) {
         probability: 0,
         ownerId: ownerId || null,
         ownerName: ownerName || null,
+        tenantId: auth.user.tenantId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isDeleted: false,
