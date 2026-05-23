@@ -11,7 +11,12 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const snap = await adminDb.collection("onboardingTasks").limit(500).get();
+    const snap = await adminDb
+      .collection("onboardingTasks")
+      .where("tenantId", "==", access.user.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(200)
+      .get();
     const tasks = snap.docs.map((doc) => {
       const data = doc.data();
       return {
