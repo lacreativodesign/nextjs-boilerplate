@@ -173,7 +173,7 @@ export default function SuperAdminMonitoringPage() {
                   Add to Vercel: Project → Settings → Environment Variables → NEXT_PUBLIC_SENTRY_DSN
                 </li>
                 <li>Redeploy for the change to take effect</li>
-                <li>Return here and click "Test Sentry" to verify</li>
+                <li>Return here and click &quot;Test Sentry&quot; to verify</li>
               </ol>
             </div>
           </>

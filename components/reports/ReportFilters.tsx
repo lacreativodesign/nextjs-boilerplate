@@ -70,7 +70,7 @@ export function ReportFilters({
         <div>
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Filters</h2>
           <p className="text-xs text-[var(--text-muted)]">
-            Use commas for multiple values and "A,B" for between ranges.
+            Use commas for multiple values and &quot;A,B&quot; for between ranges.
           </p>
         </div>
         <button
