@@ -78,7 +78,7 @@ function parseSubCache(value: string | undefined): { role: string; state: string
 }
 
 function buildSubCache(role: string, state: string): string {
-  return `${role}:${state}:${Date.now() + 5 * 60 * 1000}`;
+  return `${role}:${state}:${Date.now() + 60 * 1000}`;
 }
 
 async function fetchModuleEnabled(req: NextRequest, tenantId: string, moduleKey: string): Promise<boolean | null> {
@@ -471,7 +471,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         if (subCacheValue) {
           response.cookies.set("sub_cache", subCacheValue, {
             path: "/",
-            maxAge: 300,
+            maxAge: 60,
             sameSite: "lax",
             httpOnly: true,
             secure: true,
@@ -494,7 +494,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   if (subCacheValue) {
     response.cookies.set("sub_cache", subCacheValue, {
       path: "/",
-      maxAge: 300,
+      maxAge: 60,
       sameSite: "lax",
       httpOnly: true,
       secure: true,
