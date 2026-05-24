@@ -1,79 +1,151 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 
-const PAYMENT_METHODS = ["Card", "Bank", "Cash", "PayPal", "Wise", "Other"];
+type FinanceSettingsResponse = {
+  ok: boolean;
+  error?: string;
+  settings?: {
+    orderPrefix?: string;
+    orderStartingNumber?: number;
+    canEditOrderStartingNumber?: boolean;
+  };
+};
+
+const ORDER_PREFIX_PATTERN = /^[A-Z0-9-]{0,10}$/;
 
 export default function FinanceSettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [orderPrefix, setOrderPrefix] = useState("");
+  const [orderStartingNumber, setOrderStartingNumber] = useState(1);
+  const [canEditOrderStartingNumber, setCanEditOrderStartingNumber] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/admin/settings/finance", { cache: "no-store" });
+        const data = (await res.json()) as FinanceSettingsResponse;
+        if (!res.ok || !data.ok || !data.settings) {
+          throw new Error(data.error || "Failed to load finance settings.");
+        }
+        setOrderPrefix(String(data.settings.orderPrefix || "").toUpperCase());
+        setOrderStartingNumber(Math.max(1, Number(data.settings.orderStartingNumber || 1)));
+        setCanEditOrderStartingNumber(Boolean(data.settings.canEditOrderStartingNumber));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load finance settings.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, []);
+
+  const prefixPreview = useMemo(() => {
+    const normalized = orderPrefix.trim().toUpperCase();
+    const base = normalized ? (normalized.endsWith("-") ? normalized : `${normalized}-`) : "INV-";
+    return `${base}${String(orderStartingNumber || 1).padStart(4, "0")}`;
+  }, [orderPrefix, orderStartingNumber]);
+
+  async function onSave() {
+    setError(null);
+    setSuccess(null);
+
+    const normalizedPrefix = orderPrefix.trim().toUpperCase();
+    if (!ORDER_PREFIX_PATTERN.test(normalizedPrefix)) {
+      setError("Invoice Number Prefix must be 10 characters max using only letters, numbers, and hyphens.");
+      return;
+    }
+
+    if (!Number.isFinite(orderStartingNumber) || orderStartingNumber < 1) {
+      setError("Invoice Starting Number must be at least 1.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings/finance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderPrefix: normalizedPrefix,
+          orderStartingNumber: Math.floor(orderStartingNumber),
+        }),
+      });
+      const data = (await res.json()) as FinanceSettingsResponse;
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to save finance settings.");
+      }
+      setSuccess("Finance settings saved.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save finance settings.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="card" style={{ padding: 16 }}>Loading finance settings…</div>;
+  }
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Settings</h3>
-        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
-          Finance configuration and policies for Admin.
-        </p>
+        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Finance Settings</h3>
+        <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Configure tenant invoice numbering.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card" style={{ padding: 18, borderRadius: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Currency Display Rules</div>
-          <p style={{ fontSize: 13, opacity: 0.75 }}>
-            Client revenue is tracked in USD. Salaries, payroll, and operating expenses are tracked in PKR.
-          </p>
-        </div>
+      <div className="card" style={{ padding: 18, borderRadius: 16 }}>
+        <div style={{ display: "grid", gap: 14, maxWidth: 560 }}>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Invoice Number Prefix</span>
+            <input
+              className="input"
+              type="text"
+              maxLength={10}
+              placeholder="e.g. ACME, INV, 2026"
+              value={orderPrefix}
+              onChange={(e) => setOrderPrefix(e.target.value.toUpperCase().replace(/\s+/g, ""))}
+            />
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              Your invoices will be numbered like: [PREFIX]-0001
+            </span>
+          </label>
 
-        <div className="card" style={{ padding: 18, borderRadius: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Invoice Numbering</div>
-          <p style={{ fontSize: 13, opacity: 0.75 }}>
-            Invoice IDs are generated in the format INV-0001 (read-only).
-          </p>
-        </div>
-      </div>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Invoice Starting Number</span>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              value={orderStartingNumber}
+              onChange={(e) => setOrderStartingNumber(Math.max(1, Number(e.target.value || 1)))}
+              readOnly={!canEditOrderStartingNumber}
+            />
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              Your next invoice will be [PREFIX]-[this number padded to 4 digits]
+            </span>
+            {!canEditOrderStartingNumber ? (
+              <span style={{ fontSize: 12, color: "#B45309" }}>Cannot change — invoices already issued.</span>
+            ) : null}
+          </label>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card" style={{ padding: 18, borderRadius: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Payment Methods</div>
-          <div className="space-y-2">
-            {PAYMENT_METHODS.map((method) => (
-              <div
-                key={method}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  background: "var(--surface-muted)",
-                }}
-              >
-                <span>{method}</span>
-                <span style={{ fontSize: 12, opacity: 0.6 }}>Enabled</span>
-              </div>
-            ))}
-          </div>
-        </div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Preview: {prefixPreview}</div>
 
-        <div className="card" style={{ padding: 18, borderRadius: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>AR Aging Thresholds</div>
-          <div className="space-y-3">
-            <SettingRow label="0-30 days" value="0-30" />
-            <SettingRow label="31-60 days" value="31-60" />
-            <SettingRow label="61-90 days" value="61-90" />
-            <SettingRow label="90+ days" value="90+" />
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginTop: 8 }}>
-            Thresholds are defaults (editable in future release).
+          {error ? <div style={{ color: "#B91C1C", fontSize: 13 }}>{error}</div> : null}
+          {success ? <div style={{ color: "#166534", fontSize: 13 }}>{success}</div> : null}
+
+          <div>
+            <button className="btn btn-primary" onClick={onSave} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function SettingRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-      <span style={{ opacity: 0.7 }}>{label}</span>
-      <input className="input" value={value} readOnly style={{ maxWidth: 120 }} />
     </div>
   );
 }

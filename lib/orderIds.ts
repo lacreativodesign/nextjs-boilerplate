@@ -1,5 +1,13 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 
+async function getTenantOrderPrefix(tenantId: string): Promise<string> {
+  const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+  const data = tenantSnap.data() || {};
+  const customPrefix = String(data.orderPrefix || "").trim().toUpperCase();
+  if (customPrefix) return customPrefix.endsWith("-") ? customPrefix : `${customPrefix}-`;
+  return process.env.ERP_ORDER_PREFIX || "INV-";
+}
+
 export async function generateNextOrderId(tenantId: string): Promise<string> {
   const counterRef = adminDb
     .collection("tenants")
@@ -14,5 +22,6 @@ export async function generateNextOrderId(tenantId: string): Promise<string> {
     return newSeq;
   });
   const padded = String(next).padStart(4, "0");
-  return `LC-${padded}`;
+  const prefix = await getTenantOrderPrefix(tenantId);
+  return `${prefix}${padded}`;
 }
