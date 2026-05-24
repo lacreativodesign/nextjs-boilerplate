@@ -103,10 +103,26 @@ export async function GET() {
       return getMonthKey(d);
     });
 
+    const allPaymentsForDedup = await adminDb
+      .collection("payments")
+      .where("tenantId", "==", auth.user.tenantId)
+      .where("isDeleted", "==", false)
+      .limit(1000)
+      .get();
+
+    const paidInvoiceIds = new Set(
+      allPaymentsForDedup.docs
+        .map((d) => d.data())
+        .filter((p) => String(p.status || "").toLowerCase() === "succeeded")
+        .map((p) => String(p.invoiceId || ""))
+        .filter(Boolean)
+    );
+
     const revenueSeries = seriesMonths.map((key) => ({ label: key, invoices: 0, payments: 0 }));
 
     invoices.forEach((inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return;
+      if (paidInvoiceIds.has(String(inv.id || ""))) return;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -115,8 +131,13 @@ export async function GET() {
       bucket.invoices += Number(inv.amountTotalUsd || 0);
     });
 
-    payments.forEach((pay) => {
-      if (normalizePaymentStatus(pay.status) !== "succeeded") return;
+    const scopedPayments = payments.filter((pay) => {
+      if (normalizePaymentStatus(pay.status) !== "succeeded") return false;
+      const paidMs = toMillis(pay.paidAt || pay.createdAt);
+      return !!paidMs;
+    });
+
+    scopedPayments.forEach((pay) => {
       const paidMs = toMillis(pay.paidAt || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
