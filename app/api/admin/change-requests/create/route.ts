@@ -88,6 +88,13 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() || {};
+    const isSuperAdminReq = String(me.role || "").toLowerCase() === "super_admin";
+    const projectTenant = String(project?.tenantId || "").trim();
+    const myTenant = String(me.tenantId || "").trim();
+    if (!isSuperAdminReq && projectTenant && projectTenant !== myTenant) {
+      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+    }
+
     const resolvedTenantId = String(project?.tenantId || me.tenantId || "").trim();
     if (!resolvedTenantId) return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 400 });
     const tenantId = resolvedTenantId;
