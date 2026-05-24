@@ -20,9 +20,9 @@ export async function GET() {
     }
 
     const [projectsSnap, changeSnap, invoiceSnap, notificationsSnap] = await Promise.all([
-      adminDb.collection("projects").where("clientId", "==", auth.clientId).where("isDeleted", "==", false).get(),
-      adminDb.collection("changeRequests").where("clientId", "==", auth.clientId).where("isDeleted", "==", false).get(),
-      adminDb.collection("invoices").where("clientId", "==", auth.clientId).where("isDeleted", "==", false).get(),
+      adminDb.collection("projects").where("clientId", "==", auth.clientId).where("tenantId", "==", auth.tenantId).where("isDeleted", "==", false).get(),
+      adminDb.collection("changeRequests").where("clientId", "==", auth.clientId).where("tenantId", "==", auth.tenantId).where("isDeleted", "==", false).get(),
+      adminDb.collection("invoices").where("clientId", "==", auth.clientId).where("tenantId", "==", auth.tenantId).where("isDeleted", "==", false).get(),
       adminDb
         .collection("notifications")
         .where("toUserId", "==", auth.user.uid)
