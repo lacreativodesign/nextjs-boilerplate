@@ -77,6 +77,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
 
+    const isSuperAdminReq = String(me.role || '').toLowerCase() === 'super_admin';
+    if (!isSuperAdminReq && clientData.tenantId && clientData.tenantId !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
+    }
+
     const priorityRaw = cleanString(body?.priority || 'Normal');
     const priority = PRIORITIES.includes(priorityRaw) ? priorityRaw : 'Normal';
 
@@ -118,61 +123,59 @@ export async function POST(req: Request) {
 
     await ref.set(payload, { merge: true });
 
-    const activationResult = await ensureClientAccountActivation({
-      clientId,
-      clientData,
-      createdByUid: me.uid,
-    });
+    let activationResult: Awaited<ReturnType<typeof ensureClientAccountActivation>> | null = null;
+    try {
+      activationResult = await ensureClientAccountActivation({
+        clientId,
+        clientData,
+        createdByUid: me.uid,
+      });
+    } catch (activationErr: any) {
+      console.warn('projects/create: client activation skipped —', activationErr?.message);
+      // Project creation succeeds; email/portal setup skipped for clients without email
+    }
 
-    const emailMetadata = {
-      clientId,
-      projectId: ref.id,
-      requestedByUid: me.uid,
-      requestedByName: cleanString(me.name || me.fullName || me.displayName || ''),
-    };
-
-    const baseEmailData = {
-      clientName: cleanString(clientData.companyName || clientData.name || ''),
-      projectName,
-      projectType,
-      stage,
-      dashboardLoginUrl: activationResult.dashboardLoginUrl,
-      accountActivationRequired: activationResult.activationPrepared,
-    };
-
-    await queueEmailEvent({
-      templateId: 'payment_confirmation',
-      to: activationResult.email,
-      data: {
-        ...baseEmailData,
-        totalPaidUsd: payload.totalPaidUsd || 0,
-      },
-      metadata: emailMetadata,
-      sequence: 1,
-    });
-
-    await queueEmailEvent({
-      templateId: 'welcome_client',
-      to: activationResult.email,
-      data: {
-        ...baseEmailData,
-        packageLabel: projectType,
-      },
-      metadata: emailMetadata,
-      sequence: 2,
-    });
-
-    await queueEmailEvent({
-      templateId: 'account_activation',
-      to: activationResult.email,
-      data: {
-        ...baseEmailData,
-        setPasswordLink: activationResult.setPasswordLink || null,
-        instructions: 'TODO: Provide step-by-step onboarding instructions in the template.',
-      },
-      metadata: emailMetadata,
-      sequence: 3,
-    });
+    if (activationResult) {
+      const emailMetadata = {
+        clientId,
+        projectId: ref.id,
+        requestedByUid: me.uid,
+        requestedByName: cleanString(me.name || me.fullName || me.displayName || ''),
+      };
+      const baseEmailData = {
+        clientName: cleanString(clientData.companyName || clientData.name || ''),
+        projectName,
+        projectType,
+        stage,
+        dashboardLoginUrl: activationResult.dashboardLoginUrl,
+        accountActivationRequired: activationResult.activationPrepared,
+      };
+      await queueEmailEvent({
+        templateId: 'payment_confirmation',
+        to: activationResult.email,
+        data: { ...baseEmailData, totalPaidUsd: payload.totalPaidUsd || 0 },
+        metadata: emailMetadata,
+        sequence: 1,
+      });
+      await queueEmailEvent({
+        templateId: 'welcome_client',
+        to: activationResult.email,
+        data: { ...baseEmailData, packageLabel: projectType },
+        metadata: emailMetadata,
+        sequence: 2,
+      });
+      await queueEmailEvent({
+        templateId: 'account_activation',
+        to: activationResult.email,
+        data: {
+          ...baseEmailData,
+          setPasswordLink: activationResult.setPasswordLink || null,
+          instructions: 'TODO: Provide step-by-step onboarding instructions.',
+        },
+        metadata: emailMetadata,
+        sequence: 3,
+      });
+    }
 
     await logActivity({
       tenantId: me.tenantId,
