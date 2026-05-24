@@ -44,6 +44,7 @@ export async function GET() {
     const snap = await adminDb
       .collection("projects")
       .where("clientId", "==", auth.clientId)
+      .where("tenantId", "==", auth.tenantId)
       .where("isDeleted", "==", false)
       .orderBy("updatedAt", "desc")
       .limit(500)
