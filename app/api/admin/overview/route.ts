@@ -14,6 +14,7 @@ import {
 } from "../reports/_utils";
 import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from "../settings/_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
+import { getRedisClient } from "@/lib/cache/redis-client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +56,10 @@ export async function GET() {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const redis = await getRedisClient();
+    const cacheKey = `overview:admin:${auth.user.tenantId}`;
+    const cached = redis ? await redis.get(cacheKey) : null;
+    if (cached) return NextResponse.json(JSON.parse(String(cached)));
 
     const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
     const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings()]);
@@ -297,7 +302,7 @@ export async function GET() {
       })
       .slice(0, 20);
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       kpis: {
         revenueThisMonthUsd,
@@ -334,7 +339,13 @@ export async function GET() {
       tables: {
         recentActivity,
       },
-    });
+    };
+
+    if (redis) {
+      await (redis as any).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
+    }
+
+    return NextResponse.json(responsePayload);
   } catch (err: any) {
     console.error("admin/overview error:", err);
     const rawMessage = String(err?.message || "");

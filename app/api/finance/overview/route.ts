@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireFinance, toISO } from "../_utils";
 import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
+import { getRedisClient } from "@/lib/cache/redis-client";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,10 @@ export async function GET() {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const redis = await getRedisClient();
+    const cacheKey = `overview:finance:${auth.user.tenantId}`;
+    const cached = redis ? await redis.get(cacheKey) : null;
+    if (cached) return NextResponse.json(JSON.parse(String(cached)));
 
     const now = new Date();
     const startOfMonth = getStartOfMonth(now);
@@ -171,7 +176,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       overview: {
         kpisUsd: {
@@ -188,7 +193,11 @@ export async function GET() {
         expenseBreakdown,
         recentEvents,
       },
-    });
+    };
+    if (redis) {
+      await (redis as any).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
+    }
+    return NextResponse.json(responsePayload);
   } catch (err: any) {
     console.error("finance/overview error:", err);
     const rawMessage = String(err?.message || "");
