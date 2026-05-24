@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { monitoringLogger } from "@/lib/monitoring/logger";
 import { requireHrAccess, toIso } from "../../../_utils";
 
 export const runtime = "nodejs";
@@ -29,7 +30,7 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, tasks });
   } catch (err) {
-    console.error("HR onboarding tasks list error", err);
+    monitoringLogger.error("HR onboarding tasks list error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }
 }

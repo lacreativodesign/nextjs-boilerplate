@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { monitoringLogger } from "@/lib/monitoring/logger";
 import { requireHrAccess, serverTimestamp } from "../_utils";
 
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function GET() {
       },
     });
   } catch (err) {
-    console.error("HR settings get error", err);
+    monitoringLogger.error("HR settings get error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }
 }
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("HR settings update error", err);
+    monitoringLogger.error("HR settings update error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }
 }
