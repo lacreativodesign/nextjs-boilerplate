@@ -63,22 +63,32 @@ export async function POST(req: Request) {
       state: String(tenantSettings.state || '').trim() || undefined,
     });
     const stripe = getStripeClient();
+    const idempotencyBucket = Math.floor(Date.now() / (5 * 60 * 1000));
+    const attachIdempotencyKey = `attach_${paymentMethodId}_${customerId}_${idempotencyBucket}`;
 
-    await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+    await stripe.paymentMethods.attach(
+      paymentMethodId,
+      { customer: customerId },
+      { idempotencyKey: attachIdempotencyKey },
+    );
     await stripe.customers.update(customerId, {
       invoice_settings: { default_payment_method: paymentMethodId },
     });
 
     const priceId = getStripePriceId(plan as 'starter' | 'pro' | 'enterprise');
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId, tax_rates: [] }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.payment_intent'],
-      metadata: { tenantId, plan },
-      automatic_tax: { enabled: true },
-    });
+    const subIdempotencyKey = `sub_${tenantId}_${plan}_${idempotencyBucket}`;
+    const subscription = await stripe.subscriptions.create(
+      {
+        customer: customerId,
+        items: [{ price: priceId, tax_rates: [] }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: { tenantId, plan },
+        automatic_tax: { enabled: true },
+      },
+      { idempotencyKey: subIdempotencyKey },
+    );
 
     await tenantRef.set(
       {
