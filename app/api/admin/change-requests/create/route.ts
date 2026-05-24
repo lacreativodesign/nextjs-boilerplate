@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { getCurrentUser, isAccountManager, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
 import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
@@ -89,7 +88,9 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() || {};
-    const tenantId = String(project?.tenantId || me.tenantId || DEFAULT_TENANT_ID);
+    const resolvedTenantId = String(project?.tenantId || me.tenantId || "").trim();
+    if (!resolvedTenantId) return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 400 });
+    const tenantId = resolvedTenantId;
 
     if (isAccountManager(role)) {
       const isOwner = project.ownerAmUid === me.uid || (!project.ownerAmUid && project.createdByUid === me.uid);

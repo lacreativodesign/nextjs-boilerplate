@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from "../../_utils";
 
@@ -66,7 +65,9 @@ export async function POST(req: Request) {
     );
 
     if (approvalNeeded) {
-      const tenantId = String(data.tenantId || me.tenantId || DEFAULT_TENANT_ID);
+      const resolvedTenantId = String(data.tenantId || me.tenantId || "").trim();
+      if (!resolvedTenantId) return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 400 });
+      const tenantId = resolvedTenantId;
       const approvalRef = adminDb.collection("approvals").doc();
       await approvalRef.set({
         tenantId,
