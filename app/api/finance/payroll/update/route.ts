@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseString, requireFinance, serverTimestamp } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,17 @@ export async function POST(req: Request) {
         status: "Approved",
         updatedAt: serverTimestamp(),
       });
+
+      await writeAuditLog({
+        tenantId: auth.user.tenantId || null,
+        actorUserId: auth.user.uid,
+        actorName: auth.user.name || auth.user.email || "",
+        actorRole: auth.user.role,
+        actionType: "payroll.update",
+        entityType: "payroll",
+        entityId: id,
+        metadata: { payrollId: id, tenantId: auth.user.tenantId },
+      }).catch(() => undefined);
 
       const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
       await Promise.all(
@@ -72,6 +84,17 @@ export async function POST(req: Request) {
         paidAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      await writeAuditLog({
+        tenantId: auth.user.tenantId || null,
+        actorUserId: auth.user.uid,
+        actorName: auth.user.name || auth.user.email || "",
+        actorRole: auth.user.role,
+        actionType: "payroll.update",
+        entityType: "payroll",
+        entityId: id,
+        metadata: { payrollId: id, tenantId: auth.user.tenantId },
+      }).catch(() => undefined);
 
       const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
       await Promise.all(
