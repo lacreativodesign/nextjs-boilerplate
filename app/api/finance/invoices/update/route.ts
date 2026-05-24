@@ -22,6 +22,7 @@ import {
 import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
 import { normalizeRole } from "../../../admin/_utils";
 import { sendBizostoEventNotification } from "@/lib/integrations/slack";
+import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,23 @@ export async function POST(req: Request) {
         paidAt: nextStatus === "paid" ? serverTimestamp() : invoice.paidAt || null,
         updatedAt: serverTimestamp(),
       });
+      await writeAuditLog({
+        tenantId: auth.user.tenantId || null,
+        actorUserId: auth.user.uid,
+        actorName: auth.user.name || auth.user.fullName || "",
+        actorRole: auth.user.role,
+        actionType: "invoice.mark_paid",
+        entityType: "invoice",
+        entityId: id,
+        metadata: {
+          orderId: invoice.orderId || id,
+          previousStatus: currentStatus,
+          newStatus: nextStatus,
+          amountTotalUsd: amountTotal,
+          totalPaid: nextPaid,
+        },
+      }).catch(() => undefined);
+
 
       const paymentId = parseString(body?.paymentId).trim();
       if (paymentId) {
