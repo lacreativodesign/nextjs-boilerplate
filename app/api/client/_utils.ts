@@ -19,6 +19,7 @@ function normalizeEmail(value: any) {
 }
 
 async function resolveClientId(uid: string, data: Record<string, any>) {
+  const tenantId = String((data as any).tenantId || "").trim();
   const existingClientId = cleanString(data.clientId);
   if (existingClientId) return existingClientId;
 
@@ -32,11 +33,12 @@ async function resolveClientId(uid: string, data: Record<string, any>) {
 
   const byLower = await adminDb
     .collection("clients")
+    .where("tenantId", "==", tenantId)
     .where("primaryContactEmailLower", "==", email)
     .limit(1)
     .get();
   const byRaw = byLower.empty
-    ? await adminDb.collection("clients").where("primaryContactEmail", "==", email).limit(1).get()
+    ? await adminDb.collection("clients").where("tenantId", "==", tenantId).where("primaryContactEmail", "==", email).limit(1).get()
     : null;
 
   const candidate = byLower.empty ? byRaw?.docs?.[0] : byLower.docs[0];
