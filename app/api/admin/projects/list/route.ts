@@ -87,6 +87,9 @@ export async function GET(req: Request) {
     const type = String(searchParams.get("type") || "").trim();
     const priority = String(searchParams.get("priority") || "").trim();
     const healthFilter = String(searchParams.get("health") || "").trim();
+    const cursor = String(searchParams.get("cursor") || "").trim();
+    const rawLimit = Number(searchParams.get("limit") || 50);
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, Math.floor(rawLimit))) : 50;
 
     let baseQuery: FirebaseFirestore.Query = adminDb
       .collection("projects")
@@ -171,6 +174,18 @@ export async function GET(req: Request) {
 
     projects.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
 
+    let startIndex = 0;
+    if (cursor) {
+      const cursorIndex = projects.findIndex((project) => project.id === cursor);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+
+    const pagedProjects = projects.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < projects.length;
+    const lastDoc = pagedProjects.length > 0 ? pagedProjects[pagedProjects.length - 1] : null;
+
     const totals = projects.reduce(
       (acc, project) => {
         acc.total += 1;
@@ -184,8 +199,13 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      projects,
+      projects: pagedProjects,
       totals,
+      pagination: {
+        limit,
+        cursor: lastDoc?.id || null,
+        hasMore,
+      },
       currentUser: {
         uid: me.uid,
         role: me.role,
