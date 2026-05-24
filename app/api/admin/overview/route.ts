@@ -68,7 +68,6 @@ export async function GET() {
     const [
       projectDocs,
       changeRequestDocs,
-      changeRequestAltDocs,
       invoiceDocs,
       paymentDocs,
       payrollDocs,
@@ -80,7 +79,6 @@ export async function GET() {
     ] = await Promise.all([
       queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("payroll").where("isDeleted", "==", false).limit(500), tenantId),
@@ -92,10 +90,7 @@ export async function GET() {
     ]);
 
     const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const changeRequests = [
-      ...changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
-    ];
+    const changeRequests = changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
