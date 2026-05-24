@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const snap = await adminDb.collection("events").orderBy("createdAt", "desc").limit(200).get();
+    const snap = await adminDb.collection("events").where("tenantId", "==", access.user.tenantId).orderBy("createdAt", "desc").limit(50).get();
     const activity = snap.docs
       .map((doc) => {
         const data = doc.data();

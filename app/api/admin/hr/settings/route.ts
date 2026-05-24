@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const snap = await adminDb.collection("hrSettings").doc("defaults").get();
+    const snap = await adminDb.collection("hrSettings").doc(access.user.tenantId).get();
     const data = snap.exists ? snap.data() : {};
 
     return NextResponse.json({
@@ -38,10 +38,11 @@ export async function POST(req: Request) {
     const defaultOnboardingTemplateId = body?.defaultOnboardingTemplateId || null;
     const retentionNote = body?.retentionNote || "Documents are retained for 7 years by default.";
 
-    await adminDb.collection("hrSettings").doc("defaults").set(
+    await adminDb.collection("hrSettings").doc(access.user.tenantId).set(
       {
         defaultOnboardingTemplateId,
         retentionNote,
+        tenantId: access.user.tenantId,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
