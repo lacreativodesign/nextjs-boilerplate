@@ -17,6 +17,7 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const ORDER_PREFIX_PATTERN = /^[A-Z0-9-]{0,10}$/;
 
 export async function GET() {
   try {
@@ -25,8 +26,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc("finance").get();
+    const [snap, tenantSnap, invoiceCounterSnap] = await Promise.all([
+      adminDb.collection("settings").doc("finance").get(),
+      adminDb.collection("tenants").doc(auth.user.tenantId).get(),
+      adminDb.collection("tenants").doc(auth.user.tenantId).collection("counters").doc("invoices").get(),
+    ]);
     const data = snap.exists ? snap.data() : {};
+    const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
+    const invoiceCounter = Number(invoiceCounterSnap.data()?.value || 0);
 
     const settings = {
       invoicePrefix: parseString(data?.invoicePrefix, DEFAULT_FINANCE_SETTINGS.invoicePrefix),
@@ -39,6 +46,9 @@ export async function GET() {
       lateFeesSettings: parseLateFeesSettings(data?.lateFeesSettings),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,
+      orderPrefix: parseString(tenantData?.orderPrefix, "").trim().toUpperCase(),
+      orderStartingNumber: Math.max(1, parseNumber(tenantData?.orderStartingNumber, 1)),
+      canEditOrderStartingNumber: invoiceCounter <= 0,
     };
 
     return NextResponse.json({
@@ -65,6 +75,14 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
+    const orderPrefix = parseString(body?.orderPrefix, "").trim().toUpperCase();
+    if (!ORDER_PREFIX_PATTERN.test(orderPrefix)) {
+      return NextResponse.json(
+        { ok: false, error: "Invoice Number Prefix must be 10 characters max using only letters, numbers, and hyphens." },
+        { status: 400 }
+      );
+    }
+    const requestedStartingNumber = Math.max(1, Math.floor(parseNumber(body?.orderStartingNumber, 1)));
     const payload = {
       invoicePrefix: parseString(body?.invoicePrefix, DEFAULT_FINANCE_SETTINGS.invoicePrefix),
       invoiceCounter: parseNumber(body?.invoiceCounter, DEFAULT_FINANCE_SETTINGS.invoiceCounter),
@@ -77,8 +95,25 @@ export async function PUT(req: Request) {
       updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
     };
+    const invoiceCounterSnap = await adminDb
+      .collection("tenants")
+      .doc(auth.user.tenantId)
+      .collection("counters")
+      .doc("invoices")
+      .get();
+    const invoiceCounter = Number(invoiceCounterSnap.data()?.value || 0);
+    const tenantPatch: Record<string, unknown> = {
+      orderPrefix,
+      updatedAt: serverTimestamp(),
+    };
+    if (invoiceCounter <= 0) {
+      tenantPatch.orderStartingNumber = requestedStartingNumber;
+    }
 
-    await adminDb.collection("settings").doc("finance").set(payload, { merge: true });
+    await Promise.all([
+      adminDb.collection("settings").doc("finance").set(payload, { merge: true }),
+      adminDb.collection("tenants").doc(auth.user.tenantId).set(tenantPatch, { merge: true }),
+    ]);
 
     await logSettingsChange({
       user: auth.user,

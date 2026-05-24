@@ -12,7 +12,18 @@ import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
 
+async function getTenantOrderPrefix(tenantId: string): Promise<string> {
+  const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+  const data = tenantSnap.data() || {};
+  const customPrefix = String(data.orderPrefix || "").trim().toUpperCase();
+  if (customPrefix) return customPrefix.endsWith("-") ? customPrefix : `${customPrefix}-`;
+  return process.env.ERP_ORDER_PREFIX || "INV-";
+}
+
 async function generateNextInvoiceId(tenantId: string): Promise<string> {
+  const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+  const tenantData = tenantSnap.data() || {};
+  const startingNumber = Math.max(1, Number(tenantData.orderStartingNumber || 1));
   const ref = adminDb
     .collection("tenants")
     .doc(tenantId)
@@ -20,11 +31,13 @@ async function generateNextInvoiceId(tenantId: string): Promise<string> {
     .doc("invoices");
   const next = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const value = snap.exists ? Number(snap.data()?.value || 0) + 1 : 1;
+    const currentValue = Number(snap.data()?.value || 0);
+    const value = currentValue > 0 ? currentValue + 1 : startingNumber;
     tx.set(ref, { value }, { merge: true });
     return value;
   });
-  return `INV-${String(next).padStart(4, "0")}`;
+  const prefix = await getTenantOrderPrefix(tenantId);
+  return `${prefix}${String(next).padStart(4, "0")}`;
 }
 
 export async function POST(req: Request) {
