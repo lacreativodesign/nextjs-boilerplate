@@ -70,8 +70,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
 
     const invoice = (invoiceSnap.data() || {}) as InvoiceDoc;
-    const invoiceTenantId = normalizeTenantId(invoice.tenantId);
-    if (invoice.tenantId && invoiceTenantId !== tenantId) {
+    const isSuperAdminReq = String(auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdminReq && normalizeTenantId(invoice.tenantId) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
     }
 
