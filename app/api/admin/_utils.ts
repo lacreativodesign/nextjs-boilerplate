@@ -62,7 +62,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       ...data,
     };
 
-    console.log('getCurrentUser result:', JSON.stringify(current));
 
     return current;
   } catch (err) {
