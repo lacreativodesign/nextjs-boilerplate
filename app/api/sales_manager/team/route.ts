@@ -12,9 +12,9 @@ export async function GET() {
     }
 
     const [usersSnap, leadsSnap, dealsSnap] = await Promise.all([
-      adminDb.collection("users").where("role", "==", "sales").get(),
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("users").where("tenantId", "==", auth.user.tenantId || "").where("role", "==", "sales").get(),
+      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const leadsCount = new Map<string, number>();

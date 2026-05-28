@@ -32,6 +32,10 @@ export async function POST(req: Request) {
     }
 
     const existing = snapshot.data() || {};
+    if (auth.user.role !== "super_admin" && existing.tenantId && existing.tenantId !== (auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Campaign not found." }, { status: 404 });
+    }
+
     if (auth.user.role === "sales" && existing.createdBy !== auth.user.uid) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
