@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     }
 
     const existing = snap.data() || {};
+    if (access.user.role !== "super_admin" && existing?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Task not found" }, { status: 404 });
+    }
     const incomingSteps = Array.isArray(body?.steps) ? body.steps : existing?.steps || [];
     const updatedSteps = incomingSteps.map((step: any) => ({
       title: String(step?.title || "").trim(),

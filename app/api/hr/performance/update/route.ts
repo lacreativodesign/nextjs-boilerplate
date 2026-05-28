@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     }
 
     const existing = snap.data() || {};
+    if (access.user.role !== "super_admin" && existing?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Review not found" }, { status: 404 });
+    }
     const period = String(body?.period || existing?.period || "").trim();
     const rating = body?.rating === null || body?.rating === undefined || body?.rating === "" ? null : Number(body.rating);
     const tags = Array.isArray(body?.tags) ? body.tags.map((tag: any) => String(tag || "").trim()).filter(Boolean) : existing?.tags || [];

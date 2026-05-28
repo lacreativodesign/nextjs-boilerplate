@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         doneAt: null,
       })),
       dueDate: dueDate || null,
+      tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

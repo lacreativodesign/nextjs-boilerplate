@@ -15,8 +15,8 @@ export async function GET(req: Request) {
     const userId = String(searchParams.get("userId") || "").trim();
 
     const query = userId
-      ? adminDb.collection("onboardingTasks").where("userId", "==", userId).limit(500)
-      : adminDb.collection("onboardingTasks").limit(500);
+      ? adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).where("userId", "==", userId).limit(500)
+      : adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).limit(500);
 
     const snap = await query.get();
     const tasks = snap.docs.map((doc) => {
