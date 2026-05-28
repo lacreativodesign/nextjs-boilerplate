@@ -45,7 +45,7 @@ export async function POST(req: Request) {
         : DEFAULT_REPORT_SETTINGS.stageSlaDays;
 
     await Promise.all([
-      adminDb.collection("settings").doc("finance").set(
+      adminDb.collection("settings").doc(`${auth.user.tenantId}_reports`).set(
         {
           arBuckets: arAgingBucketsDays,
           updatedAt: serverTimestamp(),
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         },
         { merge: true }
       ),
-      adminDb.collection("settings").doc("workflows").set(
+      adminDb.collection("settings").doc(`${auth.user.tenantId}_reports`).set(
         {
           slaDaysPerStage: stageSlaDays,
           atRiskAfterDays,

@@ -9,11 +9,12 @@ import { assertPermission, Permission } from "../../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
-async function resolveUserName(uid?: string | null) {
+async function resolveUserName(tenantId: string, uid?: string | null) {
   if (!uid) return null;
   const snap = await adminDb.collection("users").doc(uid).get();
   if (!snap.exists) return null;
   const data = snap.data() || {};
+  if (data.tenantId !== tenantId) return null;
   return (data.name || data.fullName || data.displayName || data.email || "") as string;
 }
 
@@ -67,8 +68,12 @@ export async function POST(req: Request) {
     if (!snap.exists) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
+    const projectData = snap.data() || {};
+    if (projectData.tenantId !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+    }
 
-    const productionName = productionUid ? await resolveUserName(productionUid) : null;
+    const productionName = productionUid ? await resolveUserName(me.tenantId, productionUid) : null;
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     await ref.set(
@@ -84,6 +89,7 @@ export async function POST(req: Request) {
 
     await adminDb.collection("automationEvents").add({
       type: "production.assigned",
+      tenantId: me.tenantId,
       projectId,
       actorId: me.uid,
       actorName: me.name || me.fullName || me.displayName || "",

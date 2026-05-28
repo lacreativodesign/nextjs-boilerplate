@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     }
 
     const payload = {
+      tenantId: access.user.tenantId,
       name,
       role,
       steps: steps.map((step: any) => ({

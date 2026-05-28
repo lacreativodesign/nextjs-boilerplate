@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     }
 
     await adminDb.collection("automationEvents").add({
+      tenantId: me.tenantId,
       type,
       projectId,
       actorId: me.uid,

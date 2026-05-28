@@ -104,6 +104,7 @@ export async function POST(req: Request) {
 
     const previousSnap = await adminDb
       .collection("files")
+      .where("tenantId", "==", me.tenantId)
       .where("projectId", "==", projectId)
       .where("category", "==", category)
       .where("isDeleted", "==", false)
@@ -138,6 +139,7 @@ export async function POST(req: Request) {
       notes,
       isLatest: true,
       isDeleted: false,
+      tenantId: me.tenantId,
       uploadedAt: now,
       updatedAt: now,
     };

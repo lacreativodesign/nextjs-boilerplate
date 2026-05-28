@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     const dateFrom = parseDate(searchParams.get("dateFrom"));
     const dateTo = parseDate(searchParams.get("dateTo"), true);
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb.collection("invoices").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get();
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {

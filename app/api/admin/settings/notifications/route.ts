@@ -26,7 +26,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc("notifications").get();
+    const snap = await adminDb.collection("settings").doc(`${auth.user.tenantId}_notifications`).get();
     const data = snap.exists ? snap.data() : {};
     const eventToggles = normalizeEventToggles(data?.eventToggles);
 
@@ -75,7 +75,7 @@ export async function PUT(req: Request) {
       updatedBy: auth.user.uid,
     };
 
-    await adminDb.collection("settings").doc("notifications").set(payload, { merge: true });
+    await adminDb.collection("settings").doc(`${auth.user.tenantId}_notifications`).set(payload, { merge: true });
 
     await logSettingsChange({
       user: auth.user,

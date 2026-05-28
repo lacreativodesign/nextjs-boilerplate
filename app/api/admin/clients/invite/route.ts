@@ -29,6 +29,9 @@ export async function POST(req: Request) {
     }
 
     const clientData = clientSnap.data() || {};
+    if (clientData.tenantId !== current.tenantId) {
+      return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+    }
     if (!isPaidStatus(clientData.paymentStatus)) {
       return NextResponse.json({ ok: false, error: "Client must be Paid before inviting." }, { status: 400 });
     }

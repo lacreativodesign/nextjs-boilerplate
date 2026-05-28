@@ -17,8 +17,8 @@ export async function GET() {
     }
 
     const [snap, altSnap] = await Promise.all([
-      adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("changeRequests").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("change_requests").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const rows = [["Change Request", "Client", "Status", "Created At"]];

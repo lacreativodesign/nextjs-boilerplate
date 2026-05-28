@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     }
 
     const payload = {
+      tenantId: access.user.tenantId,
       userId,
       period,
       rating: Number.isFinite(rating as number) ? rating : null,

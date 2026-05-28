@@ -41,7 +41,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc("integrations").get();
+    const snap = await adminDb.collection("settings").doc(`${auth.user.tenantId}_integrations`).get();
     const data = snap.exists ? snap.data() : {};
 
     const settings = {
@@ -80,7 +80,7 @@ export async function PUT(req: Request) {
 
     await adminDb
       .collection("settings")
-      .doc("integrations")
+      .doc(`${auth.user.tenantId}_integrations`)
       .set(
         {
           webhooks,
