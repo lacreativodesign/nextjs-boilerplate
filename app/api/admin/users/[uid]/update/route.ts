@@ -124,7 +124,13 @@ export async function POST(
       }
     }
     const targetSnap = await adminDb.collection("users").doc(uid).get();
+    if (!targetSnap.exists) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const target = targetSnap.exists ? targetSnap.data() : null;
+    if (!isSuperAdmin && String(target?.tenantId || "") !== String(sessionUser.tenantId || "")) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const existingUser = target || {};
     const existingRole = String(target?.role || "").toLowerCase();
 

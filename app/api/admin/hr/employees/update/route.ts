@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     }
 
     const existing = snap.data() || {};
+    const isSuperAdmin = requesterRole === "super_admin";
+    if (!isSuperAdmin && String(existing.tenantId || "") !== String(current.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     const existingRole = normalizeRole(existing?.role || "");
 
     if (requesterRole !== "super_admin" && existingRole === "super_admin") {

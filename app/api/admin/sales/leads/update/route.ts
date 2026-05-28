@@ -29,6 +29,16 @@ export async function POST(req: Request) {
     if (payload.ownerId !== undefined) updates.ownerId = parseString(payload.ownerId, "") || null;
     if (payload.ownerName !== undefined) updates.ownerName = parseString(payload.ownerName, "") || null;
 
+    const snap = await adminDb.collection("leads").doc(id).get();
+    if (!snap.exists) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+    const data = snap.data() || {};
+    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(data.tenantId || "") !== String(auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
     await adminDb.collection("leads").doc(id).set(updates, { merge: true });
 
     await createSalesEvent({

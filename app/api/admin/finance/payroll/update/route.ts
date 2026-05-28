@@ -25,6 +25,10 @@ export async function POST(req: Request) {
     }
 
     const payroll = snap.data() || {};
+    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(payroll.tenantId || "") !== String(auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     const userName = String(payroll.userName || "");
 
     if (action === "approve") {

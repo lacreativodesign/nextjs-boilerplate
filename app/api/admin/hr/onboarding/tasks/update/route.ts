@@ -23,6 +23,10 @@ export async function POST(req: Request) {
     }
 
     const existing = snap.data() || {};
+    const isSuperAdmin = (access.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(existing.tenantId || "") !== String(access.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     const incomingSteps = Array.isArray(body?.steps) ? body.steps : existing?.steps || [];
     const updatedSteps = incomingSteps.map((step: any) => ({
       title: String(step?.title || "").trim(),

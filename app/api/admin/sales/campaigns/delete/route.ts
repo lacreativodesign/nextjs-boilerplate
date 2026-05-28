@@ -17,6 +17,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing campaign id." }, { status: 400 });
     }
 
+    const snap = await adminDb.collection("campaigns").doc(id).get();
+    if (!snap.exists) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+    const data = snap.data() || {};
+    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(data.tenantId || "") !== String(auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
     await adminDb.collection("campaigns").doc(id).set(
       {
         isDeleted: true,
