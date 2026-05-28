@@ -15,7 +15,8 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("payroll").where("isDeleted", "==", false).limit(500).get();
+    const tenantId = auth.user.tenantId || "";
+    const snap = await adminDb.collection("payroll").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get();
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {

@@ -30,9 +30,9 @@ export async function GET(req: Request) {
     const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
     const [usersSnap, targetsSnap, dealsSnap] = await Promise.all([
-      adminDb.collection("users").where("role", "==", "sales").get(),
-      adminDb.collection("sales_targets").where("month", "==", monthKey).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("users").where("tenantId", "==", auth.user.tenantId || "").where("role", "==", "sales").get(),
+      adminDb.collection("sales_targets").where("tenantId", "==", auth.user.tenantId || "").where("month", "==", monthKey).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const targetMap = new Map<string, number>();

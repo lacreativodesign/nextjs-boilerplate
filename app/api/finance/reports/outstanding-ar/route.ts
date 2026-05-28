@@ -16,7 +16,8 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const tenantId = auth.user.tenantId || "";
+    const snap = await adminDb.collection("invoices").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get();
 
     const rows = [["Invoice", "Client", "Status", "Due Date", "Amount USD"]];
     snap.docs.forEach((doc) => {

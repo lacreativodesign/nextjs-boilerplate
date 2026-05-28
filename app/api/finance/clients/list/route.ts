@@ -16,7 +16,8 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("clients").orderBy("createdAt", "desc").limit(500).get();
+    const tenantId = auth.user.tenantId || "";
+    const snap = await adminDb.collection("clients").where("tenantId", "==", tenantId).orderBy("createdAt", "desc").limit(500).get();
     const clients = snap.docs
       .map((doc) => {
         const data = (doc.data() || {}) as ClientDoc;

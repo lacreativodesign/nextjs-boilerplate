@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     const status = parseString(payload.status, "Active");
 
     const docRef = await adminDb.collection("campaigns").add({
+      tenantId: auth.user.tenantId || null,
       name,
       channel,
       status,
