@@ -36,7 +36,14 @@ export async function POST(req: Request) {
     }
 
     const template = templateSnap.data() || {};
+    if (template?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Template not found" }, { status: 404 });
+    }
     const steps = Array.isArray(template?.steps) ? template.steps : [];
+    const userData = userSnap.data() || {};
+    if (userData?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+    }
 
     const payload = {
       userId,
@@ -50,13 +57,13 @@ export async function POST(req: Request) {
         doneAt: null,
       })),
       dueDate: dueDate || null,
+      tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     const ref = await adminDb.collection("onboardingTasks").add(payload);
 
-    const userData = userSnap.data() || {};
     const employeeName = userData?.name || "Employee";
 
     await createHrEvent({

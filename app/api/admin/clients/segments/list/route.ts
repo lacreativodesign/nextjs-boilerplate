@@ -16,9 +16,9 @@ type SegmentDoc = {
   createdBy?: string | null;
 };
 
-async function seedDefaults(createdBy?: string | null) {
+async function seedDefaults(tenantId: string, createdBy?: string | null) {
   const ref = db.collection("clientSegments");
-  const existing = await ref.limit(1).get();
+  const existing = await ref.where("tenantId", "==", tenantId).limit(1).get();
   if (!existing.empty) return false;
 
   const now = new Date().toISOString();
@@ -37,6 +37,7 @@ async function seedDefaults(createdBy?: string | null) {
         createdAt: now,
         updatedAt: now,
         createdBy: createdBy || null,
+        tenantId,
       } as SegmentDoc);
     });
   });
@@ -52,8 +53,8 @@ export async function GET() {
   const canAdmin = isAdminRole(me.role);
 
   try {
-    const seeded = await seedDefaults(me.uid);
-    const snap = await db.collection("clientSegments").get();
+    const seeded = await seedDefaults(me.tenantId, me.uid);
+    const snap = await db.collection("clientSegments").where("tenantId", "==", me.tenantId).get();
 
     const segments = snap.docs
       .map((doc) => {

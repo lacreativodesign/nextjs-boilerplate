@@ -90,7 +90,7 @@ async function getVisibleProjectIds(uid: string, role: string): Promise<Set<stri
     return ids;
   }
 
-  const baseQuery = adminDb.collection("projects").where("isDeleted", "==", false);
+  const baseQuery = adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false);
 
   if (isAccountManager(role)) {
     const snaps = await Promise.all([
@@ -147,7 +147,10 @@ export async function GET(req: Request) {
       });
     }
 
-    const query: FirebaseFirestore.Query = adminDb.collection("changeRequests").where("isDeleted", "==", false);
+    const query: FirebaseFirestore.Query = adminDb
+      .collection("changeRequests")
+      .where("tenantId", "==", me.tenantId)
+      .where("isDeleted", "==", false);
 
     const snap = await query.limit(500).get();
 

@@ -13,6 +13,7 @@ export async function GET() {
 
     const snap = await adminDb
       .collection("activity")
+      .where("tenantId", "==", current.tenantId)
       .orderBy("createdAt", "desc")
       .limit(50)
       .get();

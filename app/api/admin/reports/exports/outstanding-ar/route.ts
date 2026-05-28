@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const clientId = String(searchParams.get("clientId") || "").trim();
 
-    const snap = await adminDb.collection("invoices").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb.collection("invoices").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get();
     const rows = [["Invoice", "Client", "Amount USD", "Due Date", "Status"]];
 
     snap.docs.forEach((doc) => {

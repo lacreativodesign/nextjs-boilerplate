@@ -31,6 +31,7 @@ export async function POST(req: Request) {
 
     const ref = adminDb.collection("expenses").doc();
     const expenseData = {
+      tenantId: auth.user.tenantId,
       category,
       vendor,
       currency: "PKR",

@@ -21,6 +21,12 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     await checkRateLimit(req, "standard", access.user.uid);
 
+    const userDoc = await adminDb.collection("users").doc(params.uid).get();
+    const userData = userDoc.data();
+    if (!userDoc.exists || userData?.tenantId !== access.user.tenantId) {
+      throw new AppError({ message: "User not found", code: "NOT_FOUND", status: 404 });
+    }
+
     const user = await adminAuth.getUser(params.uid);
     const enrolledFactors = user.multiFactor?.enrolledFactors || [];
 
@@ -54,6 +60,12 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     await checkRateLimit(req, "standard", access.user.uid);
 
+    const userDoc = await adminDb.collection("users").doc(params.uid).get();
+    const userData = userDoc.data();
+    if (!userDoc.exists || userData?.tenantId !== access.user.tenantId) {
+      throw new AppError({ message: "User not found", code: "NOT_FOUND", status: 404 });
+    }
+
     await adminAuth.updateUser(params.uid, {
       multiFactor: {
         enrolledFactors: [],
@@ -64,6 +76,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       {
         mfaEnabled: false,
         mfaUpdatedAt: new Date().toISOString(),
+        tenantId: access.user.tenantId,
       },
       { merge: true }
     );

@@ -35,6 +35,9 @@ export async function GET(
     }
 
     const data = snap.data();
+    if (data?.tenantId !== current.tenantId) {
+      return new NextResponse("User not found", { status: 404 });
+    }
 
     return NextResponse.json({ uid: requestedUid, ...data });
   } catch (err) {

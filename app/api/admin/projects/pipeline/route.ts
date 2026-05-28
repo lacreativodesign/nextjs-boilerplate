@@ -118,7 +118,10 @@ export async function GET(req: Request) {
     const dueStart = String(searchParams.get("dueStart") || "").trim();
     const dueEnd = String(searchParams.get("dueEnd") || "").trim();
 
-    const baseQuery: FirebaseFirestore.Query = adminDb.collection("projects").where("isDeleted", "==", false);
+    const baseQuery: FirebaseFirestore.Query = adminDb
+      .collection("projects")
+      .where("tenantId", "==", me.tenantId)
+      .where("isDeleted", "==", false);
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 
     if (isAccountManager(role)) {

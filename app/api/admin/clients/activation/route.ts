@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     }
 
     const clientData = clientSnap.data() || {};
+    if (clientData.tenantId !== current.tenantId) {
+      return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+    }
     await queueClientActivationInvite({
       clientId,
       clientData: {

@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     createdAt: now,
     updatedAt: now,
     createdBy: me.uid,
+    tenantId: me.tenantId,
   });
 
   return NextResponse.json({ ok: true, id });

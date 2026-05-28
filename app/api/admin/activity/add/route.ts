@@ -20,6 +20,7 @@ export async function POST(req: Request) {
 
     await adminDb.collection("activity").add({
       message,
+      tenantId: current.tenantId,
       createdAt: new Date().toISOString(),
     });
 

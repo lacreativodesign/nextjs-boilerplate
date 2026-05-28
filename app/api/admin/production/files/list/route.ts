@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const projectId = String(searchParams.get("projectId") || "").trim();
 
-    const snap = await adminDb.collection("files").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb.collection("files").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
 
     let files = snap.docs.map((doc) => {
       const data = doc.data() as FileDoc;
