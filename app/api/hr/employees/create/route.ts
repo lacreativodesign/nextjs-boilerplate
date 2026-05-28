@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { name, email, role, department, status } = body;
+    const { name, email, role, department, status, tenantId } = body;
 
     if (!name || !email || !role || !department) {
       return NextResponse.json(
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       role,
       department,
       status: status || "Active",
+      tenantId: String(tenantId || "").trim(),
       createdAt: new Date().toISOString(),
     };
 

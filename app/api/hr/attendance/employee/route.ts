@@ -9,10 +9,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const month = searchParams.get("month");
+    const tenantId = String(searchParams.get("tenantId") || "").trim();
 
-    if (!userId || !month) {
+    if (!userId || !month || !tenantId) {
       return NextResponse.json(
-        { success: false, message: "Missing userId or month" },
+        { success: false, message: "Missing userId, month, or tenantId" },
         { status: 400 }
       );
     }
@@ -28,12 +29,19 @@ export async function GET(request: Request) {
         { status: 404 }
       );
     }
+    if (empSnap.data()?.tenantId !== tenantId) {
+      return NextResponse.json(
+        { success: false, message: "Employee not found" },
+        { status: 404 }
+      );
+    }
 
     const employee = { id: empSnap.id, ...empSnap.data() };
 
     // Logs
     const logsSnap = await adminDb
       .collection("attendance")
+      .where("tenantId", "==", tenantId)
       .where("userId", "==", userId)
       .where("date", ">=", start.format("YYYY-MM-DD"))
       .where("date", "<=", end.format("YYYY-MM-DD"))

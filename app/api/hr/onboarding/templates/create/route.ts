@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         required: Boolean(step?.required),
       })),
       isActive,
+      tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: access.user.uid,

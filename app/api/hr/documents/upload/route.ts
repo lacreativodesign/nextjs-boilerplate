@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       storagePath,
       downloadUrl,
       uploadedBy: access.user.uid,
+      tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,

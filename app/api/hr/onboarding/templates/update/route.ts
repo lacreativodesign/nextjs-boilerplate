@@ -23,6 +23,9 @@ export async function POST(req: Request) {
     }
 
     const existing = snap.data() || {};
+    if (access.user.role !== "super_admin" && existing?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Template not found" }, { status: 404 });
+    }
     const name = String(body?.name || existing?.name || "").trim();
     const role = String(body?.role || existing?.role || "all").trim();
     const steps = Array.isArray(body?.steps) ? body.steps : existing?.steps || [];

@@ -25,6 +25,9 @@ export async function POST(req: Request) {
 
     const data = snap.data() || {};
     const requesterRole = normalizeRole(access.user.role);
+    if (requesterRole !== "super_admin" && data?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Document not found" }, { status: 404 });
+    }
 
     if (data?.userId) {
       const userSnap = await adminDb.collection("users").doc(String(data.userId)).get();
