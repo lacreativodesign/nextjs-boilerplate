@@ -67,6 +67,10 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
+    const isSuperAdmin = (me.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(data.tenantId || "") !== String(me.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
 
     const role = (me.role || "").toLowerCase();
     const canManage = canManageAll(role);

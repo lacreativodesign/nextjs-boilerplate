@@ -27,6 +27,15 @@ export async function POST(req: Request) {
     }
 
     const dealRef = adminDb.collection("deals").doc(id);
+    const preSnap = await dealRef.get();
+    if (!preSnap.exists) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+    const preData = preSnap.data() || {};
+    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(preData.tenantId || "") !== String(auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     let closedWonTriggered = false;
 
     await adminDb.runTransaction(async (tx) => {

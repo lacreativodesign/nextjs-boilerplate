@@ -22,6 +22,11 @@ export async function POST(req: Request) {
   const ref = db.collection("clientSegments").doc(id);
   const snap = await ref.get();
   if (!snap.exists) return NextResponse.json({ ok: false, error: "Segment not found" }, { status: 404 });
+  const data = snap.data() || {};
+  const isSuperAdmin = (me.role || "").toLowerCase() === "super_admin";
+  if (!isSuperAdmin && String(data.tenantId || "") !== String(me.tenantId || "")) {
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  }
 
   const updateData: Record<string, any> = {
     updatedAt: new Date().toISOString(),

@@ -49,6 +49,10 @@ export async function POST(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
 
     const existing = snap.data() || {};
+    const isSuperAdmin = requesterRole === "super_admin";
+    if (!isSuperAdmin && String(existing.tenantId || "") !== String(current.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
     const existingEmail = String(existing?.email || "").trim();
     const existingRole = String(existing?.role || "").trim().toLowerCase();
     const existingDepartment = String(existing?.department || "").trim();

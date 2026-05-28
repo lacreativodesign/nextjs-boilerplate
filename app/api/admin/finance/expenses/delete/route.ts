@@ -21,7 +21,14 @@ export async function POST(req: Request) {
 
     const ref = adminDb.collection("expenses").doc(id);
     const snap = await ref.get();
-    const existing = snap.exists ? snap.data() || {} : {};
+    if (!snap.exists) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+    const existing = snap.data() || {};
+    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(existing.tenantId || "") !== String(auth.user.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
 
     await ref.set(
       {

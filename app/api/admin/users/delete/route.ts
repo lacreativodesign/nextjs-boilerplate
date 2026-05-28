@@ -23,6 +23,10 @@ export async function POST(req: Request) {
     }
 
     const data = userDoc.data();
+    const superAdminBypass = (current.role || '').toLowerCase() === 'super_admin';
+    if (!superAdminBypass && String(data?.tenantId || '') !== String(current.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
+    }
 
     // Prevent Admin from deleting Admin / Super Admin
     if (!isSuperAdmin(current.role)) {

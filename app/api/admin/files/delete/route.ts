@@ -27,6 +27,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "File id is required." }, { status: 400 });
     }
 
+    const fileSnap = await adminDb.collection("files").doc(fileId).get();
+    if (!fileSnap.exists) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+    const data = fileSnap.data() || {};
+    const isSuperAdmin = (me.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(data.tenantId || "") !== String(me.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
     const now = admin.firestore.FieldValue.serverTimestamp();
     await adminDb.collection("files").doc(fileId).set(
       {
