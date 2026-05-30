@@ -11,7 +11,7 @@ export async function GET() {
     const auth = await requireAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const integration = await getGoogleIntegration(auth.user.tenantId);
+    const integration = await getGoogleIntegration(auth.user.tenantId as string);
 
     return NextResponse.json({
       ok: true,
@@ -25,8 +25,8 @@ export async function GET() {
         updatedBy: integration?.updatedBy || null,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to load Google connection." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to load Google connection." }, { status: 500 });
   }
 }
 
@@ -38,7 +38,7 @@ export async function PUT(request: Request) {
     const body = await request.json().catch(() => ({}));
     await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("integrations")
       .doc("googleWorkspace")
       .set(
@@ -53,7 +53,7 @@ export async function PUT(request: Request) {
       );
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to update Google connection." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to update Google connection." }, { status: 500 });
   }
 }

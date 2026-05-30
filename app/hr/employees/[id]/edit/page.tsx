@@ -8,7 +8,7 @@ export default function EditEmployeePage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [employee, setEmployee] = useState<any>(null);
+  const [employee, setEmployee] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -90,31 +90,31 @@ export default function EditEmployeePage() {
         >
           <FormInput
             label="Full Name"
-            value={employee.name}
+            value={String((employee as Record<string, unknown>).name ?? "")}
             onChange={(v) => setEmployee({ ...employee, name: v })}
           />
 
           <FormInput
             label="Email"
-            value={employee.email}
+            value={String((employee as Record<string, unknown>).email ?? "")}
             onChange={(v) => setEmployee({ ...employee, email: v })}
           />
 
           <FormInput
             label="Role"
-            value={employee.role}
+            value={String((employee as Record<string, unknown>).role ?? "")}
             onChange={(v) => setEmployee({ ...employee, role: v })}
           />
 
           <FormInput
             label="Department"
-            value={employee.department}
+            value={String((employee as Record<string, unknown>).department ?? "")}
             onChange={(v) => setEmployee({ ...employee, department: v })}
           />
 
           <FormInput
             label="Status"
-            value={employee.status}
+            value={String((employee as Record<string, unknown>).status ?? "")}
             onChange={(v) => setEmployee({ ...employee, status: v })}
           />
         </div>

@@ -144,8 +144,8 @@ export async function consumeSlackOAuthState(state: string) {
   const ref = adminDb.collection(SLACK_STATE_COLLECTION).doc(state);
   const snap = await ref.get();
   if (!snap.exists) throw new Error("Invalid Slack OAuth state.");
-  const data = snap.data() as any;
-  if (!data?.expiresAt || data.expiresAt.toMillis() < Date.now()) {
+  const data = snap.data() as unknown;
+  if (!(data as Record<string, unknown>)?.expiresAt || ((data as Record<string, unknown>).expiresAt as { toMillis: () => number }).toMillis() < Date.now()) {
     await ref.delete();
     throw new Error("Slack OAuth state expired.");
   }
@@ -454,8 +454,8 @@ export async function handleSlackSlashCommand(payload: SlackCommandPayload) {
 
       const projectSnap = await adminDb.collection("projects").doc(projectId).get();
       if (!projectSnap.exists) return { response_type: "ephemeral", text: `Project ${projectId} not found.` };
-      const project = projectSnap.data() as any;
-      if (project.tenantId !== match.tenantId) return { response_type: "ephemeral", text: "Project is not in your tenant." };
+      const project = projectSnap.data() as unknown;
+      if ((project as Record<string, unknown>).tenantId !== match.tenantId) return { response_type: "ephemeral", text: "Project is not in your tenant." };
 
       const requester = await resolveBizostoUserBySlack(match.tenantId, payload.user_id);
       if (!requester) return { response_type: "ephemeral", text: "Link your Slack user to Bizosto profile (slackUserId) before using commands." };
@@ -465,7 +465,7 @@ export async function handleSlackSlashCommand(payload: SlackCommandPayload) {
       await taskRef.set({
         tenantId: match.tenantId,
         projectId,
-        projectName: String(project.name || project.projectName || projectId),
+        projectName: String((project as Record<string, unknown>).name || (project as Record<string, unknown>).projectName || projectId),
         title,
         description: kv.description || null,
         status: "todo",
@@ -499,8 +499,8 @@ export async function handleSlackSlashCommand(payload: SlackCommandPayload) {
       const found = byOrder.empty ? byId : byOrder;
       if (found.empty) return { response_type: "ephemeral", text: `Invoice ${args} not found.` };
 
-      const invoice = found.docs[0].data() as any;
-      return { response_type: "ephemeral", text: `Invoice ${args}: ${invoice.status || "unknown"}` };
+      const invoice = found.docs[0].data() as unknown;
+      return { response_type: "ephemeral", text: `Invoice ${args}: ${(invoice as Record<string, unknown>).status || "unknown"}` };
     }
     case "leave request": {
       const kv = parseKvArgs(args);
@@ -543,8 +543,8 @@ export async function handleSlackSlashCommand(payload: SlackCommandPayload) {
     case "project status": {
       const projectSnap = await adminDb.collection("projects").where("tenantId", "==", match.tenantId).orderBy("updatedAt", "desc").limit(5).get();
       const lines = projectSnap.docs.map((d) => {
-        const p = d.data() as any;
-        return `• ${p.name || p.projectName || d.id} — ${p.status || "active"} (${p.progress ?? 0}% progress)`;
+        const p = d.data() as unknown;
+        return `• ${(p as Record<string, unknown>).name || (p as Record<string, unknown>).projectName || d.id} — ${(p as Record<string, unknown>).status || "active"} (${(p as Record<string, unknown>).progress ?? 0}% progress)`;
       });
       return { response_type: "ephemeral", text: lines.length ? lines.join("\n") : "No projects found." };
     }

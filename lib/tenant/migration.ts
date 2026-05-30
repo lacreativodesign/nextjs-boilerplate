@@ -77,8 +77,10 @@ export async function migrateMissingTenantIds(tenantId = DEFAULT_TENANT_ID) {
     }
 
     if (updatedCount > 0) {
+      // eslint-disable-next-line no-console
       console.log(`[tenant-migration] ${collectionName}: updated ${updatedCount} docs`);
     } else {
+      // eslint-disable-next-line no-console
       console.log(`[tenant-migration] ${collectionName}: no updates needed`);
     }
   }

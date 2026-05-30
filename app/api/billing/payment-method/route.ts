@@ -18,9 +18,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "paymentMethodId is required" }, { status: 400 });
     }
 
-    await updatePaymentMethod({ tenantId: auth.user.tenantId, paymentMethodId });
+    await updatePaymentMethod({ tenantId: auth.user.tenantId, paymentMethodId }) as string;
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update payment method" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to update payment method" }, { status: 500 });
   }
 }

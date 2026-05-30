@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { getXeroIntegration, updateXeroSettings } from "@/lib/integrations/xero";
 
@@ -9,7 +9,7 @@ export async function GET() {
     const auth = await requireAdminOrSuperAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const integration = await getXeroIntegration(auth.user.tenantId);
+    const integration = await getXeroIntegration(auth.user.tenantId as string);
     return NextResponse.json({
       ok: true,
       status: {
@@ -22,9 +22,9 @@ export async function GET() {
         stats: integration?.stats || null,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("xero/status error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load Xero status." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load Xero status." }, { status: 500 });
   }
 }
 
@@ -33,10 +33,10 @@ export async function PUT(request: NextRequest) {
     const auth = await requireAdminOrSuperAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     const body = await request.json();
-    const settings = await updateXeroSettings(auth.user.tenantId, auth.user.uid, body || {});
+    const settings = await updateXeroSettings(auth.user.tenantId as string, auth.user.uid, body || {});
     return NextResponse.json({ ok: true, settings });
-  } catch (error: any) {
+  } catch (error) {
     console.error("xero/status PUT error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update settings." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to update settings." }, { status: 500 });
   }
 }

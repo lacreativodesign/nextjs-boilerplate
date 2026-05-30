@@ -1,6 +1,6 @@
 "use client";
 
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { DependencyType } from "@/lib/production/critical-path";
 
 type ZoomLevel = "day" | "week" | "month";

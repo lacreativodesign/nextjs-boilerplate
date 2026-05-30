@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type ClientDoc = {
   companyName?: string;
-  deletedAt?: any;
+  deletedAt?: unknown;
 };
 
 export async function GET() {
@@ -27,9 +27,9 @@ export async function GET() {
       .filter(Boolean);
 
     return NextResponse.json({ ok: true, clients });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/clients list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

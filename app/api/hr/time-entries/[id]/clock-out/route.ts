@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params;
-    const entry = await TimeTrackingService.clockOut(id, me.tenantId, me.uid, parsed.data.breakMinutes || 0);
+    const entry = await TimeTrackingService.clockOut(id, me.tenantId as string, me.uid, parsed.data.breakMinutes || 0);
 
     return NextResponse.json({ ok: true, entry });
   } catch (err) {

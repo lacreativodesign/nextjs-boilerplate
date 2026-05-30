@@ -18,7 +18,7 @@ type ProjectDoc = {
   isDeleted?: boolean;
 };
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() as ProjectDoc;
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (!isOwnedByAm(project, me.uid)) {
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/request-stage-move error:", err);
     return NextResponse.json({ ok: false, error: "Unable to request stage move right now." }, { status: 500 });
   }

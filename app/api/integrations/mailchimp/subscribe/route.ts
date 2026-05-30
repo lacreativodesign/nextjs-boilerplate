@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true, result });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to subscribe contact." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to subscribe contact." }, { status: 500 });
   }
 }

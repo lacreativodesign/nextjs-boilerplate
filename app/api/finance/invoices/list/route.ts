@@ -22,13 +22,13 @@ type InvoiceDoc = {
   exchangeRateDate?: string;
   totalUSD?: number;
   status?: string;
-  dueDate?: any;
-  issuedAt?: any;
-  paidAt?: any;
-  lineItems?: any[];
+  dueDate?: unknown;
+  issuedAt?: unknown;
+  paidAt?: unknown;
+  lineItems?: unknown[];
   notes?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -105,9 +105,9 @@ export async function GET(req: Request) {
         name: auth.user.name || auth.user.fullName || auth.user.displayName || "",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     logError(err, { route: "GET /api/finance/invoices/list" });
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

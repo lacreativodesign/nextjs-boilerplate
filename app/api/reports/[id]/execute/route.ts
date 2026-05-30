@@ -108,7 +108,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
     if (isPlanAccessError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

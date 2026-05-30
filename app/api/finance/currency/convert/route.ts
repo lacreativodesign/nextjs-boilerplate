@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { convertCurrency } from "@/lib/finance/exchangeRates";
-import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { type CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security";
 

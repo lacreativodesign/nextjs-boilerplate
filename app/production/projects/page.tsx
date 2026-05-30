@@ -7,9 +7,9 @@ type ProjectOption = { id: string; projectName: string };
 
 type GanttPayload = {
   project: { id: string; name: string };
-  tasks: any[];
-  dependencies: any[];
-  milestones: any[];
+  tasks: unknown[];
+  dependencies: unknown[];
+  milestones: unknown[];
 };
 
 export default function ProductionProjectsPage() {
@@ -17,7 +17,7 @@ export default function ProductionProjectsPage() {
   const [activeProjectId, setActiveProjectId] = useState<string>("");
   const [data, setData] = useState<GanttPayload | null>(null);
   const [criticalPathIds, setCriticalPathIds] = useState<string[]>([]);
-  const [overAllocatedResources, setOverAllocatedResources] = useState<any[]>([]);
+  const [overAllocatedResources, setOverAllocatedResources] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,12 +28,12 @@ export default function ProductionProjectsPage() {
         setLoading(true);
         setError(null);
         const overview = await fetch("/api/production/overview", { credentials: "include", cache: "no-store" }).then((r) => r.json());
-        const queue = (overview?.myQueueTop10 || []) as any[];
-        const options = queue.map((item) => ({ id: item.id, projectName: item.projectName || item.id }));
+        const queue = (overview?.myQueueTop10 || []) as unknown[];
+        const options = queue.map((item) => ({ id: String((item as Record<string, unknown>).id || ""), projectName: String((item as Record<string, unknown>).projectName || (item as Record<string, unknown>).id || "") }));
         if (!mounted) return;
         setProjects(options);
-        if (options.length) setActiveProjectId(options[0].id);
-      } catch (err) {
+        if (options.length) setActiveProjectId(String(options[0].id));
+      } catch {
         if (!mounted) return;
         setError("Unable to load production projects.");
       } finally {
@@ -75,7 +75,7 @@ export default function ProductionProjectsPage() {
   }, [activeProjectId]);
 
   const preparedTasks = useMemo(() => {
-    return (data?.tasks || []).map((task) => ({ ...task, critical: criticalPathIds.includes(task.id) }));
+    return (data?.tasks || []).map((task) => ({ ...(task as Record<string, unknown>), critical: criticalPathIds.includes(String((task as Record<string, unknown>).id || "")) }));
   }, [data?.tasks, criticalPathIds]);
 
   return (
@@ -102,10 +102,10 @@ export default function ProductionProjectsPage() {
       {!loading && data ? (
         <GanttChart
           projectId={data.project.id}
-          tasks={preparedTasks}
-          dependencies={data.dependencies || []}
-          milestones={data.milestones || []}
-          overAllocatedResources={overAllocatedResources}
+          tasks={preparedTasks as Parameters<typeof GanttChart>[0]["tasks"]}
+          dependencies={(data.dependencies || []) as Parameters<typeof GanttChart>[0]["dependencies"]}
+          milestones={(data.milestones || []) as Parameters<typeof GanttChart>[0]["milestones"]}
+          overAllocatedResources={overAllocatedResources as Parameters<typeof GanttChart>[0]["overAllocatedResources"]}
         />
       ) : null}
     </div>

@@ -39,9 +39,9 @@ export default function SuperAdminUsersPage() {
     if (usersJson?.ok) setUsers(usersJson.users || []);
     if (tenantsJson?.ok) {
       setTenants(
-        (tenantsJson.tenants || []).map((tenant: any) => ({
-          id: tenant.id,
-          name: tenant.name || tenant.slug || tenant.id,
+        (tenantsJson.tenants || []).map((tenant: unknown) => ({
+          id: (tenant as Record<string, unknown>).id,
+          name: (tenant as Record<string, unknown>).name || (tenant as Record<string, unknown>).slug || (tenant as Record<string, unknown>).id,
         }))
       );
       if (!form.tenantId && tenantsJson.tenants?.length) {

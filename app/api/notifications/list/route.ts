@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../admin/_utils";
@@ -23,10 +23,10 @@ type NotificationRecord = {
   createdAtMs: number;
 };
 
-function toDate(value: any): Date | null {
+function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value?.toDate === "function") return value.toDate();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -96,7 +96,7 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
   if (filter === "approvals") {
     merged = merged.filter((item) => isApprovalNotification(item));
   }
-  return merged.slice(0, limit).map(({ createdAtMs, ...rest }) => rest);
+  return merged.slice(0, limit).map(({ _createdAtMs, ...rest }) => rest);
 }
 
 async function getUnreadCount(uid: string, tenantId: string) {
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
     const filter = String(req.nextUrl.searchParams.get("filter") || (unreadOnly ? "unread" : "all"));
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") || 50);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -146,9 +146,9 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({ ok: true, notifications, unreadCount });
-  } catch (err: any) {
+  } catch (err) {
     console.error("notifications list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

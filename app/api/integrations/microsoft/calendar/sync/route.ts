@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "list_calendars") {
-      const calendars = await listOutlookCalendars(auth.user.tenantId);
+      const calendars = await listOutlookCalendars(auth.user.tenantId as string);
       return NextResponse.json({ ok: true, action, calendars: calendars.value || [] });
     }
 

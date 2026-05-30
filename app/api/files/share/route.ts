@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!session?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = schema.parse(await request.json());
-    const file = await FileManager.getFileById(body.fileId, session.tenantId);
+    const file = await FileManager.getFileById(body.fileId, session.tenantId as string);
     if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
     const share = await FileManager.createShare({
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       shareId: share.id,
       shareLink: `${origin}/shared/file/${share.shareToken}`,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to create share" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to create share" }, { status: 500 });
   }
 }

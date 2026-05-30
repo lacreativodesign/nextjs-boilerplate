@@ -70,7 +70,7 @@ export default function ClientReportsPage() {
         throw new Error(json?.error || "Unable to load client reports.");
       }
       setData(json as ClientResponse);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports clients load error", err);
       setError("Unable to load client insights right now.");
     } finally {

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     if (typeof body?.apiKey === "string") {
-      await saveMailchimpApiKey({ tenantId: auth.user.tenantId, userUid: auth.user.uid, apiKey: body.apiKey });
+      await saveMailchimpApiKey({ tenantId: auth.user.tenantId, userUid: auth.user.uid, apiKey: body.apiKey }) as string;
       return NextResponse.json({ ok: true, message: "Mailchimp API key stored." });
     }
 
@@ -57,8 +57,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Mailchimp OAuth failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Mailchimp OAuth failed." }, { status: 500 });
   }
 }
 
@@ -92,9 +92,9 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(new URL(`${payload.returnTo}?mailchimp_connected=1`, request.url));
-  } catch (oauthError: any) {
+  } catch (oauthError) {
     return NextResponse.redirect(
-      new URL(`/admin/settings/integrations/mailchimp?mailchimp_error=${encodeURIComponent(oauthError?.message || "oauth_failed")}`, request.url)
+      new URL(`/admin/settings/integrations/mailchimp?mailchimp_error=${encodeURIComponent((oauthError instanceof Error ? oauthError.message : undefined) || "oauth_failed")}`, request.url)
     );
   }
 }

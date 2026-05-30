@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 const STATUS_FLOW = ["Submitted", "In Review", "Approved", "In Progress", "Completed"] as const;
 const TERMINAL_STATUSES = ["Rejected", "Completed"] as const;
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -49,7 +49,7 @@ function canMoveToReview(role: string) {
   return isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role);
 }
 
-function requiresApproval(data: Record<string, any>) {
+function requiresApproval(data: Record<string, unknown>) {
   const type = String(data.type || "");
   const impactsScope = type === "Scope Change";
   const impactsTimeline = typeof data.estimatedTimelineDays === "number" && data.estimatedTimelineDays > 0;
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let projectData: Record<string, any> | null = null;
+    let projectData: Record<string, unknown> | null = null;
     const projectId = data.projectId || "";
 
     if ((isAccountManager(role) || isProduction(role)) && projectId) {
@@ -174,7 +174,7 @@ export async function POST(req: Request) {
       note: note || undefined,
     });
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: toStatus,
       statusHistory,
       updatedAt: serverNow,
@@ -262,7 +262,7 @@ export async function POST(req: Request) {
 
     const tenantId = String(data.tenantId || me.tenantId || "");
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId || null);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const notifications: Promise<void>[] = [];
     const changeRequestMessage = `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`;
     const notificationType = toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info";

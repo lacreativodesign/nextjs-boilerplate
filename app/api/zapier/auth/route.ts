@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireZapierApiKey } from "@/app/api/zapier/_utils";
 
 export const runtime = "nodejs";

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { listCalendlyEvents, syncCalendlyEventsFromApi } from "@/lib/integrations/calendly";
@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid query parameters." }, { status: 400 });
 
     if (parsed.data.sync) {
-      await syncCalendlyEventsFromApi(me.tenantId, parsed.data.limit || 20);
+      await syncCalendlyEventsFromApi(me.tenantId as string, parsed.data.limit || 20);
     }
 
-    const events = await listCalendlyEvents(me.tenantId, parsed.data.limit || 50);
+    const events = await listCalendlyEvents(me.tenantId as string, parsed.data.limit || 50);
     return NextResponse.json({ ok: true, events });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/integrations/calendly/events", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load Calendly events." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load Calendly events." }, { status: 400 });
   }
 }

@@ -52,8 +52,8 @@ export async function POST(req: Request) {
       setPasswordLink: inviteResult.setPasswordLink,
       emailError: inviteResult.emailError,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("CLIENT INVITE ERROR:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

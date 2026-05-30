@@ -84,9 +84,9 @@ export default function SalesManagerLeadsPage() {
         if (!alive) return;
         setRows(Array.isArray(leadsJson.leads) ? leadsJson.leads : []);
         setOwners(Array.isArray(ownersJson.owners) ? ownersJson.owners : []);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        setError(e?.message || "Forbidden");
+        setError((e instanceof Error ? e.message : undefined) || "Forbidden");
         setRows([]);
       } finally {
         if (!alive) return;

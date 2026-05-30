@@ -41,10 +41,10 @@ export async function GET(request: Request) {
       employees,
       attendance,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Attendance load error:", err);
     return NextResponse.json(
-      { success: false, message: err.message },
+      { success: false, message: (err as Record<string, unknown>).message },
       { status: 500 }
     );
   }

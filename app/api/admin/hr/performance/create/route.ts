@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const userId = String(body?.userId || "").trim();
     const period = String(body?.period || "").trim();
     const rating = body?.rating === null || body?.rating === undefined || body?.rating === "" ? null : Number(body.rating);
-    const tags = Array.isArray(body?.tags) ? body.tags.map((tag: any) => String(tag || "").trim()).filter(Boolean) : [];
+    const tags = Array.isArray(body?.tags) ? body.tags.map((tag: unknown) => String(tag || "").trim()).filter(Boolean) : [];
     const notes = String(body?.notes || "").trim();
 
     if (!userId || !period) {

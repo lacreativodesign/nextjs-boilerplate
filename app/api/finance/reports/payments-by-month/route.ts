@@ -9,7 +9,7 @@ function toCSV(rows: string[][]) {
   return rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
-function monthKey(value: any) {
+function monthKey(value: unknown) {
   const iso = toISO(value);
   if (!iso) return null;
   const date = new Date(iso);
@@ -50,7 +50,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-payments-by-month.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports payments-by-month error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

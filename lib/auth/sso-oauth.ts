@@ -563,5 +563,5 @@ export async function listSsoAuditLogs(tenantId: string, limit = 100) {
     .limit(Math.min(Math.max(limit, 1), 200))
     .get();
 
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+  return snap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 }

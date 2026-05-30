@@ -41,14 +41,14 @@ type ChangeRequestDoc = {
   estimatedTimelineDays?: number | null;
   approvalStatus?: string | null;
   approvalId?: string | null;
-  approvedAt?: any;
+  approvedAt?: unknown;
   approvedByUid?: string | null;
   attachedFileIds?: string[];
-  createdAt?: any;
-  updatedAt?: any;
-  completedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  completedAt?: unknown;
   isDeleted?: boolean;
-  statusHistory?: any[];
+  statusHistory?: unknown[];
 };
 
 function requiresApproval(data: ChangeRequestDoc) {
@@ -144,9 +144,9 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ ok: true, changeRequests });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/change-requests list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

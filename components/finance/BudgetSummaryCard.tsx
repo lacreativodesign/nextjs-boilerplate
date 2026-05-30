@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CurrencyCode, formatCurrency } from "@/lib/finance/currencies";
+import { type CurrencyCode, formatCurrency } from "@/lib/finance/currencies";
 
 interface BudgetSummaryCardProps {
   name: string;

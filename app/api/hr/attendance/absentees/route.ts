@@ -14,19 +14,19 @@ export async function GET() {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     // Convert attendance data into quick lookup map
-    const attendanceMap: Record<string, any[]> = {};
+    const attendanceMap: Record<string, unknown[]> = {};
     attendanceSnap.forEach((doc) => {
       attendanceMap[doc.id] = doc.data().logs || [];
     });
 
-    let absentees: any[] = [];
+    const absentees: unknown[] = [];
 
     usersSnap.forEach((userDoc) => {
       const user = userDoc.data();
       const logs = attendanceMap[userDoc.id] || [];
 
       const loggedToday = logs.some(
-        (log) => new Date(log.timestamp) >= todayStart
+        (log) => new Date((log as Record<string, unknown>).timestamp) >= todayStart
       );
 
       if (!loggedToday) {

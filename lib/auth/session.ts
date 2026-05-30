@@ -48,10 +48,10 @@ function sessionCacheKeyFromToken(token: string) {
   return cacheKeys.session(hashToken(token));
 }
 
-function toDate(value: any): Date | null {
+function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as Record<string, unknown>).toDate();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

@@ -14,21 +14,21 @@ const ALLOWED_AGENT_TYPES = new Set<AgentType>(["coo", "finance", "sales"]);
 
 export async function GET() {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const tasks = await listAgentTasks(user.tenantId, 50);
+    const tasks = await listAgentTasks(user.tenantId || "", 50);
     return NextResponse.json({ ok: true, tasks });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
@@ -51,14 +51,14 @@ export async function POST(req: Request) {
     }
 
     const task = await createAgentTask({
-      tenantId: user.tenantId,
+      tenantId: user.tenantId || "",
       agentType: agentType as AgentType,
       prompt: prompt.trim(),
       createdBy: user.uid,
     });
 
     return NextResponse.json({ ok: true, task });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

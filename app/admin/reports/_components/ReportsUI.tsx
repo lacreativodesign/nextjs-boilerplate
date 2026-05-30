@@ -6,7 +6,7 @@ import { formatDate } from "@/components/finance/financeUtils";
 
 export type SortDirection = "asc" | "desc";
 
-export function useSortableData<T extends Record<string, any>>(items: T[], key: string, direction: SortDirection) {
+export function useSortableData<T extends Record<string, unknown>>(items: T[], key: string, direction: SortDirection) {
   return useMemo(() => {
     const sorted = [...items];
     sorted.sort((a, b) => {

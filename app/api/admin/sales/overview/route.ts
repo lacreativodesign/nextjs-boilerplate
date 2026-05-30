@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const [leadDocs, dealDocs, eventDocs] = await Promise.all([
       queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
@@ -27,41 +27,41 @@ export async function GET() {
     const deals = dealDocs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
 
     const totalLeads = leads.length;
-    const activeDeals = deals.filter((deal: any) => !String(deal.stage || "").toLowerCase().includes("closed")).length;
+    const activeDeals = deals.filter((deal: unknown) => !String((deal as Record<string, unknown>).stage || "").toLowerCase().includes("closed")).length;
     const pipelineValue = deals
-      .filter((deal: any) => !String(deal.stage || "").toLowerCase().includes("closed"))
-      .reduce((sum: number, deal: any) => sum + Number(deal.valueUsd || 0), 0);
+      .filter((deal: unknown) => !String((deal as Record<string, unknown>).stage || "").toLowerCase().includes("closed"))
+      .reduce((sum: number, deal: unknown) => sum + Number((deal as Record<string, unknown>).valueUsd || 0), 0);
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const closedWonThisMonth = deals.filter((deal: any) => {
-      const stage = String(deal.stage || "");
+    const closedWonThisMonth = deals.filter((deal: unknown) => {
+      const stage = String((deal as Record<string, unknown>).stage || "");
       if (stage !== "Closed Won") return false;
-      const closedAt = deal.closedWonAt || deal.updatedAt || deal.createdAt;
+      const closedAt = (deal as Record<string, unknown>).closedWonAt || (deal as Record<string, unknown>).updatedAt || (deal as Record<string, unknown>).createdAt;
       const iso = toISO(closedAt);
       if (!iso) return false;
       const d = new Date(iso);
       return d >= startOfMonth;
     }).length;
 
-    const closedWonTotal = deals.filter((deal: any) => String(deal.stage || "") === "Closed Won").length;
+    const closedWonTotal = deals.filter((deal: unknown) => String((deal as Record<string, unknown>).stage || "") === "Closed Won").length;
     const conversionRate = totalLeads ? (closedWonTotal / totalLeads) * 100 : 0;
 
     const stageMap = new Map<string, { stage: string; count: number; value: number }>();
-    deals.forEach((deal: any) => {
-      const stage = String(deal.stage || "New");
+    deals.forEach((deal: unknown) => {
+      const stage = String((deal as Record<string, unknown>).stage || "New");
       const entry = stageMap.get(stage) || { stage, count: 0, value: 0 };
       entry.count += 1;
-      entry.value += Number(deal.valueUsd || 0);
+      entry.value += Number((deal as Record<string, unknown>).valueUsd || 0);
       stageMap.set(stage, entry);
     });
 
     const ownerMap = new Map<string, { ownerName: string; deals: number; value: number }>();
-    deals.forEach((deal: any) => {
-      const ownerName = String(deal.ownerName || "Unassigned");
+    deals.forEach((deal: unknown) => {
+      const ownerName = String((deal as Record<string, unknown>).ownerName || "Unassigned");
       const entry = ownerMap.get(ownerName) || { ownerName, deals: 0, value: 0 };
       entry.deals += 1;
-      entry.value += Number(deal.valueUsd || 0);
+      entry.value += Number((deal as Record<string, unknown>).valueUsd || 0);
       ownerMap.set(ownerName, entry);
     });
 
@@ -91,9 +91,9 @@ export async function GET() {
       topOwners: Array.from(ownerMap.values()).sort((a, b) => b.value - a.value).slice(0, 5),
       recentActivity,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

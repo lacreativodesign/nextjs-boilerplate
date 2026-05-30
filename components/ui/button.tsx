@@ -3,10 +3,13 @@ import * as React from "react";
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "outline" | "ghost" | "link";
   size?: "default" | "sm" | "lg";
+  loading?: boolean;
+  loadingText?: string;
+  fullWidth?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", ...props }, ref) => {
+  ({ className, variant = "default", size = "default", loading, loadingText, fullWidth, children, ...props }, ref) => {
     const baseStyles =
       "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
@@ -23,7 +26,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       lg: "h-11 px-8",
     };
 
-    return <button className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className || ""}`} ref={ref} {...props} />;
+    return (
+      <button
+        className={`${baseStyles} ${variants[variant]} ${sizes[size]}${fullWidth ? " w-full" : ""} ${className || ""}`}
+        ref={ref}
+        {...props}
+      >
+        {loading ? (loadingText || "Loading...") : children}
+      </button>
+    );
   },
 );
 Button.displayName = "Button";

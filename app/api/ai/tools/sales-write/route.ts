@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/tenant/server";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -11,7 +11,7 @@ const VALID_STAGES = ["New", "Contacted", "Qualified", "Proposal", "Negotiation"
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       await writeAuditLog({
         tenantId: user.tenantId,
         actorUserId: user.uid,
-        actorName: user.fullName || user.email,
+        actorName: String(user.fullName || user.email || ""),
         actorRole: user.role,
         actionType: "ai.sales.update_lead_status",
         entityType: "lead",
@@ -71,12 +71,12 @@ export async function POST(req: NextRequest) {
       const taskSnap = await adminDb.collection("agent_tasks").doc(taskId).get();
       if (taskSnap.exists) {
         const taskData = taskSnap.data() || {};
-        const actions = (taskData.proposedActions || []).map((a: any) =>
-          a.id === actionId
-            ? { ...a, status: "executed", executedAt: new Date().toISOString() }
+        const actions = (taskData.proposedActions || []).map((a: unknown) =>
+          (a as Record<string, unknown>).id === actionId
+            ? { ...(a as Record<string, unknown>), status: "executed", executedAt: new Date().toISOString() }
             : a
         );
-        const allResolved = actions.every((a: any) => a.status !== "pending");
+        const allResolved = actions.every((a: unknown) => (a as Record<string, unknown>).status !== "pending");
         await adminDb.collection("agent_tasks").doc(taskId).set(
           { proposedActions: actions, ...(allResolved ? { status: "completed" } : {}) },
           { merge: true }
@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[SALES_WRITE]", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

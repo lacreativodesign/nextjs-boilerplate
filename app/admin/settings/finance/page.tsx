@@ -60,9 +60,9 @@ export default function FinanceSettingsPage() {
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
+    } catch (err) {
       console.error("finance settings load error", err);
-      setError(err.message || "Unable to load finance settings.");
+      setError((err as Record<string, unknown>).message || "Unable to load finance settings.");
     } finally {
       setLoading(false);
     }
@@ -112,9 +112,9 @@ export default function FinanceSettingsPage() {
         throw new Error(data?.error || "Unable to save settings.");
       }
       setSuccess("Finance settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("finance settings save error", err);
-      setError(err.message || "Unable to save finance settings.");
+      setError((err as Record<string, unknown>).message || "Unable to save finance settings.");
     } finally {
       setSaving(false);
     }

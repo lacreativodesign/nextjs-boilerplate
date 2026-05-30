@@ -156,9 +156,9 @@ export default function ClientBillingPage() {
         setInvoices(invList);
         setPayments(payList);
         setChangeRequests(crList);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load billing.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load billing.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -235,8 +235,8 @@ export default function ClientBillingPage() {
         throw new Error(payload?.error || "Unable to start payment.");
       }
       window.location.href = payload.checkoutUrl;
-    } catch (err: any) {
-      setCheckoutError(err?.message || "Unable to start payment.");
+    } catch (err) {
+      setCheckoutError((err instanceof Error ? err.message : undefined) || "Unable to start payment.");
     } finally {
       setCheckoutLoading(false);
     }

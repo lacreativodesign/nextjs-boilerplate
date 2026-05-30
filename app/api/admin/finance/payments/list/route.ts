@@ -16,9 +16,9 @@ type PaymentDoc = {
   amountUsd?: number;
   method?: string;
   status?: string;
-  paidAt?: any;
-  createdAt?: any;
-  updatedAt?: any;
+  paidAt?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const docs = await queryWithTenant(
       adminDb.collection("payments").where("isDeleted", "==", false).limit(500),
       tenantId
@@ -63,9 +63,9 @@ export async function GET() {
         name: auth.user.name || auth.user.fullName || auth.user.displayName || "",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/payments list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

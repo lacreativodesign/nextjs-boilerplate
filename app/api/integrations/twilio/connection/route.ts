@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { getTwilioIntegration, TWILIO_TRIGGER_TYPES, updateTwilioIntegration } from "@/lib/integrations/twilio";
@@ -20,7 +20,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const connection = await getTwilioIntegration(auth.user.tenantId);
+    const connection = await getTwilioIntegration(auth.user.tenantId as string);
 
     return NextResponse.json({
       ok: true,
@@ -33,9 +33,9 @@ export async function GET() {
         hasCredentials: Boolean(connection?.accountSid || process.env.TWILIO_ACCOUNT_SID) && Boolean(connection?.authToken || process.env.TWILIO_AUTH_TOKEN),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("twilio/connection GET error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load Twilio configuration." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load Twilio configuration." }, { status: 500 });
   }
 }
 
@@ -59,8 +59,8 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("twilio/connection PATCH error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update Twilio configuration." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to update Twilio configuration." }, { status: 400 });
   }
 }

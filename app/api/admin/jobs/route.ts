@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { enqueueJob, getJobMetrics, listJobs, processDueJobs } from "@/lib/jobs/job-queue";

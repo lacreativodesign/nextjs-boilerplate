@@ -1,6 +1,6 @@
 "use client";
 
-import { CurrencyCode, formatCurrency } from "@/lib/finance/currencies";
+import { type CurrencyCode, formatCurrency } from "@/lib/finance/currencies";
 
 interface TaxSummaryProps {
   subtotal: number;

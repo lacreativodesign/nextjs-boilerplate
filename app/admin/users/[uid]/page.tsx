@@ -37,7 +37,7 @@ export default function EditUserPage() {
           role: data.user.role || "sales",
           disabled: !!data.user.disabled,
         });
-      } catch (e) {
+      } catch {
         setError("Error loading user");
       } finally {
         setLoading(false);
@@ -70,7 +70,7 @@ export default function EditUserPage() {
       }
 
       router.push("/users");
-    } catch (e) {
+    } catch {
       setError("Error updating user");
       setSaving(false);
     }
@@ -95,7 +95,7 @@ export default function EditUserPage() {
       }
 
       router.push("/users");
-    } catch (e) {
+    } catch {
       setError("Error deleting user");
       setDeleting(false);
     }

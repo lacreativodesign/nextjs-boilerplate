@@ -1,6 +1,6 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { AppError } from "@/lib/errors";
-import { CurrencyCode, getCurrency } from "./currencies";
+import { type CurrencyCode, getCurrency } from "./currencies";
 import { QUERY_CACHE_TTL_MS, isCacheFresh } from "@/lib/cache/query-client";
 import { CACHE_TTL_SECONDS, cacheKeys, getCached, setCached } from "@/lib/cache/redis-client";
 

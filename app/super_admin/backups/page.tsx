@@ -38,8 +38,8 @@ export default function SuperAdminBackupsPage() {
         if (active) {
           setBackups(payload.backups || []);
         }
-      } catch (err: any) {
-        const msg = err?.message || "";
+      } catch (err) {
+        const msg = (err instanceof Error ? err.message : undefined) || "";
         const friendly =
           msg.includes("Session expired") || msg.includes("Unauthorized")
             ? "Your session has expired. Please refresh the page and log in again."
@@ -88,8 +88,8 @@ export default function SuperAdminBackupsPage() {
       }
 
       window.alert("Backup restore started successfully.");
-    } catch (err: any) {
-      window.alert(err?.message || "Restore failed");
+    } catch (err) {
+      window.alert((err instanceof Error ? err.message : undefined) || "Restore failed");
     } finally {
       setRestoringBackupId(null);
     }

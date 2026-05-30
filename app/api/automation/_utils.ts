@@ -5,5 +5,5 @@ export async function requireAutomationAdmin() {
   const me = await getCurrentUser();
   if (!me) return { ok: false as const, status: 401, error: "Unauthorized" };
   if (!isAdminOrSuper(me.role)) return { ok: false as const, status: 403, error: "Forbidden" };
-  return { ok: true as const, user: { ...me, tenantId: normalizeTenantId(me.tenantId) } };
+  return { ok: true as const, user: { ...me, tenantId: normalizeTenantId(me.tenantId as string | null | undefined) } };
 }

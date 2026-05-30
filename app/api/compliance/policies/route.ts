@@ -23,7 +23,7 @@ export async function GET() {
   if (!me?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canManageCompliance(me.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const policies = await listRetentionPolicies(me.tenantId);
+  const policies = await listRetentionPolicies(me.tenantId as string);
   return NextResponse.json({ policies });
 }
 

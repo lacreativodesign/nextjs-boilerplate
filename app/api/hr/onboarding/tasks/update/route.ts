@@ -28,15 +28,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Task not found" }, { status: 404 });
     }
     const incomingSteps = Array.isArray(body?.steps) ? body.steps : existing?.steps || [];
-    const updatedSteps = incomingSteps.map((step: any) => ({
-      title: String(step?.title || "").trim(),
-      description: String(step?.description || "").trim(),
-      required: Boolean(step?.required),
-      isDone: Boolean(step?.isDone),
-      doneAt: step?.isDone ? step?.doneAt || new Date().toISOString() : null,
+    const updatedSteps = incomingSteps.map((step: unknown) => ({
+      title: String((step as Record<string, unknown>)?.title || "").trim(),
+      description: String((step as Record<string, unknown>)?.description || "").trim(),
+      required: Boolean((step as Record<string, unknown>)?.required),
+      isDone: Boolean((step as Record<string, unknown>)?.isDone),
+      doneAt: (step as Record<string, unknown>)?.isDone ? (step as Record<string, unknown>)?.doneAt || new Date().toISOString() : null,
     }));
 
-    const allDone = updatedSteps.length > 0 && updatedSteps.every((step: any) => step.isDone);
+    const allDone = updatedSteps.length > 0 && updatedSteps.every((step: unknown) => (step as Record<string, unknown>).isDone);
     const requestedStatus = String(body?.status || existing?.status || "Not Started");
     const status = allDone ? "Completed" : requestedStatus;
 

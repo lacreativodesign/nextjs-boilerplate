@@ -24,7 +24,7 @@ type ProjectDoc = {
   isDeleted?: boolean;
 };
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const description = cleanString(body?.description);
     const priority = cleanString(body?.priority) || "Medium";
     const attachedFileIds = Array.isArray(body?.attachedFileIds)
-      ? body.attachedFileIds.map((id: any) => cleanString(id)).filter(Boolean)
+      ? body.attachedFileIds.map((id: unknown) => cleanString(id)).filter(Boolean)
       : [];
 
     if (!projectId) {
@@ -245,7 +245,7 @@ export async function POST(req: Request) {
     getUsersByRoles(["am_manager", "admin"], tenantId).then((managers) => {
       return Promise.all(managers.map((manager) =>
         sendEmail({
-          to: manager.email || "",
+          to: manager.email as unknown || "",
           subject: `🔄 New change request — ${project.projectName || "Project"}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

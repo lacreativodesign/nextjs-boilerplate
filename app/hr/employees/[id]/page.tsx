@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 
 export default function EmployeeProfilePage() {
   const { id } = useParams();
-  const [employee, setEmployee] = useState<any>(null);
+  const [employee, setEmployee] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,10 +51,10 @@ export default function EmployeeProfilePage() {
       >
         {/* HEADER */}
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-          {employee.name}
+          {String((employee as Record<string, unknown>).name ?? "")}
         </h2>
 
-        <p style={{ color: "#6b7280", marginBottom: 25 }}>{employee.email}</p>
+        <p style={{ color: "#6b7280", marginBottom: 25 }}>{String((employee as Record<string, unknown>).email ?? "")}</p>
 
         {/* GRID */}
         <div
@@ -64,12 +64,12 @@ export default function EmployeeProfilePage() {
             gap: 20,
           }}
         >
-          <ProfileCard label="Role" value={employee.role} />
-          <ProfileCard label="Department" value={employee.department} />
-          <ProfileCard label="Status" value={employee.status} />
+          <ProfileCard label="Role" value={(employee as Record<string, unknown>).role} />
+          <ProfileCard label="Department" value={(employee as Record<string, unknown>).department} />
+          <ProfileCard label="Status" value={(employee as Record<string, unknown>).status} />
           <ProfileCard
             label="Joined"
-            value={new Date(employee.createdAt).toLocaleDateString()}
+            value={new Date(String((employee as Record<string, unknown>).createdAt || "")).toLocaleDateString()}
           />
         </div>
 
@@ -115,7 +115,7 @@ export default function EmployeeProfilePage() {
   );
 }
 
-function ProfileCard({ label, value }: { label: string; value: string }) {
+function ProfileCard({ label, value }: { label: string; value: unknown }) {
   return (
     <div
       style={{
@@ -126,7 +126,7 @@ function ProfileCard({ label, value }: { label: string; value: string }) {
       }}
     >
       <p style={{ fontSize: 14, color: "#6b7280" }}>{label}</p>
-      <p style={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>{value}</p>
+      <p style={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>{String(value ?? "")}</p>
     </div>
   );
 }

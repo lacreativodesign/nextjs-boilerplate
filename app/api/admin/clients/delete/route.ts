@@ -17,14 +17,14 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!canDeleteClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await req.json();
   } catch {
     body = null;
   }
 
-  const id = String(body?.id || body?.clientId || "").trim();
+  const id = String((body as Record<string, unknown>)?.id || (body as Record<string, unknown>)?.clientId || "").trim();
   if (!id) return NextResponse.json({ ok: false, error: "Client id is required" }, { status: 400 });
 
   const ref = db.collection("clients").doc(id);
@@ -32,7 +32,8 @@ export async function POST(req: Request) {
   if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
   const data = snap.data() || {};
-  if ((data as any).deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+  const d = data as Record<string, unknown>;
+  if (d.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
   const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -47,13 +48,13 @@ export async function POST(req: Request) {
 
   try {
     await logEvent({
-      tenantId: String((data as any).tenantId || ""),
+      tenantId: String(d.tenantId || ""),
       type: "client.deleted",
       title: "Client deleted",
-      description: `${String((data as any).companyName || "Client")} deleted.`,
+      description: `${String(d.companyName || "Client")} deleted.`,
       entityType: "client",
       entityId: id,
-      actor: { uid: me.uid, name: me.name || me.fullName || "" },
+      actor: { uid: me.uid, name: String(me.name || me.fullName || "") },
       metadata: {
         ip: getClientIp(req),
         userAgent: req.headers.get("user-agent") || "",
@@ -65,12 +66,12 @@ export async function POST(req: Request) {
         changes: [
           {
             field: "deletedAt",
-            oldValue: (data as any).deletedAt || null,
+            oldValue: d.deletedAt || null,
             newValue: "serverTimestamp",
           },
           {
             field: "deletedBy",
-            oldValue: (data as any).deletedBy || null,
+            oldValue: d.deletedBy || null,
             newValue: me.uid,
           },
         ],

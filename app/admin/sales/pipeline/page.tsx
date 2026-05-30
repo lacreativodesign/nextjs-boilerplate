@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import PipelineKanban, { PipelineDeal } from "@/components/sales/PipelineKanban";
+import type PipelineKanban, { PipelineDeal } from "@/components/sales/PipelineKanban";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";

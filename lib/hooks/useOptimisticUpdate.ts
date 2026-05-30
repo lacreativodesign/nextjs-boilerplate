@@ -122,7 +122,7 @@ export function useOptimisticUpdate<T extends { id: string }>(
           pendingDeletedItems.current.delete(item.id);
           toast.dismiss(toastId);
           toastSuccess(successMessage);
-        } catch (error) {
+        } catch {
           pendingDeletedItems.current.delete(item.id);
           setItems(previousSnapshot);
           toast.dismiss(toastId);

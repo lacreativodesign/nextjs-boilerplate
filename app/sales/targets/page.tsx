@@ -56,9 +56,9 @@ export default function SalesTargetsPage() {
         if (!res.ok) throw new Error(data?.error || "Failed to load targets");
         if (!alive) return;
         setTargets(data?.targets || data?.users || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err.message || "Failed to load targets");
+        setError((err as Record<string, unknown>).message || "Failed to load targets");
       } finally {
         if (alive) setLoading(false);
       }

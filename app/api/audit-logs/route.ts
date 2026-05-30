@@ -27,13 +27,14 @@ function isAuditViewer(role?: string | null) {
   return normalized === "admin" || normalized === "super_admin" || normalized === "owner";
 }
 
-function serializeLog(log: any) {
-  const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : log.timestamp;
-  const createdAt = log.createdAt?.toDate ? log.createdAt.toDate() : log.createdAt;
+function serializeLog(log: unknown): Record<string, unknown> & { timestamp: string | null; createdAt: string | null } {
+  const logRecord = log as Record<string, unknown>;
+  const timestamp = typeof (logRecord.timestamp as { toDate?: () => Date } | null)?.toDate === "function" ? (logRecord.timestamp as { toDate: () => Date }).toDate() : logRecord.timestamp;
+  const createdAt = typeof (logRecord.createdAt as { toDate?: () => Date } | null)?.toDate === "function" ? (logRecord.createdAt as { toDate: () => Date }).toDate() : logRecord.createdAt;
   return {
-    ...log,
-    timestamp: timestamp ? new Date(timestamp).toISOString() : null,
-    createdAt: createdAt ? new Date(createdAt).toISOString() : null,
+    ...logRecord,
+    timestamp: timestamp ? new Date(timestamp as string | number | Date).toISOString() : null,
+    createdAt: createdAt ? new Date(createdAt as string | number | Date).toISOString() : null,
   };
 }
 
@@ -43,7 +44,7 @@ function escapeCsv(value: unknown) {
   return `"${raw.replace(/"/g, '""')}"`;
 }
 
-function toCsv(logs: any[]) {
+function _toCsv(logs: unknown[]) {
   const headers = [
     "timestamp",
     "tenantId",
@@ -61,20 +62,20 @@ function toCsv(logs: any[]) {
     "changes",
   ];
   const rows = logs.map((log) => [
-    escapeCsv(log.timestamp),
-    escapeCsv(log.tenantId),
-    escapeCsv(log.userId),
-    escapeCsv(log.userEmail),
-    escapeCsv(log.userName),
-    escapeCsv(log.action),
-    escapeCsv(log.resource),
-    escapeCsv(log.resourceId || ""),
-    escapeCsv(log.status),
-    escapeCsv(log.metadata?.ip || ""),
-    escapeCsv(log.metadata?.userAgent || ""),
-    escapeCsv(log.metadata?.sessionId || ""),
-    escapeCsv(log.errorMessage || ""),
-    escapeCsv(log.changes || []),
+    escapeCsv((log as Record<string, unknown>).timestamp),
+    escapeCsv((log as Record<string, unknown>).tenantId),
+    escapeCsv((log as Record<string, unknown>).userId),
+    escapeCsv((log as Record<string, unknown>).userEmail),
+    escapeCsv((log as Record<string, unknown>).userName),
+    escapeCsv((log as Record<string, unknown>).action),
+    escapeCsv((log as Record<string, unknown>).resource),
+    escapeCsv((log as Record<string, unknown>).resourceId || ""),
+    escapeCsv((log as Record<string, unknown>).status),
+    escapeCsv(((log as Record<string, unknown>).metadata as Record<string, unknown>)?.ip || ""),
+    escapeCsv(((log as Record<string, unknown>).metadata as Record<string, unknown>)?.userAgent || ""),
+    escapeCsv(((log as Record<string, unknown>).metadata as Record<string, unknown>)?.sessionId || ""),
+    escapeCsv((log as Record<string, unknown>).errorMessage || ""),
+    escapeCsv((log as Record<string, unknown>).changes || []),
   ]);
   return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 }
@@ -175,7 +176,7 @@ function createCsvStream(options: {
       }
 
       snapshot.docs.forEach((doc) => {
-        const serialized = serializeLog({ id: doc.id, ...doc.data() });
+        const serialized = serializeLog({ id: doc.id, ...(doc.data() as Record<string, unknown>) });
         const row = [
           escapeCsv(serialized.timestamp),
           escapeCsv(serialized.tenantId),
@@ -186,9 +187,9 @@ function createCsvStream(options: {
           escapeCsv(serialized.resource),
           escapeCsv(serialized.resourceId || ""),
           escapeCsv(serialized.status),
-          escapeCsv(serialized.metadata?.ip || ""),
-          escapeCsv(serialized.metadata?.userAgent || ""),
-          escapeCsv(serialized.metadata?.sessionId || ""),
+          escapeCsv((serialized.metadata as Record<string, unknown>)?.ip || ""),
+          escapeCsv((serialized.metadata as Record<string, unknown>)?.userAgent || ""),
+          escapeCsv((serialized.metadata as Record<string, unknown>)?.sessionId || ""),
           escapeCsv(serialized.errorMessage || ""),
           escapeCsv(serialized.changes || []),
         ].join(",");
@@ -243,10 +244,10 @@ export async function GET(request: Request) {
     if (params.format === "csv") {
       try {
         await AuditLogger.logSuccess({
-          tenantId: me.tenantId,
+          tenantId: me.tenantId as string,
           userId: me.uid,
-          userEmail: String(me.email || ""),
-          userName: String(me.name || me.fullName || ""),
+          userEmail: String((me as Record<string, unknown>).email || ""),
+          userName: String((me as Record<string, unknown>).name || (me as Record<string, unknown>).fullName || ""),
           action: "export",
           resource: "report",
           metadata: {
@@ -258,7 +259,7 @@ export async function GET(request: Request) {
         console.error("audit export log error:", auditError);
       }
       const stream = createCsvStream({
-        tenantId: me.tenantId,
+        tenantId: me.tenantId as string,
         filters,
       });
       return new NextResponse(stream, {
@@ -271,7 +272,7 @@ export async function GET(request: Request) {
     }
 
     const { logs, total } = await AuditLogger.getLogs({
-      tenantId: me.tenantId,
+      tenantId: me.tenantId as string,
       filters,
       limit: params.limit,
       offset,

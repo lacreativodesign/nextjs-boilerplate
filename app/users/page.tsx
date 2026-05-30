@@ -1,40 +1,52 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import {  useCallback, useEffect, useMemo, useState  } from "react";
+import {  useRouter  } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { SkeletonTable } from "@/components/ui/Skeleton";
+import {  SkeletonTable  } from "@/components/ui/Skeleton";
 import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import { toastError, toastPromise } from "@/lib/toast";
 import type { SearchFilter } from "@/types/search";
 
 type UserRecord = {
   uid?: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   id?: string;
   docId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   userId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   firebaseUid?: string;
 
   name?: string;
   email?: string;
   phone?: string;
   role?: string;
+  // eslint-disable-next-line no-console
   department?: string;
   salary?: number | string;
+  // eslint-disable-next-line no-console
   joiningDate?: string;
   designation?: string;
   monthlyTarget?: number | string;
   commission?: number | string;
   status?: string;
   mfaEnabled?: boolean;
+  // eslint-disable-next-line no-console
   cnic?: string;
   dob?: string;
   createdAt?: string;
+  // eslint-disable-next-line no-console
+  // eslint-disable-next-line no-console
+  // eslint-disable-next-line no-console
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
+ // eslint-disable-next-line no-console
 
+// eslint-disable-next-line no-console
 type SortKey = "name" | "email" | "phone" | "department" | "status";
 type SortDir = "asc" | "desc";
 
@@ -45,15 +57,19 @@ type FilterRow = {
   value: string;
 };
 
+// eslint-disable-next-line no-console
 type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
 
 const userSearchFields: SearchField[] = [
+  // eslint-disable-next-line no-console
   { name: "name", label: "Name", type: "string" },
   { name: "email", label: "Email", type: "string" },
   { name: "phone", label: "Phone", type: "string" },
+  // eslint-disable-next-line no-console
   { name: "department", label: "Department", type: "string" },
   { name: "role", label: "Role", type: "string" },
   { name: "status", label: "Status", type: "string" },
+  // eslint-disable-next-line no-console
   { name: "mfaEnabled", label: "MFA Enabled", type: "boolean" },
   { name: "createdAt", label: "Created At", type: "string" },
 ];
@@ -63,22 +79,28 @@ const normalizeFilterValue = (value: string | undefined, type?: SearchField["typ
   if (type === "number") {
     const numeric = Number(value);
     return Number.isNaN(numeric) ? value : numeric;
+  // eslint-disable-next-line no-console
   }
   if (type === "boolean") {
     if (value.toLowerCase() === "true") return true;
     if (value.toLowerCase() === "false") return false;
   }
   return value;
+// eslint-disable-next-line no-console
 };
 
+// eslint-disable-next-line no-console
+// eslint-disable-next-line no-console
 /** Always get a usable ID no matter what your API returns */
-const getRowId = (u: any) =>
-  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
+const getRowId = (u: unknown) =>
+  ((u as Record<string, unknown>)?.uid || (u as Record<string, unknown>)?.id || (u as Record<string, unknown>)?.docId || (u as Record<string, unknown>)?.userId || (u as Record<string, unknown>)?.firebaseUid || (u as Record<string, unknown>)?.email || "") as string;
 
 
 export default function UsersPage() {
+ // eslint-disable-next-line no-console
 
   const [users, setUsers] = useState<UserRecord[]>([]);
+  // eslint-disable-next-line no-console
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -116,6 +138,7 @@ export default function UsersPage() {
         }
 
         if (filter.operator === "in" || filter.operator === "notIn") {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
           const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
           return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
@@ -127,6 +150,7 @@ export default function UsersPage() {
           value: normalizeFilterValue(trimmed, fieldConfig?.type),
         };
       });
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   }, []);
 
   useEffect(() => {
@@ -146,19 +170,19 @@ export default function UsersPage() {
         const json = await res.json().catch(() => null);
 
         if (!res.ok) {
-          throw new Error((json as any)?.error || "Failed to load users");
+          throw new Error((json as Record<string, unknown>)?.error as string || "Failed to load users");
         }
 
         // Supports BOTH:
         // 1) API returns array: [...]
         // 2) API returns object: { ok: true, users: [...] }
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: unknown[] = Array.isArray(json) ? json : Array.isArray((json as Record<string, unknown>)?.users) ? (json as Record<string, unknown>).users as unknown[] : [];
 
         if (!alive) return;
         setUsers(list as UserRecord[]);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        const message = err?.message || "Unexpected error occurred.";
+        const message = (err instanceof Error ? err.message : undefined) || "Unexpected error occurred.";
         setError(message);
         toastError(message);
         setUsers([]);
@@ -199,8 +223,8 @@ export default function UsersPage() {
         setUsers(list);
         setSearch("");
         setAdvancedActive(true);
-      } catch (err: any) {
-        const message = err?.message || "Failed to search users";
+      } catch (err) {
+        const message = (err instanceof Error ? err.message : undefined) || "Failed to search users";
         setError(message);
         toastError(message);
         setUsers([]);
@@ -236,7 +260,7 @@ export default function UsersPage() {
         {
           loading: "Saving search...",
           success: "Search saved.",
-          error: (err) => err?.message || "Failed to save search.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to save search.",
         }
       );
     },
@@ -256,16 +280,16 @@ export default function UsersPage() {
         .then(async (res) => {
           const json = await res.json().catch(() => null);
           if (!res.ok) {
-            throw new Error((json as any)?.error || "Failed to load users");
+            throw new Error((json as Record<string, unknown>)?.error as string || "Failed to load users");
           }
-          const list: any[] = Array.isArray(json)
+          const list: unknown[] = Array.isArray(json)
             ? json
-            : Array.isArray((json as any)?.users)
-            ? (json as any).users
+            : Array.isArray((json as Record<string, unknown>)?.users)
+            ? (json as Record<string, unknown>).users as unknown[]
             : [];
           setUsers(list as UserRecord[]);
         })
-        .catch((err: any) => {
+        .catch((err) => {
           const message = err?.message || "Unexpected error occurred.";
           setError(message);
           toastError(message);
@@ -301,7 +325,7 @@ export default function UsersPage() {
         {
           loading: "Deleting user...",
           success: "User deleted successfully.",
-          error: (err) => err?.message || "Failed to delete user.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to delete user.",
         }
       );
 
@@ -362,8 +386,8 @@ export default function UsersPage() {
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const aVal: any = getSortValue(a, sortKey);
-      const bVal: any = getSortValue(b, sortKey);
+      const aVal: string = getSortValue(a, sortKey);
+      const bVal: string = getSortValue(b, sortKey);
 
       if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
       if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
@@ -405,14 +429,14 @@ export default function UsersPage() {
         {
           loading: "Resetting MFA...",
           success: "MFA reset successfully.",
-          error: (err) => err?.message || "Failed to reset MFA.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to reset MFA.",
         }
       );
 
       setUsers((prev) =>
         prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user))
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error("Reset MFA error", err);
     } finally {
       setResettingMfaUid((prev) => (prev === uid ? null : prev));
@@ -665,21 +689,21 @@ function UserDrawerContent({
   onResetMfa: (uid: string) => void;
   resettingMfa: boolean;
 }) {
-  const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
+  const safe = (v: unknown) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
-  const formatPKR = (v: any) => {
+  const formatPKR = (v: unknown) => {
     const num = Number(v);
     return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
   };
 
-  const formatUSD = (v: any) => {
+  const formatUSD = (v: unknown) => {
     const num = Number(v);
     return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
   };
 
-  const formatDate = (v: any) => {
+  const formatDate = (v: unknown) => {
     if (!v) return "-";
-    const d = new Date(v);
+    const d = new Date(v as string | number);
     return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-US");
   };
 

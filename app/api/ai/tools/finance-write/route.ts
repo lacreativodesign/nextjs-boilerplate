@@ -48,7 +48,7 @@ function toDate(value: InvoiceData["dueDate"]): Date | null {
   if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
     return value.toDate();
   }
-  const date = value instanceof Date ? value : new Date(value);
+  const date = value instanceof Date ? value : new Date(value as string | number);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -70,7 +70,7 @@ async function loadTenantTask(taskId: string, tenantId: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "action, taskId, actionId required" }, { status: 400 });
     }
 
-    const taskResult = await loadTenantTask(taskId, user.tenantId);
+    const taskResult = await loadTenantTask(taskId, user.tenantId || "");
     if (taskResult.error) return taskResult.error;
 
     const currentActions = normalizeActions(taskResult.taskData?.proposedActions);
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
       await writeAuditLog({
         tenantId: user.tenantId,
         actorUserId: user.uid,
-        actorName: user.fullName || user.email,
+        actorName: String(user.fullName || user.email || ""),
         actorRole: user.role,
         actionType: "ai.finance.send_payment_reminder",
         entityType: "invoice",

@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       const data = snap.data() || {};
       const prevStage = parseString(data.stage, "New");
       const nextStage = payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
       };
 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
           to: nextStage,
           changedAt: serverTimestamp(),
           changedByUid: auth.user.uid,
-          changedByName: auth.user.name || auth.user.fullName || "",
+          changedByName: String(auth.user.name || auth.user.fullName || ""),
         });
       }
 
@@ -148,8 +148,8 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     if (closedWonTriggered) {
@@ -158,20 +158,20 @@ export async function POST(req: Request) {
         body: `Deal ${id} closed won. Project and finance flow created.`,
         userId: auth.user.uid,
         metadata: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null,
       });
 
       await queueSalesEmail({
-        to: auth.user.email || "",
+        to: String(auth.user.email || ""),
         template: "deal_closed_won",
         subject: "Deal Closed Won",
         data: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null,
       });
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update deal." }, { status: 500 });
   }

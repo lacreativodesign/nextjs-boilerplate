@@ -39,8 +39,8 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
       setSecret(enrollment.secret);
       setQrCodeUrl(enrollment.qrCodeUrl);
       setStep("setup");
-    } catch (err: any) {
-      setError(err?.message || "Unable to start MFA enrollment.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to start MFA enrollment.");
     } finally {
       setLoading(false);
     }
@@ -69,8 +69,8 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
 
       setStep("success");
       onComplete();
-    } catch (err: any) {
-      setError(err?.message || "Failed to verify MFA code.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Failed to verify MFA code.");
     } finally {
       setLoading(false);
     }

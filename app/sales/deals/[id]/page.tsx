@@ -6,7 +6,7 @@ import { showToast } from "@/lib/utils/toast";
 const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
 
 export default function SalesDealDetailPage({ params }: { params: { id: string } }) {
-  const [deal, setDeal] = useState<any>(null);
+  const [deal, setDeal] = useState<unknown>(null);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [reason, setReason] = useState("");
 
@@ -55,14 +55,14 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Deal Detail</h1>
       <div className="card p-4">
-        <div>Title: {deal.title}</div>
-        <div>Value (USD): ${Number(deal.valueUSD || 0).toLocaleString()}</div>
-        <div>Discount: {deal.discountPercent || 0}% ({deal.discountApproved ? "approved" : "pending"})</div>
+        <div>Title: {(deal as Record<string, unknown>).title}</div>
+        <div>Value (USD): ${Number((deal as Record<string, unknown>).valueUSD || 0).toLocaleString()}</div>
+        <div>Discount: {(deal as Record<string, unknown>).discountPercent || 0}% ({(deal as Record<string, unknown>).discountApproved ? "approved" : "pending"})</div>
       </div>
 
       <div className="card p-4">
         <label className="mb-1 block">Stage</label>
-        <select className="input" value={deal.stage} onChange={(e) => updateStage(e.target.value)}>
+        <select className="input" value={(deal as Record<string, unknown>).stage} onChange={(e) => updateStage(e.target.value)}>
           {STAGES.map((stage) => (
             <option key={stage} value={stage}>{stage}</option>
           ))}

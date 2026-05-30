@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (periodType) query = query.where("periodType", "==", periodType);
 
   const snap = await query.get();
-  const targets = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) })).filter((t: any) => t.isDeleted !== true);
+  const targets = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) })).filter((t: unknown) => (t as Record<string, unknown>).isDeleted !== true);
   return NextResponse.json({ ok: true, targets });
 }
 

@@ -36,9 +36,9 @@ export default function SalesInboxPage() {
         throw new Error(data?.error || "Unable to load inbox.");
       }
       setEmails(data.emails || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Inbox load error", err);
-      setError({ title: "Unable to load inbox", message: err?.message || "Please try again later." });
+      setError({ title: "Unable to load inbox", message: (err instanceof Error ? err.message : undefined) || "Please try again later." });
     } finally {
       setLoading(false);
     }

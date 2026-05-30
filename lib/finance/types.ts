@@ -1,4 +1,4 @@
-import { CurrencyCode } from "./currencies";
+import type { CurrencyCode } from "./currencies";
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Overdue" | "Void";
 export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";

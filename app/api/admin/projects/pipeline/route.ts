@@ -28,23 +28,23 @@ type ProjectDoc = {
   ownerAmName?: string | null;
   productionUid?: string | null;
   productionName?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
-  startDate?: any;
-  dueDate?: any;
-  lastActivityAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any }>;
-  stageTimestamps?: Record<string, any> | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  startDate?: unknown;
+  dueDate?: unknown;
+  lastActivityAt?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown }>;
+  stageTimestamps?: Record<string, unknown> | null;
   totalPaidUsd?: number;
   outstandingUsd?: number;
   isDeleted?: boolean;
   internalNotes?: string;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -71,7 +71,7 @@ function normalizeStage(stage?: string | null) {
   return LEGACY_STAGE;
 }
 
-function normalizeStageTimestamps(map?: Record<string, any> | null) {
+function normalizeStageTimestamps(map?: Record<string, unknown> | null) {
   if (!map) return {} as Record<string, string>;
   return Object.entries(map).reduce<Record<string, string>>((acc, [key, value]) => {
     const iso = toISO(value);
@@ -247,9 +247,9 @@ export async function GET(req: Request) {
         name: me.name || me.fullName || me.displayName || "",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("projects/pipeline error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

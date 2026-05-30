@@ -67,9 +67,9 @@ export default function SalesAgentWidget() {
       fetch(`/api/ai/agent-tasks/${taskId}/run-sales`, { method: "POST", credentials: "include" }).catch(() => {});
       pollRef.current = setInterval(() => pollTask(taskId), 2000);
       pollTask(taskId);
-    } catch (err: any) {
+    } catch (err) {
       setWidgetState("error");
-      setError(err?.message || "Something went wrong.");
+      setError((err instanceof Error ? err.message : undefined) || "Something went wrong.");
     }
   };
 

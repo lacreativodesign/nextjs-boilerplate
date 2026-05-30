@@ -282,10 +282,10 @@ export default function ChangeRequestsPage() {
         if (!alive) return;
         setRows(Array.isArray(json?.changeRequests) ? json.changeRequests : []);
         setCurrentUser(json?.currentUser || null);
-      } catch (e: any) {
+      } catch (e) {
         console.error("change requests list error:", e);
         if (!alive) return;
-        const message = String(e?.message || "");
+        const message = String((e instanceof Error ? e.message : undefined) || "");
         const isForbidden = message.toLowerCase().includes("forbidden");
         const isUnauthorized = message.toLowerCase().includes("unauthorized");
         setError({
@@ -311,10 +311,10 @@ export default function ChangeRequestsPage() {
         const list = Array.isArray(json?.projects) ? json.projects : [];
         if (!alive) return;
         setProjects(
-          list.map((project: any) => ({
-            id: project.id,
-            projectName: project.projectName || "",
-            clientName: project.clientName || "",
+          list.map((project: unknown) => ({
+            id: (project as Record<string, unknown>).id,
+            projectName: (project as Record<string, unknown>).projectName || "",
+            clientName: (project as Record<string, unknown>).clientName || "",
           }))
         );
       } catch (err) {
@@ -369,12 +369,12 @@ export default function ChangeRequestsPage() {
         const list = Array.isArray(json?.files) ? json.files : [];
         if (!alive) return;
         setAvailableFiles(
-          list.map((file: any) => ({
-            id: file.id,
-            fileName: file.fileName || "",
-            downloadUrl: file.downloadUrl || "",
-            projectId: file.projectId || "",
-            projectName: file.projectName || "",
+          list.map((file: unknown) => ({
+            id: (file as Record<string, unknown>).id,
+            fileName: (file as Record<string, unknown>).fileName || "",
+            downloadUrl: (file as Record<string, unknown>).downloadUrl || "",
+            projectId: (file as Record<string, unknown>).projectId || "",
+            projectName: (file as Record<string, unknown>).projectName || "",
           }))
         );
       } catch (err) {
@@ -413,13 +413,13 @@ export default function ChangeRequestsPage() {
         const ids = new Set(selected.attachedFileIds || []);
         setAttachedFiles(
           list
-            .filter((file: any) => ids.has(file.id))
-            .map((file: any) => ({
-              id: file.id,
-              fileName: file.fileName || "",
-              downloadUrl: file.downloadUrl || "",
-              projectId: file.projectId || "",
-              projectName: file.projectName || "",
+            .filter((file: unknown) => ids.has((file as Record<string, unknown>).id))
+            .map((file: unknown) => ({
+              id: (file as Record<string, unknown>).id,
+              fileName: (file as Record<string, unknown>).fileName || "",
+              downloadUrl: (file as Record<string, unknown>).downloadUrl || "",
+              projectId: (file as Record<string, unknown>).projectId || "",
+              projectName: (file as Record<string, unknown>).projectName || "",
             }))
         );
       } catch (err) {
@@ -596,8 +596,8 @@ export default function ChangeRequestsPage() {
 
       closeCreate();
       await refreshList();
-    } catch (err: any) {
-      setCreateError(err?.message || "Unable to create change request.");
+    } catch (err) {
+      setCreateError((err instanceof Error ? err.message : undefined) || "Unable to create change request.");
     }
   }
 
@@ -625,8 +625,8 @@ export default function ChangeRequestsPage() {
       const updated = updatedList?.find((row) => row.id === selected.id) || null;
       setSelected(updated);
       setDrawerNote("");
-    } catch (err: any) {
-      setDrawerError(err?.message || "Unable to update status.");
+    } catch (err) {
+      setDrawerError((err instanceof Error ? err.message : undefined) || "Unable to update status.");
     }
   }
 
@@ -651,8 +651,8 @@ export default function ChangeRequestsPage() {
         throw new Error(json?.error || res.statusText || "Unable to update commercial details");
       }
       await refreshList();
-    } catch (err: any) {
-      setDrawerError(err?.message || "Unable to update commercial details.");
+    } catch (err) {
+      setDrawerError((err instanceof Error ? err.message : undefined) || "Unable to update commercial details.");
     }
   }
 

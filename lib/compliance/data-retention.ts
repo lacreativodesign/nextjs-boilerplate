@@ -9,10 +9,10 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString();
-  if (value?.toDate) return value.toDate().toISOString();
+  if ((value as Record<string, unknown>)?.toDate) return (value as Record<string, unknown>).toDate().toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
@@ -139,7 +139,7 @@ async function collectUserData(tenantId: string, userId: string) {
       const byUser = await tenantRef.collection(name).where("userId", "==", userId).limit(2000).get();
       const byOwner = await tenantRef.collection(name).where("ownerId", "==", userId).limit(2000).get();
       const dedup = new Map<string, Record<string, unknown>>();
-      [...byUser.docs, ...byOwner.docs].forEach((doc) => dedup.set(doc.id, { id: doc.id, ...doc.data() }));
+      [...byUser.docs, ...byOwner.docs].forEach((doc) => dedup.set(doc.id, { id: doc.id, ...(doc.data() as Record<string, unknown>) }));
       return [name, Array.from(dedup.values())] as const;
     })
   );
@@ -155,7 +155,7 @@ async function collectUserData(tenantId: string, userId: string) {
     tenantData: Object.fromEntries(tenantCollections),
     consentRecords: (
       await tenantRef.collection("complianceConsentRecords").where("userId", "==", userId).limit(500).get()
-    ).docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    ).docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
   };
 }
 
@@ -204,15 +204,15 @@ export async function createDataExportRequest(input: {
   }
 }
 
-function flattenForCsv(data: Record<string, any>) {
+function flattenForCsv(data: Record<string, unknown>) {
   const rows: Record<string, unknown>[] = [];
-  rows.push({ section: "metadata", ...data.metadata });
+  rows.push({ section: "metadata", ...(data.metadata as Record<string, unknown>)});
   if (data.user) rows.push({ section: "user", ...data.user });
-  (data.auditLogs || []).forEach((entry: Record<string, unknown>) => rows.push({ section: "auditLogs", ...entry }));
+  (data.auditLogs as Record<string, unknown>[] || []).forEach((entry: Record<string, unknown>) => rows.push({ section: "auditLogs", ...entry }));
   Object.entries(data.tenantData || {}).forEach(([collection, items]) => {
     (items as Record<string, unknown>[]).forEach((entry) => rows.push({ section: `tenantData:${collection}`, ...entry }));
   });
-  (data.consentRecords || []).forEach((entry: Record<string, unknown>) => rows.push({ section: "consentRecords", ...entry }));
+  (data.consentRecords as Record<string, unknown>[] || []).forEach((entry: Record<string, unknown>) => rows.push({ section: "consentRecords", ...entry }));
   return rows;
 }
 

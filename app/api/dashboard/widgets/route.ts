@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     if (!body.type) return NextResponse.json({ error: "type is required" }, { status: 400 });
 
-    const created = await addWidgetAndPlace(user.tenantId, user.uid, {
+    const created = await addWidgetAndPlace(user.tenantId as string, user.uid, {
       type: body.type,
       title: body.title,
       config: body.config,
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true, ...created }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to create widget" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to create widget" }, { status: 500 });
   }
 }

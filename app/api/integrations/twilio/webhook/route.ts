@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { handleTwilioWebhook, verifyTwilioWebhookSignature } from "@/lib/integrations/twilio";
 
 export const runtime = "nodejs";
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("twilio/webhook error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to process webhook." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to process webhook." }, { status: 400 });
   }
 }

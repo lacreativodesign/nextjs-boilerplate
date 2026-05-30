@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { createSession } from '@/lib/auth/session';
 
@@ -48,13 +48,13 @@ export async function POST(req: NextRequest) {
 
     // Get tenantId from claims first, fallback to Firestore users collection
     // This handles the case where custom claims haven't propagated yet
-    let tenantId = (decodedToken as any).tenantId || (decodedToken as any).tenant_id || '';
+    let tenantId = String((decodedToken as Record<string, unknown>).tenantId || (decodedToken as Record<string, unknown>).tenant_id || '');
 
     if (!tenantId) {
       try {
         const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
         if (userDoc.exists) {
-          tenantId = (userDoc.data() as any)?.tenantId || '';
+          tenantId = String((userDoc.data() as Record<string, unknown>)?.tenantId || '');
         }
       } catch (fallbackError) {
         console.error('session-login: tenantId fallback failed', fallbackError);
@@ -74,11 +74,11 @@ export async function POST(req: NextRequest) {
       adminDb.collection('tenants').doc(tenantId).set(
         { lastActiveAt: new Date().toISOString() },
         { merge: true }
-      ).catch((err: any) => console.error('session-login: lastActiveAt stamp failed', err));
+      ).catch((err) => console.error('session-login: lastActiveAt stamp failed', err));
     }
 
     // Also set role cookie for client-side role caching
-    const role = (decodedToken as any).role || '';
+    const role = String((decodedToken as Record<string, unknown>).role || '');
     if (role) {
       response.cookies.set('user_role', role, {
         maxAge: expiresIn / 1000,
@@ -90,12 +90,12 @@ export async function POST(req: NextRequest) {
     }
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Session login error:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Failed to create session',
-        details: error.code || 'unknown',
+        error: (error as Record<string, unknown>).message || 'Failed to create session',
+        details: (error as Record<string, unknown>).code || 'unknown',
       },
       { status: 500 }
     );

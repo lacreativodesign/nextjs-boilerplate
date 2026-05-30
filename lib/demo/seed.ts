@@ -1,7 +1,7 @@
 import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 
 const DEMO_PASSWORD = "BizostoDemo2026!";
-const TENANT_ID = "bizosto-demo";
+const _TENANT_ID = "bizosto-demo";
 
 const DEMO_USERS = [
   { email: "demo_admin@bizosto.com", role: "admin", name: "Alex Admin", uid: "" },
@@ -72,8 +72,8 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
         emailVerified: true,
       });
       uid = created.uid;
-    } catch (err: any) {
-      if (err?.code === "auth/email-already-exists") {
+    } catch (err) {
+      if ((err as Record<string, unknown>)?.code === "auth/email-already-exists") {
         const existing = await adminAuth.getUserByEmail(user.email);
         await adminAuth.updateUser(existing.uid, {
           password: DEMO_PASSWORD,
@@ -94,9 +94,9 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
   const salesUser = resolvedUsers.find((u) => u.role === "sales")!;
   const amUser = resolvedUsers.find((u) => u.role === "am")!;
   const financeUser = resolvedUsers.find((u) => u.role === "finance")!;
-  const hrUser = resolvedUsers.find((u) => u.role === "hr")!;
+  const _hrUser = resolvedUsers.find((u) => u.role === "hr")!;
   const productionUser = resolvedUsers.find((u) => u.role === "production")!;
-  const clientUser = resolvedUsers.find((u) => u.role === "client")!;
+  const _clientUser = resolvedUsers.find((u) => u.role === "client")!;
 
   // ─── 3. Create Firestore user documents ─────────────────────────────────────
   const batch1 = adminDb.batch();
@@ -146,7 +146,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     { name: "Aria Patel", company: "Crestline Creative", email: "aria@crestline.co", stage: "Negotiation", source: "Website", value: 31000, daysOld: 45 },
   ];
 
-  const leads: any[] = leadData.map((l) => ({
+  const leads: unknown[] = leadData.map((l) => ({
     id: id(),
     tenantId,
     name: l.name,
@@ -167,7 +167,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
 
   const batch3 = adminDb.batch();
   for (const l of leads) {
-    batch3.set(adminDb.collection("leads").doc(l.id), l);
+    batch3.set(adminDb.collection("leads").doc((l as Record<string, unknown>).id), l);
   }
   await batch3.commit();
 
@@ -180,7 +180,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     { name: "Nova Media Social Campaign", client: clients[4], stage: "Active", health: "on_track", budget: 5200, dueInDays: 14 },
   ];
 
-  const projects: any[] = projectData.map((p) => ({
+  const projects: unknown[] = projectData.map((p) => ({
     id: id(),
     tenantId,
     projectName: p.name,
@@ -203,7 +203,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
 
   const batch4 = adminDb.batch();
   for (const p of projects) {
-    batch4.set(adminDb.collection("projects").doc(p.id), p);
+    batch4.set(adminDb.collection("projects").doc((p as Record<string, unknown>).id), p);
   }
   await batch4.commit();
 
@@ -216,7 +216,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     { client: clients[4], amount: 2600, isPaid: false, daysOffset: 14, orderId: "INV-0005" },
   ];
 
-  const invoices: any[] = invoiceData.map((inv) => ({
+  const invoices: unknown[] = invoiceData.map((inv) => ({
     id: id(),
     tenantId,
     orderId: inv.orderId,
@@ -238,7 +238,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
 
   const batch5 = adminDb.batch();
   for (const inv of invoices) {
-    batch5.set(adminDb.collection("invoices").doc(inv.id), inv);
+    batch5.set(adminDb.collection("invoices").doc((inv as Record<string, unknown>).id), inv);
   }
   await batch5.commit();
 
@@ -288,8 +288,8 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
       title: job.title,
       clientId: job.client.id,
       clientName: job.client.name,
-      projectId: job.project.id,
-      projectName: job.project.projectName,
+      projectId: (job.project as Record<string, unknown>).id,
+      projectName: (job.project as Record<string, unknown>).projectName,
       status: job.status,
       assignedTo: productionUser.uid,
       assignedName: productionUser.name,

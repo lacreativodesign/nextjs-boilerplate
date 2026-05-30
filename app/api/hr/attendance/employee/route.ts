@@ -54,10 +54,10 @@ export async function GET(request: Request) {
       employee,
       logs,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Employee attendance API error:", err);
     return NextResponse.json(
-      { success: false, message: err.message },
+      { success: false, message: (err as Record<string, unknown>).message },
       { status: 500 }
     );
   }

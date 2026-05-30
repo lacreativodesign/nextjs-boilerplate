@@ -144,7 +144,7 @@ export async function listTwilioLogs(tenantId: string, limit = 50) {
     .limit(Math.max(1, Math.min(limit, 200)))
     .get();
 
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function sendTwilioNotification(input: {
@@ -245,11 +245,11 @@ export async function sendTwilioNotification(input: {
     );
 
     return { id: logRef.id, messageSid: data.sid, status: data.status || "sent" };
-  } catch (error: any) {
+  } catch (error) {
     await logRef.set(
       {
         status: "failed",
-        errorMessage: error?.message || "Unknown Twilio send error.",
+        errorMessage: (error instanceof Error ? error.message : undefined) || "Unknown Twilio send error.",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
       { merge: true }

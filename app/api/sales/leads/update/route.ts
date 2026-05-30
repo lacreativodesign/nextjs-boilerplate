@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     const existing = snapshot.data() || {};
     const role = auth.user.role || "";
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string || DEFAULT_TENANT_ID);
     const canWrite = await requireSalesWrite();
     if (!canWrite.ok) {
       return NextResponse.json({ ok: false, error: canWrite.error }, { status: canWrite.status });
@@ -62,9 +62,9 @@ export async function POST(req: Request) {
     const expectedValueUsd = parseNumber(body.expectedValueUsd, Number(existing.expectedValueUsd || 0));
     const packageName = parseString(body.packageName, existing.packageName || "");
     const interestedServices = Array.isArray(body.interestedServices)
-      ? body.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      ? body.interestedServices.map((item: unknown) => parseString(item, "").trim()).filter(Boolean)
       : Array.isArray(existing.interestedServices)
-      ? existing.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+      ? existing.interestedServices.map((item: unknown) => parseString(item, "").trim()).filter(Boolean)
       : [];
     const probability = parseNumber(body.probability, Number(existing.probability || 0));
     const rawStatusInput = parseString(body.status || body.stage, existing.status || "new").toLowerCase();
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       }
     };
 
-    const parseIso = (value: any, fallback?: any) => {
+    const parseIso = (value: unknown, fallback?: unknown) => {
       if (!value) return fallback ?? null;
       const raw = String(value).trim();
       const date = new Date(raw);
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
 
     const assignmentChanged = String(existing.ownerUid || existing.ownerId || "") !== String(ownerId || "");
     const statusChanged = String(existing.status || "new") !== status;
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       tenantId,
       company: companyName,
       name: contactName,
@@ -203,7 +203,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales leads update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update lead." }, { status: 500 });
   }

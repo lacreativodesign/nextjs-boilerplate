@@ -1,6 +1,6 @@
 "use client";
 
-import { PeriodType, getLast12Months, getLast5Years, getLast8Quarters } from "@/lib/performance/periods";
+import { type PeriodType, getLast12Months, getLast5Years, getLast8Quarters } from "@/lib/performance/periods";
 
 export default function PeriodSelector({
   periodType,

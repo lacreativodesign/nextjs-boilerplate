@@ -1,4 +1,4 @@
-import { z, ZodSchema, ZodTypeAny } from "zod";
+import { z, type ZodSchema, type ZodTypeAny } from "zod";
 import { AppError } from "@/lib/errors";
 
 const formatZodErrors = (error: z.ZodError) =>

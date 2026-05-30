@@ -167,8 +167,8 @@ export async function consumeXeroOAuthState(state: string) {
   const ref = adminDb.collection(XERO_STATE_COLLECTION).doc(state);
   const snap = await ref.get();
   if (!snap.exists) throw new Error("Invalid Xero OAuth state.");
-  const data = snap.data() as any;
-  if (!data?.expiresAt || data.expiresAt.toMillis() < Date.now()) {
+  const data = snap.data() as unknown;
+  if (!(data as Record<string, unknown>)?.expiresAt || (((data as Record<string, unknown>).expiresAt as Record<string, unknown>).toMillis as () => number)() < Date.now()) {
     await ref.delete();
     throw new Error("Xero OAuth state expired.");
   }
@@ -195,9 +195,9 @@ export async function exchangeXeroCodeForTokens(code: string): Promise<XeroToken
     headers: { Authorization: `Basic ${basicAuth}`, Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: cfg.redirectUri }),
   });
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !data.access_token || !data.refresh_token) throw new Error(data.error_description || data.error || "Xero OAuth exchange failed.");
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + Number(data.expires_in || 1800) * 1000, idToken: data.id_token };
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(data as Record<string, unknown>).access_token || !(data as Record<string, unknown>).refresh_token) throw new Error(((data as Record<string, unknown>).error_description || (data as Record<string, unknown>).error || "Xero OAuth exchange failed.") as string);
+  return { accessToken: (data as Record<string, unknown>).access_token as string, refreshToken: (data as Record<string, unknown>).refresh_token as string, expiresAt: Date.now() + Number((data as Record<string, unknown>).expires_in || 1800) * 1000, idToken: (data as Record<string, unknown>).id_token as string | undefined };
 }
 
 async function refreshXeroToken(current: XeroTokenPayload): Promise<XeroTokenPayload> {
@@ -208,14 +208,14 @@ async function refreshXeroToken(current: XeroTokenPayload): Promise<XeroTokenPay
     headers: { Authorization: `Basic ${basicAuth}`, Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken }),
   });
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !data.access_token || !data.refresh_token) throw new Error(data.error_description || data.error || "Xero token refresh failed.");
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + Number(data.expires_in || 1800) * 1000, idToken: data.id_token || current.idToken };
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(data as Record<string, unknown>).access_token || !(data as Record<string, unknown>).refresh_token) throw new Error(((data as Record<string, unknown>).error_description || (data as Record<string, unknown>).error || "Xero token refresh failed.") as string);
+  return { accessToken: (data as Record<string, unknown>).access_token as string, refreshToken: (data as Record<string, unknown>).refresh_token as string, expiresAt: Date.now() + Number((data as Record<string, unknown>).expires_in || 1800) * 1000, idToken: ((data as Record<string, unknown>).id_token as string | undefined) || current.idToken };
 }
 
 export async function getXeroConnections(accessToken: string) {
   const response = await fetch("https://api.xero.com/connections", { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }, cache: "no-store" });
-  const data = (await response.json().catch(() => [])) as any[];
+  const data = (await response.json().catch(() => [])) as unknown[];
   if (!response.ok || !Array.isArray(data)) throw new Error("Unable to fetch Xero organizations.");
   return data;
 }
@@ -265,8 +265,8 @@ async function callXeroApi<T>(tenantId: string, path: string, method: "GET" | "P
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok) throw new Error(data?.Detail || data?.Message || data?.error_description || `Xero API request failed (${response.status})`);
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok) throw new Error(((data as Record<string, unknown>)?.Detail || (data as Record<string, unknown>)?.Message || (data as Record<string, unknown>)?.error_description || `Xero API request failed (${response.status})`) as string);
   return data as T;
 }
 
@@ -274,24 +274,24 @@ async function syncInvoicesToXero(tenantId: string) {
   const result = mapSyncEntityResult();
   const invoices = await adminDb.collection("invoices").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(XERO_MAX_PAGE).get();
   for (const doc of invoices.docs) {
-    const invoice = doc.data() as any;
-    if (getString(invoice?.xero?.id)) { result.skipped += 1; continue; }
-    const clientId = getString(invoice.clientId);
+    const invoice = doc.data() as unknown;
+    if (getString(((invoice as Record<string, unknown>)?.xero as Record<string, unknown>)?.id)) { result.skipped += 1; continue; }
+    const clientId = getString((invoice as Record<string, unknown>).clientId);
     const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
     const xeroContactId = getString(clientSnap?.data()?.xero?.id);
     if (!xeroContactId) { result.skipped += 1; continue; }
-    const amount = Number(invoice.amountTotal || invoice.totalUSD || 0);
+    const amount = Number((invoice as Record<string, unknown>).amountTotal || (invoice as Record<string, unknown>).totalUSD || 0);
     const payload = {
       Type: "ACCREC",
       Contact: { ContactID: xeroContactId },
-      Date: parseXeroDate(invoice.issuedAt)?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-      DueDate: parseXeroDate(invoice.dueDate)?.slice(0, 10) || undefined,
-      LineItems: [{ Description: getString(invoice.orderId || `Invoice ${doc.id}`), Quantity: 1, UnitAmount: Number.isFinite(amount) ? amount : 0, AccountCode: "200" }],
+      Date: parseXeroDate((invoice as Record<string, unknown>).issuedAt)?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+      DueDate: parseXeroDate((invoice as Record<string, unknown>).dueDate)?.slice(0, 10) || undefined,
+      LineItems: [{ Description: getString((invoice as Record<string, unknown>).orderId || `Invoice ${doc.id}`), Quantity: 1, UnitAmount: Number.isFinite(amount) ? amount : 0, AccountCode: "200" }],
       Status: "AUTHORISED",
-      Reference: getString(invoice.invoiceNumber || doc.id),
+      Reference: getString((invoice as Record<string, unknown>).invoiceNumber || doc.id),
     };
-    const response = await callXeroApi<any>(tenantId, "/Invoices", "POST", { Invoices: [payload] });
-    const created = response?.Invoices?.[0];
+    const response = await callXeroApi<unknown>(tenantId, "/Invoices", "POST", { Invoices: [payload] });
+    const created = ((response as Record<string, unknown>)?.Invoices as Record<string, unknown>[])?.[0] as Record<string, unknown> | undefined;
     if (!created?.InvoiceID) { result.skipped += 1; continue; }
     await doc.ref.set({ xero: { id: created.InvoiceID, invoiceNumber: getString(created.InvoiceNumber), lastUpdatedAt: parseXeroDate(created.UpdatedDateUTC) }, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     result.updated += 1;
@@ -302,17 +302,18 @@ async function syncInvoicesToXero(tenantId: string) {
 async function syncPaymentsFromXero(tenantId: string, sinceISO: string | null, settings: XeroSyncSettings) {
   const result = mapSyncEntityResult();
   let conflicts = 0;
-  const response = await callXeroApi<any>(tenantId, "/Payments?page=1");
-  const payments = Array.isArray(response?.Payments) ? response.Payments : [];
-  for (const payment of payments) {
+  const response = await callXeroApi<unknown>(tenantId, "/Payments?page=1");
+  const payments = Array.isArray((response as Record<string, unknown>)?.Payments) ? (response as Record<string, unknown>).Payments : [];
+  for (const payment of payments as Record<string, unknown>[]) {
     const remoteUpdatedAt = parseXeroDate(payment?.UpdatedDateUTC || payment?.Date);
     if (sinceISO && remoteUpdatedAt && new Date(remoteUpdatedAt).getTime() <= new Date(sinceISO).getTime()) continue;
     const xeroId = getString(payment?.PaymentID);
     if (!xeroId) { result.skipped += 1; continue; }
     const existing = await adminDb.collection("payments").where("tenantId", "==", tenantId).where("xero.id", "==", xeroId).limit(1).get();
     if (!existing.empty) {
-      const current = existing.docs[0].data() as any;
-      const localUpdatedAt = parseXeroDate(current?.xero?.lastUpdatedAt || current?.updatedAt?.toDate?.()?.toISOString?.());
+      const current = existing.docs[0].data() as unknown;
+      const rawUpdatedAt = (current as Record<string, unknown>)?.updatedAt;
+      const localUpdatedAt = parseXeroDate(((current as Record<string, unknown>)?.xero as Record<string, unknown>)?.lastUpdatedAt || (typeof (rawUpdatedAt as Record<string, unknown>)?.toDate === "function" ? (rawUpdatedAt as { toDate(): Date }).toDate().toISOString() : undefined));
       if (settings.conflictMode === "manual" && compareLocalVsRemote(localUpdatedAt, remoteUpdatedAt) > 0) { result.skipped += 1; conflicts += 1; continue; }
       await existing.docs[0].ref.set({ amountUsd: Number(payment?.Amount || 0), status: "completed", paidAt: remoteUpdatedAt, updatedAt: admin.firestore.FieldValue.serverTimestamp(), xero: { id: xeroId, lastUpdatedAt: remoteUpdatedAt } }, { merge: true });
       result.updated += 1;
@@ -327,9 +328,9 @@ async function syncPaymentsFromXero(tenantId: string, sinceISO: string | null, s
 async function syncContactsFromXero(tenantId: string, sinceISO: string | null, settings: XeroSyncSettings) {
   const result = mapSyncEntityResult();
   let conflicts = 0;
-  const response = await callXeroApi<any>(tenantId, "/Contacts?page=1");
-  const contacts = Array.isArray(response?.Contacts) ? response.Contacts : [];
-  for (const contact of contacts) {
+  const response = await callXeroApi<unknown>(tenantId, "/Contacts?page=1");
+  const contacts = Array.isArray((response as Record<string, unknown>)?.Contacts) ? (response as Record<string, unknown>).Contacts : [];
+  for (const contact of contacts as Record<string, unknown>[]) {
     const xeroId = getString(contact?.ContactID);
     if (!xeroId) { result.skipped += 1; continue; }
     const remoteUpdatedAt = parseXeroDate(contact?.UpdatedDateUTC);
@@ -338,7 +339,7 @@ async function syncContactsFromXero(tenantId: string, sinceISO: string | null, s
     const payload = {
       companyName: getString(contact?.Name || contact?.ContactName) || "Unknown",
       primaryContactEmail: getString(contact?.EmailAddress),
-      primaryContactPhone: getString(contact?.Phones?.[0]?.PhoneNumber),
+      primaryContactPhone: getString((contact?.Phones as Record<string, unknown>[])?.[0]?.PhoneNumber),
       website: getString(contact?.Website),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       xero: { id: xeroId, contactNumber: getString(contact?.ContactNumber), lastUpdatedAt: remoteUpdatedAt },
@@ -348,8 +349,9 @@ async function syncContactsFromXero(tenantId: string, sinceISO: string | null, s
       result.inserted += 1;
       continue;
     }
-    const current = existing.docs[0].data() as any;
-    const localUpdatedAt = parseXeroDate(current?.xero?.lastUpdatedAt || current?.updatedAt?.toDate?.()?.toISOString?.());
+    const current = existing.docs[0].data() as unknown;
+    const rawUpdatedAt2 = (current as Record<string, unknown>)?.updatedAt;
+    const localUpdatedAt = parseXeroDate(((current as Record<string, unknown>)?.xero as Record<string, unknown>)?.lastUpdatedAt || (typeof (rawUpdatedAt2 as Record<string, unknown>)?.toDate === "function" ? (rawUpdatedAt2 as { toDate(): Date }).toDate().toISOString() : undefined));
     if (settings.conflictMode === "manual" && compareLocalVsRemote(localUpdatedAt, remoteUpdatedAt) > 0) { result.skipped += 1; conflicts += 1; continue; }
     await existing.docs[0].ref.set(payload, { merge: true });
     result.updated += 1;
@@ -361,17 +363,17 @@ async function syncContactsToXero(tenantId: string) {
   const result = mapSyncEntityResult();
   const local = await adminDb.collection("clients").where("tenantId", "==", tenantId).limit(XERO_MAX_PAGE).get();
   for (const doc of local.docs) {
-    const data = doc.data() as any;
-    if (getString(data?.xero?.id)) { result.skipped += 1; continue; }
+    const data = doc.data() as unknown;
+    if (getString(((data as Record<string, unknown>)?.xero as Record<string, unknown>)?.id)) { result.skipped += 1; continue; }
     const payload = {
-      Name: getString(data.companyName || data.primaryContactName || doc.id),
-      FirstName: getString(data.primaryContactName).split(" ")[0] || undefined,
-      LastName: getString(data.primaryContactName).split(" ").slice(1).join(" ") || undefined,
-      EmailAddress: getString(data.primaryContactEmail) || undefined,
-      Phones: data.primaryContactPhone ? [{ PhoneType: "DEFAULT", PhoneNumber: getString(data.primaryContactPhone) }] : undefined,
+      Name: getString((data as Record<string, unknown>).companyName || (data as Record<string, unknown>).primaryContactName || doc.id),
+      FirstName: getString((data as Record<string, unknown>).primaryContactName).split(" ")[0] || undefined,
+      LastName: getString((data as Record<string, unknown>).primaryContactName).split(" ").slice(1).join(" ") || undefined,
+      EmailAddress: getString((data as Record<string, unknown>).primaryContactEmail) || undefined,
+      Phones: (data as Record<string, unknown>).primaryContactPhone ? [{ PhoneType: "DEFAULT", PhoneNumber: getString((data as Record<string, unknown>).primaryContactPhone) }] : undefined,
     };
-    const response = await callXeroApi<any>(tenantId, "/Contacts", "POST", { Contacts: [payload] });
-    const created = response?.Contacts?.[0];
+    const response = await callXeroApi<unknown>(tenantId, "/Contacts", "POST", { Contacts: [payload] });
+    const created = ((response as Record<string, unknown>)?.Contacts as Record<string, unknown>[])?.[0] as Record<string, unknown> | undefined;
     if (!created?.ContactID) { result.skipped += 1; continue; }
     await doc.ref.set({ xero: { id: created.ContactID, contactNumber: getString(created.ContactNumber), lastUpdatedAt: parseXeroDate(created.UpdatedDateUTC) }, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     result.updated += 1;
@@ -381,9 +383,9 @@ async function syncContactsToXero(tenantId: string) {
 
 async function syncAccountsFromXero(tenantId: string, sinceISO: string | null) {
   const result = mapSyncEntityResult();
-  const response = await callXeroApi<any>(tenantId, "/Accounts");
-  const accounts = Array.isArray(response?.Accounts) ? response.Accounts : [];
-  for (const account of accounts) {
+  const response = await callXeroApi<unknown>(tenantId, "/Accounts");
+  const accounts = Array.isArray((response as Record<string, unknown>)?.Accounts) ? (response as Record<string, unknown>).Accounts : [];
+  for (const account of accounts as Record<string, unknown>[]) {
     const xeroId = getString(account?.AccountID);
     if (!xeroId) { result.skipped += 1; continue; }
     const remoteUpdatedAt = parseXeroDate(account?.UpdatedDateUTC);
@@ -403,9 +405,9 @@ async function syncAccountsFromXero(tenantId: string, sinceISO: string | null) {
 
 async function syncTaxRatesFromXero(tenantId: string, sinceISO: string | null) {
   const result = mapSyncEntityResult();
-  const response = await callXeroApi<any>(tenantId, "/TaxRates");
-  const rates = Array.isArray(response?.TaxRates) ? response.TaxRates : [];
-  for (const rate of rates) {
+  const response = await callXeroApi<unknown>(tenantId, "/TaxRates");
+  const rates = Array.isArray((response as Record<string, unknown>)?.TaxRates) ? (response as Record<string, unknown>).TaxRates : [];
+  for (const rate of rates as Record<string, unknown>[]) {
     const xeroId = getString(rate?.TaxType || rate?.Name);
     const remoteUpdatedAt = parseXeroDate(rate?.UpdatedDateUTC);
     if (sinceISO && remoteUpdatedAt && new Date(remoteUpdatedAt).getTime() <= new Date(sinceISO).getTime()) continue;
@@ -437,7 +439,7 @@ export async function updateXeroSettings(tenantId: string, userUid: string, patc
 export async function getXeroSyncLogs(tenantId: string, limit = 50) {
   const capped = Math.min(Math.max(limit, 1), 200);
   const snapshot = await adminDb.collection("tenants").doc(normalizeTenantId(tenantId)).collection(XERO_LOGS_COLLECTION).orderBy("startedAt", "desc").limit(capped).get();
-  return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc: unknown) => ({ id: (doc as Record<string, unknown>).id, ...((doc as Record<string, unknown>).data as () => Record<string, unknown>)() }));
 }
 
 export async function runXeroSync(input: { tenantId: string; userUid: string; forceInitial?: boolean }) {
@@ -479,9 +481,9 @@ export async function runXeroSync(input: { tenantId: string; userUid: string; fo
     ]);
 
     return summary;
-  } catch (error: any) {
+  } catch (error) {
     const finishedAt = new Date().toISOString();
-    const safeMessage = String(error?.message || "Xero sync failed.");
+    const safeMessage = String((error instanceof Error ? error.message : undefined) || "Xero sync failed.");
     await Promise.all([
       getTenantIntegrationRef(tenantId).set({ stats: { ...(integration.stats || defaultStats()), lastSyncStartedAt: startedAt, lastSyncFinishedAt: finishedAt, lastSyncStatus: "error", lastSyncError: safeMessage }, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: input.userUid }, { merge: true }),
       logRef.set({ tenantId, mode, status: "error", error: safeMessage, conflicts, startedAt, finishedAt, triggeredBy: input.userUid, createdAt: admin.firestore.FieldValue.serverTimestamp() }),

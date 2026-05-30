@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
+import { TaxCalculator, type TaxRate } from "@/lib/tax/taxCalculator";
 
 type NewRateState = {
   name: string;
@@ -49,9 +49,9 @@ export default function TaxRatesPage() {
       }
 
       setTaxRates(Array.isArray(result.taxRates) ? (result.taxRates as TaxRate[]) : []);
-    } catch (fetchError: any) {
+    } catch (fetchError) {
       console.error("tax rates fetch error", fetchError);
-      setError(fetchError?.message || "Failed to fetch tax rates");
+      setError((fetchError instanceof Error ? fetchError.message : undefined) || "Failed to fetch tax rates");
     } finally {
       setLoading(false);
     }
@@ -91,9 +91,9 @@ export default function TaxRatesPage() {
 
       setTaxRates((prev) => [...prev, result.taxRate as TaxRate]);
       setNewRate(DEFAULT_NEW_RATE);
-    } catch (saveError: any) {
+    } catch (saveError) {
       console.error("tax rates create error", saveError);
-      setError(saveError?.message || "Failed to create tax rate");
+      setError((saveError instanceof Error ? saveError.message : undefined) || "Failed to create tax rate");
     } finally {
       setSaving(false);
     }
@@ -117,9 +117,9 @@ export default function TaxRatesPage() {
       }
 
       setTaxRates((prev) => prev.map((item) => (item.id === taxRate.id ? { ...item, enabled: nextEnabled } : item)));
-    } catch (toggleError: any) {
+    } catch (toggleError) {
       console.error("tax rates toggle error", toggleError);
-      setError(toggleError?.message || "Failed to update tax rate");
+      setError((toggleError instanceof Error ? toggleError.message : undefined) || "Failed to update tax rate");
     }
   };
 
@@ -139,9 +139,9 @@ export default function TaxRatesPage() {
       }
 
       setTaxRates((prev) => prev.filter((rate) => rate.id !== id));
-    } catch (deleteError: any) {
+    } catch (deleteError) {
       console.error("tax rates delete error", deleteError);
-      setError(deleteError?.message || "Failed to delete tax rate");
+      setError((deleteError instanceof Error ? deleteError.message : undefined) || "Failed to delete tax rate");
     }
   };
 

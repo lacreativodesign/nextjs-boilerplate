@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import type React, { ReactNode } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ModuleErrorFallback } from "./ErrorFallback";
 

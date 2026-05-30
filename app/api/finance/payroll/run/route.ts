@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireFinance, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, getUsersByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email/email-service";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
@@ -67,9 +67,9 @@ export async function POST(req: Request) {
     if (created > 0) {
       await batch.commit();
       await writeAuditLog({
-        tenantId: auth.user.tenantId || null,
+        tenantId: String(auth.user.tenantId || "") || null,
         actorUserId: auth.user.uid,
-        actorName: auth.user.name || auth.user.email || "",
+        actorName: String(auth.user.name || auth.user.email || ""),
         actorRole: auth.user.role,
         actionType: "payroll.run",
         entityType: "payroll",
@@ -78,8 +78,8 @@ export async function POST(req: Request) {
       }).catch(() => undefined);
     }
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], String(auth.user.tenantId || "") || null);
     await Promise.all(
       financeIds.map((uid) =>
         createNotification({
@@ -87,11 +87,11 @@ export async function POST(req: Request) {
           title: "Payroll run created",
           body: `Payroll run for ${month} created (${created} entries).`,
           type: "info",
-          entityType: "payroll",
+          entityType: "payroll" as NotificationEntityType,
           entityId: null,
           deepLink: "/finance/payroll",
           createdBy: { uid: auth.user.uid, name: actorName },
-          tenantId: auth.user.tenantId || null,
+          tenantId: String(auth.user.tenantId || "") || null,
         })
       )
     );
@@ -100,18 +100,18 @@ export async function POST(req: Request) {
       type: "finance.payroll_run",
       title: "Payroll run created",
       description: `Payroll run for ${month} created (${created} entries).`,
-      entityType: "payroll",
-      entityId: null,
+      entityType: "payroll" as NotificationEntityType,
+      entityId: undefined,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: String(auth.user.tenantId || ""),
     });
 
     // Email finance + admin about payroll run — non-blocking
-    getUsersByRoles(["finance", "admin"], auth.user.tenantId || "").then((recipients) => {
+    getUsersByRoles(["finance", "admin"], String(auth.user.tenantId || "")).then((recipients) => {
       return Promise.all(recipients.map((recipient) =>
         sendEmail({
-          to: recipient.email || "",
+          to: String((recipient as Record<string, unknown>).email || ""),
           subject: `💰 Payroll run created — ${month}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -139,9 +139,9 @@ export async function POST(req: Request) {
     }).catch((err) => console.error("[PAYROLL_RUN] Failed to email finance", err));
 
     return NextResponse.json({ ok: true, created });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/payroll run error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

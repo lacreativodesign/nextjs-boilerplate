@@ -13,22 +13,22 @@ export async function GET() {
   try {
     const snap = await adminDb.collection("api_usage_logs").orderBy("createdAt", "desc").limit(1000).get();
     const rows = snap.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, any>) }))
-      .filter((row) => current.role === "super_admin" || row.tenantId === current.tenantId);
+      .map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }))
+      .filter((row) => current.role === "super_admin" || row.tenantId as unknown === current.tenantId);
 
     const byEndpoint: Record<string, number> = {};
     const byHour: Record<string, number> = {};
     const byConsumer: Record<string, number> = {};
 
     for (const row of rows) {
-      const endpoint = String(row.endpoint || "unknown");
+      const endpoint = String(row.endpoint as unknown || "unknown");
       byEndpoint[endpoint] = (byEndpoint[endpoint] || 0) + 1;
 
-      const createdAt = new Date(row.createdAt || Date.now());
+      const createdAt = new Date((row.createdAt as string | number | undefined) || Date.now());
       const hourBucket = `${createdAt.getUTCFullYear()}-${String(createdAt.getUTCMonth() + 1).padStart(2, "0")}-${String(createdAt.getUTCDate()).padStart(2, "0")} ${String(createdAt.getUTCHours()).padStart(2, "0")}:00`;
       byHour[hourBucket] = (byHour[hourBucket] || 0) + 1;
 
-      const consumerKey = `${row.tenantId || "unknown"}:${row.userId || "anonymous"}`;
+      const consumerKey = `${row.tenantId as unknown || "unknown"}:${row.userId as unknown || "anonymous"}`;
       byConsumer[consumerKey] = (byConsumer[consumerKey] || 0) + 1;
     }
 

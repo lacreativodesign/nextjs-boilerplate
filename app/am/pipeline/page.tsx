@@ -9,6 +9,7 @@ const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"]
 type PipelinePayload = {
   ok: boolean;
   projects: AMProject[];
+  error?: string;
 };
 
 
@@ -49,9 +50,9 @@ export default function AMPipelinePage() {
           throw new Error(payload?.error || "Unable to load pipeline.");
         }
         if (active) setProjects(payload.projects || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error(err);
-        if (active) setError(err?.message || "Unable to load pipeline.");
+        if (active) setError((err instanceof Error ? err.message : undefined) || "Unable to load pipeline.");
       } finally {
         if (active) setLoading(false);
       }
@@ -105,9 +106,9 @@ export default function AMPipelinePage() {
         throw new Error(payload?.error || "Unable to request stage move.");
       }
       setStageRequests((prev) => ({ ...prev, [project.id]: "" }));
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to request stage move.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to request stage move.");
     } finally {
       setActionLoading(false);
     }
@@ -133,9 +134,9 @@ export default function AMPipelinePage() {
       }
       const updated = payload.project as AMProject;
       setProjects((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to move stage.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to move stage.");
     } finally {
       setActionLoading(false);
     }

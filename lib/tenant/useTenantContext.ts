@@ -109,7 +109,7 @@ export function useTenantContext() {
         });
         const json = (await res.json().catch(() => null)) as TenantContextResponse | null;
         if (!res.ok || !json?.ok) {
-          const requestError = new Error((json as any)?.error || res.statusText || "Failed to load tenant") as Error & {
+          const requestError = new Error(String((json as Record<string, unknown>)?.error || res.statusText || "Failed to load tenant")) as Error & {
             status?: number;
           };
           requestError.status = res.status;
@@ -117,9 +117,9 @@ export function useTenantContext() {
         }
         setCached(json);
         if (active) setData(json);
-      } catch (err: any) {
+      } catch (err) {
         if (active) {
-          const message = err?.message || "Failed to load tenant";
+          const message = (err instanceof Error ? err.message : undefined) || "Failed to load tenant";
           setError(message);
 
           // Only show toast for non-auth errors to avoid noise for super_admin

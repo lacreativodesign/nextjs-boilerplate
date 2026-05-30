@@ -4,14 +4,14 @@ import { requireHrAccess, toIso } from "../_utils";
 
 export const runtime = "nodejs";
 
-function parseDate(value: any): Date | null {
+function parseDate(value: unknown): Date | null {
   if (!value) return null;
   if (typeof value === "string") {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? null : d;
   }
-  if (typeof value?.toDate === "function") {
-    const d = value.toDate();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") {
+    const d = (value as Record<string, unknown>).toDate();
     return Number.isNaN(d.getTime()) ? null : d;
   }
   if (value instanceof Date) return value;
@@ -34,69 +34,69 @@ export async function GET() {
     ]);
 
     const users = usersSnap.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
-    const employees = users.filter((user: any) => {
-      const role = String(user?.role || "").toLowerCase();
+    const employees = users.filter((user: unknown) => {
+      const role = String((user as Record<string, unknown>)?.role || "").toLowerCase();
       return role && role !== "client";
     });
 
     const totalEmployees = employees.length;
-    const activeEmployees = employees.filter((user: any) => {
-      const status = String(user?.status || "active").toLowerCase();
+    const activeEmployees = employees.filter((user: unknown) => {
+      const status = String((user as Record<string, unknown>)?.status || "active").toLowerCase();
       return status !== "disabled" && status !== "inactive";
     }).length;
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const newHires = employees.filter((user: any) => {
-      const joined = parseDate(user?.joiningDate) || parseDate(user?.createdAt);
+    const newHires = employees.filter((user: unknown) => {
+      const joined = parseDate((user as Record<string, unknown>)?.joiningDate) || parseDate((user as Record<string, unknown>)?.createdAt);
       return joined ? joined >= thirtyDaysAgo : false;
     }).length;
 
-    const tasks = tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const openOnboarding = tasks.filter((task: any) => String(task?.status || "").toLowerCase() !== "completed").length;
+    const tasks = tasksSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const openOnboarding = tasks.filter((task: unknown) => String((task as Record<string, unknown>)?.status || "").toLowerCase() !== "completed").length;
 
     const statusCounts = tasks.reduce(
-      (acc: Record<string, number>, task: any) => {
-        const status = String(task?.status || "Not Started");
+      (acc: Record<string, number>, task: unknown) => {
+        const status = String((task as Record<string, unknown>)?.status || "Not Started");
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       },
       { "Not Started": 0, "In Progress": 0, Completed: 0 }
     );
 
-    const docs = docsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const documentsCount = docs.filter((doc: any) => doc?.isDeleted !== true).length;
+    const docs = docsSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const documentsCount = docs.filter((doc: unknown) => (doc as Record<string, unknown>)?.isDeleted !== true).length;
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const attendanceLogs = attendanceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const recentAttendance = attendanceLogs.filter((log: any) => {
-      const created = parseDate(log?.createdAt || log?.timestamp || log?.date);
+    const attendanceLogs = attendanceSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const recentAttendance = attendanceLogs.filter((log: unknown) => {
+      const created = parseDate((log as Record<string, unknown>)?.createdAt || (log as Record<string, unknown>)?.timestamp || (log as Record<string, unknown>)?.date);
       return created ? created >= sevenDaysAgo : false;
     });
-    const attendanceUsers = new Set(recentAttendance.map((log: any) => String(log?.userId || log?.uid || "")));
+    const attendanceUsers = new Set(recentAttendance.map((log: unknown) => String((log as Record<string, unknown>)?.userId || (log as Record<string, unknown>)?.uid || "")));
 
     const events = eventsSnap.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((event: any) => String(event?.type || "").startsWith("hr."))
-      .sort((a: any, b: any) => {
-        const aDate = parseDate(a?.createdAt);
-        const bDate = parseDate(b?.createdAt);
+      .map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }))
+      .filter((event: unknown) => String((event as Record<string, unknown>)?.type || "").startsWith("hr."))
+      .sort((a: unknown, b: unknown) => {
+        const aDate = parseDate((a as Record<string, unknown>)?.createdAt);
+        const bDate = parseDate((b as Record<string, unknown>)?.createdAt);
         const aTime = aDate ? aDate.getTime() : 0;
         const bTime = bDate ? bDate.getTime() : 0;
         return bTime - aTime;
       })
       .slice(0, 20)
-      .map((event: any) => ({
-        id: event.id,
-        type: event.type,
-        title: event.title || "",
-        description: event.description || "",
-        createdAt: toIso(event.createdAt),
-        createdByName: event.createdByName || null,
-        entityType: event.entityType || null,
-        entityId: event.entityId || null,
+      .map((event: unknown) => ({
+        id: (event as Record<string, unknown>).id,
+        type: (event as Record<string, unknown>).type,
+        title: (event as Record<string, unknown>).title || "",
+        description: (event as Record<string, unknown>).description || "",
+        createdAt: toIso((event as Record<string, unknown>).createdAt),
+        createdByName: (event as Record<string, unknown>).createdByName || null,
+        entityType: (event as Record<string, unknown>).entityType || null,
+        entityId: (event as Record<string, unknown>).entityId || null,
       }));
 
     return NextResponse.json({

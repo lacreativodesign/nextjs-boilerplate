@@ -18,6 +18,7 @@ type ClientRecord = {
 type ClientsPayload = {
   ok: boolean;
   clients: ClientRecord[];
+  error?: string;
 };
 
 
@@ -76,9 +77,9 @@ export default function AMClientsPage() {
           throw new Error(payload?.error || "Unable to load clients.");
         }
         if (active) setClients(payload.clients || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error(err);
-        if (active) setError(err?.message || "Unable to load clients.");
+        if (active) setError((err instanceof Error ? err.message : undefined) || "Unable to load clients.");
       } finally {
         if (active) setLoading(false);
       }

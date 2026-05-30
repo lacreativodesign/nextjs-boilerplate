@@ -93,7 +93,7 @@ export class FileManager {
     }
 
     const snapshot = await query.get();
-    let files = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as ManagedFile[];
+    let files = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })) as unknown as ManagedFile[];
 
     if (params.tag) {
       files = files.filter((file) => file.tags.includes(params.tag as string));
@@ -165,8 +165,8 @@ export class FileManager {
         updatedAt: now,
       });
     } else {
-      const data = session.data() as any;
-      if (data.tenantId !== params.tenantId) {
+      const data = session.data() as unknown;
+      if ((data as Record<string, unknown>).tenantId !== params.tenantId) {
         throw new Error("Forbidden");
       }
       await sessionRef.update({
@@ -179,8 +179,8 @@ export class FileManager {
     await fs.mkdir(tempDir, { recursive: true });
     await fs.writeFile(path.join(tempDir, `${params.chunkIndex}.part`), params.chunk);
 
-    const activeSession = (await sessionRef.get()).data() as any;
-    const received = new Set<number>(activeSession.receivedChunks || []);
+    const activeSession = (await sessionRef.get()).data() as unknown;
+    const received = new Set<number>(((activeSession as Record<string, unknown>).receivedChunks as number[] | undefined) || []);
     const completed = received.size === params.totalChunks;
 
     if (!completed) {
@@ -202,16 +202,16 @@ export class FileManager {
     const buffer = await fs.readFile(assembledPath);
     const result = await this.storeVersion({
       tenantId: params.tenantId,
-      userId: activeSession.userId,
-      userEmail: activeSession.userEmail,
-      fileName: activeSession.fileName,
-      mimeType: activeSession.mimeType,
-      size: activeSession.size,
-      folderId: activeSession.folderId ?? undefined,
-      changes: activeSession.changes ?? undefined,
-      fileId: activeSession.fileId ?? undefined,
+      userId: (activeSession as Record<string, unknown>).userId as string,
+      userEmail: (activeSession as Record<string, unknown>).userEmail as string,
+      fileName: (activeSession as Record<string, unknown>).fileName as string,
+      mimeType: (activeSession as Record<string, unknown>).mimeType as string,
+      size: (activeSession as Record<string, unknown>).size as number,
+      folderId: ((activeSession as Record<string, unknown>).folderId as string | undefined) ?? undefined,
+      changes: ((activeSession as Record<string, unknown>).changes as string | undefined) ?? undefined,
+      fileId: ((activeSession as Record<string, unknown>).fileId as string | undefined) ?? undefined,
       fileBuffer: buffer,
-      permissions: activeSession.permissions,
+      permissions: (activeSession as Record<string, unknown>).permissions as Partial<FilePermissions> | undefined,
     });
 
     await fs.rm(tempDir, { recursive: true, force: true });
@@ -359,7 +359,7 @@ export class FileManager {
       .orderBy("versionNumber", "desc")
       .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as FileVersion[];
+    return snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })) as unknown as FileVersion[];
   }
 
   static async restoreVersion(params: { tenantId: string; fileId: string; versionId: string }) {
@@ -469,7 +469,7 @@ export class FileManager {
     let query: FirebaseFirestore.Query = adminDb.collection(FOLDERS_COLLECTION).where("tenantId", "==", tenantId);
     query = parentFolderId ? query.where("parentFolderId", "==", parentFolderId) : query.where("parentFolderId", "==", null);
     const snapshot = await query.orderBy("name", "asc").get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as ManagedFolder[];
+    return snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })) as unknown as ManagedFolder[];
   }
 
   static async moveFile(params: { tenantId: string; fileId: string; folderId?: string | null }) {

@@ -11,9 +11,11 @@ export function useIsSystemDark() {
     const read = () => setIsDark(!!mql.matches);
     read();
     // @ts-expect-error older browsers
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
     return () => {
       // @ts-expect-error older browsers
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
     };
   }, []);

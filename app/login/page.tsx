@@ -130,8 +130,8 @@ export default function LoginPage() {
         }
 
         window.location.href = returnTo;
-      } catch (err: any) {
-        setError(getFriendlyAuthError(err?.code));
+      } catch (err) {
+        setError(getFriendlyAuthError(String((err as Record<string, unknown>)?.code || "") || undefined));
       }
     };
 
@@ -157,14 +157,14 @@ export default function LoginPage() {
       }
       await completeLogin(userCred);
       showToast.success("Login successful!");
-    } catch (err: any) {
-      if (firebaseAuth && err?.code === "auth/multi-factor-auth-required") {
+    } catch (err) {
+      if (firebaseAuth && (err as Record<string, unknown>)?.code === "auth/multi-factor-auth-required") {
         // Firebase returns a MultiFactorResolver when TOTP is required.
-        const resolver = getMultiFactorResolver(firebaseAuth, err);
+        const resolver = getMultiFactorResolver(firebaseAuth, err as import("firebase/auth").MultiFactorError);
         setMfaResolver(resolver);
         setError("Two-factor authentication required.");
       } else {
-        const friendlyError = getFriendlyAuthError(err?.code);
+        const friendlyError = getFriendlyAuthError(String((err as Record<string, unknown>)?.code || "") || undefined);
         setError(friendlyError);
         showToast.error(friendlyError);
       }
@@ -211,7 +211,7 @@ export default function LoginPage() {
     try {
       const credential = await verifyMFASignIn(mfaResolver, code);
       await completeLogin(credential);
-    } catch (err: any) {
+    } catch (err) {
       setError("Invalid verification code. Please try again.");
       throw err;
     } finally {
@@ -244,7 +244,7 @@ export default function LoginPage() {
       }
 
       showToast.success("If an account exists for this email, a reset link has been sent.");
-    } catch (err: any) {
+    } catch {
       setError("Unable to send reset email. Please verify your email address.");
     }
   }

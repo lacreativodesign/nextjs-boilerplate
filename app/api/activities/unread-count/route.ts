@@ -10,6 +10,6 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const count = await getUnreadCount(me.tenantId, me.uid);
+  const count = await getUnreadCount(me.tenantId as string, me.uid);
   return NextResponse.json({ ok: true, count });
 }

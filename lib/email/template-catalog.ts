@@ -1,4 +1,4 @@
-import { EmailTemplateCategory } from "@/types/email-templates";
+import type { EmailTemplateCategory } from "@/types/email-templates";
 
 export const EMAIL_TEMPLATE_VARIABLES: Record<string, string[]> = {
   common: [

@@ -32,7 +32,7 @@ type UserRecord = {
   dob?: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type SortKey = "name" | "email" | "phone" | "department" | "status";
@@ -72,8 +72,8 @@ const normalizeFilterValue = (value: string | undefined, type?: SearchField["typ
 };
 
 /** Always get a usable ID no matter what your API returns */
-const getRowId = (u: any) =>
-  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
+const getRowId = (u: unknown) =>
+  ((u as Record<string, unknown>)?.uid || (u as Record<string, unknown>)?.id || (u as Record<string, unknown>)?.docId || (u as Record<string, unknown>)?.userId || (u as Record<string, unknown>)?.firebaseUid || (u as Record<string, unknown>)?.email || "") as string;
 
 
 export default function UsersPage() {
@@ -149,19 +149,20 @@ export default function UsersPage() {
         const json = await res.json().catch(() => null);
 
         if (!res.ok) {
-          throw new Error((json as any)?.error || "Failed to load users");
+          throw new Error(String((json as Record<string, unknown>)?.error || "") || "Failed to load users");
         }
 
         // Supports BOTH:
         // 1) API returns array: [...]
         // 2) API returns object: { ok: true, users: [...] }
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const jsonRec = json as Record<string, unknown>;
+        const list: unknown[] = Array.isArray(json) ? json : Array.isArray(jsonRec?.users) ? (jsonRec.users as unknown[]) : [];
 
         if (!alive) return;
         setUsers(list as UserRecord[]);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        const message = err?.message || "Unexpected error occurred.";
+        const message = (err instanceof Error ? err.message : undefined) || "Unexpected error occurred.";
         setError(message);
         toastError(message);
         setUsers([]);
@@ -202,8 +203,8 @@ export default function UsersPage() {
         setUsers(list);
         setSearch("");
         setAdvancedActive(true);
-      } catch (err: any) {
-        const message = err?.message || "Failed to search users";
+      } catch (err) {
+        const message = (err instanceof Error ? err.message : undefined) || "Failed to search users";
         setError(message);
         toastError(message);
         setUsers([]);
@@ -239,7 +240,7 @@ export default function UsersPage() {
         {
           loading: "Saving search...",
           success: "Search saved.",
-          error: (err) => err?.message || "Failed to save search.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to save search.",
         }
       );
     },
@@ -259,16 +260,17 @@ export default function UsersPage() {
         .then(async (res) => {
           const json = await res.json().catch(() => null);
           if (!res.ok) {
-            throw new Error((json as any)?.error || "Failed to load users");
+            throw new Error(String((json as Record<string, unknown>)?.error || "") || "Failed to load users");
           }
-          const list: any[] = Array.isArray(json)
+          const jsonRec2 = json as Record<string, unknown>;
+          const list: unknown[] = Array.isArray(json)
             ? json
-            : Array.isArray((json as any)?.users)
-            ? (json as any).users
+            : Array.isArray(jsonRec2?.users)
+            ? (jsonRec2.users as unknown[])
             : [];
           setUsers(list as UserRecord[]);
         })
-        .catch((err: any) => {
+        .catch((err) => {
           const message = err?.message || "Unexpected error occurred.";
           setError(message);
           toastError(message);
@@ -304,7 +306,7 @@ export default function UsersPage() {
         {
           loading: "Deleting user...",
           success: "User deleted successfully.",
-          error: (err) => err?.message || "Failed to delete user.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to delete user.",
         }
       );
 
@@ -365,8 +367,8 @@ export default function UsersPage() {
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const aVal: any = getSortValue(a, sortKey);
-      const bVal: any = getSortValue(b, sortKey);
+      const aVal: string = getSortValue(a, sortKey);
+      const bVal: string = getSortValue(b, sortKey);
 
       if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
       if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
@@ -408,14 +410,14 @@ export default function UsersPage() {
         {
           loading: "Resetting MFA...",
           success: "MFA reset successfully.",
-          error: (err) => err?.message || "Failed to reset MFA.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to reset MFA.",
         }
       );
 
       setUsers((prev) =>
         prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user))
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error("Reset MFA error", err);
     } finally {
       setResettingMfaUid((prev) => (prev === uid ? null : prev));
@@ -672,21 +674,21 @@ function UserDrawerContent({
   onResetMfa: (uid: string) => void;
   resettingMfa: boolean;
 }) {
-  const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
+  const safe = (v: unknown) => (v === null || v === undefined || v === "" ? "-" : String(v));
 
-  const formatPKR = (v: any) => {
+  const formatPKR = (v: unknown) => {
     const num = Number(v);
     return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
   };
 
-  const formatUSD = (v: any) => {
+  const formatUSD = (v: unknown) => {
     const num = Number(v);
     return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
   };
 
-  const formatDate = (v: any) => {
+  const formatDate = (v: unknown) => {
     if (!v) return "-";
-    const d = new Date(v);
+    const d = new Date(v as string);
     return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-US");
   };
 

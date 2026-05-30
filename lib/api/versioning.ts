@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const CURRENT_API_VERSION = "v1";
 export const NEXT_API_VERSION = "v2";

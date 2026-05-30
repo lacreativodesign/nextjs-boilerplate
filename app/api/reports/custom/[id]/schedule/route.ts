@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     );
 
     return NextResponse.json({ reportId: report.id, ...scheduleRecord });
-  } catch (error: any) {
-    const message = error?.message || "Failed to schedule report";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to schedule report";
     const status = message === "Report not found" ? 404 : message === "Unauthorized" ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }

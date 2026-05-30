@@ -35,7 +35,7 @@ export async function PUT(request: Request, context: { params: { id: string } })
     }
 
     const defect = await updateDefect(
-      auth.user.tenantId,
+      auth.user.tenantId as string,
       defectId,
       { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || auth.user.uid },
       {
@@ -49,9 +49,9 @@ export async function PUT(request: Request, context: { params: { id: string } })
     );
 
     return NextResponse.json({ ok: true, defect });
-  } catch (error: any) {
-    if (error?.message === "Defect not found") return NextResponse.json({ ok: false, error: error.message }, { status: 404 });
-    if (error?.message === "Forbidden") return NextResponse.json({ ok: false, error: error.message }, { status: 403 });
+  } catch (error) {
+    if ((error instanceof Error ? (error instanceof Error ? error.message : String(error)) : undefined) === "Defect not found") return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 404 });
+    if ((error instanceof Error ? (error instanceof Error ? error.message : String(error)) : undefined) === "Forbidden") return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 403 });
     console.error("PUT /api/production/defects/[id]", error);
     return NextResponse.json({ ok: false, error: "Unable to update defect." }, { status: 500 });
   }

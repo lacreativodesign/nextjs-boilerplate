@@ -61,7 +61,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, team });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager team error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load team." }, { status: 500 });
   }

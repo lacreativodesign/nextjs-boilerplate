@@ -53,7 +53,7 @@ export async function GET() {
       if (snap) snap.docs.forEach((doc) => dealsMap.set(doc.id, doc));
     });
 
-    const matchesTenant = (doc: Record<string, any>) =>
+    const matchesTenant = (doc: Record<string, unknown>) =>
       String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);
 
     const deals = Array.from(dealsMap.values())
@@ -93,7 +93,7 @@ export async function GET() {
           updatedAt: toISO(data.updatedAt),
         };
       })
-      .filter((deal) => matchesTenant(deal as Record<string, any>))
+      .filter((deal) => matchesTenant(deal as Record<string, unknown>))
       .filter((deal) => {
         if (!salesRep) return true;
         if (deal.ownerId === auth.user.uid) return true;
@@ -104,7 +104,7 @@ export async function GET() {
     const { discountApprovalThresholdPct } = await getSalesSettings();
 
     return NextResponse.json({ ok: true, deals, discountApprovalThresholdPct });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });
   }

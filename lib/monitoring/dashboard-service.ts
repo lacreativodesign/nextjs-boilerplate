@@ -66,7 +66,7 @@ async function getUsageLogs(startIso: string) {
     .limit(3000)
     .get();
 
-  return usageSnap.docs.map((doc) => doc.data() as Record<string, any>);
+  return usageSnap.docs.map((doc) => doc.data() as Record<string, unknown>);
 }
 
 async function getMetricEvents(startIso: string) {
@@ -77,7 +77,7 @@ async function getMetricEvents(startIso: string) {
     .limit(5000)
     .get();
 
-  return metricSnap.docs.map((doc) => doc.data() as Record<string, any>);
+  return metricSnap.docs.map((doc) => doc.data() as Record<string, unknown>);
 }
 
 export async function getMonitoringDashboard(): Promise<MonitoringDashboardPayload> {

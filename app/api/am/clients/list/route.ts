@@ -21,8 +21,8 @@ type ClientDoc = {
   primaryContactName?: string;
   primaryContactEmail?: string;
   primaryContactPhone?: string;
-  lastActivity?: any;
-  deletedAt?: any;
+  lastActivity?: unknown;
+  deletedAt?: unknown;
 };
 
 export async function GET() {
@@ -65,9 +65,9 @@ export async function GET() {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     return NextResponse.json({ ok: true, clients });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/clients list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

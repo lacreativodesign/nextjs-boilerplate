@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { generateProfitLoss } from "@/lib/reports/profitLoss";
 import { requireAdmin } from "../../_utils";
 import { normalizeTenantId } from "@/lib/tenant";
@@ -24,20 +24,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     if (requestedTenantId && requestedTenantId !== tenantId) {
       return NextResponse.json({ ok: false, error: "Tenant mismatch." }, { status: 403 });
     }
 
     const report = await generateProfitLoss(tenantId, new Date(startDate), new Date(endDate));
     return NextResponse.json({ ok: true, report });
-  } catch (error: any) {
+  } catch (error) {
     console.error("finance/reports profit-loss error:", error);
     return NextResponse.json(
       {
         ok: false,
         error: "Failed to generate report.",
-        details: error?.message || "Unknown error",
+        details: (error instanceof Error ? error.message : undefined) || "Unknown error",
       },
       { status: 500 }
     );

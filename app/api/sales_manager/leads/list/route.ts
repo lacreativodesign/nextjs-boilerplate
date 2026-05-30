@@ -36,7 +36,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, leads });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager leads list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
   }

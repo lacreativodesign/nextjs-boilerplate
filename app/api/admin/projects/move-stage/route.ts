@@ -22,32 +22,32 @@ const LEGACY_STAGE = "Inquiry";
 const ACCOUNT_MANAGER_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
 const PRODUCTION_STAGES = ["Draft", "Review", "Revisions", "Final"] as const;
 
-function cleanString(value: any) {
-  return String(value || "").trim();
+function cleanString(value: unknown) {
+  return String(value || String("")).trim();
 }
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-function normalizeStageHistory(history?: any[]) {
+function normalizeStageHistory(history?: unknown[]) {
   if (!Array.isArray(history)) return [];
   return history
     .map((entry) => ({
-      from: entry?.from || "",
-      to: entry?.to || "",
-      byUid: entry?.byUid || "",
-      byName: entry?.byName || "",
-      at: toISO(entry?.at),
+      from: (entry as Record<string, unknown>)?.from || String(""),
+      to: (entry as Record<string, unknown>)?.to || String(""),
+      byUid: (entry as Record<string, unknown>)?.byUid || String(""),
+      byName: (entry as Record<string, unknown>)?.byName || String(""),
+      at: toISO((entry as Record<string, unknown>)?.at),
     }))
     .filter((entry) => entry.to || entry.from);
 }
 
-function normalizeStageTimestamps(map?: Record<string, any> | null) {
+function normalizeStageTimestamps(map?: Record<string, unknown> | null) {
   if (!map) return {} as Record<string, string>;
   return Object.entries(map).reduce<Record<string, string>>((acc, [key, value]) => {
     const iso = toISO(value);
@@ -106,8 +106,8 @@ function canMoveStage({
   return false;
 }
 
-function cloneStageTimestamps(map?: Record<string, any> | null) {
-  return { ...(map || {}) } as Record<string, any>;
+function cloneStageTimestamps(map?: Record<string, unknown> | null) {
+  return { ...(map || {}) } as Record<string, unknown>;
 }
 
 export async function POST(req: Request) {
@@ -160,14 +160,14 @@ export async function POST(req: Request) {
       from: fromStage,
       to: toStage,
       byUid: me.uid,
-      byName: me.name || me.fullName || me.displayName || "",
+      byName: String(me.name || me.fullName || me.displayName || ""),
       at: now,
     });
 
     const stageTimestamps = cloneStageTimestamps(data.stageTimestamps);
     stageTimestamps[toStage] = now;
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       stage: toStage,
       stageHistory,
       stageTimestamps,
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
         createdAt: serverNow,
         payload: {
           projectId,
-          clientId: data.clientId || "",
+          clientId: data.clientId || String(""),
           toStage,
           fromStage,
           movedByUid: me.uid,
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
     }
 
     const updatedSnap = await ref.get();
-    const updated = updatedSnap.data() || {};
+    const updated = (updatedSnap.data() || {}) as Record<string, unknown>;
 
     if (updated.tenantId) {
       try {
@@ -215,16 +215,16 @@ export async function POST(req: Request) {
             projectId,
             fromStage,
             toStage,
-            projectName: updated.projectName || null,
+            projectName: String(updated.projectName || ""),
           },
-          actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+          actor: { uid: me.uid, email: String(me.email || "") || null, role: String(me.role || "") || null },
         });
       } catch (error) {
         console.error("zapier project.status_changed dispatch error", error);
       }
     }
 
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const notifications: Promise<void>[] = [];
     if (updated.ownerAmUid) {
       notifications.push(
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
           deepLink: "/am/projects",
           createdBy: { uid: me.uid, name: actorName },
           roleTarget: "am",
-          tenantId: updated.tenantId || null,
+          tenantId: (updated.tenantId != null ? String(updated.tenantId) : null),
         })
       );
     }
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
           deepLink: "/admin/projects",
           createdBy: { uid: me.uid, name: actorName },
           roleTarget: "production",
-          tenantId: updated.tenantId || null,
+          tenantId: (updated.tenantId != null ? String(updated.tenantId) : null),
         })
       );
     }
@@ -266,7 +266,7 @@ export async function POST(req: Request) {
       try {
         const clientSnap = await adminDb.collection("clients").doc(String(updated.clientId)).get();
         const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
-        const portalUid = String(clientData.portalUserUid || "");
+        const portalUid = String(clientData.portalUserUid || String(""));
         if (portalUid) {
           await createNotification({
             toUserId: portalUid,
@@ -278,7 +278,7 @@ export async function POST(req: Request) {
             deepLink: "/client/projects",
             createdBy: { uid: me.uid, name: actorName },
             roleTarget: "client",
-            tenantId: updated.tenantId || null,
+            tenantId: (updated.tenantId != null ? String(updated.tenantId) : null),
           });
         }
       } catch (notifyError) {
@@ -321,15 +321,15 @@ export async function POST(req: Request) {
       ok: true,
       project: {
         id: projectId,
-        projectCode: updated.projectCode || null,
-        projectName: updated.projectName || "",
-        clientId: updated.clientId || "",
-        clientName: updated.clientName || "",
-        projectType: updated.projectType || "",
-        stage: normalizeStage(updated.stage),
+        projectCode: (updated.projectCode != null ? String(updated.projectCode) : null),
+        projectName: updated.projectName || String(""),
+        clientId: updated.clientId || String(""),
+        clientName: updated.clientName || String(""),
+        projectType: updated.projectType || String(""),
+        stage: normalizeStage(updated.stage as string | null),
         priority: updated.priority || "Normal",
-        createdByUid: updated.createdByUid || "",
-        createdByName: updated.createdByName || "",
+        createdByUid: updated.createdByUid || String(""),
+        createdByName: updated.createdByName || String(""),
         ownerAmUid: updated.ownerAmUid ?? null,
         ownerAmName: updated.ownerAmName ?? null,
         productionUid: updated.productionUid ?? null,
@@ -339,14 +339,14 @@ export async function POST(req: Request) {
         startDate: toISO(updated.startDate),
         dueDate: toISO(updated.dueDate),
         lastActivityAt: toISO(updated.lastActivityAt),
-        stageHistory: normalizeStageHistory(updated.stageHistory),
-        stageTimestamps: normalizeStageTimestamps(updated.stageTimestamps),
+        stageHistory: normalizeStageHistory(updated.stageHistory as unknown[] | undefined),
+        stageTimestamps: normalizeStageTimestamps(updated.stageTimestamps as Record<string, unknown> | null | undefined),
         totalPaidUsd: Number(updated.totalPaidUsd || 0),
         outstandingUsd: Number(updated.outstandingUsd || 0),
-        internalNotes: updated.internalNotes || "",
+        internalNotes: updated.internalNotes || String(""),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("projects/move-stage error:", err);
     return NextResponse.json(
       { ok: false, error: "Unable to move stage right now." },

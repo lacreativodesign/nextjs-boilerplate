@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(url);
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to start Google OAuth." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to start Google OAuth." }, { status: 500 });
   }
 }

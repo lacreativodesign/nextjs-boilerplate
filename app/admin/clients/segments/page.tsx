@@ -97,9 +97,9 @@ export default function ClientSegmentsPage() {
         setSegments(Array.isArray(segmentsJson?.segments) ? segmentsJson.segments : []);
         setClients(Array.isArray(clientsJson?.clients) ? clientsJson.clients : []);
         setCanAdmin(Boolean(segmentsJson?.canAdmin));
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Failed to load client segments");
+        setError((err instanceof Error ? err.message : undefined) || "Failed to load client segments");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -358,8 +358,8 @@ export default function ClientSegmentsPage() {
           : prev
       );
       setManageOpen(false);
-    } catch (err: any) {
-      alert(err?.message || "Failed to update segment");
+    } catch (err) {
+      alert((err instanceof Error ? err.message : undefined) || "Failed to update segment");
     } finally {
       setManageLoading(false);
     }
@@ -392,8 +392,8 @@ export default function ClientSegmentsPage() {
         prev ? { ...prev, isActive: false, updatedAt: new Date().toISOString() } : prev
       );
       setManageOpen(false);
-    } catch (err: any) {
-      alert(err?.message || "Failed to delete segment");
+    } catch (err) {
+      alert((err instanceof Error ? err.message : undefined) || "Failed to delete segment");
     } finally {
       setManageLoading(false);
     }

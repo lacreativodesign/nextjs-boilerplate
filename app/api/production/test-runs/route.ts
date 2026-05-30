@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const testRun = await executeTestRun(
-      auth.user.tenantId,
+      auth.user.tenantId as string,
       { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || auth.user.uid },
       {
         testCaseId,
@@ -40,9 +40,9 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json({ ok: true, testRun });
-  } catch (error: any) {
-    if (error?.message === "Test case not found") return NextResponse.json({ ok: false, error: error.message }, { status: 404 });
-    if (error?.message === "Forbidden") return NextResponse.json({ ok: false, error: error.message }, { status: 403 });
+  } catch (error) {
+    if ((error instanceof Error ? (error instanceof Error ? error.message : String(error)) : undefined) === "Test case not found") return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 404 });
+    if ((error instanceof Error ? (error instanceof Error ? error.message : String(error)) : undefined) === "Forbidden") return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 403 });
     console.error("POST /api/production/test-runs", error);
     return NextResponse.json({ ok: false, error: "Unable to execute test run." }, { status: 500 });
   }

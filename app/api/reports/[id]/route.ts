@@ -59,11 +59,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     return NextResponse.json(report);
-  } catch (error: any) {
+  } catch (error) {
     if (isPlanAccessError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    const message = error?.message || "Failed to fetch report";
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to fetch report";
     const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 500;
     console.error("Error fetching report:", error);
     return NextResponse.json({ error: message }, { status });

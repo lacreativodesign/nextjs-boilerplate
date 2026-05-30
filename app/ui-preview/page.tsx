@@ -2,7 +2,7 @@
 
 import React from "react";
 
-function SectionWrapper({ title, subtitle, children }: any) {
+function SectionWrapper({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <div
       style={{
@@ -37,7 +37,7 @@ function SectionWrapper({ title, subtitle, children }: any) {
   );
 }
 
-function LoginCard({ title, bg, border, buttonBg }: any) {
+function LoginCard({ title, bg, border, buttonBg }: { title: string; bg: string; border: string; buttonBg: string }) {
   return (
     <div
       style={{

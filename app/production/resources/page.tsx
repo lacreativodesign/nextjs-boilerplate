@@ -99,9 +99,9 @@ export default function ProductionResourcesPage() {
 
         setWorkload(workloadJson);
         setUtilization(utilizationJson);
-      } catch (err: any) {
+      } catch (err) {
         if (!active) return;
-        setError(err?.message || "Unable to load resource planning data.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load resource planning data.");
       } finally {
         if (active) setLoading(false);
       }

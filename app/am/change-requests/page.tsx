@@ -35,6 +35,7 @@ type ChangeRequestRecord = {
 type ChangeRequestsPayload = {
   ok: boolean;
   changeRequests: ChangeRequestRecord[];
+  error?: string;
 };
 
 
@@ -129,9 +130,9 @@ export default function AMChangeRequestsPage() {
       if (mountedRef ? mountedRef.current : true) {
         setChangeRequests(payload.changeRequests || []);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load change requests.");
+      if (mountedRef ? mountedRef.current : true) setError((err instanceof Error ? err.message : undefined) || "Unable to load change requests.");
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

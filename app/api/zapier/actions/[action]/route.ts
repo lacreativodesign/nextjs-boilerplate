@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { executeZapierAction } from "@/lib/zapier/service";
 import { requireZapierApiKey } from "@/app/api/zapier/_utils";
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: { params: { action:
     });
 
     return NextResponse.json({ ok: true, result }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Action failed." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Action failed." }, { status: 400 });
   }
 }

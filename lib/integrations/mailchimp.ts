@@ -505,7 +505,7 @@ function customerMatchesFilter(customer: Customer, filter?: MailchimpSyncFilter)
 
 async function loadCustomersForSync(tenantId: string) {
   const snap = await adminDb.collection("customers").where("tenantId", "==", tenantId).limit(1000).get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Customer) }));
+  return snap.docs.map((doc) => { const d = doc.data() as Customer; return { ...d, id: doc.id }; });
 }
 
 export async function syncCustomersToAudience(params: {
@@ -587,7 +587,6 @@ export async function syncCustomersToAudience(params: {
     await adminDb.collection("tenants").doc(params.tenantId).collection("mailchimpSyncLogs").add({
       tenantId: params.tenantId,
       mode: params.mode,
-      audienceId,
       filter: params.filter || null,
       ...result,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -595,7 +594,7 @@ export async function syncCustomersToAudience(params: {
     });
 
     return result;
-  } catch (error: any) {
+  } catch (error) {
     await getIntegrationRef(params.tenantId).set(
       {
         stats: {
@@ -604,7 +603,7 @@ export async function syncCustomersToAudience(params: {
           lastSyncFinishedAt: new Date().toISOString(),
           lastSyncMode: params.mode,
           lastSyncStatus: "error",
-          lastSyncError: error?.message || "Mailchimp sync failed.",
+          lastSyncError: (error instanceof Error ? error.message : undefined) || "Mailchimp sync failed.",
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: params.userUid,

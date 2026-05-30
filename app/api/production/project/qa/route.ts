@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 
 type ProjectDoc = {
   stage?: string;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
-  stageTimestamps?: Record<string, any>;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string }>;
+  stageTimestamps?: Record<string, unknown>;
   projectName?: string;
   clientName?: string;
   projectType?: string;
@@ -22,9 +22,9 @@ type ProjectDoc = {
   productionOwnerId?: string | null;
   productionOwnerName?: string | null;
   assignedProductionIds?: string[];
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
   qaStatus?: string | null;
   qaNote?: string | null;
   isDeleted?: boolean;
@@ -53,7 +53,7 @@ async function emitAutomationEvent({
   projectId: string;
   actorId: string;
   actorName: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   await adminDb.collection("automationEvents").add({
     type,
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String((data as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
     const actorName = me.name || me.fullName || me.displayName || "";
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updatedAt: serverNow,
       lastActivityAt: serverNow,
       qaStatus: action === "approve" ? "approved" : "rejected",
@@ -241,9 +241,9 @@ export async function POST(req: Request) {
         stageHistory: normalizeStageHistory(updated.stageHistory),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/qa error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

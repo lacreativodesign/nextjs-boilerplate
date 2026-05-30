@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type { Query } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.orderBy("orderDate", "desc").limit(100).get();
-    const purchaseOrders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const purchaseOrders = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ purchaseOrders });
   } catch (error) {

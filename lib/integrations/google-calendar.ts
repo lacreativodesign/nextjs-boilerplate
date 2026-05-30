@@ -82,7 +82,7 @@ export async function upsertBizostoEventToGoogleCalendar(params: {
     ? `/calendars/${calendarId}/events/${encodeURIComponent(googleEventId)}?conferenceDataVersion=1`
     : `/calendars/${calendarId}/events?conferenceDataVersion=1`;
 
-  const created = await googleCalendarRequest<any>(params.tenantId, path, {
+  const created = await googleCalendarRequest<unknown>(params.tenantId, path, {
     method,
     body: JSON.stringify(payload),
   });
@@ -97,7 +97,7 @@ export async function upsertBizostoEventToGoogleCalendar(params: {
     .set(
       {
         bizostoEventId: params.event.bizostoEventId,
-        googleEventId: created.id,
+        googleEventId: (created as Record<string, unknown>).id,
         calendarId: params.calendarId || "primary",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
@@ -106,10 +106,10 @@ export async function upsertBizostoEventToGoogleCalendar(params: {
 
   return {
     bizostoEventId: params.event.bizostoEventId,
-    googleEventId: created.id,
-    htmlLink: created.htmlLink || null,
-    meetLink: created.hangoutLink || created.conferenceData?.entryPoints?.find((entry: any) => entry.entryPointType === "video")?.uri || null,
-    status: created.status || "confirmed",
+    googleEventId: (created as Record<string, unknown>).id,
+    htmlLink: (created as Record<string, unknown>).htmlLink || null,
+    meetLink: (created as Record<string, unknown>).hangoutLink || (((created as Record<string, unknown>).conferenceData as Record<string, unknown>)?.entryPoints as Record<string, unknown>[])?.find((entry) => entry.entryPointType === "video")?.uri || null,
+    status: (created as Record<string, unknown>).status || "confirmed",
   };
 }
 
@@ -134,25 +134,31 @@ export async function importGoogleCalendarEvents(params: {
 
   const token = await getValidGoogleAccessToken(params.tenantId);
   const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  const data = (await response.json().catch(() => ({}))) as any;
+  const data = (await response.json().catch(() => ({}))) as unknown;
   if (!response.ok) {
-    throw new Error(data?.error?.message || "Failed to import Google Calendar events.");
+    throw new Error(((data as Record<string, unknown>)?.error as Record<string, unknown>)?.message as string || "Failed to import Google Calendar events.");
   }
 
   return {
-    events: Array.isArray(data.items)
-      ? data.items.map((item: any) => ({
-          googleEventId: item.id,
-          summary: item.summary || "",
-          description: item.description || "",
-          status: item.status || "confirmed",
-          start: item.start?.dateTime || item.start?.date || null,
-          end: item.end?.dateTime || item.end?.date || null,
-          updated: item.updated || null,
-          externalBizostoEventId: item.extendedProperties?.private?.bizostoEventId || null,
-        }))
+    events: Array.isArray((data as Record<string, unknown>).items)
+      ? ((data as Record<string, unknown>).items as unknown[]).map((item: unknown) => {
+          const i = item as Record<string, unknown>;
+          const startObj = i.start as Record<string, unknown> | undefined;
+          const endObj = i.end as Record<string, unknown> | undefined;
+          const extProps = i.extendedProperties as Record<string, unknown> | undefined;
+          return {
+            googleEventId: i.id,
+            summary: i.summary || "",
+            description: i.description || "",
+            status: i.status || "confirmed",
+            start: startObj?.dateTime || startObj?.date || null,
+            end: endObj?.dateTime || endObj?.date || null,
+            updated: i.updated || null,
+            externalBizostoEventId: (extProps?.private as Record<string, unknown>)?.bizostoEventId || null,
+          };
+        })
       : [],
-    nextSyncToken: data.nextSyncToken || null,
+    nextSyncToken: (data as Record<string, unknown>).nextSyncToken || null,
   };
 }
 

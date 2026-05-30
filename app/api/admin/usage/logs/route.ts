@@ -17,8 +17,8 @@ export async function GET(req: Request) {
     const snap = await adminDb.collection("api_usage_logs").orderBy("createdAt", "desc").limit(pageSize).get();
 
     const logs = snap.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
-      .filter((row) => current.role === "super_admin" || row.tenantId === current.tenantId);
+      .map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }))
+      .filter((row) => current.role === "super_admin" || row.tenantId as unknown === current.tenantId);
 
     return NextResponse.json({ ok: true, logs });
   } catch (error) {

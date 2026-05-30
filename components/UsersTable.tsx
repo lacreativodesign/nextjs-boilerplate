@@ -1,6 +1,6 @@
 "use client";
 
-import { User } from "@/types";
+import type { User } from "@/types";
 import { ArrowUpDown } from "lucide-react";
 import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 

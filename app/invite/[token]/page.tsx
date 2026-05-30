@@ -43,8 +43,8 @@ export default function InvitePage({ params }: InvitePageProps) {
       }
 
       window.location.href = "/login";
-    } catch (err: any) {
-      setError(err?.message || "Unable to accept invitation");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to accept invitation");
     } finally {
       setIsSubmitting(false);
     }

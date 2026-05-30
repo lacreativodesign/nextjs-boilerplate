@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
 const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"] as const;
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const description = cleanString(body?.description);
     const priority = cleanString(body?.priority) || "Medium";
     const attachedFileIds = Array.isArray(body?.attachedFileIds)
-      ? body.attachedFileIds.map((id: any) => cleanString(id)).filter(Boolean)
+      ? body.attachedFileIds.map((id: unknown) => cleanString(id)).filter(Boolean)
       : [];
 
     if (!projectId) {
@@ -157,9 +157,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/change-requests create error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

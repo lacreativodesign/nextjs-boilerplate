@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import PeriodSelector from "@/components/performance/PeriodSelector";
 import PerformanceCard from "@/components/performance/PerformanceCard";
-import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
+import { getCurrentPeriod, type PeriodType } from "@/lib/performance/periods";
 
 type UserRecord = { uid: string; name?: string; role?: string; department?: string };
 type ReviewRecord = { id: string; userId: string; period: string; rating: number | null; notes: string };

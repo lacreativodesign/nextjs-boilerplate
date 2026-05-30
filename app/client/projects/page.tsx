@@ -89,9 +89,9 @@ export default function ClientProjectsPage() {
         if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load projects.");
         if (!alive) return;
         setProjects(payload.projects || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load projects.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load projects.");
       } finally {
         if (!alive) return;
         setLoading(false);

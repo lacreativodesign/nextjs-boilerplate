@@ -23,8 +23,8 @@ type AiAnalysis = {
 function toIso(value: unknown): string | null {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === "object" && value !== null && "toDate" in value && typeof (value as any).toDate === "function") {
-    const date = (value as any).toDate();
+  if (typeof value === "object" && value !== null && "toDate" in value && typeof (value as unknown).toDate === "function") {
+    const date = (value as unknown).toDate();
     return date instanceof Date ? date.toISOString() : null;
   }
   return null;
@@ -177,7 +177,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
 
     const tickets = await adminDb
       .collection("tenants")
@@ -210,7 +210,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
     const data = await req.json().catch(() => null) as Record<string, unknown> | null;
 
     const title = typeof data?.title === "string" ? data.title.trim() : "";

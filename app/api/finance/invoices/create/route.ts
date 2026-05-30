@@ -18,7 +18,7 @@ import { normalizeRole } from "../../../admin/_utils";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
 import { validateRequest } from "@/lib/validations/validate";
 import { checkRateLimit, getClientIp } from "@/lib/security";
-import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { type CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
 import { calculateTax } from "@/lib/tax/calculator";
 import { incrementTenantStats } from "@/lib/tenant/stats";
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     await checkRateLimit(req, "standard", auth.user.uid);
 
-    let body: any = null;
+    let body: unknown = null;
     try {
       body = await req.json();
     } catch {
@@ -57,10 +57,10 @@ export async function POST(req: Request) {
       });
     }
 
-    const normalizedItems = Array.isArray(body?.items)
-      ? body.items
-      : Array.isArray(body?.lineItems)
-        ? body.lineItems.map((item: LineItemInput) => ({
+    const normalizedItems = Array.isArray((body as Record<string, unknown>)?.items)
+      ? (body as Record<string, unknown>).items
+      : Array.isArray((body as Record<string, unknown>)?.lineItems)
+        ? ((body as Record<string, unknown>).lineItems as LineItemInput[]).map((item: LineItemInput) => ({
             description: item?.name,
             quantity: item?.qty,
             unitPrice: item?.unitPriceUsd,
@@ -69,24 +69,24 @@ export async function POST(req: Request) {
         : [];
 
     const validatedData = validateRequest(createInvoiceSchema, {
-      clientId: body?.clientId,
+      clientId: (body as Record<string, unknown>)?.clientId,
       items: normalizedItems,
-      currency: body?.currency || "USD",
-      dueDate: body?.dueDate,
-      notes: body?.notes,
-      status: body?.status || "draft",
+      currency: (body as Record<string, unknown>)?.currency || "USD",
+      dueDate: (body as Record<string, unknown>)?.dueDate,
+      notes: (body as Record<string, unknown>)?.notes,
+      status: (body as Record<string, unknown>)?.status || "draft",
       tenantId: auth.user.tenantId || "",
     });
-    const orderId = parseString(body?.orderId).trim();
+    const orderId = parseString((body as Record<string, unknown>)?.orderId).trim();
     const clientId = parseString(validatedData.clientId).trim();
     const currency = parseString(validatedData.currency || "USD").toUpperCase();
     const notes = parseString(validatedData.notes || "").trim();
     const lineItems = validatedData.items;
     const statusInput = normalizeInvoiceStatus(validatedData.status);
     const dueDateRaw = parseString(validatedData.dueDate).trim();
-    const issuedAtRaw = parseString(body?.issuedAt).trim();
-    const dealId = parseString(body?.dealId).trim();
-    const type = parseString(body?.type).trim();
+    const issuedAtRaw = parseString((body as Record<string, unknown>)?.issuedAt).trim();
+    const dealId = parseString((body as Record<string, unknown>)?.dealId).trim();
+    const type = parseString((body as Record<string, unknown>)?.type).trim();
 
     if (!orderId) {
       throw new AppError({
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       return { name, qty, unitPriceUsd };
     });
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
 
     let exchangeRate = 1;
     const baseCurrency: CurrencyCode = "USD";
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
     let taxRate = 0;
     let taxRateName = "No Tax";
-    let taxRateId = parseString(body?.taxRateId).trim() || null;
+    let taxRateId = parseString((body as Record<string, unknown>)?.taxRateId).trim() || null;
     let taxInclusive = false;
 
     const exemptionsSnap = await adminDb
@@ -259,7 +259,7 @@ export async function POST(req: Request) {
     }
 
     const clientName = parseString(client.companyName || client.name).trim();
-    const totalPaid = parseNumber(body?.totalPaid, 0);
+    const totalPaid = parseNumber((body as Record<string, unknown>)?.totalPaid, 0);
     if (totalPaid < 0 || totalPaid > totalInCurrency) {
       throw new AppError({
         message: "Total paid must be between 0 and the invoice total.",
@@ -328,7 +328,7 @@ export async function POST(req: Request) {
       invoiceAmountTotalBaseDelta: totalInBase,
     });
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
     await createFinanceEvent({
       type: "finance.invoice_created",
       title: "Invoice created",
@@ -337,7 +337,7 @@ export async function POST(req: Request) {
       entityId: docRef.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: auth.user.tenantId as string | null | undefined,
     });
 
     try {
@@ -381,7 +381,7 @@ export async function POST(req: Request) {
           orderId,
           clientName: clientName || clientId,
         },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null | undefined,
       }).catch((emailError) => {
         logError(emailError, { route: "finance.invoice_created.email" });
       });

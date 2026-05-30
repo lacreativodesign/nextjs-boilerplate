@@ -24,8 +24,8 @@ type FileDoc = {
   version?: string | number | null;
   notes?: string | null;
   isLatest?: boolean;
-  uploadedAt?: any;
-  updatedAt?: any;
+  uploadedAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -146,9 +146,9 @@ export async function GET(req: Request) {
     );
 
     return NextResponse.json({ ok: true, files, totals });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/files list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

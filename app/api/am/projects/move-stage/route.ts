@@ -12,28 +12,29 @@ export const runtime = "nodejs";
 const VALID_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
 
 type ProjectDoc = {
+  tenantId?: string | null;
   projectName?: string;
   clientName?: string;
   stage?: string;
   priority?: string;
-  dueDate?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
-  stageTimestamps?: Record<string, any>;
+  dueDate?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string | null }>;
+  stageTimestamps?: Record<string, unknown>;
   ownerAmUid?: string | null;
   productionUid?: string | null;
   productionName?: string | null;
   ownerId?: string | null;
   amId?: string | null;
-  updatedAt?: any;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
-function cleanString(value: any) {
-  return String(value || "").trim();
+function cleanString(value: unknown) {
+  return String(value || String("")).trim();
 }
 
 function normalizeStage(stage?: string) {
-  return VALID_STAGES.includes((stage || "") as (typeof VALID_STAGES)[number]) ? (stage as string) : "Kickoff";
+  return VALID_STAGES.includes((stage || String("")) as (typeof VALID_STAGES)[number]) ? (stage as string) : "Kickoff";
 }
 
 export async function POST(req: Request) {
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() as ProjectDoc;
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String(data.tenantId || String("")) !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (!isOwnedByAm(data, me.uid)) {
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
       from: fromStage,
       to: toStage,
       byUid: me.uid,
-      byName: me.name || me.fullName || me.displayName || "",
+      byName: String(me.name || me.fullName || me.displayName || ""),
       at: now,
       reason: note || null,
     });
@@ -108,10 +109,10 @@ export async function POST(req: Request) {
 
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
-    const dueDate = toISO((updated as any)?.dueDate);
+    const dueDate = toISO(updated.dueDate);
     const health = computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays);
 
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
     const recipients = new Set<string>();
     if (updated.productionUid) recipients.add(String(updated.productionUid));
@@ -169,8 +170,8 @@ export async function POST(req: Request) {
       ok: true,
       project: {
         id: projectId,
-        projectName: updated.projectName || "",
-        clientName: updated.clientName || "",
+        projectName: updated.projectName || String(""),
+        clientName: updated.clientName || String(""),
         stage: normalizeStage(updated.stage),
         priority: updated.priority || "Normal",
         health,
@@ -181,16 +182,16 @@ export async function POST(req: Request) {
         updatedAt: toISO(updated.updatedAt),
         createdAt: null,
         stageHistory: (updated.stageHistory || []).map((entry) => ({
-          from: entry?.from || "",
-          to: entry?.to || "",
-          byUid: entry?.byUid || "",
-          byName: entry?.byName || "",
+          from: entry?.from || String(""),
+          to: entry?.to || String(""),
+          byUid: entry?.byUid || String(""),
+          byName: entry?.byName || String(""),
           at: toISO(entry?.at),
           reason: entry?.reason || null,
         })),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/move-stage error:", err);
     return NextResponse.json({ ok: false, error: "Unable to move stage right now." }, { status: 500 });
   }

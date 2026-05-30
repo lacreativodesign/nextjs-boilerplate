@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       }
       const prevOwnerId = data.ownerId || null;
 
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
       };
 
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager leads update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update lead." }, { status: 500 });
   }

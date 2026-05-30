@@ -30,21 +30,21 @@ type ProjectDoc = {
   ownerAmName?: string | null;
   productionUid?: string | null;
   productionName?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
-  startDate?: any;
-  dueDate?: any;
-  lastActivityAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  startDate?: unknown;
+  dueDate?: unknown;
+  lastActivityAt?: unknown;
   totalPaidUsd?: number;
   outstandingUsd?: number;
   isDeleted?: boolean;
   internalNotes?: string;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     const rawLimit = Number(searchParams.get("limit") || 50);
     const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, Math.floor(rawLimit))) : 50;
 
-    let baseQuery: FirebaseFirestore.Query = adminDb
+    const baseQuery: FirebaseFirestore.Query = adminDb
       .collection("projects")
       .where("tenantId", "==", me.tenantId)
       .where("isDeleted", "==", false);
@@ -212,9 +212,9 @@ export async function GET(req: Request) {
         name: me.name || me.fullName || me.displayName || "",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("projects/list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

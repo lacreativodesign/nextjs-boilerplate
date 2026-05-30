@@ -7,19 +7,19 @@ import { requireAutomationAdmin } from "../_utils";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function normalizeWorkflow(input: any, tenantId: string, actorUid: string): Omit<WorkflowDefinition, "id"> {
+function normalizeWorkflow(input: unknown, tenantId: string, actorUid: string): Omit<WorkflowDefinition, "id"> {
   return {
     tenantId,
-    name: String(input?.name || "").trim(),
-    description: String(input?.description || "").trim(),
-    trigger: input?.trigger,
-    conditions: Array.isArray(input?.conditions) ? input.conditions : [],
-    actions: Array.isArray(input?.actions) ? input.actions : [],
-    status: input?.status === "active" ? "active" : "disabled",
-    retryLimit: Number.isFinite(Number(input?.retryLimit)) ? Math.max(0, Math.min(5, Number(input.retryLimit))) : 1,
+    name: String((input as Record<string, unknown>)?.name || "").trim(),
+    description: String((input as Record<string, unknown>)?.description || "").trim(),
+    trigger: (input as Record<string, unknown>)?.trigger as WorkflowTrigger,
+    conditions: Array.isArray((input as Record<string, unknown>)?.conditions) ? (input as Record<string, unknown>).conditions as WorkflowCondition[] : [],
+    actions: Array.isArray((input as Record<string, unknown>)?.actions) ? (input as Record<string, unknown>).actions as WorkflowAction[] : [],
+    status: (input as Record<string, unknown>)?.status === "active" ? "active" : "disabled",
+    retryLimit: Number.isFinite(Number((input as Record<string, unknown>)?.retryLimit)) ? Math.max(0, Math.min(5, Number((input as Record<string, unknown>).retryLimit))) : 1,
     createdBy: actorUid,
     updatedBy: actorUid,
-    templateKey: input?.templateKey ? String(input.templateKey) : undefined,
+    templateKey: (input as Record<string, unknown>)?.templateKey ? String((input as Record<string, unknown>).templateKey) : undefined,
   };
 }
 
@@ -33,7 +33,7 @@ export async function GET() {
     .orderBy("updatedAt", "desc")
     .get();
 
-  const workflows = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+  const workflows = snap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
   return NextResponse.json({ ok: true, workflows, templates: Object.keys(WORKFLOW_TEMPLATES) });
 }
 

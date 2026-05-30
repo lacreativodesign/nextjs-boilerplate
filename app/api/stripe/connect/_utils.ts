@@ -16,7 +16,7 @@ export async function requireTenantStripeConnect() {
   }
 
   try {
-    await requireModule(me.tenantId, "client_stripe_connect", { role: me.role });
+    await requireModule(me.tenantId as string, "client_stripe_connect", { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: 403, error: "MODULE_DISABLED" };

@@ -8,10 +8,10 @@ import LoadingButton from "@/components/ui/LoadingButton";
 import {
   formatDate,
   formatDateTime,
-  formatUsd,
+  _formatUsd,
   } from "@/components/finance/financeUtils";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
-import { CurrencyCode } from "@/lib/finance/currencies";
+import type { CurrencyCode } from "@/lib/finance/currencies";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { CurrencyDisplay } from "@/components/finance/CurrencyDisplay";
 import { CurrencySelector } from "@/components/finance/CurrencySelector";
@@ -133,7 +133,7 @@ function FinanceInvoicesContent() {
       }
       setInvoices(data.invoices || []);
       setCurrentUser(data.currentUser || null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Invoices load error", err);
       toastError("Unable to load invoices. Please try again in a moment.");
       setError({
@@ -218,9 +218,9 @@ function FinanceInvoicesContent() {
         setStatusFilter("");
         setDueFilter("");
         setClientFilter("");
-      } catch (err: any) {
+      } catch (err) {
         console.error("Advanced invoice search error", err);
-        toastError(err?.message || "Unable to search invoices.");
+        toastError((err instanceof Error ? err.message : undefined) || "Unable to search invoices.");
         setError({
           title: "Unable to search invoices",
           message: "Please try again in a moment.",
@@ -257,7 +257,7 @@ function FinanceInvoicesContent() {
         {
           loading: "Saving search...",
           success: "Search saved.",
-          error: (err) => err?.message || "Unable to save search.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to save search.",
         }
       );
     },
@@ -381,7 +381,7 @@ function FinanceInvoicesContent() {
         {
           loading: "Updating invoice...",
           success: "Invoice marked as paid.",
-          error: (err) => err?.message || "Unable to mark invoice paid.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to mark invoice paid.",
         }
       );
       await loadInvoices();
@@ -411,7 +411,7 @@ function FinanceInvoicesContent() {
         {
           loading: "Sending invoice...",
           success: "Invoice sent successfully.",
-          error: (err) => err?.message || "Unable to send invoice.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to send invoice.",
         }
       );
       await loadInvoices();
@@ -848,11 +848,11 @@ function CreateInvoiceDrawer({
         {
           loading: "Creating invoice...",
           success: "Invoice created successfully.",
-          error: (err) => err?.message || "Unable to create invoice.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to create invoice.",
         }
       );
       onCreated();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Create invoice error", err);
       setError("Unable to create invoice. Please check the form.");
     } finally {

@@ -17,11 +17,11 @@ function canCreateProject(role: string) {
   return r === 'admin' || r === 'super_admin' || r === 'sales_manager' || r === 'am';
 }
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || '').trim();
 }
 
-function toISODate(value: any) {
+function toISODate(value: unknown) {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
@@ -130,8 +130,8 @@ export async function POST(req: Request) {
         clientData,
         createdByUid: me.uid,
       });
-    } catch (activationErr: any) {
-      console.warn('projects/create: client activation skipped —', activationErr?.message);
+    } catch (activationErr) {
+      console.warn('projects/create: client activation skipped —', (activationErr instanceof Error ? activationErr.message : undefined));
       // Project creation succeeds; email/portal setup skipped for clients without email
     }
 
@@ -200,8 +200,8 @@ export async function POST(req: Request) {
         lastActivityAt: new Date().toISOString(),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('projects/create error:', err);
-    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || 'Server error' }, { status: 500 });
   }
 }

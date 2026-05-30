@@ -224,9 +224,9 @@ export default function ClientsPage() {
         const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
         if (!alive) return;
         setRows(list);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        const message = e?.message || "Failed to load clients";
+        const message = (e instanceof Error ? e.message : undefined) || "Failed to load clients";
         setError(message);
         toastError(message);
         setRows([]);
@@ -267,8 +267,8 @@ export default function ClientsPage() {
         setRows(list);
         setQuery("");
         setAdvancedActive(true);
-      } catch (e: any) {
-        const message = e?.message || "Failed to search clients";
+      } catch (e) {
+        const message = (e instanceof Error ? e.message : undefined) || "Failed to search clients";
         setError(message);
         toastError(message);
       } finally {
@@ -303,7 +303,7 @@ export default function ClientsPage() {
         {
           loading: "Saving search...",
           success: "Search saved.",
-          error: (err) => err?.message || "Failed to save search.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to save search.",
         }
       );
     },
@@ -328,7 +328,7 @@ export default function ClientsPage() {
           const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
           setRows(list);
         })
-        .catch((e: any) => {
+        .catch((e) => {
           const message = e?.message || "Failed to load clients";
           setError(message);
           toastError(message);
@@ -356,8 +356,9 @@ export default function ClientsPage() {
         const segments = Array.isArray(json?.segments) ? json.segments : [];
 
         const map: Record<string, { name: string; type: string }> = {};
-        segments.forEach((seg: any) => {
-          if (seg?.slug) map[seg.slug] = { name: seg.name || seg.slug, type: seg.type || "" };
+        segments.forEach((seg: unknown) => {
+          const s = seg as { slug: string; name: string; type: string };
+          if (s?.slug) map[s.slug] = { name: s.name || s.slug, type: s.type || "" };
         });
 
         if (!alive) return;
@@ -479,7 +480,7 @@ export default function ClientsPage() {
         {
           loading: "Sending activation email...",
           success: "Activation email sent.",
-          error: (err) => err?.message || "Unable to send activation email.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to send activation email.",
         }
       );
     } catch (err) {
@@ -509,7 +510,7 @@ export default function ClientsPage() {
         {
           loading: "Deleting client...",
           success: "Client deleted successfully.",
-          error: (err) => err?.message || "Failed to delete client.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to delete client.",
         }
       );
 
@@ -518,7 +519,7 @@ export default function ClientsPage() {
         setSelected(null);
         setDrawerOpen(false);
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));

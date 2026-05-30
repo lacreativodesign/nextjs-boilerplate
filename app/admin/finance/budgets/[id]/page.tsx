@@ -50,9 +50,9 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
           );
           setComparison(found || null);
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Budget load error", error);
-        toastError(error?.message || "Unable to load budget details.");
+        toastError((error instanceof Error ? error.message : undefined) || "Unable to load budget details.");
       } finally {
         setLoading(false);
       }

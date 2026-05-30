@@ -63,7 +63,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const invoiceSnap = await adminDb.collection("invoices").doc(params.id).get();
     if (!invoiceSnap.exists) {
       return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
@@ -163,7 +163,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("invoice pdf generation error:", error);
     return NextResponse.json({ ok: false, error: "PDF generation failed." }, { status: 500 });
   }

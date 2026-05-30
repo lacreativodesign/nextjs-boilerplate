@@ -46,7 +46,7 @@ type UserRecord = {
   designation?: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type SortKey = "name" | "email" | "role" | "department" | "salary" | "target" | "status" | "joined";
@@ -58,8 +58,8 @@ type CurrentUser = {
   email?: string | null;
 };
 
-const getRowId = (u: any) =>
-  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
+const getRowId = (u: unknown) =>
+  ((u as Record<string, unknown>)?.uid || (u as Record<string, unknown>)?.id || (u as Record<string, unknown>)?.docId || (u as Record<string, unknown>)?.userId || (u as Record<string, unknown>)?.firebaseUid || (u as Record<string, unknown>)?.email || "") as string;
 
 function formatRole(value: string) {
   return value
@@ -129,9 +129,9 @@ export default function HrEmployeesPage() {
         if (!alive) return;
         setUsers(data.users || []);
         setCurrentUser(data.currentUser || null);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load employees.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load employees.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -244,8 +244,8 @@ export default function HrEmployeesPage() {
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update employee.");
       setUsers((prev) => prev.map((user) => (getRowId(user) === payload.uid ? { ...user, ...data.user } : user)));
       setEditMode(false);
-    } catch (err: any) {
-      toastError(err?.message || "Unable to update employee.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to update employee.");
     } finally {
       setSaving(false);
     }
@@ -273,8 +273,8 @@ export default function HrEmployeesPage() {
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update status.");
       setUsers((prev) => prev.map((user) => (getRowId(user) === getRowId(selectedUser) ? { ...user, ...data.user } : user)));
       setFormState((prev) => ({ ...prev, status }));
-    } catch (err: any) {
-      toastError(err?.message || "Unable to update status.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to update status.");
     } finally {
       setSaving(false);
     }
@@ -577,7 +577,7 @@ export default function HrEmployeesPage() {
 }
 
 function EmployeeProfile({ user }: { user: UserRecord }) {
-  const safe = (value: any) => (value === null || value === undefined || value === "" ? "-" : String(value));
+  const safe = (value: unknown) => (value === null || value === undefined || value === "" ? "-" : String(value));
   return (
     <div className="space-y-4">
       <ProfileSection title="Profile">
@@ -666,19 +666,19 @@ function getSortValue(user: UserRecord, key: SortKey) {
   }
 }
 
-function formatPkr(value: any) {
+function formatPkr(value: unknown) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "-";
   return `Rs. ${num.toLocaleString("en-PK")}`;
 }
 
-function formatNumber(value: any) {
+function formatNumber(value: unknown) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "-";
   return num.toLocaleString("en-US");
 }
 
-function formatDate(value: any) {
+function formatDate(value: unknown) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";

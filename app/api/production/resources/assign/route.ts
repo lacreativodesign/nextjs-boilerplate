@@ -70,10 +70,10 @@ export async function POST(request: Request) {
     if (!taskDoc.exists) return NextResponse.json({ ok: false, error: "Task not found." }, { status: 404 });
     if (!projectDoc.exists) return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
 
-    const taskData = taskDoc.data() as any;
-    const projectData = projectDoc.data() as any;
+    const taskData = taskDoc.data() as unknown;
+    const projectData = projectDoc.data() as unknown;
 
-    if (taskData.tenantId !== me.tenantId || projectData.tenantId !== me.tenantId) {
+    if ((taskData as Record<string, unknown>).tenantId !== me.tenantId || (projectData as Record<string, unknown>).tenantId !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -105,9 +105,9 @@ export async function POST(request: Request) {
       tx.set(assignmentRef, {
         tenantId: me.tenantId,
         projectId,
-        projectName: projectData.name || "",
+        projectName: (projectData as Record<string, unknown>).name || "",
         taskId,
-        taskName: taskData.title || "",
+        taskName: (taskData as Record<string, unknown>).title || "",
         resourceId,
         resourceType: body.resourceType,
         resourceName,

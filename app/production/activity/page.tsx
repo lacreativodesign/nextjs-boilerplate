@@ -74,10 +74,10 @@ export default function ProductionActivityPage() {
       if (mountedRef ? mountedRef.current : true) {
         setRows(payload.recentActivityTop10 || []);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       if (mountedRef ? mountedRef.current : true)
-        setError(err?.message || 'Unable to load activity.');
+        setError((err instanceof Error ? err.message : undefined) || 'Unable to load activity.');
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

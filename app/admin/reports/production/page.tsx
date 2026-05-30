@@ -71,7 +71,7 @@ export default function ProductionReportsPage() {
         throw new Error(json?.error || "Unable to load production reports.");
       }
       setData(json as ProductionResponse);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports production load error", err);
       setError("Unable to load production analytics right now.");
     } finally {

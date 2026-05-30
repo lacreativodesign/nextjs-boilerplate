@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 export default function SalesManagerDealDetailPage({ params }: { params: { id: string } }) {
-  const [deal, setDeal] = useState<any>(null);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [deal, setDeal] = useState<unknown>(null);
+  const [requests, setRequests] = useState<unknown[]>([]);
 
   async function load() {
     const [dealRes, reqRes] = await Promise.all([
@@ -42,23 +42,23 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Deal Review</h1>
       <div className="card p-4">
-        <div>Title: {deal.title}</div>
-        <div>Stage: {deal.stage}</div>
-        <div>Value: ${Number(deal.valueUSD || 0).toLocaleString()}</div>
-        <div>Discount Approved: {deal.discountApproved ? "Yes" : "No"}</div>
+        <div>Title: {String((deal as Record<string, unknown>).title || "")}</div>
+        <div>Stage: {String((deal as Record<string, unknown>).stage || "")}</div>
+        <div>Value: ${Number((deal as Record<string, unknown>).valueUSD || 0).toLocaleString()}</div>
+        <div>Discount Approved: {(deal as Record<string, unknown>).discountApproved ? "Yes" : "No"}</div>
       </div>
 
       <div className="card p-4">
         <h2 className="mb-2 font-semibold">Discount Requests</h2>
         {requests.length === 0 && <div>No discount requests.</div>}
         {requests.map((request) => (
-          <div key={request.id} className="mb-2 rounded border p-2">
-            <div>{request.discountPercent}% - {request.reason}</div>
-            <div>Status: {request.status}</div>
-            {request.status === "pending" && (
+          <div key={String((request as Record<string, unknown>).id || "")} className="mb-2 rounded border p-2">
+            <div>{String((request as Record<string, unknown>).discountPercent || "")}% - {String((request as Record<string, unknown>).reason || "")}</div>
+            <div>Status: {String((request as Record<string, unknown>).status || "")}</div>
+            {(request as Record<string, unknown>).status === "pending" && (
               <div className="mt-2 flex gap-2">
-                <button className="btn" onClick={() => review(request.id, "approved")}>Approve</button>
-                <button className="btn" onClick={() => review(request.id, "rejected")}>Reject</button>
+                <button className="btn" onClick={() => review(String((request as Record<string, unknown>).id || ""), "approved")}>Approve</button>
+                <button className="btn" onClick={() => review(String((request as Record<string, unknown>).id || ""), "rejected")}>Reject</button>
               </div>
             )}
           </div>

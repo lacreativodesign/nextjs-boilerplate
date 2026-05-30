@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing role" }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
     const snap = await adminDb.collection("users").where("role", "in", roles).get();
     const users = snap.docs
       .filter((doc) => docTenantId(doc.data()) === tenantId)
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       });
 
     return NextResponse.json({ ok: true, users });
-  } catch (err: any) {
+  } catch (err) {
     console.error("admin users by-role error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load users." }, { status: 500 });
   }

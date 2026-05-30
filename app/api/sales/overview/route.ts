@@ -50,7 +50,7 @@ export async function GET() {
 
     const leads = leadsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
     const scopedLeads = isSalesRep
-      ? leads.filter((lead: any) => lead.ownerId === auth.user.uid || lead.createdById === auth.user.uid)
+      ? leads.filter((lead: unknown) => (lead as Record<string, unknown>).ownerId === auth.user.uid || (lead as Record<string, unknown>).createdById === auth.user.uid)
       : leads;
 
     const paymentsSnap = await adminDb
@@ -64,76 +64,76 @@ export async function GET() {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const leadIds = new Set(scopedLeads.map((lead: any) => String(lead.id)));
+    const leadIds = new Set(scopedLeads.map((lead: unknown) => String((lead as Record<string, unknown>).id)));
 
-    const scopedPayments = paymentRequests.filter((request: any) => {
-      if (isSalesRep && request.leadId) {
-        return leadIds.has(String(request.leadId));
+    const scopedPayments = paymentRequests.filter((request: unknown) => {
+      if (isSalesRep && (request as Record<string, unknown>).leadId) {
+        return leadIds.has(String((request as Record<string, unknown>).leadId));
       }
       return true;
     });
 
-    const closedWonPaymentsMtd = scopedPayments.filter((request: any) => {
-      const paidAt = toISO(request.paidAt || request.updatedAt || request.createdAt);
+    const closedWonPaymentsMtd = scopedPayments.filter((request: unknown) => {
+      const paidAt = toISO((request as Record<string, unknown>).paidAt || (request as Record<string, unknown>).updatedAt || (request as Record<string, unknown>).createdAt);
       if (!paidAt) return false;
       const date = new Date(paidAt);
       return date >= startOfMonth;
     });
 
     const closedWonRevenueMtd = closedWonPaymentsMtd.reduce(
-      (sum: number, request: any) => sum + Number(request.amountUsd || 0),
+      (sum: number, request: unknown) => sum + Number((request as Record<string, unknown>).amountUsd || 0),
       0
     );
 
-    const closedWonCount = scopedLeads.filter((lead: any) => String(lead.stage || "") === "Closed Won").length;
+    const closedWonCount = scopedLeads.filter((lead: unknown) => String((lead as Record<string, unknown>).stage || "") === "Closed Won").length;
     const totalLeads = scopedLeads.length;
-    const qualified = scopedLeads.filter((lead: any) => String(lead.stage || "") === "Qualified").length;
-    const activeDeals = scopedLeads.filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed")).length;
-    const followUpsDueToday = scopedLeads.filter((lead: any) => {
-      const nextFollowUp = toISO(lead.nextFollowUpAt);
+    const qualified = scopedLeads.filter((lead: unknown) => String((lead as Record<string, unknown>).stage || "") === "Qualified").length;
+    const activeDeals = scopedLeads.filter((lead: unknown) => !String((lead as Record<string, unknown>).stage || "").toLowerCase().includes("closed")).length;
+    const followUpsDueToday = scopedLeads.filter((lead: unknown) => {
+      const nextFollowUp = toISO((lead as Record<string, unknown>).nextFollowUpAt);
       if (!nextFollowUp) return false;
       return isSameDay(new Date(nextFollowUp), now);
     }).length;
     const pipelineValue = scopedLeads
-      .filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed"))
-      .reduce((sum: number, lead: any) => sum + Number(lead.expectedValueUsd || 0), 0);
+      .filter((lead: unknown) => !String((lead as Record<string, unknown>).stage || "").toLowerCase().includes("closed"))
+      .reduce((sum: number, lead: unknown) => sum + Number((lead as Record<string, unknown>).expectedValueUsd || 0), 0);
     const conversionRate = totalLeads ? (closedWonCount / totalLeads) * 100 : 0;
     const aov = closedWonCount ? closedWonRevenueMtd / closedWonCount : 0;
 
     const stageMap = new Map<string, number>();
-    scopedLeads.forEach((lead: any) => {
-      const stage = normalizeStage(lead.stage || "New Lead");
+    scopedLeads.forEach((lead: unknown) => {
+      const stage = normalizeStage((lead as Record<string, unknown>).stage || "New Lead");
       stageMap.set(stage, (stageMap.get(stage) || 0) + 1);
     });
 
     const dispositionMap = new Map<string, number>();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    scopedLeads.forEach((lead: any) => {
-      const updatedAt = toISO(lead.updatedAt || lead.createdAt);
+    scopedLeads.forEach((lead: unknown) => {
+      const updatedAt = toISO((lead as Record<string, unknown>).updatedAt || (lead as Record<string, unknown>).createdAt);
       if (!updatedAt) return;
       const updated = new Date(updatedAt);
       if (updated < thirtyDaysAgo) return;
-      const disposition = String(lead.disposition || "Unspecified");
+      const disposition = String((lead as Record<string, unknown>).disposition || "Unspecified");
       dispositionMap.set(disposition, (dispositionMap.get(disposition) || 0) + 1);
     });
 
     const revenueByDay = new Map<string, number>();
-    closedWonPaymentsMtd.forEach((request: any) => {
-      const paidAt = toISO(request.paidAt || request.updatedAt || request.createdAt);
+    closedWonPaymentsMtd.forEach((request: unknown) => {
+      const paidAt = toISO((request as Record<string, unknown>).paidAt || (request as Record<string, unknown>).updatedAt || (request as Record<string, unknown>).createdAt);
       if (!paidAt) return;
       const day = paidAt.slice(0, 10);
-      revenueByDay.set(day, (revenueByDay.get(day) || 0) + Number(request.amountUsd || 0));
+      revenueByDay.set(day, (revenueByDay.get(day) || 0) + Number((request as Record<string, unknown>).amountUsd || 0));
     });
 
-    const leadMap = new Map<string, any>();
-    leads.forEach((lead: any) => leadMap.set(String(lead.id), lead));
+    const leadMap = new Map<string, unknown>();
+    leads.forEach((lead: unknown) => leadMap.set(String((lead as Record<string, unknown>).id), lead));
     const revenueByOwner = new Map<string, number>();
-    closedWonPaymentsMtd.forEach((request: any) => {
-      const lead = leadMap.get(String(request.leadId || ""));
-      const ownerId = String(lead?.ownerId || "");
+    closedWonPaymentsMtd.forEach((request: unknown) => {
+      const lead = leadMap.get(String((request as Record<string, unknown>).leadId || ""));
+      const ownerId = String((lead as Record<string, unknown>)?.ownerId || "");
       if (!ownerId) return;
-      revenueByOwner.set(ownerId, (revenueByOwner.get(ownerId) || 0) + Number(request.amountUsd || 0));
+      revenueByOwner.set(ownerId, (revenueByOwner.get(ownerId) || 0) + Number((request as Record<string, unknown>).amountUsd || 0));
     });
     const topPerformerRevenueMtd = Math.max(0, ...Array.from(revenueByOwner.values()));
     const myRevenueMtd = revenueByOwner.get(auth.user.uid) || 0;
@@ -176,9 +176,9 @@ export async function GET() {
         myRevenueMtd,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

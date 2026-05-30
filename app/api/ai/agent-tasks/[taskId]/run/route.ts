@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/tenant/server";
 import { cookies } from "next/headers";
 import {
@@ -41,7 +41,7 @@ export async function POST(
   { params }: { params: { taskId: string } }
 ) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
@@ -82,13 +82,13 @@ export async function POST(
       await markTaskCompleted(taskId, result, toolCalls, { inputTokens, outputTokens }, keyConfig.provider);
       return NextResponse.json({ ok: true, taskId, status: "completed" });
 
-    } catch (execErr: any) {
-      await markTaskFailed(taskId, execErr?.message || "Agent execution failed");
-      return NextResponse.json({ ok: false, error: execErr?.message || "Execution failed" }, { status: 500 });
+    } catch (execErr) {
+      await markTaskFailed(taskId, (execErr instanceof Error ? execErr.message : undefined) || "Agent execution failed");
+      return NextResponse.json({ ok: false, error: (execErr instanceof Error ? execErr.message : undefined) || "Execution failed" }, { status: 500 });
     }
 
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }
 
@@ -103,7 +103,7 @@ async function runAnthropicAgent(
   trackTokens: (input: number, output: number) => void
 ): Promise<string> {
   const anthropicTools = toAnthropicTools(tools);
-  const messages: any[] = [{ role: "user", content: prompt }];
+  const messages: unknown[] = [{ role: "user", content: prompt }];
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -134,14 +134,14 @@ async function runAnthropicAgent(
     messages.push({ role: "assistant", content: data.content });
 
     if (data.stop_reason === "end_turn") {
-      const textBlock = data.content.find((b: any) => b.type === "text");
+      const textBlock = data.content.find((b: unknown) => (b as Record<string, unknown>).type === "text");
       if (textBlock?.text) return textBlock.text;
       throw new Error("No text response from assistant");
     }
 
     if (data.stop_reason === "tool_use") {
-      const toolUseBlocks = data.content.filter((b: any) => b.type === "tool_use");
-      const toolResults: any[] = [];
+      const toolUseBlocks = data.content.filter((b: unknown) => (b as Record<string, unknown>).type === "tool_use");
+      const toolResults: unknown[] = [];
 
       for (const block of toolUseBlocks) {
         const validation = validateToolCall(block.name, "coo", "pro");
@@ -187,7 +187,7 @@ async function runOpenAIAgent(
   trackTokens: (input: number, output: number) => void
 ): Promise<string> {
   const openaiTools = toOpenAITools(tools);
-  const messages: any[] = [
+  const messages: unknown[] = [
     { role: "system", content: COO_SYSTEM_PROMPT },
     { role: "user", content: prompt },
   ];

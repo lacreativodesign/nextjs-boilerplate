@@ -86,7 +86,7 @@ export async function sendWelcomeEmail(to: string, name: string, tenantId: strin
 export async function sendTrialDaySevenEmail(to: string, name: string, tenantId: string, trialEndsAt: string) {
   try {
     const resend = getResendClient();
-    const formattedDate = formatTrialDate(trialEndsAt);
+    const _formattedDate = formatTrialDate(trialEndsAt);
 
     await resend.emails.send({
       from: onboardingFrom,
@@ -108,7 +108,7 @@ export async function sendTrialDaySevenEmail(to: string, name: string, tenantId:
 export async function sendTrialDayThreeEmail(to: string, name: string, tenantId: string, trialEndsAt: string) {
   try {
     const resend = getResendClient();
-    const formattedDate = formatTrialDate(trialEndsAt);
+    const _formattedDate = formatTrialDate(trialEndsAt);
 
     await resend.emails.send({
       from: onboardingFrom,

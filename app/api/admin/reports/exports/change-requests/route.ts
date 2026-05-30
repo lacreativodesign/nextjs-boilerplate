@@ -39,7 +39,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=reports-change-requests.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/exports change-requests error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

@@ -3,23 +3,25 @@ import { upsertEnvelopeStatusFromWebhook, verifyDocusignWebhookSignature } from 
 
 export const runtime = "nodejs";
 
-function extractEnvelopeEvent(payload: any) {
+function extractEnvelopeEvent(payload: unknown) {
+  const p = payload as Record<string, unknown>;
+  const data = p?.data as Record<string, unknown> | undefined;
+  const summary = (data?.envelopeSummary || p?.envelopeSummary) as Record<string, unknown> | undefined;
+
   const envelopeId =
-    payload?.data?.envelopeId ||
-    payload?.data?.envelopeSummary?.envelopeId ||
-    payload?.envelopeId ||
-    payload?.envelopeSummary?.envelopeId ||
+    data?.envelopeId ||
+    summary?.envelopeId ||
+    p?.envelopeId ||
     "";
 
   const status =
-    payload?.data?.status ||
-    payload?.data?.envelopeSummary?.status ||
-    payload?.status ||
-    payload?.envelopeSummary?.status ||
+    data?.status ||
+    summary?.status ||
+    p?.status ||
     "";
 
-  const completedAt = payload?.data?.completedDateTime || payload?.completedDateTime || null;
-  const tenantId = payload?.data?.tenantId || payload?.tenantId || null;
+  const completedAt = data?.completedDateTime || p?.completedDateTime || null;
+  const tenantId = data?.tenantId || p?.tenantId || null;
 
   return {
     envelopeId: String(envelopeId || "").trim(),
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
 
     await upsertEnvelopeStatusFromWebhook(event);
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "DocuSign webhook processing failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "DocuSign webhook processing failed." }, { status: 500 });
   }
 }

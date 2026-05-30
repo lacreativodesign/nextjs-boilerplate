@@ -67,14 +67,14 @@ export function toastDismiss(id: string): void {
 
 export async function toastPromise<T>(
   promise: Promise<T>,
-  messages: { loading: string; success: string; error: string | ((err: any) => string) }
+  messages: { loading: string; success: string; error: string | ((err: unknown) => string) }
 ): Promise<T> {
   const id = toastLoading(messages.loading);
   try {
     const result = await promise;
     toastSuccess(messages.success);
     return result;
-  } catch (err: any) {
+  } catch (err) {
     const message = typeof messages.error === "function" ? messages.error(err) : messages.error;
     toastError(message);
     throw err;

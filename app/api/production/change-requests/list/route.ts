@@ -23,14 +23,14 @@ type ChangeRequestDoc = {
   estimatedTimelineDays?: number | null;
   approvalStatus?: string | null;
   approvalId?: string | null;
-  approvedAt?: any;
+  approvedAt?: unknown;
   approvedByUid?: string | null;
   attachedFileIds?: string[];
-  createdAt?: any;
-  updatedAt?: any;
-  completedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  completedAt?: unknown;
   isDeleted?: boolean;
-  statusHistory?: any[];
+  statusHistory?: unknown[];
 };
 
 type ProjectDoc = {
@@ -40,15 +40,15 @@ type ProjectDoc = {
   isDeleted?: boolean;
 };
 
-function normalizeStatusHistory(history?: any[]) {
+function normalizeStatusHistory(history?: unknown[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byRole: entry?.byRole || "",
-    at: toISO(entry?.at),
-    note: entry?.note || "",
+    from: (entry as Record<string, unknown>)?.from || "",
+    to: (entry as Record<string, unknown>)?.to || "",
+    byUid: (entry as Record<string, unknown>)?.byUid || "",
+    byRole: (entry as Record<string, unknown>)?.byRole || "",
+    at: toISO((entry as Record<string, unknown>)?.at),
+    note: (entry as Record<string, unknown>)?.note || "",
   }));
 }
 
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -137,9 +137,9 @@ export async function GET(req: Request) {
       .filter((item) => item.projectId === projectId);
 
     return NextResponse.json({ ok: true, changeRequests });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/change-requests list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

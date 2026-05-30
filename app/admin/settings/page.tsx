@@ -69,8 +69,8 @@ export default function AdminSettingsPage() {
         currency: data.settings?.revenueCurrency || data.settings?.currency || "USD",
       });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
-      setError(err.message || "Unable to load settings.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load settings.");
     } finally {
       setLoading(false);
     }
@@ -83,6 +83,7 @@ export default function AdminSettingsPage() {
   const toggleDay = (day: string) => {
     setSettings((prev) => {
       const days = new Set(prev.workingDays);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       days.has(day) ? days.delete(day) : days.add(day);
       return { ...prev, workingDays: Array.from(days) };
     });
@@ -107,8 +108,8 @@ export default function AdminSettingsPage() {
       }
 
       setSuccess("System settings updated successfully.");
-    } catch (err: any) {
-      setError(err.message || "Unable to save settings.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to save settings.");
     } finally {
       setSaving(false);
     }

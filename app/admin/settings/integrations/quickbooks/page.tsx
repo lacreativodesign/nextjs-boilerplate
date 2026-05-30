@@ -41,7 +41,7 @@ type StatusResponse = {
 
 export default function QuickBooksIntegrationPage() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -62,8 +62,8 @@ export default function QuickBooksIntegrationPage() {
       if (!logsRes.ok || !logsData?.ok) throw new Error(logsData?.error || "Unable to load QuickBooks logs.");
       setStatus(statusData.status || null);
       setLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
-    } catch (err: any) {
-      setError(err.message || "Unable to load QuickBooks integration state.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to load QuickBooks integration state.");
     } finally {
       setLoading(false);
     }
@@ -91,8 +91,8 @@ export default function QuickBooksIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update QuickBooks settings.");
       setSuccess("Settings saved.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to save settings.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to save settings.");
     } finally {
       setSaving(false);
     }
@@ -113,8 +113,8 @@ export default function QuickBooksIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "QuickBooks sync failed.");
       setSuccess(forceInitial ? "Initial sync completed." : "Incremental sync completed.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to run sync.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to run sync.");
     } finally {
       setSyncing(false);
     }
@@ -189,7 +189,7 @@ export default function QuickBooksIntegrationPage() {
             <label key={key} className="flex items-center gap-2 card" style={{ padding: 10, borderRadius: 12 }}>
               <input
                 type="checkbox"
-                checked={Boolean((settings as any)?.[key])}
+                checked={Boolean((settings as Record<string, unknown>)?.[key])}
                 disabled={!status?.connected || saving}
                 onChange={(e) => void updateSettings({ [key]: e.target.checked } as Partial<SyncSettings>)}
               />
@@ -216,18 +216,23 @@ export default function QuickBooksIntegrationPage() {
           <div style={{ fontSize: 13, opacity: 0.8 }}>No sync runs yet.</div>
         ) : (
           <div className="space-y-2">
-            {logs.map((log) => (
-              <div key={log.id} className="card" style={{ padding: 12, borderRadius: 12 }}>
+            {logs.map((log) => {
+              const logRec = log as Record<string, unknown>;
+              const invoices = logRec.invoices as Record<string, unknown> | undefined;
+              const payments = logRec.payments as Record<string, unknown> | undefined;
+              return (
+              <div key={String(logRec.id || "")} className="card" style={{ padding: 12, borderRadius: 12 }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong>{String(log.status || "unknown").toUpperCase()}</strong>
-                  <span style={{ fontSize: 12 }}>{log.startedAt || ""}</span>
+                  <strong>{String(logRec.status || "unknown").toUpperCase()}</strong>
+                  <span style={{ fontSize: 12 }}>{String(logRec.startedAt || "")}</span>
                 </div>
                 <div style={{ fontSize: 12, marginTop: 6 }}>
-                  Mode: {log.mode || "n/a"} · Conflicts: {Number(log.conflicts || 0)} · Invoices: {Number(log.invoices?.updated || 0) + Number(log.invoices?.inserted || 0)} · Payments: {Number(log.payments?.updated || 0) + Number(log.payments?.inserted || 0)}
+                  Mode: {String(logRec.mode || "n/a")} · Conflicts: {Number(logRec.conflicts || 0)} · Invoices: {Number(invoices?.updated || 0) + Number(invoices?.inserted || 0)} · Payments: {Number(payments?.updated || 0) + Number(payments?.inserted || 0)}
                 </div>
-                {log.error ? <div style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{String(log.error)}</div> : null}
+                {logRec.error ? <div style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{String(logRec.error)}</div> : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

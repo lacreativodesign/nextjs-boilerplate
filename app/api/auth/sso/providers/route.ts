@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { listEnabledSsoProviders } from "@/lib/auth/sso-oauth";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const providers = await listEnabledSsoProviders(tenantId);
     return NextResponse.json({ ok: true, providers });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load SSO providers." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load SSO providers." }, { status: 400 });
   }
 }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
@@ -14,12 +14,12 @@ type InvoiceDoc = {
   amountSubtotalUsd?: number;
   amountTaxUsd?: number;
   amountTotalUsd?: number;
-  dueDate?: any;
-  issuedAt?: any;
-  paidAt?: any;
-  lineItems?: any[];
+  dueDate?: unknown;
+  issuedAt?: unknown;
+  paidAt?: unknown;
+  lineItems?: unknown[];
   notes?: string | null;
-  createdAt?: any;
+  createdAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     const data = (snap.data() || {}) as InvoiceDoc;
     const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
-    if (String((data as Record<string, any>).tenantId || DEFAULT_TENANT_ID) !== tenantId) {
+    if (String((data as Record<string, unknown>).tenantId || DEFAULT_TENANT_ID) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (String(data.clientId || "") !== auth.clientId) {
@@ -64,9 +64,9 @@ export async function GET(req: NextRequest) {
         createdAt: toISO(data.createdAt),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/billing invoice get error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -3,7 +3,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { CustomerService } from "@/lib/crm/customer-service";
 import { NotificationService } from "@/lib/notifications/notification-service";
-import { Deal } from "@/types/crm";
+import type { Deal } from "@/types/crm";
 
 export class DealService {
   static async createDeal(params: {

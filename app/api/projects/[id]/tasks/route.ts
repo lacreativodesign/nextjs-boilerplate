@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { TaskService } from "@/lib/projects/task-service";
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       queryName: "project_tasks_list",
       metadata: { projectId: params.id, status, assignedTo, limit: pageSize, cursor: cursor || null },
     });
-    const tasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const tasks = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({
       tasks,

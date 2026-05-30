@@ -22,10 +22,10 @@ type ProjectDoc = {
   productionName?: string | null;
   ownerId?: string | null;
   amId?: string | null;
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string }>;
   isDeleted?: boolean;
 };
 
@@ -140,9 +140,9 @@ export async function GET(req: Request) {
     projects.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
 
     return NextResponse.json({ ok: true, projects });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/projects list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

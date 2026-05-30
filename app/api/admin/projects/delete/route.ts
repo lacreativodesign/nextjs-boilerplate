@@ -50,8 +50,8 @@ export async function POST(req: Request) {
       category: 'project',
     });
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('projects/delete error:', err);
-    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || 'Server error' }, { status: 500 });
   }
 }

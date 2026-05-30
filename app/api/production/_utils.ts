@@ -1,4 +1,4 @@
-import { getCurrentUser, isProduction } from "../admin/_utils";
+import { getCurrentUser, _isProduction } from "../admin/_utils";
 
 export type ProductionUser = {
   uid: string;
@@ -6,7 +6,7 @@ export type ProductionUser = {
   name?: string;
   fullName?: string;
   displayName?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type ProjectAssignment = {
@@ -31,10 +31,10 @@ export function isAssignedToProduction(project: ProjectAssignment, uid: string) 
   return false;
 }
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }

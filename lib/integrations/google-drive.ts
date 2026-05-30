@@ -96,16 +96,16 @@ export async function uploadFileToGoogleDrive(params: {
     body: payload,
   });
 
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !data?.id) {
-    throw new Error(data?.error?.message || "Google Drive upload failed.");
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(data as Record<string, unknown>)?.id) {
+    throw new Error(String(((data as Record<string, unknown>)?.error as Record<string, unknown>)?.message || "Google Drive upload failed."));
   }
 
   return {
-    fileId: data.id,
-    name: data.name,
-    webViewLink: data.webViewLink || null,
-    webContentLink: data.webContentLink || null,
+    fileId: (data as Record<string, unknown>).id,
+    name: (data as Record<string, unknown>).name,
+    webViewLink: (data as Record<string, unknown>).webViewLink || null,
+    webContentLink: (data as Record<string, unknown>).webContentLink || null,
   };
 }
 

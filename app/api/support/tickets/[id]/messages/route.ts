@@ -19,8 +19,8 @@ function toIso(value: unknown): string | null {
     return value.toISOString();
   }
 
-  if (typeof value === "object" && value !== null && "toDate" in value && typeof (value as any).toDate === "function") {
-    const date = (value as any).toDate();
+  if (typeof value === "object" && value !== null && "toDate" in value && typeof (value as unknown).toDate === "function") {
+    const date = (value as unknown).toDate();
     return date instanceof Date ? date.toISOString() : null;
   }
 
@@ -35,7 +35,7 @@ export async function GET(_: Request, context: RouteContext) {
     }
 
     const ticketId = context.params.id;
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
 
     const messagesRef = adminDb
       .collection("tenants")
@@ -81,7 +81,7 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Message content is required." }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
     const ticketRef = adminDb.collection("tenants").doc(tenantId).collection("support_tickets").doc(ticketId);
     const ticketSnap = await ticketRef.get();
 

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../_utils";
@@ -29,11 +29,11 @@ type ChangeRequestDoc = {
   priority?: string;
   estimatedCost?: number | null;
   estimatedTimelineDays?: number | null;
-  approvedAt?: any;
+  approvedAt?: unknown;
   approvedByUid?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
-  completedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  completedAt?: unknown;
   isDeleted?: boolean;
   tenantId?: string;
 };
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
           completedAt: toISO(data.completedAt),
         };
       })
-      .filter((item) => String((item as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((item) => String((item as Record<string, unknown>).tenantId || DEFAULT_TENANT_ID) === tenantId);
 
     if (status && CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])) {
       changeRequests = changeRequests.filter((item) => item.status === status);
@@ -105,9 +105,9 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, changeRequests });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/change-requests list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

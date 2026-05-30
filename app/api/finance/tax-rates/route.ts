@@ -38,8 +38,8 @@ export async function GET() {
       .get();
 
     const taxRates = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((item) => item.isDeleted !== true);
+      .map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }))
+      .filter((item) => item.isDeleted as unknown !== true);
 
     return NextResponse.json({ ok: true, taxRates });
   } catch (error) {

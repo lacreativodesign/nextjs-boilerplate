@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     await checkRateLimit(req, "standard", auth.user.uid);
 
-    const parseIso = (value: any) => {
+    const parseIso = (value: unknown) => {
       if (!value) return null;
       const raw = String(value).trim();
       const date = new Date(raw);
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    let payload: any = null;
+    let payload: unknown = null;
     try {
       payload = await req.json();
     } catch {
@@ -55,14 +55,14 @@ export async function POST(req: Request) {
       });
     }
 
-    const sourceInput = String(payload?.source || payload?.leadSource || "other")
+    const sourceInput = String((payload as Record<string, unknown>)?.source || (payload as Record<string, unknown>)?.leadSource || "other")
       .trim()
       .toLowerCase()
       .replace("social", "social_media")
       .replace("coldcall", "cold_call")
       .replace("manual", "other");
 
-    const statusInputRaw = String(payload?.status || payload?.stage || "new")
+    const statusInputRaw = String((payload as Record<string, unknown>)?.status || (payload as Record<string, unknown>)?.stage || "new")
       .trim()
       .toLowerCase()
       .replace("proposal_sent", "proposal")
@@ -70,26 +70,26 @@ export async function POST(req: Request) {
       .replace("closed_lost", "lost");
 
     const validatedData = validateRequest(createLeadSchema, {
-      title: payload?.title || payload?.companyName || payload?.company || payload?.name || "",
-      contactName: payload?.contactName || payload?.name || "",
-      email: payload?.contactEmail || payload?.email || "",
-      phone: payload?.contactPhone || payload?.phone,
-      company: payload?.company || payload?.companyName,
+      title: (payload as Record<string, unknown>)?.title || (payload as Record<string, unknown>)?.companyName || (payload as Record<string, unknown>)?.company || (payload as Record<string, unknown>)?.name || "",
+      contactName: (payload as Record<string, unknown>)?.contactName || (payload as Record<string, unknown>)?.name || "",
+      email: (payload as Record<string, unknown>)?.contactEmail || (payload as Record<string, unknown>)?.email || "",
+      phone: (payload as Record<string, unknown>)?.contactPhone || (payload as Record<string, unknown>)?.phone,
+      company: (payload as Record<string, unknown>)?.company || (payload as Record<string, unknown>)?.companyName,
       source: sourceInput,
       status: statusInputRaw,
-      value: payload?.value ?? payload?.expectedValueUsd,
-      assignedTo: payload?.assignedTo,
-      notes: payload?.notes,
+      value: (payload as Record<string, unknown>)?.value ?? (payload as Record<string, unknown>)?.expectedValueUsd,
+      assignedTo: (payload as Record<string, unknown>)?.assignedTo,
+      notes: (payload as Record<string, unknown>)?.notes,
       tenantId: auth.user.tenantId || "",
     });
 
-    const companyName = parseString(payload.companyName || payload.company || validatedData.company || validatedData.title, "");
+    const companyName = parseString((payload as Record<string, unknown>).companyName || (payload as Record<string, unknown>).company || validatedData.company || validatedData.title, "");
     const contactName = parseString(validatedData.contactName, "");
     const contactEmail = parseString(validatedData.email, "");
     const contactPhone = parseString(validatedData.phone || "", "");
     const source = parseString(validatedData.source, "");
-    const notes = parseString(payload.notes, "");
-    const rawStatusInput = parseString(validatedData.status || payload.status || payload.stage, "new").toLowerCase();
+    const notes = parseString((payload as Record<string, unknown>).notes, "");
+    const rawStatusInput = parseString(validatedData.status || (payload as Record<string, unknown>).status || (payload as Record<string, unknown>).stage, "new").toLowerCase();
     const status = rawStatusInput
       .replace(/\s+/g, "_")
       .replace("new_lead", "new")
@@ -124,32 +124,32 @@ export async function POST(req: Request) {
           return "New Lead";
       }
     };
-    const disposition = parseString(payload.disposition, "");
-    const expectedValueUsd = parseNumber(validatedData.value ?? payload.expectedValueUsd, 0);
-    const packageName = parseString(payload.packageName, "");
-    const interestedServices = Array.isArray(payload.interestedServices)
-      ? payload.interestedServices.map((item: any) => parseString(item, "").trim()).filter(Boolean)
+    const disposition = parseString((payload as Record<string, unknown>).disposition, "");
+    const expectedValueUsd = parseNumber(validatedData.value ?? (payload as Record<string, unknown>).expectedValueUsd, 0);
+    const packageName = parseString((payload as Record<string, unknown>).packageName, "");
+    const interestedServices = Array.isArray((payload as Record<string, unknown>).interestedServices)
+      ? (payload as Record<string, unknown>).interestedServices.map((item: unknown) => parseString(item, "").trim()).filter(Boolean)
       : [];
-    const probability = parseNumber(payload.probability, 0);
-    const lastContactedAt = parseIso(payload.lastContactedAt);
-    const nextFollowUpAt = parseIso(payload.nextFollowUpAt);
+    const probability = parseNumber((payload as Record<string, unknown>).probability, 0);
+    const lastContactedAt = parseIso((payload as Record<string, unknown>).lastContactedAt);
+    const nextFollowUpAt = parseIso((payload as Record<string, unknown>).nextFollowUpAt);
 
     const needsFollowUp = disposition.trim().toLowerCase() === "follow-up needed";
-    if (needsFollowUp && !payload.nextFollowUpAt) {
+    if (needsFollowUp && !(payload as Record<string, unknown>).nextFollowUpAt) {
       return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
     }
-    if (payload.nextFollowUpAt && !String(payload.nextFollowUpAt).includes("T")) {
+    if ((payload as Record<string, unknown>).nextFollowUpAt && !String((payload as Record<string, unknown>).nextFollowUpAt).includes("T")) {
       return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
     }
-    if (payload.nextFollowUpAt && !nextFollowUpAt) {
+    if ((payload as Record<string, unknown>).nextFollowUpAt && !nextFollowUpAt) {
       return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
     }
 
-    const requestedOwnerId = parseString(payload.ownerUid || payload.ownerId, "");
+    const requestedOwnerId = parseString((payload as Record<string, unknown>).ownerUid || (payload as Record<string, unknown>).ownerId, "");
     const ownerId = requestedOwnerId && isManager ? requestedOwnerId : auth.user.uid;
     const ownerName = ownerId ? await getUserNameById(ownerId) : "";
 
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string || DEFAULT_TENANT_ID);
     const docRef = await adminDb.collection("leads").add({
       tenantId,
       leadId: null,
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales leads create error:", err);
     const { status, body } = resolveErrorResponse(err, {
       fallbackMessage: "Unable to create lead.",

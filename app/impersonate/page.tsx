@@ -35,8 +35,8 @@ function ImpersonateInner() {
         });
         if (!sessionRes.ok) throw new Error("Failed to create session");
         router.replace("/dashboard");
-      } catch (err: any) {
-        setError(err?.message || "Impersonation failed.");
+      } catch (err) {
+        setError((err instanceof Error ? err.message : undefined) || "Impersonation failed.");
         setStatus("error");
       }
     };

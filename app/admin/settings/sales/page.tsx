@@ -63,9 +63,9 @@ export default function SalesSettingsPage() {
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
+    } catch (err) {
       console.error("sales settings load error", err);
-      setError(err.message || "Unable to load sales settings.");
+      setError((err as Record<string, unknown>).message || "Unable to load sales settings.");
     } finally {
       setLoading(false);
     }
@@ -107,9 +107,9 @@ export default function SalesSettingsPage() {
         throw new Error(data?.error || "Unable to save settings.");
       }
       setSuccess("Sales settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("sales settings save error", err);
-      setError(err.message || "Unable to save sales settings.");
+      setError((err as Record<string, unknown>).message || "Unable to save sales settings.");
     } finally {
       setSaving(false);
     }

@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     await handleBillingWebhook(event);
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Webhook handling failed" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Webhook handling failed" }, { status: 400 });
   }
 }

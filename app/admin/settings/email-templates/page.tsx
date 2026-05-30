@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
-import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from "@/types/email-templates";
+import { EMAIL_TEMPLATE_CATEGORIES, type EmailTemplateCategory } from "@/types/email-templates";
 
 type TemplateTranslation = { subject: string; body: string };
 type TemplateRecord = {
@@ -69,8 +69,8 @@ export default function EmailTemplatesSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load templates");
       setTemplates(data.templates || []);
-    } catch (err: any) {
-      setError(err.message || "Unable to load templates");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to load templates"));
     } finally {
       setLoading(false);
     }
@@ -119,8 +119,8 @@ export default function EmailTemplatesSettingsPage() {
       if (varsRes.ok && varsData?.ok) {
         setVariables(varsData.variables || []);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load template details");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Failed to load template details"));
     }
   };
 
@@ -177,8 +177,8 @@ export default function EmailTemplatesSettingsPage() {
       } else if (selectedTemplateId) {
         await loadTemplateDetails(selectedTemplateId);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save template");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Failed to save template"));
     } finally {
       setSaving(false);
     }
@@ -197,8 +197,8 @@ export default function EmailTemplatesSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to preview template");
       setPreview(data.preview);
-    } catch (err: any) {
-      setError(err.message || "Failed to generate preview");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Failed to generate preview"));
     }
   };
 
@@ -216,8 +216,8 @@ export default function EmailTemplatesSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to send test email");
       setSuccess("Test email sent.");
-    } catch (err: any) {
-      setError(err.message || "Failed to send test email");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Failed to send test email"));
     }
   };
 

@@ -84,8 +84,8 @@ function SetPasswordForm() {
       setSuccess(true);
       setPassword("");
       setConfirm("");
-    } catch (err: any) {
-      setError(err?.message || "Unable to set password.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to set password.");
     } finally {
       setLoading(false);
     }

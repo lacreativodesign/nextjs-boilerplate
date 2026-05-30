@@ -68,7 +68,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, deals });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales pipeline list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load pipeline." }, { status: 500 });
   }

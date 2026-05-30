@@ -6,10 +6,10 @@ import { isPlanAccessError, requireModule } from "../../../lib/plan-enforcement"
 
 export const runtime = "nodejs";
 
-export function toIso(value: any): string | null {
+export function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -36,7 +36,7 @@ export async function requireHrAccess() {
   if (!me) return { ok: false as const, status: 401, error: "Unauthorized" };
   if (!canAccessHr(me.role)) return { ok: false as const, status: 403, error: "Forbidden" };
   try {
-    await requireModule(me.tenantId, "hr", { role: me.role });
+    await requireModule(me.tenantId as string, "hr", { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };

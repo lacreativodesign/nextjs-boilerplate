@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { _DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   getCurrentUser,
   isAdminOrSuper,
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 type ResolveKind = "discount" | "change_request" | "payment_exception";
 
-function parseString(value: any) {
+function parseString(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
 }
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     }
 
     const role = normalizeRole(me.role);
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const actorName = parseString(me.name || me.fullName || me.displayName);
     const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       }
 
       const dealRef = adminDb.collection("deals").doc(id);
-      let dealData: Record<string, any> = {};
+      let dealData: Record<string, unknown> = {};
 
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(dealRef);
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         if (currentStatus !== "pending") {
           throw new Error("Discount approval is not pending.");
         }
-        const update: Record<string, any> = {
+        const update: Record<string, unknown> = {
           discountApproved: action === "approve",
           discountStatus: action === "approve" ? "approved" : "rejected",
           discountApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -307,9 +307,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: false, error: "Unsupported approval type." }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("approvals resolve error:", err);
-    const message = String(err?.message || "Unable to resolve approval.");
+    const message = String((err instanceof Error ? err.message : undefined) || "Unable to resolve approval.");
     const lower = message.toLowerCase();
     const status = lower.includes("forbidden")
       ? 403

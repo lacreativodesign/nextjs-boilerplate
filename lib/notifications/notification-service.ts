@@ -3,7 +3,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { sendEmail } from "@/lib/email/email-service";
 import { sendSMS } from "@/lib/sms/sms-service";
-import {
+import type {
   Notification,
   NotificationCategory,
   NotificationChannel,
@@ -38,7 +38,7 @@ export class NotificationService {
     channels?: NotificationChannel[];
     relatedResourceType?: string;
     relatedResourceId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<string> {
     const preferences = await this.getUserPreferences(params.userId, params.tenantId);
     const priority = params.priority || "medium";
@@ -86,7 +86,7 @@ export class NotificationService {
     userId: string;
     userEmail: string;
     templateKey: string;
-    variables: Record<string, any>;
+    variables: Record<string, unknown>;
     actionUrl?: string;
   }): Promise<string> {
     const templateDoc = await adminDb
@@ -450,9 +450,9 @@ export class NotificationService {
     return Timestamp.fromDate(nextAttempt);
   }
 
-  private static interpolate(template: string, variables: Record<string, any>): string {
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      return variables[key] ?? match;
+  private static interpolate(template: string, variables: Record<string, unknown>): string {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+      return String(variables[key] ?? match);
     });
   }
 
@@ -541,10 +541,10 @@ function cryptoSign(payload: Record<string, unknown>, secret: string) {
   return crypto.createHmac("sha256", secret).update(serialized).digest("hex");
 }
 
-function toIsoTimestamp(value: any) {
+function toIsoTimestamp(value: unknown) {
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
-  const parsed = new Date(value);
+  const parsed = new Date(value as string | number);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }

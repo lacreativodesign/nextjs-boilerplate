@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseString, queueFinanceEmail, requireFinance, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
 import { assertPermission, Permission } from "../../../../lib/permissions";
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const authUser = auth.user as { uid: string; role: string; tenantId: string | null; email?: string | null; name?: string | null; fullName?: string | null; displayName?: string | null };
 
     const body = await req.json();
     const id = parseString(body?.id).trim();
@@ -41,9 +42,9 @@ export async function POST(req: Request) {
     const invoiceId = String(payment.invoiceId || "");
     const clientId = String(payment.clientId || "");
     const clientName = String(payment.clientName || "");
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const actorName = authUser.name || authUser.fullName || authUser.displayName || "";
+    const isSuperAdmin = normalizeRole(authUser.role || "") === "super_admin";
+    const tenantId = normalizeTenantId(authUser.tenantId as string | null | undefined);
 
     if (!isSuperAdmin && docTenantId(payment) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
@@ -51,14 +52,14 @@ export async function POST(req: Request) {
 
     if (action === "mark_paid") {
       try {
-        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+        assertPermission(authUser.role, Permission.MarkPaymentPaid);
       } catch {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
 
       let invoiceStatusBefore = "";
       let invoiceStatusAfter = "";
-      let invoiceSnapshotData: Record<string, any> | null = null;
+      let invoiceSnapshotData: Record<string, unknown> | null = null;
       let invoiceTenantId: string | null = null;
       let paymentAlreadySucceeded = false;
 
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
           const invoice = invoiceSnap.data() || {};
           const invoiceStatus = normalizeInvoiceStatus(invoice.status);
           invoiceStatusBefore = invoiceStatus;
-          invoiceTenantId = String(invoice.tenantId || auth.user.tenantId || "");
+          invoiceTenantId = String(invoice.tenantId || authUser.tenantId || "");
           if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
             throw new Error("Forbidden");
           }
@@ -129,9 +130,9 @@ export async function POST(req: Request) {
             { merge: true }
           );
         });
-      } catch (updateError: any) {
+      } catch (updateError) {
         console.error("finance/payments update transaction error:", updateError);
-        const message = String(updateError?.message || "");
+        const message = String((updateError instanceof Error ? updateError.message : undefined) || "");
         if (message.toLowerCase().includes("forbidden")) {
           return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
         }
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
             invoiceId,
             invoiceData: invoiceSnapshotData,
             tenantId: invoiceTenantId,
-            actor: { uid: auth.user.uid, name: actorName },
+            actor: { uid: authUser.uid, name: actorName },
           });
         } catch (autoCreateError) {
           console.error("project auto-create error:", autoCreateError);
@@ -163,12 +164,12 @@ export async function POST(req: Request) {
             title: "Payment marked paid",
             body: `Payment ${id} marked paid for ${clientName || "client"}.`,
             type: "success",
-            entityType: "payment",
+            entityType: "payment" as NotificationEntityType,
             entityId: id,
             deepLink: "/finance/payments",
-            createdBy: { uid: auth.user.uid, name: actorName },
+            createdBy: { uid: authUser.uid, name: actorName },
             roleTarget: "finance",
-            tenantId: auth.user.tenantId || null,
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -177,11 +178,11 @@ export async function POST(req: Request) {
         type: "finance.payment_paid",
         title: "Payment marked paid",
         description: `Payment ${id} marked paid for ${clientName || "client"}.`,
-        entityType: "payment",
+        entityType: "payment" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       try {
@@ -189,9 +190,9 @@ export async function POST(req: Request) {
           type: "finance.payment_paid",
           title: "Payment marked paid",
           description: `Payment ${id} marked paid for ${clientName || "client"}.`,
-          entityType: "payment",
+          entityType: "payment" as NotificationEntityType,
           entityId: id,
-          actor: { uid: auth.user.uid, name: actorName },
+          actor: { uid: authUser.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -218,7 +219,7 @@ export async function POST(req: Request) {
           template: "payment_received",
           subject: "Payment received",
           data: { paymentId: id, invoiceId },
-          tenantId: auth.user.tenantId,
+          tenantId: authUser.tenantId,
         }).catch((error) => {
           console.error("payment email queue error:", error);
         });
@@ -242,12 +243,12 @@ export async function POST(req: Request) {
             title: "Payment note updated",
             body: `Payment ${id} note updated for ${clientName || "client"}.`,
             type: "info",
-            entityType: "payment",
+            entityType: "payment" as NotificationEntityType,
             entityId: id,
             deepLink: "/finance/payments",
-            createdBy: { uid: auth.user.uid, name: actorName },
+            createdBy: { uid: authUser.uid, name: actorName },
             roleTarget: "finance",
-            tenantId: auth.user.tenantId || null,
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -256,11 +257,11 @@ export async function POST(req: Request) {
         type: "finance.payment_note",
         title: "Payment note updated",
         description: `Payment ${id} note updated for ${clientName || "client"}.`,
-        entityType: "payment",
+        entityType: "payment" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       try {
@@ -268,9 +269,9 @@ export async function POST(req: Request) {
           type: "finance.payment_note",
           title: "Payment note updated",
           description: `Payment ${id} note updated for ${clientName || "client"}.`,
-          entityType: "payment",
+          entityType: "payment" as NotificationEntityType,
           entityId: id,
-          actor: { uid: auth.user.uid, name: actorName },
+          actor: { uid: authUser.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -296,9 +297,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/payments update error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

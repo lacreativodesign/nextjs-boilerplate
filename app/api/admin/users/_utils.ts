@@ -1,4 +1,4 @@
-import {
+import type {
   getCurrentUser as baseGetCurrentUser,
   isAdminRole as baseIsAdminRole,
   isSuperAdmin as baseIsSuperAdmin,

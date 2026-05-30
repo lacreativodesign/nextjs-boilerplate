@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
-import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { type CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { currencyConverter } from "@/lib/currency/currencyConverter";
-import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
+import { TaxCalculator, type TaxRate } from "@/lib/tax/taxCalculator";
 import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 
 export const dynamic = "force-dynamic";
@@ -71,14 +71,14 @@ export async function POST(req: Request) {
 
     getCurrency(currencyCode);
 
-    const normalizedItems = lineItems.map((item: any) => ({
-      name: parseString(item?.name).trim(),
-      qty: parseNumber(item?.qty, 1),
-      unitPriceUsd: parseNumber(item?.unitPriceUsd, 0),
+    const normalizedItems = lineItems.map((item: unknown) => ({
+      name: parseString((item as Record<string, unknown>)?.name).trim(),
+      qty: parseNumber((item as Record<string, unknown>)?.qty, 1),
+      unitPriceUsd: parseNumber((item as Record<string, unknown>)?.unitPriceUsd, 0),
     }));
 
-    const amountSubtotal = normalizedItems.reduce((sum: number, item: any) => {
-      return sum + Number(item.qty || 0) * Number(item.unitPriceUsd || 0);
+    const amountSubtotal = normalizedItems.reduce((sum: number, item: unknown) => {
+      return sum + Number((item as Record<string, unknown>).qty || 0) * Number((item as Record<string, unknown>).unitPriceUsd || 0);
     }, 0);
 
     let taxDetails: Array<{ name: string; rate: number; amount: number }> = [];
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     if (!isTaxExempt) {
       const taxRatesSnap = await adminDb
         .collection("tenants")
-        .doc(auth.user.tenantId)
+        .doc(auth.user.tenantId as string)
         .collection("taxRates")
         .where("enabled", "==", true)
         .get();
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
       .get();
     const isFirstInvoice = existingInvoiceSnap.empty;
 
-    const orderId = await generateNextInvoiceId(auth.user.tenantId);
+    const orderId = await generateNextInvoiceId(auth.user.tenantId as string);
     const ref = adminDb.collection("invoices").doc();
 
     const invoiceData = {
@@ -172,8 +172,8 @@ export async function POST(req: Request) {
 
     await ref.set(invoiceData);
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], String(auth.user.tenantId || "") || null);
 
     await Promise.all(
       financeIds.map((uid) =>
@@ -182,11 +182,11 @@ export async function POST(req: Request) {
           title: "Invoice created",
           body: `Invoice ${orderId} created for ${clientName}.`,
           type: "info",
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: ref.id,
           deepLink: "/admin/finance/invoices",
           createdBy: { uid: auth.user.uid, name: actorName },
-          tenantId: auth.user.tenantId || null,
+          tenantId: String(auth.user.tenantId || "") || null,
         })
       )
     );
@@ -195,11 +195,11 @@ export async function POST(req: Request) {
       type: "finance.invoice_created",
       title: "Invoice created",
       description: `Invoice ${orderId} created for ${clientName}.`,
-      entityType: "invoice",
+      entityType: "invoice" as NotificationEntityType,
       entityId: ref.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: String(auth.user.tenantId || ""),
     });
 
     try {
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
 
     try {
       await dispatchWebhookEvent({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         event: "invoice.created",
         entityType: "invoice",
         entityId: ref.id,
@@ -268,16 +268,16 @@ export async function POST(req: Request) {
           amountTotal,
           currency: currencyCode,
         },
-        actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        actor: { uid: auth.user.uid, email: String(auth.user.email || "") || null, role: auth.user.role || null },
       });
     } catch (webhookError) {
       console.error("invoice.created webhook dispatch error:", webhookError);
     }
 
     return NextResponse.json({ ok: true, id: ref.id, orderId });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/invoices create error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

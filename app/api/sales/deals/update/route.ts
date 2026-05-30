@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const existingApprovalDoc = existingApprovalSnap.docs[0] || null;
     const requiresApproval = discountPct > approvalThreshold;
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       listPriceUsd,
       discountPct,
       discountUsd,
@@ -265,7 +265,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update deal." }, { status: 500 });
   }

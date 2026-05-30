@@ -1,6 +1,6 @@
-import { EmailTemplateRecord } from "@/types/email-templates";
+import type { EmailTemplateRecord } from "@/types/email-templates";
 
-type RenderContext = Record<string, any>;
+type RenderContext = Record<string, unknown>;
 
 const BLOCK_IF_REGEX = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
 const BLOCK_EACH_REGEX = /\{\{#each\s+([^}]+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
@@ -12,7 +12,7 @@ function readPath(context: RenderContext, path: string) {
   if (normalized === "this") return context.this;
 
   const parts = normalized.split(".");
-  let cursor: any = context;
+  let cursor: unknown = context;
   for (const part of parts) {
     if (cursor == null) return "";
     cursor = cursor[part];
@@ -20,7 +20,7 @@ function readPath(context: RenderContext, path: string) {
   return cursor ?? "";
 }
 
-function truthy(value: any) {
+function truthy(value: unknown) {
   if (Array.isArray(value)) return value.length > 0;
   return Boolean(value);
 }

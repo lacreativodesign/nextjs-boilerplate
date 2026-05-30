@@ -24,8 +24,8 @@ type QAEventType = (typeof QA_EVENT_TYPES)[number];
 
 type ProjectDoc = {
   stage?: string;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
-  stageTimestamps?: Record<string, any>;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string | null }>;
+  stageTimestamps?: Record<string, unknown>;
   projectName?: string;
   clientId?: string;
   clientName?: string;
@@ -38,17 +38,17 @@ type ProjectDoc = {
   productionName?: string | null;
   productionOwnerId?: string | null;
   productionOwnerName?: string | null;
-  dueDate?: any;
-  deliveredAt?: any;
-  updatedAt?: any;
-  createdAt?: any;
+  dueDate?: unknown;
+  deliveredAt?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
   isDeleted?: boolean;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -56,17 +56,17 @@ function toISO(value: any): string | null {
 function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byName: entry?.byName || "",
+    from: entry?.from || String(""),
+    to: entry?.to || String(""),
+    byUid: entry?.byUid || String(""),
+    byName: entry?.byName || String(""),
     at: toISO(entry?.at),
     reason: entry?.reason || null,
   }));
 }
 
 function isValidStage(stage?: string) {
-  return VALID_STAGES.includes((stage || "") as (typeof VALID_STAGES)[number]);
+  return VALID_STAGES.includes((stage || String("")) as (typeof VALID_STAGES)[number]);
 }
 
 function canMoveStage(fromStage: string, toStage: string) {
@@ -84,7 +84,7 @@ async function emitAutomationEvent({
   projectId: string;
   actorId: string;
   actorName: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   await adminDb.collection("automationEvents").add({
     type,
@@ -108,10 +108,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const projectId = String(body?.projectId || "").trim();
-    const toStage = String(body?.toStage || "").trim();
-    const reason = body?.reason ? String(body.reason).trim() : "";
-    const eventType = body?.eventType ? String(body.eventType).trim() : "";
+    const projectId = String(body?.projectId || String("")).trim();
+    const toStage = String(body?.toStage || String("")).trim();
+    const reason = body?.reason ? String(body.reason).trim() : String("");
+    const eventType = body?.eventType ? String(body.eventType).trim() : String("");
 
     if (!projectId) {
       return NextResponse.json({ ok: false, error: "Project id is required." }, { status: 400 });
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       from: fromStage,
       to: toStage,
       byUid: me.uid,
-      byName: me.name || me.fullName || me.displayName || "",
+      byName: String(me.name || me.fullName || me.displayName || ""),
       at: now,
       reason: reason || null,
     });
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
       type: "project.stage_moved",
       projectId,
       actorId: me.uid,
-      actorName: me.name || me.fullName || me.displayName || "",
+      actorName: String(me.name || me.fullName || me.displayName || ""),
       payload: {
         from: fromStage,
         to: toStage,
@@ -190,7 +190,7 @@ export async function POST(req: Request) {
         type: eventType,
         projectId,
         actorId: me.uid,
-        actorName: me.name || me.fullName || me.displayName || "",
+        actorName: String(me.name || me.fullName || me.displayName || ""),
         payload: {
           from: fromStage,
           to: toStage,
@@ -203,7 +203,7 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
 
     const stageNotifications: Promise<void>[] = [];
     if (updated.ownerAmUid) {
@@ -247,7 +247,7 @@ export async function POST(req: Request) {
       try {
         const clientSnap = await adminDb.collection("clients").doc(String(updated.clientId)).get();
         const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
-        const portalUid = String(clientData.portalUserUid || "");
+        const portalUid = String(clientData.portalUserUid || String(""));
         if (portalUid) {
           await createNotification({
             recipientUid: portalUid,
@@ -357,9 +357,9 @@ export async function POST(req: Request) {
       ok: true,
       project: {
         id: projectId,
-        projectName: updated.projectName || "",
-        clientName: updated.clientName || "",
-        projectType: updated.projectType || "",
+        projectName: updated.projectName || String(""),
+        clientName: updated.clientName || String(""),
+        projectType: updated.projectType || String(""),
         stage: updated.stage || "Kickoff",
         priority: updated.priority || "Normal",
         health: computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays),
@@ -373,9 +373,9 @@ export async function POST(req: Request) {
         stageHistory: normalizeStageHistory(updated.stageHistory),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/move-stage error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || String(""));
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

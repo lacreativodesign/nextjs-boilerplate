@@ -110,8 +110,8 @@ export default function QualityAssuranceWorkspace() {
       } else {
         setTestCases(casesPayload.testCases || []);
       }
-    } catch (err: any) {
-      setError(err?.message || "Unable to load QA workspace");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load QA workspace");
     } finally {
       setLoading(false);
     }

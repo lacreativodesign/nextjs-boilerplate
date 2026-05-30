@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
@@ -30,14 +30,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { action, entity, tenantId, payload, recordId, field, value, workflowId, runId } = body;
+  const bodyRec = body as Record<string, unknown>;
+  const { action, entity, payload, recordId, field, value, workflowId, runId } = bodyRec;
+  const tenantId = String(bodyRec.tenantId || "");
 
   // Validate required fields
   if (!action || !entity || !tenantId) {
@@ -137,8 +139,8 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400 });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error("[WORKFLOW_MUTATION]", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Internal error" }, { status: 500 });
   }
 }

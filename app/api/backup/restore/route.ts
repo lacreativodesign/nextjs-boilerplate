@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { restoreBackup } from "@/lib/backup/restore";
 import { requireSuperAdmin } from "@/app/api/super_admin/_utils";
 
@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
 
     await restoreBackup(body.backupId);
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    const message = error?.message || "Server error";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Server error";
     const status = message === "Forbidden" ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

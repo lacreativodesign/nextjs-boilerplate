@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security";

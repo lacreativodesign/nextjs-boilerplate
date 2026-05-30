@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { runXeroSync } from "@/lib/integrations/xero";
 
@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
       try {
         await runXeroSync({ tenantId, userUid: "system:cron" });
         results.push({ tenantId, ok: true });
-      } catch (error: any) {
-        results.push({ tenantId, ok: false, error: error?.message || "Sync failed" });
+      } catch (error) {
+        results.push({ tenantId, ok: false, error: (error instanceof Error ? error.message : undefined) || "Sync failed" });
       }
     }
 
     return NextResponse.json({ ok: true, processed: results.length, results });
-  } catch (error: any) {
+  } catch (error) {
     console.error("cron/xero-sync error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Xero cron sync failed." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Xero cron sync failed." }, { status: 500 });
   }
 }

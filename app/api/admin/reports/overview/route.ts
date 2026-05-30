@@ -17,7 +17,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const settings = await getReportSettings();
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
@@ -42,42 +42,42 @@ export async function GET() {
       queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const projects = projectSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     const changeRequests = [
-      ...changeRequestSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestAltSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     ];
-    const users = usersSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const onboardingTasks = onboardingSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const events = eventsSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const users = usersSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const onboardingTasks = onboardingSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const events = eventsSnap.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     const safeEvents =
       events.length > 0
         ? events
-        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
+        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc): Record<string, unknown> => ({
             id: doc.id,
             ...doc.data(),
           }));
 
     const revenueThisMonth = invoices.reduce((sum, inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return sum;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
-      return sum + Number(inv.amountTotalUsd || 0);
+      return sum + Number(inv.amountTotalUsd as unknown || 0);
     }, 0);
 
     const paymentsThisMonth = payments.reduce((sum, payment) => {
       if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
-      const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
+      const paidMs = toMillis(payment.paidAt as unknown || payment.updatedAt as unknown || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
-      return sum + Number(payment.amountUsd || 0);
+      return sum + Number(payment.amountUsd as unknown || 0);
     }, 0);
 
     const outstandingArTotal = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
       if (["paid", "void"].includes(status)) return sum;
-      return sum + Number(inv.amountTotalUsd || 0);
+      return sum + Number(inv.amountTotalUsd as unknown || 0);
     }, 0);
 
     const overdueInvoicesCount = invoices.reduce((count, inv) => {
@@ -89,33 +89,33 @@ export async function GET() {
     }, 0);
 
     const activeProjectsCount = projects.filter((project) => {
-      const stage = String(project.stage || "");
+      const stage = String(project.stage as unknown || "");
       return stage.toLowerCase() !== "delivered";
     }).length;
 
     const overdueProjectsCount = projects.filter((project) => {
-      const stage = String(project.stage || "");
+      const stage = String(project.stage as unknown || "");
       if (stage.toLowerCase() === "delivered") return false;
       const due = toISO(project.dueDate);
       const health = computeHealth(due, settings.atRiskAfterDays, settings.overdueAfterDays);
       return health === "Overdue";
     }).length;
 
-    const qaQueueCount = projects.filter((project) => String(project.stage || "").toLowerCase() === "final").length;
+    const qaQueueCount = projects.filter((project) => String(project.stage as unknown || "").toLowerCase() === "final").length;
 
     const openChangeRequestsCount = changeRequests.filter((req) => {
-      const status = String(req.status || "").toLowerCase();
+      const status = String(req.status as unknown || "").toLowerCase();
       if (!status) return true;
       return !["approved", "closed", "completed", "done", "resolved"].some((token) => status.includes(token));
     }).length;
 
     const activeEmployeesCount = users.filter((user) => {
-      const status = String(user.status || "active").toLowerCase();
+      const status = String(user.status as unknown || "active").toLowerCase();
       return !["inactive", "terminated", "disabled"].includes(status);
     }).length;
 
     const onboardingOpenCount = onboardingTasks.filter((task) => {
-      const status = String(task.status || "").toLowerCase();
+      const status = String(task.status as unknown || "").toLowerCase();
       return status !== "completed";
     }).length;
 
@@ -128,30 +128,30 @@ export async function GET() {
 
     invoices.forEach((inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = revenueSeries.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.revenue += Number(inv.amountTotalUsd || 0);
+      bucket.revenue += Number(inv.amountTotalUsd as unknown || 0);
     });
 
     payments.forEach((pay) => {
       if (normalizePaymentStatus(pay.status) !== "succeeded") return;
-      const paidMs = toMillis(pay.paidAt || pay.createdAt);
+      const paidMs = toMillis(pay.paidAt as unknown || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = revenueSeries.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.payments += Number(pay.amountUsd || 0);
+      bucket.payments += Number(pay.amountUsd as unknown || 0);
     });
 
     const activity = safeEvents
       .map((event) => ({
         id: event.id,
-        type: String(event.type || ""),
-        title: String(event.title || ""),
-        description: String(event.description || ""),
+        type: String(event.type as unknown || ""),
+        title: String(event.title as unknown || ""),
+        description: String(event.description as unknown || ""),
         createdAt: toISO(event.createdAt),
       }))
       .filter((event) => ACTIVITY_PREFIXES.some((prefix) => event.type.startsWith(prefix)))
@@ -185,9 +185,9 @@ export async function GET() {
         recentActivity: activity,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -36,34 +36,34 @@ export async function GET(request: Request) {
     ]);
 
     const resources: ProductionResource[] = resourceSnap.docs.map((doc) => {
-      const data = doc.data() as any;
+      const data = doc.data() as unknown;
       return {
-        id: String(data.resourceId || doc.id.replace(`${auth.user.tenantId}_`, "")),
+        id: String((data as Record<string, unknown>).resourceId || doc.id.replace(`${auth.user.tenantId}_`, "")),
         tenantId: auth.user.tenantId,
-        type: data.type || "employee",
-        name: data.name || "Unnamed resource",
-        capacityHoursPerDay: Number(data.capacityHoursPerDay || 8),
-        availabilityPercent: Number(data.availabilityPercent ?? 100),
-        hourlyRate: Number(data.hourlyRate || 0),
-        active: Boolean(data.active),
+        type: (data as Record<string, unknown>).type || "employee",
+        name: (data as Record<string, unknown>).name || "Unnamed resource",
+        capacityHoursPerDay: Number((data as Record<string, unknown>).capacityHoursPerDay || 8),
+        availabilityPercent: Number((data as Record<string, unknown>).availabilityPercent ?? 100),
+        hourlyRate: Number((data as Record<string, unknown>).hourlyRate || 0),
+        active: Boolean((data as Record<string, unknown>).active),
       };
     });
 
     const assignments: ResourceAssignment[] = assignmentSnap.docs.map((doc) => {
-      const data = doc.data() as any;
+      const data = doc.data() as unknown;
       return {
         id: doc.id,
         tenantId: auth.user.tenantId,
-        projectId: String(data.projectId || ""),
-        taskId: String(data.taskId || ""),
-        resourceId: String(data.resourceId || ""),
-        resourceType: data.resourceType || "employee",
-        resourceName: String(data.resourceName || ""),
-        allocationHoursPerDay: Number(data.allocationHoursPerDay || 0),
-        startDate: asIsoDate(data.startDate) || window.startDate,
-        endDate: asIsoDate(data.endDate) || window.endDate,
-        hourlyRate: Number(data.hourlyRate || 0),
-        status: data.status || "active",
+        projectId: String((data as Record<string, unknown>).projectId || ""),
+        taskId: String((data as Record<string, unknown>).taskId || ""),
+        resourceId: String((data as Record<string, unknown>).resourceId || ""),
+        resourceType: (data as Record<string, unknown>).resourceType || "employee",
+        resourceName: String((data as Record<string, unknown>).resourceName || ""),
+        allocationHoursPerDay: Number((data as Record<string, unknown>).allocationHoursPerDay || 0),
+        startDate: asIsoDate((data as Record<string, unknown>).startDate) || window.startDate,
+        endDate: asIsoDate((data as Record<string, unknown>).endDate) || window.endDate,
+        hourlyRate: Number((data as Record<string, unknown>).hourlyRate || 0),
+        status: (data as Record<string, unknown>).status || "active",
       };
     });
 

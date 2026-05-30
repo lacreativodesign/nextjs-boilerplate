@@ -51,12 +51,12 @@ export async function POST(request: Request) {
     }
 
     if (action === "list_folders") {
-      const folders = await listDriveFolders(auth.user.tenantId);
+      const folders = await listDriveFolders(auth.user.tenantId as string);
       return NextResponse.json({ ok: true, action, folders: folders.files || [] });
     }
 
     return NextResponse.json({ ok: false, error: "Unsupported Drive action." }, { status: 400 });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Drive operation failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Drive operation failed." }, { status: 500 });
   }
 }

@@ -40,7 +40,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-payroll-by-month.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports payroll-by-month error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

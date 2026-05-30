@@ -14,19 +14,19 @@ export async function POST(request: Request) {
 
   const form = new URLSearchParams(rawBody);
   const payloadRaw = form.get("payload") || "{}";
-  const payload = JSON.parse(payloadRaw) as any;
+  const payload = JSON.parse(payloadRaw) as unknown;
 
   try {
-    const action = payload?.actions?.[0];
+    const action = (payload as Record<string, unknown>)?.actions?.[0];
     const result = await updateSlackInteractiveAction({
-      teamId: String(payload?.team?.id || ""),
+      teamId: String((payload as Record<string, unknown>)?.team?.id as unknown || ""),
       actionId: String(action?.action_id || ""),
       value: String(action?.value || ""),
-      actorSlackUserId: String(payload?.user?.id || ""),
+      actorSlackUserId: String((payload as Record<string, unknown>)?.user?.id as unknown || ""),
     });
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ text: error?.message || "Action failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ text: (error instanceof Error ? error.message : undefined) || "Action failed." }, { status: 500 });
   }
 }

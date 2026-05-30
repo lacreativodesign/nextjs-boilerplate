@@ -22,10 +22,10 @@ type ProjectDoc = {
   productionOwnerId?: string | null;
   productionOwnerName?: string | null;
   assignedProductionIds?: string[];
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string }>;
   qaStatus?: string | null;
   isDeleted?: boolean;
 };
@@ -144,9 +144,9 @@ export async function GET() {
       .slice(0, 10);
 
     return NextResponse.json({ ok: true, kpis, myQueueTop10, recentActivityTop10 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

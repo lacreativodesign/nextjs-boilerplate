@@ -67,7 +67,7 @@ export default function FinancePaymentsPage() {
       }
       setPayments(data.payments || []);
       setCurrentUser(data.currentUser || null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Payments load error", err);
       setError({ title: "Unable to load payments", message: "Please try again in a moment." });
     } finally {

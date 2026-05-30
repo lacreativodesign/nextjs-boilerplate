@@ -19,7 +19,7 @@ type WebhookInput = {
   enabled?: boolean;
 };
 
-function normalizeWebhooks(value: any) {
+function normalizeWebhooks(value: unknown) {
   if (!Array.isArray(value)) return [] as Array<{ name: string; url: string; enabled: boolean }>;
   return value
     .map((entry: WebhookInput) => ({
@@ -45,8 +45,8 @@ export async function GET() {
     const data = snap.exists ? snap.data() : {};
 
     const settings = {
-      firebaseStatus: getStatusLabel(Boolean(adminDb.app?.options?.projectId)),
-      storageStatus: getStatusLabel(Boolean(adminDb.app?.options?.storageBucket)),
+      firebaseStatus: getStatusLabel(Boolean((adminDb as unknown as { app?: { options?: { projectId?: string } } }).app?.options?.projectId)),
+      storageStatus: getStatusLabel(Boolean((adminDb as unknown as { app?: { options?: { storageBucket?: string } } }).app?.options?.storageBucket)),
       webhooks: normalizeWebhooks(data?.webhooks),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,

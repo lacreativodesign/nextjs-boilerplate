@@ -17,7 +17,7 @@ export default function ImpersonationBanner() {
         if (!user) { setData(null); return; }
         try {
           const result = await user.getIdTokenResult();
-          const claims = result.claims as Record<string, any>;
+          const claims = result.claims as Record<string, unknown>;
           if (claims?.isImpersonating && claims?.tenantId) {
             setData({
               tenantId: String(claims.tenantId),

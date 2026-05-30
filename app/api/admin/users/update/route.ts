@@ -93,13 +93,13 @@ export async function POST(req: Request) {
       await adminAuth.updateUser(uid, { email });
     }
 
-    const normalizeString = (incoming: any, existingValue: any = "") =>
+    const normalizeString = (incoming: unknown, existingValue: unknown = "") =>
       incoming !== undefined ? String(incoming || "").trim() : String(existingValue || "").trim();
 
-    const normalizeDate = (incoming: any, existingValue: any = null) =>
+    const normalizeDate = (incoming: unknown, existingValue: unknown = null) =>
       incoming !== undefined ? incoming ?? null : existingValue ?? null;
 
-    const normalizeNumber = (incoming: any, existingValue: any = null) => {
+    const normalizeNumber = (incoming: unknown, existingValue: unknown = null) => {
       if (incoming === undefined) return existingValue ?? null;
       if (incoming === null || incoming === "") return null;
       const num = Number(incoming);
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("UPDATE USER ERROR:", err);
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }

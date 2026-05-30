@@ -15,7 +15,7 @@ const ReportViewer = dynamic(
 
 export default function ReportDetailPage({ params }: { params: { id: string } }) {
   const [report, setReport] = useState<Report | null>(null);
-  const [data, setData] = useState<any[] | null>(null);
+  const [data, setData] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ReportFilter[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);

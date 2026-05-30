@@ -48,8 +48,8 @@ export async function POST(req: Request) {
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("CREATE SET PASSWORD TOKEN ERROR:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

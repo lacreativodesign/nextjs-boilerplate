@@ -12,7 +12,7 @@ const ACTIVE_STAGES = ["Draft", "Review", "Revisions", "Final"];
 type StageHistoryEntry = {
   from?: string;
   to?: string;
-  at?: any;
+  at?: unknown;
 };
 
 function normalizeStageHistory(history?: StageHistoryEntry[]) {
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -138,7 +138,7 @@ export async function GET(req: Request) {
         if (historyEntry?.at) anchor = historyEntry.at;
         const anchorMs = anchor ? new Date(anchor).getTime() : null;
         const diffDays = anchorMs ? (Date.now() - anchorMs) / (1000 * 60 * 60 * 24) : 0;
-        const slaDays = Number(settings.stageSlaDays?.[project.stage] || 0);
+        const slaDays = Number((settings.stageSlaDays as Record<string, number>)?.[project.stage] || 0);
         return { ...project, ageDays: Number(diffDays.toFixed(1)), slaDays };
       })
       .filter((project) => project.slaDays > 0 && project.ageDays > project.slaDays)
@@ -152,9 +152,9 @@ export async function GET(req: Request) {
       bottlenecks,
       stuckProjects,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/production error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { NotificationService } from "@/lib/notifications/notification-service";
-import { NotificationCategory, NotificationPreferences } from "@/types/notifications";
+import type { NotificationCategory, NotificationPreferences } from "@/types/notifications";
 import { getCurrentUser } from "../../admin/_utils";
 import { requireNotificationsModule } from "../_utils";
 
@@ -84,7 +84,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ error: moduleAccess.error }, { status: moduleAccess.status });
@@ -99,7 +99,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      preferences: { id: doc.id, ...doc.data() },
+      preferences: { id: doc.id, ...(doc.data() as Record<string, unknown>) },
     });
   } catch (error) {
     console.error("Error fetching preferences:", error);
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ error: moduleAccess.error }, { status: moduleAccess.status });

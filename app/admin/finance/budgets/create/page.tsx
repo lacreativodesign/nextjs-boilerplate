@@ -104,9 +104,9 @@ export default function CreateBudgetPage() {
 
       toastSuccess("Budget created successfully.");
       router.push(`/admin/finance/budgets/${data.id}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Create budget error", error);
-      toastError(error?.message || "Unable to create budget.");
+      toastError((error instanceof Error ? error.message : undefined) || "Unable to create budget.");
     } finally {
       setSaving(false);
     }

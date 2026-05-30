@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             end: String(event.end),
             timezone: event.timezone ? String(event.timezone) : undefined,
             attendees: Array.isArray(event.attendees)
-              ? event.attendees.map((attendee: any) => ({ email: String(attendee.email), displayName: attendee.displayName }))
+              ? event.attendees.map((attendee: unknown) => ({ email: String((attendee as Record<string, unknown>).email), displayName: (attendee as Record<string, unknown>).displayName }))
               : undefined,
             location: event.location ? String(event.location) : undefined,
           },
@@ -56,12 +56,12 @@ export async function POST(request: Request) {
     }
 
     if (action === "import_external_calendars") {
-      const calendars = await importExternalCalendars(auth.user.tenantId);
+      const calendars = await importExternalCalendars(auth.user.tenantId as string);
       return NextResponse.json({ ok: true, action, calendars: calendars.items || [] });
     }
 
     return NextResponse.json({ ok: false, error: "Unsupported calendar sync action." }, { status: 400 });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Calendar sync failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Calendar sync failed." }, { status: 500 });
   }
 }

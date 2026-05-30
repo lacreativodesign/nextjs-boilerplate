@@ -38,7 +38,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=sales-manager-reports.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager reports export error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

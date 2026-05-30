@@ -6,7 +6,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
-import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
+import { formatDate, formatDateTime, _formatUsd } from "@/components/finance/financeUtils";
 import type { InvoiceRecord } from "@/lib/finance/types";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
@@ -71,7 +71,7 @@ export default function FinanceInvoicesPage() {
       }
       setInvoices(data.invoices || []);
       setCurrentUser(data.currentUser || null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Invoices load error", err);
       toastError("Unable to load invoices. Please try again in a moment.");
       setError({
@@ -196,11 +196,11 @@ export default function FinanceInvoicesPage() {
         {
           loading: "Updating invoice...",
           success: "Invoice marked as paid.",
-          error: (err) => err?.message || "Unable to mark invoice paid.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to mark invoice paid.",
         }
       );
       await loadInvoices();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Mark paid error", err);
       setError({ title: "Unable to mark paid", message: "Please try again." });
     } finally {
@@ -228,7 +228,7 @@ export default function FinanceInvoicesPage() {
         {
           loading: "Deleting invoice...",
           success: "Invoice deleted.",
-          error: (err) => err?.message || "Unable to delete invoice.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Unable to delete invoice.",
         }
       );
       if (selectedInvoice?.id === invoice.id) {

@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       if (prevStage === stage) return;
       ownerId = data.ownerId || null;
 
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         stage,
         stageHistory: arrayUnion({
           from: prevStage,
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName,
+      createdByName: String(createdByName),
       metadata: { stage },
     });
 
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager pipeline update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update pipeline." }, { status: 500 });
   }

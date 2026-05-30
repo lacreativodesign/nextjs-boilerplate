@@ -44,7 +44,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=reports-production-workload.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/exports production-workload error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

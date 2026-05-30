@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       // Non-blocking — OTP is still valid even if this fails
     }
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("verify-otp error:", err);
     return NextResponse.json({ ok: false, error: "Verification failed." }, { status: 500 });
   }

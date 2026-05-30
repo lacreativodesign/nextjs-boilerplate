@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type { Query } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const data = createProductSchema.parse(body);
 
     const productId = await InventoryService.createProduct({
-      tenantId: session.tenantId,
+      tenantId: session.tenantId as string,
       ...data,
       createdBy: session.uid,
     });
@@ -77,14 +77,14 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.orderBy("createdAt", "desc").get();
-    let products = snapshot.docs.map((doc) => ({
+    let products = snapshot.docs.map((doc): Record<string, unknown> => ({
       id: doc.id,
       ...doc.data(),
     }));
 
     if (lowStock) {
       products = products.filter((product) =>
-        Boolean(product.trackInventory) && Number(product.currentStock ?? 0) <= Number(product.reorderPoint ?? 0)
+        Boolean(product.trackInventory) && Number(product.currentStock as unknown ?? 0) <= Number(product.reorderPoint as unknown ?? 0)
       );
     }
 

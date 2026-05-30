@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(req);
+    const user = await getCurrentUserOrThrow(req as unknown as Parameters<typeof getCurrentUserOrThrow>[0]);
 
     // super_admin is platform-level — no tenant required
     if (user.role === "super_admin") {
@@ -29,14 +29,14 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const tenantId = await getTenantIdForRequestOrThrow(req);
+    const tenantId = await getTenantIdForRequestOrThrow(req as unknown as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;
     const planState = tenant ? await getTenantPlanState(tenantId) : null;
     const subscriptionState = tenant
       ? deriveSubscriptionState({
-          subscriptionState: (tenant as any).subscriptionState,
-          billingStatus: (tenant as any).billingStatus,
+          subscriptionState: (tenant as Record<string, unknown>).subscriptionState as string | undefined,
+          billingStatus: (tenant as Record<string, unknown>).billingStatus as string | undefined,
         })
       : "active";
 
@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
           }
         : null,
     });
-  } catch (err: any) {
-    const message = err?.message || "Unauthorized";
+  } catch (err) {
+    const message = (err instanceof Error ? err.message : undefined) || "Unauthorized";
     const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 400;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

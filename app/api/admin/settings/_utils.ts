@@ -47,8 +47,8 @@ export const DEFAULT_FINANCE_SETTINGS = {
   },
 };
 
-export function parseLateFeesSettings(value: any) {
-  const source = typeof value === "object" && value ? value : {};
+export function parseLateFeesSettings(value: unknown) {
+  const source = (typeof value === "object" && value ? value : {}) as Record<string, unknown>;
   const type = source.type === "fixed" ? "fixed" : "percentage";
   return {
     enabled: parseBoolean(source.enabled, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.enabled),
@@ -91,37 +91,37 @@ export function serverTimestamp() {
   return admin.firestore.FieldValue.serverTimestamp();
 }
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-export function parseNumber(value: any, fallback = 0) {
+export function parseNumber(value: unknown, fallback = 0) {
   const num = Number(value);
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: unknown, fallback = "") {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
 
-export function parseBoolean(value: any, fallback = false) {
+export function parseBoolean(value: unknown, fallback = false) {
   if (value === null || value === undefined) return fallback;
   return Boolean(value);
 }
 
-export function parseStringArray(value: any) {
+export function parseStringArray(value: unknown) {
   if (!Array.isArray(value)) return [] as string[];
   return value
     .map((item) => String(item || "").trim())
     .filter((item) => item.length > 0);
 }
 
-export function parseNumberArray(value: any, fallback: number[] = []) {
+export function parseNumberArray(value: unknown, fallback: number[] = []) {
   if (!Array.isArray(value)) return fallback;
   const parsed = value.map((item) => parseNumber(item, 0)).filter((item) => item > 0);
   return parsed.length ? parsed : fallback;

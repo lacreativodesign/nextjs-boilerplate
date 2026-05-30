@@ -50,9 +50,9 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
         throw new Error(data?.error || "Unable to load approvals.");
       }
       setApprovals(Array.isArray(data.approvals) ? data.approvals : []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Approvals fetch error", err);
-      setError(err?.message || "Unable to load approvals.");
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load approvals.");
     } finally {
       setLoading(false);
     }
@@ -81,9 +81,9 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
       }
       setSelected(null);
       loadApprovals();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Approval resolve error", err);
-      setError(err?.message || "Unable to resolve approval.");
+      setError((err instanceof Error ? err.message : undefined) || "Unable to resolve approval.");
     } finally {
       setActionLoading(false);
     }

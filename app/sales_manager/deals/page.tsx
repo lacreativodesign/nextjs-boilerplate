@@ -83,9 +83,9 @@ export default function SalesManagerDealsPage() {
         }
         if (!alive) return;
         setRows(Array.isArray(json.deals) ? json.deals : []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError({ title: "Unable to load deals", message: err?.message || "Please try again later." });
+        setError({ title: "Unable to load deals", message: (err instanceof Error ? err.message : undefined) || "Please try again later." });
         setRows([]);
       } finally {
         if (!alive) return;
@@ -290,7 +290,7 @@ export default function SalesManagerDealsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedDeals.map((deal, idx) => {
+                {sortedDeals.map((deal, _idx) => {
 
                   return (
                     <tr

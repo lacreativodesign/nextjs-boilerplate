@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
     const payload = schema.parse(await request.json());
 
     const leaveRequest = await LeaveService.submitLeaveRequest({
-      tenantId: me.tenantId,
+      tenantId: String(me.tenantId || ""),
       employeeId: me.uid,
-      employeeName: me.name || me.fullName || me.email || me.uid,
+      employeeName: String(me.name || me.fullName || me.email || me.uid || ""),
       leaveType: payload.leaveType,
       startDate: new Date(payload.startDate),
       endDate: new Date(payload.endDate),
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await dispatchWebhookEvent({
-        tenantId: me.tenantId,
+        tenantId: String(me.tenantId || ""),
         event: "leave.requested",
         entityType: "leave",
         entityId: leaveRequest.id,
@@ -57,19 +57,19 @@ export async function POST(request: NextRequest) {
           startDate: payload.startDate,
           endDate: payload.endDate,
         },
-        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        actor: { uid: me.uid, email: String(me.email || "") || null, role: String(me.role || "") || null },
       });
     } catch (webhookError) {
       console.error("leave.requested webhook dispatch error:", webhookError);
     }
 
     // Email HR + admin about leave request — non-blocking
-    getUsersByRoles(["hr", "admin"], me.tenantId).then((hrTeam) => {
+    getUsersByRoles(["hr", "admin"], me.tenantId as string).then((hrTeam) => {
       const startFormatted = new Date(payload.startDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       const endFormatted = new Date(payload.endDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       return Promise.all(hrTeam.map((member) =>
         sendEmail({
-          to: member.email || "",
+          to: String((member as Record<string, unknown>).email || ""),
           subject: `🏖️ Leave request — ${me.name || me.email || "Employee"}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

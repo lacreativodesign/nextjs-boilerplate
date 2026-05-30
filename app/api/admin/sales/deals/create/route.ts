@@ -60,12 +60,12 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals create error:", err);
     return NextResponse.json({ ok: false, error: "Unable to create deal." }, { status: 500 });
   }

@@ -19,7 +19,7 @@ import {
 } from "@/components/charts/ChartContainer";
 import PerformanceCard from "@/components/performance/PerformanceCard";
 import PeriodSelector from "@/components/performance/PeriodSelector";
-import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
+import { getCurrentPeriod, type PeriodType } from "@/lib/performance/periods";
 
 type MonthPoint = { month: string; leads: number; closed: number };
 type SummaryKPIs = {
@@ -62,10 +62,10 @@ export default function SalesPerformancePage() {
         setKpis({ totalLeads, totalClosed, conversionRate: convRate, totalRevenue });
 
         if (d.pipelineStages && Array.isArray(d.pipelineStages)) {
-          const points: MonthPoint[] = d.pipelineStages.map((s: any) => ({
-            month: s.stage ?? s.label ?? "",
-            leads: s.count ?? 0,
-            closed: s.stage === "Closed Won" ? (s.count ?? 0) : 0,
+          const points: MonthPoint[] = d.pipelineStages.map((s: unknown) => ({
+            month: (s as Record<string, unknown>).stage ?? (s as Record<string, unknown>).label ?? "",
+            leads: (s as Record<string, unknown>).count ?? 0,
+            closed: (s as Record<string, unknown>).stage === "Closed Won" ? ((s as Record<string, unknown>).count ?? 0) : 0,
           }));
           setMonthlyData(points);
         }

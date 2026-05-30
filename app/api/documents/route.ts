@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
     const snapshot = await query.get();
     const documents = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() } as Document))
+      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as Document))
       .filter((doc) => hasDocumentAccess(doc, session))
       .filter((doc) => !doc.deletedAt);
 

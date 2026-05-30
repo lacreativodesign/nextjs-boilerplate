@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin } from "../_utils";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const { searchParams } = new URL(request.url);
     const yearParam = searchParams.get("year");
     const budgetId = searchParams.get("budgetId");
@@ -220,9 +220,9 @@ export async function GET(request: NextRequest) {
     const yearComparisons = year ? createYearComparisons(budgets, year) : [];
 
     return NextResponse.json({ ok: true, budgets, yearComparisons });
-  } catch (error: any) {
+  } catch (error) {
     console.error("finance/budgets get error:", error);
-    const rawMessage = String(error?.message || "");
+    const rawMessage = String((error instanceof Error ? error.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const body = await request.json();
 
     const name = String(body?.name || "").trim();
@@ -296,9 +296,9 @@ export async function POST(request: NextRequest) {
         ...budgetPayload,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("finance/budgets create error:", error);
-    const rawMessage = String(error?.message || "");
+    const rawMessage = String((error instanceof Error ? error.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

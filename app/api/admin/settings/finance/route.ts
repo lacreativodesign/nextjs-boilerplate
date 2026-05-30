@@ -28,8 +28,8 @@ export async function GET() {
 
     const [snap, tenantSnap, invoiceCounterSnap] = await Promise.all([
       adminDb.collection("settings").doc("finance").get(),
-      adminDb.collection("tenants").doc(auth.user.tenantId).get(),
-      adminDb.collection("tenants").doc(auth.user.tenantId).collection("counters").doc("invoices").get(),
+      adminDb.collection("tenants").doc(auth.user.tenantId as string).get(),
+      adminDb.collection("tenants").doc(auth.user.tenantId as string).collection("counters").doc("invoices").get(),
     ]);
     const data = snap.exists ? snap.data() : {};
     const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
@@ -97,7 +97,7 @@ export async function PUT(req: Request) {
     };
     const invoiceCounterSnap = await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("counters")
       .doc("invoices")
       .get();
@@ -112,7 +112,7 @@ export async function PUT(req: Request) {
 
     await Promise.all([
       adminDb.collection("settings").doc("finance").set(payload, { merge: true }),
-      adminDb.collection("tenants").doc(auth.user.tenantId).set(tenantPatch, { merge: true }),
+      adminDb.collection("tenants").doc(auth.user.tenantId as string).set(tenantPatch, { merge: true }),
     ]);
 
     await logSettingsChange({

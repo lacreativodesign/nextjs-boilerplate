@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ files });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to list files" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to list files" }, { status: 500 });
   }
 }

@@ -7,19 +7,19 @@ import { assertPermission, Permission } from "../../../../lib/permissions";
 
 export const runtime = "nodejs";
 
-function normalizeString(incoming: any, existingValue: any = "") {
+function normalizeString(incoming: unknown, existingValue: unknown = "") {
   if (incoming === undefined || incoming === null || incoming === "") return String(existingValue || "");
   return String(incoming || "").trim();
 }
 
-function normalizeNumber(incoming: any, existingValue: any = null) {
+function normalizeNumber(incoming: unknown, existingValue: unknown = null) {
   if (incoming === undefined || incoming === "") return existingValue ?? null;
   if (incoming === null) return null;
   const num = Number(incoming);
   return Number.isFinite(num) ? num : existingValue ?? null;
 }
 
-function normalizeDate(incoming: any, existingValue: any = null) {
+function normalizeDate(incoming: unknown, existingValue: unknown = null) {
   if (incoming === undefined || incoming === "") return existingValue ?? null;
   if (incoming === null) return null;
   return incoming;

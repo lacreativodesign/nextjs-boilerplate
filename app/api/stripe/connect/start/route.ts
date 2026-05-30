@@ -31,8 +31,8 @@ export async function GET() {
     const authorizeUrl = getConnectAuthorizeUrl(tenantId, userId);
 
     return NextResponse.json({ ok: true, url: authorizeUrl });
-  } catch (error: any) {
-    const message = error?.message || "Unable to start Stripe Connect.";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Unable to start Stripe Connect.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

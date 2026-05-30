@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
 const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"] as const;
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     const description = cleanString(body?.description);
     const priority = cleanString(body?.priority) || "Medium";
     const attachedFileIds = Array.isArray(body?.attachedFileIds)
-      ? body.attachedFileIds.map((id: any) => cleanString(id)).filter(Boolean)
+      ? body.attachedFileIds.map((id: unknown) => cleanString(id)).filter(Boolean)
       : [];
 
     if (!projectId) {
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
         description: `${title} requires manager approval.`,
         entityType: "change_request",
         entityId: docRef.id,
-        actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+        actor: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
         metadata: {
           projectId,
           type,
@@ -200,7 +200,7 @@ export async function POST(req: Request) {
     });
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const notifications: Promise<void>[] = [];
     if (project.ownerAmUid) {
       notifications.push(

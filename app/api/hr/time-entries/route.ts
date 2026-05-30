@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
@@ -33,7 +33,7 @@ async function getAuthorizedUser() {
   }
 
   try {
-    await requireModule(me.tenantId, "hr", { role: me.role });
+    await requireModule(me.tenantId as string, "hr", { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return {

@@ -172,7 +172,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
   }, [open, messages]);
 
   const latestFiles = useMemo(() => {
-    return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as any));
+    return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as unknown));
   }, [files]);
 
   const groupedFiles = useMemo(() => {
@@ -249,9 +249,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const listPayload = await listRes.json();
       setFiles(listPayload.files || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to upload file.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to upload file.");
     } finally {
       setActionLoading(false);
       setUploadingCategory(null);
@@ -281,9 +281,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       }
       setStageNote("");
       setSelectedStage("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to request stage move.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to request stage move.");
     } finally {
       setActionLoading(false);
     }
@@ -313,9 +313,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       onProjectUpdated?.(updated);
       setStageNote("");
       setSelectedStage("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to move stage.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to move stage.");
     } finally {
       setActionLoading(false);
     }
@@ -346,9 +346,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const listPayload = await listRes.json();
       setMessages(listPayload.messages || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to send message.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to send message.");
     } finally {
       setActionLoading(false);
     }
@@ -384,9 +384,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const listPayload = await listRes.json();
       setChangeRequests(listPayload.changeRequests || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to create change request.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to create change request.");
     } finally {
       setActionLoading(false);
     }

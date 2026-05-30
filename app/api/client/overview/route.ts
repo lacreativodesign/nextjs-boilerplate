@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const REVIEW_STAGES = ["Draft", "Review", "Final", "Revisions"];
 
-function toNumber(value: any) {
+function toNumber(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
@@ -77,9 +77,9 @@ export async function GET() {
       },
       recentUpdates,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

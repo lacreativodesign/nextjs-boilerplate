@@ -52,12 +52,12 @@ export async function createProjectFromDeal({
   stageOverride,
 }: {
   tenantId?: string | null;
-  deal: Record<string, any>;
-  client: Record<string, any> | null;
+  deal: Record<string, unknown>;
+  client: Record<string, unknown> | null;
   actor?: { uid?: string | null; name?: string | null } | null;
   stageOverride?: string | null;
 }) {
-  const scopedTenantId = normalizeTenantId(tenantId || deal?.tenantId || client?.tenantId);
+  const scopedTenantId = normalizeTenantId((tenantId as string | null | undefined) || (deal?.tenantId as string | null | undefined) || (client?.tenantId as string | null | undefined));
   const dealId = String(deal?.id || deal?.dealId || "");
   const clientId = String(client?.id || client?.clientId || deal?.clientId || "");
 

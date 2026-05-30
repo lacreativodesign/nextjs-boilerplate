@@ -40,7 +40,7 @@ export function ReportFilters({
 
   const syncRows = (next: FilterRow[]) => {
     setRows(next);
-    onChange(next.map(({ id, ...rest }) => rest));
+    onChange(next.map(({ _id, ...rest }) => rest));
   };
 
   const addFilter = () => {

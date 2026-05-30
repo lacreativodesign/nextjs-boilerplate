@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const employeeId = query.employeeId && canManage(me.role) ? query.employeeId : me.uid;
     const year = query.year || new Date().getUTCFullYear();
 
-    const balances = await LeaveService.getBalances(me.tenantId, employeeId, year);
+    const balances = await LeaveService.getBalances(me.tenantId as string, employeeId, year);
     return NextResponse.json({ ok: true, balances, employeeId, year });
   } catch (err) {
     console.error("HR leave balance error", err);

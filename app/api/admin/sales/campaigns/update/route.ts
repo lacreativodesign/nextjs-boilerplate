@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing campaign id." }, { status: 400 });
     }
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
 
@@ -51,12 +51,12 @@ export async function POST(req: Request) {
       entityType: "campaign",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales campaigns update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update campaign." }, { status: 500 });
   }

@@ -45,7 +45,7 @@ export class TaskService {
       dependsOn: [],
       blockedBy: [],
       hasSubtasks: false,
-      parentTaskId: params.parentTaskId ?? null,
+      parentTaskId: params.parentTaskId ?? undefined,
       attachments: [],
       commentCount: 0,
       lastActivityAt: now,

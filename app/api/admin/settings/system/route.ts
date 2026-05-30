@@ -22,13 +22,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId as string).get();
     const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
     const tenantName = String(tenantSnap.data()?.name || "").trim();
 
     const snap = await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("settings")
       .doc("system")
       .get();
@@ -92,7 +92,7 @@ export async function PUT(req: Request) {
 
     await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("settings")
       .doc("system")
       .set(payload, { merge: true });

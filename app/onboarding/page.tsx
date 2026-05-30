@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Circle, ArrowRight, Users, Briefcase, FileText, User } from "lucide-react";
+import { CheckCircle, _Circle, ArrowRight, Users, Briefcase, FileText, User } from "lucide-react";
 
 type Step = {
   id: "profile" | "team" | "client" | "invoice";
@@ -49,7 +49,7 @@ export default function OnboardingPage() {
       completed: false,
     },
   ]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/onboarding/progress", { credentials: "include" })

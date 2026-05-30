@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { AppError, resolveErrorResponse } from "@/lib/errors";

@@ -65,7 +65,7 @@ export default function ReportsOverviewPage() {
         throw new Error(data?.error || "Unable to load reports overview.");
       }
       setOverview(data.overview as OverviewResponse);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports overview load error", err);
       setError("Unable to load reports overview right now.");
     } finally {

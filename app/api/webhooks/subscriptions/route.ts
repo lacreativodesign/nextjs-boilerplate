@@ -11,7 +11,7 @@ export async function GET() {
     const auth = await requireWebhookAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const subscriptions = await listWebhookSubscriptions(auth.user.tenantId);
+    const subscriptions = await listWebhookSubscriptions(auth.user.tenantId as string);
     return NextResponse.json({ ok: true, subscriptions, health: computeWebhookHealth(subscriptions) });
   } catch (err) {
     console.error("webhooks/subscriptions get error", err);

@@ -45,8 +45,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "DocuSign OAuth failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "DocuSign OAuth failed." }, { status: 500 });
   }
 }
 
@@ -66,10 +66,10 @@ export async function GET(request: Request) {
     try {
       const auth = await requireAdmin();
       if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-      const connection = await getDocusignConnection(auth.user.tenantId);
+      const connection = await getDocusignConnection(auth.user.tenantId as string);
       return NextResponse.json({ ok: true, connection });
-    } catch (readError: any) {
-      return NextResponse.json({ ok: false, error: readError?.message || "Unable to fetch DocuSign state." }, { status: 500 });
+    } catch (readError) {
+      return NextResponse.json({ ok: false, error: (readError instanceof Error ? readError.message : undefined) || "Unable to fetch DocuSign state." }, { status: 500 });
     }
   }
 
@@ -82,10 +82,10 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(new URL(`${payload.returnTo}?docusign_connected=1`, request.url));
-  } catch (oauthError: any) {
+  } catch (oauthError) {
     return NextResponse.redirect(
       new URL(
-        `/admin/settings/integrations/docusign?docusign_error=${encodeURIComponent(oauthError?.message || "oauth_failed")}`,
+        `/admin/settings/integrations/docusign?docusign_error=${encodeURIComponent((oauthError instanceof Error ? oauthError.message : undefined) || "oauth_failed")}`,
         request.url
       )
     );

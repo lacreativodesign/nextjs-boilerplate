@@ -27,7 +27,7 @@ export default function EmployeeAttendanceDetail() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const start = month.startOf("month");
+  const _start = month.startOf("month");
   const end = month.endOf("month");
   const daysInMonth = end.date();
 

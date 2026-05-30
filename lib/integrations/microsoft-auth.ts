@@ -102,7 +102,7 @@ export function getMicrosoftOauthConfig() {
   };
 }
 
-export function buildMicrosoftAuthUrl(params: { tenantId: string; userUid: string; returnTo?: string }) {
+export function buildMicrosoftAuthUrl(_params: { tenantId: string; userUid: string; returnTo?: string }) {
   const state = crypto.randomBytes(24).toString("base64url");
   return { state, url: buildMicrosoftAuthUrlFromState(state), expiresAt: Date.now() + 10 * 60_000 };
 }

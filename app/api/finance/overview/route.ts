@@ -14,7 +14,7 @@ function getStartOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-function toMillis(value: any) {
+function toMillis(value: unknown) {
   const iso = toISO(value);
   if (!iso) return null;
   const d = new Date(iso);
@@ -44,44 +44,44 @@ export async function GET() {
       adminDb.collection("events").where("tenantId", "==", auth.user.tenantId).orderBy("createdAt", "desc").limit(20).get(),
     ]);
 
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const payroll = payrollSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const expenses = expenseSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
       if (status !== "paid") return sum;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
-      return sum + Number(inv.amountTotalUsd || 0);
+      return sum + Number(inv.amountTotalUsd as unknown || 0);
     }, 0);
 
     const paymentsReceivedMonth = payments.reduce((sum, payment) => {
       if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
-      const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
+      const paidMs = toMillis(payment.paidAt as unknown || payment.updatedAt as unknown || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
-      return sum + Number(payment.amountUsd || 0);
+      return sum + Number(payment.amountUsd as unknown || 0);
     }, 0);
 
     const outstandingInvoices = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
       if (["paid", "void"].includes(status)) return sum;
-      return sum + Number(inv.amountTotalUsd || 0);
+      return sum + Number(inv.amountTotalUsd as unknown || 0);
     }, 0);
 
     const nowMs = now.getTime();
     const agingBuckets = invoices.reduce(
-      (acc, inv) => {
+      (acc: { bucket0to30: number; bucket31to60: number; bucket61to90: number; bucket90plus: number }, inv) => {
         const status = normalizeInvoiceStatus(inv.status);
         if (["paid", "void"].includes(status)) return acc;
         const dueMs = toMillis(inv.dueDate);
         if (!dueMs) {
-          acc.bucket0to30 += Number(inv.amountTotalUsd || 0);
+          acc.bucket0to30 += Number(inv.amountTotalUsd as unknown || 0);
           return acc;
         }
         const diffDays = Math.max(0, Math.floor((nowMs - dueMs) / (1000 * 60 * 60 * 24)));
-        const value = Number(inv.amountTotalUsd || 0);
+        const value = Number(inv.amountTotalUsd as unknown || 0);
         if (diffDays <= 30) acc.bucket0to30 += value;
         else if (diffDays <= 60) acc.bucket31to60 += value;
         else if (diffDays <= 90) acc.bucket61to90 += value;
@@ -92,15 +92,15 @@ export async function GET() {
     );
 
     const payrollDueMonth = payroll.reduce((sum, row) => {
-      if (String(row.status || "") === "Paid") return sum;
-      if (String(row.month || "") !== getMonthKey(now)) return sum;
-      return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
+      if (String(row.status as unknown || "") === "Paid") return sum;
+      if (String(row.month as unknown || "") !== getMonthKey(now)) return sum;
+      return sum + Number(row.baseSalaryPkr as unknown || 0) + Number(row.commissionPkr as unknown || 0);
     }, 0);
 
     const expensesMonth = expenses.reduce((sum, row) => {
-      const expenseMs = toMillis(row.expenseDate || row.createdAt);
+      const expenseMs = toMillis(row.expenseDate as unknown || row.createdAt);
       if (!expenseMs || expenseMs < startMs) return sum;
-      return sum + Number(row.amountPkr || 0);
+      return sum + Number(row.amountPkr as unknown || 0);
     }, 0);
 
     const seriesMonths = Array.from({ length: 6 }).map((_, idx) => {
@@ -128,35 +128,35 @@ export async function GET() {
     invoices.forEach((inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return;
       if (paidInvoiceIds.has(String(inv.id || ""))) return;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = revenueSeries.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.invoices += Number(inv.amountTotalUsd || 0);
+      bucket.invoices += Number(inv.amountTotalUsd as unknown || 0);
     });
 
     const scopedPayments = payments.filter((pay) => {
       if (normalizePaymentStatus(pay.status) !== "succeeded") return false;
-      const paidMs = toMillis(pay.paidAt || pay.createdAt);
+      const paidMs = toMillis(pay.paidAt as unknown || pay.createdAt);
       return !!paidMs;
     });
 
     scopedPayments.forEach((pay) => {
-      const paidMs = toMillis(pay.paidAt || pay.createdAt);
+      const paidMs = toMillis(pay.paidAt as unknown || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = revenueSeries.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.payments += Number(pay.amountUsd || 0);
+      bucket.payments += Number(pay.amountUsd as unknown || 0);
     });
 
     const expenseGroups = new Map<string, number>();
     expenses.forEach((row) => {
-      const expenseMs = toMillis(row.expenseDate || row.createdAt);
+      const expenseMs = toMillis(row.expenseDate as unknown || row.createdAt);
       if (!expenseMs || expenseMs < startMs) return;
-      const category = String(row.category || "Other");
-      expenseGroups.set(category, (expenseGroups.get(category) || 0) + Number(row.amountPkr || 0));
+      const category = String(row.category as unknown || "Other");
+      expenseGroups.set(category, (expenseGroups.get(category) || 0) + Number(row.amountPkr as unknown || 0));
     });
 
     const expenseBreakdown = Array.from(expenseGroups.entries()).map(([label, value]) => ({ label, value }));
@@ -195,12 +195,12 @@ export async function GET() {
       },
     };
     if (redis) {
-      await (redis as any).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
+      await (redis as unknown as { setex: (key: string, ttl: number, val: string) => Promise<unknown> }).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
     }
     return NextResponse.json(responsePayload);
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

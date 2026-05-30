@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from "../../_utils";
 
@@ -21,10 +21,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .get();
 
     return NextResponse.json({
-      snapshots: snapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      snapshots: snapshots.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     });
-  } catch (error: any) {
-    const message = error?.message || "Failed to fetch cached results";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to fetch cached results";
     const status = message === "Report not found" ? 404 : message === "Unauthorized" ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }

@@ -61,7 +61,7 @@ export default function DemoEnvironmentPage() {
   }
 
   useEffect(() => {
-    loadCounts().catch((err: any) => setErrorMessage(err?.message || "Failed to load demo status"));
+    loadCounts().catch((err) => setErrorMessage(err?.message || "Failed to load demo status"));
     if (!process.env.NEXT_PUBLIC_APP_URL) setAppUrl(window.location.origin);
   }, []);
 
@@ -79,8 +79,8 @@ export default function DemoEnvironmentPage() {
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Seed failed");
       setSeedMessage(`Demo environment seeded successfully at ${new Date(payload.seededAt).toLocaleString()}`);
       await loadCounts();
-    } catch (err: any) {
-      setSeedError(err?.message || "Seed failed");
+    } catch (err) {
+      setSeedError((err instanceof Error ? err.message : undefined) || "Seed failed");
     } finally {
       setIsSeeding(false);
     }
@@ -98,8 +98,8 @@ export default function DemoEnvironmentPage() {
       setConfirmOpen(false);
       setConfirmText("");
       await loadCounts();
-    } catch (err: any) {
-      setErrorMessage(err?.message || "Reset failed");
+    } catch (err) {
+      setErrorMessage((err instanceof Error ? err.message : undefined) || "Reset failed");
     } finally {
       setIsResetting(false);
     }

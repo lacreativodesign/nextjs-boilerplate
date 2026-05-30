@@ -16,8 +16,8 @@ export async function GET() {
 
     const tenantId = auth.user.tenantId;
     const [subscription, tenantSnap] = await Promise.all([
-      getCurrentSubscription(tenantId),
-      adminDb.collection('tenants').doc(tenantId).get(),
+      getCurrentSubscription(tenantId as string),
+      adminDb.collection('tenants').doc(tenantId as string).get(),
     ]);
 
     const tenantData = tenantSnap.data() || {};
@@ -35,7 +35,7 @@ export async function GET() {
 
     const savedPaymentMethodSnap = await adminDb
       .collection('billing_payment_methods')
-      .doc(tenantId)
+      .doc(tenantId as string)
       .get();
     const savedPaymentMethod = savedPaymentMethodSnap.data() || {};
     if (savedPaymentMethod.last4) {
@@ -101,9 +101,9 @@ export async function GET() {
         },
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error?.message || 'Unable to load subscription' },
+      { ok: false, error: (error instanceof Error ? error.message : undefined) || 'Unable to load subscription' },
       { status: 500 },
     );
   }

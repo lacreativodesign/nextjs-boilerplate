@@ -39,7 +39,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-revenue-by-client.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports revenue-by-client error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

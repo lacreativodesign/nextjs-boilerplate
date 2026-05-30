@@ -47,8 +47,8 @@ export default function MailchimpIntegrationPage() {
       setConnection(data.connection || null);
       setAudiences(data.audiences || []);
       setTagMappingText(JSON.stringify(data.connection?.settings?.tagMapping || {}, null, 2));
-    } catch (err: any) {
-      setError(err.message || "Unable to load Mailchimp integration state.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to load Mailchimp integration state."));
     } finally {
       setLoading(false);
     }
@@ -71,8 +71,8 @@ export default function MailchimpIntegrationPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok || !data?.authorizeUrl) throw new Error(data?.error || "Unable to start Mailchimp OAuth.");
       window.location.href = data.authorizeUrl;
-    } catch (err: any) {
-      setError(err.message || "Unable to connect Mailchimp.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to connect Mailchimp."));
       setSaving(false);
     }
   };
@@ -92,8 +92,8 @@ export default function MailchimpIntegrationPage() {
       setSuccess("Mailchimp API key saved.");
       setApiKey("");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to save API key.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to save API key."));
     } finally {
       setSaving(false);
     }
@@ -118,8 +118,8 @@ export default function MailchimpIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to save settings.");
       setSuccess("Mailchimp sync settings saved.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to save settings. Tag mapping must be valid JSON.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to save settings. Tag mapping must be valid JSON."));
     } finally {
       setSaving(false);
     }
@@ -157,8 +157,8 @@ export default function MailchimpIntegrationPage() {
         `Sync complete. Synced ${data.result?.synced || 0} clients; unsubscribed respected for ${data.result?.unsubscribed || 0} clients.`
       );
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to run sync.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "Unable to run sync."));
     } finally {
       setSaving(false);
     }

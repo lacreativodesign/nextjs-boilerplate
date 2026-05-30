@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         roleIds: [role.id],
         actorUserId: auth.user.uid,
       });
-      await invalidateUserPermissionCache(auth.user.tenantId, body.userId);
+      await invalidateUserPermissionCache(auth.user.tenantId as string, body.userId);
     }
 
     return NextResponse.json({ role }, { status: 201 });

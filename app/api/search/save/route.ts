@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
 import { saveAdvancedSearch } from '@/lib/search/advanced-search';

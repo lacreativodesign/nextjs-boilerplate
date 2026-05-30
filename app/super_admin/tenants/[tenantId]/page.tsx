@@ -364,8 +364,8 @@ export default function TenantDetailPage() {
                       height: optimized.metadata.height,
                       format: optimized.metadata.format,
                     });
-                  } catch (error: any) {
-                    alert(error?.message || "Unable to process logo image.");
+                  } catch (error) {
+                    alert((error instanceof Error ? error.message : undefined) || "Unable to process logo image.");
                     e.currentTarget.value = "";
                     setLogoFile(null);
                     setLogoMetadata(null);

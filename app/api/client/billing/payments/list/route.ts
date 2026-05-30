@@ -11,8 +11,8 @@ type PaymentDoc = {
   status?: string;
   amountUsd?: number;
   method?: string;
-  paidAt?: any;
-  createdAt?: any;
+  paidAt?: unknown;
+  createdAt?: unknown;
   invoiceId?: string | null;
   orderId?: string | null;
   isDeleted?: boolean;
@@ -50,12 +50,12 @@ export async function GET() {
           orderId: data.orderId || null,
         };
       })
-      .filter((payment) => String((payment as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((payment) => String((payment as Record<string, unknown>).tenantId || DEFAULT_TENANT_ID) === tenantId);
 
     return NextResponse.json({ ok: true, payments });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/billing payments list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

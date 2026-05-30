@@ -38,10 +38,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, result });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Email error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to send email." },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to send email." },
       { status: 500 }
     );
   }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ReportBuilderService } from "@/lib/reports/report-builder";
 import type { ReportFormat } from "@/types/reports";
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         "Content-Disposition": `attachment; filename=report-${params.id}.${payload.format}`,
       },
     });
-  } catch (error: any) {
-    const message = error?.message || "Failed to export report";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to export report";
     const status = message === "Report not found" ? 404 : message === "Unauthorized" ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }

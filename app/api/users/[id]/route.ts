@@ -71,7 +71,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updates = {
       ...data,
       "onboardingSteps.profileSetup": true,
-    } as Record<string, any>;
+    } as Record<string, unknown>;
 
     await UserService.updateUserProfile(params.id, updates);
 
@@ -90,10 +90,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to update user" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to update user" },
       { status: 500 }
     );
   }
@@ -133,10 +133,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deactivating user:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to deactivate user" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to deactivate user" },
       { status: 500 }
     );
   }

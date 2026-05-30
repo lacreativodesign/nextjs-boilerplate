@@ -22,17 +22,17 @@ type ProjectDoc = {
   productionName?: string | null;
   productionOwnerId?: string | null;
   productionOwnerName?: string | null;
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string }>;
   isDeleted?: boolean;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -64,7 +64,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const [docs, workflowSettings] = await Promise.all([
       queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
       getWorkflowSettings(),
@@ -97,9 +97,9 @@ export async function GET() {
     projects.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
 
     return NextResponse.json({ ok: true, projects });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/queue error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

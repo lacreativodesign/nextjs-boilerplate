@@ -240,12 +240,12 @@ export default function AllProjectsPage() {
         if (!alive) return;
         setProjects(Array.isArray(json?.projects) ? json.projects : []);
         setCurrentUser(json?.currentUser || null);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
         console.error("Failed to load projects:", e);
         setError({
           title: "Projects can’t load yet",
-          message: e?.message || "Unable to load projects right now.",
+          message: (e instanceof Error ? e.message : undefined) || "Unable to load projects right now.",
         });
         setProjects([]);
       } finally {
@@ -277,13 +277,13 @@ export default function AllProjectsPage() {
 
         const json = await res.json().catch(() => null);
         if (!res.ok) return;
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: unknown[] = Array.isArray(json) ? json : Array.isArray((json as unknown)?.users) ? (json as unknown).users : [];
         if (!alive) return;
         setUsers(
           list.map((u) => ({
-            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || "",
-            name: u.name || u.fullName || u.displayName || u.email || "",
-            role: u.role || "",
+            uid: (u as Record<string, unknown>).uid || (u as Record<string, unknown>).id || (u as Record<string, unknown>).docId || (u as Record<string, unknown>).userId || (u as Record<string, unknown>).firebaseUid || "",
+            name: (u as Record<string, unknown>).name || (u as Record<string, unknown>).fullName || (u as Record<string, unknown>).displayName || (u as Record<string, unknown>).email || "",
+            role: (u as Record<string, unknown>).role || "",
           }))
         );
       } catch {
@@ -314,9 +314,9 @@ export default function AllProjectsPage() {
         const list = Array.isArray(json.clients) ? json.clients : [];
         if (!alive) return;
         setClients(
-          list.map((client: any) => ({
-            id: client.id,
-            companyName: client.companyName || client.name || "",
+          list.map((client: unknown) => ({
+            id: (client as Record<string, unknown>).id,
+            companyName: (client as Record<string, unknown>).companyName || (client as Record<string, unknown>).name || "",
           }))
         );
       } catch {
@@ -525,8 +525,8 @@ export default function AllProjectsPage() {
 
       await refreshList();
       closeCreate();
-    } catch (e: any) {
-      toastError(e?.message || "Failed to create project");
+    } catch (e) {
+      toastError((e instanceof Error ? e.message : undefined) || "Failed to create project");
     } finally {
       setCreateSaving(false);
     }
@@ -560,8 +560,8 @@ export default function AllProjectsPage() {
 
       await refreshList();
       closeDrawer();
-    } catch (e: any) {
-      toastError(e?.message || "Failed to update project");
+    } catch (e) {
+      toastError((e instanceof Error ? e.message : undefined) || "Failed to update project");
     } finally {
       setSaving(false);
     }
@@ -585,8 +585,8 @@ export default function AllProjectsPage() {
 
       await refreshList();
       if (selected?.id === id) closeDrawer();
-    } catch (e: any) {
-      toastError(e?.message || "Failed to delete project");
+    } catch (e) {
+      toastError((e instanceof Error ? e.message : undefined) || "Failed to delete project");
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));
     }

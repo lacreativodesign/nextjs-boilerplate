@@ -95,7 +95,7 @@ export async function handleModuleSearch(
       .offset(offset)
       .get();
 
-    results = query.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    results = query.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     total = results.length;
   }
 

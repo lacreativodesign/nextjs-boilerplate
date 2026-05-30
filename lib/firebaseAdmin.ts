@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 
 const rawKey = process.env.FIREBASE_ADMIN_KEY || "";
-let serviceAccount: any = null;
+let serviceAccount: unknown = null;
 
 if (rawKey) {
   try {
@@ -13,14 +13,14 @@ if (rawKey) {
   console.warn("FIREBASE_ADMIN_KEY not set. Using stub credentials for build.");
 }
 
-const hasProject = typeof serviceAccount?.project_id === "string" && serviceAccount.project_id.length > 0;
+const hasProject = typeof (serviceAccount as Record<string, unknown>)?.project_id === "string" && (serviceAccount as Record<string, unknown>).project_id.length > 0;
 
 let app: admin.app.App | null = null;
 
 try {
   if (!admin.apps.length && hasProject) {
     app = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount as string | ServiceAccount),
     });
   } else if (admin.apps.length) {
     app = admin.app();

@@ -18,23 +18,23 @@ async function resolveUserName(tenantId: string, uid?: string | null) {
   return (data.name || data.fullName || data.displayName || data.email || "") as string;
 }
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-function normalizeStageHistory(history?: any[]) {
+function normalizeStageHistory(history?: unknown[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byName: entry?.byName || "",
-    at: toISO(entry?.at),
-    reason: entry?.reason || null,
+    from: (entry as Record<string, unknown>)?.from || "",
+    to: (entry as Record<string, unknown>)?.to || "",
+    byUid: (entry as Record<string, unknown>)?.byUid || "",
+    byName: (entry as Record<string, unknown>)?.byName || "",
+    at: toISO((entry as Record<string, unknown>)?.at),
+    reason: (entry as Record<string, unknown>)?.reason || null,
   }));
 }
 
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    const productionName = productionUid ? await resolveUserName(me.tenantId, productionUid) : null;
+    const productionName = productionUid ? await resolveUserName(me.tenantId as string, productionUid) : null;
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     await ref.set(
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       tenantId: me.tenantId,
       projectId,
       actorId: me.uid,
-      actorName: me.name || me.fullName || me.displayName || "",
+      actorName: String(me.name || me.fullName || me.displayName || ""),
       createdAt: now,
       payload: {
         productionUid: productionUid || null,
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() || {};
     const dueDate = toISO(updated.dueDate);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
 
     const notifications: Promise<void>[] = [];
     if (productionUid) {
@@ -191,9 +191,9 @@ export async function POST(req: Request) {
         stageHistory: normalizeStageHistory(updated.stageHistory),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/assign error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

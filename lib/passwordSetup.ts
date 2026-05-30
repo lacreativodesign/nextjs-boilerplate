@@ -71,6 +71,7 @@ export async function sendSetPasswordEmail({
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
+    // eslint-disable-next-line no-console
     console.log("[set-password] Resend not configured. Link:", link);
     return { sent: false, error: "RESEND_API_KEY missing", link };
   }

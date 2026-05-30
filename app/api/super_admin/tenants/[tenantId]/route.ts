@@ -41,8 +41,8 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
         updatedAt: data.updatedAt || null,
       },
     });
-  } catch (err: any) {
-    const message = err?.message || "Server error";
+  } catch (err) {
+    const message = (err instanceof Error ? err.message : undefined) || "Server error";
     const status = message === "Forbidden" ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
@@ -78,8 +78,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    const message = err?.message || "Server error";
+  } catch (err) {
+    const message = (err instanceof Error ? err.message : undefined) || "Server error";
     const status = message === "Forbidden" ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

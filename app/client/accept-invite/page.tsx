@@ -36,9 +36,9 @@ function AcceptInviteClient() {
 
         if (!alive) return;
         setEmail(data.email || "");
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to validate invite.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to validate invite.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -75,8 +75,8 @@ function AcceptInviteClient() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to complete invite.");
 
       router.replace("/client");
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Something went wrong.");
     } finally {
       setSubmitting(false);
     }

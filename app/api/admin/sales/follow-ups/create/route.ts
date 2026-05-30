@@ -51,12 +51,12 @@ export async function POST(req: Request) {
       entityType: "follow_up",
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales follow-ups create error:", err);
     return NextResponse.json({ ok: false, error: "Unable to create follow-up." }, { status: 500 });
   }

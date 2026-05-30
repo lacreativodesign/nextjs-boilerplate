@@ -6,14 +6,14 @@ import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from ".
 
 export const runtime = "nodejs";
 
-function cleanNumber(value: any) {
+function cleanNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const num = Number(value);
   if (Number.isNaN(num)) return null;
   return num;
 }
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 

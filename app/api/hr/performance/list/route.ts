@@ -22,7 +22,7 @@ export async function GET() {
           updatedAt: toIso(data?.updatedAt),
         };
       })
-      .filter((review: any) => review?.isDeleted !== true);
+      .filter((review: unknown) => (review as Record<string, unknown>)?.isDeleted !== true);
 
     return NextResponse.json({ ok: true, reviews });
   } catch (err) {

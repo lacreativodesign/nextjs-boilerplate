@@ -8,7 +8,7 @@ export type CurrentUser = {
   uid: string;
   role: string;
   // we also spread all user doc fields into this object
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 // Central helper: get the currently logged in admin user

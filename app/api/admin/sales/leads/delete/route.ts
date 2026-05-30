@@ -42,12 +42,12 @@ export async function POST(req: Request) {
       entityType: "lead",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales leads delete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to delete lead." }, { status: 500 });
   }

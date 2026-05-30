@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { parseFile } from '@/lib/import/parser';
 

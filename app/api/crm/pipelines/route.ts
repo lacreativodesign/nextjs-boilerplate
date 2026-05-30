@@ -19,7 +19,7 @@ export async function GET() {
       .orderBy("name", "asc")
       .get();
 
-    const pipelines = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const pipelines = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ pipelines });
   } catch (error) {

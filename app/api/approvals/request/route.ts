@@ -17,7 +17,7 @@ const ENTITY_TYPES = ["deal", "project", "task"] as const;
 type ApprovalType = (typeof APPROVAL_TYPES)[number];
 type EntityType = (typeof ENTITY_TYPES)[number];
 
-function parseString(value: any) {
+function parseString(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
 }
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid approval entity." }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    let changeRequestData: Record<string, any> | null = null;
+    let changeRequestData: Record<string, unknown> | null = null;
     if (type === "change_request") {
       const changeRequestId = parseString(requestedData?.changeRequestId);
       if (!changeRequestId) {
@@ -256,7 +256,7 @@ export async function POST(req: Request) {
       description: `Approval requested for ${entityType} ${entityId}.`,
       entityType,
       entityId,
-      actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+      actor: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
       metadata: {
         requestedBy: { uid: me.uid, role },
         requestedData,
@@ -276,7 +276,7 @@ export async function POST(req: Request) {
       message: `${entityType} ${entityId} requires approval.`,
       entityType,
       entityId,
-      createdBy: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+      createdBy: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
     });
 
     // Email approvers — non-blocking
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
         const typeLabel = type === "discount" ? "Discount Approval" : type === "change_request" ? "Change Request Approval" : "Production Override";
         return Promise.all(approvers.map((approver) =>
           sendEmail({
-            to: approver.email || "",
+            to: String((approver as Record<string, unknown>).email || ""),
             subject: `⏳ Approval needed — ${typeLabel}`,
             html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -314,7 +314,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, id: approvalId });
-  } catch (err: any) {
+  } catch (err) {
     console.error("approvals/request error:", err);
     return NextResponse.json({ ok: false, error: "Unable to request approval." }, { status: 500 });
   }

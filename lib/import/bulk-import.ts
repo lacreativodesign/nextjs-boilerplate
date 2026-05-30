@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 import type { ImportEntity, ImportFieldMapping, ImportFileFormat, ImportJob, ImportRowError } from "@/types/import-export";
 
-const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
+const entitySchemas: Record<ImportEntity, z.ZodObject<z.ZodRawShape>> = {
   clients: z.object({
     name: z.string().min(1),
     email: z.string().email().optional(),
@@ -416,11 +416,11 @@ export class BulkImportService {
           const duplicateField = duplicateFieldByEntity[job.entity];
           let isDuplicate = false;
 
-          if (duplicateField && parsed.data[duplicateField]) {
+          if (duplicateField && (parsed.data as Record<string, unknown>)[duplicateField]) {
             const existing = await adminDb
               .collection(job.entity)
               .where("tenantId", "==", params.tenantId)
-              .where(duplicateField, "==", parsed.data[duplicateField])
+              .where(duplicateField, "==", (parsed.data as Record<string, unknown>)[duplicateField])
               .limit(1)
               .get();
             if (!existing.empty) {

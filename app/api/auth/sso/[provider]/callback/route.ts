@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { handleOAuthCallback, SsoProvider } from "@/lib/auth/sso-oauth";
+import { type NextRequest, NextResponse } from "next/server";
+import { handleOAuthCallback, type SsoProvider } from "@/lib/auth/sso-oauth";
 
 export const runtime = "nodejs";
 
@@ -31,10 +31,10 @@ export async function GET(req: NextRequest, { params }: { params: { provider: st
     loginUrl.searchParams.set("ssoToken", result.customToken);
     loginUrl.searchParams.set("returnTo", result.returnTo || "/");
     return NextResponse.redirect(loginUrl, { status: 302 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("SSO callback failed", error);
     const redirect = new URL("/login", req.url);
-    redirect.searchParams.set("error", error?.message || "SSO login failed");
+    redirect.searchParams.set("error", (error instanceof Error ? error.message : undefined) || "SSO login failed");
     return NextResponse.redirect(redirect, { status: 302 });
   }
 }

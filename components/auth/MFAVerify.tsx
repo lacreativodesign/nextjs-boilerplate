@@ -23,8 +23,8 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
       setLoading(true);
       setError(null);
       await onVerify(code);
-    } catch (err: any) {
-      setError(err?.message || "Invalid verification code.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Invalid verification code.");
       setLoading(false);
     }
   }, [code, loading, onVerify]);

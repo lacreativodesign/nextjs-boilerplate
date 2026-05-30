@@ -41,7 +41,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
           setNotFound(true);
           return;
         }
-        const lead = (json.leads || []).find((l: any) => l.id === id);
+        const lead = (json.leads || []).find((l: unknown) => (l as Record<string, unknown>).id === id);
         if (!lead) {
           setNotFound(true);
           return;

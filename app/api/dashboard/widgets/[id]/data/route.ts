@@ -8,12 +8,12 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const user = await getCurrentUser();
     if (!user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const widget = await getWidgetById(user.tenantId, user.uid, params.id);
+    const widget = await getWidgetById(user.tenantId as string, user.uid, params.id);
     if (!widget) return NextResponse.json({ error: "Widget not found" }, { status: 404 });
 
     const data = await getWidgetData(widget);
     return NextResponse.json({ ok: true, ...data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to fetch widget data" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to fetch widget data" }, { status: 500 });
   }
 }

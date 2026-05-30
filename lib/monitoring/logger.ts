@@ -31,10 +31,12 @@ function safeJsonLog(payload: StructuredLogInput & { timestamp: string }) {
   }
 
   if (payload.level === "debug") {
+    // eslint-disable-next-line no-console
     console.debug(encoded);
     return;
   }
 
+  // eslint-disable-next-line no-console
   console.info(encoded);
 }
 

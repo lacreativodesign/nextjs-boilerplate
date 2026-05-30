@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AUTOMATED_CHECKS,
-  MANUAL_CHECKS,
-  PRODUCTION_CONFIGURATION_ITEMS,
-  normalizeManualCheckId,
-} from "@/lib/launch-checklist";
+import { type AUTOMATED_CHECKS, MANUAL_CHECKS, PRODUCTION_CONFIGURATION_ITEMS, normalizeManualCheckId } from "@/lib/launch-checklist";
 
 type AutomatedCheckResult = {
   key: (typeof AUTOMATED_CHECKS)[number]["key"];

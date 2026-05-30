@@ -11,11 +11,11 @@ type ExpenseDoc = {
   vendor?: string;
   currency?: string;
   amountPkr?: number;
-  expenseDate?: any;
+  expenseDate?: unknown;
   status?: string;
   notes?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -26,7 +26,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const docs = await queryWithTenant(
       adminDb.collection("expenses").where("isDeleted", "==", false).limit(500),
       tenantId
@@ -50,9 +50,9 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, expenses });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/expenses list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

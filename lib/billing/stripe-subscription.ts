@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getStripeClient } from "@/lib/payments/stripe";
 import { type BillingPlanKey, getStripePriceId, normalizePlanKey, plans } from "@/lib/billing/plans";
@@ -17,8 +17,8 @@ export type BillingSubscription = {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   canceledAt: string | null;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
 const BILLING_COLLECTIONS = {
@@ -399,7 +399,7 @@ export async function handleBillingWebhook(event: Stripe.Event) {
 
   if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
     const invoice = event.data.object as Stripe.Invoice;
-    const tenantId = String((invoice as any).subscription_details?.metadata?.tenantId || invoice.metadata?.tenantId || "");
+    const tenantId = String((invoice as unknown).subscription_details?.metadata?.tenantId || invoice.metadata?.tenantId || "");
     if (!tenantId) return;
 
     const amount = Number(invoice.amount_paid || invoice.amount_due || 0) / 100;

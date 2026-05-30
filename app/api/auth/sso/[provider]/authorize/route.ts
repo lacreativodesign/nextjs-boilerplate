@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createOAuthAuthorizationUrl, SsoProvider } from "@/lib/auth/sso-oauth";
+import { type NextRequest, NextResponse } from "next/server";
+import { createOAuthAuthorizationUrl, type SsoProvider } from "@/lib/auth/sso-oauth";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 
 export const runtime = "nodejs";
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: { provider: st
     });
 
     return NextResponse.redirect(authorizeUrl, { status: 302 });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to start SSO authorization." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to start SSO authorization." }, { status: 400 });
   }
 }

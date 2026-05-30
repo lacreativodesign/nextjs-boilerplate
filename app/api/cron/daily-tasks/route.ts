@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { generateWeeklyComplianceReports, runRetentionCleanupAcrossTenants } from "@/lib/compliance/data-retention";
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
         syncJobs,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("cron/daily-tasks error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Daily tasks failed." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Daily tasks failed." }, { status: 500 });
   }
 }
 
@@ -179,10 +179,10 @@ async function enqueueDailyIntegrationSyncJobs() {
   };
 }
 
-function toDate(value: any): Date | null {
+function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value?.toDate === "function") return value.toDate();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate();
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;

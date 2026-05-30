@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
 
     const ref = await adminDb.collection("reports").add(report);
     return NextResponse.json({ id: ref.id, ...report }, { status: 201 });
-  } catch (error: any) {
-    const message = error?.message || "Failed to create custom report";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to create custom report";
     const status = message === "Unauthorized" ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
@@ -137,12 +137,12 @@ export async function GET(request: NextRequest) {
       baseQuery.where("isPublic", "==", true).get(),
     ]);
 
-    const records = [...mine.docs, ...shared.docs, ...publicReports.docs].map((doc) => ({ id: doc.id, ...doc.data() }));
+    const records = [...mine.docs, ...shared.docs, ...publicReports.docs].map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     const reports = Array.from(new Map(records.map((entry) => [entry.id, entry])).values());
 
     return NextResponse.json({ reports });
-  } catch (error: any) {
-    const message = error?.message || "Failed to list custom reports";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to list custom reports";
     const status = message === "Unauthorized" ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }

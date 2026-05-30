@@ -56,9 +56,9 @@ export default function HrActivityPage() {
         if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to load activity.");
         if (!alive) return;
         setActivity(data.activity || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load activity.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load activity.");
       } finally {
         if (!alive) return;
         setLoading(false);

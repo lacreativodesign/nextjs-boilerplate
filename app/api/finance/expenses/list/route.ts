@@ -10,11 +10,11 @@ type ExpenseDoc = {
   vendor?: string;
   currency?: string;
   amountPkr?: number;
-  expenseDate?: any;
+  expenseDate?: unknown;
   status?: string;
   notes?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -75,9 +75,9 @@ export async function GET(req: Request) {
         nextCursor: snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/expenses list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

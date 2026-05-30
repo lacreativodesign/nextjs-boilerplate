@@ -11,7 +11,7 @@ type FileDoc = {
   fileName?: string;
   downloadUrl?: string;
   uploadedByName?: string;
-  uploadedAt?: any;
+  uploadedAt?: unknown;
   isLatest?: boolean;
   isDeleted?: boolean;
 };
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -82,9 +82,9 @@ export async function GET(req: Request) {
     files = files.filter((file) => file.projectId === projectId);
 
     return NextResponse.json({ ok: true, files });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/files list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

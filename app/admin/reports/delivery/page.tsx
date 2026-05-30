@@ -100,7 +100,7 @@ export default function DeliveryReportsPage() {
         throw new Error(json?.error || "Unable to load delivery reports.");
       }
       setData(json as DeliveryResponse);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports delivery load error", err);
       setError("Unable to load delivery performance right now.");
     } finally {

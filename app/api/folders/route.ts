@@ -34,9 +34,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ folder });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating folder:", error);
-    return NextResponse.json({ error: error?.message || "Failed to create folder" }, { status: 500 });
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to create folder" }, { status: 500 });
   }
 }
 
@@ -50,11 +50,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const parentFolderId = searchParams.get("parentFolderId") || undefined;
 
-    const folders = await FileManager.listFolders(session.tenantId, parentFolderId);
+    const folders = await FileManager.listFolders(session.tenantId as string, parentFolderId);
 
     return NextResponse.json({ folders });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching folders:", error);
-    return NextResponse.json({ error: error?.message || "Failed to fetch folders" }, { status: 500 });
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to fetch folders" }, { status: 500 });
   }
 }

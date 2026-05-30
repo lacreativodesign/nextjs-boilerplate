@@ -12,7 +12,7 @@ const PIPELINE_STAGES = ["Deposit", "Kickoff", "Draft", "Review", "Revisions", "
 type StageHistoryEntry = {
   from?: string;
   to?: string;
-  at?: any;
+  at?: unknown;
 };
 
 function normalizeStageHistory(history?: StageHistoryEntry[]) {
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -180,9 +180,9 @@ export async function GET(req: Request) {
       qaPassFail,
       atRiskProjects: riskProjects,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/delivery error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

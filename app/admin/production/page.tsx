@@ -13,6 +13,7 @@ type OverviewPayload = {
   projects: ProductionProject[];
   kpis: Record<string, number>;
   myQueue: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {
@@ -91,10 +92,10 @@ export default function ProductionOverviewPage() {
           .map((user) => ({ value: user.uid, label: user.name || user.uid }));
         setProductionUsers(options);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       if (mountedRef ? mountedRef.current : true)
-        setError(err?.message || 'Unable to load overview.');
+        setError((err instanceof Error ? err.message : undefined) || 'Unable to load overview.');
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

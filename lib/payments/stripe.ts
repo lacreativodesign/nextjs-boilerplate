@@ -7,7 +7,7 @@ export function getStripeClient() {
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  return new Stripe(secretKey, { apiVersion: "2024-06-20" });
+  return new Stripe(secretKey, { apiVersion: "2024-04-10" });
 }
 
 export function getStripeWebhookSecret() {

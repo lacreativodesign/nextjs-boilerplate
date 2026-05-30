@@ -133,8 +133,8 @@ export default function IntegrationSettingsPage() {
         setMicrosoftConnection(microsoftData?.ok ? (microsoftData.connection ?? null) : null);
       }
 
-    } catch (err: any) {
-      setError(err.message || "Unable to load integration settings.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to load integration settings.");
     } finally {
       setLoading(false);
     }
@@ -167,8 +167,8 @@ export default function IntegrationSettingsPage() {
       setSuccess("Webhook subscription created.");
       setNewWebhook({ url: "", events: ["invoice.created"], secret: "", status: "active", description: "" });
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to create webhook.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to create webhook.");
     } finally {
       setSaving(false);
     }
@@ -180,8 +180,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to delete webhook.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to delete webhook.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to delete webhook.");
     }
   };
 
@@ -192,8 +192,8 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to send test event.");
       setSuccess(`Test sent. Deliveries created: ${data.deliveriesCreated}.`);
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to send test event.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to send test event.");
     }
   };
 
@@ -203,8 +203,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to retry delivery.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to retry delivery.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to retry delivery.");
     }
   };
 
@@ -224,8 +224,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok || !data?.installUrl) throw new Error(data?.error || "Unable to start Slack OAuth.");
       window.location.href = data.installUrl;
-    } catch (err: any) {
-      setError(err.message || "Unable to connect Slack.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to connect Slack.");
       setSaving(false);
     }
   };
@@ -247,8 +247,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Slack settings.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to update Slack settings.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Slack settings.");
     } finally {
       setSaving(false);
     }
@@ -267,8 +267,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Google Workspace settings.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to update Google Workspace settings.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Google Workspace settings.");
     } finally {
       setSaving(false);
     }
@@ -287,8 +287,8 @@ export default function IntegrationSettingsPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Microsoft settings.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to update Microsoft settings.");
+    } catch (err) {
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Microsoft settings.");
     } finally {
       setSaving(false);
     }

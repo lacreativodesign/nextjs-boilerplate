@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
     const data = parsed.data;
 
     // Update the users collection (displayName, phone, jobTitle, department, bio)
-    const userUpdates: Record<string, any> = {
+    const userUpdates: Record<string, unknown> = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     if (data.displayName !== undefined) userUpdates.displayName = data.displayName;
@@ -50,7 +50,7 @@ export async function PATCH(request: Request) {
     // Also update user_profiles if it exists
     const profileRef = adminDb.collection("user_profiles").doc(me.uid);
     const profileSnap = await profileRef.get();
-    const profileUpdates: Record<string, any> = {
+    const profileUpdates: Record<string, unknown> = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     if (data.displayName !== undefined) profileUpdates.name = data.displayName;
@@ -87,10 +87,10 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[PROFILE_PATCH]", error);
     return NextResponse.json(
-      { ok: false, error: error?.message || "Failed to update profile" },
+      { ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to update profile" },
       { status: 500 }
     );
   }
@@ -125,10 +125,10 @@ export async function GET() {
         tenantId: data.tenantId || "",
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[PROFILE_GET]", error);
     return NextResponse.json(
-      { ok: false, error: error?.message || "Failed to load profile" },
+      { ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to load profile" },
       { status: 500 }
     );
   }

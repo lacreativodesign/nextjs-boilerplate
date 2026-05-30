@@ -22,6 +22,7 @@ export type AuditAction = {
 };
 
 export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log("[SECURITY]", JSON.stringify(event));
   try {
     adminDb.collection("security_events").add({
@@ -34,6 +35,7 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
 }
 
 export async function logAuditTrail(action: AuditAction): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log("[AUDIT]", JSON.stringify(action));
   try {
     adminDb.collection("audit_trail").add({

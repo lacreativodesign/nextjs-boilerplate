@@ -4,10 +4,10 @@ import { getCurrentUser } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -31,21 +31,22 @@ export async function GET(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const data = snap.data() || {};
-    if ((data as any).tenantId && (data as any).tenantId !== me.tenantId) {
+    const d = data as Record<string, unknown>;
+    if (d.tenantId && d.tenantId !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
-    if ((data as any).deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    if (d.deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     return NextResponse.json({
       ok: true,
       client: {
         id: snap.id,
         ...data,
-        createdAt: toISO((data as any).createdAt),
-        updatedAt: toISO((data as any).updatedAt),
-        lastActivity: toISO((data as any).lastActivity),
+        createdAt: toISO(d.createdAt),
+        updatedAt: toISO(d.updatedAt),
+        lastActivity: toISO(d.lastActivity),
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to get client" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Failed to get client" }, { status: 500 });
   }
 }

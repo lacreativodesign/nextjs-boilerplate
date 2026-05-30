@@ -7,19 +7,19 @@ export type SessionUser = {
   role: string;
   clientId?: string;
   tenantId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function normalizeEmail(value: any) {
+function normalizeEmail(value: unknown) {
   return cleanString(value).toLowerCase();
 }
 
-async function resolveClientId(uid: string, data: Record<string, any>) {
-  const tenantId = String((data as any).tenantId || "").trim();
+async function resolveClientId(uid: string, data: Record<string, unknown>) {
+  const tenantId = String((data as unknown).tenantId || "").trim();
   const existingClientId = cleanString(data.clientId);
   if (existingClientId) return existingClientId;
 
@@ -90,10 +90,10 @@ export function isClientRole(role: string) {
   return String(role || "").toLowerCase() === "client";
 }
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }

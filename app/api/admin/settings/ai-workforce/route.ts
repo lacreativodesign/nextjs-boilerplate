@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     // Check plan
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId as string).get();
     const plan = String(tenantSnap.data()?.plan || "starter");
     const planLocked = STARTER_LOCKED_PLANS.has(plan);
 
@@ -30,7 +30,7 @@ export async function GET() {
 
     const snap = await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("settings")
       .doc("ai_workforce")
       .get();
@@ -49,8 +49,8 @@ export async function GET() {
         updatedBy: data.updatedBy || null,
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     // Check plan
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId as string).get();
     const plan = String(tenantSnap.data()?.plan || "starter");
     if (STARTER_LOCKED_PLANS.has(plan)) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     if (removeKey) {
       await adminDb
         .collection("tenants")
-        .doc(auth.user.tenantId)
+        .doc(auth.user.tenantId as string)
         .collection("settings")
         .doc("ai_workforce")
         .set(
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
 
     await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("settings")
       .doc("ai_workforce")
       .set(
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       );
 
     return NextResponse.json({ ok: true, provider, apiKeyMasked: maskKey(key) });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

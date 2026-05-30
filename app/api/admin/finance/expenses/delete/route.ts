@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/expenses delete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to delete expense." }, { status: 500 });
   }

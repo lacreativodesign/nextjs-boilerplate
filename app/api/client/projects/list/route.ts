@@ -9,14 +9,14 @@ type ProjectDoc = {
   projectName?: string;
   projectType?: string;
   stage?: string;
-  dueDate?: any;
+  dueDate?: unknown;
   health?: string;
-  updatedAt?: any;
+  updatedAt?: unknown;
   clientId?: string;
   clientName?: string;
   projectCode?: string | null;
   clientApprovalStatus?: string;
-  clientApprovedAt?: any;
+  clientApprovedAt?: unknown;
 };
 
 function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
@@ -70,9 +70,9 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, projects });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/projects list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

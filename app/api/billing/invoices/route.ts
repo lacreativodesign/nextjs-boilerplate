@@ -12,9 +12,9 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const invoices = await listInvoices(auth.user.tenantId);
+    const invoices = await listInvoices(auth.user.tenantId as string);
     return NextResponse.json({ ok: true, invoices });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to list invoices" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to list invoices" }, { status: 500 });
   }
 }

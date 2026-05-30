@@ -46,7 +46,7 @@ export default function FinanceOverviewPage() {
         throw new Error(data?.error || "Unable to load finance overview.");
       }
       setOverview(data.overview as FinanceOverview);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Finance overview load error", err);
       setError("Unable to load finance overview right now.");
       toastError("Unable to load finance overview right now.");

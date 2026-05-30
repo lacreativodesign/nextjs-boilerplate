@@ -57,9 +57,9 @@ export function FileUploader({ folderId, onCompleted }: { folderId?: string; onC
         await uploadFile(file);
       }
       onCompleted();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setError(error?.message || "Upload failed.");
+      setError((error instanceof Error ? error.message : undefined) || "Upload failed.");
     } finally {
       setUploading(false);
       setProgress(0);

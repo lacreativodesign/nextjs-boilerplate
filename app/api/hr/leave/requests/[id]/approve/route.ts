@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
 import { LeaveService } from "@/lib/hr/leave";
@@ -16,7 +16,7 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
@@ -25,16 +25,16 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
     }
 
     await LeaveService.approveRequest({
-      tenantId: me.tenantId,
+      tenantId: String(me.tenantId || ""),
       requestId: params.id,
       actorUserId: me.uid,
-      actorRole: me.role,
-      actorName: me.name || me.fullName || me.email || me.uid,
+      actorRole: String(me.role || ""),
+      actorName: String(me.name || me.fullName || me.email || me.uid || ""),
     });
 
     try {
       await dispatchWebhookEvent({
-        tenantId: me.tenantId,
+        tenantId: String(me.tenantId || ""),
         event: "leave.approved",
         entityType: "leave",
         entityId: params.id,
@@ -42,7 +42,7 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
           requestId: params.id,
           approvedBy: me.uid,
         },
-        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        actor: { uid: me.uid, email: String(me.email || "") || null, role: String(me.role || "") || null },
       });
     } catch (webhookError) {
       console.error("leave.approved webhook dispatch error:", webhookError);

@@ -6,7 +6,7 @@ import { logEvent } from "@/lib/audit";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { requireClient } from "../../_utils";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/change-requests update-status error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update change request." }, { status: 500 });
   }

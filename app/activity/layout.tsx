@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
+import _AppShell from "@/components/layout/AppShell";
 
 export default function ActivityLayout({
   children,

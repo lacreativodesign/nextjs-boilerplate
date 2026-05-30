@@ -45,7 +45,7 @@ type UserRecord = {
   designation?: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type SortKey = "name" | "email" | "role" | "department" | "salary" | "target" | "status" | "joined";
@@ -57,8 +57,8 @@ type CurrentUser = {
   email?: string | null;
 };
 
-const getRowId = (u: any) =>
-  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
+const getRowId = (u: unknown) =>
+  ((u as Record<string, unknown>)?.uid || (u as Record<string, unknown>)?.id || (u as Record<string, unknown>)?.docId || (u as Record<string, unknown>)?.userId || (u as Record<string, unknown>)?.firebaseUid || (u as Record<string, unknown>)?.email || "") as string;
 
 function formatRole(value: string) {
   return value
@@ -155,9 +155,9 @@ export default function HrEmployeesPage() {
         if (!alive) return;
         setUsers(data.users || []);
         setCurrentUser(data.currentUser || null);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load employees.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load employees.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -263,8 +263,8 @@ export default function HrEmployeesPage() {
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update employee.");
       setUsers((prev) => prev.map((u) => (getRowId(u) === getRowId(selectedUser) ? { ...u, ...data.user } : u)));
       setEditMode(false);
-    } catch (err: any) {
-      showToast.error(err?.message || "Unable to update employee.");
+    } catch (err) {
+      showToast.error((err instanceof Error ? err.message : undefined) || "Unable to update employee.");
     } finally {
       setSaving(false);
     }

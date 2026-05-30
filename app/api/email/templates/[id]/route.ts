@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdminOrSuper } from "@/app/api/admin/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
@@ -34,9 +34,9 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       template: { id: templateSnap.id, ...data, createdAt: toIso(data.createdAt), updatedAt: toIso(data.updatedAt) },
       versions: versionsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIso(doc.data().createdAt) })),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/email/templates/[id] error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to fetch template" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to fetch template" }, { status: 500 });
   }
 }
 
@@ -87,8 +87,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     });
 
     return NextResponse.json({ ok: true, id: params.id, version: nextVersion });
-  } catch (error: any) {
+  } catch (error) {
     console.error("PUT /api/email/templates/[id] error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to update template" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to update template" }, { status: 500 });
   }
 }

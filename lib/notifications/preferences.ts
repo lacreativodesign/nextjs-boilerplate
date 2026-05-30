@@ -1,10 +1,10 @@
 import admin from "firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
+import { type USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
 import { normalizeTenantId } from "@/lib/tenant";
 import { sendEmail } from "@/lib/email/email-service";
-import {
+import type {
   NotificationFrequency,
   NotificationDigestItem,
   UserNotificationEventType,
@@ -184,8 +184,8 @@ export class NotificationPreferenceService {
       eventType: request.eventType,
       title: request.title,
       message: request.message,
-      actionUrl: request.actionUrl || null,
-      actionLabel: request.actionLabel || null,
+      actionUrl: request.actionUrl || undefined,
+      actionLabel: request.actionLabel || undefined,
       channels,
       metadata: request.metadata || {},
       createdAt: admin.firestore.Timestamp.now(),
