@@ -131,7 +131,7 @@ export default function LoginPage() {
 
         window.location.href = returnTo;
       } catch (err) {
-        setError(getFriendlyAuthError((err as Record<string, unknown>)?.code));
+        setError(getFriendlyAuthError(String((err as Record<string, unknown>)?.code || "") || undefined));
       }
     };
 
@@ -160,11 +160,11 @@ export default function LoginPage() {
     } catch (err) {
       if (firebaseAuth && (err as Record<string, unknown>)?.code === "auth/multi-factor-auth-required") {
         // Firebase returns a MultiFactorResolver when TOTP is required.
-        const resolver = getMultiFactorResolver(firebaseAuth, err as MultiFactorError);
+        const resolver = getMultiFactorResolver(firebaseAuth, err as import("firebase/auth").MultiFactorError);
         setMfaResolver(resolver);
         setError("Two-factor authentication required.");
       } else {
-        const friendlyError = getFriendlyAuthError((err as Record<string, unknown>)?.code);
+        const friendlyError = getFriendlyAuthError(String((err as Record<string, unknown>)?.code || "") || undefined);
         setError(friendlyError);
         showToast.error(friendlyError);
       }

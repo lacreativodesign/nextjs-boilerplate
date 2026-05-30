@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const data = createProductSchema.parse(body);
 
     const productId = await InventoryService.createProduct({
-      tenantId: session.tenantId,
+      tenantId: session.tenantId as string,
       ...data,
       createdBy: session.uid,
     });
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.orderBy("createdAt", "desc").get();
-    let products = snapshot.docs.map((doc) => ({
+    let products = snapshot.docs.map((doc): Record<string, unknown> => ({
       id: doc.id,
       ...doc.data(),
     }));

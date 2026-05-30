@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
     const recipients = new Set<string>();
     if (project.ownerAmUid) recipients.add(String(project.ownerAmUid));
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     getUsersByRoles(["am", "am_manager", "admin"], String(project.tenantId || "")).then((members) => {
       return Promise.all(members.map((member) =>
         sendEmail({
-          to: member.email as unknown || "",
+          to: String((member as Record<string, unknown>).email || ""),
           subject: `✅ Project approved by client — ${project.projectName || projectId}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

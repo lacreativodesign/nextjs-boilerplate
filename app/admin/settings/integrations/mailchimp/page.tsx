@@ -48,7 +48,7 @@ export default function MailchimpIntegrationPage() {
       setAudiences(data.audiences || []);
       setTagMappingText(JSON.stringify(data.connection?.settings?.tagMapping || {}, null, 2));
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to load Mailchimp integration state.");
+      setError(String((err as Record<string, unknown>).message || "Unable to load Mailchimp integration state."));
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function MailchimpIntegrationPage() {
       if (!res.ok || !data?.ok || !data?.authorizeUrl) throw new Error(data?.error || "Unable to start Mailchimp OAuth.");
       window.location.href = data.authorizeUrl;
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to connect Mailchimp.");
+      setError(String((err as Record<string, unknown>).message || "Unable to connect Mailchimp."));
       setSaving(false);
     }
   };
@@ -93,7 +93,7 @@ export default function MailchimpIntegrationPage() {
       setApiKey("");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to save API key.");
+      setError(String((err as Record<string, unknown>).message || "Unable to save API key."));
     } finally {
       setSaving(false);
     }
@@ -119,7 +119,7 @@ export default function MailchimpIntegrationPage() {
       setSuccess("Mailchimp sync settings saved.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to save settings. Tag mapping must be valid JSON.");
+      setError(String((err as Record<string, unknown>).message || "Unable to save settings. Tag mapping must be valid JSON."));
     } finally {
       setSaving(false);
     }
@@ -158,7 +158,7 @@ export default function MailchimpIntegrationPage() {
       );
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to run sync.");
+      setError(String((err as Record<string, unknown>).message || "Unable to run sync."));
     } finally {
       setSaving(false);
     }

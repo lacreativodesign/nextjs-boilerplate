@@ -44,7 +44,7 @@ export default function DocusignIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load DocuSign state.");
       setConnection(data.connection || null);
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to load DocuSign state.");
+      setError(String((err as Record<string, unknown>).message || "Unable to load DocuSign state."));
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ export default function DocusignIntegrationPage() {
       if (!res.ok || !data?.ok || !data?.authorizeUrl) throw new Error(data?.error || "Unable to start DocuSign OAuth.");
       window.location.href = data.authorizeUrl;
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to connect DocuSign.");
+      setError(String((err as Record<string, unknown>).message || "Unable to connect DocuSign."));
       setSaving(false);
     }
   };
@@ -100,7 +100,7 @@ export default function DocusignIntegrationPage() {
       setSuccess(`Envelope sent: ${data.envelopeId}`);
       setStatus(null);
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Failed to send envelope.");
+      setError(String((err as Record<string, unknown>).message || "Failed to send envelope."));
     } finally {
       setSaving(false);
     }
@@ -124,7 +124,7 @@ export default function DocusignIntegrationPage() {
       setStatus(data.envelope || null);
       setSuccess("Envelope status refreshed.");
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to fetch envelope status.");
+      setError(String((err as Record<string, unknown>).message || "Unable to fetch envelope status."));
     } finally {
       setSaving(false);
     }
@@ -154,7 +154,7 @@ export default function DocusignIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to send reminder.");
       setSuccess("Reminder sent to signers.");
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to send reminder.");
+      setError(String((err as Record<string, unknown>).message || "Unable to send reminder."));
     } finally {
       setSaving(false);
     }

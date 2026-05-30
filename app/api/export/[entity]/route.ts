@@ -24,16 +24,17 @@ export async function POST(request: NextRequest, { params }: { params: { entity:
     const entity = entitySchema.parse(params.entity);
     const config = schema.parse(await request.json());
 
+    const tenantId = me.tenantId as string;
     const jobId = await BulkExportService.createExportJob({
-      tenantId: me.tenantId,
+      tenantId,
       userId: me.uid,
       entity,
       config,
     });
 
-    const result = await BulkExportService.runExportJob({ jobId, tenantId: me.tenantId }) as string;
+    const result = await BulkExportService.runExportJob({ jobId, tenantId });
 
-    return NextResponse.json({ ok: true, jobId, ...(result as Record<string, unknown>)});
+    return NextResponse.json({ ok: true, jobId, ...(typeof result === "object" && result !== null ? result : {}) });
   } catch (error) {
     console.error("Export error", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Export failed" }, { status: 400 });

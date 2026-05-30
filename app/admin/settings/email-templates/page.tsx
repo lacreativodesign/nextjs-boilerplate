@@ -70,7 +70,7 @@ export default function EmailTemplatesSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load templates");
       setTemplates(data.templates || []);
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to load templates");
+      setError(String((err as Record<string, unknown>).message || "Unable to load templates"));
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,7 @@ export default function EmailTemplatesSettingsPage() {
         setVariables(varsData.variables || []);
       }
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Failed to load template details");
+      setError(String((err as Record<string, unknown>).message || "Failed to load template details"));
     }
   };
 
@@ -178,7 +178,7 @@ export default function EmailTemplatesSettingsPage() {
         await loadTemplateDetails(selectedTemplateId);
       }
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Failed to save template");
+      setError(String((err as Record<string, unknown>).message || "Failed to save template"));
     } finally {
       setSaving(false);
     }
