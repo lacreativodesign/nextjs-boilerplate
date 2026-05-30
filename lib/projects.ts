@@ -57,7 +57,7 @@ export async function createProjectFromDeal({
   actor?: { uid?: string | null; name?: string | null } | null;
   stageOverride?: string | null;
 }) {
-  const scopedTenantId = normalizeTenantId(tenantId as string | null | undefined || deal?.tenantId || client?.tenantId);
+  const scopedTenantId = normalizeTenantId((tenantId as string | null | undefined) || (deal?.tenantId as string | null | undefined) || (client?.tenantId as string | null | undefined));
   const dealId = String(deal?.id || deal?.dealId || "");
   const clientId = String(client?.id || client?.clientId || deal?.clientId || "");
 

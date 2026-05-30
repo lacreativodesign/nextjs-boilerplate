@@ -11,10 +11,10 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json().catch(() => ({}))) as { forceInitial?: boolean; settings?: Record<string, unknown> };
     if (body.settings && typeof body.settings === "object") {
-      await updateXeroSettings(auth.user.tenantId as string, auth.user.uid, body.settings as unknown);
+      await updateXeroSettings(String(auth.user.tenantId || ""), auth.user.uid, body.settings as Partial<import("@/lib/integrations/xero").XeroSyncSettings>);
     }
 
-    const result = await runXeroSync({ tenantId: auth.user.tenantId, userUid: auth.user.uid, forceInitial: Boolean(body.forceInitial) as string });
+    const result = await runXeroSync({ tenantId: String(auth.user.tenantId || ""), userUid: auth.user.uid, forceInitial: Boolean(body.forceInitial) });
     return NextResponse.json({ ok: true, result });
   } catch (error) {
     console.error("xero/sync error", error);

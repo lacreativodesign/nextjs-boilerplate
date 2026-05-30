@@ -47,7 +47,7 @@ export async function POST(req: Request) {
             to: stage,
             changedAt: serverTimestamp(),
             changedByUid: auth.user.uid,
-            changedByName: auth.user.name || auth.user.fullName || "",
+            changedByName: String(auth.user.name || auth.user.fullName || ""),
           }),
           updatedAt: serverTimestamp(),
         },
@@ -62,9 +62,9 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
       metadata: { stage },
-      tenantId: auth.user.tenantId,
+      tenantId: auth.user.tenantId as string | null,
     });
 
     return NextResponse.json({ ok: true });

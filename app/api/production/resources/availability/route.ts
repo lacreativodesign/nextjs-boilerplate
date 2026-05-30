@@ -31,9 +31,9 @@ export async function GET(request: Request) {
     const resourceData = resourceDoc.data() as unknown;
     const resource: ProductionResource = {
       id: resourceId,
-      tenantId: auth.user.tenantId,
-      type: (resourceData as Record<string, unknown>) as ResourceType.type || "employee",
-      name: (resourceData as Record<string, unknown>).name || "Unnamed resource",
+      tenantId: String(auth.user.tenantId || ""),
+      type: String((resourceData as Record<string, unknown>).type || "employee") as ProductionResource["type"],
+      name: String((resourceData as Record<string, unknown>).name || "Unnamed resource"),
       capacityHoursPerDay: Number((resourceData as Record<string, unknown>).capacityHoursPerDay || 8),
       availabilityPercent: Number((resourceData as Record<string, unknown>).availabilityPercent ?? 100),
       hourlyRate: Number((resourceData as Record<string, unknown>).hourlyRate || 0),
@@ -51,17 +51,17 @@ export async function GET(request: Request) {
       const data = doc.data() as unknown;
       return {
         id: doc.id,
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         projectId: String((data as Record<string, unknown>).projectId || ""),
         taskId: String((data as Record<string, unknown>).taskId || ""),
         resourceId,
-        resourceType: (data as Record<string, unknown>).resourceType || "employee",
+        resourceType: String((data as Record<string, unknown>).resourceType || "employee") as ResourceAssignment["resourceType"],
         resourceName: String((data as Record<string, unknown>).resourceName || resource.name),
         allocationHoursPerDay: Number((data as Record<string, unknown>).allocationHoursPerDay || 0),
         startDate: asIsoDate((data as Record<string, unknown>).startDate) || startDate,
         endDate: asIsoDate((data as Record<string, unknown>).endDate) || endDate,
         hourlyRate: Number((data as Record<string, unknown>).hourlyRate || 0),
-        status: (data as Record<string, unknown>).status || "active",
+        status: String((data as Record<string, unknown>).status || "active") as ResourceAssignment["status"],
       };
     });
 

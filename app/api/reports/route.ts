@@ -62,8 +62,8 @@ const roleCanAccessCategory = (role: string, category: ReportCategory) => {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(request as Parameters<typeof getCurrentUserOrThrow>[0]);
-    const tenantId = await getTenantIdForRequestOrThrow(request as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
+    const user = await getCurrentUserOrThrow(request as unknown as Parameters<typeof getCurrentUserOrThrow>[0]);
+    const tenantId = await getTenantIdForRequestOrThrow(request as unknown as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     await requireModule(tenantId, "reports", { role: user.role });
 
     const searchParams = request.nextUrl.searchParams;
@@ -121,8 +121,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(request as Parameters<typeof getCurrentUserOrThrow>[0]);
-    const tenantId = await getTenantIdForRequestOrThrow(request as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
+    const user = await getCurrentUserOrThrow(request as unknown as Parameters<typeof getCurrentUserOrThrow>[0]);
+    const tenantId = await getTenantIdForRequestOrThrow(request as unknown as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     await requireModule(tenantId, "reports", { role: user.role });
 
     const body = await request.json();

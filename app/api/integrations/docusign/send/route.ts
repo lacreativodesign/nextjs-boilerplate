@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "envelopeId and signerEmails are required for reminders." }, { status: 400 });
       }
 
-      await remindSigners({ tenantId: auth.user.tenantId, envelopeId, signerEmails }) as string;
+      await remindSigners({ tenantId: String(auth.user.tenantId || ""), envelopeId, signerEmails });
       return NextResponse.json({ ok: true });
     }
 
@@ -53,9 +53,9 @@ export async function POST(request: Request) {
 
     const fileBytes = Buffer.from(await file.arrayBuffer());
     const sent = await sendDocumentForSignature({
-      tenantId: auth.user.tenantId,
+      tenantId: String(auth.user.tenantId || ""),
       userUid: auth.user.uid,
-      userEmail: auth.user.email || "",
+      userEmail: String(auth.user.email || ""),
       fileName: file.name,
       fileBytes,
       signerEmails,

@@ -199,7 +199,7 @@ export async function POST(req: Request) {
       entityId: ref.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: String(auth.user.tenantId || ""),
     });
 
     try {
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
 
     try {
       await dispatchWebhookEvent({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         event: "invoice.created",
         entityType: "invoice",
         entityId: ref.id,
@@ -268,7 +268,7 @@ export async function POST(req: Request) {
           amountTotal,
           currency: currencyCode,
         },
-        actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+        actor: { uid: auth.user.uid, email: String(auth.user.email || "") || null, role: auth.user.role || null },
       });
     } catch (webhookError) {
       console.error("invoice.created webhook dispatch error:", webhookError);

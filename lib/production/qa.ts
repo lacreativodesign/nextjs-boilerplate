@@ -101,7 +101,7 @@ function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof (value as unknown).toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   return null;
 }
 

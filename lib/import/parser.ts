@@ -34,7 +34,7 @@ export async function parseFile(file: File): Promise<ParsedImportData> {
           const headers = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
           resolve({ headers, rows });
         },
-        error: (error) => reject(error),
+        error: (error: unknown) => reject(error),
       });
     });
   }

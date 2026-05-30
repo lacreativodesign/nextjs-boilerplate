@@ -30,24 +30,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid activity payload." }, { status: 400 });
   }
 
+  const entityRec = (body?.entity as Record<string, unknown>) ?? {};
+  const metaRec = (body?.metadata as Record<string, unknown>) ?? {};
   const created = await createActivity({
-    tenantId: me.tenantId,
+    tenantId: String(me.tenantId || ""),
     action,
     actor: {
       uid: me.uid,
-      name: me.displayName || me.email || "Unknown",
-      email: me.email || null,
+      name: String(me.displayName || me.email || "Unknown"),
+      email: String(me.email || "") || null,
       role: me.role || null,
     },
     entity: {
       type: entityTypeRaw,
       id: entityId,
-      name: body?.entity?.name as unknown ? String(body.entity.name) : undefined,
+      name: entityRec.name ? String(entityRec.name) : undefined,
     },
     metadata: {
-      ...(body?.metadata as Record<string, unknown>),
+      ...metaRec,
       module: moduleName,
-      description: body?.metadata?.description as unknown ? String(body.metadata.description) : undefined,
+      description: metaRec.description ? String(metaRec.description) : undefined,
     },
   });
 

@@ -451,8 +451,8 @@ export class NotificationService {
   }
 
   private static interpolate(template: string, variables: Record<string, unknown>): string {
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      return variables[key] ?? match;
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+      return String(variables[key] ?? match);
     });
   }
 
@@ -543,8 +543,8 @@ function cryptoSign(payload: Record<string, unknown>, secret: string) {
 
 function toIsoTimestamp(value: unknown) {
   if (!value) return null;
-  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
-  const parsed = new Date(value);
+  const parsed = new Date(value as string | number);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }

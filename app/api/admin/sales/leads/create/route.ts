@@ -43,8 +43,8 @@ export async function POST(req: Request) {
       entityType: "lead",
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     const tenantId = String(auth.user.tenantId || "");
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       entityType: "lead",
       entityId: docRef.id,
       deepLink: "/admin/sales/leads",
-      createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || "" },
+      createdBy: { uid: auth.user.uid, name: String(auth.user.name || auth.user.fullName || "") },
     });
 
     // Email sales reps + managers about new lead — non-blocking

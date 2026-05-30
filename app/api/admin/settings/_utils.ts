@@ -48,7 +48,7 @@ export const DEFAULT_FINANCE_SETTINGS = {
 };
 
 export function parseLateFeesSettings(value: unknown) {
-  const source = typeof value === "object" && value ? value : {};
+  const source = (typeof value === "object" && value ? value : {}) as Record<string, unknown>;
   const type = source.type === "fixed" ? "fixed" : "percentage";
   return {
     enabled: parseBoolean(source.enabled, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.enabled),
@@ -94,7 +94,7 @@ export function serverTimestamp() {
 export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }

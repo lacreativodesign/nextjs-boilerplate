@@ -6,7 +6,7 @@ import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
 import { PLAN_MODULES } from "../../../../app/config/plans";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
-import { createRoleNotifications } from "@/lib/notifications";
+import { createRoleNotifications, type NotificationType } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ function getStripeClient() {
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  return new Stripe(secretKey, { apiVersion: "2024-06-20" });
+  return new Stripe(secretKey, { apiVersion: "2024-04-10" });
 }
 
 function requireWebhookSecret() {
@@ -319,8 +319,8 @@ async function updateSubscriptionStatus({
         roles: ["admin", "finance"],
         title: notificationCopy.title,
         body: notificationCopy.body,
-        type: notificationCopy.type,
-        priority: notificationCopy.priority,
+        type: notificationCopy.type as NotificationType,
+        priority: notificationCopy.priority as "normal" | "low" | "high",
         entityType: "subscription",
         entityId: subscriptionId,
         deepLink: "/billing",
@@ -339,8 +339,8 @@ async function updateSubscriptionStatus({
         recipientTenantId: null,
         title: notificationCopy.title,
         body: notificationCopy.body,
-        type: notificationCopy.type,
-        priority: notificationCopy.priority,
+        type: notificationCopy.type as NotificationType,
+        priority: notificationCopy.priority as "normal" | "low" | "high",
         entityType: "subscription",
         entityId: subscriptionId,
         deepLink: "/super_admin/tenants",

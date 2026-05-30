@@ -391,10 +391,10 @@ export async function upsertMeetingFromCalendlyWebhook(params: { tenantId: strin
   const taskId = status === "scheduled"
     ? await createTaskForMeeting({
         tenantId: params.tenantId,
-        inviteeName: invitee.name as unknown || null,
-        eventTypeName: event.name || null,
+        inviteeName: String(invitee.name || "") || null,
+        eventTypeName: String(event.name || "") || null,
         startTime: String(event.start_time || new Date().toISOString()),
-        notes: baseRecord.notes,
+        notes: baseRecord.notes as string | null,
       })
     : null;
 
@@ -420,7 +420,7 @@ export function verifyCalendlyWebhookSignature(params: {
       const key = decrypt(integration.webhookSigningKeyEncrypted);
       const signedPayload = `${params.timestampHeader}.${params.body}`;
       const digest = crypto.createHmac("sha256", key).update(signedPayload).digest("hex");
-      return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(params.signature));
+      return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(params.signature!));
     })
     .catch(() => false);
 }

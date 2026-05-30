@@ -19,7 +19,7 @@ function normalizeSlaDays(input: unknown) {
   if (typeof input !== "object" || !input) return base;
   Object.entries(input).forEach(([key, value]) => {
     if (WORKFLOW_STAGES.includes(key as (typeof WORKFLOW_STAGES)[number])) {
-      base[key] = parseNumber(value, base[key as keyof typeof base]);
+      (base as Record<string, number>)[key] = parseNumber(value, base[key as keyof typeof base]);
     }
   });
   return base;

@@ -24,7 +24,7 @@ export async function GET() {
       const endpoint = String(row.endpoint as unknown || "unknown");
       byEndpoint[endpoint] = (byEndpoint[endpoint] || 0) + 1;
 
-      const createdAt = new Date(row.createdAt as unknown || Date.now());
+      const createdAt = new Date((row.createdAt as string | number | undefined) || Date.now());
       const hourBucket = `${createdAt.getUTCFullYear()}-${String(createdAt.getUTCMonth() + 1).padStart(2, "0")}-${String(createdAt.getUTCDate()).padStart(2, "0")} ${String(createdAt.getUTCHours()).padStart(2, "0")}:00`;
       byHour[hourBucket] = (byHour[hourBucket] || 0) + 1;
 

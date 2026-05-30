@@ -63,7 +63,7 @@ function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   return null;
 }
 
@@ -146,7 +146,7 @@ async function getActivePolicy(tenantId: string, leaveType: LeaveTypeCode) {
   }
 
   const doc = snap.docs[0];
-  return { id: doc.id, ...(doc.data() as unknown) };
+  return { id: doc.id, ...(doc.data() as Record<string, unknown>) };
 }
 
 async function resolveApprover(tenantId: string, employeeId: string) {
@@ -211,7 +211,7 @@ async function getOrCreateBalance(params: { tenantId: string; employeeId: string
     return { id: ref.id, ...base };
   }
 
-  return { id: snap.id, ...(snap.data() as unknown) };
+  return { id: snap.id, ...(snap.data() as Record<string, unknown>) };
 }
 
 async function ensureNoOverlap(params: { tenantId: string; employeeId: string; startDate: Date; endDate: Date }) {

@@ -145,7 +145,7 @@ export async function consumeSlackOAuthState(state: string) {
   const snap = await ref.get();
   if (!snap.exists) throw new Error("Invalid Slack OAuth state.");
   const data = snap.data() as unknown;
-  if (!(data as Record<string, unknown>)?.expiresAt || (data as Record<string, unknown>).expiresAt.toMillis() < Date.now()) {
+  if (!(data as Record<string, unknown>)?.expiresAt || ((data as Record<string, unknown>).expiresAt as { toMillis: () => number }).toMillis() < Date.now()) {
     await ref.delete();
     throw new Error("Slack OAuth state expired.");
   }

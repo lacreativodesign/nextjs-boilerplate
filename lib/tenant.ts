@@ -6,5 +6,5 @@ export function normalizeTenantId(t?: string | null): string {
 
 export function docTenantId(doc: unknown): string {
   if (!doc) return DEFAULT_TENANT_ID;
-  return normalizeTenantId((doc as Record<string, unknown>).tenantId);
+  return normalizeTenantId((doc as Record<string, unknown>).tenantId as string | null | undefined);
 }

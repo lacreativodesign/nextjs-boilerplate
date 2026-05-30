@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(req);
-    const tenantId = await getTenantIdForRequestOrThrow(req);
+    const user = await getCurrentUserOrThrow(req as unknown as Parameters<typeof getCurrentUserOrThrow>[0]);
+    const tenantId = await getTenantIdForRequestOrThrow(req as unknown as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? (tenantSnap.data() as unknown) : null;
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     // Derive subscription state — check trial expiry explicitly
     let subscriptionState: string;
     if ((tenant as Record<string, unknown>)?.subscriptionState) {
-      subscriptionState = (tenant as Record<string, unknown>).subscriptionState;
+      subscriptionState = String((tenant as Record<string, unknown>).subscriptionState);
     } else if ((tenant as Record<string, unknown>)?.billingStatus === "past_due") {
       subscriptionState = "grace";
     } else if ((tenant as Record<string, unknown>)?.billingStatus === "canceled") {

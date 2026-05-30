@@ -34,7 +34,7 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
 
     try {
       await dispatchWebhookEvent({
-        tenantId: me.tenantId,
+        tenantId: String(me.tenantId || ""),
         event: "leave.approved",
         entityType: "leave",
         entityId: params.id,

@@ -6,7 +6,7 @@ import { createProjectFromDeal } from "@/lib/projects";
 import { generateNextOrderId } from "@/lib/orderIds";
 import { logEvent } from "@/lib/audit";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { createNotification, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
+import { createNotification, createNotifications, getUserIdsByRoles, getUsersByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { getCurrentUser } from "../../_utils";
 import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
 import { assertPermission, Permission } from "../../../../lib/permissions";
@@ -205,7 +205,7 @@ async function handleUpdate(req: Request) {
     (updateData as Record<string, unknown>).updatedAt = now;
     (updateData as Record<string, unknown>).lastActivity = now;
 
-    const changes = Object.entries(updateData)
+    const changes = Object.entries(updateData as Record<string, unknown>)
       .filter(([field]) => !["updatedAt", "lastActivity"].includes(field))
       .filter(([field, value]) => value !== (existing as Record<string, unknown>)[field])
       .map(([field, value]) => ({
@@ -214,7 +214,7 @@ async function handleUpdate(req: Request) {
         newValue: value,
       }));
 
-    await ref.set(updateData, { merge: true });
+    await ref.set(updateData as Record<string, unknown>, { merge: true });
 
     if (changes.length) {
       try {
@@ -225,7 +225,7 @@ async function handleUpdate(req: Request) {
           description: `${(existing as Record<string, unknown>).companyName || "Client"} updated.`,
           entityType: "client",
           entityId: id,
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: String(me.name || me.fullName || "") },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -261,7 +261,7 @@ async function handleUpdate(req: Request) {
           tenantId,
           deal: { id: dealDoc.id, ...dealData },
           client: { id, ...(existing as Record<string, unknown>), ...(updateData as Record<string, unknown>)},
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: String(me.name || me.fullName || "") },
         });
 
         await logEvent({
@@ -271,7 +271,7 @@ async function handleUpdate(req: Request) {
           description: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
           entityType: "deal",
           entityId: dealDoc.id,
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: String(me.name || me.fullName || "") },
         });
 
         const recipients = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
@@ -287,7 +287,7 @@ async function handleUpdate(req: Request) {
           message: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
           entityType: "deal",
           entityId: dealDoc.id,
-          createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
+          createdBy: { uid: me.uid, name: String(me.name || me.fullName || "") },
         });
       }
 
@@ -315,11 +315,11 @@ async function handleUpdate(req: Request) {
               toUserId: uid,
               title: "Client portal invite queued",
               body: `${email} will receive a portal activation email.`,
-              entityType: "client",
+              entityType: "client" as NotificationEntityType,
               entityId: id,
               deepLink: "/admin/clients",
               tenantId,
-              createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
+              createdBy: { uid: me.uid, name: String(me.name || me.fullName || "") },
             })
           )
         );
@@ -338,7 +338,7 @@ async function handleUpdate(req: Request) {
           changes,
           orderId: newOrderId || existingOrderId || "",
         },
-        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        actor: { uid: me.uid, email: String(me.email || "") || null, role: me.role || null },
       });
     } catch (webhookError) {
       console.error("client.updated webhook dispatch error:", webhookError);

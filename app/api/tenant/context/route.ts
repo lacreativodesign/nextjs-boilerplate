@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(req);
+    const user = await getCurrentUserOrThrow(req as unknown as Parameters<typeof getCurrentUserOrThrow>[0]);
 
     // super_admin is platform-level — no tenant required
     if (user.role === "super_admin") {
@@ -29,14 +29,14 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const tenantId = await getTenantIdForRequestOrThrow(req);
+    const tenantId = await getTenantIdForRequestOrThrow(req as unknown as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;
     const planState = tenant ? await getTenantPlanState(tenantId) : null;
     const subscriptionState = tenant
       ? deriveSubscriptionState({
-          subscriptionState: (tenant as unknown).subscriptionState,
-          billingStatus: (tenant as unknown).billingStatus,
+          subscriptionState: (tenant as Record<string, unknown>).subscriptionState as string | undefined,
+          billingStatus: (tenant as Record<string, unknown>).billingStatus as string | undefined,
         })
       : "active";
 

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       }
 
       const uploaded = await uploadFileToOneDrive({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         fileName: String(body.fileName),
         base64Content: String(body.base64Content),
         oneDriveFolderId: body.oneDriveFolderId ? String(body.oneDriveFolderId) : undefined,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       }
 
       const mapping = await ensureOneDriveFolderMapping({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         bizostoFolderId: String(body.bizostoFolderId),
         folderName: String(body.folderName),
         parentOneDriveFolderId: body.parentOneDriveFolderId ? String(body.parentOneDriveFolderId) : undefined,
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     if (action === "share") {
       if (!body.fileId) return NextResponse.json({ ok: false, error: "fileId is required." }, { status: 400 });
       const shared = await shareOneDriveFile({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         fileId: String(body.fileId),
         type: body.shareType,
       });
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     if (action === "list_folders") {
       const folders = await listOneDriveFolders({
-        tenantId: auth.user.tenantId,
+        tenantId: String(auth.user.tenantId || ""),
         parentFolderId: body.parentFolderId ? String(body.parentFolderId) : undefined,
       });
       return NextResponse.json({ ok: true, action, folders: folders.folders });

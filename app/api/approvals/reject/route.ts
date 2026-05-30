@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const approval = approvalSnap.data() as ApprovalDoc;
     const type = approval.type as ApprovalType;
     const entityId = parseString(approval.entityId);
-    const tenantId = normalizeTenantId(approval.tenantId as string | null | undefined || me.tenantId);
+    const tenantId = normalizeTenantId(approval.tenantId as string | null | undefined || me.tenantId as string | null | undefined);
     const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -111,11 +111,11 @@ export async function POST(req: Request) {
     const normalizedRole = normalizeRole(me.role || "");
     const approvalChain = Array.isArray(approval.approvalChain) ? [...approval.approvalChain] : [];
     const requiredRole = requiredRoleForType(type);
-    const decisionEntry = {
+    const decisionEntry: { role?: string; uid?: string; decision?: "approved" | "rejected"; note?: string; decidedAt?: unknown } = {
       role: requiredRole,
       uid: me.uid,
       decision: "rejected" as const,
-      note: note || null,
+      note: note || undefined,
       decidedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
     }
 
     const requestedData = approval.requestedData || {};
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const changeRequestId = parseString(requestedData.changeRequestId);
 
     if (type === "change_request" && !changeRequestId) {
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
         type: "approval_decision",
         title: "Approval rejected",
         message: `${approval.entityType || "Request"} ${approval.entityId || ""} was rejected.`,
-        entityType: approval.entityType || null,
+        entityType: (approval.entityType || null) as import("@/app/lib/notifications").NotificationEntityType | null,
         entityId: approval.entityId || null,
         createdBy: { uid: me.uid, name: actorName },
       });

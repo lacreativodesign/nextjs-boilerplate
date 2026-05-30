@@ -406,7 +406,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       const status = await fetchSubscriptionStatus(req);
       sessionRole = normalizeRole(status?.role);
       subscriptionState = normalizeSubscriptionState(status?.subscriptionState);
-      subCacheValue = buildSubCache(sessionRole, subscriptionState);
+      subCacheValue = buildSubCache(sessionRole || "", subscriptionState);
     }
 
     if (sessionRole !== "super_admin") {

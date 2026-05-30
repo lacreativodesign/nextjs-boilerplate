@@ -109,7 +109,7 @@ export function useTenantContext() {
         });
         const json = (await res.json().catch(() => null)) as TenantContextResponse | null;
         if (!res.ok || !json?.ok) {
-          const requestError = new Error((json as unknown)?.error as unknown || res.statusText || "Failed to load tenant") as Error & {
+          const requestError = new Error(String((json as Record<string, unknown>)?.error || res.statusText || "Failed to load tenant")) as Error & {
             status?: number;
           };
           requestError.status = res.status;

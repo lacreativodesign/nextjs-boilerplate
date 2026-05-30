@@ -1,4 +1,4 @@
-import { _AppError, isAppError } from "@/lib/errors";
+import { AppError, isAppError } from "@/lib/errors";
 
 export type LogContext = {
   requestId?: string;

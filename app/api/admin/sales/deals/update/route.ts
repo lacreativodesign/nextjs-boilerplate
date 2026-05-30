@@ -67,7 +67,7 @@ export async function POST(req: Request) {
           to: nextStage,
           changedAt: serverTimestamp(),
           changedByUid: auth.user.uid,
-          changedByName: auth.user.name || auth.user.fullName || "",
+          changedByName: String(auth.user.name || auth.user.fullName || ""),
         });
       }
 
@@ -148,8 +148,8 @@ export async function POST(req: Request) {
       entityType: "deal",
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
-      tenantId: auth.user.tenantId,
+      createdByName: String(auth.user.name || auth.user.fullName || ""),
+      tenantId: auth.user.tenantId as string | null,
     });
 
     if (closedWonTriggered) {
@@ -158,15 +158,15 @@ export async function POST(req: Request) {
         body: `Deal ${id} closed won. Project and finance flow created.`,
         userId: auth.user.uid,
         metadata: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null,
       });
 
       await queueSalesEmail({
-        to: auth.user.email || "",
+        to: String(auth.user.email || ""),
         template: "deal_closed_won",
         subject: "Deal Closed Won",
         data: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null,
       });
     }
 

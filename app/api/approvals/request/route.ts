@@ -256,7 +256,7 @@ export async function POST(req: Request) {
       description: `Approval requested for ${entityType} ${entityId}.`,
       entityType,
       entityId,
-      actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+      actor: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
       metadata: {
         requestedBy: { uid: me.uid, role },
         requestedData,
@@ -276,7 +276,7 @@ export async function POST(req: Request) {
       message: `${entityType} ${entityId} requires approval.`,
       entityType,
       entityId,
-      createdBy: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+      createdBy: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
     });
 
     // Email approvers — non-blocking
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
         const typeLabel = type === "discount" ? "Discount Approval" : type === "change_request" ? "Change Request Approval" : "Production Override";
         return Promise.all(approvers.map((approver) =>
           sendEmail({
-            to: approver.email as unknown || "",
+            to: String((approver as Record<string, unknown>).email || ""),
             subject: `⏳ Approval needed — ${typeLabel}`,
             html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

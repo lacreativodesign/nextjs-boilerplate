@@ -98,7 +98,7 @@ export async function uploadFileToGoogleDrive(params: {
 
   const data = (await response.json().catch(() => ({}))) as unknown;
   if (!response.ok || !(data as Record<string, unknown>)?.id) {
-    throw new Error((data as Record<string, unknown>)?.error?.message as unknown || "Google Drive upload failed.");
+    throw new Error(String(((data as Record<string, unknown>)?.error as Record<string, unknown>)?.message || "Google Drive upload failed."));
   }
 
   return {

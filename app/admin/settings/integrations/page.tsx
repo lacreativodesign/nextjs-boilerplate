@@ -134,7 +134,7 @@ export default function IntegrationSettingsPage() {
       }
 
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to load integration settings.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to load integration settings.");
     } finally {
       setLoading(false);
     }
@@ -168,7 +168,7 @@ export default function IntegrationSettingsPage() {
       setNewWebhook({ url: "", events: ["invoice.created"], secret: "", status: "active", description: "" });
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to create webhook.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to create webhook.");
     } finally {
       setSaving(false);
     }
@@ -181,7 +181,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to delete webhook.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to delete webhook.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to delete webhook.");
     }
   };
 
@@ -193,7 +193,7 @@ export default function IntegrationSettingsPage() {
       setSuccess(`Test sent. Deliveries created: ${data.deliveriesCreated}.`);
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to send test event.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to send test event.");
     }
   };
 
@@ -204,7 +204,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to retry delivery.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to retry delivery.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to retry delivery.");
     }
   };
 
@@ -225,7 +225,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok || !data?.installUrl) throw new Error(data?.error || "Unable to start Slack OAuth.");
       window.location.href = data.installUrl;
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to connect Slack.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to connect Slack.");
       setSaving(false);
     }
   };
@@ -248,7 +248,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Slack settings.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to update Slack settings.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Slack settings.");
     } finally {
       setSaving(false);
     }
@@ -268,7 +268,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Google Workspace settings.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to update Google Workspace settings.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Google Workspace settings.");
     } finally {
       setSaving(false);
     }
@@ -288,7 +288,7 @@ export default function IntegrationSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Microsoft settings.");
       await load();
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Unable to update Microsoft settings.");
+      setError(String((err as Record<string, unknown>).message || "") || "Unable to update Microsoft settings.");
     } finally {
       setSaving(false);
     }
