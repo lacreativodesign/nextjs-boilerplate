@@ -28,7 +28,7 @@ export default function AdminCrmPage() {
         <h2 className="mb-2 font-semibold">Leads</h2>
         <table className="w-full text-sm">
           <thead><tr className="text-left"><th>Name</th><th>Company</th><th>Email</th><th>Status</th></tr></thead>
-          <tbody>{leads.map((lead) => <tr key={(lead as Record<string, unknown>).id} className="border-t"><td>{(lead as Record<string, unknown>).name}</td><td>{(lead as Record<string, unknown>).company}</td><td>{(lead as Record<string, unknown>).email}</td><td>{(lead as Record<string, unknown>).status}</td></tr>)}</tbody>
+          <tbody>{leads.map((lead) => { const l = lead as Record<string, unknown>; return <tr key={String(l.id || "")} className="border-t"><td>{String(l.name || "")}</td><td>{String(l.company || "")}</td><td>{String(l.email || "")}</td><td>{String(l.status || "")}</td></tr>; })}</tbody>
         </table>
       </div>
 
@@ -36,7 +36,7 @@ export default function AdminCrmPage() {
         <h2 className="mb-2 font-semibold">Deals</h2>
         <table className="w-full text-sm">
           <thead><tr className="text-left"><th>Title</th><th>Stage</th><th>Value</th><th>Sales Rep</th></tr></thead>
-          <tbody>{deals.map((deal) => <tr key={(deal as Record<string, unknown>).id} className="border-t"><td>{(deal as Record<string, unknown>).title}</td><td>{(deal as Record<string, unknown>).stage}</td><td>${(deal as Record<string, unknown>).valueUSD.toLocaleString()}</td><td>{(deal as Record<string, unknown>).assignedSalesId}</td></tr>)}</tbody>
+          <tbody>{deals.map((deal) => { const d = deal as Record<string, unknown>; return <tr key={String(d.id || "")} className="border-t"><td>{String(d.title || "")}</td><td>{String(d.stage || "")}</td><td>${Number(d.valueUSD || 0).toLocaleString()}</td><td>{String(d.assignedSalesId || "")}</td></tr>; })}</tbody>
         </table>
       </div>
     </div>

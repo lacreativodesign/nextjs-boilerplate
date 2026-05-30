@@ -262,7 +262,7 @@ export async function POST(req: Request) {
 
     const tenantId = String(data.tenantId || me.tenantId || "");
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId || null);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const notifications: Promise<void>[] = [];
     const changeRequestMessage = `Change request "${data.title || "Untitled"}" moved to ${toStatus}.`;
     const notificationType = toStatus === "Approved" ? "success" : toStatus === "Rejected" ? "warning" : "info";

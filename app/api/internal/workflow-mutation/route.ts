@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { action, entity, tenantId, payload, recordId, field, value, workflowId, runId } = body;
+  const bodyRec = body as Record<string, unknown>;
+  const { action, entity, payload, recordId, field, value, workflowId, runId } = bodyRec;
+  const tenantId = String(bodyRec.tenantId || "");
 
   // Validate required fields
   if (!action || !entity || !tenantId) {

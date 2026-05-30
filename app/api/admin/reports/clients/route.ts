@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getReportSettings, requireReportsAccess, _toISO, toMillis } from "../_utils";
+import { getReportSettings, requireReportsAccess, toISO as _toISO, toMillis } from "../_utils";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
 import { normalizeTenantId } from "@/lib/tenant";
@@ -60,13 +60,13 @@ export async function GET(req: Request) {
         return services.map((item: string) => slugify(item)).includes(value);
       }
       if (segmentType === "business_type") {
-        return slugify(client.segmentBusinessType as unknown || "") === value;
+        return slugify(String(client.segmentBusinessType || "")) === value;
       }
       if (segmentType === "industry") {
-        return slugify(client.segmentIndustry as unknown || "") === value;
+        return slugify(String(client.segmentIndustry || "")) === value;
       }
       if (segmentType === "geo") {
-        return slugify(client.segmentGeo as unknown || client.country as unknown || "") === value;
+        return slugify(String(client.segmentGeo || client.country || "")) === value;
       }
       if (segmentType === "value") {
         const band = getValueBand(Number(client.totalPaidUsd as unknown || 0));
@@ -151,13 +151,13 @@ export async function GET(req: Request) {
 
     const clientRows = filteredClients
       .map((client) => {
-        const clientId = client.id;
+        const clientId = String(client.id || "");
         const revenue = invoiceTotalsByClient.get(clientId) || Number(client.totalPaidUsd as unknown || 0);
         const lastActivityMs = lastActivityByClient.get(clientId) || null;
         const lastActivity = lastActivityMs ? new Date(lastActivityMs).toISOString() : null;
         return {
           id: clientId,
-          name: client.companyName as unknown || client.name as unknown || "Client",
+          name: String(client.companyName || client.name || "Client"),
           totalPaidUsd: revenue,
           activeProjects: activeProjectsByClient.get(clientId) || 0,
           lastActivity,

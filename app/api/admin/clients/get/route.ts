@@ -31,18 +31,19 @@ export async function GET(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const data = snap.data() || {};
-    if ((data as unknown).tenantId && (data as unknown).tenantId !== me.tenantId) {
+    const d = data as Record<string, unknown>;
+    if (d.tenantId && d.tenantId !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
-    if ((data as unknown).deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    if (d.deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     return NextResponse.json({
       ok: true,
       client: {
         id: snap.id,
         ...data,
-        createdAt: toISO((data as unknown).createdAt),
-        updatedAt: toISO((data as unknown).updatedAt),
-        lastActivity: toISO((data as unknown).lastActivity),
+        createdAt: toISO(d.createdAt),
+        updatedAt: toISO(d.updatedAt),
+        lastActivity: toISO(d.lastActivity),
       },
     });
   } catch (err) {

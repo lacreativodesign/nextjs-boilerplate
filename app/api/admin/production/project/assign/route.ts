@@ -21,7 +21,7 @@ async function resolveUserName(tenantId: string, uid?: string | null) {
 function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       tenantId: me.tenantId,
       projectId,
       actorId: me.uid,
-      actorName: me.name || me.fullName || me.displayName || "",
+      actorName: String(me.name || me.fullName || me.displayName || ""),
       createdAt: now,
       payload: {
         productionUid: productionUid || null,
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() || {};
     const dueDate = toISO(updated.dueDate);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
 
     const notifications: Promise<void>[] = [];
     if (productionUid) {

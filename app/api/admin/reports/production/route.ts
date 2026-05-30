@@ -138,7 +138,7 @@ export async function GET(req: Request) {
         if (historyEntry?.at) anchor = historyEntry.at;
         const anchorMs = anchor ? new Date(anchor).getTime() : null;
         const diffDays = anchorMs ? (Date.now() - anchorMs) / (1000 * 60 * 60 * 24) : 0;
-        const slaDays = Number(settings.stageSlaDays?.[project.stage] || 0);
+        const slaDays = Number((settings.stageSlaDays as Record<string, number>)?.[project.stage] || 0);
         return { ...project, ageDays: Number(diffDays.toFixed(1)), slaDays };
       })
       .filter((project) => project.slaDays > 0 && project.ageDays > project.slaDays)

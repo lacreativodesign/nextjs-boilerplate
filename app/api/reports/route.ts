@@ -62,8 +62,8 @@ const roleCanAccessCategory = (role: string, category: ReportCategory) => {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(request);
-    const tenantId = await getTenantIdForRequestOrThrow(request);
+    const user = await getCurrentUserOrThrow(request as Parameters<typeof getCurrentUserOrThrow>[0]);
+    const tenantId = await getTenantIdForRequestOrThrow(request as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     await requireModule(tenantId, "reports", { role: user.role });
 
     const searchParams = request.nextUrl.searchParams;
@@ -95,10 +95,10 @@ export async function GET(request: NextRequest) {
       ...sharedSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     ];
 
-    const uniqueReports = Array.from(new Map(reports.map((r) => [r.id, r])).values()) as Report[];
+    const uniqueReports = Array.from(new Map(reports.map((r) => [r.id, r])).values()) as unknown as Report[];
     const filteredReports = uniqueReports.filter((report) => roleCanAccessCategory(user.role, report.category));
 
-    let allReports: Report[] | Array<Record<string, unknown>> = filteredReports;
+    let allReports: unknown[] = filteredReports;
     if (includePresets) {
       const presets = category
         ? PRESET_REPORTS[category] || []
@@ -121,8 +121,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(request);
-    const tenantId = await getTenantIdForRequestOrThrow(request);
+    const user = await getCurrentUserOrThrow(request as Parameters<typeof getCurrentUserOrThrow>[0]);
+    const tenantId = await getTenantIdForRequestOrThrow(request as Parameters<typeof getTenantIdForRequestOrThrow>[0]);
     await requireModule(tenantId, "reports", { role: user.role });
 
     const body = await request.json();

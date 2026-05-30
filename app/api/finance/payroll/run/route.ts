@@ -87,11 +87,11 @@ export async function POST(req: Request) {
           title: "Payroll run created",
           body: `Payroll run for ${month} created (${created} entries).`,
           type: "info",
-          entityType: "payroll",
+          entityType: "payroll" as NotificationEntityType,
           entityId: null,
           deepLink: "/finance/payroll",
           createdBy: { uid: auth.user.uid, name: actorName },
-          tenantId: auth.user.tenantId || null,
+          tenantId: String(auth.user.tenantId || "") || null,
         })
       )
     );
@@ -100,18 +100,18 @@ export async function POST(req: Request) {
       type: "finance.payroll_run",
       title: "Payroll run created",
       description: `Payroll run for ${month} created (${created} entries).`,
-      entityType: "payroll",
-      entityId: null,
+      entityType: "payroll" as NotificationEntityType,
+      entityId: undefined,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: String(auth.user.tenantId || ""),
     });
 
     // Email finance + admin about payroll run — non-blocking
-    getUsersByRoles(["finance", "admin"], auth.user.tenantId as string || "").then((recipients) => {
+    getUsersByRoles(["finance", "admin"], String(auth.user.tenantId || "")).then((recipients) => {
       return Promise.all(recipients.map((recipient) =>
         sendEmail({
-          to: recipient.email as unknown || "",
+          to: String((recipient as Record<string, unknown>).email || ""),
           subject: `💰 Payroll run created — ${month}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

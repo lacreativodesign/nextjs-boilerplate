@@ -136,7 +136,7 @@ export async function POST(req: Request) {
       tx.set(dealRef, updates, { merge: true });
     });
 
-    const createdByName = auth.user.name || auth.user.fullName || "";
+    const createdByName = String(auth.user.name || auth.user.fullName || "");
     const stageChanged = nextStage && prevStage && nextStage !== prevStage;
     const isClosed = nextStage === "Closed Won" || nextStage === "Closed Lost";
     const stageTitle = stageChanged
@@ -259,7 +259,7 @@ export async function POST(req: Request) {
         },
       });
 
-      const notifyTargets = Array.from(new Set([ownerId, createdByUid].filter(Boolean))) as string[];
+      const notifyTargets: string[] = Array.from(new Set([ownerId, createdByUid].map((x) => x || ""))).filter(Boolean) as string[];
       if (notifyTargets.length) {
         await notifyUsers({
           userIds: notifyTargets,

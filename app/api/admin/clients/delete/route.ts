@@ -32,7 +32,8 @@ export async function POST(req: Request) {
   if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
   const data = snap.data() || {};
-  if ((data as unknown).deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+  const d = data as Record<string, unknown>;
+  if (d.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
   const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -47,13 +48,13 @@ export async function POST(req: Request) {
 
   try {
     await logEvent({
-      tenantId: String((data as unknown).tenantId || ""),
+      tenantId: String(d.tenantId || ""),
       type: "client.deleted",
       title: "Client deleted",
-      description: `${String((data as unknown).companyName || "Client")} deleted.`,
+      description: `${String(d.companyName || "Client")} deleted.`,
       entityType: "client",
       entityId: id,
-      actor: { uid: me.uid, name: me.name || me.fullName || "" },
+      actor: { uid: me.uid, name: String(me.name || me.fullName || "") },
       metadata: {
         ip: getClientIp(req),
         userAgent: req.headers.get("user-agent") || "",
@@ -65,12 +66,12 @@ export async function POST(req: Request) {
         changes: [
           {
             field: "deletedAt",
-            oldValue: (data as unknown).deletedAt || null,
+            oldValue: d.deletedAt || null,
             newValue: "serverTimestamp",
           },
           {
             field: "deletedBy",
-            oldValue: (data as unknown).deletedBy || null,
+            oldValue: d.deletedBy || null,
             newValue: me.uid,
           },
         ],

@@ -90,31 +90,31 @@ export default function EditEmployeePage() {
         >
           <FormInput
             label="Full Name"
-            value={(employee as Record<string, unknown>).name}
+            value={String((employee as Record<string, unknown>).name ?? "")}
             onChange={(v) => setEmployee({ ...employee, name: v })}
           />
 
           <FormInput
             label="Email"
-            value={(employee as Record<string, unknown>).email}
+            value={String((employee as Record<string, unknown>).email ?? "")}
             onChange={(v) => setEmployee({ ...employee, email: v })}
           />
 
           <FormInput
             label="Role"
-            value={(employee as Record<string, unknown>).role}
+            value={String((employee as Record<string, unknown>).role ?? "")}
             onChange={(v) => setEmployee({ ...employee, role: v })}
           />
 
           <FormInput
             label="Department"
-            value={(employee as Record<string, unknown>).department}
+            value={String((employee as Record<string, unknown>).department ?? "")}
             onChange={(v) => setEmployee({ ...employee, department: v })}
           />
 
           <FormInput
             label="Status"
-            value={(employee as Record<string, unknown>).status}
+            value={String((employee as Record<string, unknown>).status ?? "")}
             onChange={(v) => setEmployee({ ...employee, status: v })}
           />
         </div>

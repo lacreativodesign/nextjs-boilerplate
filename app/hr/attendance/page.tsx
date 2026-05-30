@@ -50,8 +50,8 @@ export default function AttendanceDashboard() {
     let total = 0;
     if (login && logout) {
       total =
-        new Date((logout as Record<string, unknown>).timestamp).getTime() -
-        new Date((login as Record<string, unknown>).timestamp).getTime();
+        new Date(String((logout as Record<string, unknown>).timestamp || "")).getTime() -
+        new Date(String((login as Record<string, unknown>).timestamp || "")).getTime();
     }
 
     const hrs = (total / (1000 * 60 * 60)).toFixed(1);
@@ -121,11 +121,11 @@ export default function AttendanceDashboard() {
 
           <tbody>
             {employees.map((emp) => (
-              <tr key={(emp as Record<string, unknown>).id}>
-                <td style={tdLabel}>{(emp as Record<string, unknown>).name}</td>
+              <tr key={String((emp as Record<string, unknown>).id ?? "")}>
+                <td style={tdLabel}>{String((emp as Record<string, unknown>).name ?? "")}</td>
 
                 {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
-                  const info = getDayAttendance((emp as Record<string, unknown>).id, dayIndex + 1);
+                  const info = getDayAttendance(String((emp as Record<string, unknown>).id ?? ""), dayIndex + 1);
                   const isWeekend =
                     month.date(dayIndex + 1).day() === 0 ||
                     month.date(dayIndex + 1).day() === 6;

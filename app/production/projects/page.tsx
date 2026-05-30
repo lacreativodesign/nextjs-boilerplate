@@ -29,10 +29,10 @@ export default function ProductionProjectsPage() {
         setError(null);
         const overview = await fetch("/api/production/overview", { credentials: "include", cache: "no-store" }).then((r) => r.json());
         const queue = (overview?.myQueueTop10 || []) as unknown[];
-        const options = queue.map((item) => ({ id: (item as Record<string, unknown>).id, projectName: (item as Record<string, unknown>).projectName || (item as Record<string, unknown>).id }));
+        const options = queue.map((item) => ({ id: String((item as Record<string, unknown>).id || ""), projectName: String((item as Record<string, unknown>).projectName || (item as Record<string, unknown>).id || "") }));
         if (!mounted) return;
         setProjects(options);
-        if (options.length) setActiveProjectId(options[0].id);
+        if (options.length) setActiveProjectId(String(options[0].id));
       } catch {
         if (!mounted) return;
         setError("Unable to load production projects.");
@@ -75,7 +75,7 @@ export default function ProductionProjectsPage() {
   }, [activeProjectId]);
 
   const preparedTasks = useMemo(() => {
-    return (data?.tasks || []).map((task) => ({ ...(task as Record<string, unknown>), critical: criticalPathIds.includes((task as Record<string, unknown>).id) }));
+    return (data?.tasks || []).map((task) => ({ ...(task as Record<string, unknown>), critical: criticalPathIds.includes(String((task as Record<string, unknown>).id || "")) }));
   }, [data?.tasks, criticalPathIds]);
 
   return (
@@ -102,10 +102,10 @@ export default function ProductionProjectsPage() {
       {!loading && data ? (
         <GanttChart
           projectId={data.project.id}
-          tasks={preparedTasks}
-          dependencies={data.dependencies || []}
-          milestones={data.milestones || []}
-          overAllocatedResources={overAllocatedResources}
+          tasks={preparedTasks as Parameters<typeof GanttChart>[0]["tasks"]}
+          dependencies={(data.dependencies || []) as Parameters<typeof GanttChart>[0]["dependencies"]}
+          milestones={(data.milestones || []) as Parameters<typeof GanttChart>[0]["milestones"]}
+          overAllocatedResources={overAllocatedResources as Parameters<typeof GanttChart>[0]["overAllocatedResources"]}
         />
       ) : null}
     </div>

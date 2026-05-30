@@ -55,7 +55,7 @@ export async function GET() {
     const safeEvents =
       events.length > 0
         ? events
-        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
+        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc): Record<string, unknown> => ({
             id: doc.id,
             ...doc.data(),
           }));

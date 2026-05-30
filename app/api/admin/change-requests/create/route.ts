@@ -182,7 +182,7 @@ export async function POST(req: Request) {
         description: `${title} requires manager approval.`,
         entityType: "change_request",
         entityId: docRef.id,
-        actor: { uid: me.uid, name: me.name || me.fullName || me.displayName || "" },
+        actor: { uid: me.uid, name: String(me.name || me.fullName || me.displayName || "") },
         metadata: {
           projectId,
           type,
@@ -200,7 +200,7 @@ export async function POST(req: Request) {
     });
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
     const notifications: Promise<void>[] = [];
     if (project.ownerAmUid) {
       notifications.push(

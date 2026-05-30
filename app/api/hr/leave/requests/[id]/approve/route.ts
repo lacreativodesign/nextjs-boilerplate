@@ -25,11 +25,11 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
     }
 
     await LeaveService.approveRequest({
-      tenantId: me.tenantId,
+      tenantId: String(me.tenantId || ""),
       requestId: params.id,
       actorUserId: me.uid,
-      actorRole: me.role,
-      actorName: me.name || me.fullName || me.email || me.uid,
+      actorRole: String(me.role || ""),
+      actorName: String(me.name || me.fullName || me.email || me.uid || ""),
     });
 
     try {
@@ -42,7 +42,7 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
           requestId: params.id,
           approvedBy: me.uid,
         },
-        actor: { uid: me.uid, email: me.email || null, role: me.role || null },
+        actor: { uid: me.uid, email: String(me.email || "") || null, role: String(me.role || "") || null },
       });
     } catch (webhookError) {
       console.error("leave.approved webhook dispatch error:", webhookError);

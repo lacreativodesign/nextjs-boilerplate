@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, requireAdmin, parseNumber, parseString, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
@@ -172,8 +172,8 @@ export async function POST(req: Request) {
 
     await ref.set(invoiceData);
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
+    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], String(auth.user.tenantId || "") || null);
 
     await Promise.all(
       financeIds.map((uid) =>
@@ -182,11 +182,11 @@ export async function POST(req: Request) {
           title: "Invoice created",
           body: `Invoice ${orderId} created for ${clientName}.`,
           type: "info",
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: ref.id,
           deepLink: "/admin/finance/invoices",
           createdBy: { uid: auth.user.uid, name: actorName },
-          tenantId: auth.user.tenantId || null,
+          tenantId: String(auth.user.tenantId || "") || null,
         })
       )
     );
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
       type: "finance.invoice_created",
       title: "Invoice created",
       description: `Invoice ${orderId} created for ${clientName}.`,
-      entityType: "invoice",
+      entityType: "invoice" as NotificationEntityType,
       entityId: ref.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
