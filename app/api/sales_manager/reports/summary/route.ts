@@ -12,8 +12,8 @@ export async function GET() {
     }
 
     const [leadsSnap, dealsSnap] = await Promise.all([
-      adminDb.collection("leads").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const leadSourceMap = new Map<string, number>();

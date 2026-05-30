@@ -18,7 +18,7 @@ export async function GET() {
   if (!isClientRole(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
   try {
-    const snap = await db.collection("clientSegments").where("isActive", "==", true).get();
+    const snap = await db.collection("clientSegments").where("tenantId", "==", me.tenantId).where("isActive", "==", true).get();
     const segments = snap.docs
       .map((doc) => {
         const data = (doc.data() || {}) as SegmentDoc;

@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Client id is required." }, { status: 400 });
     }
 
-    const projectsSnap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const projectsSnap = await adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
     const hasAccess = projectsSnap.docs.some((doc) => {
       const data = doc.data() as ProjectDoc;
       return isOwnedByAm(data, me.uid) && String(data.clientId || "") === clientId;
@@ -54,6 +54,9 @@ export async function GET(req: Request) {
     }
 
     const data = clientSnap.data() as ClientDoc;
+    if (String((data as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     return NextResponse.json({
       ok: true,
       client: {

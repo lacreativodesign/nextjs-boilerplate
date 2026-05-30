@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebaseAdmin";
+import { requireHrAccess } from "../../_utils";
 
 export async function GET() {
+  const access = await requireHrAccess();
+  if (!access.ok) return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+
   try {
-    const usersSnapshot = await adminDB.collection("users").get();
+    const usersSnapshot = await adminDB.collection("users").where("tenantId", "==", access.user.tenantId).get();
 
     let finalAttendance: any[] = [];
 

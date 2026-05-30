@@ -64,6 +64,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
+    if (String((project as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const assigned = isAssignedToProduction(
       {
         productionUid: project.productionUid ?? null,
@@ -86,6 +90,7 @@ export async function POST(req: Request) {
 
     const previousSnap = await adminDb
       .collection("files")
+      .where("tenantId", "==", me.tenantId)
       .where("projectId", "==", projectId)
       .where("category", "==", category)
       .where("isDeleted", "==", false)

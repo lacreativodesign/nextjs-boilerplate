@@ -38,12 +38,16 @@ export async function GET(req: NextRequest) {
     }
 
     const data = (snap.data() || {}) as ProjectDoc;
+    if (String((data as any).tenantId || "") !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (String(data.clientId || "") !== auth.clientId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const filesSnap = await adminDb
       .collection("files")
+      .where("tenantId", "==", auth.user.tenantId)
       .where("projectId", "==", id)
       .where("isDeleted", "==", false)
       .orderBy("uploadedAt", "desc")

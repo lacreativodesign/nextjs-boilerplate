@@ -69,6 +69,9 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() as ProjectDoc;
+    if (String((data as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (!isOwnedByAm(data, me.uid)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

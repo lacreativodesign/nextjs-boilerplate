@@ -68,7 +68,7 @@ export async function GET() {
     }
 
     const [projectsSnap, workflowSettings] = await Promise.all([
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get(),
       getWorkflowSettings(),
     ]);
 
@@ -104,6 +104,7 @@ export async function GET() {
 
     const openChangeRequestsSnap = await adminDb
       .collection("changeRequests")
+      .where("tenantId", "==", me.tenantId)
       .where("isDeleted", "==", false)
       .limit(500)
       .get();
@@ -124,7 +125,7 @@ export async function GET() {
       .get();
     const unreadNotifications = unreadNotificationsSnap.size || 0;
 
-    const eventsSnap = await adminDb.collection("events").orderBy("createdAt", "desc").limit(200).get();
+    const eventsSnap = await adminDb.collection("events").where("tenantId", "==", me.tenantId).orderBy("createdAt", "desc").limit(200).get();
     const recentActivity = eventsSnap.docs
       .map((doc) => {
         const data = doc.data() as EventDoc;

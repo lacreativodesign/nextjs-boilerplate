@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     const startDate = String(searchParams.get("start") || "").trim();
     const endDate = String(searchParams.get("end") || "").trim();
 
-    const projectSnap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const projectSnap = await adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
     const projectIds = new Set(
       projectSnap.docs
         .map((doc) => ({ id: doc.id, data: doc.data() as ProjectDoc }))
@@ -80,6 +80,7 @@ export async function GET(req: Request) {
 
     let query: FirebaseFirestore.Query = adminDb
       .collection("files")
+      .where("tenantId", "==", me.tenantId)
       .where("isDeleted", "==", false)
       .orderBy("uploadedAt", "desc");
 

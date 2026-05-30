@@ -73,7 +73,7 @@ export async function GET(req: Request) {
     const priority = String(searchParams.get("priority") || "").trim();
     const q = String(searchParams.get("q") || "").trim().toLowerCase();
 
-    const projectSnap = await adminDb.collection("projects").where("isDeleted", "==", false).limit(500).get();
+    const projectSnap = await adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
     const projectIds = new Set(
       projectSnap.docs
         .map((doc) => ({ id: doc.id, data: doc.data() as ProjectDoc }))
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, changeRequests: [] });
     }
 
-    const snap = await adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb.collection("changeRequests").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
 
     let changeRequests = snap.docs.map((doc) => {
       const data = doc.data() as ChangeRequestDoc;
