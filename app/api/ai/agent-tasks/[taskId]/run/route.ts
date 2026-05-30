@@ -41,7 +41,7 @@ export async function POST(
   { params }: { params: { taskId: string } }
 ) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() } as Parameters<typeof getCurrentUser>[0]);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }

@@ -328,7 +328,7 @@ export async function POST(req: Request) {
       invoiceAmountTotalBaseDelta: totalInBase,
     });
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const actorName = String(auth.user.name || auth.user.fullName || auth.user.displayName || "");
     await createFinanceEvent({
       type: "finance.invoice_created",
       title: "Invoice created",
@@ -337,7 +337,7 @@ export async function POST(req: Request) {
       entityId: docRef.id,
       createdByUid: auth.user.uid,
       createdByName: actorName,
-      tenantId: auth.user.tenantId,
+      tenantId: auth.user.tenantId as string | null | undefined,
     });
 
     try {
@@ -381,7 +381,7 @@ export async function POST(req: Request) {
           orderId,
           clientName: clientName || clientId,
         },
-        tenantId: auth.user.tenantId,
+        tenantId: auth.user.tenantId as string | null | undefined,
       }).catch((emailError) => {
         logError(emailError, { route: "finance.invoice_created.email" });
       });
