@@ -49,6 +49,9 @@ export async function POST(req: Request) {
         throw new Error("Deal not found");
       }
       const data = snap.data() || {};
+      if (String(data.tenantId || "") !== auth.user.tenantId) {
+        throw new Error("Forbidden");
+      }
       prevStage = parseString(data.stage, "New Lead");
       if (prevStage === stage) return;
       ownerId = data.ownerId || null;

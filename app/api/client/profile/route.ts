@@ -26,6 +26,9 @@ export async function GET() {
     if ((data as any).deletedAt) {
       return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
     }
+    if (String((data as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
 
     return NextResponse.json({ ok: true, client: { id: snap.id, ...data } });
   } catch (err: any) {
@@ -52,6 +55,9 @@ export async function PATCH(req: Request) {
     const ref = db.collection("clients").doc(clientId);
     const snap = await ref.get();
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
+    if (String((snap.data() || {}).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
 
     const updateData: Record<string, any> = {};
 

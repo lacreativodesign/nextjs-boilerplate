@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { requireHrAccess } from "../_utils";
 
 export async function GET() {
+  const access = await requireHrAccess();
+  if (!access.ok) return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+
   try {
-    const usersSnap = await adminDb.collection("users").get();
-    const attendanceSnap = await adminDb.collection("attendance").get();
+    const usersSnap = await adminDb.collection("users").where("tenantId", "==", access.user.tenantId).get();
+    const attendanceSnap = await adminDb.collection("attendance").where("tenantId", "==", access.user.tenantId).get();
 
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());

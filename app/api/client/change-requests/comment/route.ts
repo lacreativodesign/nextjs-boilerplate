@@ -31,6 +31,9 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
+    if (String(data.tenantId || "") !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (String(data.clientId || "") !== auth.clientId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

@@ -25,6 +25,9 @@ export async function POST(req: Request) {
     const ref = db.collection("clients").doc(auth.clientId);
     const snap = await ref.get();
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
+    if (String((snap.data() || {}).tenantId || "") !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
 
     const updateData: Record<string, any> = {};
 

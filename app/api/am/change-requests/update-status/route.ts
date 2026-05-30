@@ -84,6 +84,9 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() as ChangeRequestDoc;
+    if (String((data as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     const fromStatus = cleanString(data.status) || "Submitted";
 
     if (!canTransition(fromStatus, toStatus)) {
@@ -106,6 +109,9 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() as ProjectDoc;
+    if (String((project as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (!isOwnedByAm(project, me.uid)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

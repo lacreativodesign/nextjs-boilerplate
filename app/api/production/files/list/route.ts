@@ -47,6 +47,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
+    if (String((project as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const assigned = isAssignedToProduction(
       {
         productionUid: project.productionUid ?? null,
@@ -59,7 +63,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const snap = await adminDb.collection("files").where("isDeleted", "==", false).limit(500).get();
+    const snap = await adminDb.collection("files").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
 
     let files = snap.docs.map((doc) => {
       const data = doc.data() as FileDoc;

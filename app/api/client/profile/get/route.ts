@@ -16,6 +16,9 @@ export async function GET() {
     }
 
     const data = snap.data() || {};
+    if (String(data.tenantId || "") !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     return NextResponse.json({ ok: true, client: { id: snap.id, ...data } });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || "Failed to load profile" }, { status: 500 });

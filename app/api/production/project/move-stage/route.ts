@@ -118,6 +118,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
+    if (String((data as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const assigned = isAssignedToProduction(
       {
         productionUid: data.productionUid ?? null,

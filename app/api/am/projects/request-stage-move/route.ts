@@ -48,6 +48,9 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() as ProjectDoc;
+    if (String((project as any).tenantId || "") !== me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (!isOwnedByAm(project, me.uid)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

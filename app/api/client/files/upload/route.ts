@@ -36,6 +36,9 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() || {};
+    if (String(project.tenantId || "") !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     if (String(project.clientId || "") !== auth.clientId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
