@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       await writeAuditLog({
         tenantId: user.tenantId,
         actorUserId: user.uid,
-        actorName: user.fullName || user.email,
+        actorName: String(user.fullName || user.email || ""),
         actorRole: user.role,
         actionType: "ai.sales.update_lead_status",
         entityType: "lead",

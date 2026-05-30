@@ -146,7 +146,7 @@ async function getActivePolicy(tenantId: string, leaveType: LeaveTypeCode) {
   }
 
   const doc = snap.docs[0];
-  return { id: doc.id, ...(doc.data() as Record<string, unknown>) };
+  return { id: doc.id, ...(doc.data() as LeavePolicy) };
 }
 
 async function resolveApprover(tenantId: string, employeeId: string) {

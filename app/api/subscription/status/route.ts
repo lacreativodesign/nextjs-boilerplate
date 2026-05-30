@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       subscriptionState = "grace";
     } else if ((tenant as Record<string, unknown>)?.billingStatus === "canceled") {
       subscriptionState = "hard_locked";
-    } else if ((tenant as Record<string, unknown>)?.plan === "trial" && trialEndsAt && new Date(trialEndsAt) < now) {
+    } else if ((tenant as Record<string, unknown>)?.plan === "trial" && trialEndsAt && new Date(trialEndsAt as string) < now) {
       subscriptionState = "grace";
     } else {
       subscriptionState = "active";
