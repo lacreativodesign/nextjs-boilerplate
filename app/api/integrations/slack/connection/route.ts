@@ -11,7 +11,7 @@ export async function GET() {
     const auth = await requireAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const integration = await getSlackIntegration(auth.user.tenantId);
+    const integration = await getSlackIntegration(auth.user.tenantId as string);
     return NextResponse.json({
       ok: true,
       connection: {
@@ -27,8 +27,8 @@ export async function GET() {
         notificationEnabled: integration?.notificationEnabled !== false,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to load Slack connection." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to load Slack connection." }, { status: 500 });
   }
 }
 
@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
 
     await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("integrations")
       .doc("slack")
       .set(
@@ -64,7 +64,7 @@ export async function PUT(request: Request) {
       );
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to update Slack settings." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to update Slack settings." }, { status: 500 });
   }
 }

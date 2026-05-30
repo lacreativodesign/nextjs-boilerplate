@@ -22,7 +22,7 @@ function canUpload(role: string) {
   return isAdminOrSuper(r) || isSalesManager(r) || isAccountManager(r) || isProduction(r);
 }
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -33,6 +33,7 @@ function emitFileUploadedEvent(payload: {
   uploadedByUid: string;
   timestamp: string;
 }) {
+  // eslint-disable-next-line no-console
   console.info("FILE_UPLOADED", payload);
 }
 
@@ -155,9 +156,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("files/create error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

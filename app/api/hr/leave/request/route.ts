@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
@@ -64,12 +64,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Email HR + admin about leave request — non-blocking
-    getUsersByRoles(["hr", "admin"], me.tenantId).then((hrTeam) => {
+    getUsersByRoles(["hr", "admin"], me.tenantId as string).then((hrTeam) => {
       const startFormatted = new Date(payload.startDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       const endFormatted = new Date(payload.endDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       return Promise.all(hrTeam.map((member) =>
         sendEmail({
-          to: member.email || "",
+          to: member.email as unknown || "",
           subject: `🏖️ Leave request — ${me.name || me.email || "Employee"}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">

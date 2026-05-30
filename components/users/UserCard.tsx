@@ -43,8 +43,8 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
       }
 
       onUpdate();
-    } catch (err: any) {
-      alert(err?.message || "Unable to update user status");
+    } catch (err) {
+      alert((err instanceof Error ? err.message : undefined) || "Unable to update user status");
     } finally {
       setIsLoading(false);
     }

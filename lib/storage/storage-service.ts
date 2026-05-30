@@ -320,8 +320,8 @@ export class StorageService {
       await fs.writeFile(filePath, file);
       await execFileAsync("clamscan", ["--no-summary", filePath]);
       return "clean";
-    } catch (error: any) {
-      if (error?.code === 1) {
+    } catch (error) {
+      if ((error as Record<string, unknown>)?.code === 1) {
         return "infected";
       }
       return "failed";

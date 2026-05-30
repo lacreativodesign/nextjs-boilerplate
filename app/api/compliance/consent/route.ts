@@ -28,14 +28,14 @@ export async function GET(request: Request) {
   const userId = new URL(request.url).searchParams.get("userId");
   let query: FirebaseFirestore.Query = adminDb
     .collection("tenants")
-    .doc(me.tenantId)
+    .doc(me.tenantId as string)
     .collection("complianceConsentRecords")
     .orderBy("updatedAt", "desc")
     .limit(200);
 
   if (userId) query = query.where("userId", "==", userId);
   const snapshot = await query.get();
-  return NextResponse.json({ consentRecords: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) });
+  return NextResponse.json({ consentRecords: snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })) });
 }
 
 export async function POST(request: Request) {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
-  const ref = adminDb.collection("tenants").doc(me.tenantId).collection("complianceConsentRecords").doc();
+  const ref = adminDb.collection("tenants").doc(me.tenantId as string).collection("complianceConsentRecords").doc();
   await ref.set({
     tenantId: me.tenantId,
     ...parsed.data,

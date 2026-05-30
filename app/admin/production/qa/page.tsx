@@ -10,6 +10,7 @@ import ProductionProjectDrawer, {
 type QueuePayload = {
   ok: boolean;
   projects: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {
@@ -100,10 +101,10 @@ export default function ProductionQAPage() {
         ) as string[];
         setProjectTypes(types.sort());
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       if (mountedRef ? mountedRef.current : true)
-        setError(err?.message || 'Unable to load QA projects.');
+        setError((err instanceof Error ? err.message : undefined) || 'Unable to load QA projects.');
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

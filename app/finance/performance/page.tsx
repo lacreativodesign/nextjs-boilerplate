@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PeriodSelector from "@/components/performance/PeriodSelector";
 import PerformanceCard from "@/components/performance/PerformanceCard";
-import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
+import { getCurrentPeriod, type PeriodType } from "@/lib/performance/periods";
 
 type FinanceKPIs = {
   revenueThisMonth: number;

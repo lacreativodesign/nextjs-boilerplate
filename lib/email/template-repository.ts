@@ -3,7 +3,7 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { getVariablesForCategory, PREBUILT_TEMPLATES } from "@/lib/email/template-catalog";
-import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from "@/types/email-templates";
+import { EMAIL_TEMPLATE_CATEGORIES, type EmailTemplateCategory } from "@/types/email-templates";
 
 export const emailTemplateSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -22,11 +22,11 @@ export const emailTemplateSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export function toIso(value: any): string | null {
+export function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   return null;
 }
 

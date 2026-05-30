@@ -18,7 +18,7 @@ export type TenantPlanState = {
   plan: PlanTier;
   modules: PlanModules;
   planSetBy?: PlanSetBy | null;
-  planUpdatedAt?: any;
+  planUpdatedAt?: unknown;
 };
 
 export async function getTenantPlanState(tenantId: string): Promise<TenantPlanState> {

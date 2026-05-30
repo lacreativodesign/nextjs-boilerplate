@@ -9,7 +9,7 @@ export interface Activity {
   entity: string;
   entityId: string;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export async function publishActivity(activity: Omit<Activity, 'id' | 'timestamp'>) {

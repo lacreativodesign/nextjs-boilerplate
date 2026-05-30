@@ -33,7 +33,7 @@ export async function GET() {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     return NextResponse.json({ ok: true, segments });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to load segments" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Failed to load segments" }, { status: 500 });
   }
 }

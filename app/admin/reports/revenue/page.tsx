@@ -64,7 +64,7 @@ export default function RevenueReportsPage() {
       const json = await res.json();
       if (!res.ok || !json?.ok) return;
       const options = Array.isArray(json.clients)
-        ? json.clients.map((client: any) => ({ label: client.companyName || client.name || "Client", value: client.id }))
+        ? json.clients.map((client: unknown) => ({ label: (client as Record<string, unknown>).companyName || (client as Record<string, unknown>).name || "Client", value: (client as Record<string, unknown>).id }))
         : [];
       setClients([{ label: "All Clients", value: "" }, ...options]);
     } catch (err) {
@@ -93,7 +93,7 @@ export default function RevenueReportsPage() {
         throw new Error(json?.error || "Unable to load revenue reports.");
       }
       setData(json as RevenueResponse);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports revenue load error", err);
       setError("Unable to load revenue reports right now.");
     } finally {

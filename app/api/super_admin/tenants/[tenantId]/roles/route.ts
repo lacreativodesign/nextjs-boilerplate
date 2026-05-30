@@ -63,8 +63,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
     });
 
     return NextResponse.json({ ok: true, rolesEnabled });
-  } catch (error: any) {
-    const message = error?.message || "Server error";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Server error";
     const status = message === "Forbidden" ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

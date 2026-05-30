@@ -20,18 +20,18 @@ type ApprovalDoc = {
   entityType?: string;
   entityId?: string;
   requestedBy?: { uid?: string; role?: string };
-  requestedData?: Record<string, any>;
+  requestedData?: Record<string, unknown>;
   status?: string;
   approvalChain?: Array<{
     role?: string;
     uid?: string;
     decision?: "approved" | "rejected";
     note?: string;
-    decidedAt?: any;
+    decidedAt?: unknown;
   }>;
 };
 
-function parseString(value: any) {
+function parseString(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
 }
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const approval = approvalSnap.data() as ApprovalDoc;
     const type = approval.type as ApprovalType;
     const entityId = parseString(approval.entityId);
-    const tenantId = normalizeTenantId(approval.tenantId || me.tenantId);
+    const tenantId = normalizeTenantId(approval.tenantId as string | null | undefined || me.tenantId);
     const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Approval missing entity id." }, { status: 400 });
     }
 
-    if (normalizeTenantId(me.tenantId) !== tenantId) {
+    if (normalizeTenantId(me.tenantId as string | null | undefined) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -291,9 +291,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("approvals/approve error:", err);
-    const message = String(err?.message || "Unable to approve.");
+    const message = String((err instanceof Error ? err.message : undefined) || "Unable to approve.");
     const status = message.toLowerCase().includes("forbidden") ? 403 : message.toLowerCase().includes("not found") ? 404 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { generatePreviewPayload, renderTemplate } from "@/lib/email/template-engine";
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     });
 
     return NextResponse.json({ ok: true, preview: { ...preview, renderedHtml: brandedHtml }, context, branding });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/email/templates/[id]/preview error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to generate preview" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to generate preview" }, { status: 500 });
   }
 }

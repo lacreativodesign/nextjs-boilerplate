@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales campaigns create error:", err);
     return NextResponse.json({ ok: false, error: "Unable to create campaign." }, { status: 500 });
   }

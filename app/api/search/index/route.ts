@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { indexDocument } from "@/lib/search/global-search";
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = bodySchema.parse(await request.json());
-    const id = await indexDocument({ ...payload, tenantId: session.tenantId });
+    const id = await indexDocument({ ...payload, tenantId: session.tenantId }) as string;
 
     return NextResponse.json({ ok: true, id });
   } catch (error) {

@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const snap = await adminDb.collection("rate_limit_rules").orderBy("priority", "desc").get();
-  const rules = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+  const rules = snap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
   return NextResponse.json({ ok: true, rules });
 }
 

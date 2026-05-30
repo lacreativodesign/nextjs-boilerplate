@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "@/app/api/admin/_utils";
@@ -13,11 +13,11 @@ const schema = z.object({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function asIso(value: any): string | null {
+function asIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate().toISOString();
   return null;
 }
 
@@ -44,23 +44,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const taskDoc = await adminDb.collection("tasks").doc(params.id).get();
     if (!taskDoc.exists) return NextResponse.json({ ok: false, error: "Task not found." }, { status: 404 });
 
-    const task = taskDoc.data() as any;
-    if (task.tenantId !== me.tenantId) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    const task = taskDoc.data() as unknown;
+    if ((task as Record<string, unknown>).tenantId !== me.tenantId) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-    const originalStart = asIso(task.startDate) || asIso(task.createdAt) || new Date().toISOString();
+    const originalStart = asIso((task as Record<string, unknown>).startDate) || asIso((task as Record<string, unknown>).createdAt) || new Date().toISOString();
     const deltaDays = dayDelta(originalStart, validated.data.startDate);
 
     const depsSnap = await adminDb
       .collection("taskDependencies")
       .where("tenantId", "==", me.tenantId)
-      .where("projectId", "==", task.projectId)
+      .where("projectId", "==", (task as Record<string, unknown>).projectId)
       .get();
 
-    const deps = depsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
-    const downstream = new Map<string, any[]>();
+    const deps = depsSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })) as unknown[];
+    const downstream = new Map<string, unknown[]>();
     for (const dep of deps) {
-      if (!downstream.has(dep.predecessorTaskId)) downstream.set(dep.predecessorTaskId, []);
-      downstream.get(dep.predecessorTaskId)!.push(dep);
+      const predId = String((dep as Record<string, unknown>).predecessorTaskId || "");
+      if (!downstream.has(predId)) downstream.set(predId, []);
+      downstream.get(predId)!.push(dep);
     }
 
     const queue = [params.id];
@@ -75,29 +76,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       const outgoing = downstream.get(currentTaskId) || [];
       for (const dep of outgoing) {
-        const successorRef = adminDb.collection("tasks").doc(dep.successorTaskId);
+        const successorRef = adminDb.collection("tasks").doc(String((dep as Record<string, unknown>).successorTaskId || ""));
         const successorDoc = await successorRef.get();
         if (!successorDoc.exists) continue;
-        const successor = successorDoc.data() as any;
-        if (successor.tenantId !== me.tenantId) continue;
+        const successor = successorDoc.data() as unknown;
+        if ((successor as Record<string, unknown>).tenantId !== me.tenantId) continue;
 
         const predecessorUpdate = updates.get(currentTaskId);
         if (!predecessorUpdate) continue;
 
-        const succStart = asIso(successor.startDate) || asIso(successor.createdAt) || predecessorUpdate.startDate;
-        const succEnd = asIso(successor.dueDate) || succStart;
+        const succStart = asIso((successor as Record<string, unknown>).startDate) || asIso((successor as Record<string, unknown>).createdAt) || predecessorUpdate.startDate;
+        const succEnd = asIso((successor as Record<string, unknown>).dueDate) || succStart;
         const durationDays = Math.max(1, Math.round((new Date(succEnd).getTime() - new Date(succStart).getTime()) / DAY_MS));
-        const lag = Number(dep.lagDays || 0);
+        const lag = Number((dep as Record<string, unknown>).lagDays || 0);
 
         let nextStart = succStart;
         let nextEnd = succEnd;
-        if (dep.type === "finish_to_start") {
+        if ((dep as Record<string, unknown>).type === "finish_to_start") {
           nextStart = addDays(predecessorUpdate.dueDate, lag);
           nextEnd = addDays(nextStart, durationDays);
-        } else if (dep.type === "start_to_start") {
+        } else if ((dep as Record<string, unknown>).type === "start_to_start") {
           nextStart = addDays(predecessorUpdate.startDate, lag);
           nextEnd = addDays(nextStart, durationDays);
-        } else if (dep.type === "finish_to_finish") {
+        } else if ((dep as Record<string, unknown>).type === "finish_to_finish") {
           nextEnd = addDays(predecessorUpdate.dueDate, lag);
           nextStart = addDays(nextEnd, -durationDays);
         } else {
@@ -105,12 +106,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           nextEnd = addDays(succEnd, deltaDays);
         }
 
-        const existing = updates.get(dep.successorTaskId);
+        const succId = String((dep as Record<string, unknown>).successorTaskId || "");
+        const existing = updates.get(succId);
         if (!existing || new Date(nextStart).getTime() > new Date(existing.startDate).getTime()) {
-          updates.set(dep.successorTaskId, { startDate: nextStart, dueDate: nextEnd });
+          updates.set(succId, { startDate: nextStart, dueDate: nextEnd });
         }
 
-        queue.push(dep.successorTaskId);
+        queue.push(succId);
       }
     }
 

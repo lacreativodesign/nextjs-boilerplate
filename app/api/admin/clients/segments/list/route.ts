@@ -53,7 +53,7 @@ export async function GET() {
   const canAdmin = isAdminRole(me.role);
 
   try {
-    const seeded = await seedDefaults(me.tenantId, me.uid);
+    const seeded = await seedDefaults(me.tenantId as string, me.uid);
     const snap = await db.collection("clientSegments").where("tenantId", "==", me.tenantId).get();
 
     const segments = snap.docs
@@ -73,7 +73,7 @@ export async function GET() {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     return NextResponse.json({ ok: true, segments, seeded, role: me.role, canAdmin });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to load segments" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Failed to load segments" }, { status: 500 });
   }
 }

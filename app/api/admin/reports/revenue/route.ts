@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
@@ -41,13 +41,13 @@ export async function GET(req: Request) {
       queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     const filteredInvoices = invoices.filter((inv) => {
-      if (clientId && String(inv.clientId || "") !== clientId) return false;
+      if (clientId && String(inv.clientId as unknown || "") !== clientId) return false;
       if (normalizedStatusFilter && normalizeInvoiceStatus(inv.status) !== normalizedStatusFilter) return false;
-      const issuedMs = toMillis(inv.issuedAt || inv.createdAt);
+      const issuedMs = toMillis(inv.issuedAt as unknown || inv.createdAt);
       if (!issuedMs) return false;
       if (dateFrom && issuedMs < dateFrom.getTime()) return false;
       if (dateTo && issuedMs > dateTo.getTime()) return false;
@@ -55,8 +55,8 @@ export async function GET(req: Request) {
     });
 
     const filteredPayments = payments.filter((payment) => {
-      if (clientId && String(payment.clientId || "") !== clientId) return false;
-      const paidMs = toMillis(payment.paidAt || payment.createdAt);
+      if (clientId && String(payment.clientId as unknown || "") !== clientId) return false;
+      const paidMs = toMillis(payment.paidAt as unknown || payment.createdAt);
       if (!paidMs) return false;
       if (dateFrom && paidMs < dateFrom.getTime()) return false;
       if (dateTo && paidMs > dateTo.getTime()) return false;
@@ -68,13 +68,13 @@ export async function GET(req: Request) {
     const monthKeys = Array.from(
       new Set(
         paidInvoices
-          .map((inv) => toMillis(inv.paidAt || inv.updatedAt || inv.createdAt))
+          .map((inv) => toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt))
           .filter(Boolean)
           .map((ms) => getMonthKey(new Date(ms as number)))
           .concat(
             filteredPayments
               .filter((pay) => normalizePaymentStatus(pay.status) === "succeeded")
-              .map((pay) => toMillis(pay.paidAt || pay.createdAt))
+              .map((pay) => toMillis(pay.paidAt as unknown || pay.createdAt))
               .filter(Boolean)
               .map((ms) => getMonthKey(new Date(ms as number)))
           )
@@ -85,22 +85,22 @@ export async function GET(req: Request) {
     const paymentsByMonth = monthKeys.map((key) => ({ label: key, paymentsUsd: 0 }));
 
     paidInvoices.forEach((inv) => {
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = revenueByMonth.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.revenueUsd += Number(inv.amountTotalUsd || 0);
+      bucket.revenueUsd += Number(inv.amountTotalUsd as unknown || 0);
     });
 
     filteredPayments.forEach((payment) => {
       if (normalizePaymentStatus(payment.status) !== "succeeded") return;
-      const paidMs = toMillis(payment.paidAt || payment.createdAt);
+      const paidMs = toMillis(payment.paidAt as unknown || payment.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
       const bucket = paymentsByMonth.find((row) => row.label === key);
       if (!bucket) return;
-      bucket.paymentsUsd += Number(payment.amountUsd || 0);
+      bucket.paymentsUsd += Number(payment.amountUsd as unknown || 0);
     });
 
     const now = new Date();
@@ -110,7 +110,7 @@ export async function GET(req: Request) {
 
     const outstandingInvoices = invoices
       .filter((inv) => {
-        if (clientId && String(inv.clientId || "") !== clientId) return false;
+        if (clientId && String(inv.clientId as unknown || "") !== clientId) return false;
         const status = normalizeInvoiceStatus(inv.status);
         if (["paid", "void"].includes(status)) return false;
         if (normalizedStatusFilter && status !== normalizedStatusFilter) return false;
@@ -122,7 +122,7 @@ export async function GET(req: Request) {
         if (dueMs) {
           diffDays = Math.max(0, Math.floor((now.getTime() - dueMs) / (1000 * 60 * 60 * 24)));
         }
-        const amount = Number(inv.amountTotalUsd || 0);
+        const amount = Number(inv.amountTotalUsd as unknown || 0);
         const bucketIndex = agingBuckets.findIndex((limit) => diffDays <= limit);
         if (bucketIndex === -1) {
           bucketOverflow += amount;
@@ -132,13 +132,13 @@ export async function GET(req: Request) {
 
         return {
           id: inv.id,
-          orderId: inv.orderId || inv.id,
-          clientId: inv.clientId || "",
-          clientName: inv.clientName || "",
+          orderId: inv.orderId as unknown || inv.id,
+          clientId: inv.clientId as unknown || "",
+          clientName: inv.clientName as unknown || "",
           amountTotalUsd: amount,
           dueDate: toISO(inv.dueDate),
-          status: inv.status || "Sent",
-          updatedAt: toISO(inv.updatedAt || inv.createdAt),
+          status: inv.status as unknown || "Sent",
+          updatedAt: toISO(inv.updatedAt as unknown || inv.createdAt),
         };
       })
       .sort((a, b) => {
@@ -150,14 +150,14 @@ export async function GET(req: Request) {
     const topClientsMap = new Map<string, { clientId: string; clientName: string; totalUsd: number }>();
     filteredInvoices.forEach((inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (!paidMs) return;
       if (dateFrom && paidMs < dateFrom.getTime()) return;
       if (dateTo && paidMs > dateTo.getTime()) return;
-      const id = String(inv.clientId || "unknown");
-      const name = String(inv.clientName || "Unknown");
+      const id = String(inv.clientId as unknown || "unknown");
+      const name = String(inv.clientName as unknown || "Unknown");
       const current = topClientsMap.get(id) || { clientId: id, clientName: name, totalUsd: 0 };
-      current.totalUsd += Number(inv.amountTotalUsd || 0);
+      current.totalUsd += Number(inv.amountTotalUsd as unknown || 0);
       topClientsMap.set(id, current);
     });
 
@@ -177,9 +177,9 @@ export async function GET(req: Request) {
       topClientsByRevenue,
       outstandingInvoices,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/revenue error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

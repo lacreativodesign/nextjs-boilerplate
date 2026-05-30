@@ -19,7 +19,7 @@ type ProjectDoc = {
   isDeleted?: boolean;
 };
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -169,9 +169,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/files upload error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

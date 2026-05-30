@@ -28,10 +28,10 @@ type ApprovalItem = {
   meta: Record<string, unknown>;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -61,7 +61,7 @@ export async function GET() {
     }
 
     const role = normalizeRole(me.role);
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireApprovalsModule(tenantId, role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -190,9 +190,9 @@ export async function GET() {
     approvals.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
 
     return NextResponse.json({ ok: true, approvals });
-  } catch (err: any) {
+  } catch (err) {
     console.error("approvals list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

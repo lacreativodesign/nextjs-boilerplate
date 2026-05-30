@@ -18,23 +18,23 @@ export async function POST(request: Request) {
       tenantId: auth.user.tenantId,
       actorUid: auth.user.uid,
       from: String(body.from),
-      to: body.to.map((entry: any) => String(entry)),
+      to: body.to.map((entry: unknown) => String(entry)),
       subject: String(body.subject),
       html: String(body.html),
       text: body.text ? String(body.text) : undefined,
       threadId: body.threadId ? String(body.threadId) : undefined,
       attachments: Array.isArray(body.attachments)
-        ? body.attachments.map((attachment: any) => ({
-            filename: String(attachment.filename),
-            mimeType: String(attachment.mimeType),
-            base64Content: String(attachment.base64Content),
+        ? body.attachments.map((attachment: unknown) => ({
+            filename: String((attachment as Record<string, unknown>).filename),
+            mimeType: String((attachment as Record<string, unknown>).mimeType),
+            base64Content: String((attachment as Record<string, unknown>).base64Content),
           }))
         : undefined,
       trackOpens: Boolean(body.trackOpens),
     });
 
     return NextResponse.json({ ok: true, message: sent });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to send Gmail message." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to send Gmail message." }, { status: 500 });
   }
 }

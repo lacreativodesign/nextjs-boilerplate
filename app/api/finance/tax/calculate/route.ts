@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireFinance } from "@/app/api/finance/_utils";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { calculateTax, isClientTaxExempt, TaxExemption } from "@/lib/finance/tax";
+import { calculateTax, isClientTaxExempt, type TaxExemption } from "@/lib/finance/tax";
 import { logError } from "@/lib/logging";
 import { checkRateLimit } from "@/lib/security";
 

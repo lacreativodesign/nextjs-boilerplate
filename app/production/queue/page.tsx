@@ -124,9 +124,9 @@ export default function ProductionQueuePage() {
       if (mountedRef ? mountedRef.current : true) {
         setProjects(payload.projects || []);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      if (mountedRef ? mountedRef.current : true) setError(err?.message || 'Unable to load queue.');
+      if (mountedRef ? mountedRef.current : true) setError((err instanceof Error ? err.message : undefined) || 'Unable to load queue.');
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

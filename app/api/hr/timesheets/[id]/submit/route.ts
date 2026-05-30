@@ -13,7 +13,7 @@ export async function PUT(_: Request, { params }: { params: Promise<{ id: string
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });

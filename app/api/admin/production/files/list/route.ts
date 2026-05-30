@@ -11,15 +11,15 @@ type FileDoc = {
   fileName?: string;
   downloadUrl?: string;
   uploadedByName?: string;
-  uploadedAt?: any;
+  uploadedAt?: unknown;
   isLatest?: boolean;
   isDeleted?: boolean;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -59,9 +59,9 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ ok: true, files });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/files list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

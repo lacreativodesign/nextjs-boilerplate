@@ -1,5 +1,5 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { persistRateLimitConfig, RateLimitRule, TenantQuota, ThrottleException } from "@/lib/rate-limit/limiter";
+import { persistRateLimitConfig, type RateLimitRule, type TenantQuota, type ThrottleException } from "@/lib/rate-limit/limiter";
 
 export async function loadRateLimitConfigFromFirestore() {
   const [rulesSnap, quotaSnap, exceptionsSnap] = await Promise.all([

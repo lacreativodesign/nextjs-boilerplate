@@ -162,7 +162,7 @@ export class ReportBuilderService {
         break;
       }
 
-      rows.push(...snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      rows.push(...snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })));
       cursor = snapshot.docs[snapshot.docs.length - 1];
       hasMore = snapshot.size === MAX_PAGE_SIZE;
     }
@@ -416,7 +416,7 @@ export class ReportBuilderService {
 
   private static inferType(value: unknown): ReportFieldSelection["type"] {
     if (value == null) return "string";
-    if (value instanceof Date || typeof (value as any)?.toDate === "function") return "date";
+    if (value instanceof Date || typeof (value as unknown)?.toDate as unknown === "function") return "date";
     if (Array.isArray(value)) return "array";
     const t = typeof value;
     if (t === "number") return "number";
@@ -435,7 +435,7 @@ export class ReportBuilderService {
         && typeof value === "object"
         && !Array.isArray(value)
         && !(value instanceof Date)
-        && typeof (value as any)?.toDate !== "function"
+        && typeof (value as unknown)?.toDate as unknown !== "function"
       ) {
         entries.push(...this.flattenRecord(value as Record<string, unknown>, path));
       } else {
@@ -489,8 +489,8 @@ export class ReportBuilderService {
   private static toDisplayValue(value: unknown) {
     if (value == null) return "";
     if (value instanceof Date) return value.toISOString();
-    if (typeof (value as any)?.toDate === "function") {
-      return (value as any).toDate().toISOString();
+    if (typeof (value as unknown)?.toDate as unknown === "function") {
+      return (value as unknown).toDate().toISOString();
     }
     if (typeof value === "object") {
       return JSON.stringify(value);

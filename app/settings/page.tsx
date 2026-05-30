@@ -41,11 +41,11 @@ export default function SettingsProfilePage() {
         name: tenantData.user.displayName || "",
         email: tenantData.user.email || "",
         role: tenantData.user.role || "",
-        phone: (tenantData.user as any).phone || "",
-        jobTitle: (tenantData.user as any).jobTitle || "",
-        department: (tenantData.user as any).department || "",
-        bio: (tenantData.user as any).bio || "",
-        avatarUrl: (tenantData.user as any).avatarUrl || "",
+        phone: (tenantData.user as unknown).phone || "",
+        jobTitle: (tenantData.user as unknown).jobTitle || "",
+        department: (tenantData.user as unknown).department || "",
+        bio: (tenantData.user as unknown).bio || "",
+        avatarUrl: (tenantData.user as unknown).avatarUrl || "",
       });
     }
     setLoading(false);

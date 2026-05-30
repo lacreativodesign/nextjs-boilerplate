@@ -41,9 +41,9 @@ export default function SecuritySettingsPage() {
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
+    } catch (err) {
       console.error("security settings load error", err);
-      setError(err.message || "Unable to load security settings.");
+      setError((err as Record<string, unknown>).message || "Unable to load security settings.");
     } finally {
       setLoading(false);
     }
@@ -71,9 +71,9 @@ export default function SecuritySettingsPage() {
         throw new Error(data?.error || "Unable to save settings.");
       }
       setSuccess("Security settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("security settings save error", err);
-      setError(err.message || "Unable to save security settings.");
+      setError((err as Record<string, unknown>).message || "Unable to save security settings.");
     } finally {
       setSaving(false);
     }

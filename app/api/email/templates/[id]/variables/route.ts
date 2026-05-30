@@ -24,8 +24,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const variables = Array.from(new Set([...(data.variables || []), ...categoryVariables])).sort();
 
     return NextResponse.json({ ok: true, variables, category: data.category });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/email/templates/[id]/variables error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to list variables" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to list variables" }, { status: 500 });
   }
 }

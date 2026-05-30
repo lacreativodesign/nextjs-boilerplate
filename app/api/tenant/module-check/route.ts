@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.json({ ok: true, enabled });
     response.headers.set("Cache-Control", "private, max-age=30");
     return response;
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Server error" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Server error" }, { status: 500 });
   }
 }

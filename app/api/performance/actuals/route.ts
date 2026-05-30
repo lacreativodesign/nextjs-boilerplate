@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
-import { getPeriodDateRange, PeriodType } from "@/lib/performance/periods";
+import { getPeriodDateRange, type PeriodType } from "@/lib/performance/periods";
 
 async function safeCount(queryBuilder: () => Promise<FirebaseFirestore.QuerySnapshot>): Promise<number> {
   try {

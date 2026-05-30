@@ -66,7 +66,7 @@ export async function GET() {
       winLoss: { won, lost, ratio },
       agingBuckets,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager reports summary error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load reports." }, { status: 500 });
   }

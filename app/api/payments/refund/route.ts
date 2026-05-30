@@ -96,8 +96,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, refundId: refund.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("payments/refund error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to process refund." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Unable to process refund." }, { status: 500 });
   }
 }

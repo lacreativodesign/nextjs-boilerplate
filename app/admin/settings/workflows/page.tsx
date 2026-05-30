@@ -48,9 +48,9 @@ export default function WorkflowSettingsPage() {
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
+    } catch (err) {
       console.error("workflow settings load error", err);
-      setError(err.message || "Unable to load workflow settings.");
+      setError((err as Record<string, unknown>).message || "Unable to load workflow settings.");
     } finally {
       setLoading(false);
     }
@@ -85,9 +85,9 @@ export default function WorkflowSettingsPage() {
         throw new Error(data?.error || "Unable to save settings.");
       }
       setSuccess("Workflow settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("workflow settings save error", err);
-      setError(err.message || "Unable to save workflow settings.");
+      setError((err as Record<string, unknown>).message || "Unable to save workflow settings.");
     } finally {
       setSaving(false);
     }

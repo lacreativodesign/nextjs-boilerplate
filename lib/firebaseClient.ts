@@ -124,8 +124,8 @@ export async function fetchUserRole(uid: string): Promise<string | null> {
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
 
-    const data = snap.data() as any;
-    const role = (data.role || "")
+    const data = snap.data() as unknown;
+    const role = ((data as Record<string, unknown>).role || "")
       .toString()
       .toLowerCase()
       .replace(/-/g, "_")

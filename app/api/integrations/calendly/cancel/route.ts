@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { cancelCalendlyMeeting } from "@/lib/integrations/calendly";
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/integrations/calendly/cancel", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to cancel Calendly meeting." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to cancel Calendly meeting." }, { status: 400 });
   }
 }

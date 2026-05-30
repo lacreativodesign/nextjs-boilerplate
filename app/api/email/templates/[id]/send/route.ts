@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/email/templates/[id]/send error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to send test email" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to send test email" }, { status: 500 });
   }
 }

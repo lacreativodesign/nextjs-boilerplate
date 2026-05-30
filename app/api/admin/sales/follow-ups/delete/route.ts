@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales follow-ups delete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to delete follow-up." }, { status: 500 });
   }

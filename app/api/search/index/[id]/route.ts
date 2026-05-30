@@ -11,7 +11,7 @@ export async function DELETE(_request: Request, context: { params: { id: string 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const removed = await removeIndexedDocument({ tenantId: session.tenantId, id: context.params.id });
+    const removed = await removeIndexedDocument({ tenantId: session.tenantId, id: context.params.id }) as string;
     return NextResponse.json({ ok: removed });
   } catch (error) {
     console.error("Delete index document error", error);

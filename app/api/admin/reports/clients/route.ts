@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getReportSettings, requireReportsAccess, toISO, toMillis } from "../_utils";
+import { getReportSettings, requireReportsAccess, _toISO, toMillis } from "../_utils";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
 import { normalizeTenantId } from "@/lib/tenant";
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
     const segmentType = String(searchParams.get("segmentType") || "").trim();
@@ -44,12 +44,12 @@ export async function GET(req: Request) {
       queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const clients = clientDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const projects = projectDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     const changeRequests = [
-      ...changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...changeRequestAltDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
+      ...changeRequestAltDocs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     ];
 
     const filteredClients = clients.filter((client) => {
@@ -60,16 +60,16 @@ export async function GET(req: Request) {
         return services.map((item: string) => slugify(item)).includes(value);
       }
       if (segmentType === "business_type") {
-        return slugify(client.segmentBusinessType || "") === value;
+        return slugify(client.segmentBusinessType as unknown || "") === value;
       }
       if (segmentType === "industry") {
-        return slugify(client.segmentIndustry || "") === value;
+        return slugify(client.segmentIndustry as unknown || "") === value;
       }
       if (segmentType === "geo") {
-        return slugify(client.segmentGeo || client.country || "") === value;
+        return slugify(client.segmentGeo as unknown || client.country as unknown || "") === value;
       }
       if (segmentType === "value") {
-        const band = getValueBand(Number(client.totalPaidUsd || 0));
+        const band = getValueBand(Number(client.totalPaidUsd as unknown || 0));
         return band.slug === value;
       }
       return true;
@@ -77,25 +77,25 @@ export async function GET(req: Request) {
 
     const invoiceTotalsByClient = invoices.reduce((acc, inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return acc;
-      const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
+      const paidMs = toMillis(inv.paidAt as unknown || inv.updatedAt as unknown || inv.createdAt);
       if (dateFrom && (!paidMs || paidMs < dateFrom.getTime())) return acc;
       if (dateTo && (!paidMs || paidMs > dateTo.getTime())) return acc;
-      const clientId = String(inv.clientId || "");
-      acc.set(clientId, (acc.get(clientId) || 0) + Number(inv.amountTotalUsd || 0));
+      const clientId = String(inv.clientId as unknown || "");
+      acc.set(clientId, (acc.get(clientId) || 0) + Number(inv.amountTotalUsd as unknown || 0));
       return acc;
     }, new Map<string, number>());
 
     const activeProjectsByClient = projects.reduce((acc, project) => {
-      const stage = String(project.stage || "").toLowerCase();
+      const stage = String(project.stage as unknown || "").toLowerCase();
       if (stage === "delivered") return acc;
-      const clientId = String(project.clientId || "");
+      const clientId = String(project.clientId as unknown || "");
       acc.set(clientId, (acc.get(clientId) || 0) + 1);
       return acc;
     }, new Map<string, number>());
 
     const lastActivityByClient = projects.reduce((acc, project) => {
-      const clientId = String(project.clientId || "");
-      const updatedMs = toMillis(project.updatedAt || project.createdAt);
+      const clientId = String(project.clientId as unknown || "");
+      const updatedMs = toMillis(project.updatedAt as unknown || project.createdAt);
       if (!updatedMs) return acc;
       const existing = acc.get(clientId) || 0;
       acc.set(clientId, Math.max(existing, updatedMs));
@@ -103,23 +103,23 @@ export async function GET(req: Request) {
     }, new Map<string, number>());
 
     const keyAccounts = filteredClients
-      .filter((client) => Number(client.totalPaidUsd || 0) >= settings.keyAccountUsdThreshold)
+      .filter((client) => Number(client.totalPaidUsd as unknown || 0) >= settings.keyAccountUsdThreshold)
       .map((client) => ({
         id: client.id,
-        name: client.companyName || client.name || "Client",
-        totalPaidUsd: Number(client.totalPaidUsd || 0),
+        name: client.companyName as unknown || client.name as unknown || "Client",
+        totalPaidUsd: Number(client.totalPaidUsd as unknown || 0),
       }))
       .sort((a, b) => b.totalPaidUsd - a.totalPaidUsd);
 
     const clientHealthDistribution = projects.reduce((acc, project) => {
-      const health = String(project.health || "On Track");
+      const health = String(project.health as unknown || "On Track");
       acc.set(health, (acc.get(health) || 0) + 1);
       return acc;
     }, new Map<string, number>());
 
     const changeRequestsByClient = changeRequests.reduce((acc, request) => {
-      const clientId = String(request.clientId || "");
-      const clientName = String(request.clientName || "Unknown");
+      const clientId = String(request.clientId as unknown || "");
+      const clientName = String(request.clientName as unknown || "Unknown");
       const entry = acc.get(clientId) || { clientId, clientName, count: 0 };
       entry.count += 1;
       acc.set(clientId, entry);
@@ -141,23 +141,23 @@ export async function GET(req: Request) {
       },
       {
         label: "Geographies",
-        value: filteredClients.filter((client) => client.segmentGeo || client.country).length,
+        value: filteredClients.filter((client) => client.segmentGeo as unknown || client.country).length,
       },
       {
         label: "Value Bands",
-        value: filteredClients.filter((client) => Number(client.totalPaidUsd || 0) > 0).length,
+        value: filteredClients.filter((client) => Number(client.totalPaidUsd as unknown || 0) > 0).length,
       },
     ];
 
     const clientRows = filteredClients
       .map((client) => {
         const clientId = client.id;
-        const revenue = invoiceTotalsByClient.get(clientId) || Number(client.totalPaidUsd || 0);
+        const revenue = invoiceTotalsByClient.get(clientId) || Number(client.totalPaidUsd as unknown || 0);
         const lastActivityMs = lastActivityByClient.get(clientId) || null;
         const lastActivity = lastActivityMs ? new Date(lastActivityMs).toISOString() : null;
         return {
           id: clientId,
-          name: client.companyName || client.name || "Client",
+          name: client.companyName as unknown || client.name as unknown || "Client",
           totalPaidUsd: revenue,
           activeProjects: activeProjectsByClient.get(clientId) || 0,
           lastActivity,
@@ -183,7 +183,7 @@ export async function GET(req: Request) {
       ),
       business_type: Array.from(new Set(filteredClients.map((client) => client.segmentBusinessType).filter(Boolean))),
       industry: Array.from(new Set(filteredClients.map((client) => client.segmentIndustry).filter(Boolean))),
-      geo: Array.from(new Set(filteredClients.map((client) => client.segmentGeo || client.country).filter(Boolean))),
+      geo: Array.from(new Set(filteredClients.map((client) => client.segmentGeo as unknown || client.country).filter(Boolean))),
       value: valueBands.map((band) => band.name),
     };
 
@@ -199,9 +199,9 @@ export async function GET(req: Request) {
       clients: clientRows,
       segmentOptions,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/clients error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

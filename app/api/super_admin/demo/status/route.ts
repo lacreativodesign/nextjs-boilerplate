@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "@/app/api/super_admin/_utils";
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         employees: employees.data().count,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load demo status" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load demo status" }, { status: 500 });
   }
 }

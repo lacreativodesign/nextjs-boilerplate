@@ -14,7 +14,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function normalizeSlaDays(input: any) {
+function normalizeSlaDays(input: unknown) {
   const base = { ...DEFAULT_WORKFLOW_SETTINGS.slaDaysPerStage };
   if (typeof input !== "object" || !input) return base;
   Object.entries(input).forEach(([key, value]) => {

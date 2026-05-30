@@ -15,7 +15,7 @@ type ChangeRequestDoc = {
   type?: string;
   estimatedCost?: number | null;
   estimatedTimelineDays?: number | null;
-  statusHistory?: any[];
+  statusHistory?: unknown[];
   requestedByUid?: string;
   approvalStatus?: string | null;
   isDeleted?: boolean;
@@ -29,7 +29,7 @@ type ProjectDoc = {
   isDeleted?: boolean;
 };
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() as ChangeRequestDoc;
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String((data as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     const fromStatus = cleanString(data.status) || "Submitted";
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     const project = projectSnap.data() as ProjectDoc;
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (!isOwnedByAm(project, me.uid)) {
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       note: note || undefined,
     });
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: toStatus,
       statusHistory,
       updatedAt: serverNow,

@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       tenantId,
       clientId: String(data.clientId || ""),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("invite validate error:", err);
     return NextResponse.json({ ok: false, error: "Unable to validate invite." }, { status: 500 });
   }

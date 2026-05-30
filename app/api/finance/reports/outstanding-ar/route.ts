@@ -40,7 +40,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-outstanding-ar.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports outstanding-ar error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

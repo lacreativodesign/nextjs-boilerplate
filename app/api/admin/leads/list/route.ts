@@ -15,14 +15,14 @@ type LeadDoc = {
   ownerUid?: string | null;
   ownerName?: string | null;
   source?: string;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -51,7 +51,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const docs = await queryWithTenant(
       adminDb.collection("leads").where("isDeleted", "==", false).limit(500),
       tenantId
@@ -75,7 +75,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, leads });
-  } catch (err: any) {
+  } catch (err) {
     console.error("admin leads list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
   }

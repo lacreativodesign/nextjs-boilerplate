@@ -1,10 +1,10 @@
 import admin from "firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
+import { type USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
 import { normalizeTenantId } from "@/lib/tenant";
 import { sendEmail } from "@/lib/email/email-service";
-import {
+import type {
   NotificationFrequency,
   NotificationDigestItem,
   UserNotificationEventType,

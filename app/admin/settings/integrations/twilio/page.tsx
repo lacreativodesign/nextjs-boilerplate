@@ -68,8 +68,8 @@ export default function TwilioIntegrationPage() {
 
       setConnection(connectionData.connection);
       setLogs(logsData.logs || []);
-    } catch (err: any) {
-      setError(err.message || "Unable to load Twilio integration.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load Twilio integration.");
     } finally {
       setLoading(false);
     }
@@ -108,8 +108,8 @@ export default function TwilioIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to save Twilio configuration.");
       setSuccess("Twilio configuration saved.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to save Twilio configuration.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to save Twilio configuration.");
     } finally {
       setSaving(false);
     }
@@ -157,8 +157,8 @@ export default function TwilioIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to send SMS.");
       setSuccess(`SMS queued. SID: ${data.result.messageSid}`);
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to send SMS.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to send SMS.");
     } finally {
       setSaving(false);
     }

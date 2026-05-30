@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       await processPendingWebhookDeliveries(50);
     }
 
-    const deliveries = await listWebhookDeliveries(auth.user.tenantId, Number.isFinite(limit) ? limit : 100);
+    const deliveries = await listWebhookDeliveries(auth.user.tenantId as string, Number.isFinite(limit) ? limit : 100);
     return NextResponse.json({ ok: true, deliveries });
   } catch (err) {
     console.error("webhooks/deliveries list error", err);

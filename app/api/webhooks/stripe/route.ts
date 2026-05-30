@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         matchedEvent = event;
         matchedConfig = config;
         break;
-      } catch (err) {
+      } catch {
         continue;
       }
     }

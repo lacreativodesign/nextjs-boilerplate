@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { NotificationService } from "@/lib/notifications/notification-service";
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ error: moduleAccess.error }, { status: moduleAccess.status });

@@ -47,8 +47,8 @@ export default function WorkflowAutomationPage() {
       if (payload.workflows?.length && !selectedId) {
         setSelected(payload.workflows[0]);
       }
-    } catch (err: any) {
-      setError(err.message || "Unable to load workflows");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load workflows");
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function WorkflowAutomationPage() {
     if (!approvalSnap.ok) return;
     const payload = await approvalSnap.json();
     const items = Array.isArray(payload?.approvals)
-      ? payload.approvals.map((item: any) => ({ id: item.id, status: item.status || "pending", workflowId: item.entityId || "", mode: "sequential" }))
+      ? payload.approvals.map((item: unknown) => ({ id: (item as Record<string, unknown>).id, status: (item as Record<string, unknown>).status || "pending", workflowId: (item as Record<string, unknown>).entityId || "", mode: "sequential" }))
       : [];
     setApprovals(items);
   };
@@ -107,8 +107,8 @@ export default function WorkflowAutomationPage() {
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to save workflow");
       await loadWorkflows();
-    } catch (err: any) {
-      setError(err.message || "Unable to save workflow");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to save workflow");
     } finally {
       setSaving(false);
     }

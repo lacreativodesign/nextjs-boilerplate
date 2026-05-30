@@ -67,9 +67,9 @@ export default function HrPerformancePage() {
         if (!alive) return;
         setUsers(usersJson.users || []);
         setReviews(reviewsJson.reviews || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load performance reviews.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load performance reviews.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -125,8 +125,8 @@ export default function HrPerformancePage() {
       setReviews(refreshData.reviews || []);
       setForm({ userId: "", period: "", rating: "", tags: "", notes: "" });
       setDrawerOpen(false);
-    } catch (err: any) {
-      toastError(err?.message || "Unable to add review.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to add review.");
     } finally {
       setSaving(false);
     }

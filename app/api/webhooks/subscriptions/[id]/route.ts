@@ -16,7 +16,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || "Invalid payload." }, { status: 400 });
     }
 
-    const subscription = await updateWebhookSubscription(params.id, auth.user.tenantId, {
+    const subscription = await updateWebhookSubscription(params.id, auth.user.tenantId as string, {
       ...parsed.data,
       actorUid: auth.user.uid,
     });
@@ -34,7 +34,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     const auth = await requireWebhookAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const deleted = await deleteWebhookSubscription(params.id, auth.user.tenantId);
+    const deleted = await deleteWebhookSubscription(params.id, auth.user.tenantId as string);
     if (!deleted) return NextResponse.json({ ok: false, error: "Subscription not found." }, { status: 404 });
 
     return NextResponse.json({ ok: true });

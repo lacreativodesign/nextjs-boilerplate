@@ -121,8 +121,8 @@ export async function POST(req: Request) {
       checkoutUrl: session.url,
       stripePaymentIntentId: paymentIntentId,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("payments/create-intent error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to create payment intent." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Unable to create payment intent." }, { status: 500 });
   }
 }

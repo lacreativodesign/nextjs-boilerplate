@@ -24,7 +24,7 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
@@ -64,9 +64,9 @@ export async function POST() {
     }
 
     return NextResponse.json({ ok: true, updated: uniqueDocs.size + updatedNew });
-  } catch (err: any) {
+  } catch (err) {
     console.error("notifications mark-all-read error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, parseString, requireFinance, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const authUser = auth.user as { uid: string; role: string; tenantId: string | null; email?: string | null; name?: string | null; fullName?: string | null; displayName?: string | null };
 
     const body = await req.json();
     const id = parseString(body?.id).trim();
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
     const payroll = snap.data() || {};
     const userName = String(payroll.userName || "");
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+    const actorName = authUser.name || authUser.fullName || authUser.displayName || "";
 
     if (action === "approve") {
       await ref.update({
@@ -37,17 +38,17 @@ export async function POST(req: Request) {
       });
 
       await writeAuditLog({
-        tenantId: auth.user.tenantId || null,
-        actorUserId: auth.user.uid,
-        actorName: auth.user.name || auth.user.email || "",
-        actorRole: auth.user.role,
+        tenantId: authUser.tenantId || null,
+        actorUserId: authUser.uid,
+        actorName: authUser.name || authUser.email || "",
+        actorRole: authUser.role,
         actionType: "payroll.update",
-        entityType: "payroll",
+        entityType: "payroll" as NotificationEntityType,
         entityId: id,
-        metadata: { payrollId: id, tenantId: auth.user.tenantId },
+        metadata: { payrollId: id, tenantId: authUser.tenantId },
       }).catch(() => undefined);
 
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], authUser.tenantId || null);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
@@ -55,11 +56,11 @@ export async function POST(req: Request) {
             title: "Payroll approved",
             body: `Payroll approved for ${userName || "employee"}.`,
             type: "info",
-            entityType: "payroll",
+            entityType: "payroll" as NotificationEntityType,
             entityId: id,
             deepLink: "/finance/payroll",
-            createdBy: { uid: auth.user.uid, name: actorName },
-            tenantId: auth.user.tenantId || null,
+            createdBy: { uid: authUser.uid, name: actorName },
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -68,11 +69,11 @@ export async function POST(req: Request) {
         type: "finance.payroll_approved",
         title: "Payroll approved",
         description: `Payroll approved for ${userName || "employee"}.`,
-        entityType: "payroll",
+        entityType: "payroll" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       return NextResponse.json({ ok: true });
@@ -86,17 +87,17 @@ export async function POST(req: Request) {
       });
 
       await writeAuditLog({
-        tenantId: auth.user.tenantId || null,
-        actorUserId: auth.user.uid,
-        actorName: auth.user.name || auth.user.email || "",
-        actorRole: auth.user.role,
+        tenantId: authUser.tenantId || null,
+        actorUserId: authUser.uid,
+        actorName: authUser.name || authUser.email || "",
+        actorRole: authUser.role,
         actionType: "payroll.update",
-        entityType: "payroll",
+        entityType: "payroll" as NotificationEntityType,
         entityId: id,
-        metadata: { payrollId: id, tenantId: auth.user.tenantId },
+        metadata: { payrollId: id, tenantId: authUser.tenantId },
       }).catch(() => undefined);
 
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], authUser.tenantId || null);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
@@ -104,11 +105,11 @@ export async function POST(req: Request) {
             title: "Payroll marked paid",
             body: `Payroll paid for ${userName || "employee"}.`,
             type: "success",
-            entityType: "payroll",
+            entityType: "payroll" as NotificationEntityType,
             entityId: id,
             deepLink: "/finance/payroll",
-            createdBy: { uid: auth.user.uid, name: actorName },
-            tenantId: auth.user.tenantId || null,
+            createdBy: { uid: authUser.uid, name: actorName },
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -117,20 +118,20 @@ export async function POST(req: Request) {
         type: "finance.payroll_paid",
         title: "Payroll marked paid",
         description: `Payroll paid for ${userName || "employee"}.`,
-        entityType: "payroll",
+        entityType: "payroll" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/payroll update error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("invite complete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to complete invite." }, { status: 500 });
   }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireSuperAdmin } from "../../_utils";
@@ -19,10 +19,10 @@ type EventRecord = {
   metadata: Record<string, unknown>;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -112,9 +112,9 @@ export async function GET(req: NextRequest) {
     events = events.slice(0, limit);
 
     return NextResponse.json({ ok: true, events });
-  } catch (err: any) {
+  } catch (err) {
     console.error("super-admin/events list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

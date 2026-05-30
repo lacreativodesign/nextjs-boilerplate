@@ -1,7 +1,7 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { Timestamp } from "firebase-admin/firestore";
 import { NotificationService } from "@/lib/notifications/notification-service";
-import { Activity, ActivityType, Customer, CustomerNote, CustomerStatus, CustomerType } from "@/types/crm";
+import type { Activity, ActivityType, Customer, CustomerNote, CustomerStatus, CustomerType } from "@/types/crm";
 import { autoSyncCustomerIfEnabled } from "@/lib/integrations/mailchimp";
 
 export class CustomerService {

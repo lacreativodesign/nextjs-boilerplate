@@ -53,8 +53,8 @@ export default function SuperAdminTaxPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Failed to load tax data");
       setData(json);
-    } catch (err: any) {
-      setError(err.message || "Failed to load tax data");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Failed to load tax data");
     } finally {
       setLoading(false);
     }

@@ -18,9 +18,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const uploaded = await uploadTenantLogo(auth.user.tenantId, body.data);
+    const uploaded = await uploadTenantLogo(auth.user.tenantId as string, body.data);
     return NextResponse.json({ ok: true, ...uploaded });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to upload logo" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to upload logo" }, { status: 400 });
   }
 }

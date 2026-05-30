@@ -11,11 +11,11 @@ import { getCurrentUser } from "../../admin/_utils";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function isPaidStatus(value: any) {
+function isPaidStatus(value: unknown) {
   return cleanString(value).toLowerCase() === "paid";
 }
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing deal id." }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const dealRef = adminDb.collection("deals").doc(dealId);
     const dealSnap = await dealRef.get();
     if (!dealSnap.exists) {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     }
 
     let projectId: string | null = null;
-    let projectCreated = false;
+    const _projectCreated = false;
     let didUpdate = false;
     let usedOrderId = "";
     let projectName = cleanString(dealData.dealName || dealData.leadName || "New Project");
@@ -207,7 +207,7 @@ export async function POST(req: Request) {
       }
 
       const now = admin.firestore.FieldValue.serverTimestamp();
-      const dealUpdates: Record<string, any> = {
+      const dealUpdates: Record<string, unknown> = {
         paymentStatus: "Paid",
         paidAt: now,
         projectCreated: true,
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
 
       tx.set(dealRef, dealUpdates, { merge: true });
 
-      const clientUpdates: Record<string, any> = {
+      const clientUpdates: Record<string, unknown> = {
         portalUserUid: portalUserUid || null,
         accountStatus: "ACTIVE",
         accountActivatedAt: now,
@@ -322,11 +322,11 @@ export async function POST(req: Request) {
       status: alreadyPaid ? "already_paid" : "marked_paid",
       projectId: projectId || null,
     });
-  } catch (err: any) {
+  } catch (err) {
     if (createdAuthUid) {
       await adminAuth.deleteUser(createdAuthUid).catch(() => null);
     }
     console.error("mark-paid error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to mark deal paid." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Unable to mark deal paid." }, { status: 500 });
   }
 }

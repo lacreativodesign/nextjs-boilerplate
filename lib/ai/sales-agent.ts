@@ -171,10 +171,10 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
       await updateAgentTask(taskId, {
         proposedActions,
         status: "awaiting_approval",
-      } as any);
+      } as unknown);
     }
-  } catch (err: any) {
-    await markTaskFailed(taskId, err?.message || "Sales agent execution failed");
+  } catch (err) {
+    await markTaskFailed(taskId, (err instanceof Error ? err.message : undefined) || "Sales agent execution failed");
   }
 }
 
@@ -189,7 +189,7 @@ async function runAnthropicSalesLoop(
   trackTokens: (i: number, o: number) => void
 ): Promise<string> {
   const anthropicTools = toAnthropicTools(tools);
-  const messages: any[] = [{ role: "user", content: prompt }];
+  const messages: unknown[] = [{ role: "user", content: prompt }];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -218,14 +218,14 @@ async function runAnthropicSalesLoop(
     messages.push({ role: "assistant", content: data.content });
 
     if (data.stop_reason === "end_turn") {
-      const textBlock = data.content.find((b: any) => b.type === "text");
+      const textBlock = data.content.find((b: unknown) => (b as Record<string, unknown>).type === "text");
       if (textBlock?.text) return textBlock.text;
       throw new Error("No text response from sales agent");
     }
 
     if (data.stop_reason === "tool_use") {
-      const toolUseBlocks = data.content.filter((b: any) => b.type === "tool_use");
-      const toolResults: any[] = [];
+      const toolUseBlocks = data.content.filter((b: unknown) => (b as Record<string, unknown>).type === "tool_use");
+      const toolResults: unknown[] = [];
 
       for (const block of toolUseBlocks) {
         const validation = validateToolCall(block.name, "sales", "pro");
@@ -273,7 +273,7 @@ async function runOpenAISalesLoop(
   trackTokens: (i: number, o: number) => void
 ): Promise<string> {
   const openaiTools = toOpenAITools(tools);
-  const messages: any[] = [
+  const messages: unknown[] = [
     { role: "system", content: SALES_SYSTEM_PROMPT },
     { role: "user", content: prompt },
   ];

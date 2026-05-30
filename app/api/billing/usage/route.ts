@@ -22,11 +22,11 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const period = (searchParams.get("period") || currentPeriodKey()).trim();
-    const usage = await getUsageByTenant(auth.user.tenantId, period);
+    const usage = await getUsageByTenant(auth.user.tenantId as string, period);
 
     return NextResponse.json({ ok: true, period, usage });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to fetch usage" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to fetch usage" }, { status: 500 });
   }
 }
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, warning: enforcement.warning, metric, limit: enforcement.limit, used: enforcement.used });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to record usage" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to record usage" }, { status: 500 });
   }
 }

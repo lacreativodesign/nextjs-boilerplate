@@ -90,9 +90,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     const reports = [
-      ...ownedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...publicSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...sharedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...ownedSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
+      ...publicSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
+      ...sharedSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     ];
 
     const uniqueReports = Array.from(new Map(reports.map((r) => [r.id, r])).values()) as Report[];
@@ -108,11 +108,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ reports: allReports });
-  } catch (error: any) {
+  } catch (error) {
     if (isPlanAccessError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    const message = error?.message || "Failed to fetch reports";
+    const message = (error instanceof Error ? error.message : undefined) || "Failed to fetch reports";
     const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 500;
     console.error("Error fetching reports:", error);
     return NextResponse.json({ error: message }, { status });
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       id: docRef.id,
       ...report,
     });
-  } catch (error: any) {
+  } catch (error) {
     if (isPlanAccessError(error)) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

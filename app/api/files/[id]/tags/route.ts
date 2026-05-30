@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!session?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = schema.parse(await request.json());
-    const file = await FileManager.getFileById(params.id, session.tenantId);
+    const file = await FileManager.getFileById(params.id, session.tenantId as string);
     if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
     await FileManager.addTags({
@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to add tags" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to add tags" }, { status: 500 });
   }
 }

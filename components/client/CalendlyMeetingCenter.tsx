@@ -45,8 +45,8 @@ export default function CalendlyMeetingCenter({ prefillEmail, prefillName, widge
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load meetings.");
       setMeetings(data.events || []);
-    } catch (err: any) {
-      setError(err.message || "Unable to load meetings.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load meetings.");
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -68,8 +68,8 @@ export default function CalendlyMeetingCenter({ prefillEmail, prefillName, widge
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to cancel meeting.");
       await loadMeetings(false);
-    } catch (err: any) {
-      setError(err.message || "Unable to cancel meeting.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to cancel meeting.");
     }
   };
 

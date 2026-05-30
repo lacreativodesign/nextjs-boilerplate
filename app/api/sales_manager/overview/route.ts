@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
       queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
@@ -46,51 +46,51 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const newLeads30d = leads.filter((lead: any) => {
-      const createdAt = toISO(lead.createdAt || lead.updatedAt);
+    const newLeads30d = leads.filter((lead: unknown) => {
+      const createdAt = toISO((lead as Record<string, unknown>).createdAt || (lead as Record<string, unknown>).updatedAt);
       if (!createdAt) return false;
       const created = new Date(createdAt);
       return created >= thirtyDaysAgo;
     }).length;
 
-    const qualifiedLeads = leads.filter((lead: any) => String(lead.stage || "").toLowerCase() === "qualified").length;
+    const qualifiedLeads = leads.filter((lead: unknown) => String((lead as Record<string, unknown>).stage || "").toLowerCase() === "qualified").length;
 
-    const activeDeals = deals.filter((deal: any) => !String(deal.stage || "").toLowerCase().includes("closed")).length;
+    const activeDeals = deals.filter((deal: unknown) => !String((deal as Record<string, unknown>).stage || "").toLowerCase().includes("closed")).length;
 
-    const closedWonDeals = deals.filter((deal: any) => String(deal.stage || "") === "Closed Won");
-    const closedWonMonth = closedWonDeals.filter((deal: any) => {
-      const closedAt = toISO(deal.closedWonAt || deal.updatedAt || deal.createdAt);
+    const closedWonDeals = deals.filter((deal: unknown) => String((deal as Record<string, unknown>).stage || "") === "Closed Won");
+    const closedWonMonth = closedWonDeals.filter((deal: unknown) => {
+      const closedAt = toISO((deal as Record<string, unknown>).closedWonAt || (deal as Record<string, unknown>).updatedAt || (deal as Record<string, unknown>).createdAt);
       if (!closedAt) return false;
       const closed = new Date(closedAt);
       return closed >= startOfMonth;
     });
 
     const revenueClosed = closedWonMonth.reduce(
-      (sum: number, deal: any) => sum + Number(deal.finalPriceUsd || deal.valueUsd || 0),
+      (sum: number, deal: unknown) => sum + Number((deal as Record<string, unknown>).finalPriceUsd || (deal as Record<string, unknown>).valueUsd || 0),
       0
     );
 
-    const dealsCreatedMtd = deals.filter((deal: any) => {
-      const createdAt = toISO(deal.createdAt || deal.updatedAt);
+    const dealsCreatedMtd = deals.filter((deal: unknown) => {
+      const createdAt = toISO((deal as Record<string, unknown>).createdAt || (deal as Record<string, unknown>).updatedAt);
       if (!createdAt) return false;
       const created = new Date(createdAt);
       return created >= startOfMonth;
     }).length;
 
     const discountPending = deals.filter(
-      (deal: any) => String(deal.discountStatus || "").toLowerCase() === "pending"
+      (deal: unknown) => String((deal as Record<string, unknown>).discountStatus || "").toLowerCase() === "pending"
     );
-    const discountDeals = deals.filter((deal: any) => Number(deal.discountPct || 0) > 0);
+    const discountDeals = deals.filter((deal: unknown) => Number((deal as Record<string, unknown>).discountPct || 0) > 0);
     const avgDiscountPct = discountDeals.length
-      ? discountDeals.reduce((sum: number, deal: any) => sum + Number(deal.discountPct || 0), 0) / discountDeals.length
+      ? discountDeals.reduce((sum: number, deal: unknown) => sum + Number((deal as Record<string, unknown>).discountPct || 0), 0) / discountDeals.length
       : 0;
 
     const stageMap = new Map<string, { stage: string; count: number; value: number }>();
-    deals.forEach((deal: any) => {
-      const stage = String(deal.stage || "New Lead");
+    deals.forEach((deal: unknown) => {
+      const stage = String((deal as Record<string, unknown>).stage || "New Lead");
       const entry = stageMap.get(stage) || { stage, count: 0, value: 0 };
       entry.count += 1;
-      entry.value += Number(deal.valueUsd || 0);
+      entry.value += Number((deal as Record<string, unknown>).valueUsd || 0);
       stageMap.set(stage, entry);
     });
 
@@ -98,9 +98,9 @@ export async function GET() {
       string,
       { ownerName: string; wonRevenue: number; wonCount: number; discountSum: number; discountCount: number }
     >();
-    deals.forEach((deal: any) => {
-      if (String(deal.stage || "") !== "Closed Won") return;
-      const ownerName = String(deal.ownerName || "Unassigned");
+    deals.forEach((deal: unknown) => {
+      if (String((deal as Record<string, unknown>).stage || "") !== "Closed Won") return;
+      const ownerName = String((deal as Record<string, unknown>).ownerName || "Unassigned");
       const entry = ownerMap.get(ownerName) || {
         ownerName,
         wonRevenue: 0,
@@ -109,8 +109,8 @@ export async function GET() {
         discountCount: 0,
       };
       entry.wonCount += 1;
-      entry.wonRevenue += Number(deal.finalPriceUsd || deal.valueUsd || 0);
-      const discountPct = Number(deal.discountPct || 0);
+      entry.wonRevenue += Number((deal as Record<string, unknown>).finalPriceUsd || (deal as Record<string, unknown>).valueUsd || 0);
+      const discountPct = Number((deal as Record<string, unknown>).discountPct || 0);
       if (discountPct > 0) {
         entry.discountSum += discountPct;
         entry.discountCount += 1;
@@ -157,9 +157,9 @@ export async function GET() {
       topReps,
       recentActivity,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

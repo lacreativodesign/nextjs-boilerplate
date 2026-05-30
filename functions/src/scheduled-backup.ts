@@ -17,7 +17,7 @@ function buildBackupPrefix(tenantId: string): string {
 
 async function backupCollection(tenantId: string, backupPath: string, collectionName: string) {
   const docsSnap = await firestore.collection("tenants").doc(tenantId).collection(collectionName).get();
-  const data = docsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const data = docsSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
   const file = admin.storage().bucket(storageBucket).file(`${backupPath}/${collectionName}.json`);
   await file.save(JSON.stringify(data), {

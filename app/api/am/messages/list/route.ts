@@ -18,7 +18,7 @@ type MessageDoc = {
   senderRole?: string;
   senderName?: string | null;
   body?: string;
-  createdAt?: any;
+  createdAt?: unknown;
 };
 
 export async function GET(req: Request) {
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     }
 
     const project = projectSnap.data() as ProjectDoc;
-    if (String((project as any).tenantId || "") !== me.tenantId) {
+    if (String((project as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (!isOwnedByAm(project, me.uid)) {
@@ -69,9 +69,9 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ ok: true, messages });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/messages list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

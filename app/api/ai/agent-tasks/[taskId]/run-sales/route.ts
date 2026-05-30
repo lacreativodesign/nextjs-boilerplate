@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/tenant/server";
 import { cookies } from "next/headers";
 import { getAgentTask } from "@/lib/ai/agent-task";
@@ -29,7 +29,7 @@ export async function POST(
 
     await runSalesAgent(taskId, user.tenantId);
     return NextResponse.json({ ok: true, taskId });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

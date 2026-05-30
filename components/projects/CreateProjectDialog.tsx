@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<void> | void }) {
   const [open, setOpen] = useState(false);

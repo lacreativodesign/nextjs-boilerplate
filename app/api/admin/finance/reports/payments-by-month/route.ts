@@ -25,7 +25,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const docs = await queryWithTenant(
       adminDb.collection("payments").where("isDeleted", "==", false).limit(500),
       tenantId
@@ -54,7 +54,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-payments-by-month.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports payments-by-month error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

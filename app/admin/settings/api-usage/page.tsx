@@ -61,8 +61,8 @@ export default function ApiUsageSettingsPage() {
       setStats(statsJson.stats);
       setLogs(logsJson.logs);
       setError(null);
-    } catch (e: any) {
-      setError(e.message || "Failed loading API usage data");
+    } catch (e) {
+      setError((e as Record<string, unknown>).message || "Failed loading API usage data");
     } finally {
       setLoading(false);
     }

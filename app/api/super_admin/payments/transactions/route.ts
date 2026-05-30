@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "../../_utils";
 import { getStripeClient } from "@/lib/payments/stripe";
 

@@ -9,10 +9,10 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const state = await getDashboardState(user.tenantId, user.uid);
+    const state = await getDashboardState(user.tenantId as string, user.uid);
     return NextResponse.json({ ...state, widgetTypes: listWidgetDefinitions(), templates: DASHBOARD_TEMPLATES });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to fetch dashboard layout" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to fetch dashboard layout" }, { status: 500 });
   }
 }
 
@@ -23,7 +23,7 @@ export async function PUT(request: Request) {
 
     const body = (await request.json()) as { items?: DashboardWidgetLayoutItem[]; templateId?: DashboardWidgetTemplateId };
     if (body.templateId) {
-      const applied = await applyTemplate(user.tenantId, user.uid, body.templateId);
+      const applied = await applyTemplate(user.tenantId as string, user.uid, body.templateId);
       return NextResponse.json({ ok: true, applied });
     }
 
@@ -31,9 +31,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "items is required" }, { status: 400 });
     }
 
-    const items = await saveLayout(user.tenantId, user.uid, body.items);
+    const items = await saveLayout(user.tenantId as string, user.uid, body.items);
     return NextResponse.json({ ok: true, items });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to save layout" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to save layout" }, { status: 500 });
   }
 }

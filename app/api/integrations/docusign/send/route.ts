@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "envelopeId and signerEmails are required for reminders." }, { status: 400 });
       }
 
-      await remindSigners({ tenantId: auth.user.tenantId, envelopeId, signerEmails });
+      await remindSigners({ tenantId: auth.user.tenantId, envelopeId, signerEmails }) as string;
       return NextResponse.json({ ok: true });
     }
 
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true, envelopeId: sent.envelopeId, status: sent.status });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to send document for signature." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to send document for signature." }, { status: 500 });
   }
 }

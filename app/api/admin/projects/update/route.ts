@@ -21,11 +21,11 @@ const PIPELINE_STAGES = [
 ];
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
-function toISODate(value: any) {
+function toISODate(value: unknown) {
   if (value === null) return null;
   if (!value) return undefined;
   const d = new Date(value);
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
 
     if (body?.projectName !== undefined) {
       const value = cleanString(body.projectName);
@@ -219,10 +219,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, project: { id, ...updateData } });
-  } catch (err: any) {
+  } catch (err) {
     console.error("projects/update error:", err);
     return NextResponse.json(
-      { ok: false, error: err?.message || "Server error" },
+      { ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" },
       { status: 500 }
     );
   }

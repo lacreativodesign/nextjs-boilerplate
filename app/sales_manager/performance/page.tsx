@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import PeriodSelector from "@/components/performance/PeriodSelector";
 import ProgressBar from "@/components/performance/ProgressBar";
-import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
+import { getCurrentPeriod, type PeriodType } from "@/lib/performance/periods";
 
 type PerfData = { newLeads30d: number; activeDeals: number; closedWonMonth: number; revenueClosed: number; qualifiedLeads: number; avgDiscountPct: number };
 type TeamUser = { uid: string; displayName?: string; name?: string; role?: string };
+type TeamRow = { user: { uid: string; displayName?: string; name?: string }; actuals: Record<string, number>; metrics: Record<string, { target?: number }>; overall?: number };
 
 export default function SalesManagerPerformancePage() {
   const [data, setData] = useState<PerfData | null>(null);
@@ -14,8 +15,8 @@ export default function SalesManagerPerformancePage() {
   const [error, setError] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState<PeriodType>("monthly");
   const [period, setPeriod] = useState(getCurrentPeriod("monthly"));
-  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
-  const [teamRows, setTeamRows] = useState<any[]>([]);
+  const [_teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
+  const [teamRows, setTeamRows] = useState<TeamRow[]>([]);
   const [teamLoading, setTeamLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [form, setForm] = useState({ leadsCreated: "", dealsClosed: "", revenueGenerated: "" });
@@ -36,7 +37,7 @@ export default function SalesManagerPerformancePage() {
     fetch("/api/admin/users/list", { credentials: "include" })
       .then((r) => r.json())
       .then(async (list) => {
-        const users = (Array.isArray(list) ? list : list.users || []).filter((u: any) => u.role === "sales");
+        const users = (Array.isArray(list) ? list : list.users || []).filter((u: unknown) => (u as Record<string, unknown>).role === "sales");
         if (!active) return;
         setTeamUsers(users);
         const rows = await Promise.all(
@@ -80,13 +81,15 @@ export default function SalesManagerPerformancePage() {
 
   const aggregate = useMemo(() => {
     if (!teamRows.length) return { totalRevenue: 0, avgAchievement: 0, top: "—", bottom: "—" };
-    const totalRevenue = teamRows.reduce((sum, row) => sum + Number(row.actuals.revenueGenerated || 0), 0);
-    const avgAchievement = teamRows.reduce((sum, row) => sum + Number(row.overall || 0), 0) / teamRows.length;
+    const totalRevenue = teamRows.reduce((sum: number, row) => sum + Number(row.actuals?.revenueGenerated || 0), 0);
+    const avgAchievement = teamRows.reduce((sum: number, row) => sum + Number(row.overall || 0), 0) / teamRows.length;
+    const topUser = teamRows[0]?.user;
+    const bottomUser = teamRows[teamRows.length - 1]?.user;
     return {
       totalRevenue,
       avgAchievement,
-      top: teamRows[0]?.user?.displayName || teamRows[0]?.user?.name || "—",
-      bottom: teamRows[teamRows.length - 1]?.user?.displayName || teamRows[teamRows.length - 1]?.user?.name || "—",
+      top: String(topUser?.displayName || topUser?.name || "—"),
+      bottom: String(bottomUser?.displayName || bottomUser?.name || "—"),
     };
   }, [teamRows]);
 
@@ -124,7 +127,7 @@ export default function SalesManagerPerformancePage() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Team Performance</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="card p-4"><p className="text-xs text-[var(--text-muted)]">Team Total Revenue</p><p className="text-xl font-bold">{fmtCurrency(aggregate.totalRevenue)}</p></div>
+          <div className="card p-4"><p className="text-xs text-[var(--text-muted)]">Team Total Revenue</p><p className="text-xl font-bold">{fmtCurrency(aggregate.totalRevenue as number)}</p></div>
           <div className="card p-4"><p className="text-xs text-[var(--text-muted)]">Team Average Achievement</p><p className="text-xl font-bold">{aggregate.avgAchievement.toFixed(1)}%</p></div>
           <div className="card p-4"><p className="text-xs text-[var(--text-muted)]">Top Performer</p><p className="text-xl font-bold">{aggregate.top}</p></div>
           <div className="card p-4"><p className="text-xs text-[var(--text-muted)]">Needs Attention</p><p className="text-xl font-bold">{aggregate.bottom}</p></div>
@@ -136,13 +139,13 @@ export default function SalesManagerPerformancePage() {
               <thead><tr className="text-left text-[var(--text-muted)]"><th>Team Member</th><th>Leads</th><th>Deals</th><th>Revenue</th><th>Overall %</th><th /></tr></thead>
               <tbody>
                 {teamRows.map((row) => (
-                  <tr key={row.user.uid} className="border-t border-[var(--border-subtle)] align-top">
-                    <td className="py-3">{row.user.displayName || row.user.name || row.user.uid}</td>
-                    <td className="py-3 min-w-44"><ProgressBar label="Leads" actual={Number(row.actuals.leadsCreated || 0)} target={Number(row.metrics.leadsCreated?.target || 0)} unit="count" size="sm" /></td>
-                    <td className="py-3 min-w-44"><ProgressBar label="Deals" actual={Number(row.actuals.dealsClosed || 0)} target={Number(row.metrics.dealsClosed?.target || 0)} unit="count" size="sm" /></td>
-                    <td className="py-3 min-w-44"><ProgressBar label="Revenue" actual={Number(row.actuals.revenueGenerated || 0)} target={Number(row.metrics.revenueGenerated?.target || 0)} unit="USD" size="sm" /></td>
+                  <tr key={row.user?.uid} className="border-t border-[var(--border-subtle)] align-top">
+                    <td className="py-3">{row.user?.displayName || row.user?.name || row.user?.uid}</td>
+                    <td className="py-3 min-w-44"><ProgressBar label="Leads" actual={Number(row.actuals?.leadsCreated || 0)} target={Number(row.metrics?.leadsCreated?.target || 0)} unit="count" size="sm" /></td>
+                    <td className="py-3 min-w-44"><ProgressBar label="Deals" actual={Number(row.actuals?.dealsClosed || 0)} target={Number(row.metrics?.dealsClosed?.target || 0)} unit="count" size="sm" /></td>
+                    <td className="py-3 min-w-44"><ProgressBar label="Revenue" actual={Number(row.actuals?.revenueGenerated || 0)} target={Number(row.metrics?.revenueGenerated?.target || 0)} unit="USD" size="sm" /></td>
                     <td className="py-3">{Number(row.overall || 0).toFixed(1)}%</td>
-                    <td className="py-3"><button className="btn ghost" onClick={() => setEditingUser(row.user.uid)}>Set Targets</button></td>
+                    <td className="py-3"><button className="btn ghost" onClick={() => setEditingUser(row.user?.uid)}>Set Targets</button></td>
                   </tr>
                 ))}
               </tbody>

@@ -102,9 +102,9 @@ export default function HrOnboardingPage() {
         setUsers(usersJson.users || []);
         setTemplates(templatesJson.templates || []);
         setTasks(tasksJson.tasks || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load onboarding data.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load onboarding data.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -155,8 +155,8 @@ export default function HrOnboardingPage() {
       const refreshData = await refresh.json();
       setTemplates(refreshData.templates || []);
       setTemplateForm({ id: "", name: "", role: "all", isActive: true, steps: [{ title: "", description: "", required: true }] });
-    } catch (err: any) {
-      toastError(err?.message || "Unable to save template.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to save template.");
     }
   }
 
@@ -182,8 +182,8 @@ export default function HrOnboardingPage() {
       setAssignTemplateId("");
       setAssignDueDate("");
       setTab("tasks");
-    } catch (err: any) {
-      toastError(err?.message || "Unable to assign onboarding.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to assign onboarding.");
     } finally {
       setSavingAssign(false);
     }
@@ -205,8 +205,8 @@ export default function HrOnboardingPage() {
       setTasks(refreshData.tasks || []);
       setTaskDrawerOpen(false);
       setSelectedTaskId(null);
-    } catch (err: any) {
-      toastError(err?.message || "Unable to update task.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to update task.");
     } finally {
       setTaskSaving(false);
     }
@@ -457,7 +457,7 @@ export default function HrOnboardingPage() {
                     </td>
                   </tr>
                 ) : (
-                  taskRows.map((task, idx) => {
+                  taskRows.map((task, _idx) => {
                     const user = users.find((u) => u.uid === task.userId);
                     const template = templates.find((t) => t.id === task.templateId);
                     const totalSteps = task.steps.length || 1;

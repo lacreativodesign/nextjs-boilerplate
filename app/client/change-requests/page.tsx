@@ -77,8 +77,8 @@ export default function ClientChangeRequestsPage() {
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load change requests.");
       setChangeRequests(payload.changeRequests || []);
-    } catch (err: any) {
-      setError(err?.message || "Unable to load change requests.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load change requests.");
     } finally {
       setLoading(false);
     }
@@ -94,9 +94,9 @@ export default function ClientChangeRequestsPage() {
         const res = await fetch("/api/client/projects/list", { credentials: "include", cache: "no-store" });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) return;
-        const options = (payload.projects || []).map((project: any) => ({
-          value: project.id,
-          label: project.projectName || project.id,
+        const options = (payload.projects || []).map((project: unknown) => ({
+          value: (project as Record<string, unknown>).id,
+          label: (project as Record<string, unknown>).projectName || (project as Record<string, unknown>).id,
         }));
         setProjectOptions(options);
       } catch (err) {

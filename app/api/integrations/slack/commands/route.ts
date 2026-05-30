@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   try {
     const result = await handleSlackSlashCommand(payload);
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ response_type: "ephemeral", text: error?.message || "Command failed." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ response_type: "ephemeral", text: (error instanceof Error ? error.message : undefined) || "Command failed." }, { status: 500 });
   }
 }

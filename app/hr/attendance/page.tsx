@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
 export default function AttendanceDashboard() {
-  const [attendance, setAttendance] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(dayjs());
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<unknown[]>([]);
 
-  const start = month.startOf("month");
+  const _start = month.startOf("month");
   const end = month.endOf("month");
   const daysInMonth = end.date();
 
@@ -39,19 +39,19 @@ export default function AttendanceDashboard() {
     const dateStr = month.date(day).format("YYYY-MM-DD");
 
     const logs = attendance.filter(
-      (a) => a.userId === empId && a.date === dateStr
+      (a) => (a as Record<string, unknown>).userId === empId && (a as Record<string, unknown>).date === dateStr
     );
 
     if (logs.length === 0) return null;
 
-    const login = logs.find((l) => l.type === "login");
-    const logout = logs.find((l) => l.type === "logout");
+    const login = logs.find((l) => (l as Record<string, unknown>).type === "login");
+    const logout = logs.find((l) => (l as Record<string, unknown>).type === "logout");
 
     let total = 0;
     if (login && logout) {
       total =
-        new Date(logout.timestamp).getTime() -
-        new Date(login.timestamp).getTime();
+        new Date((logout as Record<string, unknown>).timestamp).getTime() -
+        new Date((login as Record<string, unknown>).timestamp).getTime();
     }
 
     const hrs = (total / (1000 * 60 * 60)).toFixed(1);
@@ -121,11 +121,11 @@ export default function AttendanceDashboard() {
 
           <tbody>
             {employees.map((emp) => (
-              <tr key={emp.id}>
-                <td style={tdLabel}>{emp.name}</td>
+              <tr key={(emp as Record<string, unknown>).id}>
+                <td style={tdLabel}>{(emp as Record<string, unknown>).name}</td>
 
                 {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
-                  const info = getDayAttendance(emp.id, dayIndex + 1);
+                  const info = getDayAttendance((emp as Record<string, unknown>).id, dayIndex + 1);
                   const isWeekend =
                     month.date(dayIndex + 1).day() === 0 ||
                     month.date(dayIndex + 1).day() === 6;

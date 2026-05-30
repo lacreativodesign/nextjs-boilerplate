@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebaseAdmin";
 
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // eslint-disable-next-line no-console
     console.log("[CRON] Starting invoice reminder job.");
     const results = await processInvoiceReminders();
 
@@ -235,6 +236,7 @@ async function sendReminderEmail(
     `,
   });
 
+  // eslint-disable-next-line no-console
   console.log(`[EMAIL] Sent ${reminderType} reminder for invoice=${invoice.invoiceNumber} tenant=${tenantId}`);
   return true;
 }
@@ -294,6 +296,7 @@ async function applyLateFee(tenantId: string, invoice: InvoiceRecord, tenant: Te
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+  // eslint-disable-next-line no-console
   console.log(`[LATE_FEE] Applied $${lateFee.toFixed(2)} for invoice=${invoice.invoiceNumber} tenant=${tenantId}`);
   return true;
 }

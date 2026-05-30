@@ -28,7 +28,7 @@ export async function GET() {
           metadata: data?.metadata || {},
         };
       })
-      .filter((event: any) => String(event?.type || "").startsWith("hr."));
+      .filter((event: unknown) => String((event as Record<string, unknown>)?.type || "").startsWith("hr."));
 
     return NextResponse.json({ ok: true, activity });
   } catch (err) {

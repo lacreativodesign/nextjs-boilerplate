@@ -97,7 +97,7 @@ export function getGoogleOauthConfig() {
   };
 }
 
-export function buildGoogleAuthUrl(params: { tenantId: string; userUid: string; returnTo?: string }) {
+export function buildGoogleAuthUrl(_params: { tenantId: string; userUid: string; returnTo?: string }) {
   const state = crypto.randomBytes(24).toString("base64url");
   return { state, url: buildGoogleAuthUrlFromState(state), expiresAt: Date.now() + 10 * 60_000 };
 }
@@ -137,8 +137,8 @@ export async function consumeGoogleOAuthState(state: string) {
   const ref = adminDb.collection(GOOGLE_STATE_COLLECTION).doc(state);
   const snap = await ref.get();
   if (!snap.exists) throw new Error("Invalid OAuth state.");
-  const data = snap.data() as any;
-  if (!data?.expiresAt || data.expiresAt.toMillis() < Date.now()) {
+  const data = snap.data() as unknown;
+  if (!(data as Record<string, unknown>)?.expiresAt || ((data as Record<string, unknown>).expiresAt as { toMillis(): number }).toMillis() < Date.now()) {
     await ref.delete();
     throw new Error("OAuth state expired.");
   }
@@ -160,18 +160,18 @@ export async function exchangeGoogleCodeForTokens(code: string): Promise<TokenPa
     }),
   });
 
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !data?.access_token) {
-    throw new Error(data?.error_description || data?.error || "Failed to exchange Google OAuth code.");
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(data as Record<string, unknown>)?.access_token) {
+    throw new Error(((data as Record<string, unknown>)?.error_description || (data as Record<string, unknown>)?.error || "Failed to exchange Google OAuth code.") as string);
   }
 
   return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expiry_date: Date.now() + Number(data.expires_in || 3600) * 1000,
-    token_type: data.token_type,
-    scope: data.scope,
-    id_token: data.id_token,
+    access_token: (data as Record<string, unknown>).access_token as string,
+    refresh_token: (data as Record<string, unknown>).refresh_token as string | undefined,
+    expiry_date: Date.now() + Number((data as Record<string, unknown>).expires_in || 3600) * 1000,
+    token_type: (data as Record<string, unknown>).token_type as string | undefined,
+    scope: (data as Record<string, unknown>).scope as string | undefined,
+    id_token: (data as Record<string, unknown>).id_token as string | undefined,
   };
 }
 
@@ -235,17 +235,17 @@ export async function getValidGoogleAccessToken(tenantId: string): Promise<strin
     }),
   });
 
-  const refreshed = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !refreshed?.access_token) {
-    throw new Error(refreshed?.error_description || refreshed?.error || "Google token refresh failed.");
+  const refreshed = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(refreshed as Record<string, unknown>)?.access_token) {
+    throw new Error(((refreshed as Record<string, unknown>)?.error_description || (refreshed as Record<string, unknown>)?.error || "Google token refresh failed.") as string);
   }
 
   const mergedTokens: TokenPayload = {
     ...tokens,
-    access_token: refreshed.access_token,
-    expiry_date: Date.now() + Number(refreshed.expires_in || 3600) * 1000,
-    token_type: refreshed.token_type || tokens.token_type,
-    scope: refreshed.scope || tokens.scope,
+    access_token: (refreshed as Record<string, unknown>).access_token as string,
+    expiry_date: Date.now() + Number((refreshed as Record<string, unknown>).expires_in || 3600) * 1000,
+    token_type: ((refreshed as Record<string, unknown>).token_type as string | undefined) || tokens.token_type,
+    scope: ((refreshed as Record<string, unknown>).scope as string | undefined) || tokens.scope,
   };
 
   await ref.set(
@@ -265,9 +265,9 @@ export async function getGoogleProfile(accessToken: string): Promise<{ email: st
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || !data?.email) {
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || !(data as Record<string, unknown>)?.email) {
     throw new Error("Failed to load Google profile.");
   }
-  return { email: String(data.email).toLowerCase() };
+  return { email: String((data as Record<string, unknown>).email).toLowerCase() };
 }

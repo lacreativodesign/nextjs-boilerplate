@@ -23,8 +23,8 @@ export default function SuperAdminMigrationPage() {
         return;
       }
       setStatus("Migration completed in development.");
-    } catch (err: any) {
-      setStatus(err?.message || "Migration failed.");
+    } catch (err) {
+      setStatus((err instanceof Error ? err.message : undefined) || "Migration failed.");
     } finally {
       setLoading(false);
     }

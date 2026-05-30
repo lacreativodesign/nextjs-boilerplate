@@ -31,8 +31,8 @@ export default function SuperAdminActivityPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to load");
       setEvents(data.events || []);
-    } catch (err: any) {
-      const msg = err?.message || "";
+    } catch (err) {
+      const msg = (err instanceof Error ? err.message : undefined) || "";
       setError(
         msg.includes("Session") || msg.includes("Unauthorized")
           ? "Your session has expired. Please refresh the page."

@@ -12,7 +12,7 @@ type FileDoc = {
   category?: string;
   fileName?: string;
   downloadUrl?: string;
-  uploadedAt?: any;
+  uploadedAt?: unknown;
   size?: number;
   isDeleted?: boolean;
 };
@@ -48,9 +48,9 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, files });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/files list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

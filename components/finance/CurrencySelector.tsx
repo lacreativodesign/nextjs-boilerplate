@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CurrencyCode, getAllCurrencies } from "@/lib/finance/currencies";
+import { type CurrencyCode, getAllCurrencies } from "@/lib/finance/currencies";
 
 interface CurrencySelectorProps {
   value: CurrencyCode;

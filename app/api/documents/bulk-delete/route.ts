@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         .collection("documents")
         .where(admin.firestore.FieldPath.documentId(), "in", chunk)
         .get();
-      snapshot.docs.forEach((doc) => documents.push({ id: doc.id, ...doc.data() } as Document));
+      snapshot.docs.forEach((doc) => documents.push({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as Document));
     }
 
     for (const doc of documents) {

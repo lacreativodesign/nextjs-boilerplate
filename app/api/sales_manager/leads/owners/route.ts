@@ -25,7 +25,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, owners });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager owners list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load sales reps." }, { status: 500 });
   }

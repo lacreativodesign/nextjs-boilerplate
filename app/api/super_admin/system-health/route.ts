@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "../_utils";
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
-  if (typeof value?._seconds === "number") return new Date(value._seconds * 1000).toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?._seconds === "number") return new Date((value as Record<string, unknown>)._seconds * 1000).toISOString();
   return null;
 }
 
@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
         lastCreatedAt: lastEmailAt,
       },
     });
-  } catch (err: any) {
-    const message = err?.message || "Server error";
+  } catch (err) {
+    const message = (err instanceof Error ? err.message : undefined) || "Server error";
     const status = message === "Forbidden" ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

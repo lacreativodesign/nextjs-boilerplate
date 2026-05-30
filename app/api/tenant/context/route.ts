@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     const planState = tenant ? await getTenantPlanState(tenantId) : null;
     const subscriptionState = tenant
       ? deriveSubscriptionState({
-          subscriptionState: (tenant as any).subscriptionState,
-          billingStatus: (tenant as any).billingStatus,
+          subscriptionState: (tenant as unknown).subscriptionState,
+          billingStatus: (tenant as unknown).billingStatus,
         })
       : "active";
 
@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
           }
         : null,
     });
-  } catch (err: any) {
-    const message = err?.message || "Unauthorized";
+  } catch (err) {
+    const message = (err instanceof Error ? err.message : undefined) || "Unauthorized";
     const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 400;
     return NextResponse.json({ ok: false, error: message }, { status });
   }

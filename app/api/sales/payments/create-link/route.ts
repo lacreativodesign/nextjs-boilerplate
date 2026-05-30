@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const stripeConfig = await getStripeConfig(tenantId);
+    const stripeConfig = await getStripeConfig(tenantId as string);
     if (!stripeConfig?.enabled || !stripeConfig?.secretKey) {
       return NextResponse.json({ ok: false, error: "Stripe is not configured for this tenant." }, { status: 400 });
     }
@@ -95,8 +95,8 @@ export async function POST(req: Request) {
 
     const salesName = userLabel(auth.user);
     const [adminIds, financeIds] = await Promise.all([
-      getUserIdsByRoles(["admin", "super_admin"], tenantId),
-      getUserIdsByRoles(["finance"], tenantId),
+      getUserIdsByRoles(["admin", "super_admin"], tenantId as string),
+      getUserIdsByRoles(["finance"], tenantId as string),
     ]);
     await Promise.all(
       [...adminIds, ...financeIds].map((uid) =>

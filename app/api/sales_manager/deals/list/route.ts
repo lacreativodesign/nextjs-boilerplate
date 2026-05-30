@@ -57,12 +57,12 @@ export async function GET() {
           updatedAt: toISO(data.updatedAt),
         };
       })
-      .filter((deal) => String((deal as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((deal) => String((deal as Record<string, unknown>).tenantId || DEFAULT_TENANT_ID) === tenantId);
 
     const { discountApprovalThresholdPct } = await getSalesSettings();
 
     return NextResponse.json({ ok: true, deals, discountApprovalThresholdPct });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager deals list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });
   }

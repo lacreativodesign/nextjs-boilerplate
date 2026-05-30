@@ -1,4 +1,4 @@
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/payments/stripe";
 
 function getConnectClientId(): string {

@@ -155,9 +155,9 @@ export default function KeyAccountsPage() {
         const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
         if (!alive) return;
         setRows(list);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        setError(e?.message || "Forbidden");
+        setError((e instanceof Error ? e.message : undefined) || "Forbidden");
         setRows([]);
       } finally {
         if (!alive) return;

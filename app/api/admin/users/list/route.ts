@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../../_utils";
 import { paginationSchema } from "@/lib/validations/common";

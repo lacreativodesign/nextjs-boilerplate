@@ -72,8 +72,8 @@ export default function SsoSettingsPage() {
       }
 
       setSuccess(`${provider} SSO configuration saved.`);
-    } catch (err: any) {
-      setError(err?.message || "Unable to save SSO configuration.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to save SSO configuration.");
     } finally {
       setSaving(null);
     }

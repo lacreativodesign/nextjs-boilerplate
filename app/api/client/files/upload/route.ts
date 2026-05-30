@@ -6,7 +6,7 @@ import { createNotification, createNotificationEvent, getUserIdsByRoles } from "
 
 export const runtime = "nodejs";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value ?? "").trim();
 }
 
@@ -107,9 +107,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, id: ref.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/files upload error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

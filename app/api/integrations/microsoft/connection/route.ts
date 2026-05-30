@@ -11,7 +11,7 @@ export async function GET() {
     const auth = await requireAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const integration = await getMicrosoftIntegration(auth.user.tenantId);
+    const integration = await getMicrosoftIntegration(auth.user.tenantId as string);
     return NextResponse.json({
       ok: true,
       connection: {
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
 
     await adminDb
       .collection("tenants")
-      .doc(auth.user.tenantId)
+      .doc(auth.user.tenantId as string)
       .collection("integrations")
       .doc("microsoft365")
       .set(

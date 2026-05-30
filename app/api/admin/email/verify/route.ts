@@ -14,11 +14,11 @@ export async function POST(req: Request) {
 
   try {
     const verification = await verifyEmailSender(parsed.data.fromEmail);
-    const current = await getTenantBranding(auth.user.tenantId);
+    const current = await getTenantBranding(auth.user.tenantId as string);
     const now = new Date().toISOString();
 
     await updateTenantBranding(
-      auth.user.tenantId,
+      auth.user.tenantId as string,
       {
         emailBranding: {
           ...current.emailBranding,
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true, verification });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Email verification failed" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Email verification failed" }, { status: 400 });
   }
 }

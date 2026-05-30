@@ -14,7 +14,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function normalizeEventToggles(input: any) {
+function normalizeEventToggles(input: unknown) {
   if (typeof input !== "object" || !input) return {} as Record<string, boolean>;
   return Object.fromEntries(Object.entries(input).map(([key, value]) => [key, Boolean(value)]));
 }

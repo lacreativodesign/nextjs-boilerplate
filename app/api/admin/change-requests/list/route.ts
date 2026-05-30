@@ -41,33 +41,33 @@ type ChangeRequestDoc = {
   estimatedTimelineDays?: number | null;
   approvalStatus?: string | null;
   approvalId?: string | null;
-  approvedAt?: any;
+  approvedAt?: unknown;
   approvedByUid?: string | null;
   attachedFileIds?: string[];
-  createdAt?: any;
-  updatedAt?: any;
-  completedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  completedAt?: unknown;
   isDeleted?: boolean;
-  statusHistory?: any[];
+  statusHistory?: unknown[];
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-function normalizeStatusHistory(history?: any[]) {
+function normalizeStatusHistory(history?: unknown[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byRole: entry?.byRole || "",
-    at: toISO(entry?.at),
-    note: entry?.note || "",
+    from: (entry as Record<string, unknown>)?.from || "",
+    to: (entry as Record<string, unknown>)?.to || "",
+    byUid: (entry as Record<string, unknown>)?.byUid || "",
+    byRole: (entry as Record<string, unknown>)?.byRole || "",
+    at: toISO((entry as Record<string, unknown>)?.at),
+    note: (entry as Record<string, unknown>)?.note || "",
   }));
 }
 
@@ -239,9 +239,9 @@ export async function GET(req: Request) {
         name: me.name || me.fullName || me.displayName || "",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("change-requests/list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { applyVersionHeaders } from "@/lib/api/versioning";
 
 function resolveRequestedPath(path?: string[]) {

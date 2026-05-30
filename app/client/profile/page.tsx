@@ -48,9 +48,9 @@ export default function ClientProfilePage() {
         if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to load profile.");
         if (!alive) return;
         setProfile(payload.client || {});
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Failed to load profile.");
+        setError((err instanceof Error ? err.message : undefined) || "Failed to load profile.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -86,8 +86,8 @@ export default function ClientProfilePage() {
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to update profile.");
       setSuccess("Profile updated successfully.");
-    } catch (err: any) {
-      setError(err?.message || "Failed to update profile.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Failed to update profile.");
     } finally {
       setSaving(false);
     }

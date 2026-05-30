@@ -48,8 +48,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
 
     return NextResponse.json({ documentId: newDocumentId });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating version:", error);
-    return NextResponse.json({ error: error?.message || "Failed to create version" }, { status: 500 });
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to create version" }, { status: 500 });
   }
 }

@@ -10,8 +10,8 @@ type CampaignDoc = {
   status?: string;
   metrics?: Record<string, unknown>;
   createdBy?: string | null;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -55,7 +55,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, campaigns });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales campaigns list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load campaigns." }, { status: 500 });
   }

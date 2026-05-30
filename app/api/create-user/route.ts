@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, uid: userRecord.uid });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Create user failed:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: (err as Record<string, unknown>).message }, { status: 500 });
   }
 }

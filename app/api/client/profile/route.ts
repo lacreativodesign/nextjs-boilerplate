@@ -6,7 +6,7 @@ import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segmen
 
 export const dynamic = "force-dynamic";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value ?? "").trim();
 }
 
@@ -23,16 +23,16 @@ export async function GET() {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
 
     const data = snap.data() || {};
-    if ((data as any).deletedAt) {
+    if ((data as unknown).deletedAt) {
       return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
     }
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String((data as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json({ ok: true, client: { id: snap.id, ...data } });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to load profile" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Failed to load profile" }, { status: 500 });
   }
 }
 
@@ -44,7 +44,7 @@ export async function PATCH(req: Request) {
   const clientId = String(me.clientId || "").trim();
   if (!clientId) return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await req.json();
   } catch {
@@ -59,27 +59,27 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
 
-    if (body?.industry !== undefined) updateData.industry = cleanString(body.industry);
-    if (body?.businessType !== undefined) updateData.businessType = cleanString(body.businessType);
-    if (body?.country !== undefined) updateData.country = cleanString(body.country);
-    if (body?.city !== undefined) updateData.city = cleanString(body.city);
-    if (body?.timezone !== undefined) updateData.timezone = cleanString(body.timezone);
+    if ((body as Record<string, unknown>)?.industry !== undefined) updateData.industry = cleanString((body as Record<string, unknown>).industry);
+    if ((body as Record<string, unknown>)?.businessType !== undefined) updateData.businessType = cleanString((body as Record<string, unknown>).businessType);
+    if ((body as Record<string, unknown>)?.country !== undefined) updateData.country = cleanString((body as Record<string, unknown>).country);
+    if ((body as Record<string, unknown>)?.city !== undefined) updateData.city = cleanString((body as Record<string, unknown>).city);
+    if ((body as Record<string, unknown>)?.timezone !== undefined) updateData.timezone = cleanString((body as Record<string, unknown>).timezone);
 
-    if (body?.employeeCountRange !== undefined) updateData.employeeCountRange = cleanString(body.employeeCountRange) || null;
-    if (body?.yearsInBusinessRange !== undefined) {
-      updateData.yearsInBusinessRange = cleanString(body.yearsInBusinessRange) || null;
+    if ((body as Record<string, unknown>)?.employeeCountRange !== undefined) updateData.employeeCountRange = cleanString((body as Record<string, unknown>).employeeCountRange) || null;
+    if ((body as Record<string, unknown>)?.yearsInBusinessRange !== undefined) {
+      updateData.yearsInBusinessRange = cleanString((body as Record<string, unknown>).yearsInBusinessRange) || null;
     }
 
-    if (body?.segmentServices !== undefined) updateData.segmentServices = normalizeSlugArray(body.segmentServices);
-    if (body?.segmentIndustry !== undefined) updateData.segmentIndustry = normalizeOptionalSlug(body.segmentIndustry);
-    if (body?.segmentBusinessType !== undefined) updateData.segmentBusinessType = normalizeOptionalSlug(body.segmentBusinessType);
+    if ((body as Record<string, unknown>)?.segmentServices !== undefined) updateData.segmentServices = normalizeSlugArray((body as Record<string, unknown>).segmentServices);
+    if ((body as Record<string, unknown>)?.segmentIndustry !== undefined) updateData.segmentIndustry = normalizeOptionalSlug((body as Record<string, unknown>).segmentIndustry);
+    if ((body as Record<string, unknown>)?.segmentBusinessType !== undefined) updateData.segmentBusinessType = normalizeOptionalSlug((body as Record<string, unknown>).segmentBusinessType);
 
-    if (body?.segmentGeo !== undefined) {
-      updateData.segmentGeo = normalizeOptionalSlug(body.segmentGeo);
-    } else if (body?.country !== undefined) {
-      const derived = slugify(cleanString(body.country));
+    if ((body as Record<string, unknown>)?.segmentGeo !== undefined) {
+      updateData.segmentGeo = normalizeOptionalSlug((body as Record<string, unknown>).segmentGeo);
+    } else if ((body as Record<string, unknown>)?.country !== undefined) {
+      const derived = slugify(cleanString((body as Record<string, unknown>).country));
       updateData.segmentGeo = derived || null;
     }
 
@@ -89,7 +89,7 @@ export async function PATCH(req: Request) {
     await ref.set(updateData, { merge: true });
 
     return NextResponse.json({ ok: true, id: clientId });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to update profile" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Failed to update profile" }, { status: 500 });
   }
 }

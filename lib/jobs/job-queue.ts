@@ -365,8 +365,8 @@ export async function processDueJobs(batchSize = 20) {
         lastError: null,
       });
       results.push({ jobId, ok: true });
-    } catch (error: any) {
-      const message = error?.message || "Unknown job failure";
+    } catch (error) {
+      const message = (error instanceof Error ? error.message : undefined) || "Unknown job failure";
       await markJobForRetry(job, message);
       results.push({ jobId, ok: false, error: message });
     }

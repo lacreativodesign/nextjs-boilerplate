@@ -26,8 +26,8 @@ export default function UsersPage() {
       }
       const data = await response.json();
       setUsers(data.users || []);
-    } catch (err: any) {
-      setError(err?.message || "Unable to load users");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load users");
     } finally {
       setIsLoading(false);
     }

@@ -20,8 +20,8 @@ type LeadDoc = {
   packageName?: string;
   interestedServices?: string[];
   probability?: number;
-  lastContactedAt?: any;
-  nextFollowUpAt?: any;
+  lastContactedAt?: unknown;
+  nextFollowUpAt?: unknown;
   source?: string;
   notes?: string;
   status?: string;
@@ -31,9 +31,9 @@ type LeadDoc = {
   ownerName?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
-  lastActivityAt?: any;
-  createdAt?: any;
-  updatedAt?: any;
+  lastActivityAt?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
 };
 
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string || DEFAULT_TENANT_ID);
     const { searchParams } = new URL(req.url);
     const cursor = String(searchParams.get("cursor") || "").trim();
     const rawLimit = Number(searchParams.get("limit") || 50);
@@ -155,7 +155,7 @@ export async function GET(req: Request) {
       },
       canCreate: canWriteSales(role),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales leads list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
   }

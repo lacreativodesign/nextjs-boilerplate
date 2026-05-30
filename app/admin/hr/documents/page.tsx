@@ -64,9 +64,9 @@ export default function HrDocumentsPage() {
         setUsers(usersJson.users || []);
         setCurrentUserRole(usersJson.currentUser?.role || null);
         setDocuments(docsJson.documents || []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load documents.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load documents.");
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -133,8 +133,8 @@ export default function HrDocumentsPage() {
       setSelectedFile(null);
       setSelectedUserId("");
       setSelectedDocType("Contract");
-    } catch (err: any) {
-      toastError(err?.message || "Unable to upload document.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to upload document.");
     } finally {
       setUploading(false);
     }
@@ -152,8 +152,8 @@ export default function HrDocumentsPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to delete document.");
       setDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, isDeleted: true } : d)));
-    } catch (err: any) {
-      toastError(err?.message || "Unable to delete document.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to delete document.");
     }
   }
 

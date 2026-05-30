@@ -36,7 +36,7 @@ export default function AddEmployeePage() {
       } else {
         showToast.error("Failed: " + (json.message || "Unknown error"));
       }
-    } catch (err) {
+    } catch {
       showToast.error("Error creating employee.");
     }
 

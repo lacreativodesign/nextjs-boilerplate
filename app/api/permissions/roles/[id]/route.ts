@@ -52,12 +52,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       .where("roleId", "==", params.id)
       .get();
 
-    await Promise.all(assignments.docs.map((doc) => invalidateUserPermissionCache(auth.user.tenantId, doc.data().userId as string)));
+    await Promise.all(assignments.docs.map((doc) => invalidateUserPermissionCache(auth.user.tenantId as string, doc.data().userId as string)));
 
     if (Array.isArray(body.assignedUserIds)) {
       await Promise.all(
         body.assignedUserIds.map((userId) =>
-          assignRolesToUser({ tenantId: auth.user.tenantId, userId, roleIds: [params.id], actorUserId: auth.user.uid })
+          assignRolesToUser({ tenantId: auth.user.tenantId, userId, roleIds: [params.id], actorUserId: auth.user.uid }) as string
         )
       );
     }

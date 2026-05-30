@@ -21,8 +21,8 @@ type ClientDoc = {
   primaryContactName?: string;
   primaryContactEmail?: string;
   primaryContactPhone?: string;
-  lastActivity?: any;
-  deletedAt?: any;
+  lastActivity?: unknown;
+  deletedAt?: unknown;
 };
 
 export async function GET(req: Request) {
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     }
 
     const data = clientSnap.data() as ClientDoc;
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String((data as unknown).tenantId || "") !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.json({
@@ -71,9 +71,9 @@ export async function GET(req: Request) {
         lastActivity: toISO(data.lastActivity),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/clients get error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

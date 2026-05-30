@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, serverTimestamp } from "../_utils";
-import { TaxRate } from "@/lib/tax/taxCalculator";
+import type { TaxRate } from "@/lib/tax/taxCalculator";
 import { QUERY_CACHE_TTL_MS, getQueryCacheControl, isCacheFresh } from "@/lib/cache/query-client";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +58,7 @@ export async function GET() {
     const tenantResult = await getTenantId();
     if (!tenantResult.ok) return tenantResult.response;
 
-    const cached = tenantTaxRatesCache.get(tenantResult.tenantId);
+    const cached = tenantTaxRatesCache.get(tenantResult.tenantId as string);
     if (cached && isCacheFresh(cached.updatedAt, "taxRates")) {
       return NextResponse.json(
         { ok: true, taxRates: cached.taxRates },
@@ -68,7 +68,7 @@ export async function GET() {
 
     const snapshot = await adminDb
       .collection("tenants")
-      .doc(tenantResult.tenantId)
+      .doc(tenantResult.tenantId as string)
       .collection("taxRates")
       .orderBy("name", "asc")
       .get();
@@ -78,7 +78,7 @@ export async function GET() {
       ...doc.data(),
     })) as Array<TaxRate & { id: string }>;
 
-    tenantTaxRatesCache.set(tenantResult.tenantId, { taxRates, updatedAt: Date.now() });
+    tenantTaxRatesCache.set(tenantResult.tenantId as string, { taxRates, updatedAt: Date.now() });
 
     return NextResponse.json(
       { ok: true, taxRates },
@@ -89,7 +89,7 @@ export async function GET() {
         },
       },
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching tax rates:", error);
     return NextResponse.json({ ok: false, error: "Failed to fetch tax rates" }, { status: 500 });
   }
@@ -108,17 +108,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: validationError }, { status: 400 });
     }
 
-    const docRef = await adminDb.collection("tenants").doc(tenantResult.tenantId).collection("taxRates").add({
+    const docRef = await adminDb.collection("tenants").doc(tenantResult.tenantId as string).collection("taxRates").add({
       ...taxRate,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: tenantResult.auth.user.uid,
     });
 
-    invalidateTenantCache(tenantResult.tenantId);
+    invalidateTenantCache(tenantResult.tenantId as string);
 
     return NextResponse.json({ ok: true, id: docRef.id, taxRate: { id: docRef.id, ...taxRate } });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating tax rate:", error);
     return NextResponse.json({ ok: false, error: "Failed to create tax rate" }, { status: 500 });
   }
@@ -149,11 +149,11 @@ export async function PATCH(request: Request) {
 
     updates.updatedAt = serverTimestamp();
 
-    await adminDb.collection("tenants").doc(tenantResult.tenantId).collection("taxRates").doc(id).update(updates);
-    invalidateTenantCache(tenantResult.tenantId);
+    await adminDb.collection("tenants").doc(tenantResult.tenantId as string).collection("taxRates").doc(id).update(updates);
+    invalidateTenantCache(tenantResult.tenantId as string);
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating tax rate:", error);
     return NextResponse.json({ ok: false, error: "Failed to update tax rate" }, { status: 500 });
   }
@@ -170,11 +170,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ ok: false, error: "id is required" }, { status: 400 });
     }
 
-    await adminDb.collection("tenants").doc(tenantResult.tenantId).collection("taxRates").doc(id).delete();
-    invalidateTenantCache(tenantResult.tenantId);
+    await adminDb.collection("tenants").doc(tenantResult.tenantId as string).collection("taxRates").doc(id).delete();
+    invalidateTenantCache(tenantResult.tenantId as string);
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting tax rate:", error);
     return NextResponse.json({ ok: false, error: "Failed to delete tax rate" }, { status: 500 });
   }

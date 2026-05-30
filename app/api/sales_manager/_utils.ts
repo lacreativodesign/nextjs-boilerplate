@@ -6,25 +6,25 @@ import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
 
 export const runtime = "nodejs";
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-export function parseNumber(value: any, fallback = 0) {
+export function parseNumber(value: unknown, fallback = 0) {
   const num = Number(value);
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: unknown, fallback = "") {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
 
-export function parseBoolean(value: any, fallback = false) {
+export function parseBoolean(value: unknown, fallback = false) {
   if (value === null || value === undefined) return fallback;
   return Boolean(value);
 }
@@ -54,7 +54,7 @@ export async function requireSalesReportsAccess() {
     return auth;
   }
   try {
-    await requireModule(auth.user.tenantId, "reports", { role: auth.user.role });
+    await requireModule(auth.user.tenantId as string, "reports", { role: auth.user.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };

@@ -43,18 +43,18 @@ export type TenantRecord = {
     accountId?: string;
     accountEmail?: string | null;
     status?: 'connected' | 'disconnected';
-    connectedAt?: any;
-    disconnectedAt?: any;
+    connectedAt?: unknown;
+    disconnectedAt?: unknown;
     oauthState?: string | null;
-    oauthRequestedAt?: any;
-    firstPaymentAt?: any;
+    oauthRequestedAt?: unknown;
+    firstPaymentAt?: unknown;
   };
   subscriptionState?: 'active' | 'grace' | 'soft_locked' | 'hard_locked';
   billingStatus?: 'active' | 'past_due' | 'canceled';
   planSetBy?: { uid: string; role: 'super_admin' };
-  planUpdatedAt?: any;
-  createdAt?: any;
-  updatedAt?: any;
+  planUpdatedAt?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   updatedBy?: string | null;
 };
 
@@ -65,13 +65,13 @@ export type CurrentUser = {
   status?: string;
   displayName?: string;
   email?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type RequestCookies =
   | {
       get?: (name: string) => { value?: string } | undefined;
-      [key: string]: any;
+      [key: string]: unknown;
     }
   | Record<string, string | undefined>;
 

@@ -12,7 +12,7 @@ export async function maybeAutoCreateProjectFromInvoice({
   actor,
 }: {
   invoiceId: string;
-  invoiceData: Record<string, any>;
+  invoiceData: Record<string, unknown>;
   tenantId?: string | null;
   actor?: { uid?: string | null; name?: string | null } | null;
 }) {

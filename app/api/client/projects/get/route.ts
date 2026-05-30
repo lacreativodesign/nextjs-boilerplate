@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireClient, toISO } from "../../_utils";
 
@@ -9,15 +9,15 @@ type ProjectDoc = {
   projectName?: string;
   projectType?: string;
   stage?: string;
-  dueDate?: any;
-  updatedAt?: any;
+  dueDate?: unknown;
+  updatedAt?: unknown;
   description?: string;
   clientId?: string;
   clientName?: string;
   ownerAmName?: string | null;
   productionName?: string | null;
   clientApprovalStatus?: string;
-  clientApprovedAt?: any;
+  clientApprovedAt?: unknown;
 };
 
 export async function GET(req: NextRequest) {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = (snap.data() || {}) as ProjectDoc;
-    if (String((data as any).tenantId || "") !== auth.user.tenantId) {
+    if (String((data as unknown).tenantId || "") !== auth.user.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (String(data.clientId || "") !== auth.clientId) {
@@ -105,9 +105,9 @@ export async function GET(req: NextRequest) {
       files,
       messages,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/projects get error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

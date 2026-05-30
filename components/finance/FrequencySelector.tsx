@@ -1,6 +1,6 @@
 "use client";
 
-import { RecurrenceFrequency } from "@/lib/finance/recurring";
+import type { RecurrenceFrequency } from "@/lib/finance/recurring";
 
 interface FrequencySelectorProps {
   frequency: RecurrenceFrequency;

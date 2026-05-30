@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     }
 
     // 5) Check duplicate email
-    const existingUser = await adminAuth.getUserByEmail(email).catch((err: any) => {
+    const existingUser = await adminAuth.getUserByEmail(email).catch((err) => {
       if (err?.code === 'auth/user-not-found') {
         return null;
       }
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
     getUsersByRoles(['admin'], tenantId).then((admins) => {
       return Promise.all(admins.map((admin) =>
         sendEmail({
-          to: admin.email || '',
+          to: admin.email as unknown || '',
           subject: `👤 New team member added — ${displayName || email}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -235,12 +235,12 @@ export async function POST(req: Request) {
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error create user:', err);
     return NextResponse.json({
-      error: err?.code === "auth/email-already-exists"
+      error: (err as Record<string, unknown>)?.code === "auth/email-already-exists"
         ? "This email address is already registered in the system."
-        : err?.message || "Failed to create user",
+        : (err instanceof Error ? err.message : undefined) || "Failed to create user",
     }, { status: 400 });
   }
 }

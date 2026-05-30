@@ -309,7 +309,7 @@ export async function updateCalendlySettings(
 
 export async function listCalendlyEvents(tenantId: string, limit = 50) {
   const snap = await meetingsCollection(tenantId).orderBy("startTime", "desc").limit(Math.min(Math.max(limit, 1), 100)).get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 }
 
 async function createTaskForMeeting(params: {
@@ -351,15 +351,17 @@ async function createTaskForMeeting(params: {
   return taskId;
 }
 
-export async function upsertMeetingFromCalendlyWebhook(params: { tenantId: string; payload: any }) {
-  const invitee = params.payload?.payload;
-  const event = invitee?.event;
+export async function upsertMeetingFromCalendlyWebhook(params: { tenantId: string; payload: unknown }) {
+  const invitee = (params.payload as Record<string, unknown>)?.payload as Record<string, unknown>;
+  const event = invitee?.event as Record<string, unknown>;
   if (!invitee?.uri || !event?.uri) throw new Error("Webhook payload missing event details.");
 
   const existingSnap = await meetingsCollection(params.tenantId).where("calendlyInviteeUri", "==", invitee.uri).limit(1).get();
   const existing = existingSnap.docs[0];
 
   const status = invitee.status === "canceled" ? "canceled" : invitee.rescheduled ? "rescheduled" : "scheduled";
+  const eventLocation = event.location as Record<string, unknown> | undefined;
+  const qaList = invitee.questions_and_answers as Record<string, unknown>[] | undefined;
 
   const baseRecord = {
     tenantId: params.tenantId,
@@ -370,12 +372,12 @@ export async function upsertMeetingFromCalendlyWebhook(params: { tenantId: strin
     title: event.name || "Calendly Meeting",
     startTime: String(event.start_time || invitee.start_time || new Date().toISOString()),
     endTime: String(event.end_time || invitee.end_time || event.start_time || new Date().toISOString()),
-    timezone: event.location?.timezone || invitee.timezone || null,
-    meetingUrl: event.location?.join_url || invitee.cancel_url || null,
+    timezone: eventLocation?.timezone || invitee.timezone || null,
+    meetingUrl: eventLocation?.join_url || invitee.cancel_url || null,
     cancelUrl: invitee.cancel_url || null,
     inviteeName: invitee.name || null,
     inviteeEmail: invitee.email || null,
-    notes: invitee.text_reminder_number || invitee.questions_and_answers?.map((qa: any) => `${qa.question}: ${qa.answer}`).join("; ") || null,
+    notes: invitee.text_reminder_number || (qaList?.map((qa) => `${qa.question}: ${qa.answer}`).join("; ")) || null,
     rescheduledFromInviteeUri: invitee.old_invitee || null,
     raw: params.payload,
     updatedAt: Timestamp.now(),
@@ -389,7 +391,7 @@ export async function upsertMeetingFromCalendlyWebhook(params: { tenantId: strin
   const taskId = status === "scheduled"
     ? await createTaskForMeeting({
         tenantId: params.tenantId,
-        inviteeName: invitee.name || null,
+        inviteeName: invitee.name as unknown || null,
         eventTypeName: event.name || null,
         startTime: String(event.start_time || new Date().toISOString()),
         notes: baseRecord.notes,
@@ -423,11 +425,11 @@ export function verifyCalendlyWebhookSignature(params: {
     .catch(() => false);
 }
 
-export async function handleCalendlyWebhookByTenant(params: { tenantId: string; payload: any }) {
+export async function handleCalendlyWebhookByTenant(params: { tenantId: string; payload: unknown }) {
   const integration = await getCalendlyIntegration(params.tenantId);
   if (!integration?.syncEnabled) return;
 
-  const eventType = String(params.payload?.event || "").toLowerCase();
+  const eventType = String((params.payload as Record<string, unknown>)?.event || "").toLowerCase();
   if (eventType === "invitee.created" || eventType === "invitee.canceled") {
     await upsertMeetingFromCalendlyWebhook(params);
   }
@@ -463,16 +465,16 @@ export async function syncCalendlyEventsFromApi(tenantId: string, count = 20) {
   if (!integration?.syncEnabled || !integration.userUri) throw new Error("Calendly sync is not enabled.");
 
   const token = await getCalendlyAccessToken(tenantId);
-  const events = await calendlyRequest<{ collection?: any[] }>(
+  const events = await calendlyRequest<{ collection?: unknown[] }>(
     token,
     `/scheduled_events?user=${encodeURIComponent(integration.userUri)}&count=${Math.min(Math.max(count, 1), 100)}&sort=start_time:desc`
   );
 
   const records: string[] = [];
   for (const entry of events.collection || []) {
-    const invitees = await calendlyRequest<{ collection?: any[] }>(
+    const invitees = await calendlyRequest<{ collection?: unknown[] }>(
       token,
-      `/scheduled_events/${encodeURIComponent(String(entry.uri).split("/").pop() || "")}/invitees`
+      `/scheduled_events/${encodeURIComponent(String((entry as Record<string, unknown>).uri).split("/").pop() || "")}/invitees`
     );
 
     for (const invitee of invitees.collection || []) {
@@ -481,13 +483,13 @@ export async function syncCalendlyEventsFromApi(tenantId: string, count = 20) {
         payload: {
           event: "invitee.created",
           payload: {
-            ...invitee,
+            ...(invitee as Record<string, unknown>),
             event: {
-              uri: entry.uri,
-              name: entry.name,
-              start_time: entry.start_time,
-              end_time: entry.end_time,
-              location: entry.location,
+              uri: (entry as Record<string, unknown>).uri,
+              name: (entry as Record<string, unknown>).name,
+              start_time: (entry as Record<string, unknown>).start_time,
+              end_time: (entry as Record<string, unknown>).end_time,
+              location: (entry as Record<string, unknown>).location,
             },
           },
         },

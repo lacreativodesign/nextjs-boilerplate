@@ -12,7 +12,7 @@ export async function GET() {
 
   const snap = await adminDb.collection("users").doc(current.uid).get();
   const data = snap.data() || {};
-  const providers = (data.sso as any)?.providers || {};
+  const providers = (data.sso as unknown)?.providers as unknown || {};
 
   return NextResponse.json({ ok: true, providers });
 }

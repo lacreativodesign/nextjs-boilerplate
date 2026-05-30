@@ -13,10 +13,10 @@ export async function getResourcePlannerUser() {
   return { ok: true as const, user: me };
 }
 
-export function asIsoDate(value: any): string | null {
+export function asIsoDate(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value.slice(0, 10);
   if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value?.toDate === "function") return value.toDate().toISOString().slice(0, 10);
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString().slice(0, 10);
   return null;
 }

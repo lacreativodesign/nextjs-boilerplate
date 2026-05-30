@@ -185,8 +185,8 @@ export async function consumeQuickBooksOAuthState(state: string) {
   const ref = adminDb.collection(QUICKBOOKS_STATE_COLLECTION).doc(state);
   const snap = await ref.get();
   if (!snap.exists) throw new Error("Invalid QuickBooks OAuth state.");
-  const data = snap.data() as any;
-  if (!data?.expiresAt || data.expiresAt.toMillis() < Date.now()) {
+  const data = snap.data() as unknown;
+  if (!(data as Record<string, unknown>)?.expiresAt || ((data as Record<string, unknown>).expiresAt as { toMillis: () => number }).toMillis() < Date.now()) {
     await ref.delete();
     throw new Error("QuickBooks OAuth state expired.");
   }
@@ -354,10 +354,10 @@ export async function callQuickBooksApi<T>(tenantId: string, path: string, optio
     cache: "no-store",
   });
 
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || data?.Fault) {
-    const fault = data?.Fault?.Error?.[0];
-    throw new Error(fault?.Detail || fault?.Message || `QuickBooks API request failed (${response.status})`);
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || (data as Record<string, unknown>)?.Fault) {
+    const fault = (((data as Record<string, unknown>)?.Fault as Record<string, unknown>)?.Error as unknown[])?.[0];
+    throw new Error((fault as Record<string, unknown>)?.Detail as string || (fault as Record<string, unknown>)?.Message as string || `QuickBooks API request failed (${response.status})`);
   }
   return data as T;
 }
@@ -365,12 +365,12 @@ export async function callQuickBooksApi<T>(tenantId: string, path: string, optio
 async function queryQuickBooks(tenantId: string, query: string) {
   const { companyId } = await getAccessTokenAndCompany(tenantId);
   const encoded = encodeURIComponent(query);
-  return callQuickBooksApi<any>(tenantId, `/v3/company/${companyId}/query?query=${encoded}&minorversion=75`);
+  return callQuickBooksApi<unknown>(tenantId, `/v3/company/${companyId}/query?query=${encoded}&minorversion=75`);
 }
 
 async function postQuickBooksEntity(tenantId: string, entity: string, body: Record<string, unknown>) {
   const { companyId } = await getAccessTokenAndCompany(tenantId);
-  return callQuickBooksApi<any>(tenantId, `/v3/company/${companyId}/${entity}?minorversion=75`, { method: "POST", body });
+  return callQuickBooksApi<unknown>(tenantId, `/v3/company/${companyId}/${entity}?minorversion=75`, { method: "POST", body });
 }
 
 function getString(value: unknown): string {
@@ -394,8 +394,8 @@ function compareLocalVsRemote(localUpdatedAt: string | null, remoteUpdatedAt: st
   return localTs - remoteTs;
 }
 
-async function upsertCustomerFromQuickBooks(tenantId: string, qboCustomer: any, settings: QuickBooksSyncSettings) {
-  const externalId = getString(qboCustomer?.Id);
+async function upsertCustomerFromQuickBooks(tenantId: string, qboCustomer: unknown, settings: QuickBooksSyncSettings) {
+  const externalId = getString((qboCustomer as Record<string, unknown>)?.Id);
   if (!externalId) return { op: "skip" as const, conflict: false };
 
   const query = await adminDb
@@ -405,19 +405,19 @@ async function upsertCustomerFromQuickBooks(tenantId: string, qboCustomer: any, 
     .limit(1)
     .get();
 
-  const remoteUpdatedAt = normalizeIso(qboCustomer?.MetaData?.LastUpdatedTime);
+  const remoteUpdatedAt = normalizeIso(((qboCustomer as Record<string, unknown>)?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null);
   const payload = {
     tenantId,
-    companyName: getString(qboCustomer?.CompanyName || qboCustomer?.DisplayName) || "Unknown",
-    primaryContactEmail: getString(qboCustomer?.PrimaryEmailAddr?.Address),
-    primaryContactPhone: getString(qboCustomer?.PrimaryPhone?.FreeFormNumber),
-    website: getString(qboCustomer?.WebAddr?.URI),
+    companyName: getString((qboCustomer as Record<string, unknown>)?.CompanyName || (qboCustomer as Record<string, unknown>)?.DisplayName) || "Unknown",
+    primaryContactEmail: getString(((qboCustomer as Record<string, unknown>)?.PrimaryEmailAddr as Record<string, unknown>)?.Address),
+    primaryContactPhone: getString(((qboCustomer as Record<string, unknown>)?.PrimaryPhone as Record<string, unknown>)?.FreeFormNumber),
+    website: getString(((qboCustomer as Record<string, unknown>)?.WebAddr as Record<string, unknown>)?.URI),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     quickbooks: {
       id: externalId,
-      syncToken: getString(qboCustomer?.SyncToken),
+      syncToken: getString((qboCustomer as Record<string, unknown>)?.SyncToken),
       lastUpdatedAt: remoteUpdatedAt,
-      displayName: getString(qboCustomer?.DisplayName),
+      displayName: getString((qboCustomer as Record<string, unknown>)?.DisplayName),
     },
   };
 
@@ -430,8 +430,8 @@ async function upsertCustomerFromQuickBooks(tenantId: string, qboCustomer: any, 
   }
 
   const doc = query.docs[0];
-  const current = doc.data() as any;
-  const localUpdatedAt = normalizeIso(current?.quickbooks?.lastUpdatedAt || current?.updatedAt?.toDate?.()?.toISOString?.());
+  const current = doc.data() as unknown;
+  const localUpdatedAt = normalizeIso(((current as Record<string, unknown>)?.quickbooks as Record<string, unknown>)?.lastUpdatedAt as string | null || ((current as Record<string, unknown>)?.updatedAt as { toDate?: () => Date })?.toDate?.()?.toISOString?.());
   const localIsNewer = compareLocalVsRemote(localUpdatedAt, remoteUpdatedAt) > 0;
   if (settings.conflictMode === "manual" && localIsNewer) {
     return { op: "skip" as const, conflict: true };
@@ -450,8 +450,8 @@ async function syncCustomersFromQuickBooks(tenantId: string, sinceISO: string | 
   }
 
   const response = await queryQuickBooks(tenantId, query);
-  const customers = response?.QueryResponse?.Customer || [];
-  for (const customer of customers) {
+  const customers = (((response as Record<string, unknown>)?.QueryResponse as Record<string, unknown>)?.Customer as unknown[]) || [];
+  for (const customer of customers as Record<string, unknown>[]) {
     const op = await upsertCustomerFromQuickBooks(tenantId, customer, settings);
     if (op.op === "insert") result.inserted += 1;
     else if (op.op === "update") result.updated += 1;
@@ -465,27 +465,27 @@ async function syncCustomersFromQuickBooks(tenantId: string, sinceISO: string | 
 async function syncCustomersToQuickBooks(tenantId: string, sinceISO: string | null) {
   const result = mapSyncEntityResult();
   let query = adminDb.collection("clients").where("tenantId", "==", tenantId).limit(QUICKBOOKS_MAX_PAGE);
-  if (sinceISO) query = query.where("updatedAt", ">", admin.firestore.Timestamp.fromDate(new Date(sinceISO)) as any);
+  if (sinceISO) query = query.where("updatedAt", ">", admin.firestore.Timestamp.fromDate(new Date(sinceISO)) as unknown);
   const local = await query.get();
 
   for (const doc of local.docs) {
-    const data = doc.data() as any;
-    const qbId = getString(data?.quickbooks?.id);
+    const data = doc.data() as unknown;
+    const qbId = getString(((data as Record<string, unknown>)?.quickbooks as Record<string, unknown>)?.id);
     if (qbId) {
       result.skipped += 1;
       continue;
     }
 
     const body = {
-      DisplayName: getString(data.companyName || data.primaryContactName || doc.id).slice(0, 100),
-      CompanyName: getString(data.companyName || data.primaryContactName || "Customer"),
-      PrimaryEmailAddr: data.primaryContactEmail ? { Address: getString(data.primaryContactEmail) } : undefined,
-      PrimaryPhone: data.primaryContactPhone ? { FreeFormNumber: getString(data.primaryContactPhone) } : undefined,
-      WebAddr: data.website ? { URI: getString(data.website) } : undefined,
+      DisplayName: getString((data as Record<string, unknown>).companyName || (data as Record<string, unknown>).primaryContactName || doc.id).slice(0, 100),
+      CompanyName: getString((data as Record<string, unknown>).companyName || (data as Record<string, unknown>).primaryContactName || "Customer"),
+      PrimaryEmailAddr: (data as Record<string, unknown>).primaryContactEmail ? { Address: getString((data as Record<string, unknown>).primaryContactEmail) } : undefined,
+      PrimaryPhone: (data as Record<string, unknown>).primaryContactPhone ? { FreeFormNumber: getString((data as Record<string, unknown>).primaryContactPhone) } : undefined,
+      WebAddr: (data as Record<string, unknown>).website ? { URI: getString((data as Record<string, unknown>).website) } : undefined,
     };
 
     const response = await postQuickBooksEntity(tenantId, "customer", body);
-    const created = response?.Customer;
+    const created = ((response as Record<string, unknown>)?.Customer as Record<string, unknown>) || {};
     if (!created?.Id) {
       result.skipped += 1;
       continue;
@@ -496,7 +496,7 @@ async function syncCustomersToQuickBooks(tenantId: string, sinceISO: string | nu
         quickbooks: {
           id: getString(created.Id),
           syncToken: getString(created.SyncToken),
-          lastUpdatedAt: normalizeIso(created?.MetaData?.LastUpdatedTime),
+          lastUpdatedAt: normalizeIso((created?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null),
           displayName: getString(created?.DisplayName),
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -512,17 +512,17 @@ async function syncCustomersToQuickBooks(tenantId: string, sinceISO: string | nu
 async function syncInvoicesToQuickBooks(tenantId: string, sinceISO: string | null) {
   const result = mapSyncEntityResult();
   let query = adminDb.collection("invoices").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(QUICKBOOKS_MAX_PAGE);
-  if (sinceISO) query = query.where("updatedAt", ">", admin.firestore.Timestamp.fromDate(new Date(sinceISO)) as any);
+  if (sinceISO) query = query.where("updatedAt", ">", admin.firestore.Timestamp.fromDate(new Date(sinceISO)) as unknown);
   const invoices = await query.get();
 
   for (const doc of invoices.docs) {
-    const invoice = doc.data() as any;
-    if (getString(invoice?.quickbooks?.id)) {
+    const invoice = doc.data() as unknown;
+    if (getString(((invoice as Record<string, unknown>)?.quickbooks as Record<string, unknown>)?.id)) {
       result.skipped += 1;
       continue;
     }
 
-    const clientId = getString(invoice.clientId);
+    const clientId = getString((invoice as Record<string, unknown>).clientId);
     const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
     const qbCustomerId = getString(clientSnap?.data()?.quickbooks?.id);
     if (!qbCustomerId) {
@@ -530,12 +530,12 @@ async function syncInvoicesToQuickBooks(tenantId: string, sinceISO: string | nul
       continue;
     }
 
-    const amount = Number(invoice.amountTotal || invoice.totalUSD || 0);
+    const amount = Number((invoice as Record<string, unknown>).amountTotal || (invoice as Record<string, unknown>).totalUSD || 0);
     const body = {
       CustomerRef: { value: qbCustomerId },
-      TxnDate: normalizeIso(invoice.issuedAt)?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-      DueDate: normalizeIso(invoice.dueDate)?.slice(0, 10) || undefined,
-      PrivateNote: getString(invoice.notes),
+      TxnDate: normalizeIso((invoice as Record<string, unknown>).issuedAt as string | null)?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+      DueDate: normalizeIso((invoice as Record<string, unknown>).dueDate as string | null)?.slice(0, 10) || undefined,
+      PrivateNote: getString((invoice as Record<string, unknown>).notes),
       Line: [
         {
           Amount: Number.isFinite(amount) ? amount : 0,
@@ -543,13 +543,13 @@ async function syncInvoicesToQuickBooks(tenantId: string, sinceISO: string | nul
           SalesItemLineDetail: {
             ItemRef: { value: "1", name: "Services" },
           },
-          Description: getString(invoice.orderId || `Invoice ${doc.id}`),
+          Description: getString((invoice as Record<string, unknown>).orderId || `Invoice ${doc.id}`),
         },
       ],
     };
 
     const response = await postQuickBooksEntity(tenantId, "invoice", body);
-    const created = response?.Invoice;
+    const created = ((response as Record<string, unknown>)?.Invoice as Record<string, unknown>) || {};
     if (!created?.Id) {
       result.skipped += 1;
       continue;
@@ -560,7 +560,7 @@ async function syncInvoicesToQuickBooks(tenantId: string, sinceISO: string | nul
         quickbooks: {
           id: getString(created.Id),
           syncToken: getString(created.SyncToken),
-          lastUpdatedAt: normalizeIso(created?.MetaData?.LastUpdatedTime),
+          lastUpdatedAt: normalizeIso((created?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null),
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
@@ -578,9 +578,9 @@ async function syncPaymentsFromQuickBooks(tenantId: string, sinceISO: string | n
   let qbQuery = "SELECT * FROM Payment MAXRESULTS 1000";
   if (sinceISO) qbQuery = `SELECT * FROM Payment WHERE MetaData.LastUpdatedTime > '${sinceISO.replace(".000Z", "Z")}' MAXRESULTS 1000`;
   const response = await queryQuickBooks(tenantId, qbQuery);
-  const payments = response?.QueryResponse?.Payment || [];
+  const payments = ((((response as Record<string, unknown>)?.QueryResponse as Record<string, unknown>)?.Payment as unknown[])) || [];
 
-  for (const payment of payments) {
+  for (const payment of payments as Record<string, unknown>[]) {
     const qbId = getString(payment?.Id);
     if (!qbId) {
       result.skipped += 1;
@@ -594,10 +594,10 @@ async function syncPaymentsFromQuickBooks(tenantId: string, sinceISO: string | n
       .limit(1)
       .get();
 
-    const remoteUpdatedAt = normalizeIso(payment?.MetaData?.LastUpdatedTime);
+    const remoteUpdatedAt = normalizeIso((payment?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null);
     if (!existing.empty) {
-      const current = existing.docs[0].data() as any;
-      const localUpdatedAt = normalizeIso(current?.quickbooks?.lastUpdatedAt || current?.updatedAt?.toDate?.()?.toISOString?.());
+      const current = existing.docs[0].data() as unknown;
+      const localUpdatedAt = normalizeIso(((current as Record<string, unknown>)?.quickbooks as Record<string, unknown>)?.lastUpdatedAt as string | null || ((current as Record<string, unknown>)?.updatedAt as { toDate?: () => Date })?.toDate?.()?.toISOString?.());
       const localIsNewer = compareLocalVsRemote(localUpdatedAt, remoteUpdatedAt) > 0;
       if (settings.conflictMode === "manual" && localIsNewer) {
         conflicts += 1;
@@ -626,10 +626,10 @@ async function syncPaymentsFromQuickBooks(tenantId: string, sinceISO: string | n
     await adminDb.collection("payments").add({
       tenantId,
       clientId: "",
-      clientName: getString(payment?.CustomerRef?.name),
-      currency: getString(payment?.CurrencyRef?.value || "USD"),
+      clientName: getString((payment?.CustomerRef as Record<string, unknown>)?.name),
+      currency: getString((payment?.CurrencyRef as Record<string, unknown>)?.value || "USD"),
       amountUsd: Number(payment?.TotalAmt || 0),
-      method: getString(payment?.PaymentMethodRef?.name || "QuickBooks"),
+      method: getString((payment?.PaymentMethodRef as Record<string, unknown>)?.name || "QuickBooks"),
       status: "completed",
       paidAt: payment?.TxnDate ? `${payment.TxnDate}T00:00:00.000Z` : null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -652,9 +652,9 @@ async function syncAccountsFromQuickBooks(tenantId: string, sinceISO: string | n
   let qbQuery = "SELECT * FROM Account MAXRESULTS 1000";
   if (sinceISO) qbQuery = `SELECT * FROM Account WHERE MetaData.LastUpdatedTime > '${sinceISO.replace(".000Z", "Z")}' MAXRESULTS 1000`;
   const response = await queryQuickBooks(tenantId, qbQuery);
-  const accounts = response?.QueryResponse?.Account || [];
+  const accounts = (((response as Record<string, unknown>)?.QueryResponse as Record<string, unknown>)?.Account as unknown[]) || [];
 
-  for (const account of accounts) {
+  for (const account of accounts as Record<string, unknown>[]) {
     const qbId = getString(account?.Id);
     if (!qbId) {
       result.skipped += 1;
@@ -679,7 +679,7 @@ async function syncAccountsFromQuickBooks(tenantId: string, sinceISO: string | n
       quickbooks: {
         id: qbId,
         syncToken: getString(account?.SyncToken),
-        lastUpdatedAt: normalizeIso(account?.MetaData?.LastUpdatedTime),
+        lastUpdatedAt: normalizeIso((account?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null),
       },
     };
 
@@ -703,9 +703,9 @@ async function syncTaxRatesFromQuickBooks(tenantId: string, sinceISO: string | n
   let qbQuery = "SELECT * FROM TaxRate MAXRESULTS 1000";
   if (sinceISO) qbQuery = `SELECT * FROM TaxRate WHERE MetaData.LastUpdatedTime > '${sinceISO.replace(".000Z", "Z")}' MAXRESULTS 1000`;
   const response = await queryQuickBooks(tenantId, qbQuery);
-  const rates = response?.QueryResponse?.TaxRate || [];
+  const rates = (((response as Record<string, unknown>)?.QueryResponse as Record<string, unknown>)?.TaxRate as unknown[]) || [];
 
-  for (const rate of rates) {
+  for (const rate of rates as Record<string, unknown>[]) {
     const qbId = getString(rate?.Id);
     if (!qbId) {
       result.skipped += 1;
@@ -730,7 +730,7 @@ async function syncTaxRatesFromQuickBooks(tenantId: string, sinceISO: string | n
       quickbooks: {
         id: qbId,
         syncToken: getString(rate?.SyncToken),
-        lastUpdatedAt: normalizeIso(rate?.MetaData?.LastUpdatedTime),
+        lastUpdatedAt: normalizeIso((rate?.MetaData as Record<string, unknown>)?.LastUpdatedTime as string | null),
       },
     };
 
@@ -784,7 +784,7 @@ export async function getQuickBooksSyncLogs(tenantId: string, limit = 50) {
     .limit(capped)
     .get();
 
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function runQuickBooksSync(input: { tenantId: string; userUid: string; forceInitial?: boolean }) {
@@ -879,7 +879,6 @@ export async function runQuickBooksSync(input: { tenantId: string; userUid: stri
       ),
       logRef.set({
         tenantId,
-        mode,
         status: "success",
         ...summary,
         triggeredBy: input.userUid,
@@ -888,9 +887,9 @@ export async function runQuickBooksSync(input: { tenantId: string; userUid: stri
     ]);
 
     return summary;
-  } catch (error: any) {
+  } catch (error) {
     const finishedAt = new Date().toISOString();
-    const safeMessage = String(error?.message || "QuickBooks sync failed.");
+    const safeMessage = String((error instanceof Error ? error.message : undefined) || "QuickBooks sync failed.");
 
     await Promise.all([
       getTenantIntegrationRef(tenantId).set(
@@ -934,12 +933,12 @@ export async function getQuickBooksCompanyInfo(accessToken: string, realmId: str
     cache: "no-store",
   });
 
-  const data = (await response.json().catch(() => ({}))) as any;
-  if (!response.ok || data?.Fault) {
+  const data = (await response.json().catch(() => ({}))) as unknown;
+  if (!response.ok || (data as Record<string, unknown>)?.Fault) {
     return { companyName: null };
   }
 
   return {
-    companyName: getString(data?.CompanyInfo?.CompanyName || data?.CompanyInfo?.LegalName) || null,
+    companyName: getString(((data as Record<string, unknown>)?.CompanyInfo as Record<string, unknown>)?.CompanyName as unknown || ((data as Record<string, unknown>)?.CompanyInfo as Record<string, unknown>)?.LegalName) || null,
   };
 }

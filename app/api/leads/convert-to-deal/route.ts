@@ -9,7 +9,7 @@ import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../../admin/_uti
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value ?? "").trim();
 }
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing leadId." }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const leadRef = adminDb.collection("leads").doc(leadId);
     const dealRef = adminDb.collection("deals").doc();
 
@@ -120,8 +120,8 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true, dealId: dealRef.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error("lead convert error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to convert lead." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Unable to convert lead." }, { status: 500 });
   }
 }

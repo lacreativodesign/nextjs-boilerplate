@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       userId = me.uid;
-      tenantId = normalizeTenantId(me.tenantId);
+      tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     }
 
     if (!eventType) {

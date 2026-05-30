@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type { Query } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     if (lowStock) {
       products = products.filter((product) =>
-        Boolean(product.trackInventory) && Number(product.currentStock ?? 0) <= Number(product.reorderPoint ?? 0)
+        Boolean(product.trackInventory) && Number(product.currentStock as unknown ?? 0) <= Number(product.reorderPoint as unknown ?? 0)
       );
     }
 

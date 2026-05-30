@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { currencyConverter } from "@/lib/currency/currencyConverter";
 
 export const dynamic = "force-dynamic";
@@ -22,11 +22,11 @@ export async function GET(request: NextRequest) {
       message: "Rates cached",
       lastUpdated: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
       {
         error: "Failed to fetch rates",
-        details: error?.message || "Unknown error",
+        details: (error instanceof Error ? error.message : undefined) || "Unknown error",
       },
       { status: 500 }
     );

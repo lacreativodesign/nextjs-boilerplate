@@ -39,7 +39,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=reports-projects-by-stage.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/exports projects-by-stage error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

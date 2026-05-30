@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { invoiceEmailHtml, invoiceEmailSubject } from "@/lib/email/html-templates";
 import admin from "firebase-admin";
 import { Resend } from "resend";
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // eslint-disable-next-line no-console
     console.log("[CRON] Starting recurring invoice generation.");
     const results = await generateRecurringInvoices();
 
@@ -81,6 +82,7 @@ async function generateRecurringInvoices() {
 
   for (const tenantDoc of tenantsSnapshot.docs) {
     const tenantId = tenantDoc.id;
+    // eslint-disable-next-line no-console
     console.log(`[CRON] Processing tenant ${tenantId}`);
 
     const templatesSnapshot = await adminDb
@@ -287,6 +289,7 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
       html: invoiceEmailHtml(invoiceData),
     });
 
+    // eslint-disable-next-line no-console
     console.log(`[EMAIL] Sent invoice ${invoice.invoiceNumber} to ${clientEmail}`);
   } catch (error) {
     console.error("[EMAIL] Failed to send invoice email:", error);

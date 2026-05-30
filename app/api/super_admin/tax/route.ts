@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireSuperAdmin } from "@/app/api/super_admin/_utils";
 
@@ -81,8 +81,8 @@ export async function GET(req: NextRequest) {
       businessEntity: "LA CREATIVO GROUP, LLC",
       filingSchedule: "Quarterly — Texas Comptroller Form 01-117",
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[SUPER_ADMIN_TAX]", err);
-    return NextResponse.json({ ok: false, error: err.message || "Failed to load tax data." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (err as Record<string, unknown>).message || "Failed to load tax data." }, { status: 500 });
   }
 }

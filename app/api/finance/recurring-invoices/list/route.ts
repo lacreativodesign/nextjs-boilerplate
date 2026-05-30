@@ -39,7 +39,7 @@ export async function GET(req: Request) {
         id: doc.id,
         ...doc.data(),
       }))
-      .filter((template) => (activeOnly ? template.status === "active" : true));
+      .filter((template) => (activeOnly ? template.status as unknown === "active" : true));
 
     return NextResponse.json({ ok: true, templates });
   } catch (err) {

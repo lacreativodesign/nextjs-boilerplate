@@ -35,8 +35,8 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
       setIsOpen(false);
       setFormData({ email: "", role: "staff" });
       onSuccess();
-    } catch (err: any) {
-      setError(err?.message || "Unable to send invitation");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to send invitation");
     } finally {
       setIsSubmitting(false);
     }

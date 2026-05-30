@@ -76,9 +76,9 @@ export default function COOSummaryWidget() {
       pollRef.current = setInterval(() => pollTask(taskId), 2000);
       pollTask(taskId);
 
-    } catch (err: any) {
+    } catch (err) {
       setState("error");
-      setError(err?.message || "Something went wrong.");
+      setError((err instanceof Error ? err.message : undefined) || "Something went wrong.");
     }
   };
 

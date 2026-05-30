@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type TimeEntry = {
   id: string;

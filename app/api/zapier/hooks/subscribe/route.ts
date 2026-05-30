@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { createZapierHookSubscription, ZAPIER_TRIGGER_TO_EVENT, type ZapierTriggerKey } from "@/lib/zapier/service";
 import { requireZapierApiKey } from "@/app/api/zapier/_utils";
 

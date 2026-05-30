@@ -145,10 +145,10 @@ export async function dispatchZapierTriggerEvent(params: {
           },
           { merge: true }
         );
-      } catch (error: any) {
+      } catch (error) {
         await hookRef.set(
           {
-            lastError: String(error?.message || "Webhook push failed"),
+            lastError: String((error instanceof Error ? error.message : undefined) || "Webhook push failed"),
             updatedAt: createdAt,
           },
           { merge: true }

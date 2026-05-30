@@ -12,9 +12,9 @@ const defaultItems: DashboardWidgetLayoutItem[] = [
   { widgetId: "seed-activity", x: 9, y: 0, w: 3, h: 4 },
 ];
 
-function toIso(value: any): string | undefined {
+function toIso(value: unknown): string | undefined {
   if (!value) return undefined;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return new Date(value).toISOString();
 }

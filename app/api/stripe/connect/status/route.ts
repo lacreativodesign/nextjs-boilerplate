@@ -26,8 +26,8 @@ export async function GET() {
       payoutsEnabled: Boolean(tenantData.stripeConnectPayoutsEnabled),
       connectedAt: tenantData.stripeConnectConnectedAt || null,
     });
-  } catch (error: any) {
-    const message = error?.message || "Unable to fetch Stripe Connect status.";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Unable to fetch Stripe Connect status.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const returnTo = new URL(request.url).searchParams.get("returnTo") || "/admin/settings/integrations";
-    const { state, url, expiresAt } = buildMicrosoftAuthUrl({ tenantId: auth.user.tenantId, userUid: auth.user.uid, returnTo });
+    const { state, url, expiresAt } = buildMicrosoftAuthUrl({ tenantId: auth.user.tenantId, userUid: auth.user.uid, returnTo }) as string;
 
     await storeMicrosoftOAuthState({
       state,

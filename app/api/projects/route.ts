@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { ProjectService } from "@/lib/projects/project-service";
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const code = await ProjectService.generateProjectCode(me.tenantId);
+    const code = await ProjectService.generateProjectCode(me.tenantId as string);
 
     const projectId = await ProjectService.createProject({
       tenantId: me.tenantId,
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       queryName: "projects_list",
       metadata: { status, clientId, limit: pageSize, cursor: cursor || null },
     });
-    const projects = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const projects = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({
       projects,

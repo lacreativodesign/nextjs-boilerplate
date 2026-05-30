@@ -260,11 +260,11 @@ export default function DeliveryPipelinePage() {
 
       setProjects(Array.isArray(json?.projects) ? json.projects : []);
       setCurrentUser(json?.currentUser || null);
-    } catch (e: any) {
+    } catch (e) {
       console.error("Failed to load pipeline:", e);
       setError({
         title: "Pipeline can’t load yet",
-        message: e?.message || "Unable to load pipeline right now.",
+        message: (e instanceof Error ? e.message : undefined) || "Unable to load pipeline right now.",
       });
       setProjects([]);
       setCurrentUser(null);
@@ -294,13 +294,13 @@ export default function DeliveryPipelinePage() {
 
         const json = await res.json().catch(() => null);
         if (!res.ok) return;
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: unknown[] = Array.isArray(json) ? json : Array.isArray((json as unknown)?.users) ? (json as unknown).users : [];
         if (!alive) return;
         setUsers(
           list.map((u) => ({
-            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || "",
-            name: u.name || u.fullName || u.displayName || u.email || "",
-            role: u.role || "",
+            uid: (u as Record<string, unknown>).uid || (u as Record<string, unknown>).id || (u as Record<string, unknown>).docId || (u as Record<string, unknown>).userId || (u as Record<string, unknown>).firebaseUid || "",
+            name: (u as Record<string, unknown>).name || (u as Record<string, unknown>).fullName || (u as Record<string, unknown>).displayName || (u as Record<string, unknown>).email || "",
+            role: (u as Record<string, unknown>).role || "",
           }))
         );
       } catch {
@@ -422,10 +422,10 @@ export default function DeliveryPipelinePage() {
       }
 
       await fetchPipeline();
-    } catch (e: any) {
+    } catch (e) {
       console.error("Move stage failed:", e);
       setProjects((prev) => prev.map((item) => (item.id === project.id ? { ...item, stage: prevStage } : item)));
-      toastError(e?.message || "Unable to move stage right now.");
+      toastError((e instanceof Error ? e.message : undefined) || "Unable to move stage right now.");
     } finally {
       setMovingProjectId(null);
     }

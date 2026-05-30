@@ -54,7 +54,7 @@ export default function SalesReportsPage() {
       d.date,
     ]);
 
-    let csvContent =
+    const csvContent =
       "data:text/csv;charset=utf-8," +
       [headers, ...rows].map((e) => e.join(",")).join("\n");
 

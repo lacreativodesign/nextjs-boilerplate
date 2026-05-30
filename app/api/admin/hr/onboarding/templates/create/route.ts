@@ -25,10 +25,10 @@ export async function POST(req: Request) {
       tenantId: access.user.tenantId,
       name,
       role,
-      steps: steps.map((step: any) => ({
-        title: String(step?.title || "").trim(),
-        description: String(step?.description || "").trim(),
-        required: Boolean(step?.required),
+      steps: steps.map((step: unknown) => ({
+        title: String((step as Record<string, unknown>)?.title || "").trim(),
+        description: String((step as Record<string, unknown>)?.description || "").trim(),
+        required: Boolean((step as Record<string, unknown>)?.required),
       })),
       isActive,
       createdAt: serverTimestamp(),

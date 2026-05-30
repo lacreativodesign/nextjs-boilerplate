@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing clientId" }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(current.tenantId);
+    const tenantId = normalizeTenantId(current.tenantId as string | null | undefined);
     const clientSnap = await adminDb.collection("clients").doc(clientId).get();
     if (!clientSnap.exists) {
       return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client invite send error:", err);
     return NextResponse.json({ ok: false, error: "Unable to send invite." }, { status: 500 });
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { z, ZodSchema } from "zod";
+import { z, type ZodSchema } from "zod";
 
 // Hook that takes a Zod schema and returns validation helpers for forms.
 export function useFormValidation<T>(schema: ZodSchema<T>) {

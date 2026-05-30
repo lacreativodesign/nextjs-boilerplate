@@ -595,7 +595,7 @@ export async function syncCustomersToAudience(params: {
     });
 
     return result;
-  } catch (error: any) {
+  } catch (error) {
     await getIntegrationRef(params.tenantId).set(
       {
         stats: {
@@ -604,7 +604,7 @@ export async function syncCustomersToAudience(params: {
           lastSyncFinishedAt: new Date().toISOString(),
           lastSyncMode: params.mode,
           lastSyncStatus: "error",
-          lastSyncError: error?.message || "Mailchimp sync failed.",
+          lastSyncError: (error instanceof Error ? error.message : undefined) || "Mailchimp sync failed.",
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: params.userUid,

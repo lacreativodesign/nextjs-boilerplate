@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { CurrencySelector } from "./CurrencySelector";
-import { CurrencyCode } from "@/lib/finance/currencies";
+import type { CurrencyCode } from "@/lib/finance/currencies";
 import { CurrencyDisplay } from "./CurrencyDisplay";
 
 export function CurrencyConverter() {

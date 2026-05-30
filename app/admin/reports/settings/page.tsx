@@ -46,7 +46,7 @@ export default function ReportsSettingsPage() {
         throw new Error(json?.error || "Unable to load settings.");
       }
       setSettings(json.settings as ReportSettings);
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports settings load error", err);
       setError("Unable to load report settings.");
     } finally {
@@ -96,7 +96,7 @@ export default function ReportsSettingsPage() {
         throw new Error(json?.error || "Unable to save settings.");
       }
       setSuccess("Settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("reports settings save error", err);
       setError("Unable to save report settings right now.");
     } finally {

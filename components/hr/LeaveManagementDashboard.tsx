@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type LeaveTypeCode = "vacation" | "sick" | "personal" | "unpaid" | "bereavement";
 type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";

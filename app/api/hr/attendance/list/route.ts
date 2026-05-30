@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const usersSnapshot = await adminDB.collection("users").where("tenantId", "==", access.user.tenantId).get();
 
-    let finalAttendance: any[] = [];
+    const finalAttendance: unknown[] = [];
 
     for (const userDoc of usersSnapshot.docs) {
       const userId = userDoc.id;

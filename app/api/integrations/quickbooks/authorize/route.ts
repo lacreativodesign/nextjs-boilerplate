@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { buildQuickBooksAuthorizeUrl, createQuickBooksOAuthState } from "@/lib/integrations/quickbooks";
 
@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(buildQuickBooksAuthorizeUrl(state));
-  } catch (error: any) {
+  } catch (error) {
     console.error("quickbooks/authorize error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to start QuickBooks OAuth." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to start QuickBooks OAuth." }, { status: 500 });
   }
 }

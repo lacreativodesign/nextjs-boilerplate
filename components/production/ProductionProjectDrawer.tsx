@@ -6,7 +6,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final"] as const;
-const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
+const _STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
 
 type Stage = (typeof STAGES)[number];
 
@@ -208,7 +208,7 @@ export default function ProductionProjectDrawer({
   );
 
   const latestFiles = useMemo(() => {
-    return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as any));
+    return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as unknown));
   }, [files]);
 
   const groupedFiles = useMemo(() => {
@@ -261,9 +261,9 @@ export default function ProductionProjectDrawer({
       setActiveProject(payload.project);
       onProjectUpdated?.(payload.project);
       onRefresh?.();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to update production owner.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to update production owner.");
     } finally {
       setActionLoading(false);
     }
@@ -298,9 +298,9 @@ export default function ProductionProjectDrawer({
       onRefresh?.();
       setSelectedStage("");
       setQaReason("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to move stage.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to move stage.");
     } finally {
       setActionLoading(false);
     }
@@ -330,9 +330,9 @@ export default function ProductionProjectDrawer({
       onProjectUpdated?.(payload.project);
       onRefresh?.();
       setQaReason("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to update QA status.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to update QA status.");
     } finally {
       setActionLoading(false);
     }
@@ -386,9 +386,9 @@ export default function ProductionProjectDrawer({
       setActiveProject((prev) =>
         prev ? { ...prev, productionOverrideStatus: "pending", productionOverrideApprovalId: payload.id } : prev
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to request override.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to request override.");
     } finally {
       setOverrideLoading(false);
     }
@@ -447,9 +447,9 @@ export default function ProductionProjectDrawer({
 
       await refreshFiles();
       onRefresh?.();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setActionError(err?.message || "Unable to upload file.");
+      setActionError((err instanceof Error ? err.message : undefined) || "Unable to upload file.");
     } finally {
       setUploadingCategory(null);
       setActionLoading(false);

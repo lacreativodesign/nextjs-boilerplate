@@ -37,19 +37,19 @@ type ClientDoc = {
   orderId?: string;
   portalUserUid?: string | null;
 
-  createdAt?: any;
-  updatedAt?: any;
-  lastActivity?: any;
-  deletedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  lastActivity?: unknown;
+  deletedAt?: unknown;
 };
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
 
   // Firestore Timestamp support (admin sdk)
-  if (typeof value?.toDate === "function") {
-    return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") {
+    return (value as Record<string, unknown>).toDate().toISOString();
   }
 
   // Date
@@ -130,10 +130,10 @@ export async function GET() {
       .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
     return NextResponse.json({ ok: true, clients });
-  } catch (err: any) {
+  } catch (err) {
     console.error("clients/list error:", err);
     return NextResponse.json(
-      { ok: false, error: err?.message || "Server error" },
+      { ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" },
       { status: 500 }
     );
   }

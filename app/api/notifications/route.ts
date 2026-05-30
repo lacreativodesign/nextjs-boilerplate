@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { normalizeTenantId } from "@/lib/tenant";
 import { NotificationService } from "@/lib/notifications/notification-service";
@@ -8,9 +8,9 @@ import { requireNotificationsModule } from "./_utils";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function toIso(value: any) {
+function toIso(value: unknown) {
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ error: moduleAccess.error }, { status: moduleAccess.status });

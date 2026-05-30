@@ -1,9 +1,9 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import type { DashboardWidget, WidgetDataEnvelope } from "@/lib/dashboard/types";
 
-function toIso(value: any): string {
+function toIso(value: unknown): string {
   if (!value) return new Date().toISOString();
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>).toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return new Date(value).toISOString();
 }

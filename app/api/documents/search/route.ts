@@ -71,11 +71,11 @@ export async function POST(request: NextRequest) {
 
     results = searchResult.results as Document[];
   } else {
-    const snapshot = await SearchService.buildQuery("documents", session.tenantId, [], params.sortBy || "createdAt", params.sortOrder)
+    const snapshot = await SearchService.buildQuery("documents", session.tenantId as string, [], params.sortBy || "createdAt", params.sortOrder)
       .limit(Math.min(params.limit * 5, 200))
       .get();
 
-    results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Document));
+    results = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as Document));
   }
 
   const filtered = results.filter((doc) => !doc.deletedAt).filter((doc) => hasDocumentAccess(doc, session));

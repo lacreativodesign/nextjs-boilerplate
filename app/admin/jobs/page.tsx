@@ -62,8 +62,8 @@ export default function AdminJobsPage() {
 
       setJobs(json.jobs || []);
       setMetrics(json.metrics);
-    } catch (err: any) {
-      setError(err?.message || "Unable to load job dashboard.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load job dashboard.");
     } finally {
       setLoading(false);
     }
@@ -90,8 +90,8 @@ export default function AdminJobsPage() {
         throw new Error(json.error || "Retry failed.");
       }
       await loadJobs();
-    } catch (err: any) {
-      setError(err?.message || "Retry failed.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Retry failed.");
     } finally {
       setRetrying(null);
     }

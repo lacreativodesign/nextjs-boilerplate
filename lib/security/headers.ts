@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
 
 function buildCsp() {
   const isProd = process.env.NODE_ENV === "production";

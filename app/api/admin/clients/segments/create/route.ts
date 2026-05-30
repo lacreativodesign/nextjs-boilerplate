@@ -10,15 +10,15 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!isAdminRole(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await req.json();
   } catch {
     body = null;
   }
 
-  const type = String(body?.type || "").trim();
-  const name = String(body?.name || "").trim();
+  const type = String((body as Record<string, unknown>)?.type || "").trim();
+  const name = String((body as Record<string, unknown>)?.name || "").trim();
   if (!type || !name) return NextResponse.json({ ok: false, error: "Type and name are required" }, { status: 400 });
 
   const slug = slugify(name);

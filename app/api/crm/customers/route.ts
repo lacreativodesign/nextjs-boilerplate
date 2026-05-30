@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireCrmUser } from "@/lib/crm";
 import { CustomerService } from "@/lib/crm/customer-service";
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     if (ownerId) query = query.where("ownerId", "==", ownerId);
 
     const snapshot = await query.orderBy("createdAt", "desc").limit(200).get();
-    const customers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const customers = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ customers });
   } catch (error) {

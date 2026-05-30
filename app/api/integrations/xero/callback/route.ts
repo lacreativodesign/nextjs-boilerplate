@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { consumeXeroOAuthState, exchangeXeroCodeForTokens, getXeroConnections, getXeroOAuthConfig, saveXeroConnection } from "@/lib/integrations/xero";
 
 export const runtime = "nodejs";
@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
     const scopes = getXeroOAuthConfig().scopes;
     const connections = await getXeroConnections(tokenPayload.accessToken);
     const preferredOrgId = String(process.env.XERO_ORGANIZATION_ID || "").trim();
-    const selected = connections.find((item) => getString(item?.tenantId) === preferredOrgId) || connections[0];
-    if (!selected?.tenantId) throw new Error("No Xero organization is available for this account.");
+    const selected = connections.find((item) => getString((item as Record<string, unknown>)?.tenantId) === preferredOrgId) || connections[0];
+    if (!(selected as Record<string, unknown>)?.tenantId) throw new Error("No Xero organization is available for this account.");
 
     await saveXeroConnection({
       tenantId: oauthState.tenantId,
       userUid: oauthState.userUid,
-      organizationId: selected.tenantId,
-      organizationName: selected.tenantName || null,
+      organizationId: (selected as Record<string, unknown>).tenantId,
+      organizationName: (selected as Record<string, unknown>).tenantName || null,
       scopes,
       tokenPayload,
     });
@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
     const redirect = new URL(target, request.url);
     redirect.searchParams.set("connected", "1");
     return NextResponse.redirect(redirect);
-  } catch (error: any) {
+  } catch (error) {
     console.error("xero/callback error", error);
     const redirect = new URL("/admin/settings/integrations/xero", request.url);
-    redirect.searchParams.set("error", error?.message || "Xero OAuth failed");
+    redirect.searchParams.set("error", (error instanceof Error ? error.message : undefined) || "Xero OAuth failed");
     return NextResponse.redirect(redirect);
   }
 }

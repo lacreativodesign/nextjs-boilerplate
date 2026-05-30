@@ -102,8 +102,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    console.error("send-otp error:", err?.message || err);
+  } catch (err) {
+    console.error("send-otp error:", (err instanceof Error ? err.message : undefined) || err);
     return NextResponse.json({
       ok: false,
       error: "Could not send verification code. Please check your email address and try again. If the problem continues, contact support@bizosto.com.",

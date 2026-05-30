@@ -44,9 +44,9 @@ export default function NotificationSettingsPage() {
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
-    } catch (err: any) {
+    } catch (err) {
       console.error("notification settings load error", err);
-      setError(err.message || "Unable to load notification settings.");
+      setError((err as Record<string, unknown>).message || "Unable to load notification settings.");
     } finally {
       setLoading(false);
     }
@@ -92,9 +92,9 @@ export default function NotificationSettingsPage() {
         throw new Error(data?.error || "Unable to save settings.");
       }
       setSuccess("Notification settings updated.");
-    } catch (err: any) {
+    } catch (err) {
       console.error("notification settings save error", err);
-      setError(err.message || "Unable to save notification settings.");
+      setError((err as Record<string, unknown>).message || "Unable to save notification settings.");
     } finally {
       setSaving(false);
     }

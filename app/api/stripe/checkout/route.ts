@@ -183,10 +183,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, url: session.url, id: session.id });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[STRIPE_CHECKOUT]', err);
     return NextResponse.json(
-      { ok: false, error: err?.message || 'Stripe checkout error' },
+      { ok: false, error: (err instanceof Error ? err.message : undefined) || 'Stripe checkout error' },
       { status: 500 },
     );
   }

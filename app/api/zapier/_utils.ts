@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { resolveZapierTenant } from "@/lib/zapier/service";
 
 export async function requireZapierApiKey(request: NextRequest, body?: Record<string, unknown>) {

@@ -7,11 +7,11 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
     const user = await getCurrentUser();
     if (!user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const removed = await removeWidget(user.tenantId, user.uid, params.id);
+    const removed = await removeWidget(user.tenantId as string, user.uid, params.id);
     if (!removed) return NextResponse.json({ error: "Widget not found" }, { status: 404 });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to delete widget" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to delete widget" }, { status: 500 });
   }
 }

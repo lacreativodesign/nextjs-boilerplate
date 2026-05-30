@@ -43,7 +43,7 @@ export default function FinancePayrollPage() {
       }
       setPayroll(data.payroll || []);
       setCurrentUser(data.currentUser || null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Payroll load error", err);
       setError({ title: "Unable to load payroll", message: "Please try again in a moment." });
     } finally {

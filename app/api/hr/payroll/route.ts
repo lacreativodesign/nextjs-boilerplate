@@ -35,10 +35,10 @@ export async function GET(request: Request) {
 
     const logs = logsSnap.docs.map((d) => d.data());
 
-    const rows = employees.map((emp: any) => {
-      const hourlyRate = emp.hourlyRate || 5; // DEFAULT HOURLY RATE
+    const rows = employees.map((emp: unknown) => {
+      const hourlyRate = (emp as Record<string, unknown>).hourlyRate || 5; // DEFAULT HOURLY RATE
 
-      const empLogs = logs.filter((l) => l.userId === emp.id);
+      const empLogs = logs.filter((l) => l.userId === (emp as Record<string, unknown>).id);
 
       let totalMs = 0;
 
@@ -46,9 +46,9 @@ export async function GET(request: Request) {
       for (let i = 0; i < empLogs.length; i++) {
         if (empLogs[i].type === "login") {
           const logoutEvent = empLogs.find(
-            (l: any) =>
-              l.type === "logout" &&
-              new Date(l.timestamp) > new Date(empLogs[i].timestamp)
+            (l: unknown) =>
+              (l as Record<string, unknown>).type === "logout" &&
+              new Date((l as Record<string, unknown>).timestamp) > new Date(empLogs[i].timestamp)
           );
 
           if (logoutEvent) {
@@ -63,10 +63,10 @@ export async function GET(request: Request) {
       const salary = +(hours * hourlyRate).toFixed(2);
 
       return {
-        id: emp.id,
-        name: emp.name,
-        email: emp.email || "",
-        role: emp.role || "",
+        id: (emp as Record<string, unknown>).id,
+        name: (emp as Record<string, unknown>).name,
+        email: (emp as Record<string, unknown>).email || "",
+        role: (emp as Record<string, unknown>).role || "",
         hourlyRate,
         hours: +hours.toFixed(1),
         salary,
@@ -77,10 +77,10 @@ export async function GET(request: Request) {
       success: true,
       rows,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Payroll API error:", err);
     return NextResponse.json(
-      { success: false, message: err.message },
+      { success: false, message: (err as Record<string, unknown>).message },
       { status: 500 }
     );
   }

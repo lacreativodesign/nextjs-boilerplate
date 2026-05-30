@@ -15,9 +15,9 @@ type DealDoc = {
   probability?: number;
   ownerId?: string | null;
   ownerName?: string | null;
-  expectedCloseDate?: any;
-  createdAt?: any;
-  updatedAt?: any;
+  expectedCloseDate?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
   paymentStatus?: string | null;
   projectId?: string | null;
@@ -31,7 +31,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string | null | undefined);
     const docs = await queryWithTenant(
       adminDb.collection("deals").where("isDeleted", "==", false).limit(500),
       tenantId
@@ -60,7 +60,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ ok: true, deals });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });
   }

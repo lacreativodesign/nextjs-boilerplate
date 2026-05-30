@@ -212,9 +212,9 @@ export default function SalesDealsPage() {
         throw new Error(data?.error || "Unable to update discount.");
       }
       await loadDeals();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Discount update error", err);
-      setDiscountError(err?.message || "Unable to update discount.");
+      setDiscountError((err instanceof Error ? err.message : undefined) || "Unable to update discount.");
     } finally {
       setDiscountSaving(false);
     }

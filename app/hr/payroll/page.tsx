@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default function PayrollSummary() {
   const [month, setMonth] = useState(dayjs());
   const [rows, setRows] = useState<PayrollRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPayroll();

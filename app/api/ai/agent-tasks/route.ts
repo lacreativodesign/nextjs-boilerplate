@@ -21,8 +21,8 @@ export async function GET() {
 
     const tasks = await listAgentTasks(user.tenantId, 50);
     return NextResponse.json({ ok: true, tasks });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, task });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Server error" }, { status: 500 });
   }
 }

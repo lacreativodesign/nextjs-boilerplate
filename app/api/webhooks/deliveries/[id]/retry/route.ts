@@ -10,7 +10,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     const auth = await requireWebhookAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const delivery = await retryWebhookDeliveryManually(params.id, auth.user.tenantId);
+    const delivery = await retryWebhookDeliveryManually(params.id, auth.user.tenantId as string);
     if (!delivery) return NextResponse.json({ ok: false, error: "Delivery not found." }, { status: 404 });
 
     return NextResponse.json({ ok: true, delivery });

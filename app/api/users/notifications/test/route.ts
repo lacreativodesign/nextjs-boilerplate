@@ -15,7 +15,7 @@ export async function POST() {
 
     await createNotification({
       recipientUid: me.uid,
-      tenantId: normalizeTenantId(me.tenantId),
+      tenantId: normalizeTenantId(me.tenantId as string | null | undefined),
       type: "info",
       title: "Test notification",
       body: "This is a test notification based on your current channel and digest preferences.",

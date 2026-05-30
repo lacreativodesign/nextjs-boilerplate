@@ -19,7 +19,7 @@ type WebhookInput = {
   enabled?: boolean;
 };
 
-function normalizeWebhooks(value: any) {
+function normalizeWebhooks(value: unknown) {
   if (!Array.isArray(value)) return [] as Array<{ name: string; url: string; enabled: boolean }>;
   return value
     .map((entry: WebhookInput) => ({

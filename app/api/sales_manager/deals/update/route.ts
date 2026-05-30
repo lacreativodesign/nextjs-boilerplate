@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       discountPct = parseNumber(data.discountPct, 0);
       listPriceUsd = parseNumber(data.listPriceUsd || data.valueUsd || data.amountUsd, 0);
       finalPriceUsd = parseNumber(data.finalPriceUsd, listPriceUsd - (listPriceUsd * discountPct) / 100);
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
         tenantId,
       };
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
     const stageDescription = stageChanged ? `Deal ${id} moved to ${nextStage}` : `Deal ${id} updated`;
 
     await logEvent({
-      tenantId,
+      tenantId: String(tenantId || ""),
       type: stageChanged ? "deal_stage_change" : "deal_updated",
       title: stageTitle,
       description: stageDescription,
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
-        tenantId,
+        tenantId: String(tenantId || ""),
       });
     }
 
@@ -181,12 +181,12 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
-        tenantId,
+        tenantId: String(tenantId || ""),
       });
     }
 
     if (nextStage === "Closed Won" && closedWonPaid) {
-      const adminIds = await getAdminUserIds(tenantId);
+      const adminIds = await getAdminUserIds(tenantId as string);
       await notifyUsers({
         userIds: adminIds,
         title: "Paid deal closed won",
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: "/sales_manager/deals",
         createdBy: { uid: auth.user.uid, name: createdByName },
-        tenantId,
+        tenantId: String(tenantId || ""),
       });
     }
 
@@ -241,7 +241,7 @@ export async function POST(req: Request) {
       const discountType =
         discountDecision === "approved" ? "sales.discount.approved" : "sales.discount.rejected";
       await logEvent({
-        tenantId,
+        tenantId: String(tenantId || ""),
         type: discountType,
         title: discountTitle,
         description: `${dealName || "Deal"} discount ${discountDecision}.`,
@@ -269,15 +269,15 @@ export async function POST(req: Request) {
           entityId: id,
           deepLink: "/sales/deals",
           createdBy: { uid: auth.user.uid, name: createdByName },
-          tenantId,
+          tenantId: String(tenantId || ""),
         });
       }
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager deal update error:", err);
-    const message = String(err?.message || "");
+    const message = String((err instanceof Error ? err.message : undefined) || "");
     if (message.toLowerCase().includes("forbidden")) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

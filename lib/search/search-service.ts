@@ -109,7 +109,7 @@ export class SearchService {
 
     const normalized = searchText.toLowerCase();
     const results = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }))
       .filter((item) =>
         searchFields.some((field) => {
           const value = this.getFieldValue(item, field);
@@ -151,7 +151,7 @@ export class SearchService {
       }
 
       lastDoc = snapshot.docs[snapshot.docs.length - 1];
-      const batch = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const batch = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
       const filtered = batch.filter((item) => this.matchesFilters(item, clientFilters));
 
       total += filtered.length;
@@ -315,7 +315,7 @@ export class SearchService {
   private static compareValues(
     fieldValue: unknown,
     searchValue: unknown,
-    comparator: (a: Comparable, b: Comparable) => boolean
+    comparator: (a: NonNullable<Comparable>, b: NonNullable<Comparable>) => boolean
   ) {
     const left = this.normalizeComparable(fieldValue);
     const right = this.normalizeComparable(searchValue);

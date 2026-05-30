@@ -49,8 +49,8 @@ export async function POST() {
     });
 
     return NextResponse.json({ ok: true, message: "Stripe account disconnected" });
-  } catch (error: any) {
-    const message = error?.message || "Unable to disconnect Stripe account.";
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : undefined) || "Unable to disconnect Stripe account.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

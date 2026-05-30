@@ -36,11 +36,11 @@ export default function BugReportButton() {
     setError("");
     try {
       // Use html2canvas-style approach via MediaDevices API
-      const stream = await (navigator.mediaDevices as any).getDisplayMedia({
+      const stream = await (navigator.mediaDevices as unknown).getDisplayMedia({
         video: { mediaSource: "screen" },
       });
       const track = stream.getVideoTracks()[0];
-      const imageCapture = new (window as any).ImageCapture(track);
+      const imageCapture = new (window as unknown).ImageCapture(track);
       const bitmap = await imageCapture.grabFrame();
       track.stop();
       stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());

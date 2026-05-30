@@ -22,10 +22,10 @@ type ProjectDoc = {
   productionName?: string | null;
   ownerId?: string | null;
   amId?: string | null;
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string }>;
   isDeleted?: boolean;
 };
 
@@ -40,8 +40,8 @@ type EventDoc = {
   description?: string;
   entityType?: string;
   entityId?: string;
-  createdAt?: any;
-  metadata?: Record<string, any>;
+  createdAt?: unknown;
+  metadata?: Record<string, unknown>;
 };
 
 function normalizeStage(stage?: string) {
@@ -139,7 +139,7 @@ export async function GET() {
           entityId: data.entityId || null,
         };
       })
-      .filter((item) => item.projectId && projectIds.has(item.projectId))
+      .filter((item) => item.projectId && projectIds.has(item.projectId as string))
       .slice(0, 10)
       .map((item) => {
         const project = projects.find((p) => p.id === item.projectId);
@@ -178,9 +178,9 @@ export async function GET() {
       topProjects,
       recentActivity,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("am/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

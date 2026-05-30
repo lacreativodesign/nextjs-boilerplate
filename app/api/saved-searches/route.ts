@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
     const sharedSearchesSnapshot = await sharedQuery.get();
 
     const allSearches = [
-      ...userSearchesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      ...sharedSearchesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...userSearchesSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
+      ...sharedSearchesSnapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })),
     ];
 
     const uniqueSearches = Array.from(new Map(allSearches.map((entry) => [entry.id, entry])).values());

@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ ok: true, month: monthKey, targets });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales manager targets error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load targets." }, { status: 500 });
   }

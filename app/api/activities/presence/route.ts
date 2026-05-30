@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "../../admin/_utils";
 import { listOnlineUsers, upsertPresence } from "@/lib/activity/activity-service";
 
@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const users = await listOnlineUsers(me.tenantId);
+  const users = await listOnlineUsers(me.tenantId as string);
   return NextResponse.json({ ok: true, users });
 }
 

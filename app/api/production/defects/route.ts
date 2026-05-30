@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     const created = await createDefect(
-      auth.user.tenantId,
+      auth.user.tenantId as string,
       { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || auth.user.uid },
       {
         title,
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     if (["critical", "high", "medium", "low"].includes(severity)) filters.severity = severity as DefectSeverity;
     if (["open", "in_progress", "resolved", "closed", "reopened"].includes(status)) filters.status = status as DefectStatus;
 
-    const snapshot = await getQaSnapshot(auth.user.tenantId, filters);
+    const snapshot = await getQaSnapshot(auth.user.tenantId as string, filters);
     return NextResponse.json({ ok: true, ...snapshot });
   } catch (error) {
     console.error("GET /api/production/defects", error);

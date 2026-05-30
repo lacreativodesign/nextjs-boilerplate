@@ -43,8 +43,8 @@ export default function DocusignIntegrationPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load DocuSign state.");
       setConnection(data.connection || null);
-    } catch (err: any) {
-      setError(err.message || "Unable to load DocuSign state.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load DocuSign state.");
     } finally {
       setLoading(false);
     }
@@ -67,8 +67,8 @@ export default function DocusignIntegrationPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok || !data?.authorizeUrl) throw new Error(data?.error || "Unable to start DocuSign OAuth.");
       window.location.href = data.authorizeUrl;
-    } catch (err: any) {
-      setError(err.message || "Unable to connect DocuSign.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to connect DocuSign.");
       setSaving(false);
     }
   };
@@ -99,8 +99,8 @@ export default function DocusignIntegrationPage() {
       setEnvelopeId(data.envelopeId || "");
       setSuccess(`Envelope sent: ${data.envelopeId}`);
       setStatus(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to send envelope.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Failed to send envelope.");
     } finally {
       setSaving(false);
     }
@@ -123,8 +123,8 @@ export default function DocusignIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to fetch envelope status.");
       setStatus(data.envelope || null);
       setSuccess("Envelope status refreshed.");
-    } catch (err: any) {
-      setError(err.message || "Unable to fetch envelope status.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to fetch envelope status.");
     } finally {
       setSaving(false);
     }
@@ -153,8 +153,8 @@ export default function DocusignIntegrationPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to send reminder.");
       setSuccess("Reminder sent to signers.");
-    } catch (err: any) {
-      setError(err.message || "Unable to send reminder.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to send reminder.");
     } finally {
       setSaving(false);
     }

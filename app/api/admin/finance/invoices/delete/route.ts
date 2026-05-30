@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/invoices delete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to delete invoice." }, { status: 500 });
   }

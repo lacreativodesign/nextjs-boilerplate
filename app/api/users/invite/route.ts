@@ -54,10 +54,10 @@ export async function POST(request: Request) {
       invitationId,
       message: "Invitation sent successfully",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error inviting user:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to send invitation" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to send invitation" },
       { status: 500 }
     );
   }

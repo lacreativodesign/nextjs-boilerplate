@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { getTenantIdForRequestOrThrow } from "@/lib/tenant/server";
-import { linkSsoForUser, SsoProvider } from "@/lib/auth/sso-oauth";
+import { linkSsoForUser, type SsoProvider } from "@/lib/auth/sso-oauth";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { provider: s
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = await getTenantIdForRequestOrThrow(req as any);
+    const tenantId = await getTenantIdForRequestOrThrow(req as unknown);
     const provider = asProvider(params.provider);
     const body = await req.json();
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: { provider: s
     });
 
     return NextResponse.json({ ok: true, identity });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to link SSO account." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to link SSO account." }, { status: 400 });
   }
 }

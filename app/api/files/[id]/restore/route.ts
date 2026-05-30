@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to restore version" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Failed to restore version" }, { status: 500 });
   }
 }

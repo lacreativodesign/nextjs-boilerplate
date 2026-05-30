@@ -1,20 +1,20 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-export function parseNumber(value: any, fallback = 0) {
+export function parseNumber(value: unknown, fallback = 0) {
   const num = Number(value);
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: unknown, fallback = "") {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }

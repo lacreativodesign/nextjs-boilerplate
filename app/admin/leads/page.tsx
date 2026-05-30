@@ -62,9 +62,9 @@ export default function AdminLeadsPage() {
 
       setLeads(leadJson.leads || []);
       setOwners(ownerJson.users || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Admin leads load error", err);
-      setError(err?.message || "Unable to load leads");
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load leads");
     } finally {
       setLoading(false);
     }

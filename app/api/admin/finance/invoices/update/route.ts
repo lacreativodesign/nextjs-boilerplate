@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createFinanceEvent, queueFinanceEmail, requireAdmin, parseString, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
 import { assertPermission, Permission } from "../../../../../lib/permissions";
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const authUser = auth.user as { uid: string; role: string; tenantId: string | null; email?: string | null; name?: string | null; fullName?: string | null; displayName?: string | null };
 
     const body = await req.json();
     const id = parseString(body?.id).trim();
@@ -43,8 +44,8 @@ export async function POST(req: Request) {
     const clientId = String(invoice.clientId || "");
     const clientName = String(invoice.clientName || "");
     const orderId = String(invoice.orderId || "");
-    const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
-    const tenantId = normalizeTenantId(auth.user.tenantId);
+    const isSuperAdmin = normalizeRole(authUser.role || "") === "super_admin";
+    const tenantId = normalizeTenantId(authUser.tenantId as string | null | undefined);
 
     if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
@@ -57,8 +58,8 @@ export async function POST(req: Request) {
         updatedAt: serverTimestamp(),
       });
 
-      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+      const actorName = authUser.name || authUser.fullName || authUser.displayName || "";
+      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], authUser.tenantId || null);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
@@ -66,12 +67,12 @@ export async function POST(req: Request) {
             title: "Invoice sent",
             body: `Invoice ${orderId || id} sent to ${clientName || "client"}.`,
             type: "info",
-            entityType: "invoice",
+            entityType: "invoice" as NotificationEntityType,
             entityId: id,
             deepLink: "/admin/finance/invoices",
-            createdBy: { uid: auth.user.uid, name: actorName },
+            createdBy: { uid: authUser.uid, name: actorName },
             roleTarget: "finance",
-            tenantId: auth.user.tenantId || null,
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -80,11 +81,11 @@ export async function POST(req: Request) {
         type: "finance.invoice_sent",
         title: "Invoice sent",
         description: `Invoice ${orderId || id} sent to ${clientName || "client"}.`,
-        entityType: "invoice",
+        entityType: "invoice" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       try {
@@ -92,9 +93,9 @@ export async function POST(req: Request) {
           type: "finance.invoice_sent",
           title: "Invoice sent",
           description: `Invoice ${orderId || id} sent to ${clientName || "client"}.`,
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
-          actor: { uid: auth.user.uid, name: actorName },
+          actor: { uid: authUser.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
           template: "invoice_sent",
           subject: "Your invoice is ready",
           data: { invoiceId: id, orderId, clientName },
-          tenantId: auth.user.tenantId,
+          tenantId: authUser.tenantId,
         }).catch((error) => {
           console.error("invoice email queue error:", error);
         });
@@ -131,10 +132,10 @@ export async function POST(req: Request) {
         await dispatchWebhookEvent({
           tenantId,
           event: "invoice.updated",
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
           payload: { invoiceId: id, orderId, status: "issued", action: "send" },
-          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+          actor: { uid: authUser.uid, email: authUser.email || null, role: authUser.role || null },
         });
       } catch (webhookError) {
         console.error("invoice.updated webhook dispatch error:", webhookError);
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
 
     if (action === "mark_paid") {
       try {
-        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+        assertPermission(authUser.role, Permission.MarkPaymentPaid);
       } catch {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
         );
       }
 
-      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+      const actorName = authUser.name || authUser.fullName || authUser.displayName || "";
       const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
       await Promise.all(
         financeIds.map((uid) =>
@@ -202,12 +203,12 @@ export async function POST(req: Request) {
             title: "Invoice paid",
             body: `Invoice ${orderId || id} marked paid.`,
             type: "success",
-            entityType: "invoice",
+            entityType: "invoice" as NotificationEntityType,
             entityId: id,
             deepLink: "/admin/finance/invoices",
-            createdBy: { uid: auth.user.uid, name: actorName },
+            createdBy: { uid: authUser.uid, name: actorName },
             roleTarget: "finance",
-            tenantId: auth.user.tenantId || null,
+            tenantId: authUser.tenantId || null,
           })
         )
       );
@@ -216,11 +217,11 @@ export async function POST(req: Request) {
         type: "finance.invoice_paid",
         title: "Invoice marked paid",
         description: `Invoice ${orderId || id} marked paid.`,
-        entityType: "invoice",
+        entityType: "invoice" as NotificationEntityType,
         entityId: id,
-        createdByUid: auth.user.uid,
+        createdByUid: authUser.uid,
         createdByName: actorName,
-        tenantId: auth.user.tenantId,
+        tenantId: authUser.tenantId,
       });
 
       try {
@@ -228,9 +229,9 @@ export async function POST(req: Request) {
           type: "finance.invoice_paid",
           title: "Invoice marked paid",
           description: `Invoice ${orderId || id} marked paid.`,
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
-          actor: { uid: auth.user.uid, name: actorName },
+          actor: { uid: authUser.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -257,7 +258,7 @@ export async function POST(req: Request) {
             invoiceId: id,
             invoiceData: { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus },
             tenantId: String(invoice.tenantId || tenantId || ""),
-            actor: { uid: auth.user.uid, name: actorName },
+            actor: { uid: authUser.uid, name: actorName },
           });
         } catch (autoCreateError) {
           console.error("project auto-create error:", autoCreateError);
@@ -272,7 +273,7 @@ export async function POST(req: Request) {
           template: "payment_received",
           subject: "Payment received",
           data: { invoiceId: id, orderId, clientName },
-          tenantId: auth.user.tenantId,
+          tenantId: authUser.tenantId,
         }).catch((error) => {
           console.error("payment email queue error:", error);
         });
@@ -282,10 +283,10 @@ export async function POST(req: Request) {
         await dispatchWebhookEvent({
           tenantId,
           event: "invoice.paid",
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
           payload: { invoiceId: id, orderId, status: nextStatus, action: "mark_paid", balanceDue },
-          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+          actor: { uid: authUser.uid, email: authUser.email || null, role: authUser.role || null },
         });
         await dispatchWebhookEvent({
           tenantId,
@@ -293,7 +294,7 @@ export async function POST(req: Request) {
           entityType: "payment",
           entityId: parseString(body?.paymentId).trim() || id,
           payload: { invoiceId: id, orderId, status: "succeeded", amountTotal },
-          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+          actor: { uid: authUser.uid, email: authUser.email || null, role: authUser.role || null },
         });
       } catch (webhookError) {
         console.error("invoice.paid/payment.received webhook dispatch error:", webhookError);
@@ -322,9 +323,9 @@ export async function POST(req: Request) {
           type: "finance.invoice_status_updated",
           title: "Invoice status updated",
           description: `Invoice ${orderId || id} status updated to ${requested}.`,
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
-          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || "" },
+          actor: { uid: authUser.uid, name: authUser.name || authUser.fullName || authUser.displayName || "" },
           metadata: {
             ip: getClientIp(req),
             userAgent: req.headers.get("user-agent") || "",
@@ -343,10 +344,10 @@ export async function POST(req: Request) {
         await dispatchWebhookEvent({
           tenantId,
           event: "invoice.updated",
-          entityType: "invoice",
+          entityType: "invoice" as NotificationEntityType,
           entityId: id,
           payload: { invoiceId: id, orderId, status: requested, action: "update_status" },
-          actor: { uid: auth.user.uid, email: auth.user.email || null, role: auth.user.role || null },
+          actor: { uid: authUser.uid, email: authUser.email || null, role: authUser.role || null },
         });
       } catch (webhookError) {
         console.error("invoice.updated webhook dispatch error:", webhookError);
@@ -355,9 +356,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/invoices update error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

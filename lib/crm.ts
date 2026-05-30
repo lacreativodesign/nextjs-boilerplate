@@ -19,10 +19,10 @@ export type DealStage = (typeof DEAL_STAGES)[number];
 
 export const LEAD_STATUSES = ["new", "qualified", "converted"] as const;
 
-export function toIso(value: any): string | null {
+export function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -56,7 +56,7 @@ export async function requireCrmUser() {
   if (!isCrmRole(me.role)) {
     return { ok: false as const, status: 403, error: "Forbidden" };
   }
-  return { ok: true as const, user: me, tenantId: normalizeTenantId(me.tenantId || DEFAULT_TENANT_ID) };
+  return { ok: true as const, user: me, tenantId: normalizeTenantId(me.tenantId as string || DEFAULT_TENANT_ID) };
 }
 
 export function stageIndex(stage?: string | null) {

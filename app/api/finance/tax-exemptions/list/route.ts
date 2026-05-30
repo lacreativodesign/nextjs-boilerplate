@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     }
 
     const snapshot = await query.get();
-    const exemptions = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const exemptions = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ ok: true, exemptions });
   } catch (err) {

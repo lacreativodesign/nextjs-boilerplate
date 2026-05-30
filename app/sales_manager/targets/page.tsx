@@ -38,9 +38,9 @@ export default function SalesManagerTargetsPage() {
         }
         if (!alive) return;
         setTargets(Array.isArray(json.targets) ? json.targets : []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load targets.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load targets.");
         setTargets([]);
       } finally {
         if (!alive) return;

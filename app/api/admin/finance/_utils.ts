@@ -20,7 +20,7 @@ export async function requireAdmin() {
     return { ok: false as const, status: 403, error: "Forbidden" };
   }
   try {
-    await requireModule(me.tenantId, "finance", { role: me.role });
+    await requireModule(me.tenantId as string, "finance", { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };

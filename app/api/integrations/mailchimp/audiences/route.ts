@@ -9,7 +9,7 @@ export async function GET() {
     const auth = await requireAdmin();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const integration = await getMailchimpIntegration(auth.user.tenantId);
+    const integration = await getMailchimpIntegration(auth.user.tenantId as string);
     if (!integration?.connected) {
       return NextResponse.json({
         ok: true,
@@ -19,10 +19,10 @@ export async function GET() {
       });
     }
 
-    const audiences = await listMailchimpAudiences(auth.user.tenantId);
+    const audiences = await listMailchimpAudiences(auth.user.tenantId as string);
     return NextResponse.json({ ok: true, connected: true, audiences, connection: integration });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to list Mailchimp audiences." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to list Mailchimp audiences." }, { status: 500 });
   }
 }
 
@@ -32,7 +32,7 @@ export async function PUT(request: Request) {
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const body = await request.json().catch(() => ({}));
-    await updateMailchimpSettings(auth.user.tenantId, auth.user.uid, {
+    await updateMailchimpSettings(auth.user.tenantId as string, auth.user.uid, {
       autoSyncEnabled: typeof body.autoSyncEnabled === "boolean" ? body.autoSyncEnabled : undefined,
       defaultAudienceId: body.defaultAudienceId === null || typeof body.defaultAudienceId === "string" ? body.defaultAudienceId : undefined,
       tagMapping:
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update Mailchimp settings." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to update Mailchimp settings." }, { status: 500 });
   }
 }

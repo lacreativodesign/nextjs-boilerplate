@@ -10,6 +10,7 @@ export async function POST(req: Request) {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
+    const authUser = auth.user as { uid: string; role: string; tenantId: string | null; name?: string | null; fullName?: string | null; displayName?: string | null };
 
     const body = await req.json();
     const id = parseString(body?.id).trim();
@@ -25,8 +26,8 @@ export async function POST(req: Request) {
     }
 
     const payroll = snap.data() || {};
-    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
-    if (!isSuperAdmin && String(payroll.tenantId || "") !== String(auth.user.tenantId || "")) {
+    const isSuperAdmin = (authUser.role || "").toLowerCase() === "super_admin";
+    if (!isSuperAdmin && String(payroll.tenantId || "") !== String(authUser.tenantId || "")) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
     const userName = String(payroll.userName || "");
@@ -52,18 +53,18 @@ export async function POST(req: Request) {
         description: `Payroll paid for ${userName || "employee"}.`,
         entityType: "payroll",
         entityId: id,
-        createdByUid: auth.user.uid,
-        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
-        tenantId: auth.user.tenantId,
+        createdByUid: authUser.uid,
+        createdByName: authUser.name || authUser.fullName || authUser.displayName || "",
+        tenantId: authUser.tenantId,
       });
 
       return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/payroll update error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

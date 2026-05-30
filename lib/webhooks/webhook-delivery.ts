@@ -194,13 +194,13 @@ async function attemptDelivery(delivery: WebhookDeliveryRecord, subscriptionSecr
       signatureTimestamp: timestamp,
       attemptAt,
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       ok: false,
       statusCode: null,
       responseBody: null,
       responseHeaders: {},
-      errorMessage: error?.name === "AbortError" ? "Request timeout" : String(error?.message || "Delivery failed"),
+      errorMessage: (error as Record<string, unknown>)?.name === "AbortError" ? "Request timeout" : String((error instanceof Error ? error.message : undefined) || "Delivery failed"),
       durationMs: Date.now() - started,
       signature,
       signatureTimestamp: timestamp,

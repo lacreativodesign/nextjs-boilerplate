@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import clsx from "clsx";
+import _clsx from "clsx";
 
 export default function UserTabs() {
   const pathname = usePathname();

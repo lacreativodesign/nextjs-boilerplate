@@ -12,11 +12,11 @@ type InvoiceDoc = {
   clientId?: string;
   status?: string;
   amountTotalUsd?: number;
-  dueDate?: any;
-  createdAt?: any;
-  issuedAt?: any;
-  paidAt?: any;
-  lineItems?: any[];
+  dueDate?: unknown;
+  createdAt?: unknown;
+  issuedAt?: unknown;
+  paidAt?: unknown;
+  lineItems?: unknown[];
   notes?: string | null;
   isDeleted?: boolean;
 };
@@ -52,12 +52,12 @@ export async function GET() {
           paidAt: toISO(data.paidAt),
         };
       })
-      .filter((invoice) => String((invoice as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((invoice) => String((invoice as Record<string, unknown>).tenantId || DEFAULT_TENANT_ID) === tenantId);
 
     return NextResponse.json({ ok: true, invoices });
-  } catch (err: any) {
+  } catch (err) {
     console.error("client/billing invoices list error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || "");
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -25,20 +25,20 @@ function canMarkPaid(role: string) {
   return r === "super_admin" || r === "admin";
 }
 
-function cleanString(v: any) {
+function cleanString(v: unknown) {
   return String(v ?? "").trim();
 }
 
-function normalizeEmail(v: any) {
+function normalizeEmail(v: unknown) {
   return cleanString(v).toLowerCase();
 }
 
-function toNumber(v: any) {
+function toNumber(v: unknown) {
   const n = Number(String(v ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : 0;
 }
 
-function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid" | null {
+function canonicalPaymentStatus(input: unknown): "Unpaid" | "Partially Paid" | "Paid" | null {
   if (input === undefined || input === null) return null;
   const s = String(input ?? "").trim().toLowerCase();
   if (s === "paid") return "Paid";
@@ -52,7 +52,7 @@ function isPaidLike(v: string | undefined | null) {
   return s === "paid" || s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid";
 }
 
-function normalizeExistingStatus(v: any): "Unpaid" | "Partially Paid" | "Paid" {
+function normalizeExistingStatus(v: unknown): "Unpaid" | "Partially Paid" | "Paid" {
   const s = String(v ?? "").trim().toLowerCase();
   if (s === "paid") return "Paid";
   if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
@@ -91,14 +91,14 @@ async function handleUpdate(req: Request) {
   }
   const tenantId = normalizeTenantId(rawTenantId);
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await req.json();
   } catch {
     body = null;
   }
 
-  const id = cleanString(body?.id || body?.clientId);
+  const id = cleanString((body as Record<string, unknown>)?.id || (body as Record<string, unknown>)?.clientId);
   if (!id) return NextResponse.json({ ok: false, error: "Client id is required" }, { status: 400 });
 
   try {
@@ -106,23 +106,23 @@ async function handleUpdate(req: Request) {
     const snap = await ref.get();
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
-    const existing = (snap.data() || {}) as any;
+    const existing = (snap.data() || {}) as unknown;
     if (docTenantId(existing) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
-    if (existing?.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+    if ((existing as Record<string, unknown>)?.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
 
-    const existingPayment = normalizeExistingStatus(existing?.paymentStatus);
-    const existingOrderId = cleanString(existing?.orderId);
-    const existingEmail = cleanString(existing?.primaryContactEmail);
-    const existingEmailLower = normalizeEmail(existing?.primaryContactEmail);
+    const existingPayment = normalizeExistingStatus((existing as Record<string, unknown>)?.paymentStatus);
+    const existingOrderId = cleanString((existing as Record<string, unknown>)?.orderId);
+    const existingEmail = cleanString((existing as Record<string, unknown>)?.primaryContactEmail);
+    const existingEmailLower = normalizeEmail((existing as Record<string, unknown>)?.primaryContactEmail);
 
-    const requestedPayment = canonicalPaymentStatus(body?.paymentStatus); // null if not included
+    const requestedPayment = canonicalPaymentStatus((body as Record<string, unknown>)?.paymentStatus); // null if not included
     const wantsPaidLike = requestedPayment ? isPaidLike(requestedPayment) : false;
     const wasPaidLike = isPaidLike(existingPayment);
 
     // Primary email is immutable to preserve 1 email per account
-    const incomingEmail = cleanString(body?.primaryContactEmail);
+    const incomingEmail = cleanString((body as Record<string, unknown>)?.primaryContactEmail);
     if (incomingEmail && incomingEmail.toLowerCase() !== existingEmailLower) {
       return NextResponse.json({ ok: false, error: "Primary contact email cannot be changed" }, { status: 400 });
     }
@@ -133,60 +133,60 @@ async function handleUpdate(req: Request) {
     }
 
     // Build safe update payload (only known fields)
-    const updateData: any = {};
+    const updateData: unknown = {};
 
     // Company
-    if (body?.companyName !== undefined) updateData.companyName = cleanString(body.companyName);
-    if (body?.website !== undefined) updateData.website = cleanString(body.website);
-    if (body?.industry !== undefined) updateData.industry = cleanString(body.industry);
-    if (body?.businessType !== undefined) updateData.businessType = cleanString(body.businessType);
-    if (body?.country !== undefined) updateData.country = cleanString(body.country);
-    if (body?.city !== undefined) updateData.city = cleanString(body.city);
-    if (body?.timezone !== undefined) updateData.timezone = cleanString(body.timezone);
-    if (body?.employeeCountRange !== undefined) {
-      updateData.employeeCountRange = cleanString(body.employeeCountRange) || null;
+    if ((body as Record<string, unknown>)?.companyName !== undefined) (updateData as Record<string, unknown>).companyName = cleanString((body as Record<string, unknown>).companyName);
+    if ((body as Record<string, unknown>)?.website !== undefined) (updateData as Record<string, unknown>).website = cleanString((body as Record<string, unknown>).website);
+    if ((body as Record<string, unknown>)?.industry !== undefined) (updateData as Record<string, unknown>).industry = cleanString((body as Record<string, unknown>).industry);
+    if ((body as Record<string, unknown>)?.businessType !== undefined) (updateData as Record<string, unknown>).businessType = cleanString((body as Record<string, unknown>).businessType);
+    if ((body as Record<string, unknown>)?.country !== undefined) (updateData as Record<string, unknown>).country = cleanString((body as Record<string, unknown>).country);
+    if ((body as Record<string, unknown>)?.city !== undefined) (updateData as Record<string, unknown>).city = cleanString((body as Record<string, unknown>).city);
+    if ((body as Record<string, unknown>)?.timezone !== undefined) (updateData as Record<string, unknown>).timezone = cleanString((body as Record<string, unknown>).timezone);
+    if ((body as Record<string, unknown>)?.employeeCountRange !== undefined) {
+      (updateData as Record<string, unknown>).employeeCountRange = cleanString((body as Record<string, unknown>).employeeCountRange) || null;
     }
-    if (body?.yearsInBusinessRange !== undefined) {
-      updateData.yearsInBusinessRange = cleanString(body.yearsInBusinessRange) || null;
+    if ((body as Record<string, unknown>)?.yearsInBusinessRange !== undefined) {
+      (updateData as Record<string, unknown>).yearsInBusinessRange = cleanString((body as Record<string, unknown>).yearsInBusinessRange) || null;
     }
 
     // Contact
-    if (body?.primaryContactName !== undefined) updateData.primaryContactName = cleanString(body.primaryContactName);
-    if (body?.primaryContactTitle !== undefined) updateData.primaryContactTitle = cleanString(body.primaryContactTitle);
-    if (body?.primaryContactEmail !== undefined) {
-      updateData.primaryContactEmail = existingEmail;
-      updateData.primaryContactEmailLower = existingEmailLower;
+    if ((body as Record<string, unknown>)?.primaryContactName !== undefined) (updateData as Record<string, unknown>).primaryContactName = cleanString((body as Record<string, unknown>).primaryContactName);
+    if ((body as Record<string, unknown>)?.primaryContactTitle !== undefined) (updateData as Record<string, unknown>).primaryContactTitle = cleanString((body as Record<string, unknown>).primaryContactTitle);
+    if ((body as Record<string, unknown>)?.primaryContactEmail !== undefined) {
+      (updateData as Record<string, unknown>).primaryContactEmail = existingEmail;
+      (updateData as Record<string, unknown>).primaryContactEmailLower = existingEmailLower;
     }
-    if (body?.primaryContactPhone !== undefined) updateData.primaryContactPhone = cleanString(body.primaryContactPhone);
+    if ((body as Record<string, unknown>)?.primaryContactPhone !== undefined) (updateData as Record<string, unknown>).primaryContactPhone = cleanString((body as Record<string, unknown>).primaryContactPhone);
 
     // Lifecycle
-    if (body?.salesStage !== undefined) updateData.salesStage = cleanString(body.salesStage);
-    if (requestedPayment) updateData.paymentStatus = requestedPayment;
-    if (body?.retainerStatus !== undefined) updateData.retainerStatus = cleanString(body.retainerStatus);
+    if ((body as Record<string, unknown>)?.salesStage !== undefined) (updateData as Record<string, unknown>).salesStage = cleanString((body as Record<string, unknown>).salesStage);
+    if (requestedPayment) (updateData as Record<string, unknown>).paymentStatus = requestedPayment;
+    if ((body as Record<string, unknown>)?.retainerStatus !== undefined) (updateData as Record<string, unknown>).retainerStatus = cleanString((body as Record<string, unknown>).retainerStatus);
 
     // Ownership
-    if (body?.salesOwner !== undefined) updateData.salesOwner = cleanString(body.salesOwner);
-    if (body?.accountManager !== undefined) updateData.accountManager = cleanString(body.accountManager);
-    if (body?.productionOwner !== undefined) updateData.productionOwner = cleanString(body.productionOwner);
+    if ((body as Record<string, unknown>)?.salesOwner !== undefined) (updateData as Record<string, unknown>).salesOwner = cleanString((body as Record<string, unknown>).salesOwner);
+    if ((body as Record<string, unknown>)?.accountManager !== undefined) (updateData as Record<string, unknown>).accountManager = cleanString((body as Record<string, unknown>).accountManager);
+    if ((body as Record<string, unknown>)?.productionOwner !== undefined) (updateData as Record<string, unknown>).productionOwner = cleanString((body as Record<string, unknown>).productionOwner);
 
     // Finance
-    if (body?.totalContractValueUsd !== undefined) updateData.totalContractValueUsd = toNumber(body.totalContractValueUsd);
-    if (body?.totalPaidUsd !== undefined) updateData.totalPaidUsd = toNumber(body.totalPaidUsd);
-    if (body?.openBalanceUsd !== undefined) updateData.openBalanceUsd = toNumber(body.openBalanceUsd);
+    if ((body as Record<string, unknown>)?.totalContractValueUsd !== undefined) (updateData as Record<string, unknown>).totalContractValueUsd = toNumber((body as Record<string, unknown>).totalContractValueUsd);
+    if ((body as Record<string, unknown>)?.totalPaidUsd !== undefined) (updateData as Record<string, unknown>).totalPaidUsd = toNumber((body as Record<string, unknown>).totalPaidUsd);
+    if ((body as Record<string, unknown>)?.openBalanceUsd !== undefined) (updateData as Record<string, unknown>).openBalanceUsd = toNumber((body as Record<string, unknown>).openBalanceUsd);
 
-    if (body?.segmentServices !== undefined) updateData.segmentServices = normalizeSlugArray(body.segmentServices);
-    if (body?.segmentBusinessType !== undefined) {
-      updateData.segmentBusinessType = normalizeOptionalSlug(body.segmentBusinessType);
+    if ((body as Record<string, unknown>)?.segmentServices !== undefined) (updateData as Record<string, unknown>).segmentServices = normalizeSlugArray((body as Record<string, unknown>).segmentServices);
+    if ((body as Record<string, unknown>)?.segmentBusinessType !== undefined) {
+      (updateData as Record<string, unknown>).segmentBusinessType = normalizeOptionalSlug((body as Record<string, unknown>).segmentBusinessType);
     }
-    if (body?.segmentIndustry !== undefined) updateData.segmentIndustry = normalizeOptionalSlug(body.segmentIndustry);
-    if (body?.segmentGeo !== undefined) {
-      updateData.segmentGeo = normalizeOptionalSlug(body.segmentGeo);
-    } else if (body?.country !== undefined) {
-      const derivedGeo = slugify(cleanString(body.country));
-      updateData.segmentGeo = derivedGeo || null;
+    if ((body as Record<string, unknown>)?.segmentIndustry !== undefined) (updateData as Record<string, unknown>).segmentIndustry = normalizeOptionalSlug((body as Record<string, unknown>).segmentIndustry);
+    if ((body as Record<string, unknown>)?.segmentGeo !== undefined) {
+      (updateData as Record<string, unknown>).segmentGeo = normalizeOptionalSlug((body as Record<string, unknown>).segmentGeo);
+    } else if ((body as Record<string, unknown>)?.country !== undefined) {
+      const derivedGeo = slugify(cleanString((body as Record<string, unknown>).country));
+      (updateData as Record<string, unknown>).segmentGeo = derivedGeo || null;
     }
-    updateData.primaryContactEmailLower = existingEmailLower;
-    updateData.tenantId = tenantId;
+    (updateData as Record<string, unknown>).primaryContactEmailLower = existingEmailLower;
+    (updateData as Record<string, unknown>).tenantId = tenantId;
 
     // If payment becomes paid/partial AND orderId is missing => generate LC-0001
     // Also: if already paid but missing orderId (edge case), generate it when admin hits update again.
@@ -197,13 +197,13 @@ async function handleUpdate(req: Request) {
     let newOrderId: string | null = null;
     if (shouldGenerateOrderId && canMarkPaid(me.role)) {
       newOrderId = await generateNextOrderId(tenantId);
-      updateData.orderId = newOrderId;
+      (updateData as Record<string, unknown>).orderId = newOrderId;
     }
 
     // Timestamps
     const now = admin.firestore.FieldValue.serverTimestamp();
-    updateData.updatedAt = now;
-    updateData.lastActivity = now;
+    (updateData as Record<string, unknown>).updatedAt = now;
+    (updateData as Record<string, unknown>).lastActivity = now;
 
     const changes = Object.entries(updateData)
       .filter(([field]) => !["updatedAt", "lastActivity"].includes(field))
@@ -222,7 +222,7 @@ async function handleUpdate(req: Request) {
           tenantId,
           type: "client.updated",
           title: "Client updated",
-          description: `${existing.companyName || "Client"} updated.`,
+          description: `${(existing as Record<string, unknown>).companyName || "Client"} updated.`,
           entityType: "client",
           entityId: id,
           actor: { uid: me.uid, name: me.name || me.fullName || "" },
@@ -260,7 +260,7 @@ async function handleUpdate(req: Request) {
         await createProjectFromDeal({
           tenantId,
           deal: { id: dealDoc.id, ...dealData },
-          client: { id, ...existing, ...updateData },
+          client: { id, ...(existing as Record<string, unknown>), ...(updateData as Record<string, unknown>)},
           actor: { uid: me.uid, name: me.name || me.fullName || "" },
         });
 
@@ -291,8 +291,8 @@ async function handleUpdate(req: Request) {
         });
       }
 
-      const email = cleanString(existing?.primaryContactEmail || updateData.primaryContactEmail);
-      if (email && !cleanString(existing?.portalUserUid)) {
+      const email = cleanString((existing as Record<string, unknown>)?.primaryContactEmail || (updateData as Record<string, unknown>).primaryContactEmail);
+      if (email && !cleanString((existing as Record<string, unknown>)?.portalUserUid)) {
         await createClientInvite({
           tenantId,
           email,
@@ -334,7 +334,7 @@ async function handleUpdate(req: Request) {
         entityId: id,
         payload: {
           clientId: id,
-          companyName: String(updateData.companyName || existing.companyName || ""),
+          companyName: String((updateData as Record<string, unknown>).companyName || (existing as Record<string, unknown>).companyName || ""),
           changes,
           orderId: newOrderId || existingOrderId || "",
         },
@@ -345,8 +345,8 @@ async function handleUpdate(req: Request) {
     }
 
     return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || "" });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message ?? "Failed to update client" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) ?? "Failed to update client" }, { status: 500 });
   }
 }
 

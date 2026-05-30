@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         "Content-Disposition": "attachment; filename=reports-outstanding-ar.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/exports outstanding-ar error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

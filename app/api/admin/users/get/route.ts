@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const data = doc.data();
 
     const isSuperAdminReq = String(current.role || "").toLowerCase() === "super_admin";
-    const docTenantId = String((data as any).tenantId || "").trim();
+    const docTenantId = String((data as unknown).tenantId || "").trim();
     const myTenantId = String(current.tenantId || "").trim();
     if (!isSuperAdminReq && docTenantId !== myTenantId) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ uid, ...data });
-  } catch (e: any) {
+  } catch (e) {
     console.error("Error get user:", e);
     return new NextResponse("Server error", { status: 500 });
   }

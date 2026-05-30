@@ -37,7 +37,7 @@ export async function GET() {
         "Content-Disposition": "attachment; filename=finance-expenses-by-category.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("finance/reports expenses-by-category error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

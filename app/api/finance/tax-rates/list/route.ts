@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       ttlSeconds: CacheProfiles.taxRates,
       key: async (request) => {
         const { searchParams } = new URL(request.url);
-        return cacheKeys.taxRates(auth.user.tenantId, {
+        return cacheKeys.taxRates(auth.user.tenantId as string, {
           active: searchParams.get("active") || "",
           country: searchParams.get("country") || "",
         });

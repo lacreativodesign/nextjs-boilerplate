@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 export default function AdminCrmPage() {
-  const [leads, setLeads] = useState<any[]>([]);
-  const [deals, setDeals] = useState<any[]>([]);
+  const [leads, setLeads] = useState<unknown[]>([]);
+  const [deals, setDeals] = useState<unknown[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -28,7 +28,7 @@ export default function AdminCrmPage() {
         <h2 className="mb-2 font-semibold">Leads</h2>
         <table className="w-full text-sm">
           <thead><tr className="text-left"><th>Name</th><th>Company</th><th>Email</th><th>Status</th></tr></thead>
-          <tbody>{leads.map((lead) => <tr key={lead.id} className="border-t"><td>{lead.name}</td><td>{lead.company}</td><td>{lead.email}</td><td>{lead.status}</td></tr>)}</tbody>
+          <tbody>{leads.map((lead) => <tr key={(lead as Record<string, unknown>).id} className="border-t"><td>{(lead as Record<string, unknown>).name}</td><td>{(lead as Record<string, unknown>).company}</td><td>{(lead as Record<string, unknown>).email}</td><td>{(lead as Record<string, unknown>).status}</td></tr>)}</tbody>
         </table>
       </div>
 
@@ -36,7 +36,7 @@ export default function AdminCrmPage() {
         <h2 className="mb-2 font-semibold">Deals</h2>
         <table className="w-full text-sm">
           <thead><tr className="text-left"><th>Title</th><th>Stage</th><th>Value</th><th>Sales Rep</th></tr></thead>
-          <tbody>{deals.map((deal) => <tr key={deal.id} className="border-t"><td>{deal.title}</td><td>{deal.stage}</td><td>${deal.valueUSD.toLocaleString()}</td><td>{deal.assignedSalesId}</td></tr>)}</tbody>
+          <tbody>{deals.map((deal) => <tr key={(deal as Record<string, unknown>).id} className="border-t"><td>{(deal as Record<string, unknown>).title}</td><td>{(deal as Record<string, unknown>).stage}</td><td>${(deal as Record<string, unknown>).valueUSD.toLocaleString()}</td><td>{(deal as Record<string, unknown>).assignedSalesId}</td></tr>)}</tbody>
         </table>
       </div>
     </div>

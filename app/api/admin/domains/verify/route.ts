@@ -14,11 +14,11 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid domain." }, { status: 400 });
 
   const domain = parsed.data.domain.trim().toLowerCase();
-  const token = createDomainVerificationToken(auth.user.tenantId, domain);
+  const token = createDomainVerificationToken(auth.user.tenantId as string, domain);
 
   try {
     const result = await verifyCustomDomain(domain, token);
-    const current = await getTenantBranding(auth.user.tenantId);
+    const current = await getTenantBranding(auth.user.tenantId as string);
     const now = new Date().toISOString();
     const customDomains = [...(current.customDomains || []).filter((item) => item.domain !== domain), {
       domain,
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       verifiedAt: result.verified ? now : null,
     }];
 
-    await updateTenantBranding(auth.user.tenantId, { customDomains }, auth.user.uid);
+    await updateTenantBranding(auth.user.tenantId as string, { customDomains }, auth.user.uid);
 
     await adminDb.collection("tenant_domain_mappings").doc(domain).set({
       tenantId: auth.user.tenantId,
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     }, { merge: true });
 
     return NextResponse.json({ ok: true, ...result, verificationToken: token });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Domain verification failed" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Domain verification failed" }, { status: 400 });
   }
 }

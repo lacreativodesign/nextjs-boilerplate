@@ -39,7 +39,7 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => null)) as Record<string, any> | null;
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) {
       return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
     }
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
     }
 
-    const lead = (body.lead || {}) as Record<string, any>;
+    const lead = (body.lead || {}) as Record<string, unknown>;
     const name = normalizeOptionalString(lead.name) || "";
     const email = normalizeOptionalString(lead.email) || "";
     const source = normalizeOptionalString(lead.source) || "website";

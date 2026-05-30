@@ -11,7 +11,7 @@ export async function logActivity({
   actorRole: string;
   action: string;
   targetUid?: string | null;
-  details?: any;
+  details?: unknown;
 }) {
   try {
     await adminDb.collection("activity_logs").add({

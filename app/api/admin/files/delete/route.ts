@@ -5,7 +5,7 @@ import { getCurrentUser, isAdminOrSuper } from "../../_utils";
 
 export const runtime = "nodejs";
 
-function cleanString(value: any) {
+function cleanString(value: unknown) {
   return String(value || "").trim();
 }
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("files/delete error:", err);
     return NextResponse.json({ ok: false, error: "Unable to delete file right now." }, { status: 500 });
   }

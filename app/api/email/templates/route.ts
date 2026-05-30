@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdminOrSuper } from "@/app/api/admin/_utils";
 import {
   buildTemplatePayload,
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, id: ref.id }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/email/templates error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to create template" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to create template" }, { status: 500 });
   }
 }
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     const snap = await query.orderBy("updatedAt", "desc").get();
     const templates = snap.docs.map((doc) => {
-      const data = doc.data() as Record<string, any>;
+      const data = doc.data() as Record<string, unknown>;
       return {
         id: doc.id,
         ...data,
@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, templates });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/email/templates error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to list templates" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to list templates" }, { status: 500 });
   }
 }

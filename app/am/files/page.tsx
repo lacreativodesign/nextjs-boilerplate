@@ -25,6 +25,7 @@ type FilePayload = {
   ok: boolean;
   files: FileRecord[];
   totals?: Record<string, number>;
+  error?: string;
 };
 
 type ProjectOption = { value: string; label: string };
@@ -113,9 +114,9 @@ export default function AMFilesPage() {
         setFiles(payload.files || []);
         setTotals(payload.totals || {});
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      if (mountedRef ? mountedRef.current : true) setError(err?.message || "Unable to load files.");
+      if (mountedRef ? mountedRef.current : true) setError((err instanceof Error ? err.message : undefined) || "Unable to load files.");
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

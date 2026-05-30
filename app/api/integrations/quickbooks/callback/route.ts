@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import {
   consumeQuickBooksOAuthState,
   exchangeQuickBooksCodeForTokens,
@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
     const redirect = new URL(target, request.url);
     redirect.searchParams.set("connected", "1");
     return NextResponse.redirect(redirect);
-  } catch (error: any) {
+  } catch (error) {
     console.error("quickbooks/callback error", error);
     const redirect = new URL("/admin/settings/integrations/quickbooks", request.url);
-    redirect.searchParams.set("error", error?.message || "QuickBooks OAuth failed");
+    redirect.searchParams.set("error", (error instanceof Error ? error.message : undefined) || "QuickBooks OAuth failed");
     return NextResponse.redirect(redirect);
   }
 }

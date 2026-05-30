@@ -12,9 +12,9 @@ export async function GET(_: Request, context: { params: { envelopeId: string } 
     const envelopeId = String(context.params?.envelopeId || "").trim();
     if (!envelopeId) return NextResponse.json({ ok: false, error: "envelopeId is required." }, { status: 400 });
 
-    const envelope = await getEnvelopeStatus(auth.user.tenantId, envelopeId);
+    const envelope = await getEnvelopeStatus(auth.user.tenantId as string, envelopeId);
     return NextResponse.json({ ok: true, envelope });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to fetch envelope status." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to fetch envelope status." }, { status: 500 });
   }
 }

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const arAgingBucketsDays = Array.isArray(body?.arAgingBucketsDays)
-      ? body.arAgingBucketsDays.map((value: any) => parseNumber(value, 0)).filter((value: number) => value > 0)
+      ? body.arAgingBucketsDays.map((value: unknown) => parseNumber(value, 0)).filter((value: number) => value > 0)
       : DEFAULT_REPORT_SETTINGS.arAgingBucketsDays;
     const atRiskAfterDays = parseNumber(body?.atRiskAfterDays, DEFAULT_REPORT_SETTINGS.atRiskAfterDays);
     const overdueAfterDays = parseNumber(body?.overdueAfterDays, DEFAULT_REPORT_SETTINGS.overdueAfterDays);

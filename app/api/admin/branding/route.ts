@@ -22,7 +22,7 @@ export async function GET() {
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-  const branding = await getTenantBranding(auth.user.tenantId);
+  const branding = await getTenantBranding(auth.user.tenantId as string);
   return NextResponse.json({ ok: true, branding, fonts: getAllowedBrandFonts() });
 }
 
@@ -36,9 +36,9 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const branding = await updateTenantBranding(auth.user.tenantId, payload.data, auth.user.uid);
+    const branding = await updateTenantBranding(auth.user.tenantId as string, payload.data, auth.user.uid);
     return NextResponse.json({ ok: true, branding });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to update branding" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to update branding" }, { status: 400 });
   }
 }

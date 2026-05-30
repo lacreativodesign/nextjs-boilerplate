@@ -1,7 +1,7 @@
 "use client";
 
-import { formatCurrency, CurrencyCode } from "@/lib/finance/currencies";
-import { getFrequencyDescription, RecurrenceFrequency, TemplateStatus } from "@/lib/finance/recurring";
+import { formatCurrency, type CurrencyCode } from "@/lib/finance/currencies";
+import { getFrequencyDescription, type RecurrenceFrequency, type TemplateStatus } from "@/lib/finance/recurring";
 
 interface RecurringTemplateCardProps {
   template: {

@@ -1,4 +1,4 @@
-import { AppError, isAppError } from "@/lib/errors";
+import { _AppError, isAppError } from "@/lib/errors";
 
 export type LogContext = {
   requestId?: string;
@@ -51,9 +51,11 @@ function emit(level: "debug" | "info" | "warn" | "error", message: string, conte
     return;
   }
   if (level === "debug") {
+    // eslint-disable-next-line no-console
     console.debug(logLine);
     return;
   }
+  // eslint-disable-next-line no-console
   console.info(logLine);
 }
 

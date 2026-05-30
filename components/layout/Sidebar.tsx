@@ -127,6 +127,7 @@ export default function Sidebar({
                   if (typeof window !== "undefined" && window.innerWidth >= 768) {
                     toggleCollapse();
                   } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                     isMobileOpen ? closeMobile() : openMobile();
                   }
                 }}

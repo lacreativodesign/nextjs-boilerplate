@@ -36,9 +36,9 @@ export default function SalesManagerTeamPage() {
         }
         if (!alive) return;
         setRows(Array.isArray(json.team) ? json.team : []);
-      } catch (err: any) {
+      } catch (err) {
         if (!alive) return;
-        setError(err?.message || "Unable to load team.");
+        setError((err instanceof Error ? err.message : undefined) || "Unable to load team.");
         setRows([]);
       } finally {
         if (!alive) return;

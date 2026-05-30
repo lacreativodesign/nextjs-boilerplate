@@ -7,7 +7,7 @@ export async function GET(_: Request, { params }: { params: { userId: string } }
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const permissions = await buildUserPermissionSnapshot(auth.user.tenantId, params.userId);
+    const permissions = await buildUserPermissionSnapshot(auth.user.tenantId as string, params.userId);
     return NextResponse.json(permissions);
   } catch (error) {
     console.error("Get user permissions error", error);

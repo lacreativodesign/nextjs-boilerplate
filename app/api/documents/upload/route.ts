@@ -101,8 +101,8 @@ export async function POST(request: Request) {
       documentId,
       message: "File uploaded successfully",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error uploading file:", error);
-    return NextResponse.json({ error: error?.message || "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: (error instanceof Error ? error.message : undefined) || "Upload failed" }, { status: 500 });
   }
 }

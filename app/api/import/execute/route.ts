@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { batchImport } from '@/lib/import/batch-import';
 import { z } from 'zod';
 
@@ -64,17 +64,17 @@ export async function POST(req: NextRequest) {
     const schema = getSchemaForEntity(entityType);
 
     // Map and validate rows
-    const validRows: any[] = [];
+    const validRows: unknown[] = [];
     const errors: { row: number; field: string; error: string }[] = [];
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const mapped: any = {};
+      const mapped: unknown = {};
 
       // Map fields
       for (const [systemField, fileField] of Object.entries(mapping)) {
         if (typeof fileField === 'string' && fileField !== '') {
-          mapped[systemField] = row[fileField];
+          (mapped as Record<string, unknown>)[systemField] = row[fileField];
         }
       }
 
@@ -115,12 +115,12 @@ export async function POST(req: NextRequest) {
       imported: result.imported,
       total: result.total,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Import execute error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Import failed',
+        error: (error as Record<string, unknown>).message || 'Import failed',
       },
       { status: 500 },
     );

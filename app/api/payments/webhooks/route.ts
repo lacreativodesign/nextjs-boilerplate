@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { computeBalanceDue, computeInvoiceStatus, normalizeInvoiceStatus } from "@/lib/finance/status";
 import { getStripeClient, getStripeWebhookSecret } from "@/lib/payments/stripe";
@@ -152,8 +152,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("payments/webhooks error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Webhook error." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Webhook error." }, { status: 400 });
   }
 }

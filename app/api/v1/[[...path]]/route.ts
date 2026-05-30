@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { applyVersionHeaders, proxyVersionedRequest } from "@/lib/api/versioning";
 
 function toUnversionedPath(path: string[] | undefined) {

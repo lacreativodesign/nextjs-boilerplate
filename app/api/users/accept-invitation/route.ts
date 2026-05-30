@@ -22,10 +22,10 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ userId });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error accepting invitation:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to accept invitation" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to accept invitation" },
       { status: 500 }
     );
   }

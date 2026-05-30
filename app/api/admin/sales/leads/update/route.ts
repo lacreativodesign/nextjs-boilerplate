@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing lead id." }, { status: 400 });
     }
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
 
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales leads update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update lead." }, { status: 500 });
   }

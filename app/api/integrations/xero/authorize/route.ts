@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { buildXeroAuthorizeUrl, createXeroOAuthState } from "@/lib/integrations/xero";
 
@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const returnTo = request.nextUrl.searchParams.get("returnTo") || "/admin/settings/integrations/xero";
-    const state = await createXeroOAuthState({ tenantId: auth.user.tenantId, userUid: auth.user.uid, returnTo });
+    const state = await createXeroOAuthState({ tenantId: auth.user.tenantId, userUid: auth.user.uid, returnTo }) as string;
     return NextResponse.redirect(buildXeroAuthorizeUrl(state));
-  } catch (error: any) {
+  } catch (error) {
     console.error("xero/authorize error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to start Xero OAuth." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to start Xero OAuth." }, { status: 500 });
   }
 }

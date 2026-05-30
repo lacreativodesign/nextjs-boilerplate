@@ -58,7 +58,7 @@ export async function GET(req: Request) {
         "Content-Disposition": "attachment; filename=reports-revenue-by-client.csv",
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("reports/exports revenue-by-client error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
   }

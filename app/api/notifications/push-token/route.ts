@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Push token is required." }, { status: 400 });
     }
 
-    const tenantId = normalizeTenantId(me.tenantId);
+    const tenantId = normalizeTenantId(me.tenantId as string | null | undefined);
     await adminDb
       .collection("users")
       .doc(me.uid)

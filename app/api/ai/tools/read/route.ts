@@ -5,7 +5,7 @@
  * Only callable server-side by the agent runner — never from the browser.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +16,10 @@ function verifySecret(req: NextRequest): boolean {
   return Boolean(expected && secret && secret === expected);
 }
 
-function toISO(val: any): string | null {
+function toISO(val: unknown): string | null {
   if (!val) return null;
   try {
-    if (typeof val?.toDate === "function") return val.toDate().toISOString();
+    if (typeof (val as Record<string, unknown>)?.toDate === "function") return (val as Record<string, unknown>).toDate().toISOString();
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d.toISOString();
   } catch {
@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
   try {
     const result = await executeTool(tool, tenantId, input);
     return NextResponse.json({ ok: true, result });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Tool execution failed" }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err instanceof Error ? err.message : undefined) || "Tool execution failed" }, { status: 500 });
   }
 }
 
-async function executeTool(tool: string, tenantId: string, input: Record<string, any>): Promise<unknown> {
+async function executeTool(tool: string, tenantId: string, input: Record<string, unknown>): Promise<unknown> {
   const now = new Date();
 
   switch (tool) {
@@ -120,7 +120,7 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
       const limit = Number(input.limit || 20);
       const stage = input.stage || null;
 
-      let query = adminDb.collection("leads").where("tenantId", "==", tenantId);
+      const query = adminDb.collection("leads").where("tenantId", "==", tenantId);
       const snap = await query.limit(200).get();
 
       const openStages = ["New", "Contacted", "Qualified", "Proposal", "Negotiation"];

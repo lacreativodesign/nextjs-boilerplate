@@ -27,8 +27,8 @@ export default function SalesManagerReportsPage() {
         throw new Error(json?.ok ? "" : "Unable to load reports");
       }
       setData(json);
-    } catch (err: any) {
-      setError(err?.message || "Unable to load reports.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load reports.");
       setData(null);
     } finally {
       setLoading(false);

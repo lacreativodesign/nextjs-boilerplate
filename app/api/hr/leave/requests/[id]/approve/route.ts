@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
 import { LeaveService } from "@/lib/hr/leave";
@@ -16,7 +16,7 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId as string, "hr", { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });

@@ -1,7 +1,7 @@
 "use client";
 
 import { OptimizedImage } from "@/components/OptimizedImage";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   EmailAuthProvider,
   getMultiFactorResolver,
@@ -129,12 +129,12 @@ export default function SalesProfilePage() {
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       try {
         await reauthenticateWithCredential(user, credential);
-      } catch (err: any) {
-        if (err?.code === "auth/multi-factor-auth-required") {
+      } catch (err) {
+        if ((err as Record<string, unknown>)?.code === "auth/multi-factor-auth-required") {
           if (!passwordMfaCode) {
             throw new Error("Enter your MFA code to confirm the password change.");
           }
-          const resolver = getMultiFactorResolver(auth, err);
+          const resolver = getMultiFactorResolver(auth, err as MultiFactorError);
           await verifyMFASignIn(resolver, passwordMfaCode);
         } else {
           throw err;
@@ -154,8 +154,8 @@ export default function SalesProfilePage() {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMfaCode("");
-    } catch (err: any) {
-      setError(err?.message || "Failed to update password.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : undefined) || "Failed to update password.");
     } finally {
       setPasswordLoading(false);
     }
@@ -180,9 +180,9 @@ export default function SalesProfilePage() {
       const credential = EmailAuthProvider.credential(user.email, mfaDisablePassword);
       try {
         await reauthenticateWithCredential(user, credential);
-      } catch (err: any) {
-        if (err?.code === "auth/multi-factor-auth-required") {
-          const resolver = getMultiFactorResolver(auth, err);
+      } catch (err) {
+        if ((err as Record<string, unknown>)?.code === "auth/multi-factor-auth-required") {
+          const resolver = getMultiFactorResolver(auth, err as MultiFactorError);
           await verifyMFASignIn(resolver, mfaDisableCode);
         } else {
           throw err;
@@ -197,8 +197,8 @@ export default function SalesProfilePage() {
       setMfaDisablePassword("");
       setMfaDisableCode("");
       setMessage("MFA has been disabled for your account.");
-    } catch (err: any) {
-      setMfaError(err?.message || "Failed to disable MFA.");
+    } catch (err) {
+      setMfaError((err instanceof Error ? err.message : undefined) || "Failed to disable MFA.");
     } finally {
       setMfaLoading(false);
     }

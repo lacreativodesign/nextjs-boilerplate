@@ -20,7 +20,7 @@ function canCreateClient(role: string) {
   return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "sales";
 }
 
-function cleanString(v: any) {
+function cleanString(v: unknown) {
   return String(v ?? "").trim();
 }
 
@@ -28,12 +28,12 @@ function normalizeEmail(v: string) {
   return cleanString(v).toLowerCase();
 }
 
-function toNumber(v: any) {
+function toNumber(v: unknown) {
   const n = Number(String(v ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : 0;
 }
 
-function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid" {
+function canonicalPaymentStatus(input: unknown): "Unpaid" | "Partially Paid" | "Paid" {
   const s = String(input ?? "").trim().toLowerCase();
   if (s === "paid") return "Paid";
   if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     await checkRateLimit(req, "standard", me.uid);
 
-    let body: any = null;
+    let body: unknown = null;
     try {
       body = await req.json();
     } catch {
@@ -60,14 +60,14 @@ export async function POST(req: Request) {
     }
 
     const validatedData = validateRequest(createClientSchema, {
-      companyName: body?.companyName,
-      contactName: body?.primaryContactName || body?.contactName,
-      email: body?.primaryContactEmail || body?.email,
-      phone: body?.primaryContactPhone || body?.phone,
-      address: body?.address,
-      industry: body?.industry,
-      website: body?.website,
-      tenantId: me.tenantId || body?.tenantId || "",
+      companyName: (body as Record<string, unknown>)?.companyName,
+      contactName: (body as Record<string, unknown>)?.primaryContactName || (body as Record<string, unknown>)?.contactName,
+      email: (body as Record<string, unknown>)?.primaryContactEmail || (body as Record<string, unknown>)?.email,
+      phone: (body as Record<string, unknown>)?.primaryContactPhone || (body as Record<string, unknown>)?.phone,
+      address: (body as Record<string, unknown>)?.address,
+      industry: (body as Record<string, unknown>)?.industry,
+      website: (body as Record<string, unknown>)?.website,
+      tenantId: me.tenantId || (body as Record<string, unknown>)?.tenantId || "",
     });
 
     const companyName = validatedData.companyName;
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     const primaryContactEmail = validatedData.email;
     const primaryContactPhone = validatedData.phone || "";
     const tenantId = validatedData.tenantId;
-    const salesOwner = cleanString(body?.salesOwner);
+    const salesOwner = cleanString((body as Record<string, unknown>)?.salesOwner);
     const primaryContactEmailLower = normalizeEmail(primaryContactEmail);
 
     if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
@@ -112,41 +112,41 @@ export async function POST(req: Request) {
     const doc = {
       // Company
       companyName,
-      website: cleanString(body?.website),
-      industry: cleanString(body?.industry),
-      businessType: cleanString(body?.businessType),
-      country: cleanString(body?.country),
-      city: cleanString(body?.city),
-      timezone: cleanString(body?.timezone),
-      employeeCountRange: cleanString(body?.employeeCountRange) || null,
-      yearsInBusinessRange: cleanString(body?.yearsInBusinessRange) || null,
+      website: cleanString((body as Record<string, unknown>)?.website),
+      industry: cleanString((body as Record<string, unknown>)?.industry),
+      businessType: cleanString((body as Record<string, unknown>)?.businessType),
+      country: cleanString((body as Record<string, unknown>)?.country),
+      city: cleanString((body as Record<string, unknown>)?.city),
+      timezone: cleanString((body as Record<string, unknown>)?.timezone),
+      employeeCountRange: cleanString((body as Record<string, unknown>)?.employeeCountRange) || null,
+      yearsInBusinessRange: cleanString((body as Record<string, unknown>)?.yearsInBusinessRange) || null,
 
-      segmentServices: normalizeSlugArray(body?.segmentServices),
-      segmentBusinessType: normalizeOptionalSlug(body?.segmentBusinessType),
-      segmentIndustry: normalizeOptionalSlug(body?.segmentIndustry),
-      segmentGeo: body?.segmentGeo !== undefined ? normalizeOptionalSlug(body?.segmentGeo) : slugify(cleanString(body?.country)) || null,
+      segmentServices: normalizeSlugArray((body as Record<string, unknown>)?.segmentServices),
+      segmentBusinessType: normalizeOptionalSlug((body as Record<string, unknown>)?.segmentBusinessType),
+      segmentIndustry: normalizeOptionalSlug((body as Record<string, unknown>)?.segmentIndustry),
+      segmentGeo: (body as Record<string, unknown>)?.segmentGeo !== undefined ? normalizeOptionalSlug((body as Record<string, unknown>)?.segmentGeo) : slugify(cleanString((body as Record<string, unknown>)?.country)) || null,
 
       // Contact
       primaryContactName,
-      primaryContactTitle: cleanString(body?.primaryContactTitle),
+      primaryContactTitle: cleanString((body as Record<string, unknown>)?.primaryContactTitle),
       primaryContactEmail,
       primaryContactEmailLower,
       primaryContactPhone,
 
       // Lifecycle
-      salesStage: cleanString(body?.salesStage) || "New Lead",
+      salesStage: cleanString((body as Record<string, unknown>)?.salesStage) || "New Lead",
       paymentStatus,
-      retainerStatus: cleanString(body?.retainerStatus) || "None",
+      retainerStatus: cleanString((body as Record<string, unknown>)?.retainerStatus) || "None",
 
       // Ownership
       salesOwner,
-      accountManager: cleanString(body?.accountManager),
-      productionOwner: cleanString(body?.productionOwner),
+      accountManager: cleanString((body as Record<string, unknown>)?.accountManager),
+      productionOwner: cleanString((body as Record<string, unknown>)?.productionOwner),
 
       // Finance
-      totalContractValueUsd: toNumber(body?.totalContractValueUsd),
-      totalPaidUsd: toNumber(body?.totalPaidUsd), // stored but status remains Unpaid until admin updates paymentStatus
-      openBalanceUsd: toNumber(body?.openBalanceUsd),
+      totalContractValueUsd: toNumber((body as Record<string, unknown>)?.totalContractValueUsd),
+      totalPaidUsd: toNumber((body as Record<string, unknown>)?.totalPaidUsd), // stored but status remains Unpaid until admin updates paymentStatus
+      openBalanceUsd: toNumber((body as Record<string, unknown>)?.openBalanceUsd),
 
       // Notes
       services: "",
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
     // If someone tries to sneak Paid in create payload, ignore it.
     // (Paid must be done via update and only admin/super_admin).
     // We keep this for clarity:
-    void canonicalPaymentStatus(body?.paymentStatus);
+    void canonicalPaymentStatus((body as Record<string, unknown>)?.paymentStatus);
 
     const ref = await db.collection("clients").add(doc);
 
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
       });
       return Promise.all(admins.map((admin) =>
         sendEmail({
-          to: admin.email || '',
+          to: admin.email as unknown || '',
           subject: `🤝 New client added — ${companyName}`,
           html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -275,7 +275,7 @@ export async function POST(req: Request) {
     }).catch((err) => console.error('[CLIENT_CREATE] Failed to notify admins', err));
 
     return NextResponse.json({ ok: true, id: ref.id });
-  } catch (err: any) {
+  } catch (err) {
     const { status, body } = resolveErrorResponse(err, {
       fallbackMessage: "Failed to create client.",
       fallbackCode: "INTERNAL_SERVER_ERROR",

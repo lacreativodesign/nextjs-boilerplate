@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
@@ -62,7 +62,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const preferences = await NotificationPreferenceService.getPreferences(me.uid, normalizeTenantId(me.tenantId));
+    const preferences = await NotificationPreferenceService.getPreferences(me.uid, normalizeTenantId(me.tenantId as string | null | undefined));
     return NextResponse.json({ preferences });
   } catch (error) {
     console.error("Failed to fetch user notification preferences", error);
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
 
     const preferences = await NotificationPreferenceService.updatePreferences({
       userId: me.uid,
-      tenantId: normalizeTenantId(me.tenantId),
+      tenantId: normalizeTenantId(me.tenantId as string | null | undefined),
       updates: payload as Partial<UserNotificationPreferences>,
     });
 

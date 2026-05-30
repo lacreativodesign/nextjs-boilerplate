@@ -53,7 +53,7 @@ export async function GET() {
       .orderBy("generatedAt", "desc")
       .get();
 
-    const reports = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const reports = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
     return NextResponse.json({ ok: true, reports });
   } catch (error) {
     console.error("[TAX_REPORTS_GET]", error);
@@ -136,8 +136,8 @@ export async function POST(req: Request) {
 
     await reportRef.set(report);
     return NextResponse.json({ ok: true, report });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[TAX_REPORTS_POST]", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to generate report" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Failed to generate report" }, { status: 500 });
   }
 }

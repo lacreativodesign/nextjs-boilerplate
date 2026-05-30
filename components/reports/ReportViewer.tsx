@@ -21,7 +21,7 @@ import {
 import { ChartContainer, chartAxisProps, chartGridProps, chartTooltipProps, CHART_COLORS } from "@/components/charts/ChartContainer";
 import type { ChartConfiguration, ChartType } from "@/types/reports";
 
-const resolveSeries = (data: any[], config?: ChartConfiguration) => {
+const resolveSeries = (data: unknown[], config?: ChartConfiguration) => {
   if (config?.yAxis?.length) return config.yAxis;
   if (!data.length) return [];
   return Object.keys(data[0]).filter((key) => key !== config?.xAxis);
@@ -32,7 +32,7 @@ export function ReportViewer({
   chartType,
   chartConfig,
 }: {
-  data: any[];
+  data: unknown[];
   chartType?: ChartType;
   chartConfig?: ChartConfiguration;
 }) {
@@ -64,7 +64,7 @@ export function ReportViewer({
               <tr key={idx} className="text-[var(--text-primary)] hover:bg-[var(--table-row-hover)] transition">
                 {headers.map((header) => (
                   <td key={header} className="px-4 py-3">
-                    {String(row[header] ?? "")}
+                    {String((row as Record<string, unknown>)[header] ?? "")}
                   </td>
                 ))}
               </tr>

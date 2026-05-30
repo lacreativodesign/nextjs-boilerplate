@@ -35,10 +35,10 @@ export async function POST(req: Request) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error creating employee:", err);
     return NextResponse.json(
-      { success: false, message: err.message || "Server error" },
+      { success: false, message: (err as Record<string, unknown>).message || "Server error" },
       { status: 500 }
     );
   }

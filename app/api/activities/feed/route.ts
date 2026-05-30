@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "../../admin/_utils";
 import { getActivityFeed } from "@/lib/activity/activity-service";
 

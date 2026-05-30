@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { BulkExportService } from "@/lib/export/bulk-export";
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest, { params }: { params: { entity:
       config,
     });
 
-    const result = await BulkExportService.runExportJob({ jobId, tenantId: me.tenantId });
+    const result = await BulkExportService.runExportJob({ jobId, tenantId: me.tenantId }) as string;
 
-    return NextResponse.json({ ok: true, jobId, ...result });
+    return NextResponse.json({ ok: true, jobId, ...(result as Record<string, unknown>)});
   } catch (error) {
     console.error("Export error", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Export failed" }, { status: 400 });

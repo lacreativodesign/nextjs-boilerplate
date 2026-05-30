@@ -302,16 +302,16 @@ export class WorkflowEngine {
 
         await runRef.set({ status: "success", completedAt: new Date().toISOString(), retries }, { merge: true });
         return { runId: runRef.id, status: "success" as WorkflowRunStatus };
-      } catch (error: any) {
+      } catch (error) {
         retries += 1;
         await insertRunLog(runRef.id, context.tenantId, {
           ts: new Date().toISOString(),
           level: "error",
           message: "Action execution failed.",
-          data: { error: String(error?.message || error), attempt: retries },
+          data: { error: String((error instanceof Error ? error.message : undefined) || error), attempt: retries },
         });
         if (retries > workflow.retryLimit) {
-          await runRef.set({ status: "failed", completedAt: new Date().toISOString(), retries, error: String(error?.message || error) }, { merge: true });
+          await runRef.set({ status: "failed", completedAt: new Date().toISOString(), retries, error: String((error instanceof Error ? error.message : undefined) || error) }, { merge: true });
           return { runId: runRef.id, status: "failed" as WorkflowRunStatus };
         }
         await new Promise((resolve) => setTimeout(resolve, DEFAULT_RETRY_DELAY_MS * retries));

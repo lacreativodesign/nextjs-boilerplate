@@ -9,14 +9,14 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!isAdminRole(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await req.json();
   } catch {
     body = null;
   }
 
-  const id = String(body?.id || "").trim();
+  const id = String((body as Record<string, unknown>)?.id || "").trim();
   if (!id) return NextResponse.json({ ok: false, error: "Missing segment id" }, { status: 400 });
 
   const ref = db.collection("clientSegments").doc(id);

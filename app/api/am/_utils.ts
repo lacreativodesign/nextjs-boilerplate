@@ -6,7 +6,7 @@ export type AMUser = {
   name?: string;
   fullName?: string;
   displayName?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export async function getAmUser(): Promise<AMUser | null> {
@@ -16,10 +16,10 @@ export async function getAmUser(): Promise<AMUser | null> {
   return me as AMUser;
 }
 
-export function toISO(value: any): string | null {
+export function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }

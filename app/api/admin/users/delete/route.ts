@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       category: 'user',
     });
     return NextResponse.json({ success: true });
-  } catch (e: any) {
+  } catch (e) {
     console.error('Error delete user:', e);
     return new NextResponse('Server error', { status: 500 });
   }

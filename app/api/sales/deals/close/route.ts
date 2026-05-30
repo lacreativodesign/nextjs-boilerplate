@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals close error:", err);
     return NextResponse.json({ ok: false, error: "Unable to close deal." }, { status: 500 });
   }

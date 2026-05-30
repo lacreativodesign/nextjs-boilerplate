@@ -45,10 +45,10 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ teamId });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating team:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to create team" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to create team" },
       { status: 500 }
     );
   }

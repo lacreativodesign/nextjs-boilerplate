@@ -66,7 +66,7 @@ export default function SuperAdminPage() {
           ? tenantsData.tenants
           : [];
         const activeUsers = userList.filter(
-          (u: any) => (u.status || "active") === "active"
+          (u: unknown) => ((u as Record<string, unknown>).status || "active") === "active"
         ).length;
 
         setStats({

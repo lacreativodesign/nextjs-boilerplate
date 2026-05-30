@@ -141,7 +141,7 @@ export class ReportEngine {
           cached: false,
         },
       };
-    } catch (error: any) {
+    } catch (error) {
       const duration = Date.now() - startTime;
       await this.logExecution({
         tenantId: params.tenantId,
@@ -150,7 +150,7 @@ export class ReportEngine {
         status: "failed",
         duration,
         rowCount: 0,
-        errorMessage: error?.message || "Unknown error",
+        errorMessage: (error instanceof Error ? error.message : undefined) || "Unknown error",
         filters: params.filters || [],
         dateRange: params.dateRange,
       });
@@ -165,7 +165,7 @@ export class ReportEngine {
     return crypto.createHash("sha256").update(raw).digest("hex");
   }
 
-  private static sortObject(value: any): any {
+  private static sortObject(value: unknown): unknown {
     if (Array.isArray(value)) {
       return value.map((entry) => this.sortObject(entry));
     }
@@ -173,7 +173,7 @@ export class ReportEngine {
       return Object.keys(value)
         .sort()
         .reduce((acc: Record<string, unknown>, key) => {
-          acc[key] = this.sortObject(value[key]);
+          acc[key] = this.sortObject((value as Record<string, unknown>)[key]);
           return acc;
         }, {});
     }
@@ -189,12 +189,12 @@ export class ReportEngine {
       await snap.ref.delete();
       return null;
     }
-    return data as { data: any[]; pageToken?: string | null; nextPageToken?: string | null };
+    return data as { data: unknown[]; pageToken?: string | null; nextPageToken?: string | null };
   }
 
   private static async setCache(
     cacheKey: string,
-    payload: { data: any[]; pageToken?: string | null; nextPageToken?: string | null }
+    payload: { data: unknown[]; pageToken?: string | null; nextPageToken?: string | null }
   ) {
     const now = admin.firestore.Timestamp.now();
     const expiresAt = admin.firestore.Timestamp.fromDate(new Date(Date.now() + CACHE_TTL_MS));
@@ -240,7 +240,7 @@ export class ReportEngine {
     const pageSize = pagination?.pageSize || DEFAULT_PAGE_SIZE;
 
     if (shouldAggregate) {
-      let results: any[] = [];
+      let results: unknown[] = [];
       let lastDoc: QueryDocumentSnapshot | null = null;
       let hasMore = true;
       while (hasMore) {
@@ -248,18 +248,18 @@ export class ReportEngine {
         if (lastDoc) pageQuery = pageQuery.startAfter(lastDoc);
         const pageSnap = await pageQuery.get();
         if (pageSnap.empty) break;
-        results = results.concat(pageSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        results = results.concat(pageSnap.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() })));
         lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
         hasMore = pageSnap.size === MAX_PAGE_SIZE;
       }
-      let data = results;
+      let data: Record<string, unknown>[] = results as Record<string, unknown>[];
       if (clientFilters.length) {
         data = data.filter((item) => this.matchesFilters(item, clientFilters));
       }
 
       data = data.map((row) => this.applyDerivedFields(row, report));
-      data = this.applyAggregations(data, report.groupBy, report.aggregations);
-      return { data, nextPageToken: null };
+      const aggData = this.applyAggregations(data, report.groupBy, report.aggregations);
+      return { data: aggData, nextPageToken: null };
     }
 
     if (pagination?.pageToken) {
@@ -272,7 +272,7 @@ export class ReportEngine {
     query = query.limit(pageSize);
 
     const snapshot = await query.get();
-    let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let data = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     if (clientFilters.length) {
       data = data.filter((item) => this.matchesFilters(item, clientFilters));
@@ -351,7 +351,7 @@ export class ReportEngine {
     query = query.orderBy("createdAt", "desc");
 
     const snapshot = await query.limit(1000).get();
-    let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let data = snapshot.docs.map((doc): Record<string, unknown> => ({ id: doc.id, ...doc.data() }));
 
     if (clientFilters.length) {
       data = data.filter((item) => this.matchesFilters(item, clientFilters));
@@ -389,7 +389,7 @@ export class ReportEngine {
     return true;
   }
 
-  private static applyDerivedFields(row: Record<string, any>, report: Report) {
+  private static applyDerivedFields(row: Record<string, unknown>, report: Report) {
     const createdAt = this.toDate(row.createdAt);
     if (createdAt) {
       row.month = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
@@ -417,19 +417,19 @@ export class ReportEngine {
     return Math.ceil((pastDays + firstDay.getDay() + 1) / 7);
   }
 
-  private static applyAggregations(data: any[], groupBy?: string[], aggregations?: Aggregation[]) {
+  private static applyAggregations(data: unknown[], groupBy?: string[], aggregations?: Aggregation[]) {
     if (!aggregations || aggregations.length === 0) return data;
 
     if (!groupBy || groupBy.length === 0) {
-      const result: any = {};
+      const result: unknown = {};
       aggregations.forEach((agg) => {
         const alias = agg.alias || agg.field;
-        result[alias] = this.calculateAggregation(data, agg);
+        (result as Record<string, unknown>)[alias] = this.calculateAggregation(data, agg);
       });
       return [result];
     }
 
-    const groups = data.reduce((acc: Record<string, any[]>, row: any) => {
+    const groups = (data as Record<string, unknown>[]).reduce((acc: Record<string, unknown[]>, row: Record<string, unknown>) => {
       const key = groupBy.map((field) => row[field]).join("|");
       if (!acc[key]) {
         acc[key] = [];
@@ -438,30 +438,30 @@ export class ReportEngine {
       return acc;
     }, {});
 
-    return Object.entries(groups).map(([key, rows]: [string, any[]]) => {
-      const result: any = {};
+    return (Object.entries(groups) as [string, unknown[]][]).map(([key, rows]) => {
+      const result: unknown = {};
       const keyParts = key.split("|");
       groupBy.forEach((field, index) => {
-        result[field] = keyParts[index];
+        (result as Record<string, unknown>)[field] = keyParts[index];
       });
 
       aggregations.forEach((agg) => {
         const alias = agg.alias || agg.field;
-        result[alias] = this.calculateAggregation(rows, agg);
+        (result as Record<string, unknown>)[alias] = this.calculateAggregation(rows, agg);
       });
 
       return result;
     });
   }
 
-  private static calculateAggregation(data: any[], agg: Aggregation): number {
-    const values = data.map((row) => row[agg.field]).filter((value) => value != null);
+  private static calculateAggregation(data: unknown[], agg: Aggregation): number {
+    const values = data.map((row) => (row as Record<string, unknown>)[agg.field]).filter((value) => value != null);
 
     switch (agg.function) {
       case "sum":
-        return values.reduce((sum, val) => sum + Number(val || 0), 0);
+        return values.reduce((sum: number, val) => sum + Number(val || 0), 0);
       case "avg":
-        return values.length ? values.reduce((sum, val) => sum + Number(val || 0), 0) / values.length : 0;
+        return values.length ? values.reduce((sum: number, val) => sum + Number(val || 0), 0) / values.length : 0;
       case "count":
         return values.length;
       case "min":
@@ -565,7 +565,7 @@ export class ReportEngine {
 
   private static getFieldValue(item: Record<string, unknown>, field: string) {
     if (!field.includes(".")) return item[field];
-    return field.split(".").reduce((acc: any, key) => (acc ? acc[key] : undefined), item);
+    return field.split(".").reduce((acc: unknown, key) => (acc ? (acc as Record<string, unknown>)[key] : undefined), item);
   }
 
   private static containsValue(fieldValue: unknown, value: unknown) {
@@ -603,11 +603,11 @@ export class ReportEngine {
     return value;
   }
 
-  private static toDate(value: any): Date | null {
+  private static toDate(value: unknown): Date | null {
     if (!value) return null;
     if (value instanceof Date) return value;
-    if (typeof value?.toDate === "function") return value.toDate();
-    const parsed = new Date(value);
+    if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as { toDate: () => Date }).toDate();
+    const parsed = new Date(value as string | number);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
   }
@@ -625,14 +625,14 @@ export class ReportEngine {
     });
   }
 
-  static async exportToCSV(data: any[]): Promise<string> {
+  static async exportToCSV(data: unknown[]): Promise<string> {
     if (!data.length) return "";
 
-    const headers = Object.keys(data[0]);
+    const headers = Object.keys(data[0] as Record<string, unknown>);
     const rows = data.map((row) =>
       headers
         .map((header) => {
-          const value = row[header];
+          const value = (row as Record<string, unknown>)[header];
           const formatted = value instanceof Date ? value.toISOString() : value;
           return typeof formatted === "string" && formatted.includes(",") ? `"${formatted}"` : formatted;
         })

@@ -9,12 +9,12 @@ type FollowUpDoc = {
   relatedId?: string | null;
   relatedName?: string;
   type?: string;
-  dueDate?: any;
+  dueDate?: unknown;
   ownerId?: string | null;
   ownerName?: string | null;
   status?: string;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
   isDeleted?: boolean;
   assignedTo?: string | null;
   createdBy?: string | null;
@@ -78,7 +78,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({ ok: true, followUps });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales follow-ups list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load follow-ups." }, { status: 500 });
   }

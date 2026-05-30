@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(new URL(`${stateRecord.returnTo}?google_connected=1`, request.url));
-  } catch (err: any) {
-    return NextResponse.redirect(new URL(`/admin/settings/integrations?google_error=${encodeURIComponent(err?.message || "oauth_failed")}`, request.url));
+  } catch (err) {
+    return NextResponse.redirect(new URL(`/admin/settings/integrations?google_error=${encodeURIComponent((err instanceof Error ? err.message : undefined) || "oauth_failed")}`, request.url));
   }
 }

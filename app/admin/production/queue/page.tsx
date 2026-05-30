@@ -14,6 +14,7 @@ const HEALTH_OPTIONS = ['On Track', 'At Risk', 'Overdue'] as const;
 type QueuePayload = {
   ok: boolean;
   projects: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {
@@ -138,9 +139,9 @@ export default function ProductionQueuePage() {
         setProductionUsers(production);
         setOwnerOptions(owners);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      if (mountedRef ? mountedRef.current : true) setError(err?.message || 'Unable to load queue.');
+      if (mountedRef ? mountedRef.current : true) setError((err instanceof Error ? err.message : undefined) || 'Unable to load queue.');
     } finally {
       if (mountedRef ? mountedRef.current : true) setLoading(false);
     }

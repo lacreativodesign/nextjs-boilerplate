@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { saveSsoConnection, SsoProvider } from "@/lib/auth/sso-oauth";
+import { saveSsoConnection, type SsoProvider } from "@/lib/auth/sso-oauth";
 
 export const runtime = "nodejs";
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ ok: true, connection: { ...connection, clientSecret: connection.clientSecret ? "***" : "" } });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to configure SSO provider." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to configure SSO provider." }, { status: 400 });
   }
 }

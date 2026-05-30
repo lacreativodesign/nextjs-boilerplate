@@ -64,7 +64,7 @@ export default function SalesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const v = (val: any) => loading ? "..." : val;
+  const v = (val: unknown) => loading ? "..." : val;
 
   return (
     <div className="page-frame space-y-6">
@@ -73,16 +73,16 @@ export default function SalesPage() {
       </div>
 
       <div className="kpis">
-        <StatCard label="Total Leads" value={v(data?.totalLeads ?? 0)}
+        <StatCard label="Total Leads" value={v(data?.totalLeads ?? 0) as string}
           sub="All time" href="/sales/leads" />
-        <StatCard label="Active Deals" value={v(data?.activeDeals ?? 0)}
+        <StatCard label="Active Deals" value={v(data?.activeDeals ?? 0) as string}
           sub="In pipeline" href="/sales/deals" color="#3b82f6" />
-        <StatCard label="Pipeline Value" value={v(fmt(data?.pipelineValue ?? 0))}
+        <StatCard label="Pipeline Value" value={v(fmt(data?.pipelineValue ?? 0) as string)}
           sub="Open deals total" color="#10b981" />
-        <StatCard label="Closed Won (Month)" value={v(data?.closedWonThisMonth ?? 0)}
+        <StatCard label="Closed Won (Month)" value={v(data?.closedWonThisMonth ?? 0) as string}
           sub="This month" color="#10b981" />
         <StatCard label="Conversion Rate"
-          value={v(`${(data?.conversionRate ?? 0).toFixed(1)}%`)}
+          value={v(`${((data?.conversionRate ?? 0) as number).toFixed(1)}%`)}
           sub="Leads to closed" />
       </div>
 

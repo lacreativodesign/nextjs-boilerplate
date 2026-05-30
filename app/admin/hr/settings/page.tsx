@@ -72,8 +72,8 @@ export default function HrSettingsPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to save settings.");
-    } catch (err: any) {
-      toastError(err?.message || "Unable to save settings.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Unable to save settings.");
     } finally {
       setSaving(false);
     }

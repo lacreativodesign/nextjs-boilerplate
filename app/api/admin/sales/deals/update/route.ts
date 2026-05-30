@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       const data = snap.data() || {};
       const prevStage = parseString(data.stage, "New");
       const nextStage = payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
       };
 
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("sales deals update error:", err);
     return NextResponse.json({ ok: false, error: "Unable to update deal." }, { status: 500 });
   }

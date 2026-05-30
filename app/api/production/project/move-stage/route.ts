@@ -19,9 +19,10 @@ const ALLOWED_MOVES: Record<string, string[]> = {
 };
 
 type ProjectDoc = {
+  tenantId?: string | null;
   stage?: string;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
-  stageTimestamps?: Record<string, any>;
+  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: unknown; reason?: string | null }>;
+  stageTimestamps?: Record<string, unknown>;
   projectName?: string;
   clientName?: string;
   projectType?: string;
@@ -33,26 +34,26 @@ type ProjectDoc = {
   productionOwnerId?: string | null;
   productionOwnerName?: string | null;
   assignedProductionIds?: string[];
-  dueDate?: any;
-  updatedAt?: any;
-  createdAt?: any;
+  dueDate?: unknown;
+  updatedAt?: unknown;
+  createdAt?: unknown;
   isDeleted?: boolean;
 };
 
 function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byName: entry?.byName || "",
+    from: entry?.from || String(""),
+    to: entry?.to || String(""),
+    byUid: entry?.byUid || String(""),
+    byName: entry?.byName || String(""),
     at: toISO(entry?.at),
     reason: entry?.reason || null,
   }));
 }
 
 function isValidStage(stage?: string) {
-  return VALID_STAGES.includes((stage || "") as (typeof VALID_STAGES)[number]);
+  return VALID_STAGES.includes((stage || String("")) as (typeof VALID_STAGES)[number]);
 }
 
 function canMoveStage(fromStage: string, toStage: string) {
@@ -70,7 +71,7 @@ async function emitAutomationEvent({
   projectId: string;
   actorId: string;
   actorName: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   await adminDb.collection("automationEvents").add({
     type,
@@ -96,8 +97,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const projectId = String(body?.projectId || "").trim();
-    const toStage = String(body?.toStage || "").trim();
+    const projectId = String(body?.projectId || String("")).trim();
+    const toStage = String(body?.toStage || String("")).trim();
 
     if (!projectId) {
       return NextResponse.json({ ok: false, error: "Project id is required." }, { status: 400 });
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 
-    if (String((data as any).tenantId || "") !== me.tenantId) {
+    if (String(data.tenantId || String("")) !== me.tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -147,7 +148,7 @@ export async function POST(req: Request) {
       from: fromStage,
       to: toStage,
       byUid: me.uid,
-      byName: me.name || me.fullName || me.displayName || "",
+      byName: String(me.name || me.fullName || me.displayName || ""),
       at: now,
       reason: null,
     });
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
       type: "project.stage_moved",
       projectId,
       actorId: me.uid,
-      actorName: me.name || me.fullName || me.displayName || "",
+      actorName: String(me.name || me.fullName || me.displayName || ""),
       payload: {
         from: fromStage,
         to: toStage,
@@ -180,7 +181,7 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = String(me.name || me.fullName || me.displayName || "");
 
     const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
     const recipients = new Set<string>();
@@ -239,9 +240,9 @@ export async function POST(req: Request) {
       ok: true,
       project: {
         id: projectId,
-        projectName: updated.projectName || "",
-        clientName: updated.clientName || "",
-        projectType: updated.projectType || "",
+        projectName: updated.projectName || String(""),
+        clientName: updated.clientName || String(""),
+        projectType: updated.projectType || String(""),
         stage: updated.stage || "Draft",
         priority: updated.priority || "Normal",
         health: computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays),
@@ -255,9 +256,9 @@ export async function POST(req: Request) {
         stageHistory: normalizeStageHistory(updated.stageHistory),
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("production/move-stage error:", err);
-    const rawMessage = String(err?.message || "");
+    const rawMessage = String((err instanceof Error ? err.message : undefined) || String(""));
     const isIndexError =
       rawMessage.includes("FAILED_PRECONDITION") ||
       rawMessage.toLowerCase().includes("index") ||

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
     }
     const lead = leadSnap.data() || {};
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string || DEFAULT_TENANT_ID);
     if (docTenantId(lead) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

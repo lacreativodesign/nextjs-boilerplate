@@ -99,11 +99,11 @@ function canManageTimesheets(role?: string) {
   return normalized === "admin" || normalized === "super_admin" || normalized === "hr";
 }
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return ((value as Record<string, unknown>).toDate as () => Date)().toISOString();
   return null;
 }
 
@@ -197,7 +197,7 @@ async function getEntriesForUserRange(tenantId: string, userId: string, from: Da
     .where("startAt", "<", to)
     .get();
 
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) }));
+  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as { id: string } & Record<string, unknown>));
 }
 
 async function assertNoOverlap(params: {
@@ -244,53 +244,53 @@ export function calculateOvertimeMinutes(totalMinutes: number) {
   return Math.max(0, totalMinutes - OVERTIME_THRESHOLD_MINUTES_PER_WEEK);
 }
 
-export function mapTimeEntry(docId: string, data: any): TimeEntryRecord {
+export function mapTimeEntry(docId: string, data: unknown): TimeEntryRecord {
   return {
     id: docId,
-    tenantId: data.tenantId,
-    userId: data.userId,
-    userName: data.userName,
-    source: data.source,
-    startAt: toIso(data.startAt) || "",
-    endAt: toIso(data.endAt),
-    durationMinutes: data.durationMinutes || 0,
-    breakMinutes: data.breakMinutes || 0,
-    isBreakRequired: Boolean(data.isBreakRequired),
-    billable: Boolean(data.billable),
-    projectId: data.projectId || null,
-    projectName: data.projectName || null,
-    taskId: data.taskId || null,
-    taskName: data.taskName || null,
-    notes: data.notes || null,
-    status: data.status || "completed",
-    createdAt: toIso(data.createdAt),
-    updatedAt: toIso(data.updatedAt),
+    tenantId: (data as Record<string, unknown>).tenantId as string,
+    userId: (data as Record<string, unknown>).userId as string,
+    userName: (data as Record<string, unknown>).userName as string,
+    source: (data as Record<string, unknown>).source as TimeEntrySource,
+    startAt: toIso((data as Record<string, unknown>).startAt) || "",
+    endAt: toIso((data as Record<string, unknown>).endAt),
+    durationMinutes: Number((data as Record<string, unknown>).durationMinutes) || 0,
+    breakMinutes: Number((data as Record<string, unknown>).breakMinutes) || 0,
+    isBreakRequired: Boolean((data as Record<string, unknown>).isBreakRequired),
+    billable: Boolean((data as Record<string, unknown>).billable),
+    projectId: ((data as Record<string, unknown>).projectId as string | null) || null,
+    projectName: ((data as Record<string, unknown>).projectName as string | null) || null,
+    taskId: ((data as Record<string, unknown>).taskId as string | null) || null,
+    taskName: ((data as Record<string, unknown>).taskName as string | null) || null,
+    notes: ((data as Record<string, unknown>).notes as string | null) || null,
+    status: ((data as Record<string, unknown>).status as "running" | "completed") || "completed",
+    createdAt: toIso((data as Record<string, unknown>).createdAt),
+    updatedAt: toIso((data as Record<string, unknown>).updatedAt),
   };
 }
 
-export function mapTimesheet(docId: string, data: any): TimesheetRecord {
+export function mapTimesheet(docId: string, data: unknown): TimesheetRecord {
   return {
     id: docId,
-    tenantId: data.tenantId,
-    userId: data.userId,
-    userName: data.userName,
-    periodType: data.periodType,
-    periodStart: toIso(data.periodStart) || "",
-    periodEnd: toIso(data.periodEnd) || "",
-    totalMinutes: data.totalMinutes || 0,
-    billableMinutes: data.billableMinutes || 0,
-    nonBillableMinutes: data.nonBillableMinutes || 0,
-    overtimeMinutes: data.overtimeMinutes || 0,
-    status: data.status || "draft",
-    submittedAt: toIso(data.submittedAt),
-    submittedBy: data.submittedBy || null,
-    approvedAt: toIso(data.approvedAt),
-    approvedBy: data.approvedBy || null,
-    rejectedAt: toIso(data.rejectedAt),
-    rejectedBy: data.rejectedBy || null,
-    rejectionReason: data.rejectionReason || null,
-    createdAt: toIso(data.createdAt),
-    updatedAt: toIso(data.updatedAt),
+    tenantId: (data as Record<string, unknown>).tenantId as string,
+    userId: (data as Record<string, unknown>).userId as string,
+    userName: (data as Record<string, unknown>).userName as string,
+    periodType: (data as Record<string, unknown>).periodType as TimesheetPeriodType,
+    periodStart: toIso((data as Record<string, unknown>).periodStart) || "",
+    periodEnd: toIso((data as Record<string, unknown>).periodEnd) || "",
+    totalMinutes: Number((data as Record<string, unknown>).totalMinutes) || 0,
+    billableMinutes: Number((data as Record<string, unknown>).billableMinutes) || 0,
+    nonBillableMinutes: Number((data as Record<string, unknown>).nonBillableMinutes) || 0,
+    overtimeMinutes: Number((data as Record<string, unknown>).overtimeMinutes) || 0,
+    status: ((data as Record<string, unknown>).status as TimesheetStatus) || "draft",
+    submittedAt: toIso((data as Record<string, unknown>).submittedAt),
+    submittedBy: ((data as Record<string, unknown>).submittedBy as string | null) || null,
+    approvedAt: toIso((data as Record<string, unknown>).approvedAt),
+    approvedBy: ((data as Record<string, unknown>).approvedBy as string | null) || null,
+    rejectedAt: toIso((data as Record<string, unknown>).rejectedAt),
+    rejectedBy: ((data as Record<string, unknown>).rejectedBy as string | null) || null,
+    rejectionReason: ((data as Record<string, unknown>).rejectionReason as string | null) || null,
+    createdAt: toIso((data as Record<string, unknown>).createdAt),
+    updatedAt: toIso((data as Record<string, unknown>).updatedAt),
   };
 }
 
@@ -369,27 +369,27 @@ export class TimeTrackingService {
       throw new Error("Time entry not found.");
     }
 
-    const entry = snap.data() as any;
-    if (entry.tenantId !== tenantId) {
+    const entry = snap.data() as unknown;
+    if ((entry as Record<string, unknown>).tenantId !== tenantId) {
       throw new Error("Forbidden");
     }
-    if (entry.userId !== userId) {
+    if ((entry as Record<string, unknown>).userId !== userId) {
       throw new Error("Forbidden");
     }
-    if (entry.status !== "running") {
+    if ((entry as Record<string, unknown>).status !== "running") {
       throw new Error("Time entry is already completed.");
     }
 
-    const startAt = toDate(toIso(entry.startAt) || "");
+    const startAt = toDate(toIso((entry as Record<string, unknown>).startAt) || "");
     const endAt = new Date();
     const grossMinutes = Math.floor((endAt.getTime() - startAt.getTime()) / (1000 * 60));
     const normalizedBreakMinutes = calculateAutomaticBreak(grossMinutes, breakMinutes);
     const durationMinutes = calculateDurationMinutes(startAt, endAt, normalizedBreakMinutes);
 
-    await assertNoOverlap({ tenantId, userId: entry.userId, startAt, endAt, excludedEntryId: entryId });
+    await assertNoOverlap({ tenantId, userId: (entry as Record<string, unknown>).userId as string, startAt, endAt, excludedEntryId: entryId });
     await assertWithinDailyLimit({
       tenantId,
-      userId: entry.userId,
+      userId: (entry as Record<string, unknown>).userId as string,
       entryDate: startAt,
       candidateDurationMinutes: durationMinutes,
       excludedEntryId: entryId,
@@ -447,10 +447,10 @@ export class TimeTrackingService {
       .orderBy("startAt", "asc")
       .get();
 
-    const entries = entriesSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) }));
+    const entries = entriesSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as { id: string } & Record<string, unknown>));
 
-    const totalMinutes = entries.reduce((acc, item) => acc + (item.durationMinutes || 0), 0);
-    const billableMinutes = entries.reduce((acc, item) => acc + (item.billable ? item.durationMinutes || 0 : 0), 0);
+    const totalMinutes = entries.reduce((acc, item) => acc + (Number(item.durationMinutes) || 0), 0);
+    const billableMinutes = entries.reduce((acc, item) => acc + (item.billable ? Number(item.durationMinutes) || 0 : 0), 0);
     const nonBillableMinutes = totalMinutes - billableMinutes;
     const overtimeMinutes = input.periodType === "weekly" ? calculateOvertimeMinutes(totalMinutes) : 0;
 
@@ -526,13 +526,13 @@ export class TimeTrackingService {
     const ref = adminDb.collection("hr_timesheets").doc(params.timesheetId);
     const snap = await ref.get();
     if (!snap.exists) throw new Error("Timesheet not found.");
-    const sheet = snap.data() as any;
+    const sheet = snap.data() as unknown;
 
-    if (sheet.tenantId !== params.tenantId) throw new Error("Forbidden");
-    if (sheet.userId !== params.requesterUserId && !canManageTimesheets(params.requesterRole)) {
+    if ((sheet as Record<string, unknown>).tenantId !== params.tenantId) throw new Error("Forbidden");
+    if ((sheet as Record<string, unknown>).userId !== params.requesterUserId && !canManageTimesheets(params.requesterRole)) {
       throw new Error("Forbidden");
     }
-    if (sheet.status !== "draft" && sheet.status !== "rejected") {
+    if ((sheet as Record<string, unknown>).status !== "draft" && (sheet as Record<string, unknown>).status !== "rejected") {
       throw new Error("Only draft or rejected timesheets can be submitted.");
     }
 
@@ -566,9 +566,9 @@ export class TimeTrackingService {
     const snap = await ref.get();
     if (!snap.exists) throw new Error("Timesheet not found.");
 
-    const sheet = snap.data() as any;
-    if (sheet.tenantId !== params.tenantId) throw new Error("Forbidden");
-    if (sheet.status !== "submitted") {
+    const sheet = snap.data() as unknown;
+    if ((sheet as Record<string, unknown>).tenantId !== params.tenantId) throw new Error("Forbidden");
+    if ((sheet as Record<string, unknown>).status !== "submitted") {
       throw new Error("Only submitted timesheets can be reviewed.");
     }
 

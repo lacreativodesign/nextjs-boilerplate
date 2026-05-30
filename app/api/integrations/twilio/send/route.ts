@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { sendTwilioNotification, TWILIO_TRIGGER_TYPES } from "@/lib/integrations/twilio";
@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, result });
-  } catch (error: any) {
+  } catch (error) {
     console.error("twilio/send error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to send SMS." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to send SMS." }, { status: 400 });
   }
 }

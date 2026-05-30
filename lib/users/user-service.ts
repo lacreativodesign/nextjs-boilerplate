@@ -254,7 +254,7 @@ export class UserService {
     });
   }
 
-  static async getUserByEmail(email: string, tenantId: string): Promise<any> {
+  static async getUserByEmail(email: string, tenantId: string): Promise<unknown> {
     const snapshot = await adminDb
       .collection("users")
       .where("email", "==", email.toLowerCase())

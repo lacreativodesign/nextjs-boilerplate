@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { generateWeeklyComplianceReports } from "@/lib/compliance/data-retention";
 
 export const runtime = "nodejs";

@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 import type { ImportEntity, ImportFieldMapping, ImportFileFormat, ImportJob, ImportRowError } from "@/types/import-export";
 
-const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
+const entitySchemas: Record<ImportEntity, z.ZodObject<unknown>> = {
   clients: z.object({
     name: z.string().min(1),
     email: z.string().email().optional(),

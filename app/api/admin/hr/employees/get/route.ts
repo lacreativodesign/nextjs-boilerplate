@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
     const data = snap.data() || {};
     const isSuperAdmin = String(access.user.role || "").toLowerCase() === "super_admin";
-    if (!isSuperAdmin && String((data as any).tenantId||"").trim() !== String(access.user.tenantId||"").trim()) {
+    if (!isSuperAdmin && String((data as unknown).tenantId||"").trim() !== String(access.user.tenantId||"").trim()) {
       return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
     }
     return NextResponse.json({

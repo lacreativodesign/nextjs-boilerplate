@@ -4,14 +4,14 @@ import { requireHrAccess, toIso } from "../../_utils";
 
 export const runtime = "nodejs";
 
-function parseDate(value: any): number {
+function parseDate(value: unknown): number {
   if (!value) return 0;
   if (typeof value === "string") {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? 0 : d.getTime();
   }
-  if (typeof value?.toDate === "function") {
-    const d = value.toDate();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") {
+    const d = (value as Record<string, unknown>).toDate();
     return Number.isNaN(d.getTime()) ? 0 : d.getTime();
   }
   if (value instanceof Date) return value.getTime();
@@ -41,8 +41,8 @@ export async function GET() {
           metadata: data?.metadata || {},
         };
       })
-      .filter((event: any) => String(event?.type || "").startsWith("hr."))
-      .sort((a: any, b: any) => parseDate(b?.createdAt) - parseDate(a?.createdAt));
+      .filter((event: unknown) => String((event as Record<string, unknown>)?.type || "").startsWith("hr."))
+      .sort((a: unknown, b: unknown) => parseDate((b as Record<string, unknown>)?.createdAt) - parseDate((a as Record<string, unknown>)?.createdAt));
 
     return NextResponse.json({ ok: true, activity });
   } catch (err) {

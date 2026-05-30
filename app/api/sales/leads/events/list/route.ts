@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { isSales, parseString, requireSalesRead } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
 
-function toISO(value: any): string | null {
+function toISO(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof (value as Record<string, unknown>)?.toDate === "function") return (value as Record<string, unknown>).toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     const lead = leadSnap.data() || {};
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = normalizeTenantId(auth.user.tenantId as string || DEFAULT_TENANT_ID);
     if (docTenantId(lead) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, events });
-  } catch (err: any) {
+  } catch (err) {
     console.error("lead events list error:", err);
     return NextResponse.json({ ok: false, error: "Unable to load events." }, { status: 500 });
   }

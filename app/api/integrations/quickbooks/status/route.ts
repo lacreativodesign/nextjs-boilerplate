@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { getQuickBooksIntegration, updateQuickBooksSettings } from "@/lib/integrations/quickbooks";
 
@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const integration = await getQuickBooksIntegration(auth.user.tenantId);
+    const integration = await getQuickBooksIntegration(auth.user.tenantId as string);
 
     return NextResponse.json({
       ok: true,
@@ -25,9 +25,9 @@ export async function GET() {
         stats: integration?.stats || null,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("quickbooks/status error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load QuickBooks status." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load QuickBooks status." }, { status: 500 });
   }
 }
 
@@ -39,10 +39,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const settings = await updateQuickBooksSettings(auth.user.tenantId, auth.user.uid, body || {});
+    const settings = await updateQuickBooksSettings(auth.user.tenantId as string, auth.user.uid, body || {});
     return NextResponse.json({ ok: true, settings });
-  } catch (error: any) {
+  } catch (error) {
     console.error("quickbooks/status PUT error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update settings." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to update settings." }, { status: 500 });
   }
 }

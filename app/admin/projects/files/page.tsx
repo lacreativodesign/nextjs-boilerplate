@@ -195,8 +195,8 @@ export default function GlobalFilesPage() {
       setFiles(payload.files || []);
       setTotals(payload.totals || { total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 });
       setCurrentUser(payload.currentUser || null);
-    } catch (err: any) {
-      setError({ title: "Something went wrong", message: err?.message || "Unable to load files." });
+    } catch (err) {
+      setError({ title: "Something went wrong", message: (err instanceof Error ? err.message : undefined) || "Unable to load files." });
     } finally {
       setLoading(false);
     }
@@ -209,10 +209,10 @@ export default function GlobalFilesPage() {
       if (!res.ok || !payload?.ok) {
         return;
       }
-      const options = (payload.projects || []).map((project: any) => ({
-        id: project.id,
-        projectName: project.projectName || "Untitled",
-        clientName: project.clientName || "",
+      const options = (payload.projects || []).map((project: unknown) => ({
+        id: (project as Record<string, unknown>).id,
+        projectName: (project as Record<string, unknown>).projectName || "Untitled",
+        clientName: (project as Record<string, unknown>).clientName || "",
       }));
       setProjects(options);
     } catch {
@@ -340,8 +340,8 @@ export default function GlobalFilesPage() {
       setUploadOpen(false);
       resetUploadState();
       await fetchFiles();
-    } catch (err: any) {
-      setUploadError(err?.message || "Unable to upload right now.");
+    } catch (err) {
+      setUploadError((err instanceof Error ? err.message : undefined) || "Unable to upload right now.");
     } finally {
       setUploading(false);
     }
@@ -363,8 +363,8 @@ export default function GlobalFilesPage() {
         throw new Error(payload?.error || "Unable to delete file.");
       }
       await fetchFiles();
-    } catch (err: any) {
-      setError({ title: "Delete failed", message: err?.message || "Unable to delete file." });
+    } catch (err) {
+      setError({ title: "Delete failed", message: (err instanceof Error ? err.message : undefined) || "Unable to delete file." });
     } finally {
       setDeletingId(null);
     }

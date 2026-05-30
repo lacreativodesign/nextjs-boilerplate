@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const testCase = await createTestCase(
-      auth.user.tenantId,
+      auth.user.tenantId as string,
       { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || auth.user.displayName || auth.user.uid },
       {
         title,
@@ -59,7 +59,7 @@ export async function GET() {
     const auth = await getResourcePlannerUser();
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const testCases = await listTestCases(auth.user.tenantId);
+    const testCases = await listTestCases(auth.user.tenantId as string);
     return NextResponse.json({ ok: true, testCases });
   } catch (error) {
     console.error("GET /api/production/test-cases", error);

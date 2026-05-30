@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { runQuickBooksSync } from "@/lib/integrations/quickbooks";
 
@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
       try {
         await runQuickBooksSync({ tenantId, userUid: "system:cron" });
         results.push({ tenantId, ok: true });
-      } catch (error: any) {
-        results.push({ tenantId, ok: false, error: error?.message || "Sync failed" });
+      } catch (error) {
+        results.push({ tenantId, ok: false, error: (error instanceof Error ? error.message : undefined) || "Sync failed" });
       }
     }
 
     return NextResponse.json({ ok: true, processed: results.length, results });
-  } catch (error: any) {
+  } catch (error) {
     console.error("cron/quickbooks-sync error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "QuickBooks cron sync failed." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "QuickBooks cron sync failed." }, { status: 500 });
   }
 }

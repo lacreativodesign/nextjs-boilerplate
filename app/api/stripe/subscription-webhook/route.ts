@@ -1,4 +1,4 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
@@ -290,6 +290,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       case 'customer.tax_id.created': {
+        // eslint-disable-next-line no-console
         console.info('[TAX] Tax ID created for customer', event.data.object);
         return NextResponse.json({ ok: true });
       }

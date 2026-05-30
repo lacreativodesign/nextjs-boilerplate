@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { listSsoAuditLogs } from "@/lib/auth/sso-oauth";
 
@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "tenantId is required." }, { status: 400 });
     }
 
-    const logs = await listSsoAuditLogs(tenantId, limit);
+    const logs = await listSsoAuditLogs(tenantId as string, limit);
     return NextResponse.json({ ok: true, logs });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load SSO audit logs." }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load SSO audit logs." }, { status: 400 });
   }
 }

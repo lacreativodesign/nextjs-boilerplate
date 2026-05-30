@@ -143,7 +143,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
       description: description.trim() || undefined,
       category,
       dataSource,
-      filters: filters.map(({ id, ...rest }) => rest).filter((f) => f.field),
+      filters: filters.map(({ _id, ...rest }) => rest).filter((f) => f.field),
       groupBy: groupByItems.map((item) => item.label),
       aggregations: aggregations.filter((agg) => agg.field),
       chartType,

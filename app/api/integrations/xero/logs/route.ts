@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 import { getXeroSyncLogs } from "@/lib/integrations/xero";
 
@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const limit = Number(request.nextUrl.searchParams.get("limit") || 50);
-    const logs = await getXeroSyncLogs(auth.user.tenantId, Number.isFinite(limit) ? limit : 50);
+    const logs = await getXeroSyncLogs(auth.user.tenantId as string, Number.isFinite(limit) ? limit : 50);
     return NextResponse.json({ ok: true, logs });
-  } catch (error: any) {
+  } catch (error) {
     console.error("xero/logs error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load Xero logs." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: (error instanceof Error ? error.message : undefined) || "Unable to load Xero logs." }, { status: 500 });
   }
 }

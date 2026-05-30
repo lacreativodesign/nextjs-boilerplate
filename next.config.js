@@ -24,12 +24,6 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     domains: ['ucarecdn.com', 'firebasestorage.googleapis.com', 'imagedelivery.net'],
     formats: ['image/avif', 'image/webp'],

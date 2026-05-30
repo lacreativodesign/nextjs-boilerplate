@@ -85,9 +85,9 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
         throw new Error(data?.error || "Unable to load activity.");
       }
       setEvents(Array.isArray(data.events) ? data.events : []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Activity fetch error", err);
-      setError(err?.message || "Unable to load activity.");
+      setError((err instanceof Error ? err.message : undefined) || "Unable to load activity.");
     } finally {
       setLoading(false);
     }

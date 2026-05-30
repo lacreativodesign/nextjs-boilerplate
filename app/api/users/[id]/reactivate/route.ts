@@ -44,10 +44,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error reactivating user:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to reactivate user" },
+      { error: (error instanceof Error ? error.message : undefined) || "Failed to reactivate user" },
       { status: 500 }
     );
   }

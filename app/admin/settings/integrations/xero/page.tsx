@@ -41,7 +41,7 @@ type StatusResponse = {
 
 export default function XeroIntegrationPage() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -62,8 +62,8 @@ export default function XeroIntegrationPage() {
       if (!logsRes.ok || !logsData?.ok) throw new Error(logsData?.error || "Unable to load Xero logs.");
       setStatus(statusData.status || null);
       setLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
-    } catch (err: any) {
-      setError(err.message || "Unable to load Xero integration state.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to load Xero integration state.");
     } finally {
       setLoading(false);
     }
@@ -91,8 +91,8 @@ export default function XeroIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Xero settings.");
       setSuccess("Settings saved.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to save settings.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to save settings.");
     } finally {
       setSaving(false);
     }
@@ -113,8 +113,8 @@ export default function XeroIntegrationPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Xero sync failed.");
       setSuccess(forceInitial ? "Initial sync completed." : "Incremental sync completed.");
       await load();
-    } catch (err: any) {
-      setError(err.message || "Unable to run sync.");
+    } catch (err) {
+      setError((err as Record<string, unknown>).message || "Unable to run sync.");
     } finally {
       setSyncing(false);
     }
@@ -187,7 +187,7 @@ export default function XeroIntegrationPage() {
             ["scheduleDaily", "Run daily scheduled sync"],
           ].map(([key, label]) => (
             <label key={key} className="flex items-center gap-2 card" style={{ padding: 10, borderRadius: 12 }}>
-              <input type="checkbox" checked={Boolean((settings as any)?.[key])} disabled={!status?.connected || saving} onChange={(e) => void updateSettings({ [key]: e.target.checked } as Partial<SyncSettings>)} />
+              <input type="checkbox" checked={Boolean((settings as unknown)?.[key])} disabled={!status?.connected || saving} onChange={(e) => void updateSettings({ [key]: e.target.checked } as Partial<SyncSettings>)} />
               <span style={{ fontSize: 14 }}>{label}</span>
             </label>
           ))}
@@ -212,15 +212,15 @@ export default function XeroIntegrationPage() {
         ) : (
           <div className="space-y-2">
             {logs.map((log) => (
-              <div key={log.id} className="card" style={{ padding: 12, borderRadius: 12 }}>
+              <div key={(log as Record<string, unknown>).id} className="card" style={{ padding: 12, borderRadius: 12 }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong>{String(log.status || "unknown").toUpperCase()}</strong>
-                  <span style={{ fontSize: 12 }}>{log.startedAt || ""}</span>
+                  <strong>{String((log as Record<string, unknown>).status || "unknown").toUpperCase()}</strong>
+                  <span style={{ fontSize: 12 }}>{(log as Record<string, unknown>).startedAt || ""}</span>
                 </div>
                 <div style={{ fontSize: 12, marginTop: 6 }}>
-                  Mode: {log.mode || "n/a"} · Conflicts: {Number(log.conflicts || 0)} · Invoices: {Number(log.invoices?.updated || 0) + Number(log.invoices?.inserted || 0)} · Payments: {Number(log.payments?.updated || 0) + Number(log.payments?.inserted || 0)}
+                  Mode: {(log as Record<string, unknown>).mode || "n/a"} · Conflicts: {Number((log as Record<string, unknown>).conflicts || 0)} · Invoices: {Number((log as Record<string, unknown>).invoices?.updated as unknown || 0) + Number((log as Record<string, unknown>).invoices?.inserted as unknown || 0)} · Payments: {Number((log as Record<string, unknown>).payments?.updated as unknown || 0) + Number((log as Record<string, unknown>).payments?.inserted as unknown || 0)}
                 </div>
-                {log.error ? <div style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{String(log.error)}</div> : null}
+                {(log as Record<string, unknown>).error ? <div style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{String((log as Record<string, unknown>).error)}</div> : null}
               </div>
             ))}
           </div>

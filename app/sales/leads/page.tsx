@@ -36,8 +36,8 @@ export default function SalesLeadsPage() {
         throw new Error(data?.error || "Failed to load leads.");
       }
       setLeads(Array.isArray(data.leads) ? data.leads : []);
-    } catch (err: any) {
-      toastError(err?.message || "Failed to load leads.");
+    } catch (err) {
+      toastError((err instanceof Error ? err.message : undefined) || "Failed to load leads.");
       setLeads([]);
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export default function SalesLeadsPage() {
         {
           loading: "Updating lead...",
           success: "Lead updated.",
-          error: (err) => err?.message || "Failed to update lead.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to update lead.",
         }
       );
       setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, stage } : lead)));
@@ -104,7 +104,7 @@ export default function SalesLeadsPage() {
         {
           loading: "Deleting lead...",
           success: "Lead deleted.",
-          error: (err) => err?.message || "Failed to delete lead.",
+          error: (err) => (err instanceof Error ? err.message : undefined) || "Failed to delete lead.",
         }
       );
       setLeads((prev) => prev.filter((lead) => lead.id !== id));

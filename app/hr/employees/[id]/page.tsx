@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 
 export default function EmployeeProfilePage() {
   const { id } = useParams();
-  const [employee, setEmployee] = useState<any>(null);
+  const [employee, setEmployee] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,10 +51,10 @@ export default function EmployeeProfilePage() {
       >
         {/* HEADER */}
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-          {employee.name}
+          {(employee as Record<string, unknown>).name}
         </h2>
 
-        <p style={{ color: "#6b7280", marginBottom: 25 }}>{employee.email}</p>
+        <p style={{ color: "#6b7280", marginBottom: 25 }}>{(employee as Record<string, unknown>).email}</p>
 
         {/* GRID */}
         <div
@@ -64,12 +64,12 @@ export default function EmployeeProfilePage() {
             gap: 20,
           }}
         >
-          <ProfileCard label="Role" value={employee.role} />
-          <ProfileCard label="Department" value={employee.department} />
-          <ProfileCard label="Status" value={employee.status} />
+          <ProfileCard label="Role" value={(employee as Record<string, unknown>).role} />
+          <ProfileCard label="Department" value={(employee as Record<string, unknown>).department} />
+          <ProfileCard label="Status" value={(employee as Record<string, unknown>).status} />
           <ProfileCard
             label="Joined"
-            value={new Date(employee.createdAt).toLocaleDateString()}
+            value={new Date((employee as Record<string, unknown>).createdAt).toLocaleDateString()}
           />
         </div>
 

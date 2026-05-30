@@ -4,13 +4,7 @@ import { resolve } from "node:path";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { sendEmail } from "@/lib/email/email-service";
 import { getMonitoringDashboard } from "@/lib/monitoring/dashboard-service";
-import {
-  AUTOMATED_CHECKS,
-  getAllManualCheckIds,
-  getAllProductionConfigurationIds,
-  normalizeManualCheckId,
-  REQUIRED_ENV_VARS,
-} from "@/lib/launch-checklist";
+import { type AUTOMATED_CHECKS, getAllManualCheckIds, getAllProductionConfigurationIds, normalizeManualCheckId, REQUIRED_ENV_VARS } from "@/lib/launch-checklist";
 import { requireAdminOrSuperAdmin } from "../_utils";
 
 type AutomatedCheckStatus = {
@@ -208,7 +202,7 @@ export async function GET(req: Request) {
       manualChecks: stored.manualChecks,
       productionConfiguration: stored.productionConfiguration,
     });
-    const metrics = await getLaunchMetrics(auth.user.tenantId);
+    const metrics = await getLaunchMetrics(auth.user.tenantId as string);
 
     return NextResponse.json({
       ok: true,
