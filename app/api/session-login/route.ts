@@ -48,13 +48,13 @@ export async function POST(req: NextRequest) {
 
     // Get tenantId from claims first, fallback to Firestore users collection
     // This handles the case where custom claims haven't propagated yet
-    let tenantId = (decodedToken as unknown).tenantId || (decodedToken as unknown).tenant_id || '';
+    let tenantId = String((decodedToken as Record<string, unknown>).tenantId || (decodedToken as Record<string, unknown>).tenant_id || '');
 
     if (!tenantId) {
       try {
         const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
         if (userDoc.exists) {
-          tenantId = (userDoc.data() as unknown)?.tenantId as unknown || '';
+          tenantId = String((userDoc.data() as Record<string, unknown>)?.tenantId || '');
         }
       } catch (fallbackError) {
         console.error('session-login: tenantId fallback failed', fallbackError);
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Also set role cookie for client-side role caching
-    const role = (decodedToken as unknown).role || '';
+    const role = String((decodedToken as Record<string, unknown>).role || '');
     if (role) {
       response.cookies.set('user_role', role, {
         maxAge: expiresIn / 1000,

@@ -146,7 +146,7 @@ async function getActivePolicy(tenantId: string, leaveType: LeaveTypeCode) {
   }
 
   const doc = snap.docs[0];
-  return { id: doc.id, ...(doc.data() as LeavePolicy) };
+  return { ...(doc.data() as LeavePolicy), id: doc.id };
 }
 
 async function resolveApprover(tenantId: string, employeeId: string) {
@@ -211,7 +211,7 @@ async function getOrCreateBalance(params: { tenantId: string; employeeId: string
     return { id: ref.id, ...base };
   }
 
-  return { id: snap.id, ...(snap.data() as Record<string, unknown>) };
+  return { ...(snap.data() as LeaveBalance), id: snap.id };
 }
 
 async function ensureNoOverlap(params: { tenantId: string; employeeId: string; startDate: Date; endDate: Date }) {

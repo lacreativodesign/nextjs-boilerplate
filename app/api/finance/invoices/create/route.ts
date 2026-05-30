@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     const normalizedItems = Array.isArray((body as Record<string, unknown>)?.items)
       ? (body as Record<string, unknown>).items
       : Array.isArray((body as Record<string, unknown>)?.lineItems)
-        ? (body as Record<string, unknown>).lineItems.map((item: LineItemInput) => ({
+        ? ((body as Record<string, unknown>).lineItems as LineItemInput[]).map((item: LineItemInput) => ({
             description: item?.name,
             quantity: item?.qty,
             unitPrice: item?.unitPriceUsd,

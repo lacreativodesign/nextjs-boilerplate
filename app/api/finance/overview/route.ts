@@ -72,7 +72,7 @@ export async function GET() {
 
     const nowMs = now.getTime();
     const agingBuckets = invoices.reduce(
-      (acc, inv) => {
+      (acc: { bucket0to30: number; bucket31to60: number; bucket61to90: number; bucket90plus: number }, inv) => {
         const status = normalizeInvoiceStatus(inv.status);
         if (["paid", "void"].includes(status)) return acc;
         const dueMs = toMillis(inv.dueDate);
@@ -195,7 +195,7 @@ export async function GET() {
       },
     };
     if (redis) {
-      await (redis as unknown).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
+      await (redis as unknown as { setex: (key: string, ttl: number, val: string) => Promise<unknown> }).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
     }
     return NextResponse.json(responsePayload);
   } catch (err) {

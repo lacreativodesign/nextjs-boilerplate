@@ -366,7 +366,7 @@ async function executeTool(
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUserOrThrow(req).catch(() => null);
+    const user = await getCurrentUserOrThrow(req as unknown as Parameters<typeof getCurrentUserOrThrow>[0]).catch(() => null);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }

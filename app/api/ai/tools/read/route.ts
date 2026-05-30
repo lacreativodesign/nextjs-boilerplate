@@ -19,8 +19,8 @@ function verifySecret(req: NextRequest): boolean {
 function toISO(val: unknown): string | null {
   if (!val) return null;
   try {
-    if (typeof (val as Record<string, unknown>)?.toDate === "function") return (val as Record<string, unknown>).toDate().toISOString();
-    const d = new Date(val);
+    if (typeof (val as Record<string, unknown>)?.toDate === "function") return (val as { toDate: () => Date }).toDate().toISOString();
+    const d = new Date(val as string | number | Date);
     return isNaN(d.getTime()) ? null : d.toISOString();
   } catch {
     return null;
