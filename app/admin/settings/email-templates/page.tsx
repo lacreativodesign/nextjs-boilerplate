@@ -198,7 +198,7 @@ export default function EmailTemplatesSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to preview template");
       setPreview(data.preview);
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Failed to generate preview");
+      setError(String((err as Record<string, unknown>).message || "Failed to generate preview"));
     }
   };
 
@@ -217,7 +217,7 @@ export default function EmailTemplatesSettingsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to send test email");
       setSuccess("Test email sent.");
     } catch (err) {
-      setError((err as Record<string, unknown>).message || "Failed to send test email");
+      setError(String((err as Record<string, unknown>).message || "Failed to send test email"));
     }
   };
 
