@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebaseAdmin";
-import { requireHrAccess } from "../_utils";
+import { requireHrAccess } from "../../_utils";
 
 export async function GET() {
   const access = await requireHrAccess();
