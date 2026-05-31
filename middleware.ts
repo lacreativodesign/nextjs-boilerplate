@@ -216,6 +216,16 @@ function isSensitiveApiPath(pathname: string) {
     || pathname.startsWith("/api/super_admin");
 }
 
+function shouldSkipCsrfCheck(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/stripe/")
+    || pathname.startsWith("/api/webhooks/stripe")
+    || pathname.startsWith("/api/cron/")
+    || pathname.startsWith("/api/ingest/")
+    || pathname.startsWith("/api/public/")
+  );
+}
+
 function applyRateHeaders(pathname: string, response: NextResponse, rateContext?: {
   limit: number;
   remaining: number;
@@ -318,6 +328,13 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       resetSeconds: decision.resetSeconds,
       retryAfterSeconds: 0,
     };
+  }
+
+  // CSRF protection: state-changing API requests must include X-Requested-With header
+  if (isApiRequest && ["POST", "PUT", "DELETE", "PATCH"].includes(req.method.toUpperCase()) && !shouldSkipCsrfCheck(pathname)) {
+    if (req.headers.get("x-requested-with") !== "XMLHttpRequest") {
+      return withSecurityHeaders(NextResponse.json({ ok: false, error: "CSRF validation failed" }, { status: 403 }));
+    }
   }
 
   if (isApiRequest && isSensitiveApiPath(pathname)) {
