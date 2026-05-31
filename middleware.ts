@@ -223,6 +223,15 @@ function shouldSkipCsrfCheck(pathname: string): boolean {
     || pathname.startsWith("/api/cron/")
     || pathname.startsWith("/api/ingest/")
     || pathname.startsWith("/api/public/")
+    // Auth endpoints called directly by login/signup forms (no CSRF header available)
+    || pathname.startsWith("/api/session-login")
+    || pathname.startsWith("/api/session-logout")
+    || pathname.startsWith("/api/logout")
+    || pathname.startsWith("/api/signup")
+    || pathname.startsWith("/api/forgot-password")
+    || pathname.startsWith("/api/verify-otp")
+    || pathname.startsWith("/api/create-user")
+    || pathname.startsWith("/api/auth")
   );
 }
 
