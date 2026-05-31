@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
 
 export async function POST(req: Request) {
+  const auth = await requireAdminOrSuperAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   try {
     const { email, password, role, name } = await req.json();
 

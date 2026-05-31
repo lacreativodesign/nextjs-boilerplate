@@ -3,17 +3,21 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import dayjs from "dayjs";
+import { requireHrAccess } from "../_utils";
 
 export async function GET(request: Request) {
+  const hrAuth = await requireHrAccess();
+  if (!hrAuth.ok) return NextResponse.json({ success: false, message: hrAuth.error }, { status: hrAuth.status });
+
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const month = searchParams.get("month");
-    const tenantId = String(searchParams.get("tenantId") || "").trim();
+    const tenantId = hrAuth.user.tenantId;
 
-    if (!userId || !month || !tenantId) {
+    if (!userId || !month) {
       return NextResponse.json(
-        { success: false, message: "Missing userId, month, or tenantId" },
+        { success: false, message: "Missing userId or month" },
         { status: 400 }
       );
     }
@@ -61,4 +65,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-  }
+}
