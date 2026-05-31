@@ -46,6 +46,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, received: true });
   }
 
+  const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+  const processedSnap = await processedRef.get();
+  if (processedSnap.exists) {
+    return NextResponse.json({ ok: true, received: true });
+  }
+  await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+
   try {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;

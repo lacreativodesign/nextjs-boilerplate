@@ -387,6 +387,13 @@ export async function POST(req: Request) {
     const webhookSecret = requireWebhookSecret();
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
+    const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+    const processedSnap = await processedRef.get();
+    if (processedSnap.exists) {
+      return NextResponse.json({ ok: true, received: true });
+    }
+    await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+
     if (!ALLOWED_EVENTS.has(event.type)) {
       return NextResponse.json({ ok: false, error: "Unhandled event type." }, { status: 400 });
     }
