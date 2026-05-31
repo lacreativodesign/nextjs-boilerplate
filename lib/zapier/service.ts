@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import crypto from "crypto";
 
 const ZAPIER_HOOKS_COLLECTION = "zapier_hook_subscriptions";
 const ZAPIER_EVENTS_COLLECTION = "zapier_events";
@@ -34,10 +35,20 @@ export async function resolveZapierTenant(apiKeyRaw: unknown) {
   const apiKey = cleanString(apiKeyRaw);
   if (!apiKey) return null;
 
-  const snap = await adminDb.collection("tenants").where("apiKey", "==", apiKey).limit(1).get();
-  if (snap.empty) return null;
+  const apiKeyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
 
-  const tenantDoc = snap.docs[0];
+  // Try hashed lookup first
+  const hashedSnap = await adminDb.collection("tenants").where("apiKeyHash", "==", apiKeyHash).limit(1).get();
+  if (!hashedSnap.empty) {
+    const tenantDoc = hashedSnap.docs[0];
+    return { tenantId: tenantDoc.id, tenant: tenantDoc.data() || {} };
+  }
+
+  // Fallback to plaintext for tenants not yet migrated
+  const plainSnap = await adminDb.collection("tenants").where("apiKey", "==", apiKey).limit(1).get();
+  if (plainSnap.empty) return null;
+
+  const tenantDoc = plainSnap.docs[0];
   return {
     tenantId: tenantDoc.id,
     tenant: tenantDoc.data() || {},

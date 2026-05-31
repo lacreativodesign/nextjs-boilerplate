@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import crypto from "crypto";
 import { createNotification, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const hashKey = (key: string) => crypto.createHash("sha256").update(key).digest("hex");
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
@@ -98,7 +101,11 @@ export async function POST(req: Request) {
     }
 
     const tenantData = tenantSnap.data() || {};
-    if (tenantData.apiKey !== apiKey) {
+    const hashedProvided = hashKey(apiKey);
+    const keyValid =
+      (tenantData.apiKeyHash && tenantData.apiKeyHash === hashedProvided) ||
+      (!tenantData.apiKeyHash && tenantData.apiKey === apiKey);
+    if (!keyValid) {
       return NextResponse.json({ ok: false, error: "invalid_api_key" }, { status: 401 });
     }
 
