@@ -1,3 +1,4 @@
+// AUTH: Public endpoint - browser-side monitoring telemetry (web vitals, session events). Write-only; no tenant data exposed.
 import { NextResponse } from "next/server";
 import { ingestMetric } from "@/lib/monitoring/dashboard-service";
 import type { MetricIngestPayload } from "@/lib/monitoring/types";
