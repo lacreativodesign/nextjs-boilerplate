@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import dayjs from "dayjs";
-import { requireHrAccess } from "../_utils";
+import { requireHrAccess } from "../../_utils";
 
 export async function GET(request: Request) {
   const hrAuth = await requireHrAccess();
