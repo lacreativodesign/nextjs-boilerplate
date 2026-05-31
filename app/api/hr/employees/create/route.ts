@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { requireHrAccess } from "../../_utils";
 
 export async function POST(req: Request) {
   try {
+    const access = await requireHrAccess();
+    if (!access.ok) {
+      return NextResponse.json(
+        { success: false, message: access.error },
+        { status: access.status }
+      );
+    }
+
     const body = await req.json();
 
-    const { name, email, role, department, status, tenantId } = body;
+    const { name, email, role, department, status } = body;
 
     if (!name || !email || !role || !department) {
       return NextResponse.json(
@@ -20,7 +29,7 @@ export async function POST(req: Request) {
       role,
       department,
       status: status || "Active",
-      tenantId: String(tenantId || "").trim(),
+      tenantId: access.user.tenantId,
       createdAt: new Date().toISOString(),
     };
 
@@ -42,4 +51,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-          }
+}

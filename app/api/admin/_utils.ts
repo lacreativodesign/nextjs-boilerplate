@@ -62,7 +62,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       ...data,
     };
 
-
     return current;
   } catch (err) {
     captureApiError(err, { fingerprint: ['admin.getCurrentUser'] });
