@@ -22,7 +22,9 @@ export function deriveSubscriptionState({
   const normalizedBilling = String(billingStatus || "").toLowerCase();
   if (normalizedBilling === "past_due") return "grace";
   if (normalizedBilling === "canceled") return "hard_locked";
-  return "active";
+  if (normalizedBilling === "active") return "active";
+  // No subscription data at all — restrict to grace rather than granting full access
+  return "grace";
 }
 
 export function isReadOnlySubscription(state: SubscriptionState) {

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
           subscriptionState: (tenant as any).subscriptionState,
           billingStatus: (tenant as any).billingStatus,
         })
-      : "active";
+      : "grace";
 
     return NextResponse.json({
       ok: true,
