@@ -1,12 +1,14 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 
 export async function logActivity({
+  tenantId,
   actorUid,
   actorRole,
   action,
   targetUid = null,
   details = {},
 }: {
+  tenantId: string;
   actorUid: string;
   actorRole: string;
   action: string;
@@ -15,6 +17,7 @@ export async function logActivity({
 }) {
   try {
     await adminDb.collection("activity_logs").add({
+      tenantId,
       actorUid,
       actorRole,
       action,

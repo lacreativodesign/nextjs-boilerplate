@@ -178,6 +178,7 @@ export async function POST(req: Request) {
       action: 'create_user',
       performedBy: current.uid,
       performedByRole: currentRole,
+      tenantId,
       targetUser: {
         uid: userRecord.uid,
         email,
