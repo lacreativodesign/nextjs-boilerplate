@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
   notifyUsers,
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
         throw new Error("Lead not found");
       }
       const data = snap.data() || {};
-      if (data.tenantId && data.tenantId !== auth.user.tenantId) {
+      if (docTenantId(data) !== auth.user.tenantId && auth.user.role !== "super_admin") {
         throw new Error("Forbidden");
       }
       const prevOwnerId = data.ownerId || null;

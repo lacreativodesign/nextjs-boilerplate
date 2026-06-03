@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
   getWatcherUserIds,
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     const existing = snapshot.data() || {};
-    if (auth.user.role !== "super_admin" && existing.tenantId && existing.tenantId !== (auth.user.tenantId || "")) {
+    if (auth.user.role !== "super_admin" && docTenantId(existing) !== (auth.user.tenantId || "")) {
       return NextResponse.json({ ok: false, error: "Campaign not found." }, { status: 404 });
     }
 

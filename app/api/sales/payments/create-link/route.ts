@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import { parseNumber, parseString, requireSalesWrite, serverTimestamp, userLabel } from "../../_utils";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
     }
     const lead = leadSnap.data() || {};
-    if (lead.tenantId && lead.tenantId !== tenantId) {
+    if (docTenantId(lead) !== tenantId && auth.user.role !== "super_admin") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid) {

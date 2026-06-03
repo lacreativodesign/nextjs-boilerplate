@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { normalizeTenantId } from "@/lib/tenant";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const dynamic = "force-dynamic";
@@ -88,8 +89,8 @@ export async function POST(req: NextRequest) {
         if (!snap.exists) {
           return NextResponse.json({ ok: false, error: "Document not found" }, { status: 404 });
         }
-        const docTenantId = snap.data()?.tenantId;
-        if (docTenantId && docTenantId !== tenantId) {
+        const snapTenantId = snap.data()?.tenantId;
+        if (normalizeTenantId(snapTenantId) !== normalizeTenantId(tenantId)) {
           return NextResponse.json({ ok: false, error: "Tenant isolation violation" }, { status: 403 });
         }
         await docRef.set({ [String(field)]: value, updatedAt: new Date().toISOString() }, { merge: true });
