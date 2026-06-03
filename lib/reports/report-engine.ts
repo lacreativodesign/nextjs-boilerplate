@@ -272,13 +272,13 @@ export class ReportEngine {
     query = query.limit(pageSize);
 
     const snapshot = await query.get();
-    let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Array<{ id: string } & Record<string, any>>;
 
     if (clientFilters.length) {
       data = data.filter((item) => this.matchesFilters(item, clientFilters));
     }
 
-    data = data.map((row) => this.applyDerivedFields(row, report));
+    data = data.map((row) => this.applyDerivedFields(row, report)) as Array<{ id: string } & Record<string, any>>;
 
     const nextPageToken = snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null;
     return { data, nextPageToken };

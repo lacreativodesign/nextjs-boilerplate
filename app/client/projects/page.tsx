@@ -32,6 +32,7 @@ type ProjectDetail = {
 
 type ProjectDetailPayload = {
   ok: boolean;
+  error?: string;
   project: ProjectDetail;
   files: Array<{ id: string; fileName: string; category: string; downloadUrl: string; uploadedAt: string | null }>;
   messages: Array<{ id: string; senderName: string; senderRole: string; body: string; createdAt: string | null }>;

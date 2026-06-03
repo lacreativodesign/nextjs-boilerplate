@@ -418,7 +418,7 @@ export function verifyCalendlyWebhookSignature(params: {
       const key = decrypt(integration.webhookSigningKeyEncrypted);
       const signedPayload = `${params.timestampHeader}.${params.body}`;
       const digest = crypto.createHmac("sha256", key).update(signedPayload).digest("hex");
-      return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(params.signature));
+      return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(params.signature!));
     })
     .catch(() => false);
 }

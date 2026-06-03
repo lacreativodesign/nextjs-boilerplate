@@ -12,6 +12,7 @@ const PLANS = [
     period: '/month',
     tagline: 'Perfect for small teams getting started',
     color: '#6366f1',
+    badge: undefined as string | undefined,
     features: [
       'Up to 10 users',
       'Core CRM & Projects',

@@ -10,19 +10,22 @@ const defaultIcon = (
   </svg>
 );
 
-type EmptyStateProps = {
+export type EmptyStateProps = {
   icon?: React.ReactNode;
   title: string;
   description?: string;
+  hint?: string;
+  compact?: boolean;
   action?: { label: string; onClick: () => void };
 };
 
-export default function EmptyState({ icon = defaultIcon, title, description, action }: EmptyStateProps) {
+export default function EmptyState({ icon = defaultIcon, title, description, hint, compact, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-6 py-10 text-center shadow-sm">
+    <div className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-center shadow-sm ${compact ? "px-4 py-6" : "px-6 py-10"}`}>
       <div className="text-[var(--text-soft)]">{icon}</div>
       <div className="text-base font-semibold text-[var(--text-primary)]">{title}</div>
       {description ? <p className="max-w-sm text-sm text-[var(--text-muted)]">{description}</p> : null}
+      {hint ? <p className="max-w-sm text-xs text-[var(--text-soft)]">{hint}</p> : null}
       {action ? (
         <button type="button" className="btn mt-2" onClick={action.onClick}>
           {action.label}

@@ -77,9 +77,10 @@ function AppShellInner({
     const whiteLabel = data?.tenant?.whiteLabel;
     if (!whiteLabel) return;
     const variables = generateThemeCssVariables({
-      ...whiteLabel,
-      updatedAt: undefined,
-      updatedBy: undefined,
+      primaryColor: whiteLabel.primaryColor,
+      secondaryColor: whiteLabel.secondaryColor,
+      accentColor: whiteLabel.accentColor,
+      fontFamily: whiteLabel.fontFamily,
     });
     Object.entries(variables).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
@@ -121,8 +122,8 @@ function AppShellInner({
       const idleCallback = window.requestIdleCallback(prefetchSearchModal, { timeout: 1200 });
       return () => window.cancelIdleCallback(idleCallback);
     }
-    const timeoutId = window.setTimeout(prefetchSearchModal, 900);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = setTimeout(prefetchSearchModal, 900);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useKeyboardShortcuts({

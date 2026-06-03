@@ -6,7 +6,7 @@ import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
 import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
 import { PLAN_MODULES } from "../../../../app/config/plans";
 import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
-import { createRoleNotifications } from "@/lib/notifications";
+import { createRoleNotifications, type NotificationType } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/tenant/audit";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ function getStripeClient() {
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  return new Stripe(secretKey, { apiVersion: "2024-06-20" });
+  return new Stripe(secretKey, { apiVersion: "2024-04-10" });
 }
 
 function requireWebhookSecret() {
@@ -105,8 +105,8 @@ function buildSubscriptionNotification({
     previousStatus && previousStatus !== nextStatus
       ? `${tenantName} subscription changed from ${previousLabel} to ${nextLabel}.`
       : `${tenantName} subscription is now ${nextLabel}.`;
-  const type = nextStatus === "active" ? "success" : nextStatus === "past_due" ? "warning" : "warning";
-  const priority = nextStatus === "active" ? "normal" : "high";
+  const type: NotificationType = nextStatus === "active" ? "success" : nextStatus === "past_due" ? "warning" : "warning";
+  const priority: "low" | "normal" | "high" = nextStatus === "active" ? "normal" : "high";
   return { title, body, type, priority };
 }
 

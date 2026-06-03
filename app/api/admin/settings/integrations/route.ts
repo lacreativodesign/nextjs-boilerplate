@@ -45,8 +45,8 @@ export async function GET() {
     const data = snap.exists ? snap.data() : {};
 
     const settings = {
-      firebaseStatus: getStatusLabel(Boolean(adminDb.app?.options?.projectId)),
-      storageStatus: getStatusLabel(Boolean(adminDb.app?.options?.storageBucket)),
+      firebaseStatus: getStatusLabel(Boolean((adminDb as any).app?.options?.projectId)),
+      storageStatus: getStatusLabel(Boolean((adminDb as any).app?.options?.storageBucket)),
       webhooks: normalizeWebhooks(data?.webhooks),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,

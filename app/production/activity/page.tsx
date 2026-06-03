@@ -15,6 +15,7 @@ type ActivityEntry = {
 
 type OverviewPayload = {
   ok: boolean;
+  error?: string;
   recentActivityTop10: ActivityEntry[];
 };
 

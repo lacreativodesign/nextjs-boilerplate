@@ -30,7 +30,7 @@ type DealRecord = {
   closedAt?: string | null;
 };
 
-type DealResponse = { ok: boolean; deals: DealRecord[] };
+type DealResponse = { ok: boolean; error?: string; deals: DealRecord[] };
 type DealResponseWithSettings = DealResponse & { discountApprovalThresholdPct?: number };
 
 type SortKey = "dealName" | "clientName" | "status" | "valueUsd" | "closedAt";

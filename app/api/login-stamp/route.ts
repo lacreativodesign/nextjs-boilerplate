@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { verifySession } from "@/lib/serverAuth";
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
       .doc(uid)
       .set(
         {
-          logs: adminDb.FieldValue.arrayUnion({
+          logs: admin.firestore.FieldValue.arrayUnion({
             type: "login",
             timestamp: now.toISOString(),
             date: dateKey,

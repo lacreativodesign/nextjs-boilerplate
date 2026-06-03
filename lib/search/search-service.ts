@@ -315,7 +315,7 @@ export class SearchService {
   private static compareValues(
     fieldValue: unknown,
     searchValue: unknown,
-    comparator: (a: Comparable, b: Comparable) => boolean
+    comparator: (a: NonNullable<Comparable>, b: NonNullable<Comparable>) => boolean
   ) {
     const left = this.normalizeComparable(fieldValue);
     const right = this.normalizeComparable(searchValue);

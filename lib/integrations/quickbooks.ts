@@ -879,7 +879,6 @@ export async function runQuickBooksSync(input: { tenantId: string; userUid: stri
       ),
       logRef.set({
         tenantId,
-        mode,
         status: "success",
         ...summary,
         triggeredBy: input.userUid,

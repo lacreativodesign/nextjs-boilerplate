@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return await handleModuleSearch(request, session, {
+    return await handleModuleSearch(request, session as { uid: string; tenantId: string; role?: string | null }, {
       module: "audit_logs",
       collection: "audit_logs",
       searchFields: ["userEmail", "userName", "action", "resource", "status", "resourceId"],

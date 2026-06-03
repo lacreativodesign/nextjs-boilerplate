@@ -148,7 +148,7 @@ async function getLaunchMetrics(tenantId: string) {
     adminDb.collection("users").where("tenantId", "==", tenantId).get(),
     adminDb.collection("billing_subscriptions").where("tenantId", "==", tenantId).get(),
     adminDb.collection("payments").where("tenantId", "==", tenantId).get(),
-    getMonitoringDashboard(tenantId),
+    getMonitoringDashboard(),
   ]);
 
   const signups = usersSnap.size;

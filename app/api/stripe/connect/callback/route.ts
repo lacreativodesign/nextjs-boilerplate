@@ -52,7 +52,7 @@ export async function GET(req: Request) {
         stripeConnectAccountId: accountId,
         stripeConnectStatus: "active",
         stripeConnectEmail: account.email || null,
-        stripeConnectBusinessName: account.business_profile?.name || account.display_name || null,
+        stripeConnectBusinessName: account.business_profile?.name || (account as any).display_name || null,
         stripeConnectConnectedAt: now,
         stripeConnectChargesEnabled: Boolean(account.charges_enabled),
         stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),

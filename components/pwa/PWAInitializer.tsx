@@ -96,7 +96,7 @@ export default function PWAInitializer() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    let unsubscribe = () => undefined;
+    let unsubscribe: () => void = () => undefined;
 
     void navigator.serviceWorker
       .register("/sw.js")

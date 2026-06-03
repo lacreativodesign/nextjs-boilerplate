@@ -259,7 +259,7 @@ export async function POST(req: Request) {
         },
       });
 
-      const notifyTargets = Array.from(new Set([ownerId, createdByUid].filter(Boolean))) as string[];
+      const notifyTargets = Array.from(new Set([ownerId, createdByUid].filter(Boolean))) as unknown as string[];
       if (notifyTargets.length) {
         await notifyUsers({
           userIds: notifyTargets,

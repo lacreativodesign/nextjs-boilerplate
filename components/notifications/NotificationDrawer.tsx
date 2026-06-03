@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import clsx from "clsx";
-import { Skeleton } from "../ui/skeleton";
+import { Skeleton } from "../ui/Skeleton";
 import EmptyState from "../ui/EmptyState";
 
 export type NotificationItem = {

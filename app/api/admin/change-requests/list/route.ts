@@ -83,14 +83,14 @@ function canViewChangeRequests(role: string) {
   return isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role) || isProduction(role);
 }
 
-async function getVisibleProjectIds(uid: string, role: string): Promise<Set<string>> {
+async function getVisibleProjectIds(uid: string, role: string, tenantId: string): Promise<Set<string>> {
   const ids = new Set<string>();
 
   if (isAdminOrSuper(role) || isSalesManager(role)) {
     return ids;
   }
 
-  const baseQuery = adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false);
+  const baseQuery = adminDb.collection("projects").where("tenantId", "==", tenantId).where("isDeleted", "==", false);
 
   if (isAccountManager(role)) {
     const snaps = await Promise.all([
@@ -133,7 +133,7 @@ export async function GET(req: Request) {
     const assignedTo = String(searchParams.get("assignedTo") || "").trim();
     const q = String(searchParams.get("q") || "").trim().toLowerCase();
 
-    const visibleProjectIds = await getVisibleProjectIds(me.uid, role);
+    const visibleProjectIds = await getVisibleProjectIds(me.uid, role, me.tenantId);
 
     if ((isAccountManager(role) || isProduction(role)) && projectId && !visibleProjectIds.has(projectId)) {
       return NextResponse.json({

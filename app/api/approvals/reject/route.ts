@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/audit";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, type NotificationEntityType } from "@/lib/notifications";
 import { getCurrentUser, normalizeRole } from "../../admin/_utils";
 import { requireApprovalsModule } from "../_utils";
 
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
       role: requiredRole,
       uid: me.uid,
       decision: "rejected" as const,
-      note: note || null,
+      note: note || undefined,
       decidedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -264,7 +264,7 @@ export async function POST(req: Request) {
       type: `${type}.approval.rejected`,
       title: "Approval rejected",
       description: `Approval rejected for ${approval.entityType || "entity"} ${approval.entityId || ""}.`,
-      entityType: approval.entityType || null,
+      entityType: (approval.entityType || null) as NotificationEntityType | null,
       entityId: approval.entityId || null,
       actor: { uid: me.uid, name: actorName },
       metadata: {
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
         type: "approval_decision",
         title: "Approval rejected",
         message: `${approval.entityType || "Request"} ${approval.entityId || ""} was rejected.`,
-        entityType: approval.entityType || null,
+        entityType: (approval.entityType || null) as NotificationEntityType | null,
         entityId: approval.entityId || null,
         createdBy: { uid: me.uid, name: actorName },
       });

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../../../_utils";
 import { normalizeTenantId } from "@/lib/tenant";
-import { renderToStream } from "@react-pdf/renderer";
+import { renderToStream, type DocumentProps } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/lib/pdf/InvoiceTemplate";
 
 type InvoiceDoc = {
@@ -147,7 +147,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           phone: client.phone || null,
           address: client.address || null,
         },
-      })
+      }) as React.ReactElement<DocumentProps>
     );
 
     const chunks: Buffer[] = [];

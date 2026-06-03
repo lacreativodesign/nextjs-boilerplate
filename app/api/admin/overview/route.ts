@@ -94,23 +94,24 @@ export async function GET() {
       queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const changeRequests = changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const users = userDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const onboardingTasks = onboardingDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const events = eventDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    type DocRecord = { id: string } & Record<string, any>;
+    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const changeRequests = changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const users = userDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const onboardingTasks = onboardingDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const events = eventDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const safeEvents =
       events.length > 0
         ? events
         : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          }));
+          })) as DocRecord[];
 
     const matchesTenant = (doc: Record<string, any>) =>
       String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);

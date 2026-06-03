@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ReportBuilderService } from "@/lib/reports/report-builder";
-import type { ReportFormat } from "@/types/reports";
+import type { ReportFormat, ReportFilter } from "@/types/reports";
 import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from "../../_utils";
 
 export const runtime = "nodejs";
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const result = await ReportBuilderService.runCustomReport({
       tenantId,
       report,
-      runtimeFilters: payload.filters,
+      runtimeFilters: payload.filters as ReportFilter[] | undefined,
       page: 1,
       pageSize: 1000,
     });

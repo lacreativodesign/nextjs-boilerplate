@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
     const { seedDemoTenant } = await import("@/lib/demo/seed");
-    const result = await seedDemoTenant({ tenantId: "bizosto-demo", reset: true });
+    const result = await seedDemoTenant({ tenantId: "bizosto-demo" });
 
     return NextResponse.json({
       ok: true,

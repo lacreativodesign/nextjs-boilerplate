@@ -16,7 +16,7 @@ type CampaignRecord = {
   updatedAt?: string | null;
 };
 
-type CampaignResponse = { ok: boolean; campaigns: CampaignRecord[] };
+type CampaignResponse = { ok: boolean; error?: string; campaigns: CampaignRecord[] };
 
 type ErrorState = { title: string; message: string };
 

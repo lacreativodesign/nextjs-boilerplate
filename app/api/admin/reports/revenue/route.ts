@@ -41,8 +41,9 @@ export async function GET(req: Request) {
       queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    type DocRecord = { id: string } & Record<string, any>;
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
 
     const filteredInvoices = invoices.filter((inv) => {
       if (clientId && String(inv.clientId || "") !== clientId) return false;

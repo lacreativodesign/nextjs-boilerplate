@@ -107,8 +107,8 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
   const [crOpen, setCrOpen] = useState(false);
   const [crTitle, setCrTitle] = useState("");
   const [crDescription, setCrDescription] = useState("");
-  const [crType, setCrType] = useState(CHANGE_REQUEST_TYPES[0]);
-  const [crPriority, setCrPriority] = useState(CHANGE_REQUEST_PRIORITIES[1]);
+  const [crType, setCrType] = useState<string>(CHANGE_REQUEST_TYPES[0]);
+  const [crPriority, setCrPriority] = useState<string>(CHANGE_REQUEST_PRIORITIES[1]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 

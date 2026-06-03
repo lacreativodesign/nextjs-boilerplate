@@ -6,8 +6,7 @@ const optionalNumber = z.preprocess(
   z.coerce.number().min(0, "Budget must be at least 0")
 );
 
-export const createProjectSchema = z
-  .object({
+const createProjectBaseSchema = z.object({
     name: z
       .string({ required_error: "Project name is required" })
       .trim()
@@ -30,7 +29,9 @@ export const createProjectSchema = z
       .string({ required_error: "Tenant id is required" })
       .trim()
       .min(1, "Tenant id is required"),
-  })
+  });
+
+export const createProjectSchema = createProjectBaseSchema
   .superRefine((data, ctx) => {
     if (data.endDate && new Date(data.endDate).getTime() <= new Date(data.startDate).getTime()) {
       ctx.addIssue({
@@ -41,7 +42,7 @@ export const createProjectSchema = z
     }
   });
 
-export const updateProjectSchema = createProjectSchema.partial();
+export const updateProjectSchema = createProjectBaseSchema.partial();
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

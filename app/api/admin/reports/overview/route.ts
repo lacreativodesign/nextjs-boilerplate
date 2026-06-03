@@ -42,23 +42,24 @@ export async function GET() {
       queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const invoices = invoiceSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const changeRequests = [
+    type DocRecord = { id: string } & Record<string, any>;
+    const invoices = invoiceSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payments = paymentSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const projects = projectSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const changeRequests: DocRecord[] = [
       ...changeRequestSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
       ...changeRequestAltSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
-    const users = usersSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const onboardingTasks = onboardingSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const events = eventsSnap.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const users = usersSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const onboardingTasks = onboardingSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const events = eventsSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const safeEvents =
       events.length > 0
         ? events
         : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          }));
+          })) as DocRecord[];
 
     const revenueThisMonth = invoices.reduce((sum, inv) => {
       if (normalizeInvoiceStatus(inv.status) !== "paid") return sum;

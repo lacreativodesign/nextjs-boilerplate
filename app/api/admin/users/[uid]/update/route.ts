@@ -81,7 +81,7 @@ export async function POST(
       );
     }
 
-    const sessionUser = sessionSnap.data();
+    const sessionUser = sessionSnap.data()!;
     const isSuperAdmin = sessionUser.role === "super_admin";
     const isAdmin = sessionUser.role === "admin";
 

@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { ReportBuilderService } from "@/lib/reports/report-builder";
-import type { ReportSnapshot } from "@/types/reports";
+import type { ReportSnapshot, ReportFilter } from "@/types/reports";
 import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from "../../_utils";
 
 export const runtime = "nodejs";
@@ -51,14 +51,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const result = await ReportBuilderService.runCustomReport({
       tenantId,
       report,
-      runtimeFilters: payload.filters,
+      runtimeFilters: payload.filters as ReportFilter[] | undefined,
       page: payload.page,
       pageSize: payload.pageSize,
     });
 
     const now = admin.firestore.Timestamp.now();
     const metadata = {
-      filters: payload.filters || report.filters || [],
+      filters: (payload.filters || report.filters || []) as ReportFilter[],
       groupBy: report.groupBy,
       aggregations: report.aggregations,
       chartType: report.chartType,
