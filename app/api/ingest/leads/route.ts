@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
+import crypto from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
@@ -44,11 +45,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
     }
 
-    const rawTenantId = normalizeOptionalString(body.tenantId);
-    const tenantId = normalizeTenantId(rawTenantId || DEFAULT_TENANT_ID);
-    const apiKey = normalizeOptionalString(body.apiKey);
+    // Accept API key from header, query param, or body (body last for legacy compat)
+    const reqUrl = new URL(req.url);
+    const apiKey =
+      req.headers.get("x-api-key")?.trim() ||
+      reqUrl.searchParams.get("apiKey")?.trim() ||
+      normalizeOptionalString(body.apiKey);
 
-    if (!apiKey || apiKey !== String(process.env.ERP_INGEST_KEY || "")) {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
+    }
+
+    const keyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
+
+    // Resolve tenantId: look up by per-tenant apiKeyHash first (secure path)
+    let tenantId: string;
+    const tenantsSnap = await adminDb
+      .collection("tenants")
+      .where("apiKeyHash", "==", keyHash)
+      .limit(1)
+      .get();
+
+    if (!tenantsSnap.empty) {
+      // Secure path: tenantId is bound to the matched key — not caller-controlled
+      tenantId = tenantsSnap.docs[0].id;
+    } else if (apiKey === String(process.env.ERP_INGEST_KEY || "")) {
+      // Legacy fallback: global key still works but tenantId comes from request body
+      const rawTenantId = normalizeOptionalString(body.tenantId);
+      tenantId = normalizeTenantId(rawTenantId || DEFAULT_TENANT_ID);
+    } else {
       return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
     }
 
