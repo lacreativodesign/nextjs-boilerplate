@@ -229,7 +229,6 @@ function shouldSkipCsrfCheck(pathname: string): boolean {
     || pathname.startsWith("/api/logout")
     || pathname.startsWith("/api/signup")
     || pathname.startsWith("/api/forgot-password")
-    || pathname.startsWith("/api/verify-otp")
     || pathname.startsWith("/api/create-user")
     || pathname.startsWith("/api/auth")
   );
