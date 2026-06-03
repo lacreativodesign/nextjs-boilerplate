@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
       }
       const lead = leadSnap.data() || {};
-      if (lead.tenantId && lead.tenantId !== auth.user.tenantId) {
+      if ((lead.tenantId || "") !== auth.user.tenantId && auth.user.role !== "super_admin") {
         return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
       }
       if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid) {

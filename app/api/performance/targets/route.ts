@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
   }
 
   const userSnap = await adminDb.collection("users").doc(body.userId).get();
+  if (userSnap.data()?.tenantId !== me.tenantId && role !== "super_admin") {
+    return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+  }
   const userDisplayName = String(userSnap.data()?.displayName || userSnap.data()?.name || "Unknown");
   const targetRole = String(userSnap.data()?.role || "unknown");
 

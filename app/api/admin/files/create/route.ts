@@ -15,6 +15,7 @@ type ProjectDoc = {
   ownerAmUid?: string | null;
   productionUid?: string | null;
   isDeleted?: boolean;
+  tenantId?: string;
 };
 
 function canUpload(role: string) {
@@ -78,6 +79,10 @@ export async function POST(req: Request) {
 
     const project = projectSnap.data() as ProjectDoc;
     if (project?.isDeleted) {
+      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+    }
+
+    if (project?.tenantId !== me.tenantId && (me.role || "").toLowerCase() !== "super_admin") {
       return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
     }
 

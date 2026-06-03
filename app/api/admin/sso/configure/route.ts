@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const provider = asProvider(String(body.provider || ""));
-    const tenantId = String(body.tenantId || authResult.user.tenantId || "");
+    const tenantId = authResult.user.tenantId || "";
 
     if (!tenantId) {
       return NextResponse.json({ ok: false, error: "tenantId is required." }, { status: 400 });
