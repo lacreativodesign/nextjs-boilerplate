@@ -62,9 +62,14 @@ function isApprovalNotification(item: NotificationRecord) {
   return hay.includes("approval");
 }
 
-async function getNotifications(uid: string, tenantId: string, filter: string, limit: number) {
+async function getNotifications(uid: string, tenantId: string, filter: string, limit: number, cursor: string | null) {
   const queries: FirebaseFirestore.Query[] = [];
   const unreadOnly = filter === "unread";
+
+  let cursorDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+  if (cursor) {
+    cursorDoc = await adminDb.collection("notifications").doc(cursor).get();
+  }
 
   const baseQueries = [
     adminDb.collection("notifications").where("recipientUid", "==", uid),
@@ -78,7 +83,11 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
     if (unreadOnly) {
       scoped = scoped.where("isRead", "==", false);
     }
-    queries.push(scoped.orderBy("createdAt", "desc").limit(limit));
+    let q = scoped.orderBy("createdAt", "desc").limit(limit + 1);
+    if (cursorDoc?.exists) {
+      q = q.startAfter(cursorDoc);
+    }
+    queries.push(q);
   });
 
   const snapshots = await Promise.all(queries.map((query) => query.get()));
@@ -96,7 +105,8 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
   if (filter === "approvals") {
     merged = merged.filter((item) => isApprovalNotification(item));
   }
-  return merged.slice(0, limit).map(({ createdAtMs, ...rest }) => rest);
+  // Return limit+1 so the caller can determine hasMore
+  return merged.slice(0, limit + 1).map(({ createdAtMs, ...rest }) => rest);
 }
 
 async function getUnreadCount(uid: string, tenantId: string) {
@@ -134,18 +144,28 @@ export async function GET(req: NextRequest) {
     const unreadOnly = req.nextUrl.searchParams.get("unreadOnly") === "true";
     const filter = String(req.nextUrl.searchParams.get("filter") || (unreadOnly ? "unread" : "all"));
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") || 50);
-    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 500) : 50;
+    const cursor = req.nextUrl.searchParams.get("cursor");
     const tenantId = normalizeTenantId(me.tenantId);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
       return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
     }
-    const [notifications, unreadCount] = await Promise.all([
-      getNotifications(me.uid, tenantId, filter, limit),
+    const [notificationsWithExtra, unreadCount] = await Promise.all([
+      getNotifications(me.uid, tenantId, filter, limit, cursor),
       getUnreadCount(me.uid, tenantId),
     ]);
 
-    return NextResponse.json({ ok: true, notifications, unreadCount });
+    const hasMore = notificationsWithExtra.length > limit;
+    const notifications = notificationsWithExtra.slice(0, limit);
+    const nextCursor = hasMore ? notifications[notifications.length - 1]?.id ?? null : null;
+
+    return NextResponse.json({
+      ok: true,
+      notifications,
+      unreadCount,
+      pagination: { hasMore, nextCursor },
+    });
   } catch (err: any) {
     console.error("notifications list error:", err);
     const rawMessage = String(err?.message || "");

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, toISO } from "../../_utils";
 import { toInvoiceStatusLabel } from "@/lib/finance/status";
@@ -31,7 +31,7 @@ type InvoiceDoc = {
   isDeleted?: boolean;
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const auth = await requireAdmin();
     if (!auth.ok) {
@@ -39,12 +39,34 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const docs = await queryWithTenant(
-      adminDb.collection("invoices").where("isDeleted", "==", false).limit(500),
-      tenantId
-    );
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
+    const cursor = req.nextUrl.searchParams.get("cursor");
 
-    const invoices = docs.map((doc) => {
+    let baseQuery: FirebaseFirestore.Query = adminDb
+      .collection("invoices")
+      .where("isDeleted", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(limit + 1);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("invoices").doc(cursor).get();
+      if (cursorDoc.exists && normalizeTenantId(cursorDoc.data()?.tenantId) === tenantId) {
+        baseQuery = baseQuery.startAfter(cursorDoc);
+      }
+    }
+
+    const rawDocs = await queryWithTenant(baseQuery, tenantId);
+
+    rawDocs.sort((a, b) => {
+      const aMs = a.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+      const bMs = b.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+      return bMs - aMs;
+    });
+
+    const hasMore = rawDocs.length > limit;
+    const pageDocs = rawDocs.slice(0, limit);
+
+    const invoices = pageDocs.map((doc) => {
       const data = (doc.data() || {}) as InvoiceDoc;
       return {
         id: doc.id,
@@ -75,6 +97,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       invoices,
+      pagination: {
+        hasMore,
+        nextCursor: hasMore ? pageDocs[pageDocs.length - 1].id : null,
+      },
       currentUser: {
         uid: auth.user.uid,
         role: auth.user.role,
