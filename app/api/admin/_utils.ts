@@ -1,8 +1,5 @@
 import { cookies } from 'next/headers';
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
-import { refreshSession, validateSession } from '@/lib/auth/session';
-import { captureApiError, setSentryContext, trackDbQuery } from '@/lib/monitoring/sentry';
+import { getCurrentUserOrThrow } from '@/lib/tenant/server';
 
 export type CurrentUser = {
   uid: string;
@@ -12,60 +9,11 @@ export type CurrentUser = {
 };
 
 // Central helper: get the currently logged in admin user
+// Delegates to the canonical getCurrentUserOrThrow; returns null instead of throwing.
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
-    const cookieStore = cookies();
-
-    // Use the SAME cookie as middleware + app/page.tsx + session-login
-    const sessionCookie = cookieStore.get('lac_session')?.value;
-    if (!sessionCookie) return null;
-
-    let sessionStatus: { valid: boolean; uid?: string; expired?: boolean } | null = null;
-    try {
-      sessionStatus = await validateSession(sessionCookie);
-    } catch (err) {
-      console.error('getCurrentUser validateSession error:', err);
-    }
-
-    const decoded = await trackDbQuery('auth.verify', 'admin.verifySessionCookie', async () =>
-      adminAuth.verifySessionCookie(sessionCookie, true),
-    );
-    const uid = decoded.uid;
-
-    const userDoc = await trackDbQuery('db.query', 'admin.users.getCurrentUser', async () =>
-      adminDb.collection('users').doc(uid).get(),
-    );
-    if (!userDoc.exists) return null;
-
-    const data = userDoc.data() || {};
-    const role = normalizeRole((data.role as string | undefined) || 'sales');
-
-    if (sessionStatus?.expired === true && role !== 'super_admin') {
-      return null;
-    }
-
-    const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
-
-    void refreshSession(sessionCookie);
-
-    setSentryContext({
-      userId: uid,
-      email: typeof data.email === 'string' ? data.email : undefined,
-      role,
-      tenantId,
-    });
-
-    const current = {
-      uid,
-      role,
-      tenantId,
-      ...data,
-    };
-
-    return current;
-  } catch (err) {
-    captureApiError(err, { fingerprint: ['admin.getCurrentUser'] });
-    console.error('getCurrentUser error:', err);
+    return await getCurrentUserOrThrow({ cookies: cookies() });
+  } catch {
     return null;
   }
 }
