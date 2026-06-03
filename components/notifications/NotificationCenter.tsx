@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  type DocumentData,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import type { Notification } from "@/types/notifications";
 
 type NotificationItem = Omit<Notification, "createdAt" | "readAt" | "archivedAt"> & {
@@ -8,6 +19,45 @@ type NotificationItem = Omit<Notification, "createdAt" | "readAt" | "archivedAt"
   readAt?: string | Date;
   archivedAt?: string | Date;
 };
+
+const VALID_TYPES = new Set(["info", "success", "warning", "error", "action_required", "reminder"]);
+const VALID_CATEGORIES = new Set(["system", "financial", "sales", "operations", "security", "team", "custom"]);
+const VALID_PRIORITIES = new Set(["low", "medium", "high", "urgent"]);
+
+function toNotificationItem(data: DocumentData, id: string): NotificationItem {
+  const rawType = String(data.type || "");
+  const type = VALID_TYPES.has(rawType) ? (rawType as NotificationItem["type"]) : "info";
+  const category = VALID_CATEGORIES.has(String(data.category || ""))
+    ? (String(data.category) as NotificationItem["category"])
+    : "system";
+  const priority = VALID_PRIORITIES.has(String(data.priority || ""))
+    ? (String(data.priority) as NotificationItem["priority"])
+    : "medium";
+
+  return {
+    id,
+    tenantId: String(data.tenantId || ""),
+    userId: String(data.userId || data.recipientUid || data.toUserId || data.toUid || ""),
+    userEmail: String(data.userEmail || ""),
+    type,
+    title: String(data.title || ""),
+    message: String(data.message || data.body || ""),
+    priority,
+    category,
+    isRead: Boolean(data.isRead ?? data.read ?? false),
+    isArchived: Boolean(data.isArchived ?? false),
+    channels: Array.isArray(data.channels) ? data.channels : ["in_app"],
+    deliveryStatus: data.deliveryStatus ?? { inApp: "delivered" as const },
+    actionUrl: data.actionUrl ? String(data.actionUrl) : undefined,
+    actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+    relatedResourceType: data.entityType ? String(data.entityType) : undefined,
+    relatedResourceId: data.entityId ? String(data.entityId) : undefined,
+    metadata: data.metadata ?? undefined,
+    createdAt: data.createdAt?.toDate?.() ?? undefined,
+    readAt: data.readAt?.toDate?.() ?? undefined,
+    archivedAt: data.archivedAt?.toDate?.() ?? undefined,
+  } as NotificationItem;
+}
 
 function formatTimestamp(value?: string | Date) {
   if (!value) return "";
@@ -17,51 +67,53 @@ function formatTimestamp(value?: string | Date) {
 }
 
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const { data: ctx } = useTenantContext();
+  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams({
-      unreadOnly: (filter === "unread").toString(),
-    });
-    return params.toString();
-  }, [filter]);
-
   useEffect(() => {
-    let isMounted = true;
+    if (!ctx?.user?.uid || !ctx?.user?.tenantId) return;
 
-    const fetchNotifications = async () => {
-      const response = await fetch(`/api/notifications?${queryString}`);
-      const data = await response.json();
-      if (!isMounted) return;
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
-    };
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", ctx.user.uid),
+      where("tenantId", "==", ctx.user.tenantId),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    );
 
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [queryString]);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((doc) => toNotificationItem(doc.data(), doc.id));
+        setAllNotifications(items);
+        setUnreadCount(items.filter((n) => !n.isRead).length);
+      },
+      (error) => {
+        console.error("Notifications listener error:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [ctx?.user?.uid, ctx?.user?.tenantId]);
+
+  const notifications = useMemo(
+    () => (filter === "unread" ? allNotifications.filter((n) => !n.isRead) : allNotifications),
+    [allNotifications, filter]
+  );
 
   const markAsRead = async (id: string) => {
     await fetch(`/api/notifications/${id}/read`, { method: "POST" });
-    const response = await fetch(`/api/notifications?${queryString}`);
-    const data = await response.json();
-    setNotifications(data.notifications || []);
-    setUnreadCount(data.unreadCount || 0);
+    setAllNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
 
   const markAllAsRead = async () => {
     await fetch("/api/notifications/mark-all-read", { method: "POST" });
-    const response = await fetch(`/api/notifications?${queryString}`);
-    const data = await response.json();
-    setNotifications(data.notifications || []);
-    setUnreadCount(data.unreadCount || 0);
+    setAllNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
   };
 
   return (
