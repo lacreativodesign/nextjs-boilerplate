@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import { getCurrentUser } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
     if (!snap.exists) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const data = snap.data() || {};
-    if ((data as any).tenantId && (data as any).tenantId !== me.tenantId) {
+    if (docTenantId(data) !== me.tenantId && me.role !== "super_admin") {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
     if ((data as any).deletedAt) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });

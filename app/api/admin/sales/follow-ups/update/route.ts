@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Follow-up not found." }, { status: 404 });
     }
     const existing = snapshot.data() || {};
-    if (existing.tenantId && existing.tenantId !== auth.user.tenantId) {
+    if (docTenantId(existing) !== auth.user.tenantId && auth.user.role !== "super_admin") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 

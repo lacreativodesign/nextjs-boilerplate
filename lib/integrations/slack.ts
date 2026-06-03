@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 
 const SLACK_INTEGRATION_DOC = "slack";
 const SLACK_STATE_COLLECTION = "slackOAuthStates";
@@ -296,7 +297,7 @@ async function getSlackUserForBizostoUser(tenantId: string, userId: string): Pro
   const userSnap = await adminDb.collection("users").doc(userId).get();
   if (!userSnap.exists) return null;
   const data = userSnap.data() || {};
-  if (data.tenantId && data.tenantId !== tenantId) return null;
+  if (docTenantId(data) !== tenantId) return null;
   return typeof data.slackUserId === "string" && data.slackUserId ? data.slackUserId : null;
 }
 

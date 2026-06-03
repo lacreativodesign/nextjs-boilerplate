@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { docTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
   getWatcherUserIds,
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     const existing = snapshot.data() || {};
-    if (existing.tenantId && existing.tenantId !== auth.user.tenantId) {
+    if (docTenantId(existing) !== auth.user.tenantId && auth.user.role !== "super_admin") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     const isOwner = existing.assignedTo === auth.user.uid || existing.createdBy === auth.user.uid;

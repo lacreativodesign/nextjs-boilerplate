@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId } from '@/lib/tenant';
 import { ensureClientAccountActivation } from '@/lib/clientActivation';
 import { queueEmailEvent } from '@/lib/emailEvents';
 import { getCurrentUser } from '../../_utils';
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
     }
 
     const isSuperAdminReq = String(me.role || '').toLowerCase() === 'super_admin';
-    if (!isSuperAdminReq && clientData.tenantId && clientData.tenantId !== me.tenantId) {
+    if (!isSuperAdminReq && docTenantId(clientData) !== me.tenantId) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
 
