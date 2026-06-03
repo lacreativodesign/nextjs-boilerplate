@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { FileManager } from "@/lib/files/file-manager";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
     const chunk = form.get("chunk") as File | null;
     if (!chunk) {
       return NextResponse.json({ error: "Chunk is required" }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(payload.fileName, payload.size);
+    if (!fileValidation.valid) {
+      return NextResponse.json({ error: fileValidation.error }, { status: 400 });
     }
 
     const result = await FileManager.initOrAppendChunk({

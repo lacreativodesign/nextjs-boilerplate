@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
+import { validateFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
 
     if (!userId || !docType || !fileName || !storagePath || !downloadUrl) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(fileName, Number(body?.size || 0));
+    if (!fileValidation.valid) {
+      return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
     const payload = {

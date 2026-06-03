@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAccountManager, isAdminOrSuper, isProduction, isSalesManager } from "../../_utils";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,11 @@ export async function POST(req: Request) {
 
     if (!fileName) {
       return NextResponse.json({ ok: false, error: "File name is required." }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(fileName, Number(body?.size || 0));
+    if (!fileValidation.valid) {
+      return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
     if (!storagePath || !downloadUrl) {

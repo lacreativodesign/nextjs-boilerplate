@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/app/api/admin/settings/_utils";
 import { ensureDriveFolderMapping, listDriveFolders, shareDriveFile, uploadFileToGoogleDrive } from "@/lib/integrations/google-drive";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,13 @@ export async function POST(request: Request) {
       if (!body.fileName || !body.mimeType || !body.base64Content) {
         return NextResponse.json({ ok: false, error: "fileName, mimeType and base64Content are required." }, { status: 400 });
       }
+
+      const sizeBytes = Math.ceil(String(body.base64Content).length * 3 / 4);
+      const fileValidation = validateFile(String(body.fileName), sizeBytes);
+      if (!fileValidation.valid) {
+        return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
+      }
+
       const uploaded = await uploadFileToGoogleDrive({
         tenantId: auth.user.tenantId,
         fileName: String(body.fileName),

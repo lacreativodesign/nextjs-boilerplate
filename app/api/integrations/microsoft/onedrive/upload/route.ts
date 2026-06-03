@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/app/api/admin/settings/_utils";
 import { ensureOneDriveFolderMapping, listOneDriveFolders, shareOneDriveFile, uploadFileToOneDrive } from "@/lib/integrations/onedrive";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,12 @@ export async function POST(request: Request) {
     if (action === "upload") {
       if (!body.fileName || !body.base64Content) {
         return NextResponse.json({ ok: false, error: "fileName and base64Content are required." }, { status: 400 });
+      }
+
+      const sizeBytes = Math.ceil(String(body.base64Content).length * 3 / 4);
+      const fileValidation = validateFile(String(body.fileName), sizeBytes);
+      if (!fileValidation.valid) {
+        return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
       }
 
       const uploaded = await uploadFileToOneDrive({
