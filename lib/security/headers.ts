@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 
-function buildCsp() {
+function buildCsp(nonce?: string) {
   const isProd = process.env.NODE_ENV === "production";
 
   const scriptSrc = [
     "'self'",
-    "'unsafe-inline'",
+    nonce ? `'nonce-${nonce}'` : null,
+    "'strict-dynamic'",
     ...(isProd ? [] : ["'unsafe-eval'"]),
     "https://apis.google.com",
     "https://*.firebaseio.com",
     "https://*.googleapis.com",
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 
   return [
     "default-src 'self'",
@@ -28,7 +29,7 @@ function buildCsp() {
   ].join("; ");
 }
 
-export function getSecurityHeaders(): Record<string, string> {
+export function getSecurityHeaders(nonce?: string): Record<string, string> {
   return {
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
@@ -38,13 +39,13 @@ export function getSecurityHeaders(): Record<string, string> {
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Resource-Policy": "same-origin",
     "X-DNS-Prefetch-Control": "off",
-    "Content-Security-Policy": buildCsp(),
+    "Content-Security-Policy": buildCsp(nonce),
   };
 }
 
-export function applySecurityHeaders(response: NextResponse): NextResponse {
+export function applySecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
   const headers = response.headers;
-  Object.entries(getSecurityHeaders()).forEach(([key, value]) => {
+  Object.entries(getSecurityHeaders(nonce)).forEach(([key, value]) => {
     headers.set(key, value);
   });
   return response;
