@@ -1,5 +1,6 @@
 "use client";
 
+import DOMPurify from "dompurify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from "@/types/email-templates";
@@ -374,9 +375,7 @@ export default function EmailTemplatesSettingsPage() {
                   <div
                     className="prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{
-                      __html: (preview?.renderedHtml || "")
-                        .replace(/<script[\s\S]*?<\/script>/gi, "")
-                        .replace(/\son\w+="[^"]*"/gi, ""),
+                      __html: DOMPurify.sanitize(preview?.renderedHtml || ""),
                     }}
                   />
                 </div>
@@ -386,9 +385,7 @@ export default function EmailTemplatesSettingsPage() {
                   <div
                     className="text-xs"
                     dangerouslySetInnerHTML={{
-                      __html: (preview?.renderedHtml || "")
-                        .replace(/<script[\s\S]*?<\/script>/gi, "")
-                        .replace(/\son\w+="[^"]*"/gi, ""),
+                      __html: DOMPurify.sanitize(preview?.renderedHtml || ""),
                     }}
                   />
                 </div>
