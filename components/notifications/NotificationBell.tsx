@@ -3,18 +3,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  type DocumentData,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import NotificationDrawer, { type NotificationItem } from "@/components/notifications/NotificationDrawer";
 
 type NotificationBellProps = {
   enabled?: boolean;
-  pollIntervalMs?: number;
 };
 
-export default function NotificationBell({ enabled = true, pollIntervalMs = 60000 }: NotificationBellProps) {
+function normalizeNotification(data: DocumentData, id: string): NotificationItem {
+  return {
+    id,
+    title: String(data.title || ""),
+    body: String(data.message || data.body || ""),
+    type: String(data.type || "system"),
+    entityType: data.entityType ? String(data.entityType) : null,
+    entityId: data.entityId ? String(data.entityId) : null,
+    deepLink: data.deepLink ? String(data.deepLink) : null,
+    isRead: Boolean(data.isRead ?? data.read ?? false),
+    createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
+    createdBy: (data.createdBy as Record<string, unknown>) || null,
+    priority: String(data.priority || "normal"),
+    metadata: (data.metadata as Record<string, unknown>) || null,
+  };
+}
+
+export default function NotificationBell({ enabled = true }: NotificationBellProps) {
   const router = useRouter();
+  const { data: ctx } = useTenantContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "approvals" | "mentions">("all");
 
@@ -36,46 +64,53 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
     []
   );
 
-  const fetchNotifications = async (mode: "badge" | "full", filterOverride?: "all" | "unread" | "approvals" | "mentions") => {
-    if (mode === "full") {
-      setNotificationsLoading(true);
-    }
+  useEffect(() => {
+    if (!enabled || !ctx?.user?.uid || !ctx?.user?.tenantId) return;
 
-    try {
-      const filter = filterOverride || activeFilter;
-      const params = new URLSearchParams();
-      if (mode === "badge") {
-        params.set("filter", "unread");
-      } else {
-        params.set("filter", filter);
-        params.set("limit", "50");
-      }
-      const query = params.toString();
-      const res = await fetch(`/api/notifications/list${query ? `?${query}` : ""}`, {
-        cache: "no-store",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        console.error("Notification fetch error:", data?.error || res.statusText);
-        return;
-      }
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", ctx.user.uid),
+      where("tenantId", "==", ctx.user.tenantId),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    );
 
-      if (Array.isArray(data?.notifications) && mode === "full") {
-        setNotifications(data.notifications);
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((doc) => normalizeNotification(doc.data(), doc.id));
+        setAllNotifications(items);
+        setUnreadCount(items.filter((n) => !n.isRead).length);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Notifications listener error:", error);
+        setLoading(false);
       }
+    );
 
-      if (typeof data?.unreadCount === "number") {
-        setUnreadCount(data.unreadCount);
-      }
-    } catch (err) {
-      console.error("Notification fetch error:", err);
-    } finally {
-      if (mode === "full") {
-        setNotificationsLoading(false);
-      }
-    }
+    return () => unsubscribe();
+  }, [enabled, ctx?.user?.uid, ctx?.user?.tenantId]);
+
+  const isApproval = (item: NotificationItem) => {
+    const entityType = String(item.entityType || "").toLowerCase();
+    if (["approval", "change_request"].includes(entityType)) return true;
+    const hay = `${item.title} ${item.body}`.toLowerCase();
+    return hay.includes("approval");
   };
+
+  const notifications = useMemo(() => {
+    if (activeFilter === "unread") return allNotifications.filter((n) => !n.isRead);
+    if (activeFilter === "approvals") return allNotifications.filter(isApproval);
+    if (activeFilter === "mentions") {
+      return allNotifications.filter((n) => {
+        const hay = `${n.type} ${n.title} ${n.body}`.toLowerCase();
+        return n.type === "mention" || hay.includes("mention") || hay.includes("@");
+      });
+    }
+    return allNotifications;
+  }, [allNotifications, activeFilter]);
 
   const handleMarkRead = async (item: NotificationItem) => {
     try {
@@ -88,8 +123,7 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
     } catch (err) {
       console.error("Notification mark read error:", err);
     }
-
-    setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
+    setAllNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
     setUnreadCount((prev) => Math.max(prev - (item.isRead ? 0 : 1), 0));
   };
 
@@ -110,15 +144,10 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
     } catch (err) {
       console.error("Notification mark all read error:", err);
     } finally {
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setAllNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     }
   };
-
-  useEffect(() => {
-    if (!enabled) return;
-    fetchNotifications("badge");
-  }, [enabled, pollIntervalMs]);
 
   if (!enabled) return null;
 
@@ -127,13 +156,7 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
       <button
         type="button"
         className="notification-bell"
-        onClick={() => {
-          const nextOpen = !drawerOpen;
-          setDrawerOpen(nextOpen);
-          if (nextOpen) {
-            fetchNotifications("full");
-          }
-        }}
+        onClick={() => setDrawerOpen((prev) => !prev)}
       >
         <Bell size={18} />
         {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
@@ -142,17 +165,14 @@ export default function NotificationBell({ enabled = true, pollIntervalMs = 6000
         open={drawerOpen}
         unreadCount={unreadCount}
         notifications={notifications}
-        loading={notificationsLoading}
+        loading={loading}
         onClose={() => setDrawerOpen(false)}
         onMarkAllRead={handleMarkAllRead}
         onOpen={handleOpen}
         onMarkRead={handleMarkRead}
         formatTimestamp={formatTimestamp}
         activeFilter={activeFilter}
-        onFilterChange={(filter) => {
-          setActiveFilter(filter);
-          fetchNotifications("full", filter);
-        }}
+        onFilterChange={setActiveFilter}
       />
     </>
   );
