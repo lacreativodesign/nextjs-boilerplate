@@ -89,7 +89,7 @@ export async function GET(req: Request) {
     const healthFilter = String(searchParams.get("health") || "").trim();
     const cursor = String(searchParams.get("cursor") || "").trim();
     const rawLimit = Number(searchParams.get("limit") || 50);
-    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, Math.floor(rawLimit))) : 50;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(500, Math.floor(rawLimit))) : 50;
 
     let baseQuery: FirebaseFirestore.Query = adminDb
       .collection("projects")
@@ -105,7 +105,9 @@ export async function GET(req: Request) {
       ];
     }
 
-    const snaps = await Promise.all(queries.map((query) => query.limit(500).get()));
+    // Fetch enough docs for in-memory filtering; limit*20 gives headroom for filter selectivity
+    const fetchLimit = Math.min(limit * 20, 2000);
+    const snaps = await Promise.all(queries.map((query) => query.limit(fetchLimit).get()));
 
     const merged = new Map<string, ProjectDoc>();
     snaps.forEach((snap) => {
@@ -203,8 +205,9 @@ export async function GET(req: Request) {
       totals,
       pagination: {
         limit,
-        cursor: lastDoc?.id || null,
         hasMore,
+        nextCursor: lastDoc?.id || null,
+        cursor: lastDoc?.id || null,
       },
       currentUser: {
         uid: me.uid,

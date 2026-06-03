@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../../_utils";
 
@@ -63,7 +63,7 @@ function canViewClients(role: string) {
   return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const me = await getCurrentUser();
     if (!me) {
@@ -75,14 +75,27 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const snap = await db
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
+    const cursor = req.nextUrl.searchParams.get("cursor");
+
+    let query: FirebaseFirestore.Query = db
       .collection("clients")
       .where("tenantId", "==", me.tenantId)
       .orderBy("createdAt", "desc")
-      .limit(500)
-      .get();
+      .limit(limit + 1);
 
-    const clients = snap.docs
+    if (cursor) {
+      const cursorDoc = await db.collection("clients").doc(cursor).get();
+      if (cursorDoc.exists && cursorDoc.data()?.tenantId === me.tenantId) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snap = await query.get();
+    const hasMore = snap.docs.length > limit;
+    const pageDocs = snap.docs.slice(0, limit);
+
+    const clients = pageDocs
       .map((doc) => {
         const d = (doc.data() || {}) as ClientDoc;
 
@@ -129,7 +142,14 @@ export async function GET() {
       })
       .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
-    return NextResponse.json({ ok: true, clients });
+    return NextResponse.json({
+      ok: true,
+      clients,
+      pagination: {
+        hasMore,
+        nextCursor: hasMore ? pageDocs[pageDocs.length - 1].id : null,
+      },
+    });
   } catch (err: any) {
     console.error("clients/list error:", err);
     return NextResponse.json(

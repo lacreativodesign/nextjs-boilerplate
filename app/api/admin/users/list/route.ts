@@ -19,12 +19,27 @@ export async function GET(req: NextRequest) {
 
     void validateQuery(paginationSchema, req.nextUrl.searchParams);
 
-    const snap = await adminDb
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
+    const cursor = req.nextUrl.searchParams.get("cursor");
+
+    let query: FirebaseFirestore.Query = adminDb
       .collection("users")
       .where("tenantId", "==", current.tenantId)
-      .get();
+      .orderBy("createdAt", "desc")
+      .limit(limit + 1);
 
-    const list = snap.docs.map((d) => ({
+    if (cursor) {
+      const cursorDoc = await adminDb.collection("users").doc(cursor).get();
+      if (cursorDoc.exists && cursorDoc.data()?.tenantId === current.tenantId) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snap = await query.get();
+    const hasMore = snap.docs.length > limit;
+    const pageDocs = snap.docs.slice(0, limit);
+
+    const list = pageDocs.map((d) => ({
       uid: d.id,
       ...d.data(),
     }));
@@ -45,7 +60,13 @@ export async function GET(req: NextRequest) {
       mfaEnabled: mfaMap.get(user.uid) || false,
     }));
 
-    return NextResponse.json(enriched);
+    return NextResponse.json({
+      users: enriched,
+      pagination: {
+        hasMore,
+        nextCursor: hasMore ? pageDocs[pageDocs.length - 1].id : null,
+      },
+    });
   } catch (e) {
     console.error("Error list users:", e);
     const { status, body } = resolveErrorResponse(e, {
