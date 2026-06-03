@@ -25,6 +25,7 @@ type FilePayload = {
   ok: boolean;
   files: FileRecord[];
   totals?: Record<string, number>;
+  error?: string;
 };
 
 type ProjectOption = { value: string; label: string };
@@ -59,7 +60,7 @@ export default function AMFilesPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
   const [uploadProjectId, setUploadProjectId] = useState("");
-  const [uploadCategory, setUploadCategory] = useState(FILE_CATEGORIES[0]);
+  const [uploadCategory, setUploadCategory] = useState<string>(FILE_CATEGORIES[0]);
   const [actionLoading, setActionLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 

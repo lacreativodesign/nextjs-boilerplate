@@ -390,16 +390,17 @@ export default function ChangeRequestsPage() {
   }, [createOpen, createProjectId]);
 
   useEffect(() => {
-    if (!drawerOpen || !selected?.projectId) {
+    if (!drawerOpen || !selected || !selected.projectId) {
       setAttachedFiles([]);
       return;
     }
 
+    const currentSelected = selected;
     let alive = true;
 
     async function loadFiles() {
       try {
-        const res = await fetch(`/api/admin/files/list?projectId=${selected.projectId}`,
+        const res = await fetch(`/api/admin/files/list?projectId=${currentSelected.projectId}`,
           {
             method: "GET",
             cache: "no-store",
@@ -410,7 +411,7 @@ export default function ChangeRequestsPage() {
         if (!res.ok || !json?.ok) return;
         const list = Array.isArray(json?.files) ? json.files : [];
         if (!alive) return;
-        const ids = new Set(selected.attachedFileIds || []);
+        const ids = new Set(currentSelected.attachedFileIds || []);
         setAttachedFiles(
           list
             .filter((file: any) => ids.has(file.id))

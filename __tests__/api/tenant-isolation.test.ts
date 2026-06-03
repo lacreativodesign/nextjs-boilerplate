@@ -27,7 +27,7 @@ describe("tenant isolation and RBAC enforcement", () => {
   });
 
   it("returns unauthorized on missing finance auth context", async () => {
-    requireFinance.mockResolvedValueOnce({ ok: false, status: 401, error: "Unauthorized" });
+    requireFinance.mockResolvedValueOnce({ ok: false, status: 401, error: "Unauthorized" } as any);
     const route = await import("@/app/api/finance/tax-rates/list/route");
     const res = await route.GET(jsonRequest("https://app.local/api/finance/tax-rates/list"));
     expect(res.status).toBe(401);

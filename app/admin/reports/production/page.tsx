@@ -182,7 +182,7 @@ export default function ProductionReportsPage() {
         <CardShell>
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Workload by Production Owner</div>
           <MiniBarChart
-            rows={(data.workloadByProductionOwner.length ? data.workloadByProductionOwner : [{ productionOwnerName: "-", total: 0 }]).map(
+            rows={(data.workloadByProductionOwner.length ? data.workloadByProductionOwner : [{ productionOwnerId: "", productionOwnerName: "-", total: 0, overdue: 0 }]).map(
               (row) => ({
                 label: row.productionOwnerName || row.productionOwnerId || "-",
                 value: row.total,

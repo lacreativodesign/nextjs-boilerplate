@@ -10,6 +10,7 @@ import ProductionProjectDrawer, {
 type QueuePayload = {
   ok: boolean;
   projects: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {

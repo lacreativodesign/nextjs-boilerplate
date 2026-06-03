@@ -14,6 +14,7 @@ type SortDir = "asc" | "desc";
 type ProjectsPayload = {
   ok: boolean;
   projects: AMProject[];
+  error?: string;
 };
 
 

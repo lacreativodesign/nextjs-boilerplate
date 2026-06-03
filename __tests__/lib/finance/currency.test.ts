@@ -141,7 +141,7 @@ describe('finance/exchangeRates', () => {
 
     const { getExchangeRate } = await import('@/lib/finance/exchangeRates');
 
-    await expect(getExchangeRate('USD', 'JPY')).rejects.toMatchObject<AppError>({
+    await expect(getExchangeRate('USD', 'JPY')).rejects.toMatchObject({
       code: 'NOT_FOUND',
       status: 404,
     });

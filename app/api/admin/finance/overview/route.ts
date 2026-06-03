@@ -42,10 +42,10 @@ export async function GET() {
       queryWithTenant(adminDb.collection("events").orderBy("createdAt", "desc").limit(20), tenantId),
     ]);
 
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const invoices = invoiceDocs.map((doc): Record<string, any> => ({ id: doc.id, ...doc.data() }));
+    const payments = paymentDocs.map((doc): Record<string, any> => ({ id: doc.id, ...doc.data() }));
+    const payroll = payrollDocs.map((doc): Record<string, any> => ({ id: doc.id, ...doc.data() }));
+    const expenses = expenseDocs.map((doc): Record<string, any> => ({ id: doc.id, ...doc.data() }));
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);

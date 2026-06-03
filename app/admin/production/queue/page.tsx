@@ -14,6 +14,7 @@ const HEALTH_OPTIONS = ['On Track', 'At Risk', 'Overdue'] as const;
 type QueuePayload = {
   ok: boolean;
   projects: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {

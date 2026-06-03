@@ -13,6 +13,7 @@ type OverviewPayload = {
   projects: ProductionProject[];
   kpis: Record<string, number>;
   myQueue: ProductionProject[];
+  error?: string;
 };
 
 type UserRecord = {
