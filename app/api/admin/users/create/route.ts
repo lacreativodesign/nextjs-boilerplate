@@ -71,6 +71,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    if (role === "super_admin" && currentRole !== "super_admin") {
+      return NextResponse.json({ ok: false, error: "Cannot create super_admin accounts" }, { status: 403 });
+    }
+
     if (!canManageRole(role)) {
       return NextResponse.json({ error: 'Permission denied for selected role' }, { status: 403 });
     }
