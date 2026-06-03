@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { createNotification, createNotificationEvent, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
 import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
 
@@ -125,7 +125,7 @@ export async function notifyUsers({
         title,
         body,
         type: "info",
-        entityType: entityType || "lead",
+        entityType: (entityType || "lead") as NotificationEntityType,
         entityId: entityId || null,
         deepLink: deepLink || null,
         createdBy: createdBy || null,

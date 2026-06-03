@@ -25,7 +25,12 @@ export type NotificationEntityType =
   | "approval"
   | "change_request"
   | "subscription"
-  | "tenant";
+  | "tenant"
+  | "client"
+  | "invoice"
+  | "payment"
+  | "hr"
+  | "payroll";
 
 export type NotificationRecipient = {
   uid: string;
@@ -278,6 +283,7 @@ export async function getUsersByRoles(roles: string[], tenantId?: string | null)
     uid: doc.id,
     role: String(doc.data()?.role || ""),
     tenantId: String(doc.data()?.tenantId || ""),
+    email: String(doc.data()?.email || ""),
   }));
 }
 

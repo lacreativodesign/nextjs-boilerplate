@@ -152,8 +152,8 @@ export async function logEvent(payload: AuditEventPayload) {
       description: payload.description,
       entityType: payload.entityType || undefined,
       entityId: payload.entityId || undefined,
-      createdByUid: payload.actor?.uid || null,
-      createdByName: payload.actor?.name || null,
+      createdByUid: payload.actor?.uid ?? undefined,
+      createdByName: payload.actor?.name ?? undefined,
       metadata: payload.metadata,
       tenantId: payload.tenantId || null,
     });

@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       { merge: true }
     );
 
-    return NextResponse.json({ reportId: report.id, ...scheduleRecord });
+    return NextResponse.json({ ...scheduleRecord });
   } catch (error: any) {
     const message = error?.message || "Failed to schedule report";
     const status = message === "Report not found" ? 404 : message === "Unauthorized" ? 401 : 500;

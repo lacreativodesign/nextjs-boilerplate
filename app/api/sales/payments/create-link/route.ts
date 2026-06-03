@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Stripe is not configured for this tenant." }, { status: 400 });
     }
 
-    const stripe = new Stripe(String(stripeConfig.secretKey), { apiVersion: "2024-06-20" });
+    const stripe = new Stripe(String(stripeConfig.secretKey), { apiVersion: "2024-04-10" });
     const origin = new URL(req.url).origin;
     const successUrl = `${origin}/sales/leads?payment=success`;
     const cancelUrl = `${origin}/sales/leads?payment=cancel`;

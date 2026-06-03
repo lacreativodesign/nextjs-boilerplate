@@ -505,7 +505,7 @@ function customerMatchesFilter(customer: Customer, filter?: MailchimpSyncFilter)
 
 async function loadCustomersForSync(tenantId: string) {
   const snap = await adminDb.collection("customers").where("tenantId", "==", tenantId).limit(1000).get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Customer) }));
+  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Customer, 'id'>) }));
 }
 
 export async function syncCustomersToAudience(params: {
@@ -587,7 +587,6 @@ export async function syncCustomersToAudience(params: {
     await adminDb.collection("tenants").doc(params.tenantId).collection("mailchimpSyncLogs").add({
       tenantId: params.tenantId,
       mode: params.mode,
-      audienceId,
       filter: params.filter || null,
       ...result,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

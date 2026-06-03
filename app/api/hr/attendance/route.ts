@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 export async function GET(request: Request) {
   try {
     const me = await getCurrentUser();
+    if (!me) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
 

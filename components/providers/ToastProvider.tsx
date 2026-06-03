@@ -7,7 +7,6 @@ export default function ToastProvider() {
     <Toaster
       position="top-right"
       gutter={10}
-      limit={3}
       toastOptions={{
         duration: 4000,
         className:

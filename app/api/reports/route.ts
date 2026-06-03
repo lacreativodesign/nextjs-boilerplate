@@ -98,13 +98,13 @@ export async function GET(request: NextRequest) {
     const uniqueReports = Array.from(new Map(reports.map((r) => [r.id, r])).values()) as Report[];
     const filteredReports = uniqueReports.filter((report) => roleCanAccessCategory(user.role, report.category));
 
-    let allReports: Report[] | Array<Record<string, unknown>> = filteredReports;
+    let allReports: Array<Record<string, unknown>> = filteredReports as unknown as Array<Record<string, unknown>>;
     if (includePresets) {
       const presets = category
         ? PRESET_REPORTS[category] || []
         : Object.values(PRESET_REPORTS).flat();
       const allowedPresets = presets.filter((preset) => roleCanAccessCategory(user.role, preset.category));
-      allReports = [...allowedPresets, ...filteredReports];
+      allReports = [...allowedPresets, ...filteredReports] as Array<Record<string, unknown>>;
     }
 
     return NextResponse.json({ reports: allReports });

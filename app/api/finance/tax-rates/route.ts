@@ -37,8 +37,9 @@ export async function GET() {
       .orderBy("createdAt", "asc")
       .get();
 
-    const taxRates = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+    type DocRecord = { id: string } & Record<string, any>;
+    const taxRates = (snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[])
       .filter((item) => item.isDeleted !== true);
 
     return NextResponse.json({ ok: true, taxRates });

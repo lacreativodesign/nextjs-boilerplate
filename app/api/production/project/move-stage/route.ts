@@ -149,7 +149,7 @@ export async function POST(req: Request) {
       byUid: me.uid,
       byName: me.name || me.fullName || me.displayName || "",
       at: now,
-      reason: null,
+      reason: undefined,
     });
 
     const stageTimestamps = { ...(data.stageTimestamps || {}) };

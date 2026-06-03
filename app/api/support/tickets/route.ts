@@ -282,7 +282,7 @@ export async function POST(req: Request) {
       tx.set(counterRef, { lastNumber: nextNumber, updatedAt: now }, { merge: true });
       tx.set(newTicketRef, payload);
 
-      return { id: newTicketRef.id, ticketNumber, ...payload };
+      return { id: newTicketRef.id, ...payload };
     });
 
     // Notify super admin — non-blocking

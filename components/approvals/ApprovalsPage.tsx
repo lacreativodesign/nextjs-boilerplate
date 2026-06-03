@@ -18,6 +18,7 @@ type ApprovalItem = {
 
 type ApprovalsResponse = {
   ok: boolean;
+  error?: string;
   approvals: ApprovalItem[];
 };
 

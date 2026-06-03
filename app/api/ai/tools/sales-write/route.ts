@@ -11,7 +11,7 @@ const VALID_STAGES = ["New", "Contacted", "Qualified", "Proposal", "Negotiation"
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser(cookies());
+    const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }

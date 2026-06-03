@@ -1,14 +1,14 @@
 "use client";
 import React from "react";
-import { UploadcareUploader } from "@uploadcare/react-uploader";
+import { FileUploaderRegular } from "@uploadcare/react-uploader";
 
-export default function FileUploader({ onUpload }) {
+export default function FileUploader({ onUpload }: { onUpload: (url: string) => void }) {
   return (
     <div style={{ padding: 10, border: "1px dashed #999", borderRadius: 10 }}>
-      <UploadcareUploader
-        pubkey={process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY}
+      <FileUploaderRegular
+        pubkey={process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY ?? ""}
         multiple={false}
-        onChange={(file) => {
+        onChange={(file: any) => {
           if (file?.cdnUrl) onUpload(file.cdnUrl);
         }}
       />

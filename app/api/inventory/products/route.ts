@@ -77,10 +77,11 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.orderBy("createdAt", "desc").get();
+    type DocRecord = { id: string } & Record<string, any>;
     let products = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    })) as DocRecord[];
 
     if (lowStock) {
       products = products.filter((product) =>

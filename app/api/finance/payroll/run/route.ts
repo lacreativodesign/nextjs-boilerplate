@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       title: "Payroll run created",
       description: `Payroll run for ${month} created (${created} entries).`,
       entityType: "payroll",
-      entityId: null,
+      entityId: undefined,
       createdByUid: auth.user.uid,
       createdByName: actorName,
       tenantId: auth.user.tenantId,

@@ -104,7 +104,7 @@ async function getRedisClient() {
     redisPromise = (async () => {
       const config = getUpstashConfig();
       if (!config) return null;
-      const mod = (await import("@upstash/redis")) as {
+      const mod = (await import("@upstash/redis")) as unknown as {
         Redis: new (args: { url: string; token: string }) => RedisLike;
       };
       return new mod.Redis(config);

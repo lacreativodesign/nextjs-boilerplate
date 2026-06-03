@@ -33,12 +33,13 @@ export async function GET(req: Request) {
       query = query.where("clientId", "==", clientId);
     }
 
+    type DocRecord = { id: string } & Record<string, any>;
     const snapshot = await query.orderBy("createdAt", "desc").get();
-    const templates = snapshot.docs
+    const templates = (snapshot.docs
       .map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      }))
+      })) as DocRecord[])
       .filter((template) => (activeOnly ? template.status === "active" : true));
 
     return NextResponse.json({ ok: true, templates });

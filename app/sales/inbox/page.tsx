@@ -15,7 +15,7 @@ type EmailRecord = {
   status: string;
 };
 
-type InboxResponse = { ok: boolean; emails: EmailRecord[] };
+type InboxResponse = { ok: boolean; error?: string; emails: EmailRecord[] };
 
 type ErrorState = { title: string; message: string };
 

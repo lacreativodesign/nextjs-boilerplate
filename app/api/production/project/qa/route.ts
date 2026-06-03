@@ -151,7 +151,7 @@ export async function POST(req: Request) {
         byUid: me.uid,
         byName: actorName,
         at: now,
-        reason: note || null,
+        reason: note ?? undefined,
       });
 
       const stageTimestamps = { ...(data.stageTimestamps || {}) };

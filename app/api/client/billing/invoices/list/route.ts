@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 type InvoiceDoc = {
   orderId?: string;
   clientId?: string;
+  tenantId?: string;
   status?: string;
   amountTotalUsd?: number;
   dueDate?: any;

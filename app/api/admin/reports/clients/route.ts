@@ -44,10 +44,11 @@ export async function GET(req: Request) {
       queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
     ]);
 
-    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const changeRequests = [
+    type DocRecord = { id: string } & Record<string, any>;
+    const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const changeRequests: DocRecord[] = [
       ...changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
       ...changeRequestAltDocs.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];

@@ -168,7 +168,7 @@ export class CustomerService {
 
     return {
       id: snapshot.docs[0].id,
-      ...(snapshot.docs[0].data() as Customer),
+      ...(snapshot.docs[0].data() as Omit<Customer, 'id'>),
     };
   }
 

@@ -259,7 +259,7 @@ export class InventoryService {
       return null;
     }
 
-    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as StockLocation) };
+    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as Omit<StockLocation, 'id'>) };
   }
 
   static async getProductBySku(sku: string, tenantId: string): Promise<(Product & { id: string }) | null> {
@@ -274,7 +274,7 @@ export class InventoryService {
       return null;
     }
 
-    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as Product) };
+    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as Omit<Product, 'id'>) };
   }
 
   static async generateAdjustmentNumber(tenantId: string): Promise<string> {

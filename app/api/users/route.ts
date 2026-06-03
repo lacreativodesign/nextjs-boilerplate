@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     ]);
 
     const profilesById = new Map(
-      profilesSnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...(doc.data() as UserProfile) }])
+      profilesSnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...(doc.data() as Omit<UserProfile, 'id'>) }])
     );
 
     let users = usersSnapshot.docs.map((doc) => {

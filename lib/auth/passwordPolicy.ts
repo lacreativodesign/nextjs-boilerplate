@@ -85,10 +85,11 @@ export function validatePasswordStrength(
     }
   }
 
-  const schemaCheck = changePasswordSchema.shape.newPassword.safeParse(trimmed);
-  if (!schemaCheck.success && schemaCheck.error.issues.length) {
+  const schemaCheck = (changePasswordSchema as any)._def?.schema?.shape?.newPassword?.safeParse(trimmed)
+    ?? (changePasswordSchema as any)?.sourceType?.()?.shape?.newPassword?.safeParse(trimmed);
+  if (schemaCheck && !schemaCheck.success && schemaCheck.error?.issues?.length) {
     const existing = new Set(errors);
-    schemaCheck.error.issues.forEach((issue) => {
+    (schemaCheck.error.issues as Array<{ message: string }>).forEach((issue) => {
       if (!existing.has(issue.message)) {
         errors.push(issue.message);
       }

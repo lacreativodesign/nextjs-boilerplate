@@ -277,7 +277,7 @@ async function handleUpdate(req: Request) {
         const recipients = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
         const assignedAmUid = String(dealData.ownerId || dealData.ownerUid || "");
         if (assignedAmUid) {
-          recipients.push({ uid: assignedAmUid, role: "am", tenantId });
+          recipients.push({ uid: assignedAmUid, role: "am", tenantId, email: "" });
         }
         await createNotifications({
           recipients,

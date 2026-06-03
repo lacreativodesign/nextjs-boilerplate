@@ -155,7 +155,7 @@ export async function POST(req: Request) {
       byUid: me.uid,
       byName: me.name || me.fullName || me.displayName || "",
       at: now,
-      reason: reason || null,
+      reason: reason ?? undefined,
     });
 
     const stageTimestamps = { ...(data.stageTimestamps || {}) };

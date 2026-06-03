@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { ReportBuilderService } from "@/lib/reports/report-builder";
-import type { Report } from "@/types/reports";
+import type { Report, ReportFilter } from "@/types/reports";
 import { requireReportsUser } from "./_utils";
 
 export const runtime = "nodejs";
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       category: payload.category,
       dataSource: payload.dataSource as Report["dataSource"],
       fields: payload.fields,
-      filters: payload.filters,
+      filters: (payload.filters as ReportFilter[] | undefined) ?? [],
       groupBy: payload.groupBy,
       aggregations: payload.aggregations,
       sorts: payload.sorts,

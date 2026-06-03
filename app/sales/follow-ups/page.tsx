@@ -20,7 +20,7 @@ type FollowUpRecord = {
   status: string;
 };
 
-type FollowUpResponse = { ok: boolean; followUps: FollowUpRecord[] };
+type FollowUpResponse = { ok: boolean; error?: string; followUps: FollowUpRecord[] };
 
 type SortKey = "relatedName" | "type" | "dueDate" | "status";
 

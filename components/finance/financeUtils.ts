@@ -10,11 +10,9 @@ export function useIsSystemDark() {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
     const read = () => setIsDark(!!mql.matches);
     read();
-    // @ts-expect-error older browsers
-    mql.addEventListener ? mql.addEventListener("change", read) : mql.addListener(read);
+    mql.addEventListener ? mql.addEventListener("change", read) : (mql as any).addListener(read);
     return () => {
-      // @ts-expect-error older browsers
-      mql.removeEventListener ? mql.removeEventListener("change", read) : mql.removeListener(read);
+      mql.removeEventListener ? mql.removeEventListener("change", read) : (mql as any).removeListener(read);
     };
   }, []);
 

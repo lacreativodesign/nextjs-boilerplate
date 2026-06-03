@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           actor: { uid: me.uid, email: me.email || null, role: me.role || null },
         });
       } catch (error) {
-        logError(error, { route: "PATCH /api/projects/[id]/tasks/[taskId]/status", action: "zapier-dispatch" });
+        logError(error, { route: "PATCH /api/projects/[id]/tasks/[taskId]/status", metadata: { action: "zapier-dispatch" } });
       }
     }
 

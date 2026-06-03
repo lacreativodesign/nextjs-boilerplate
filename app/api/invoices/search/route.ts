@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return await handleModuleSearch(request, session, {
+    return await handleModuleSearch(request, session as { uid: string; tenantId: string; role?: string | null }, {
       module: "invoices",
       collection: "invoices",
       searchFields: ["invoiceNumber", "customerName", "description"],

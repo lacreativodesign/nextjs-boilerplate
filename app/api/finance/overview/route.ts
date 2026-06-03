@@ -44,10 +44,11 @@ export async function GET() {
       adminDb.collection("events").where("tenantId", "==", auth.user.tenantId).orderBy("createdAt", "desc").limit(20).get(),
     ]);
 
-    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const payroll = payrollSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    type DocRecord = { id: string } & Record<string, any>;
+    const invoices = invoiceSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payments = paymentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const payroll = payrollSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const expenses = expenseSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
