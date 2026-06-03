@@ -9,6 +9,7 @@ const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"]
 type PipelinePayload = {
   ok: boolean;
   projects: AMProject[];
+  error?: string;
 };
 
 

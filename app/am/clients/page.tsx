@@ -18,6 +18,7 @@ type ClientRecord = {
 type ClientsPayload = {
   ok: boolean;
   clients: ClientRecord[];
+  error?: string;
 };
 
 

@@ -35,6 +35,7 @@ type ChangeRequestRecord = {
 type ChangeRequestsPayload = {
   ok: boolean;
   changeRequests: ChangeRequestRecord[];
+  error?: string;
 };
 
 
@@ -66,8 +67,8 @@ export default function AMChangeRequestsPage() {
   const [createProjectId, setCreateProjectId] = useState("");
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
-  const [createType, setCreateType] = useState(CHANGE_REQUEST_TYPES[0]);
-  const [createPriority, setCreatePriority] = useState(CHANGE_REQUEST_PRIORITIES[1]);
+  const [createType, setCreateType] = useState<string>(CHANGE_REQUEST_TYPES[0]);
+  const [createPriority, setCreatePriority] = useState<string>(CHANGE_REQUEST_PRIORITIES[1]);
   const [actionLoading, setActionLoading] = useState(false);
   const [approvalLoading, setApprovalLoading] = useState(false);
 

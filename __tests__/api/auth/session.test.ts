@@ -65,7 +65,7 @@ describe("auth sessions API", () => {
   });
 
   it("returns unauthorized when current user is missing", async () => {
-    getCurrentUser.mockResolvedValueOnce(null);
+    getCurrentUser.mockResolvedValueOnce(null as any);
     const route = await import("@/app/api/auth/sessions/route");
     const res = await route.GET(jsonRequest("https://app.local/api/auth/sessions") as any);
     expect(res.status).toBe(401);

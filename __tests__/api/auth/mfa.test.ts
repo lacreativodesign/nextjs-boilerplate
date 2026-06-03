@@ -46,7 +46,7 @@ describe("auth mfa admin API", () => {
   });
 
   it("enforces unauthorized access", async () => {
-    requireAdminOrSuperAdmin.mockResolvedValueOnce({ ok: false, error: "Unauthorized", status: 401 });
+    requireAdminOrSuperAdmin.mockResolvedValueOnce({ ok: false, error: "Unauthorized", status: 401 } as any);
     const route = await import("@/app/api/admin/users/[uid]/mfa/route");
     const res = await route.GET(jsonRequest("https://app.local/api/admin/users/u1/mfa") as any, { params: { uid: "u1" } });
     expect(res.status).toBe(401);

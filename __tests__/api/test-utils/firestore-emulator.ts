@@ -50,8 +50,8 @@ class MockDocRef {
 
 class MockQuery {
   constructor(
-    private readonly db: FirestoreEmulator,
-    private readonly collectionName: string,
+    protected readonly db: FirestoreEmulator,
+    protected readonly collectionName: string,
     private readonly filters: WhereFilter[] = [],
     private readonly order: OrderRule | null = null,
     private readonly max: number | null = null,
@@ -96,7 +96,7 @@ class MockQuery {
 }
 
 class MockCollectionRef extends MockQuery {
-  constructor(private readonly db: FirestoreEmulator, private readonly collectionName: string) {
+  constructor(db: FirestoreEmulator, collectionName: string) {
     super(db, collectionName);
   }
 
