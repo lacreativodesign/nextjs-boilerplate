@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminOrSuper } from "@/app/api/admin/_utils";
 import { StorageService } from "@/lib/storage/storage-service";
 import type { Document } from "@/types/documents";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(file.name, file.size);
+    if (!fileValidation.valid) {
+      return NextResponse.json({ error: fileValidation.error }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { BulkImportService } from "@/lib/import/bulk-import";
+import { validateFile } from "@/lib/files/validation";
 
 const bodySchema = z.object({
   entity: z.enum(["clients", "invoices", "products", "employees", "projects", "tasks", "time_entries"]),
@@ -35,6 +36,11 @@ export async function POST(request: Request) {
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(file.name, file.size);
+    if (!fileValidation.valid) {
+      return NextResponse.json({ error: fileValidation.error }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();

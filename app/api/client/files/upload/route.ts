@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireClient } from "../../_utils";
 import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
+import { validateFile } from "@/lib/files/validation";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,11 @@ export async function POST(req: Request) {
     if (!projectId) return NextResponse.json({ ok: false, error: "Project is required." }, { status: 400 });
     if (!fileName || !storagePath || !downloadUrl) {
       return NextResponse.json({ ok: false, error: "File details are required." }, { status: 400 });
+    }
+
+    const fileValidation = validateFile(fileName, size);
+    if (!fileValidation.valid) {
+      return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
     const projectSnap = await adminDb.collection("projects").doc(projectId).get();
