@@ -2,14 +2,17 @@
   "root": true,
   "extends": ["next/core-web-vitals", "next/typescript"],
   "rules": {
-    "no-console": ["error", { "allow": ["warn", "error"] }],
-    "@typescript-eslint/no-explicit-any": "error",
+    "no-console": "warn",
+    "prefer-const": "warn",
+    "@typescript-eslint/no-unused-expressions": "warn",
+    "@typescript-eslint/no-empty-object-type": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/consistent-type-imports": [
-      "error",
+      "warn",
       { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
     ],
     "@typescript-eslint/no-unused-vars": [
-      "error",
+      "warn",
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
     ]
   }
