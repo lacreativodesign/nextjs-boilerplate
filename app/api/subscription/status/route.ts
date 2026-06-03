@@ -25,8 +25,14 @@ export async function GET(req: NextRequest) {
       subscriptionState = "hard_locked";
     } else if (tenant?.plan === "trial" && trialEndsAt && new Date(trialEndsAt) < now) {
       subscriptionState = "grace";
-    } else {
+    } else if (tenant?.billingStatus === "active") {
       subscriptionState = "active";
+    } else if (tenantId === "bizosto" || tenantId === "bizosto-demo") {
+      // Super-admin and demo tenants always get full access
+      subscriptionState = "active";
+    } else {
+      // No subscription data — restrict to grace rather than granting full access
+      subscriptionState = "grace";
     }
 
     return NextResponse.json({
