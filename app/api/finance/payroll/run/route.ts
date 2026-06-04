@@ -20,10 +20,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Month is required." }, { status: 400 });
     }
 
-    const existingSnap = await adminDb.collection("payroll")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500).get();
+    const [tenantSnap, existingSnap] = await Promise.all([
+      adminDb.collection("tenants").doc(auth.user.tenantId).get(),
+      adminDb.collection("payroll")
+        .where("tenantId", "==", auth.user.tenantId)
+        .where("isDeleted", "==", false)
+        .limit(500).get(),
+    ]);
+    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
     const existingUserIds = new Set(
       existingSnap.docs
         .map((doc) => doc.data() || {})
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
         userId: doc.id,
         userName: data.name || data.fullName || data.displayName || "",
         role: data.role || "",
-        currency: "PKR",
+        currency: tenantCurrency,
         baseSalaryPkr: salary,
         commissionPkr: null,
         commissionUsd: null,

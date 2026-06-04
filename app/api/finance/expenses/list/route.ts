@@ -56,7 +56,7 @@ export async function GET(req: Request) {
         id: doc.id,
         category: data.category || "",
         vendor: data.vendor || "",
-        currency: data.currency || "PKR",
+        currency: data.currency || "USD",
         amountPkr: Number(data.amountPkr || 0),
         expenseDate: toISO(data.expenseDate),
         status: data.status || "Recorded",
