@@ -144,6 +144,8 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     { name: "Luna Torres", company: "Meridian Agency", email: "luna@meridian.agency", stage: "Qualified", source: "Event", value: 9800, daysOld: 28 },
     { name: "Caleb Moore", company: "Vertex Solutions", email: "caleb@vertex.io", stage: "Proposal", source: "Referral", value: 24000, daysOld: 35 },
     { name: "Aria Patel", company: "Crestline Creative", email: "aria@crestline.co", stage: "Negotiation", source: "Website", value: 31000, daysOld: 45 },
+    { name: "Devon Walsh", company: "Ironclad Systems", email: "devon@ironclad.io", stage: "New", source: "Cold Outreach", value: 7200, daysOld: 2 },
+    { name: "Nadia Okonkwo", company: "Solstice Brands", email: "nadia@solsticebrands.com", stage: "Contacted", source: "LinkedIn", value: 15500, daysOld: 8 },
   ];
 
   const leads: any[] = leadData.map((l) => ({
@@ -171,7 +173,54 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
   }
   await batch3.commit();
 
-  // ─── 6. Projects ─────────────────────────────────────────────────────────────
+  // ─── 6. Deals ────────────────────────────────────────────────────────────────
+  const dealData = [
+    { leadIndex: 6, clientIndex: 2, stage: "Proposal", status: "Open", listPrice: 24000, discountPct: 0, probability: 60, closeDays: 14 },
+    { leadIndex: 7, clientIndex: 0, stage: "Negotiation", status: "Open", listPrice: 31000, discountPct: 5, probability: 75, closeDays: 7 },
+    { leadIndex: 4, clientIndex: 1, stage: "Qualified", status: "Open", listPrice: 18000, discountPct: 0, probability: 40, closeDays: 21 },
+    { leadIndex: 5, clientIndex: 3, stage: "Closed Won", status: "Closed", listPrice: 9800, discountPct: 0, probability: 100, closeDays: -5 },
+    { leadIndex: 2, clientIndex: 4, stage: "Closed Lost", status: "Closed", listPrice: 6500, discountPct: 0, probability: 0, closeDays: -10 },
+  ];
+
+  const deals: any[] = dealData.map((d) => {
+    const lead = leads[d.leadIndex];
+    const client = clients[d.clientIndex];
+    const discountUsd = Math.round((d.listPrice * d.discountPct) / 100);
+    const finalPriceUsd = d.listPrice - discountUsd;
+    return {
+      id: id(),
+      tenantId,
+      dealName: `${lead.company} Deal`,
+      clientName: client.name,
+      leadName: lead.name,
+      leadId: lead.id,
+      stage: d.stage,
+      status: d.status,
+      listPriceUsd: d.listPrice,
+      discountPct: d.discountPct,
+      discountUsd,
+      finalPriceUsd,
+      discountApproved: false,
+      discountStatus: d.discountPct > 0 ? "pending" : "none",
+      probability: d.probability,
+      ownerId: salesUser.uid,
+      ownerName: salesUser.name,
+      expectedCloseDate: daysFromNow(d.closeDays),
+      closedAt: d.status === "Closed" ? daysAgo(Math.abs(d.closeDays)) : null,
+      isDeleted: false,
+      createdAt: daysAgo(50),
+      updatedAt: now,
+      isDemo: true,
+    };
+  });
+
+  const batchDeals = adminDb.batch();
+  for (const deal of deals) {
+    batchDeals.set(adminDb.collection("deals").doc(deal.id), deal);
+  }
+  await batchDeals.commit();
+
+  // ─── 7. Projects ─────────────────────────────────────────────────────────────
   const projectData = [
     { name: "TechVision Brand Refresh", client: clients[0], stage: "Active", health: "on_track", budget: 28000, dueInDays: 21 },
     { name: "Bloom Beauty E-commerce Redesign", client: clients[1], stage: "Active", health: "at_risk", budget: 18500, dueInDays: 7 },
@@ -344,6 +393,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     counts: {
       clients: clients.length,
       leads: leads.length,
+      deals: deals.length,
       invoices: invoices.length,
       projects: projects.length,
       productionJobs: productionJobData.length,

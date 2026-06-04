@@ -21,6 +21,7 @@ const DEMO_USERS = [
 type Counts = {
   clients: number;
   leads: number;
+  deals: number;
   invoices: number;
   projects: number;
   productionJobs: number;
@@ -158,6 +159,7 @@ export default function DemoEnvironmentPage() {
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Count label="Clients" value={counts?.clients} />
           <Count label="Leads" value={counts?.leads} />
+          <Count label="Deals" value={counts?.deals} />
           <Count label="Invoices" value={counts?.invoices} />
           <Count label="Projects" value={counts?.projects} />
           <Count label="Production Jobs" value={counts?.productionJobs} />
