@@ -2,13 +2,10 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireReportsAccess, toMillis } from "../../_utils";
 import { normalizeInvoiceStatus } from "@/lib/finance/status";
+import { toCSV, toExcel, toPDF } from "@/lib/exports/formatters";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function toCSV(rows: string[][]) {
-  return rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-}
 
 function parseDate(value: string | null, endOfDay = false) {
   if (!value) return null;
@@ -32,6 +29,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get("dateFrom"));
     const dateTo = parseDate(searchParams.get("dateTo"), true);
+    const format = searchParams.get("format") || "csv";
 
     const snap = await adminDb.collection("invoices").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get();
     const totals = new Map<string, number>();
@@ -51,13 +49,31 @@ export async function GET(req: Request) {
       rows.push([client, total.toFixed(2)]);
     });
 
-    const csv = toCSV(rows);
-    return new NextResponse(csv, {
-      headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": "attachment; filename=reports-revenue-by-client.csv",
-      },
-    });
+    if (format === "xlsx") {
+      const buffer = toExcel(rows, "Revenue by Client");
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": "attachment; filename=reports-revenue-by-client.xlsx",
+        },
+      });
+    } else if (format === "pdf") {
+      const buffer = await toPDF(rows, "Revenue by Client");
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": "attachment; filename=reports-revenue-by-client.pdf",
+        },
+      });
+    } else {
+      const csv = toCSV(rows);
+      return new NextResponse(csv, {
+        headers: {
+          "Content-Type": "text/csv",
+          "Content-Disposition": "attachment; filename=reports-revenue-by-client.csv",
+        },
+      });
+    }
   } catch (err: any) {
     console.error("reports/exports revenue-by-client error:", err);
     return NextResponse.json({ ok: false, error: "Unable to export report." }, { status: 500 });
