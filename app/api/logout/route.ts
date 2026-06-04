@@ -36,6 +36,26 @@ export async function POST(request: Request) {
       maxAge: 0,
     });
 
+    // Clear tenant_id and user_role cookies (set without domain in session-login)
+    res.cookies.set({
+      name: "tenant_id",
+      value: "",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    res.cookies.set({
+      name: "user_role",
+      value: "",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+
     return res;
   } catch (e) {
     console.error("Logout error", e);
