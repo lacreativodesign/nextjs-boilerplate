@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
 import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
-import { TeamService } from "@/lib/teams/team-service";
+import { getTeamMemberIds } from "@/lib/teams/team-filter";
 
 export const runtime = "nodejs";
 
@@ -170,5 +170,6 @@ export async function getSalesManagerTeamMemberIds(user: {
   tenantId?: string | null;
 }): Promise<string[] | null> {
   if (isAdminOrSuper(user.role)) return null;
-  return TeamService.getManagerTeamMemberIds(user.uid, user.tenantId || "");
+  const ids = await getTeamMemberIds(user.uid, user.tenantId || "");
+  return ids.length > 0 ? ids : null;
 }

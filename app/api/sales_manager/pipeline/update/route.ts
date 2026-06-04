@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import {
   arrayUnion,
   createSalesEvent,
+  getSalesManagerTeamMemberIds,
   notifyUsers,
   parseString,
   requireSalesManager,
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid pipeline stage." }, { status: 400 });
     }
 
+    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
+
     const dealRef = adminDb.collection("deals").doc(id);
     let prevStage = "";
     let ownerId: string | null = null;
@@ -51,6 +54,10 @@ export async function POST(req: Request) {
       const data = snap.data() || {};
       if (String(data.tenantId || "") !== auth.user.tenantId) {
         throw new Error("Forbidden");
+      }
+      if (memberIds !== null) {
+        const dealOwnerId = String(data.ownerId || "");
+        if (dealOwnerId && !memberIds.includes(dealOwnerId)) throw new Error("Forbidden");
       }
       prevStage = parseString(data.stage, "New Lead");
       if (prevStage === stage) return;
