@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-const LANGUAGES = ["English", "Arabic", "French", "Spanish", "Urdu"];
 const TIMEZONES = [
   "UTC",
   "Asia/Karachi",
@@ -15,7 +14,6 @@ const DATE_FORMATS = ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"];
 
 export default function SettingsPreferencesPage() {
   const [prefs, setPrefs] = useState({
-    language: "English",
     timezone: "Asia/Karachi",
     dateFormat: "DD/MM/YYYY",
     emailNotifications: true,
@@ -24,9 +22,8 @@ export default function SettingsPreferencesPage() {
   });
   const [saved, setSaved] = useState(false);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    await new Promise((r) => setTimeout(r, 400));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -39,8 +36,17 @@ export default function SettingsPreferencesPage() {
         {/* Localisation */}
         <div className="card space-y-4 p-6">
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Localisation</h2>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+              Language
+            </label>
+            <p className="input flex w-full cursor-default select-none items-center gap-2 bg-[var(--surface-muted)] text-[var(--text-muted)]">
+              English
+              <span className="text-xs">(more languages coming soon)</span>
+            </p>
+          </div>
+
           {[
-            { label: "Language", key: "language", options: LANGUAGES },
             { label: "Timezone", key: "timezone", options: TIMEZONES },
             { label: "Date Format", key: "dateFormat", options: DATE_FORMATS },
           ].map((f) => (
