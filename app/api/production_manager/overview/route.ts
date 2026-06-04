@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireProductionManagerOrAdmin } from "../../admin/_utils";
+import { requireProductionManagerOrAdmin, isAdminOrSuper } from "../../admin/_utils";
+import { TeamService } from "@/lib/teams/team-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,10 +40,24 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const docs = await queryWithTenant(
+
+    // Resolve production team member IDs; null means no team or admin (see all).
+    const memberIds = isAdminOrSuper(auth.user.role)
+      ? null
+      : await TeamService.getManagerTeamMemberIds(auth.user.uid, tenantId);
+
+    const allDocs = await queryWithTenant(
       adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
       tenantId
     );
+
+    // Scope to team members' projects when a team is assigned, otherwise all projects.
+    const docs =
+      memberIds === null
+        ? allDocs
+        : allDocs.filter((doc) =>
+            memberIds.includes(String(doc.data()?.productionOwnerUid || ""))
+          );
 
     const now = new Date();
     let openProjects = 0;

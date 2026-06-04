@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireSalesManager, toISO } from "../_utils";
+import { getSalesManagerTeamMemberIds, requireSalesManager, toISO } from "../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,9 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
+    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
+
+    const [allLeadsDocs, allDealsDocs, eventsSnap] = await Promise.all([
       queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(
@@ -38,6 +40,16 @@ export async function GET() {
         tenantId
       ),
     ]);
+
+    const leadsSnap =
+      memberIds === null
+        ? allLeadsDocs
+        : allLeadsDocs.filter((doc) => memberIds.includes(String(doc.data().ownerId || "")));
+
+    const dealsSnap =
+      memberIds === null
+        ? allDealsDocs
+        : allDealsDocs.filter((doc) => memberIds.includes(String(doc.data().ownerId || "")));
 
     const leads = leadsSnap.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
     const deals = dealsSnap.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));

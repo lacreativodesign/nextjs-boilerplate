@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSalesManager } from "../../_utils";
+import { getSalesManagerTeamMemberIds, requireSalesManager } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -11,18 +11,23 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
+
     const snap = await adminDb
       .collection("users")
       .where("tenantId", "==", auth.user.tenantId || "")
       .where("role", "==", "sales")
       .get();
-    const owners = snap.docs.map((doc) => {
-      const data = doc.data() || {};
-      return {
-        uid: doc.id,
-        name: String(data.name || data.fullName || data.email || "Sales Rep"),
-      };
-    });
+
+    const owners = snap.docs
+      .filter((doc: any) => memberIds === null || memberIds.includes(doc.id))
+      .map((doc: any) => {
+        const data = doc.data() || {};
+        return {
+          uid: doc.id,
+          name: String(data.name || data.fullName || data.email || "Sales Rep"),
+        };
+      });
 
     return NextResponse.json({ ok: true, owners });
   } catch (err: any) {

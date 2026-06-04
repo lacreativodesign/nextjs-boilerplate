@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotification, createNotificationEvent, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
 import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
 import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
+import { TeamService } from "@/lib/teams/team-service";
 
 export const runtime = "nodejs";
 
@@ -156,4 +157,18 @@ export function normalizeStage(stage?: string) {
 export function isClosedStage(stage?: string) {
   const token = String(stage || "").toLowerCase();
   return token.includes("closed");
+}
+
+/**
+ * Returns the set of member IDs for the manager's team, or null when:
+ * - the user is admin/super_admin (sees everything), OR
+ * - the manager has no team assigned (fallback: show all tenant data).
+ */
+export async function getSalesManagerTeamMemberIds(user: {
+  uid: string;
+  role: string;
+  tenantId?: string | null;
+}): Promise<string[] | null> {
+  if (isAdminOrSuper(user.role)) return null;
+  return TeamService.getManagerTeamMemberIds(user.uid, user.tenantId || "");
 }
