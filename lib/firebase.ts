@@ -39,10 +39,6 @@ function getConfig() {
   ].filter(([, v]) => !v);
 
   if (missing.length) {
-    const msg = `Firebase client configuration is incomplete: ${missing.map(([k]) => k).join(", ")}.`;
-    if (isBrowser) {
-      throw new Error(msg);
-    }
     return null;
   }
 
@@ -71,10 +67,7 @@ function getFirebaseApp(): FirebaseApp | null {
 export function getAuthClient(): Auth {
   const app = getFirebaseApp();
   if (!app) {
-    if (!isBrowser) {
-      return createThrowingProxy<Auth>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
-    }
-    throw new Error("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
+    return createThrowingProxy<Auth>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
   }
   return getAuth(app);
 }
@@ -82,10 +75,7 @@ export function getAuthClient(): Auth {
 export function getDbClient(): Firestore {
   const app = getFirebaseApp();
   if (!app) {
-    if (!isBrowser) {
-      return createThrowingProxy<Firestore>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
-    }
-    throw new Error("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
+    return createThrowingProxy<Firestore>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
   }
   return getFirestore(app);
 }

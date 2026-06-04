@@ -9,7 +9,7 @@ import {
   query,
   type DocumentData,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebaseClient';
 import { ActivityItem, type ActivityFeedItem } from '@/components/activity/ActivityItem';
 
 type ActivityFeedProps = {
@@ -48,26 +48,37 @@ export function ActivityFeed({ tenantId, maxItems = 10 }: ActivityFeedProps) {
       return;
     }
 
-    const activityQuery = query(
-      collection(db, 'tenants', tenantId, 'activity_feed'),
-      orderBy('timestamp', 'desc'),
-      limit(maxItems),
-    );
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    const unsubscribe = onSnapshot(
-      activityQuery,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id));
-        setActivities(items);
-        setLoading(false);
-      },
-      () => {
-        setActivities([]);
-        setLoading(false);
-      },
-    );
+    getFirebaseDb().then((db) => {
+      if (cancelled) return;
+      const activityQuery = query(
+        collection(db, 'tenants', tenantId, 'activity_feed'),
+        orderBy('timestamp', 'desc'),
+        limit(maxItems),
+      );
+      unsubscribe = onSnapshot(
+        activityQuery,
+        (snapshot) => {
+          const items = snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id));
+          setActivities(items);
+          setLoading(false);
+        },
+        () => {
+          setActivities([]);
+          setLoading(false);
+        },
+      );
+    }).catch(() => {
+      setActivities([]);
+      setLoading(false);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [maxItems, tenantId]);
 
   const content = useMemo(() => {

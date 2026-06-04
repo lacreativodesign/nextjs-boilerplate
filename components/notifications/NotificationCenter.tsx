@@ -10,7 +10,7 @@ import {
   where,
   type DocumentData,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebaseClient";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import type { Notification } from "@/types/notifications";
 
@@ -76,27 +76,39 @@ export function NotificationCenter() {
   useEffect(() => {
     if (!ctx?.user?.uid || !ctx?.user?.tenantId) return;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", ctx.user.uid),
-      where("tenantId", "==", ctx.user.tenantId),
-      orderBy("createdAt", "desc"),
-      limit(20)
-    );
+    const uid = ctx.user.uid;
+    const tenantId = ctx.user.tenantId;
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => toNotificationItem(doc.data(), doc.id));
-        setAllNotifications(items);
-        setUnreadCount(items.filter((n) => !n.isRead).length);
-      },
-      (error) => {
-        console.error("Notifications listener error:", error);
-      }
-    );
+    getFirebaseDb().then((db) => {
+      if (cancelled) return;
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", uid),
+        where("tenantId", "==", tenantId),
+        orderBy("createdAt", "desc"),
+        limit(20)
+      );
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((doc) => toNotificationItem(doc.data(), doc.id));
+          setAllNotifications(items);
+          setUnreadCount(items.filter((n) => !n.isRead).length);
+        },
+        (error) => {
+          console.error("Notifications listener error:", error);
+        }
+      );
+    }).catch((error) => {
+      console.error("Notifications listener error:", error);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [ctx?.user?.uid, ctx?.user?.tenantId]);
 
   const notifications = useMemo(
