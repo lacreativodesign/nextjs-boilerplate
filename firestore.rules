@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthed() {
+      return request.auth != null;
+    }
+    function isSuperAdmin() {
+      return isAuthed() && request.auth.token.role == 'super_admin';
+    }
+    function belongsToTenant(tenantId) {
+      return isAuthed() && request.auth.token.tenantId == tenantId;
+    }
+    function isClientRole() {
+      return isAuthed() && request.auth.token.role == 'client';
+    }
+    // Super admin can read/write everything
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+    // Tenant users can only read their own tenant doc (not write — admins use server SDK)
+    match /tenants/{tenantId} {
+      allow read: if belongsToTenant(tenantId);
+      allow write: if false; // Server SDK only
+    }
+    match /tenants/{tenantId}/{subcollection=**} {
+      allow read, write: if belongsToTenant(tenantId);
+    }
+    // All other collections: server SDK only (Admin SDK bypasses rules)
+    // Client SDK access locked down — only server-side API routes touch these
+    match /users/{docId} {
+      allow read: if belongsToTenant(resource.data.tenantId);
+      allow write: if false;
+    }
+    match /clients/{docId} {
+      allow read: if belongsToTenant(resource.data.tenantId);
+      allow write: if false;
+    }
+    match /projects/{docId} {
+      allow read: if belongsToTenant(resource.data.tenantId);
+      allow write: if false;
+    }
+    match /invoices/{docId} {
+      allow read: if belongsToTenant(resource.data.tenantId);
+      allow write: if false;
+    }
+    match /notifications/{docId} {
+      allow read: if belongsToTenant(resource.data.tenantId);
+      allow write: if false;
+    }
+    // Everything else: server SDK only
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
