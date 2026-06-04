@@ -5,6 +5,7 @@ import { logEvent } from "@/lib/audit";
 import {
   arrayUnion,
   getAdminUserIds,
+  getSalesManagerTeamMemberIds,
   notifyUsers,
   parseBoolean,
   parseNumber,
@@ -28,6 +29,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing deal id." }, { status: 400 });
     }
 
+    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
+
     const dealRef = adminDb.collection("deals").doc(id);
     let prevStage = "";
     let nextStage = "";
@@ -50,6 +53,10 @@ export async function POST(req: Request) {
       tenantId = String(data.tenantId || tenantId || DEFAULT_TENANT_ID);
       if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
         throw new Error("Forbidden");
+      }
+      if (memberIds !== null) {
+        const dealOwnerId = String(data.ownerId || "");
+        if (dealOwnerId && !memberIds.includes(dealOwnerId)) throw new Error("Forbidden");
       }
       prevStage = parseString(data.stage, "New Lead");
       nextStage = payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
