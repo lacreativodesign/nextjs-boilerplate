@@ -30,11 +30,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Amount is required." }, { status: 400 });
     }
 
+    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
+
     const ref = adminDb.collection("expenses").doc();
     const expenseData = {
       category,
       vendor,
-      currency: "PKR",
+      currency: tenantCurrency,
       amountPkr,
       expenseDate: expenseDate ? new Date(expenseDate) : null,
       status: status || "Recorded",

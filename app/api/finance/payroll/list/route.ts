@@ -41,7 +41,7 @@ export async function GET() {
         userId: data.userId || "",
         userName: data.userName || "",
         role: data.role || "",
-        currency: data.currency || "PKR",
+        currency: data.currency || "USD",
         baseSalaryPkr: Number(data.baseSalaryPkr || 0),
         commissionPkr: data.commissionPkr == null ? null : Number(data.commissionPkr || 0),
         commissionUsd: data.commissionUsd == null ? null : Number(data.commissionUsd || 0),

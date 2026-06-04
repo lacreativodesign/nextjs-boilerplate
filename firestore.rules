@@ -23,7 +23,8 @@ service cloud.firestore {
       allow write: if false; // Server SDK only
     }
     match /tenants/{tenantId}/{subcollection=**} {
-      allow read, write: if belongsToTenant(tenantId);
+      allow read: if belongsToTenant(tenantId);
+      allow write: if false;
     }
     // All other collections: server SDK only (Admin SDK bypasses rules)
     // Client SDK access locked down — only server-side API routes touch these

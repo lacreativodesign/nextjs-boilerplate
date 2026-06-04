@@ -16,7 +16,11 @@ export async function GET() {
     }
 
     const tenantId = auth.user.tenantId || "";
-    const snap = await adminDb.collection("payroll").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get();
+    const [tenantSnap, snap] = await Promise.all([
+      adminDb.collection("tenants").doc(tenantId).get(),
+      adminDb.collection("payroll").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
+    ]);
+    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
     const totals = new Map<string, number>();
 
     snap.docs.forEach((doc) => {
@@ -27,7 +31,7 @@ export async function GET() {
       totals.set(month, (totals.get(month) || 0) + total);
     });
 
-    const rows = [["Month", "Payroll PKR"]];
+    const rows = [["Month", `Payroll ${tenantCurrency}`]];
     Array.from(totals.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .forEach(([month, total]) => {
