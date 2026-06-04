@@ -12,7 +12,7 @@ import {
   type QueryConstraint,
 } from 'firebase/firestore';
 import { ActivityItem, type ActivityFeedItem } from '@/components/activity/ActivityItem';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebaseClient';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
 
 const PAGE_STEP = 25;
@@ -56,29 +56,40 @@ export default function ActivityPage() {
     }
 
     setListLoading(true);
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc'), limit(itemLimit)];
-    if (category !== 'all') constraints.unshift(where('category', '==', category));
-    if (actorUid !== 'all') constraints.unshift(where('actor.uid', '==', actorUid));
+    getFirebaseDb().then((db) => {
+      if (cancelled) return;
+      const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc'), limit(itemLimit)];
+      if (category !== 'all') constraints.unshift(where('category', '==', category));
+      if (actorUid !== 'all') constraints.unshift(where('actor.uid', '==', actorUid));
 
-    const activityQuery = query(
-      collection(db, 'tenants', tenantId, 'activity_feed'),
-      ...constraints,
-    );
+      const activityQuery = query(
+        collection(db, 'tenants', tenantId, 'activity_feed'),
+        ...constraints,
+      );
 
-    const unsubscribe = onSnapshot(
-      activityQuery,
-      (snapshot) => {
-        setActivities(snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id)));
-        setListLoading(false);
-      },
-      () => {
-        setActivities([]);
-        setListLoading(false);
-      },
-    );
+      unsubscribe = onSnapshot(
+        activityQuery,
+        (snapshot) => {
+          setActivities(snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id)));
+          setListLoading(false);
+        },
+        () => {
+          setActivities([]);
+          setListLoading(false);
+        },
+      );
+    }).catch(() => {
+      setActivities([]);
+      setListLoading(false);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [actorUid, category, itemLimit, tenantId]);
 
   const users = useMemo(() => {

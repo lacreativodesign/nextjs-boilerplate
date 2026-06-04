@@ -12,7 +12,7 @@ import {
   where,
   type DocumentData,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebaseClient";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import NotificationDrawer, { type NotificationItem } from "@/components/notifications/NotificationDrawer";
 
@@ -67,30 +67,42 @@ export default function NotificationBell({ enabled = true }: NotificationBellPro
   useEffect(() => {
     if (!enabled || !ctx?.user?.uid || !ctx?.user?.tenantId) return;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", ctx.user.uid),
-      where("tenantId", "==", ctx.user.tenantId),
-      orderBy("createdAt", "desc"),
-      limit(20)
-    );
+    const uid = ctx.user.uid;
+    const tenantId = ctx.user.tenantId;
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
     setLoading(true);
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => normalizeNotification(doc.data(), doc.id));
-        setAllNotifications(items);
-        setUnreadCount(items.filter((n) => !n.isRead).length);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Notifications listener error:", error);
-        setLoading(false);
-      }
-    );
+    getFirebaseDb().then((db) => {
+      if (cancelled) return;
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", uid),
+        where("tenantId", "==", tenantId),
+        orderBy("createdAt", "desc"),
+        limit(20)
+      );
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((doc) => normalizeNotification(doc.data(), doc.id));
+          setAllNotifications(items);
+          setUnreadCount(items.filter((n) => !n.isRead).length);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Notifications listener error:", error);
+          setLoading(false);
+        }
+      );
+    }).catch(() => {
+      setLoading(false);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [enabled, ctx?.user?.uid, ctx?.user?.tenantId]);
 
   const isApproval = (item: NotificationItem) => {
