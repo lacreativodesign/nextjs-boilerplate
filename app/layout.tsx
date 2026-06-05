@@ -2,6 +2,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import ToastProvider from "@/components/providers/ToastProvider";
 import RouteProgress from "@/components/ui/RouteProgress";
 import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
@@ -46,10 +47,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const nonce = headers().get("x-nonce") ?? undefined;
+
   return (
     <html lang="en-US" dir="ltr" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('bizosto_theme')||'system';var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t==='system'&&d);document.documentElement.classList.toggle('dark',dark);if(!dark&&t==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
           }}
