@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -15,12 +15,104 @@ type Props = {
   children: React.ReactNode;
 };
 
+function LoadingScreen() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "var(--app-bg)",
+        gap: "16px",
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          border: "3px solid var(--border-subtle, #e5e7eb)",
+          borderTopColor: "var(--erp-blue, #3b82f6)",
+          animation: "spin 0.8s linear infinite",
+        }}
+      />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <p style={{ color: "var(--text-muted, #6b7280)", fontSize: 14, margin: 0 }}>
+        Loading your workspace…
+      </p>
+    </div>
+  );
+}
+
+function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: () => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "var(--app-bg)",
+        gap: "16px",
+      }}
+    >
+      <p style={{ color: "var(--text-primary, #111827)", fontSize: 16, margin: 0 }}>
+        We couldn&apos;t load your session.
+      </p>
+      <div style={{ display: "flex", gap: "12px" }}>
+        <button
+          onClick={onRetry}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "1px solid var(--input-border, #d1d5db)",
+            background: "transparent",
+            color: "var(--text-primary, #111827)",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          Retry
+        </button>
+        <button
+          onClick={onSignIn}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: "var(--erp-blue, #3b82f6)",
+            color: "#fff",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          Sign in again
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function RequireAuth({ allowed, children }: Props) {
   const [ready, setReady] = useState(false);
   const [ok, setOk] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const redirectingRef = useRef(false);
   const router = useRouter();
   const allowedRoles = useMemo(() => allowed.map((role) => normalizeRole(role)).filter(Boolean), [allowed]);
   const { showTimeoutWarning, timeRemaining, extendSession, logout } = useSessionTimeout();
+
+  // Watchdog: show recovery if auth hasn't resolved within 8 s.
+  useEffect(() => {
+    if (ready) return;
+    const id = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(id);
+  }, [ready]);
 
   useEffect(() => {
     let unsub: Unsubscribe | null = null;
@@ -31,6 +123,7 @@ export default function RequireAuth({ allowed, children }: Props) {
         if (cancelled) return;
         unsub = onAuthStateChanged(auth, async (user) => {
           if (!user) {
+            redirectingRef.current = true;
             router.replace("/login");
             setReady(true);
             return;
@@ -46,6 +139,7 @@ export default function RequireAuth({ allowed, children }: Props) {
           }
 
           if (!role || !allowedRoles.includes(role)) {
+            redirectingRef.current = true;
             router.replace(role ? "/unauthorized" : "/login");
             setReady(true);
             return;
@@ -57,6 +151,7 @@ export default function RequireAuth({ allowed, children }: Props) {
       })
       .catch((err) => {
         console.error("Failed to load Firebase auth", err);
+        redirectingRef.current = true;
         router.replace("/login");
         setReady(true);
       });
@@ -67,8 +162,29 @@ export default function RequireAuth({ allowed, children }: Props) {
     };
   }, [allowedRoles, router]);
 
-  if (!ready) return null;
-  if (!ok) return null;
+  if (!ready) {
+    if (timedOut) {
+      return (
+        <RecoveryScreen
+          onRetry={() => window.location.reload()}
+          onSignIn={() => router.replace("/login")}
+        />
+      );
+    }
+    return <LoadingScreen />;
+  }
+
+  if (!ok) {
+    if (!redirectingRef.current) {
+      return (
+        <RecoveryScreen
+          onRetry={() => window.location.reload()}
+          onSignIn={() => router.replace("/login")}
+        />
+      );
+    }
+    return null;
+  }
 
   return (
     <>
