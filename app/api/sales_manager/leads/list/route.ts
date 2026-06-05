@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { TeamService } from "@/lib/teams/team-service";
-import { getSalesManagerTeamMemberIds, requireSalesManager, toISO } from "../../_utils";
+import { requireSalesManager, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,19 +11,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-    const baseQuery = adminDb
+    const snap = await adminDb
       .collection("leads")
       .where("tenantId", "==", auth.user.tenantId || "")
       .where("isDeleted", "==", false)
-      .limit(500);
+      .limit(500)
+      .get();
 
-    const docs =
-      memberIds === null
-        ? (await baseQuery.get()).docs
-        : await TeamService.queryWithTeamFilter(baseQuery, "ownerId", memberIds);
-
-    const leads = docs.map((doc: any) => {
+    const leads = snap.docs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getSalesManagerTeamMemberIds, requireSalesManager, toISO } from "../../_utils";
+import { requireSalesManager, toISO } from "../../_utils";
 import { normalizeTenantId } from "@/lib/tenant";
 import { queryWithTenant } from "@/lib/tenant/query";
 
@@ -14,17 +14,10 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-
-    const allDocs = await queryWithTenant(
+    const docs = await queryWithTenant(
       adminDb.collection("deals").where("isDeleted", "==", false).limit(500),
       tenantId
     );
-
-    const docs =
-      memberIds === null
-        ? allDocs
-        : allDocs.filter((doc) => memberIds.includes(String(doc.data().ownerId || "")));
 
     const deals = docs.map((doc) => {
       const data = doc.data() || {};

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
   createSalesEvent,
-  getSalesManagerTeamMemberIds,
   notifyUsers,
   parseString,
   requireSalesManager,
@@ -24,8 +23,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing lead id." }, { status: 400 });
     }
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-
     const leadRef = adminDb.collection("leads").doc(id);
     const dealRef = adminDb.collection("deals").doc();
     let ownerId: string | null = null;
@@ -37,15 +34,8 @@ export async function POST(req: Request) {
         throw new Error("Lead not found");
       }
       const data = snap.data() || {};
-      if (String(data.tenantId || "") !== String(auth.user.tenantId || "")) {
-        throw new Error("Forbidden");
-      }
       if (data.dealId) {
         throw new Error("Lead already converted");
-      }
-      if (memberIds !== null) {
-        const leadOwnerId = String(data.ownerId || "");
-        if (leadOwnerId && !memberIds.includes(leadOwnerId)) throw new Error("Forbidden");
       }
 
       ownerId = data.ownerId || null;

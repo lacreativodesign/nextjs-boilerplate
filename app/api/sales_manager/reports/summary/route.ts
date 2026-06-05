@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { TeamService } from "@/lib/teams/team-service";
-import { getSalesManagerTeamMemberIds, requireSalesReportsAccess, toISO } from "../../_utils";
+import { requireSalesReportsAccess, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,31 +11,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-
-    const leadsBaseQuery = adminDb
-      .collection("leads")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500);
-
-    const dealsBaseQuery = adminDb
-      .collection("deals")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500);
-
-    const [leadsDocs, dealsDocs] = await Promise.all([
-      memberIds === null
-        ? leadsBaseQuery.get().then((s: any) => s.docs)
-        : TeamService.queryWithTeamFilter(leadsBaseQuery, "ownerId", memberIds),
-      memberIds === null
-        ? dealsBaseQuery.get().then((s: any) => s.docs)
-        : TeamService.queryWithTeamFilter(dealsBaseQuery, "ownerId", memberIds),
+    const [leadsSnap, dealsSnap] = await Promise.all([
+      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const leadSourceMap = new Map<string, number>();
-    leadsDocs.forEach((doc: any) => {
+    leadsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const source = String(data.source || "Unknown");
       leadSourceMap.set(source, (leadSourceMap.get(source) || 0) + 1);
@@ -53,7 +34,7 @@ export async function GET() {
 
     const now = new Date();
 
-    dealsDocs.forEach((doc: any) => {
+    dealsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const stage = String(data.stage || "");
       if (stage === "Closed Won") won += 1;

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireAmManagerOrAdmin, isAdminOrSuper } from "../../admin/_utils";
-import { getTeamMemberIds } from "@/lib/teams/team-filter";
+import { requireAmManagerOrAdmin } from "../../admin/_utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,23 +39,15 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-
-    // Resolve AM team member IDs; empty means no team or admin (see all).
-    const memberIds = isAdminOrSuper(auth.user.role)
-      ? []
-      : await getTeamMemberIds(auth.user.uid, tenantId);
-
     const projects = await queryWithTenant(
       adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
       tenantId
     );
 
-    // Scope to team members' projects when a team is assigned, otherwise all projects.
-    const scopedProjects =
-      memberIds.length === 0
-        ? projects
-        : projects.filter((doc) => memberIds.includes(String(doc.data()?.ownerAmUid || "")));
-
+    const ownedProjects = projects.filter(
+      (doc) => String(doc.data()?.ownerAmUid || "") === auth.user.uid
+    );
+    const scopedProjects = ownedProjects.length ? ownedProjects : projects;
     const projectIds = new Set(scopedProjects.map((doc) => doc.id));
 
     const clientsSnap = await queryWithTenant(
