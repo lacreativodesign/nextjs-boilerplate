@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { TeamService } from "@/lib/teams/team-service";
-import { getSalesManagerTeamMemberIds, requireSalesManager, toISO } from "../_utils";
+import { requireSalesManager, toISO } from "../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,28 +29,10 @@ export async function GET(req: Request) {
     const end = new Date(year, month, 0, 23, 59, 59, 999);
     const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-
-    const dealsBaseQuery = adminDb
-      .collection("deals")
-      .where("tenantId", "==", auth.user.tenantId || "")
-      .where("isDeleted", "==", false)
-      .limit(500);
-
-    const [usersSnap, targetsSnap, dealsDocs] = await Promise.all([
-      adminDb
-        .collection("users")
-        .where("tenantId", "==", auth.user.tenantId || "")
-        .where("role", "==", "sales")
-        .get(),
-      adminDb
-        .collection("sales_targets")
-        .where("tenantId", "==", auth.user.tenantId || "")
-        .where("month", "==", monthKey)
-        .get(),
-      memberIds === null
-        ? dealsBaseQuery.get().then((s: any) => s.docs)
-        : TeamService.queryWithTeamFilter(dealsBaseQuery, "ownerId", memberIds),
+    const [usersSnap, targetsSnap, dealsSnap] = await Promise.all([
+      adminDb.collection("users").where("tenantId", "==", auth.user.tenantId || "").where("role", "==", "sales").get(),
+      adminDb.collection("sales_targets").where("tenantId", "==", auth.user.tenantId || "").where("month", "==", monthKey).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const targetMap = new Map<string, number>();
@@ -63,7 +44,7 @@ export async function GET(req: Request) {
     });
 
     const achievedMap = new Map<string, number>();
-    dealsDocs.forEach((doc: any) => {
+    dealsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       if (String(data.stage || "") !== "Closed Won") return;
       const closedAt = toISO(data.closedWonAt || data.updatedAt || data.createdAt);
@@ -75,21 +56,19 @@ export async function GET(req: Request) {
       achievedMap.set(ownerId, (achievedMap.get(ownerId) || 0) + Number(data.valueUsd || 0));
     });
 
-    const targets = usersSnap.docs
-      .filter((doc: any) => memberIds === null || memberIds.includes(doc.id))
-      .map((doc: any) => {
-        const data = doc.data() || {};
-        const uid = doc.id;
-        const targetUsd = targetMap.get(uid) || 0;
-        const achievedUsd = achievedMap.get(uid) || 0;
-        return {
-          uid,
-          name: String(data.name || data.fullName || data.email || "Sales Rep"),
-          targetUsd,
-          achievedUsd,
-          varianceUsd: achievedUsd - targetUsd,
-        };
-      });
+    const targets = usersSnap.docs.map((doc) => {
+      const data = doc.data() || {};
+      const uid = doc.id;
+      const targetUsd = targetMap.get(uid) || 0;
+      const achievedUsd = achievedMap.get(uid) || 0;
+      return {
+        uid,
+        name: String(data.name || data.fullName || data.email || "Sales Rep"),
+        targetUsd,
+        achievedUsd,
+        varianceUsd: achievedUsd - targetUsd,
+      };
+    });
 
     return NextResponse.json({ ok: true, month: monthKey, targets });
   } catch (err: any) {

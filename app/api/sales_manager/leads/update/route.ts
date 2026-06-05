@@ -3,7 +3,6 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { docTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
-  getSalesManagerTeamMemberIds,
   notifyUsers,
   parseString,
   requireSalesManager,
@@ -25,8 +24,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing lead id." }, { status: 400 });
     }
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-
     const leadRef = adminDb.collection("leads").doc(id);
     let assignedUserId: string | null = null;
     let assignedUserName: string | null = null;
@@ -40,10 +37,6 @@ export async function POST(req: Request) {
       const data = snap.data() || {};
       if (docTenantId(data) !== auth.user.tenantId && auth.user.role !== "super_admin") {
         throw new Error("Forbidden");
-      }
-      if (memberIds !== null) {
-        const leadOwnerId = String(data.ownerId || "");
-        if (leadOwnerId && !memberIds.includes(leadOwnerId)) throw new Error("Forbidden");
       }
       const prevOwnerId = data.ownerId || null;
 

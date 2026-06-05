@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { TeamService } from "@/lib/teams/team-service";
-import { getSalesManagerTeamMemberIds, requireSalesManager } from "../_utils";
+import { requireSalesManager } from "../_utils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,33 +11,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const memberIds = await getSalesManagerTeamMemberIds(auth.user);
-    const tenantId = auth.user.tenantId || "";
-
-    const leadsBaseQuery = adminDb
-      .collection("leads")
-      .where("tenantId", "==", tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500);
-
-    const dealsBaseQuery = adminDb
-      .collection("deals")
-      .where("tenantId", "==", tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500);
-
-    const [usersSnap, leadsDocs, dealsDocs] = await Promise.all([
-      adminDb.collection("users").where("tenantId", "==", tenantId).where("role", "==", "sales").get(),
-      memberIds === null
-        ? leadsBaseQuery.get().then((s: any) => s.docs)
-        : TeamService.queryWithTeamFilter(leadsBaseQuery, "ownerId", memberIds),
-      memberIds === null
-        ? dealsBaseQuery.get().then((s: any) => s.docs)
-        : TeamService.queryWithTeamFilter(dealsBaseQuery, "ownerId", memberIds),
+    const [usersSnap, leadsSnap, dealsSnap] = await Promise.all([
+      adminDb.collection("users").where("tenantId", "==", auth.user.tenantId || "").where("role", "==", "sales").get(),
+      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const leadsCount = new Map<string, number>();
-    leadsDocs.forEach((doc: any) => {
+    leadsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const ownerId = String(data.ownerId || "");
       if (!ownerId) return;
@@ -50,7 +30,7 @@ export async function GET() {
     const lostCount = new Map<string, number>();
     const revenueWon = new Map<string, number>();
 
-    dealsDocs.forEach((doc: any) => {
+    dealsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
       const ownerId = String(data.ownerId || "");
       if (!ownerId) return;
@@ -65,22 +45,20 @@ export async function GET() {
       }
     });
 
-    const team = usersSnap.docs
-      .filter((doc: any) => memberIds === null || memberIds.includes(doc.id))
-      .map((doc: any) => {
-        const data = doc.data() || {};
-        const uid = doc.id;
-        return {
-          uid,
-          name: String(data.name || data.fullName || data.email || "Sales Rep"),
-          email: String(data.email || ""),
-          leadsAssigned: leadsCount.get(uid) || 0,
-          dealsAssigned: dealsCount.get(uid) || 0,
-          closedWon: wonCount.get(uid) || 0,
-          closedLost: lostCount.get(uid) || 0,
-          revenueWon: revenueWon.get(uid) || 0,
-        };
-      });
+    const team = usersSnap.docs.map((doc) => {
+      const data = doc.data() || {};
+      const uid = doc.id;
+      return {
+        uid,
+        name: String(data.name || data.fullName || data.email || "Sales Rep"),
+        email: String(data.email || ""),
+        leadsAssigned: leadsCount.get(uid) || 0,
+        dealsAssigned: dealsCount.get(uid) || 0,
+        closedWon: wonCount.get(uid) || 0,
+        closedLost: lostCount.get(uid) || 0,
+        revenueWon: revenueWon.get(uid) || 0,
+      };
+    });
 
     return NextResponse.json({ ok: true, team });
   } catch (err: any) {
