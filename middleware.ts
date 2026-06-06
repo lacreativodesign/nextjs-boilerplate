@@ -169,7 +169,7 @@ function jsonError(req: NextRequest, status: number, message: string, code: "FOR
 }
 
 function withSecurityHeaders(response: NextResponse, nonce?: string) {
-  return applySecurityHeaders(response, nonce);
+  return applySecurityHeaders(response);
 }
 
 function isSuspiciousPath(req: NextRequest): boolean {
@@ -239,12 +239,12 @@ function applyRateHeaders(pathname: string, response: NextResponse, rateContext?
   remaining: number;
   resetSeconds: number;
   retryAfterSeconds: number;
-}, nonce?: string) {
+}) {
   const responseWithVersionHeaders = applyVersionHeaders(response, pathname);
   if (rateContext) {
     applyRateLimitHeaders(responseWithVersionHeaders.headers, rateContext);
   }
-  return withSecurityHeaders(responseWithVersionHeaders, nonce);
+  return withSecurityHeaders(responseWithVersionHeaders);
 }
 
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
@@ -252,9 +252,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     return withSecurityHeaders(NextResponse.next());
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-nonce", nonce);
 
   const startedAt = Date.now();
   const { pathname } = req.nextUrl;
@@ -278,9 +276,9 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         }),
         { requestId: req.headers.get("x-request-id") || undefined }
       );
-      return withSecurityHeaders(NextResponse.json(body, { status: 403 }), nonce);
+      return withSecurityHeaders(NextResponse.json(body, { status: 403 }));
     }
-    return withSecurityHeaders(new NextResponse("Suspicious request blocked.", { status: 403 }), nonce);
+    return withSecurityHeaders(new NextResponse("Suspicious request blocked.", { status: 403 }));
   }
 
   const sessionToken = req.cookies.get("lac_session")?.value;
@@ -331,7 +329,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         createdAt: new Date().toISOString(),
       });
 
-      return applyRateHeaders(pathname, blocked, rateContext, nonce);
+      return applyRateHeaders(pathname, blocked, rateContext);
     }
 
     rateContext = {
@@ -345,7 +343,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   // CSRF protection: state-changing API requests must include X-Requested-With header
   if (isApiRequest && ["POST", "PUT", "DELETE", "PATCH"].includes(req.method.toUpperCase()) && !shouldSkipCsrfCheck(pathname)) {
     if (req.headers.get("x-requested-with") !== "XMLHttpRequest") {
-      return withSecurityHeaders(NextResponse.json({ ok: false, error: "CSRF validation failed" }, { status: 403 }), nonce);
+      return withSecurityHeaders(NextResponse.json({ ok: false, error: "CSRF validation failed" }, { status: 403 }));
     }
   }
 
@@ -357,7 +355,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       const apiKey = req.headers.get("x-api-key");
       const keyValidation = verifyRotatingApiKey(apiKey);
       if (!keyValidation.valid) {
-        return applyRateHeaders(pathname, jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext, nonce);
+        return applyRateHeaders(pathname, jsonError(req, 401, "Missing or invalid API key.", "UNAUTHORIZED"), rateContext);
       }
 
       const signature = req.headers.get("x-signature");
@@ -366,7 +364,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       const payload = `${req.method.toUpperCase()}:${pathname}:${timestamp || ""}`;
 
       if (!(await verifyRequestSignature({ payload, signature, timestamp, secret: signingSecret }))) {
-        return applyRateHeaders(pathname, jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext, nonce);
+        return applyRateHeaders(pathname, jsonError(req, 401, "Invalid request signature.", "UNAUTHORIZED"), rateContext);
       }
     }
   }
@@ -379,7 +377,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     redirectLegacyPath(req, /^\/production-manager/, "/production_manager") ||
     redirectLegacyPath(req, /^\/customer/, "/client");
 
-  if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext, nonce);
+  if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext);
 
   // Skip tenant validation for login/signup pages
   if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/session-login')) {
@@ -387,11 +385,11 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   }
 
   if (pathname === "/" || pathname.startsWith("/set-password") || isPublicPagePath(pathname)) {
-    return applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext, nonce);
+    return applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext);
   }
 
   if (isApiRequest && isPublicApiPath(pathname)) {
-    const res = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext, nonce);
+    const res = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext);
     queueUsageLog(event, req, {
       endpoint: pathname,
       apiVersion,
@@ -414,9 +412,9 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   if ((pageRole || isApiRequest) && !sessionToken) {
     if (isApiRequest) {
-      return applyRateHeaders(pathname, jsonError(req, 401, "Unauthorized", "UNAUTHORIZED"), rateContext, nonce);
+      return applyRateHeaders(pathname, jsonError(req, 401, "Unauthorized", "UNAUTHORIZED"), rateContext);
     }
-    return applyRateHeaders(pathname, NextResponse.redirect(new URL("/login", req.url)), rateContext, nonce);
+    return applyRateHeaders(pathname, NextResponse.redirect(new URL("/login", req.url)), rateContext);
   }
 
   const requiresSubscriptionCheck = Boolean(sessionToken) && (Boolean(pageRole) || isApiRequest) && !pathname.startsWith("/billing");
@@ -441,17 +439,17 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     if (sessionRole !== "super_admin") {
       if (isHardLockedSubscription(subscriptionState)) {
         if (isApiRequest) {
-          return applyRateHeaders(pathname, jsonError(req, 403, "Subscription locked. Please update billing.", "SUBSCRIPTION_LOCKED"), rateContext, nonce);
+          return applyRateHeaders(pathname, jsonError(req, 403, "Subscription locked. Please update billing.", "SUBSCRIPTION_LOCKED"), rateContext);
         }
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = "/billing";
-        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
+        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
       }
 
       if (isApiRequest && isReadOnlySubscription(subscriptionState)) {
         const method = req.method.toUpperCase();
         if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-          return applyRateHeaders(pathname, jsonError(req, 403, "Subscription is read-only. Mutations are disabled.", "SUBSCRIPTION_READ_ONLY"), rateContext, nonce);
+          return applyRateHeaders(pathname, jsonError(req, 403, "Subscription is read-only. Mutations are disabled.", "SUBSCRIPTION_READ_ONLY"), rateContext);
         }
       }
     }
@@ -462,7 +460,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     if (sessionRole !== "admin" && sessionRole !== "super_admin") {
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = "/unauthorized";
-      return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
+      return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
     }
   }
 
@@ -484,11 +482,11 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       if (moduleEnabled === false) {
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = "/module-disabled";
-        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
+        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
       }
 
       if (moduleEnabled !== null) {
-        const response = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext, nonce);
+        const response = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext);
         response.headers.set("x-module-check", `${moduleKey}:${moduleEnabled ? "enabled" : "disabled"}`);
         response.cookies.set(cacheKey, `${cookieTenantId}:${moduleKey}:${moduleEnabled ? "1" : "0"}:${Date.now() + 30_000}`, {
           path: "/",
@@ -514,11 +512,11 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   if (isApiRequest && sessionRole) {
     const allowedRoles = rolesAllowedForApi(pathname);
     if (allowedRoles && !allowedRoles.includes(sessionRole)) {
-      return applyRateHeaders(pathname, jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN"), rateContext, nonce);
+      return applyRateHeaders(pathname, jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN"), rateContext);
     }
   }
 
-  const response = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext, nonce);
+  const response = applyRateHeaders(pathname, NextResponse.next({ request: { headers: requestHeaders } }), rateContext);
 
   if (subCacheValue) {
     response.cookies.set("sub_cache", subCacheValue, {

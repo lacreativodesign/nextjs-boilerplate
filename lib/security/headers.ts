@@ -5,8 +5,7 @@ function buildCsp(nonce?: string) {
 
   const scriptSrc = [
     "'self'",
-    nonce ? `'nonce-${nonce}'` : null,
-    "'strict-dynamic'",
+    "'unsafe-inline'",
     ...(isProd ? [] : ["'unsafe-eval'"]),
     "https://apis.google.com",
     "https://*.firebaseio.com",
@@ -43,9 +42,9 @@ export function getSecurityHeaders(nonce?: string): Record<string, string> {
   };
 }
 
-export function applySecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
+export function applySecurityHeaders(response: NextResponse, _nonce?: string): NextResponse {
   const headers = response.headers;
-  Object.entries(getSecurityHeaders(nonce)).forEach(([key, value]) => {
+  Object.entries(getSecurityHeaders()).forEach(([key, value]) => {
     headers.set(key, value);
   });
   return response;
