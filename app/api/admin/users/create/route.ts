@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     });
 
     // 7) Assign custom claims
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role: targetRole });
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role: targetRole, tenantId });
 
     // 8) Save user document in Firestore
     await adminDb
