@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
+import EmptyState from "@/components/ui/EmptyState";
 
 const STATUS_OPTIONS = ["", "Pending", "Paid", "Failed", "Refunded"].map((status) => ({
   label: status || "All Statuses",
@@ -293,8 +294,10 @@ export default function FinancePaymentsPage() {
                 </tr>
               ) : sortedPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 40 }}>
-                    No payments found.
+                  <td colSpan={8} style={{ padding: 0, border: "none" }}>
+                    <div className="p-6">
+                      <EmptyState title="No payments found" description="Payments will appear here once invoices are marked as paid." />
+                    </div>
                   </td>
                 </tr>
               ) : (
