@@ -12,12 +12,6 @@ if (process.env.ANALYZE === 'true') {
   }
 }
 
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: false,
-});
-
 const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
@@ -103,7 +97,7 @@ const sentryWebpackPluginOptions = {
 };
 
 module.exports = withSentryConfig(
-  withBundleAnalyzer(withPWA(nextConfig)),
+  withBundleAnalyzer(nextConfig),
   sentryWebpackPluginOptions,
   {
     hideSourceMaps: true,
