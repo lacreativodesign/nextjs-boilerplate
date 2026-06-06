@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+// Guards the controllerchange listener so it fires window.location.reload() at most once.
+let controllerChangeListenerAdded = false;
 import { attachForegroundNotifications, registerFcmToken, requestPushPermission } from "@/lib/pwa/push";
 
 type BeforeInstallPromptEvent = Event & {
@@ -101,6 +104,24 @@ export default function PWAInitializer() {
     void navigator.serviceWorker
       .register("/sw.js")
       .then(async (registration) => {
+        // Immediately check for a newer service worker version.
+        void registration.update();
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+
+        if (!controllerChangeListenerAdded) {
+          controllerChangeListenerAdded = true;
+          navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload());
+        }
+
         if (permission === "granted") {
           await registerFcmToken(registration);
         }
