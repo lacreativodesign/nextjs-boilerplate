@@ -192,9 +192,21 @@ export default function LoginPage() {
         throw new Error(errorData.error || 'Failed to create session. Please try again.');
       }
 
-      // Get user role and redirect with splash animation
-      const role = await fetchUserRole(userCred.user.uid);
-      const dest = getRoleRoute(role);
+      // Get user role via server API (Admin SDK — bypasses Firestore rules, works regardless of claims)
+      let dest = "/login";
+      try {
+        const ctxRes = await fetch("/api/tenant/context", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (ctxRes.ok) {
+          const ctx = await ctxRes.json();
+          const role = ctx?.user?.role || null;
+          dest = getRoleRoute(role);
+        }
+      } catch {
+        // fallback — keep dest as /login, user will re-authenticate
+      }
       setSplashDest(dest);
       setShowSplash(true);
     } finally {

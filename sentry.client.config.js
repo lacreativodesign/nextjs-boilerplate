@@ -43,35 +43,32 @@ Sentry.init({
 if (typeof window !== "undefined") {
   import("@/lib/firebaseClient")
     .then(({ getFirebaseAuth }) => {
-      try {
-        const auth = getFirebaseAuth();
-        auth.onAuthStateChanged((user) => {
-          if (user) {
-            Sentry.setUser({
-              id: user.uid,
-              email: user.email || undefined,
-            });
-            // Set tenant context from custom claims
-            user
-              .getIdTokenResult()
-              .then((tokenResult) => {
-                const tenantId = tokenResult.claims?.tenantId;
-                const role = tokenResult.claims?.role;
-                if (tenantId) {
-                  Sentry.setTag("tenant_id", tenantId);
-                }
-                if (role) {
-                  Sentry.setTag("user_role", role);
-                }
-              })
-              .catch(() => undefined);
-          } else {
-            Sentry.setUser(null);
-          }
-        });
-      } catch {
-        // Auth not available
-      }
+      return getFirebaseAuth();
+    })
+    .then((auth) => {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          Sentry.setUser({
+            id: user.uid,
+            email: user.email || undefined,
+          });
+          user
+            .getIdTokenResult()
+            .then((tokenResult) => {
+              const tenantId = tokenResult.claims?.tenantId;
+              const role = tokenResult.claims?.role;
+              if (tenantId) {
+                Sentry.setTag("tenant_id", tenantId);
+              }
+              if (role) {
+                Sentry.setTag("user_role", role);
+              }
+            })
+            .catch(() => undefined);
+        } else {
+          Sentry.setUser(null);
+        }
+      });
     })
     .catch(() => undefined);
 }

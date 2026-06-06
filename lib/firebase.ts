@@ -1,6 +1,6 @@
 // lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth as getAuthFromFirebase, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 const isBrowser = typeof window !== "undefined";
@@ -69,7 +69,7 @@ export function getAuthClient(): Auth {
   if (!app) {
     return createThrowingProxy<Auth>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
   }
-  return getAuth(app);
+  return getAuthFromFirebase(app);
 }
 
 export function getDbClient(): Firestore {
@@ -80,5 +80,15 @@ export function getDbClient(): Firestore {
   return getFirestore(app);
 }
 
-export const auth = getAuthClient();
-export const db = getDbClient();
+let _auth: ReturnType<typeof getAuthClient> | null = null;
+let _db: ReturnType<typeof getDbClient> | null = null;
+
+export function getAuth() {
+  if (!_auth) _auth = getAuthClient();
+  return _auth;
+}
+
+export function getDb() {
+  if (!_db) _db = getDbClient();
+  return _db;
+}
