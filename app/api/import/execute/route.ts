@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { batchImport } from '@/lib/import/batch-import';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { z } from 'zod';
 
-// Define schemas for each entity type
 const clientSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
@@ -44,26 +44,34 @@ function getSchemaForEntity(entityType: string): z.ZodSchema {
     products: productSchema,
     projects: projectSchema,
   };
-
   return schemas[entityType] || z.object({}).passthrough();
 }
 
 export async function POST(req: NextRequest) {
+  // Require authenticated admin or super_admin — tenantId comes from session, not request body
+  const auth = await requireAdminOrSuperAdmin();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  // Use tenantId from the authenticated session — never trust client-supplied tenantId
+  const tenantId = auth.user.tenantId as string;
+  if (!tenantId) {
+    return NextResponse.json({ error: 'Tenant not found in session' }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
-    const { tenantId, entityType, rows, mapping } = body;
+    const { entityType, rows, mapping } = body;
 
-    if (!tenantId || !entityType || !rows || !mapping) {
+    if (!entityType || !rows || !mapping) {
       return NextResponse.json(
-        { error: 'Missing required fields: tenantId, entityType, rows, mapping' },
+        { error: 'Missing required fields: entityType, rows, mapping' },
         { status: 400 },
       );
     }
 
-    // Get schema
     const schema = getSchemaForEntity(entityType);
-
-    // Map and validate rows
     const validRows: any[] = [];
     const errors: { row: number; field: string; error: string }[] = [];
 
@@ -71,58 +79,34 @@ export async function POST(req: NextRequest) {
       const row = rows[i];
       const mapped: any = {};
 
-      // Map fields
       for (const [systemField, fileField] of Object.entries(mapping)) {
         if (typeof fileField === 'string' && fileField !== '') {
           mapped[systemField] = row[fileField];
         }
       }
 
-      // Validate
       const result = schema.safeParse(mapped);
-
       if (!result.success) {
         result.error.errors.forEach((err) => {
-          errors.push({
-            row: i + 1,
-            field: err.path.join('.'),
-            error: err.message,
-          });
+          errors.push({ row: i + 1, field: err.path.join('.'), error: err.message });
         });
       } else {
         validRows.push(result.data);
       }
     }
 
-    // Return errors if validation failed
     if (errors.length > 0) {
       return NextResponse.json(
-        {
-          success: false,
-          errors,
-          validCount: validRows.length,
-          errorCount: errors.length,
-        },
+        { success: false, errors, validCount: validRows.length, errorCount: errors.length },
         { status: 400 },
       );
     }
 
-    // Import valid rows
     const result = await batchImport(tenantId, entityType, validRows);
 
-    return NextResponse.json({
-      success: true,
-      imported: result.imported,
-      total: result.total,
-    });
+    return NextResponse.json({ success: true, imported: result.imported, total: result.total });
   } catch (error: any) {
     console.error('Import execute error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Import failed',
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: error.message || 'Import failed' }, { status: 500 });
   }
 }

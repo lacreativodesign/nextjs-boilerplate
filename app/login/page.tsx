@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   type MultiFactorResolver,
 } from "firebase/auth";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { getRoleRoute } from "@/lib/roleRouting";
 import MFAVerify from "@/components/auth/MFAVerify";
 import { verifyMFASignIn } from "@/lib/auth/mfa";

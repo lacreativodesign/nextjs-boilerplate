@@ -6,28 +6,36 @@ export async function POST(req: Request) {
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
+  // tenantId comes from the authenticated session
+  const tenantId = auth.user.tenantId as string;
+  if (!tenantId) {
+    return NextResponse.json({ error: "Tenant not found in session" }, { status: 403 });
+  }
+
   try {
     const { email, password, role, name } = await req.json();
 
     if (!email || !password || !role) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1️⃣ Create user in Firebase Auth
+    // 1. Create user in Firebase Auth
     const userRecord = await adminAuth.createUser({
       email,
       password,
       displayName: name || "",
     });
 
-    // 2️⃣ Store user in Firestore
+    // 2. Set custom claims — role AND tenantId required for Firestore rules and middleware
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role, tenantId });
+
+    // 3. Store user document in Firestore with tenantId
     await adminDb.collection("users").doc(userRecord.uid).set({
+      uid: userRecord.uid,
       email,
       name: name || "",
       role,
+      tenantId,
       status: "active",
       createdAt: Date.now(),
     });
