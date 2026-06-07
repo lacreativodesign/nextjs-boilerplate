@@ -411,16 +411,37 @@ table tbody tr:hover { background: var(--table-row-hover); }
 .empty-state--compact .empty-state__description, .empty-state--compact .empty-state__hint { max-width: 260px; }
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 10px 18px;
-  border-radius: 10px; border: none; background: var(--erp-blue); color: #ffffff; font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 9px 20px; border-radius: 10px; border: none;
+  background: var(--erp-blue);
+  color: #ffffff; font-size: 13.5px; font-weight: 600; letter-spacing: 0.01em;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(37,99,235,0.20);
+  transition: background 140ms ease, box-shadow 140ms ease, transform 100ms ease, opacity 140ms ease;
 }
-.btn:hover { background: var(--erp-blue-hover); box-shadow: var(--shadow-sm); }
-.btn:disabled { opacity: 0.7; cursor: default; }
-.btn.ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--text-primary); }
-.btn.ghost:hover { background: var(--surface-muted); }
-.btn.subtle { background: var(--surface-muted); color: var(--text-primary); border: 1px solid var(--border-subtle); }
-.btn.subtle:hover { background: var(--surface-card); border-color: var(--border-strong); }
+.btn:hover {
+  background: var(--erp-blue-hover);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.14), 0 6px 18px rgba(37,99,235,0.28);
+  transform: translateY(-1px);
+}
+.btn:active { transform: translateY(0px); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn.ghost {
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.btn.ghost:hover { background: var(--surface-muted); border-color: var(--erp-blue); color: var(--erp-blue); transform: translateY(-1px); }
+.btn.ghost:active { transform: translateY(0px); }
+.btn.subtle {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-subtle);
+  box-shadow: none;
+}
+.btn.subtle:hover { background: var(--surface-card); border-color: var(--border-strong); color: var(--text-primary); transform: translateY(-1px); }
+.btn.subtle:active { transform: translateY(0px); }
 .badge-success, .pill-active {
   display: inline-flex;
   align-items: center;
