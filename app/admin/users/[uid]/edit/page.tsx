@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { SkeletonForm } from "@/components/ui/Skeleton";
 import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
 import {
@@ -281,6 +282,9 @@ export default function EditUserPage() {
 
   return (
     <div style={{ width: "100%" }}>
+      <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+        ← Back to Users
+      </Link>
       <h1 style={headerStyle}>Edit User</h1>
       <p style={subStyle}>Update profile, work details, and targets.</p>
 

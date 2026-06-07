@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   INTERNAL_ROLE_OPTIONS,
   USER_DEPARTMENT_VALUES,
@@ -164,6 +165,9 @@ export default function CreateUserPage() {
 
   return (
     <div style={{ width: "100%" }}>
+      <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+        ← Back to Users
+      </Link>
       <h1 style={headerStyle}>Create User</h1>
       <p style={subStyle}>Add a new team member and set role, department, payroll and targets.</p>
 

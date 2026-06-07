@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import type { SegmentDefinition } from "@/lib/segments";
 import { toastSuccess } from "@/lib/toast";
 
@@ -356,6 +357,9 @@ export default function EditClientPage() {
 
   return (
     <div style={styles.fullWidthWrap}>
+      <Link href="/admin/crm" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+        ← Back to CRM
+      </Link>
       <h1 style={styles.pageTitle}>Edit Client</h1>
       <div style={styles.pageSub}>Update client details and keep pipeline, payments and ownership aligned.</div>
 

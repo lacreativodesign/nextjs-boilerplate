@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SkeletonForm } from "@/components/ui/Skeleton";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function EditUserPage() {
   const params = useParams();
@@ -111,6 +112,9 @@ export default function EditUserPage() {
 
   return (
     <div style={{ maxWidth: 500 }}>
+      <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+        ← Back to Users
+      </Link>
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16 }}>
         Edit User
       </h2>
