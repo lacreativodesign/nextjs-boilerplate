@@ -48,11 +48,21 @@ export async function GET(req: NextRequest) {
     const mfaMap = new Map<string, boolean>();
 
     if (identifiers.length) {
-      const authResult = await adminAuth.getUsers(identifiers);
-      authResult.users.forEach((user) => {
-        const enrolled = user.multiFactor?.enrolledFactors || [];
-        mfaMap.set(user.uid, enrolled.length > 0);
-      });
+      try {
+        const chunks: { uid: string }[][] = [];
+        for (let i = 0; i < identifiers.length; i += 100) {
+          chunks.push(identifiers.slice(i, i + 100));
+        }
+        for (const chunk of chunks) {
+          const authResult = await adminAuth.getUsers(chunk);
+          authResult.users.forEach((user) => {
+            const enrolled = user.multiFactor?.enrolledFactors || [];
+            mfaMap.set(user.uid, enrolled.length > 0);
+          });
+        }
+      } catch (mfaError) {
+        console.warn("MFA lookup failed, returning users without MFA data:", mfaError);
+      }
     }
 
     const enriched = list.map((user) => ({
