@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatPkr } from "@/components/finance/financeUtils";
 import type { PayrollRecord } from "@/lib/finance/types";
+import EmptyState from "@/components/ui/EmptyState";
 
 const STATUS_OPTIONS = ["", "Draft", "Approved", "Paid"].map((status) => ({
   label: status || "All Statuses",
@@ -250,8 +251,10 @@ export default function FinancePayrollPage() {
                 </tr>
               ) : sortedPayroll.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 40 }}>
-                    No payroll entries found.
+                  <td colSpan={8} style={{ padding: 0, border: "none" }}>
+                    <div className="p-6">
+                      <EmptyState title="No payroll entries found" description="Run payroll to generate salary records for your team." />
+                    </div>
                   </td>
                 </tr>
               ) : (

@@ -445,7 +445,8 @@ select.input {
 }
 select option { color: var(--text-primary); background: var(--surface-card); }
 
-.tabs-bar { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 20px; }
+.tabs-bar { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 8px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 20px; padding-bottom: 2px; }
+.tabs-bar::-webkit-scrollbar { display: none; }
 .tab-pill {
   padding: 8px 14px; border-radius: 12px 12px 0 0; font-size: 13px; font-weight: 600; color: var(--text-muted);
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
