@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { SegmentDefinition } from "@/lib/segments";
@@ -626,6 +627,9 @@ export default function AddClientPage() {
 
   return (
     <div style={styles.fullWidthWrap}>
+      <Link href="/admin/crm" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+        ← Back to CRM
+      </Link>
       <h1 style={styles.pageTitle}>Add Client</h1>
       <div style={styles.pageSub}>
         Create a new client record and start tracking pipeline, payments and ownership.
