@@ -94,10 +94,6 @@ export default function ProductionFilesPage() {
         ))}
       </div>
 
-      <p className="helper-text">
-        Later this will connect to Firebase Storage + Firestore and follow
-        the Draft → Revision → Final workflow.
-      </p>
     </div>
   );
 }
