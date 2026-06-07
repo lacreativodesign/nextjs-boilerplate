@@ -174,7 +174,7 @@ export default function CreateUserPage() {
       <form onSubmit={onSubmit} style={shellStyle}>
         <div style={{ display: "grid", gap: 12 }}>
           <Section title="Personal Information">
-            <div style={grid6}>
+            <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Full Name" required />
                 <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
@@ -212,7 +212,7 @@ export default function CreateUserPage() {
           </Section>
 
           <Section title="Job Details">
-            <div style={grid6}>
+            <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Role" required />
                 <select
@@ -257,7 +257,7 @@ export default function CreateUserPage() {
           </Section>
 
           <Section title="Payroll & Targets">
-            <div style={grid6}>
+            <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Monthly Salary (PKR)" />
                 <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />

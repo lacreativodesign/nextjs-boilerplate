@@ -204,6 +204,10 @@ export default function BillingUpgradePage() {
           ← Back to billing
         </Link>
       </div>
+      <div className="mb-6">
+        <h1 className="page-title">Premium Upgrade</h1>
+        <p className="page-subtitle">Choose the right plan for your team.</p>
+      </div>
 
       <section className="relative overflow-hidden rounded-[2rem] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-8 shadow-[var(--shadow-md)] sm:p-10">
         <div className="absolute inset-0 opacity-70 [background:radial-gradient(circle_at_top_left,_rgba(99,102,241,0.24),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.18),_transparent_30%)]" />
