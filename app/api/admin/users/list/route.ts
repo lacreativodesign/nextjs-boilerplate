@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { getCurrentUser, isAdminRole } from "../../_utils";
-import { paginationSchema } from "@/lib/validations/common";
-import { validateQuery } from "@/lib/validations/validate";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security";
 
@@ -11,40 +9,30 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     const current = await getCurrentUser();
-    if (!current || (!isAdminRole(current.role) && current.role !== 'super_admin')) {
+    if (!current || (!isAdminRole(current.role) && current.role !== "super_admin")) {
       throw new AppError({ message: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
     }
 
     await checkRateLimit(req, "relaxed", current.uid);
 
-    void validateQuery(paginationSchema, req.nextUrl.searchParams);
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "500"), 500);
 
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
-
-    let query: FirebaseFirestore.Query = adminDb
+    // Single-field where() needs no composite index — orderBy is done in JS below
+    const snap = await adminDb
       .collection("users")
       .where("tenantId", "==", current.tenantId)
-      .orderBy("createdAt", "desc")
-      .limit(limit + 1);
+      .limit(limit)
+      .get();
 
-    if (cursor) {
-      const cursorDoc = await adminDb.collection("users").doc(cursor).get();
-      if (cursorDoc.exists && cursorDoc.data()?.tenantId === current.tenantId) {
-        query = query.startAfter(cursorDoc);
-      }
-    }
+    const list = snap.docs
+      .map((d) => ({ uid: d.id, ...d.data() }))
+      .sort((a: any, b: any) => {
+        const aTime = typeof a.createdAt === "number" ? a.createdAt : (a.createdAt?.toMillis?.() ?? 0);
+        const bTime = typeof b.createdAt === "number" ? b.createdAt : (b.createdAt?.toMillis?.() ?? 0);
+        return bTime - aTime;
+      });
 
-    const snap = await query.get();
-    const hasMore = snap.docs.length > limit;
-    const pageDocs = snap.docs.slice(0, limit);
-
-    const list = pageDocs.map((d) => ({
-      uid: d.id,
-      ...d.data(),
-    }));
-
-    const identifiers = list.map((user) => ({ uid: user.uid })).filter((item) => Boolean(item.uid));
+    const identifiers = list.map((user: any) => ({ uid: user.uid })).filter((item: any) => Boolean(item.uid));
     const mfaMap = new Map<string, boolean>();
 
     if (identifiers.length) {
@@ -65,17 +53,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const enriched = list.map((user) => ({
+    const enriched = list.map((user: any) => ({
       ...user,
       mfaEnabled: mfaMap.get(user.uid) || false,
     }));
 
     return NextResponse.json({
       users: enriched,
-      pagination: {
-        hasMore,
-        nextCursor: hasMore ? pageDocs[pageDocs.length - 1].id : null,
-      },
+      pagination: { hasMore: false, nextCursor: null },
     });
   } catch (e) {
     console.error("Error list users:", e);
