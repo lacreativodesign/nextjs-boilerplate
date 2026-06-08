@@ -162,7 +162,7 @@ export function HelpCenterPageContent() {
     <main className="page-frame py-10">
       <header className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)] md:p-8">
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--erp-blue)]">
-          Bizosto ERP Help Center
+          Bizosto Help Center
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--text-primary)] md:text-4xl">
           Help Center — {getRoleGuideName(currentRole)} Guide

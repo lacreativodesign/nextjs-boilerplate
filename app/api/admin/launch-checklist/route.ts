@@ -334,7 +334,7 @@ export async function POST(req: Request) {
         recipients.map((recipient) =>
           sendEmail({
             to: recipient.email,
-            subject: "Bizosto ERP production launch is live",
+            subject: "Bizosto production launch is live",
             html: `<p>Production launch has been approved.</p><p>Approved by: ${auth.user.email || auth.user.uid}</p><p>Time: ${new Date().toISOString()}</p>`,
             text: `Production launch has been approved. Approved by: ${auth.user.email || auth.user.uid}`,
           })

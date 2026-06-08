@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/super_admin/tenants" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View in Super Admin →</a></p>
 </td></tr>
-<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · bizosto.com</p></td></tr>
+<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · bizosto.com</p></td></tr>
 </table></td></tr></table></body></html>`,
           }).catch((err) => console.error('[STRIPE] Failed to notify super admin of upgrade', err));
         }
@@ -174,7 +174,7 @@ export async function POST(req: Request) {
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/super_admin/tenants" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View in Super Admin →</a></p>
 </td></tr>
-<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · bizosto.com</p></td></tr>
+<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · bizosto.com</p></td></tr>
 </table></td></tr></table></body></html>`,
         }).catch((err) => console.error('[STRIPE] Failed to notify super admin of cancellation', err));
         break;
@@ -274,7 +274,7 @@ export async function POST(req: Request) {
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/super_admin/payments" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View Failed Payments →</a></p>
 </td></tr>
-<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · bizosto.com</p></td></tr>
+<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · bizosto.com</p></td></tr>
 </table></td></tr></table></body></html>`,
         }).catch((err) => console.error('[STRIPE] Failed to notify super admin of payment failure', err));
         break;

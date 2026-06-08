@@ -373,7 +373,7 @@ export async function PUT(request: Request) {
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">
 <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#012167;">🆕 New Tenant Signed Up</h1>
-<p style="margin:0 0 24px;color:#64748B;font-size:14px;">A new workspace has been created on Bizosto ERP</p>
+<p style="margin:0 0 24px;color:#64748B;font-size:14px;">A new workspace has been created on Bizosto</p>
 <table width="100%" cellpadding="10" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:8px;margin:16px 0;">
 <tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Email</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${verification.email}</td></tr>
 <tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Tenant ID</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${verification.tenantId}</td></tr>
@@ -381,7 +381,7 @@ export async function PUT(request: Request) {
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/super_admin/tenants" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View in Super Admin →</a></p>
 </td></tr>
-<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
+<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table>
 </td></tr></table>
 </body></html>`,

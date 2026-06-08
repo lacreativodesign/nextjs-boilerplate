@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 <p style="margin:0 0 24px;color:#64748B;font-size:14px;">Please speak with your HR team if you have questions or need to resubmit.</p>
 <p style="margin:0;"><a href="https://app.bizosto.com/hr/leave" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View Leave →</a></p>
 </td></tr>
-<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
+<tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
       });
     }).catch((err) => console.error("[LEAVE_REJECT] Failed to email employee", err));

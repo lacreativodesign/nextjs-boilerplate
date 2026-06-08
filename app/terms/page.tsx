@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Bizosto ERP",
-  description: "Terms and conditions for using the Bizosto ERP platform.",
+  title: "Terms of Service | Bizosto",
+  description: "Terms and conditions for using the Bizosto platform.",
 };
 
 const SECTIONS = [
   {
     title: "1. Acceptance of Terms",
-    content: `By accessing or using the Bizosto ERP platform ("Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service. These terms apply to all users, including administrators, team members, and clients.`,
+    content: `By accessing or using the Bizosto platform ("Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service. These terms apply to all users, including administrators, team members, and clients.`,
   },
   {
     title: "2. Account Registration",

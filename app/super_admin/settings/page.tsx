@@ -23,7 +23,7 @@ const DEFAULTS: PlatformSettings = {
   maintenanceMessage: 'Bizosto is undergoing scheduled maintenance. Back soon.',
   defaultTrialDays: 14,
   supportEmail: 'support@bizosto.com',
-  platformName: 'Bizosto ERP',
+  platformName: 'Bizosto',
   announcementEnabled: false,
   announcementMessage: '',
   announcementType: 'info',
