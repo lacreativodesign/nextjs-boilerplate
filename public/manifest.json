@@ -1,7 +1,7 @@
 {
-  "name": "Bizosto ERP",
+  "name": "Bizosto",
   "short_name": "Bizosto",
-  "description": "Bizosto ERP multi-tenant operations platform",
+  "description": "The Operating System for Service Businesses.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

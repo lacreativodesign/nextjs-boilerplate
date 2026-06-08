@@ -23,7 +23,7 @@ export const WORKFLOW_TEMPLATES: Record<string, SeedTemplate> = {
         id: "welcome-email",
         type: "send_email",
         to: ["{{record.email}}"],
-        subject: "Welcome to Bizosto ERP",
+        subject: "Welcome to Bizosto",
         body: "Hello {{record.name}}, your account is now active.",
       },
     ],

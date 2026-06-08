@@ -17,8 +17,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Bizosto ERP",
-  description: "Bizosto ERP multi-tenant operations platform",
+  title: "Bizosto",
+  description: "The Operating System for Service Businesses.",
   manifest: "/manifest.json",
   icons: {
     icon: [

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Bizosto ERP",
+  title: "Privacy Policy | Bizosto",
   description: "How Bizosto collects, uses, and protects your data.",
 };
 
@@ -13,7 +13,7 @@ const SECTIONS = [
   },
   {
     title: "2. How We Use Your Information",
-    content: `We use your information to provide, maintain, and improve the Bizosto ERP platform; process transactions; send service-related communications; respond to support requests; and comply with legal obligations. We do not sell your personal data to third parties.`,
+    content: `We use your information to provide, maintain, and improve the Bizosto platform; process transactions; send service-related communications; respond to support requests; and comply with legal obligations. We do not sell your personal data to third parties.`,
   },
   {
     title: "3. Data Storage and Security",
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
           <p className="mt-4 text-sm text-[var(--text-muted)]">
             This Privacy Policy describes how LA Creativo Group (&quot;we&quot;, &quot;us&quot;, or
             &quot;Bizosto&quot;) collects, uses, and protects your information when you use
-            the Bizosto ERP platform at{" "}
+            the Bizosto platform at{" "}
             <a href="https://bizosto.com" className="text-[var(--erp-blue)] hover:underline">
               bizosto.com
             </a>

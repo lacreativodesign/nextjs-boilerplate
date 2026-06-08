@@ -103,7 +103,7 @@ export default function FinanceReportsPage() {
     if (!profitLossReport) {
       return;
     }
-    await exportProfitLossToPDF(profitLossReport, { name: "Bizosto ERP" });
+    await exportProfitLossToPDF(profitLossReport, { name: "Bizosto" });
   };
 
   const exportToExcel = () => {

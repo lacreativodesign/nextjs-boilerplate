@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { PricingPageClient } from "@/components/pricing/PricingPageClient";
 
 export const metadata: Metadata = {
-  title: "Bizosto ERP Pricing | Starter, Pro, Enterprise",
+  title: "Bizosto Pricing | Starter, Pro, Enterprise",
   description:
-    "Compare Bizosto ERP plans for Starter, Pro, and Enterprise. Start a 14-day free trial or schedule a live demo.",
+    "Compare Bizosto plans for Starter, Pro, and Enterprise. Start a 14-day free trial or schedule a live demo.",
   keywords: [
     "Bizosto pricing",
     "ERP pricing",
@@ -16,15 +16,15 @@ export const metadata: Metadata = {
     canonical: "/pricing",
   },
   openGraph: {
-    title: "Bizosto ERP Pricing",
+    title: "Bizosto Pricing",
     description: "Transparent pricing with monthly and annual billing for Starter, Pro, and Enterprise.",
     url: "/pricing",
-    siteName: "Bizosto ERP",
+    siteName: "Bizosto",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bizosto ERP Pricing",
+    title: "Bizosto Pricing",
     description: "Flexible ERP plans for growing businesses. Start your 14-day free trial.",
   },
 };
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 const pricingStructuredData = {
   "@context": "https://schema.org",
   "@type": "Product",
-  name: "Bizosto ERP",
+  name: "Bizosto",
   description: "Multi-tenant ERP platform for operations, finance, HR, and CRM.",
   brand: {
     "@type": "Brand",

@@ -63,7 +63,7 @@ async function classifyWithAI(
         messages: [
           {
             role: "user",
-            content: `You are a SaaS support AI for Bizosto ERP. Analyze this bug report and respond ONLY with a JSON object, no markdown, no explanation.
+            content: `You are a SaaS support AI for Bizosto. Analyze this bug report and respond ONLY with a JSON object, no markdown, no explanation.
 
 Title: ${title}
 Description: ${description}

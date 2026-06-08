@@ -206,7 +206,7 @@ export function PricingPageClient() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-gray-700">Bizosto ERP Pricing</p>
+          <p className="text-sm font-semibold text-gray-700">Bizosto Pricing</p>
           <div className="flex items-center gap-2">
             <Link
               href="/signup?trial=14"

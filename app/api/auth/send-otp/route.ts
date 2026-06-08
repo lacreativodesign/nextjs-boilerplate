@@ -33,7 +33,7 @@ function otpEmailHtml(otp: string, email: string): string {
 <p style="margin:0;font-size:13px;color:#94A3B8;">If you did not request this, you can safely ignore this email.</p>
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;">
-<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a></p>
+<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a></p>
 </td></tr>
 </table></td></tr></table>
 </body></html>`;

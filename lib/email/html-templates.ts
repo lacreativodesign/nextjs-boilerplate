@@ -19,7 +19,7 @@ function shell(body: string): string {
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">${body}</td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;">
-<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#2563EB;text-decoration:none;">Support</a></p>
+<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#2563EB;text-decoration:none;">Support</a></p>
 </td></tr>
 </table>
 </td></tr>
@@ -175,7 +175,7 @@ export function invoiceEmailHtml(data: InvoiceEmailData): string {
     <tr><td style="color:#64748B;font-size:13px;border-top:1px solid #F1F5F9;">Due Date</td><td style="font-weight:600;color:#DC2626;text-align:right;border-top:1px solid #F1F5F9;">${dueDate}</td></tr>
     </table>
     ${btn("View & Pay Invoice", viewUrl)}
-    <p style="font-size:13px;color:#94A3B8;">This invoice was sent via Bizosto ERP. If you have questions, contact the sender directly.</p>
+    <p style="font-size:13px;color:#94A3B8;">This invoice was sent via Bizosto. If you have questions, contact the sender directly.</p>
   `);
 }
 

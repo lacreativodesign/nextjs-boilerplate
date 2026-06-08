@@ -50,7 +50,7 @@ function getEmailShell(content: string) {
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">${content}</td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;">
-<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto ERP · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#012167;text-decoration:none;">Support</a></p>
+<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#012167;text-decoration:none;">Support</a></p>
 </td></tr>
 </table>
 </td></tr>
