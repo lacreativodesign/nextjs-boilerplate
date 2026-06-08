@@ -90,7 +90,6 @@ export default function UsersPage() {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
   const [resettingMfaUid, setResettingMfaUid] = useState<string | null>(null);
-  const [creatingUser, setCreatingUser] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedActive, setAdvancedActive] = useState(false);
 
