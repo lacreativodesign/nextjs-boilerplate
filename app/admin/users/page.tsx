@@ -466,29 +466,6 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setAdvancedOpen(true)}
-            style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 600 }}
-          >
-            🔍 Advanced Search
-          </button>
-          <LoadingButton
-            type="button"
-            className="btn"
-            loading={creatingUser}
-            loadingText="Opening..."
-            onClick={() => {
-              setCreatingUser(true);
-              router.push("/users/add");
-            }}
-            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
-          >
-            + Create User
-          </LoadingButton>
-        </div>
       </div>
 
       <div
@@ -522,9 +499,23 @@ export default function UsersPage() {
             {advancedActive ? "Reset Search" : "Reset Filters"}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {loading ? "Loading..." : `${sorted.length} user(s)`}
-        </div>
+        {!loading && sorted.length > 0 && (
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 12px",
+            borderRadius: 999,
+            background: "var(--surface-muted)",
+            border: "1px solid var(--border-subtle)",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--text-secondary)",
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--erp-blue)", display: "inline-block" }} />
+            {sorted.length} {sorted.length === 1 ? "user" : "users"}
+          </div>
+        )}
       </div>
 
       <div className="table-shell">
