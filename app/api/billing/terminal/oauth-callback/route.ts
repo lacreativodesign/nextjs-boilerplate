@@ -18,6 +18,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/billing/terminal?connect_error=1`);
     }
 
+    const nonceRef = adminDb.collection("stripe_connect_states").doc(state);
+    const nonceSnap = await nonceRef.get();
+
+    if (!nonceSnap.exists) {
+      return NextResponse.redirect(`${appUrl}/billing/terminal?connect_error=1`);
+    }
+
+    const nonceData = nonceSnap.data() as {
+      tenantId: string;
+      uid: string;
+      createdAt: string;
+      expiresAt: string;
+      consumedAt: string | null;
+    };
+
+    if (nonceData.consumedAt !== null) {
+      return NextResponse.redirect(`${appUrl}/billing/terminal?connect_error=1`);
+    }
+
+    if (new Date(nonceData.expiresAt) < new Date()) {
+      return NextResponse.redirect(`${appUrl}/billing/terminal?connect_error=1`);
+    }
+
+    const tenantId = nonceData.tenantId;
+
     const stripe = getStripeClient();
     const response = await stripe.oauth.token({ grant_type: "authorization_code", code });
     const stripeConnectAccountId = response.stripe_user_id;
@@ -28,8 +53,10 @@ export async function GET(req: NextRequest) {
 
     await adminDb
       .collection("tenants")
-      .doc(state)
+      .doc(tenantId)
       .set({ stripeConnectAccountId, updatedAt: new Date().toISOString() }, { merge: true });
+
+    await nonceRef.set({ consumedAt: new Date().toISOString() }, { merge: true });
 
     return NextResponse.redirect(`${appUrl}/billing/terminal?connect_success=1`);
   } catch (error: unknown) {
