@@ -1,6 +1,6 @@
 // lib/firebaseClient.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from "firebase/auth";
 import { getFirestore, doc, getDoc, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -56,9 +56,15 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
     clientsPromise = (async () => {
       const config = await fetchFirebaseConfig();
       const app = getApps().length ? getApp() : initializeApp(config);
+      const auth = getAuth(app);
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (err) {
+        console.error("Failed to set auth persistence:", err);
+      }
       return {
         app,
-        auth: getAuth(app),
+        auth,
         db: getFirestore(app),
         storage: getStorage(app),
       };

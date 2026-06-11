@@ -123,6 +123,29 @@ export default function RequireAuth({ allowed, children }: Props) {
         if (cancelled) return;
         unsub = onAuthStateChanged(auth, async (user) => {
           if (!user) {
+            try {
+              const res = await fetch("/api/tenant/context", { credentials: "include" });
+              if (res.ok) {
+                const data = await res.json();
+                const role = normalizeRole(data?.user?.role);
+                if (role === "super_admin") {
+                  setOk(true);
+                  setReady(true);
+                  return;
+                }
+                if (role && allowedRoles.includes(role)) {
+                  setOk(true);
+                  setReady(true);
+                  return;
+                }
+                redirectingRef.current = true;
+                router.replace(role ? "/unauthorized" : "/login");
+                setReady(true);
+                return;
+              }
+            } catch {
+              // network error — fall through to redirect
+            }
             redirectingRef.current = true;
             router.replace("/login");
             setReady(true);
