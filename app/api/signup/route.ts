@@ -8,6 +8,7 @@ import { sendEmail } from '@/lib/email/email-service';
 import { welcomeEmailHtml, welcomeEmailSubject } from '@/lib/email/html-templates';
 import { DEFAULT_ROLES } from '@/lib/tenant/constants';
 import { createTenantWorkspace } from '@/lib/tenant/onboarding';
+import { PLAN_MODULES } from '@/app/config/plans';
 
 export const runtime = 'nodejs';
 
@@ -73,33 +74,7 @@ function getClientIp(request: Request) {
 }
 
 function buildModulesEnabled(selectedPlan: 'starter' | 'pro' | 'enterprise') {
-  const starter = {
-    crm: true,
-    sales: true,
-    projects: true,
-    finance: true,
-    reports: true,
-    hr: false,
-    ai_workforce: false,
-  };
-
-  const pro = {
-    ...starter,
-    hr: true,
-    ai_workforce: true,
-    embed: true,
-  };
-
-  if (selectedPlan === 'starter') return starter;
-  if (selectedPlan === 'pro') return pro;
-
-  return {
-    ...pro,
-    whitelabel: true,
-    custom_domain: true,
-    ai_reports: true,
-    client_stripe_connect: true,
-  };
+  return { ...PLAN_MODULES[selectedPlan] };
 }
 
 async function generateUniqueTenantId(companyName: string) {
