@@ -77,5 +77,6 @@ export function canAccessPlanModule({
   role?: string | null;
 }) {
   if (isSuperAdminRole(role)) return true;
-  return modules?.[moduleKey] !== false;
+  if (!modules || typeof modules !== 'object') return false;
+  return modules[moduleKey] === true;
 }

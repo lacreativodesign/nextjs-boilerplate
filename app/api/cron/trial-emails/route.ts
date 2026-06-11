@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
     const tenantsSnapshot = await adminDb
       .collection("tenants")
       .where("plan", "==", "trial")
-      .where("status", "in", ["trial", "active"])
       .limit(500)
       .get();
 

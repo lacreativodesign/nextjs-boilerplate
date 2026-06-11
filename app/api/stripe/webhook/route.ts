@@ -392,7 +392,6 @@ export async function POST(req: Request) {
     if (processedSnap.exists) {
       return NextResponse.json({ ok: true, received: true });
     }
-    await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
 
     if (!ALLOWED_EVENTS.has(event.type)) {
       return NextResponse.json({ ok: false, error: "Unhandled event type." }, { status: 400 });
@@ -416,25 +415,35 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Missing checkout details." }, { status: 400 });
       }
 
-      const tenantResult = await ensureTenantForCheckout({
-        email,
-        stripeCustomerId,
-        stripeSubscriptionId,
-        billingCycle,
-      });
+      try {
+        const tenantResult = await ensureTenantForCheckout({
+          email,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          billingCycle,
+        });
 
-      await ensureAdminUser({
-        email,
-        tenantId: tenantResult.tenantId,
-        tenantName: tenantResult.tenantName,
-      });
+        await ensureAdminUser({
+          email,
+          tenantId: tenantResult.tenantId,
+          tenantName: tenantResult.tenantName,
+        });
 
-      return NextResponse.json({ ok: true, received: true, tenantId: tenantResult.tenantId });
+        await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+        return NextResponse.json({ ok: true, received: true, tenantId: tenantResult.tenantId });
+      } catch (handlerErr) {
+        throw handlerErr;
+      }
     }
 
-    const subscription = event.data.object as Stripe.Subscription;
-    await updateSubscriptionStatus({ subscription, eventType: event.type });
-    return NextResponse.json({ ok: true, received: true });
+    try {
+      const subscription = event.data.object as Stripe.Subscription;
+      await updateSubscriptionStatus({ subscription, eventType: event.type });
+      await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+      return NextResponse.json({ ok: true, received: true });
+    } catch (handlerErr) {
+      throw handlerErr;
+    }
   } catch (err) {
     console.error("stripe webhook error:", err);
     return NextResponse.json({ ok: false, error: "Webhook error." }, { status: 500 });

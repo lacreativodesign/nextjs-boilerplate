@@ -36,6 +36,8 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const checklistRef = tenantRef.collection('onboarding_progress').doc('checklist');
 
+  const planKey = plan === 'professional' ? 'pro' : plan === 'enterprise' ? 'enterprise' : plan === 'trial' ? 'trial' : plan === 'starter' ? 'starter' : 'trial';
+
   await adminDb.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
     const nowIso = new Date().toISOString();
     const tenantSnap = await tx.get(tenantRef);
@@ -50,18 +52,7 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
       ownerId: ownerId || null,
       status: plan === 'trial' ? 'trial' : 'active',
       plan: 'trial',
-      modules: {
-        crm: true,
-        sales: true,
-        production: true,
-        projects: true,
-        approvals: true,
-        notifications: true,
-        finance: true,
-        hr: true,
-        reports: true,
-        client_stripe_connect: false,
-      },
+      modules: PLAN_MODULES[planKey],
       trialEndsAt: trialEndsAt || null,
       createdAt: nowIso,
       updatedAt: nowIso,
