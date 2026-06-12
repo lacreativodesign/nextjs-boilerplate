@@ -151,6 +151,7 @@ export default function ClientsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<ClientRecord[]>([]);
@@ -214,6 +215,13 @@ export default function ClientsPage() {
           cache: "no-store",
           credentials: "include",
         });
+
+        if (res.status === 403) {
+          if (!alive) return;
+          setAccessDenied(true);
+          setRows([]);
+          return;
+        }
 
         const json = await res.json().catch(() => ({}));
 
@@ -628,6 +636,12 @@ export default function ClientsPage() {
         {/* Loading state: keep table structure stable with skeletons. */}
         {loading ? (
           <SkeletonTable rows={6} columns={6} />
+        ) : accessDenied ? (
+          <EmptyState
+            title="You don't have access to this section."
+            description="Contact your administrator if you believe this is a mistake."
+            action={{ label: "Go to Dashboard", onClick: () => router.push("/") }}
+          />
         ) : error ? (
           <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
         ) : sorted.length === 0 ? (

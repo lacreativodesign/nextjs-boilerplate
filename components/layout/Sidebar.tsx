@@ -4,11 +4,36 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
-  Package, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, X, SlidersHorizontal, HelpCircle,
+  Factory, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
+  Shield, X, SlidersHorizontal, FileText, CalendarDays, FolderOpen,
+  GitPullRequest, type LucideProps,
 } from "lucide-react";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import { useSidebar } from "@/lib/context/SidebarContext";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { getNavigationForRole } from "@/lib/navigation/sidebarConfig";
+
+type IconComponent = ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+
+const ICON_MAP: Record<string, IconComponent> = {
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  TrendingUp,
+  FolderKanban,
+  Factory,
+  DollarSign,
+  UserCircle,
+  BarChart3,
+  Settings,
+  CreditCard,
+  Shield,
+  SlidersHorizontal,
+  FileText,
+  CalendarDays,
+  FolderOpen,
+  GitPullRequest,
+};
 
 type SidebarProps = {
   currentRole: string;
@@ -34,32 +59,9 @@ export default function Sidebar({
   const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
   const { t } = useI18n();
 
-  // module key → which sidebar item it gates (for admin role only)
-  // null means always visible regardless of plan
-  const ALL_ITEMS = [
-    { href: "/dashboard",           label: t("navigation.dashboard"),  icon: LayoutDashboard, roles: ["admin", "super_admin"],                                                                                                                         module: null },
-    { href: "/users",               label: t("navigation.users"),       icon: Users,           roles: ["admin", "super_admin", "hr"],                                                                                                                    module: null },
-    { href: "/clients",             label: t("navigation.clients"),     icon: Briefcase,       roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager"],                                                                          module: "crm" },
-    { href: "/sales",               label: t("navigation.sales"),       icon: TrendingUp,      roles: ["admin", "super_admin", "sales", "sales_manager"],                                                                                               module: "sales" },
-    { href: "/projects",            label: t("navigation.projects"),    icon: FolderKanban,    roles: ["admin", "super_admin", "am", "am_manager", "production", "production_manager"],                                                                 module: "projects" },
-    { href: "/production",          label: t("navigation.production"),  icon: Package,         roles: ["admin", "super_admin", "production", "production_manager"],                                                                                     module: "production" },
-    { href: "/finance",             label: t("navigation.finance"),     icon: DollarSign,      roles: ["admin", "super_admin", "finance"],                                                                                                               module: "finance" },
-    { href: "/hr",                  label: t("navigation.hr"),          icon: UserCircle,      roles: ["admin", "super_admin", "hr"],                                                                                                                    module: "hr" },
-    { href: "/reports",             label: t("navigation.reports"),     icon: BarChart3,       roles: ["admin", "super_admin", "sales_manager", "am_manager", "production_manager", "finance", "hr"],                                                   module: "reports" },
-    { href: "/billing",             label: "Billing",                   icon: CreditCard,      roles: ["admin", "super_admin"],                                                                                                                          module: null },
-    { href: "/admin/settings",              label: "Admin Settings",   icon: SlidersHorizontal, roles: ["admin", "super_admin"],                                                                                                                       module: null },
-    { href: "/super_admin",         label: t("navigation.superAdmin"),  icon: Shield,          roles: ["super_admin"],                                                                                                                                   module: null },
-    { href: "/help",                label: "Help",                      icon: HelpCircle,      roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"],           module: null },
-    { href: "/settings",            label: t("common.settings"),        icon: Settings,        roles: ["admin", "super_admin", "sales", "sales_manager", "am", "am_manager", "production", "production_manager", "finance", "hr", "client"],             module: null },
-  ];
-
-  const navItems = ALL_ITEMS.filter((item) => {
-    // Must match role
-    if (!item.roles.includes(currentRole)) return false;
-
+  const navItems = getNavigationForRole(currentRole).filter((item) => {
     // Module gating — only applies to admin role (other roles have their own dedicated dashboards)
     // super_admin bypasses all module checks
-    // trial plan bypasses module checks (full access during trial)
     if (
       item.module &&
       currentRole === "admin" &&
@@ -67,9 +69,11 @@ export default function Sidebar({
     ) {
       return tenantModules[item.module] !== false;
     }
-
     return true;
-  });
+  }).map((item) => ({
+    ...item,
+    label: item.labelKey ? t(item.labelKey, item.label) : item.label,
+  }));
 
   const labelsClass = [
     isMobileOpen ? "sidebar-mobile-open" : "",
@@ -159,14 +163,14 @@ export default function Sidebar({
           {/* px-4 on links → icon starts at 16px, center = 16+16 = 32px = half of 64px */}
           <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
-              const Icon = item.icon;
+              const Icon: IconComponent = ICON_MAP[item.icon] ?? LayoutDashboard;
               const isActive =
                 pathname === item.href ||
                 pathname.startsWith(item.href + "/");
               const opensInNewTab = item.href === "/help";
               return (
                 <Link
-                  key={item.href}
+                  key={item.id}
                   id={item.href === "/dashboard" ? "sidebar-dashboard" : undefined}
                   href={item.href}
                   title={item.label}
