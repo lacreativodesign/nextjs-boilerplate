@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import {
@@ -23,6 +22,10 @@ export async function POST(req: Request) {
     const auth = await requireSalesWrite();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -49,10 +52,10 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
-    const tenantId = String(data.tenantId || auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = String(data.tenantId || auth.user.tenantId);
     const actorName = userLabel(auth.user);
 
-    if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
+    if (tenantId !== String(auth.user.tenantId)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 

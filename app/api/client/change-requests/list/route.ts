@@ -45,7 +45,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
     const { searchParams } = new URL(req.url);
     const status = String(searchParams.get("status") || "").trim();
     const type = String(searchParams.get("type") || "").trim();

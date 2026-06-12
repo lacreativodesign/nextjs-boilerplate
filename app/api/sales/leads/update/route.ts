@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   createSalesEvent,
   getUserNameById,
@@ -37,7 +37,10 @@ export async function POST(req: Request) {
 
     const existing = snapshot.data() || {};
     const role = auth.user.role || "";
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const canWrite = await requireSalesWrite();
     if (!canWrite.ok) {
       return NextResponse.json({ ok: false, error: canWrite.error }, { status: canWrite.status });

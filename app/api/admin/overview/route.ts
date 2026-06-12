@@ -61,7 +61,10 @@ export async function GET() {
     const cached = redis ? await redis.get(cacheKey) : null;
     if (cached) return NextResponse.json(JSON.parse(String(cached)));
 
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings()]);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();

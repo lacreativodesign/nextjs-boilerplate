@@ -29,7 +29,10 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
     const snap = await adminDb
       .collection("invoices")
       .where("clientId", "==", auth.clientId)

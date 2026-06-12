@@ -26,7 +26,10 @@ export async function POST(req: Request) {
     }
 
     const toStatus = decision.startsWith("approve") ? "Approved" : "Rejected";
-    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
 
     const ref = adminDb.collection("changeRequests").doc(changeRequestId);
     const snap = await ref.get();

@@ -22,7 +22,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
     const projectId = cleanString(body?.projectId);
     const type = cleanString(body?.type);
