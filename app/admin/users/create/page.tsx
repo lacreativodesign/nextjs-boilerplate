@@ -17,6 +17,8 @@ type UserStatus = "active" | "disabled";
 type Role = InternalRole;
 type Department = UserDepartment;
 
+type ManagerOption = { uid: string; name: string; email: string; role: string };
+
 type UserCreatePayload = {
   name: string;
   email: string;
@@ -31,6 +33,7 @@ type UserCreatePayload = {
   salary: number | null;
   monthlyTarget: number | null;
   commission: number | null;
+  managerId?: string;
 };
 
 type PostWithFallbackResult =
@@ -89,6 +92,27 @@ export default function CreateUserPage() {
   const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
 
+  const [managerId, setManagerId] = useState("");
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+
+  useEffect(() => {
+    if (!role) return;
+    let alive = true;
+    setManagerId("");
+    setManagers([]);
+    fetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!alive) return;
+        if (data.ok) setManagers(data.managers || []);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [role]);
+
   const muted = "var(--text-muted)";
   const titleCol = "var(--text-primary)";
 
@@ -134,7 +158,7 @@ export default function CreateUserPage() {
 
     setSaving(true);
 
-    const payload = {
+    const payload: UserCreatePayload = {
       name: fullName.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
@@ -148,6 +172,7 @@ export default function CreateUserPage() {
       salary: monthlySalaryPkr ? toNum(monthlySalaryPkr) : null,
       monthlyTarget: monthlyTargetUsd ? toNum(monthlyTargetUsd) : null,
       commission: commissionPct ? toNum(commissionPct) : null,
+      ...(managerId ? { managerId } : {}),
     };
 
     const result = await postWithFallback(["/api/admin/users/create", "/api/admin/users"], payload);
@@ -253,6 +278,20 @@ export default function CreateUserPage() {
                 <Label text="Joining Date" />
                 <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
               </div>
+
+              {managers.length > 0 && (
+                <div style={colSpan(2)}>
+                  <Label text="Reports To" />
+                  <select className="input" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+                    <option value="">Reports to CEO (Admin)</option>
+                    {managers.map((m) => (
+                      <option key={m.uid} value={m.uid}>
+                        {m.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </Section>
 

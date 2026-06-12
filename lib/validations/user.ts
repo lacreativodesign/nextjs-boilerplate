@@ -22,6 +22,7 @@ export const createUserSchema = z.object({
     .min(1, "Tenant id is required"),
   phone: phoneSchema.optional(),
   department: z.string().trim().min(1, "Department cannot be empty").optional(),
+  managerId: z.string().trim().optional(),
 });
 
 export const updateUserSchema = createUserSchema.partial();

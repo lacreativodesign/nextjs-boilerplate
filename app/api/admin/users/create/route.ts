@@ -12,6 +12,7 @@ import { logActivity } from '@/lib/activity/tracker';
 import { isRoleEnabled } from '@/lib/tenant/access';
 import { sendEmail } from '@/lib/email/email-service';
 import { getUsersByRoles } from '@/lib/notifications';
+import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 
 export const runtime = 'nodejs';
 
@@ -49,9 +50,10 @@ export async function POST(req: Request) {
       tenantId: current.tenantId || body?.tenantId || '',
       phone: body?.phone,
       department: body?.department,
+      managerId: body?.managerId,
     });
 
-    const { email, displayName, role, tenantId, phone, department } = validatedData;
+    const { email, displayName, role, tenantId, phone, department, managerId: rawManagerId } = validatedData;
 
     const {
       password,
@@ -92,6 +94,32 @@ export async function POST(req: Request) {
       );
     }
 
+    // Resolve managerId: validate if provided, else default to tenant admin uid
+    let managerId: string;
+    if (rawManagerId) {
+      const managerSnap = await adminDb.collection('users').doc(rawManagerId).get();
+      if (!managerSnap.exists) {
+        return NextResponse.json({ error: 'Invalid manager selection.' }, { status: 400 });
+      }
+      const managerData = managerSnap.data() || {};
+      if (String(managerData.tenantId || '') !== String(tenantId)) {
+        return NextResponse.json({ error: 'Invalid manager selection.' }, { status: 400 });
+      }
+      const eligibleRoles = eligibleManagerRolesFor(targetRole);
+      if (!eligibleRoles.includes(String(managerData.role || ''))) {
+        return NextResponse.json({ error: 'Invalid manager selection.' }, { status: 400 });
+      }
+      managerId = rawManagerId;
+    } else {
+      const adminSnap = await adminDb
+        .collection('users')
+        .where('tenantId', '==', tenantId)
+        .where('role', '==', 'admin')
+        .limit(1)
+        .get();
+      managerId = adminSnap.empty ? current.uid : adminSnap.docs[0].id;
+    }
+
     // 5) Check duplicate email
     const existingUser = await adminAuth.getUserByEmail(email).catch((err: any) => {
       if (err?.code === 'auth/user-not-found') {
@@ -123,6 +151,7 @@ export async function POST(req: Request) {
         name: displayName,
         email,
         role: targetRole,
+        managerId,
         tenantId,
         phone: phone || '',
         department: department || '',
@@ -156,6 +185,7 @@ export async function POST(req: Request) {
         name: displayName || email,
         email,
         role,
+        managerId,
         department: body?.department || role,
         status: 'active',
         joinedAt: admin.firestore.FieldValue.serverTimestamp(),
