@@ -110,5 +110,8 @@ export async function requireClient() {
   if (!clientId) {
     return { ok: false as const, status: 404, error: "Client profile not found" };
   }
-  return { ok: true as const, user: me, clientId, tenantId: me.tenantId || DEFAULT_TENANT_ID };
+  if (!me.tenantId) {
+    return { ok: false as const, status: 403, error: "Tenant context missing." };
+  }
+  return { ok: true as const, user: me, clientId, tenantId: me.tenantId };
 }
