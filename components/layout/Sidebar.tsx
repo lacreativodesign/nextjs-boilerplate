@@ -72,7 +72,7 @@ export default function Sidebar({
     return true;
   }).map((item) => ({
     ...item,
-    label: item.labelKey ? t(item.labelKey, item.label) : item.label,
+    label: item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label,
   }));
 
   const labelsClass = [
