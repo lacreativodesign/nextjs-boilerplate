@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TeamList from "@/components/manager/TeamList";
 
 type Workload = {
   openProjects: number;
@@ -67,6 +68,8 @@ export default function ProductionManagerPage() {
           </Link>
         ))}
       </div>
+
+      <TeamList endpoint="/api/production_manager/team" title="My Production Team" />
     </div>
   );
 }
