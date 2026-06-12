@@ -3,6 +3,7 @@ import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { getCurrentUser } from "../_utils";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
+import { eligibleManagerRolesFor } from "@/lib/hierarchy";
 
 export const runtime = "nodejs";
 
@@ -106,6 +107,28 @@ export async function POST(req: Request) {
       return Number.isFinite(num) ? num : existingValue ?? null;
     };
 
+    // managerId: validate if a new value is being set, otherwise preserve existing
+    let managerId: string = String(existing.managerId || "");
+    if (body?.managerId !== undefined && String(body.managerId || "").trim() !== "") {
+      const mid = String(body.managerId).trim();
+      const managerSnap = await adminDb.collection("users").doc(mid).get();
+      if (!managerSnap.exists) {
+        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+      }
+      const managerData = managerSnap.data() || {};
+      const tenantMatch = isSuperAdminRequester
+        ? true
+        : String(managerData.tenantId || "") === String(current.tenantId || "");
+      if (!tenantMatch) {
+        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+      }
+      const eligibleRoles = eligibleManagerRolesFor(role);
+      if (!eligibleRoles.includes(String(managerData.role || ""))) {
+        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+      }
+      managerId = mid;
+    }
+
     const updateData = {
       // core
       name,
@@ -116,6 +139,7 @@ export async function POST(req: Request) {
 
       status: normalizeString(body?.status || existing?.status || "active").toLowerCase(),
       role,
+      managerId,
       department,
 
       // ✅ correct key

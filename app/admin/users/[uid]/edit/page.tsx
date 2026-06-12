@@ -40,9 +40,12 @@ type UserDoc = {
   monthlyTarget?: number | null;
   commission?: number | null;
 
+  managerId?: string;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
+
+type ManagerOption = { uid: string; name: string; email: string; role: string };
 
 
 function toInputDate(iso?: string | null) {
@@ -98,6 +101,9 @@ export default function EditUserPage() {
   const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
 
+  const [managerId, setManagerId] = useState("");
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+
   const muted = "var(--text-muted)";
   const titleCol = "var(--text-primary)";
 
@@ -125,6 +131,22 @@ export default function EditUserPage() {
   const roles: Role[] = [...INTERNAL_ROLE_OPTIONS];
 
   const departments: Department[] = [...USER_DEPARTMENT_VALUES];
+
+  useEffect(() => {
+    if (!role) return;
+    let alive = true;
+    fetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!alive) return;
+        if (data.ok) setManagers(data.managers || []);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [role]);
 
   useEffect(() => {
     let unsub: Unsubscribe | null = null;
@@ -200,6 +222,7 @@ export default function EditUserPage() {
         setMonthlySalaryPkr(data?.salary == null ? "" : String(Number(data.salary)));
         setMonthlyTargetUsd(data?.monthlyTarget == null ? "" : String(Number(data.monthlyTarget)));
         setCommissionPct(data?.commission == null ? "" : String(Number(data.commission)));
+        setManagerId(String(data?.managerId || ""));
       } catch (e: unknown) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Failed to fetch user details.");
@@ -246,6 +269,7 @@ export default function EditUserPage() {
 
           status,
           role,
+          managerId: managerId || undefined,
           department,
 
           designation: designation.trim(),
@@ -343,6 +367,8 @@ export default function EditUserPage() {
                   onChange={(e) => {
                     const nextRole = e.target.value as Role;
                     setRole(nextRole);
+                    setManagerId("");
+                    setManagers([]);
                     const nextDepartment = getDefaultDepartmentForRole(nextRole);
                     if (nextDepartment) setDepartment(nextDepartment);
                   }}
@@ -375,6 +401,20 @@ export default function EditUserPage() {
                 <Label text="Joining Date" />
                 <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
               </div>
+
+              {managers.length > 0 && (
+                <div style={colSpan(2)}>
+                  <Label text="Reports To" />
+                  <select className="input" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+                    <option value="">Reports to CEO (Admin)</option>
+                    {managers.map((m) => (
+                      <option key={m.uid} value={m.uid}>
+                        {m.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </Section>
 
