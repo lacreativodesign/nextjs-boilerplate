@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TeamList from "@/components/manager/TeamList";
 
 type KPIs = {
   newLeads30d: number;
@@ -75,6 +76,8 @@ export default function SalesManagerPage() {
           </Link>
         ))}
       </div>
+
+      <TeamList endpoint="/api/sales_manager/team" title="My Sales Team" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TeamList from "@/components/manager/TeamList";
 
 type Health = {
   activeClients: number;
@@ -67,6 +68,8 @@ export default function AmManagerPage() {
           </Link>
         ))}
       </div>
+
+      <TeamList endpoint="/api/am_manager/team" title="My Account Managers" />
     </div>
   );
 }
