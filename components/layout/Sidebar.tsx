@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
   Factory, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
   Shield, X, SlidersHorizontal, FileText, CalendarDays, FolderOpen,
-  GitPullRequest, type LucideProps,
+  GitPullRequest, UserPlus, type LucideProps,
 } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import { useSidebar } from "@/lib/context/SidebarContext";
@@ -33,6 +33,7 @@ const ICON_MAP: Record<string, IconComponent> = {
   CalendarDays,
   FolderOpen,
   GitPullRequest,
+  UserPlus,
 };
 
 type SidebarProps = {
@@ -164,9 +165,14 @@ export default function Sidebar({
           <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
               const Icon: IconComponent = ICON_MAP[item.icon] ?? LayoutDashboard;
-              const isActive =
-                pathname === item.href ||
-                pathname.startsWith(item.href + "/");
+              const isIndexHref =
+                item.href === "/admin" ||
+                item.href === "/dashboard" ||
+                item.href === "/super_admin" ||
+                item.href.split("/").filter(Boolean).length === 1;
+              const isActive = isIndexHref
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(item.href + "/");
               const opensInNewTab = item.href === "/help";
               return (
                 <Link
