@@ -38,6 +38,8 @@ export default function SuperAdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMessage, setBackfillMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/super_admin/settings', { credentials: 'include' })
@@ -67,6 +69,24 @@ export default function SuperAdminSettingsPage() {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleBackfill = async () => {
+    try {
+      setBackfilling(true);
+      setBackfillMessage(null);
+      const res = await fetch('/api/super_admin/backfill-manager-ids?tenantId=bizosto', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Backfill failed');
+      setBackfillMessage(`✓ Updated ${data.updated ?? 0} users`);
+    } catch (err: unknown) {
+      setBackfillMessage(err instanceof Error ? err.message : 'Backfill failed');
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -223,6 +243,29 @@ export default function SuperAdminSettingsPage() {
             <p className="text-2xl font-bold text-[var(--text-primary)]">{settings.maxUsersEnterprise}</p>
             <p className="text-xs text-[var(--text-muted)]">max users</p>
           </div>
+        </div>
+      </div>
+
+      {/* Section 5 — Reporting Hierarchy */}
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Reporting Hierarchy</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[var(--text-primary)]">Backfill Manager IDs</p>
+              <p className="text-xs text-[var(--text-muted)]">Assign any users missing a managerId to the tenant admin</p>
+            </div>
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="rounded-lg bg-[var(--erp-blue)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {backfilling ? 'Backfilling...' : 'Backfill Manager IDs'}
+            </button>
+          </div>
+          {backfillMessage && (
+            <p className="text-sm text-[var(--text-muted)]">{backfillMessage}</p>
+          )}
         </div>
       </div>
 

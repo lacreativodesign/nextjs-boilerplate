@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { getDirectReports } from "@/lib/team";
 import { requireSalesManager } from "../_utils";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +12,15 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const [usersSnap, leadsSnap, dealsSnap] = await Promise.all([
-      adminDb.collection("users").where("tenantId", "==", auth.user.tenantId || "").where("role", "==", "sales").get(),
-      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId || "").where("isDeleted", "==", false).limit(500).get(),
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+    const tenantId = auth.user.tenantId;
+
+    const [reports, leadsSnap, dealsSnap] = await Promise.all([
+      getDirectReports({ tenantId, managerUid: auth.user.uid, reportRole: "sales" }),
+      adminDb.collection("leads").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb.collection("deals").where("tenantId", "==", tenantId).where("isDeleted", "==", false).limit(500).get(),
     ]);
 
     const leadsCount = new Map<string, number>();
@@ -45,13 +51,12 @@ export async function GET() {
       }
     });
 
-    const team = usersSnap.docs.map((doc) => {
-      const data = doc.data() || {};
-      const uid = doc.id;
+    const team = reports.map((report) => {
+      const uid = report.uid;
       return {
         uid,
-        name: String(data.name || data.fullName || data.email || "Sales Rep"),
-        email: String(data.email || ""),
+        name: report.name,
+        email: report.email,
         leadsAssigned: leadsCount.get(uid) || 0,
         dealsAssigned: dealsCount.get(uid) || 0,
         closedWon: wonCount.get(uid) || 0,
