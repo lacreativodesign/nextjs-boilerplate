@@ -83,7 +83,7 @@ export const sidebarNavigation: NavItem[] = [
     label: "Leads",
     labelKey: "navigation.leads",
     href: "/admin/leads",
-    icon: "TrendingUp",
+    icon: "UserPlus",
     roles: ["super_admin"],
     module: null,
   },
