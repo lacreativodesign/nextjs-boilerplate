@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
 import { getAmUser, isOwnedByAm } from "../../_utils";
@@ -57,6 +56,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!me.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const projectId = cleanString(body?.projectId);
     const type = cleanString(body?.type);
@@ -97,7 +100,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const tenantId = String(project?.tenantId || me.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = String(project?.tenantId || me.tenantId);
     const impactsScope = type === "Scope Change";
 
     const now = admin.firestore.Timestamp.now();

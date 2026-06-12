@@ -14,7 +14,10 @@ export async function GET() {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
-    const tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.user.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
 
     const leadSnaps = salesRep
       ? await Promise.all([

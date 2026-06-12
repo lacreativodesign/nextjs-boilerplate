@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
     }
 
     const data = (snap.data() || {}) as InvoiceDoc;
-    const tenantId = auth.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
     if (String((data as Record<string, any>).tenantId || DEFAULT_TENANT_ID) !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

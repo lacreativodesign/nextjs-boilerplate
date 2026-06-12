@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, normalizeTenantId } from "@/lib/tenant";
+import { normalizeTenantId } from "@/lib/tenant";
 import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import {
   createSalesEvent,
@@ -149,7 +149,10 @@ export async function POST(req: Request) {
     const ownerId = requestedOwnerId && isManager ? requestedOwnerId : auth.user.uid;
     const ownerName = ownerId ? await getUserNameById(ownerId) : "";
 
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const docRef = await adminDb.collection("leads").add({
       tenantId,
       leadId: null,

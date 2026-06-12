@@ -12,7 +12,10 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
+    const tenantId = auth.user.tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
     const snap = await adminDb.collection("deals").where("isDeleted", "==", false).limit(500).get();
 
     const deals = snap.docs

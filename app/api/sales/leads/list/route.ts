@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { canWriteSales, isSales, requireSalesRead, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +60,10 @@ export async function GET(req: Request) {
 
     const role = auth.user.role || "";
     const salesRep = isSales(role);
-    const tenantId = normalizeTenantId(auth.user.tenantId || DEFAULT_TENANT_ID);
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+    const tenantId = normalizeTenantId(auth.user.tenantId);
     const { searchParams } = new URL(req.url);
     const cursor = String(searchParams.get("cursor") || "").trim();
     const rawLimit = Number(searchParams.get("limit") || 50);

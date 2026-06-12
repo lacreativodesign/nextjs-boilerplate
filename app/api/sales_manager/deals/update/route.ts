@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import {
   arrayUnion,
@@ -22,6 +21,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+
     const payload = await req.json();
     const id = parseString(payload.id, "");
     if (!id) {
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
     let listPriceUsd = 0;
     let finalPriceUsd = 0;
     let dealName = "";
-    let tenantId = auth.user.tenantId || DEFAULT_TENANT_ID;
+    let tenantId = auth.user.tenantId;
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
@@ -47,8 +50,8 @@ export async function POST(req: Request) {
         throw new Error("Deal not found");
       }
       const data = snap.data() || {};
-      tenantId = String(data.tenantId || tenantId || DEFAULT_TENANT_ID);
-      if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
+      tenantId = String(data.tenantId || tenantId);
+      if (tenantId !== String(auth.user.tenantId)) {
         throw new Error("Forbidden");
       }
       prevStage = parseString(data.stage, "New Lead");

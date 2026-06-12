@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import {
   getWatcherUserIds,
@@ -22,6 +21,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    if (!auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+    }
+
     const body = await req.json();
     const id = parseString(body.id, "");
     const status = parseString(body.status, "");
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
     }
 
     const data = snapshot.data() || {};
-    const tenantId = String(data.tenantId || auth.user.tenantId || DEFAULT_TENANT_ID);
+    const tenantId = String(data.tenantId || auth.user.tenantId);
     const role = auth.user.role || "";
     const isOwner = data.ownerId === auth.user.uid || data.createdBy === auth.user.uid;
 
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    if (tenantId !== String(auth.user.tenantId || DEFAULT_TENANT_ID)) {
+    if (tenantId !== String(auth.user.tenantId)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
