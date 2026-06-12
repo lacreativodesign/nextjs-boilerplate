@@ -39,9 +39,6 @@ type LeadDoc = {
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
   const queries = [query.where("tenantId", "==", tenantId)];
-  if (tenantId === DEFAULT_TENANT_ID) {
-    queries.push(query.where("tenantId", "==", null));
-  }
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {

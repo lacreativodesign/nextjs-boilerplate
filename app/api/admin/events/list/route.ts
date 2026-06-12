@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { requireAdminOrSuperAdmin } from "../../_utils";
 
 export const runtime = "nodejs";
@@ -70,15 +70,6 @@ export async function GET(req: NextRequest) {
     };
 
     tenantQueries.push(applyFilters(baseQuery).limit(limit));
-    if (tenantId === DEFAULT_TENANT_ID) {
-      let nullQuery: FirebaseFirestore.Query = baseQuery.where("tenantId", "==", null);
-      if (type) nullQuery = nullQuery.where("type", "==", type);
-      if (entityType) nullQuery = nullQuery.where("entityType", "==", entityType);
-      if (actorUid) nullQuery = nullQuery.where("createdByUid", "==", actorUid);
-      if (dateFrom) nullQuery = nullQuery.where("createdAt", ">=", dateFrom);
-      if (dateTo) nullQuery = nullQuery.where("createdAt", "<=", dateTo);
-      tenantQueries.push(nullQuery.limit(limit));
-    }
 
     const snapshots = await Promise.all(tenantQueries.map((query) => query.get()));
     const map = new Map<string, EventRecord>();

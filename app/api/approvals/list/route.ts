@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import {
   getCurrentUser,
   isAdminOrSuper,
@@ -38,9 +38,6 @@ function toISO(value: any): string | null {
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
   const queries = [query.where("tenantId", "==", tenantId)];
-  if (tenantId === DEFAULT_TENANT_ID) {
-    queries.push(query.where("tenantId", "==", null));
-  }
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
