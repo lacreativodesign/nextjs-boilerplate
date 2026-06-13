@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const tenantId = url.searchParams.get("tenantId") || authResult.user.tenantId;
+    const isSuperAdmin = String(authResult.user.role || "").toLowerCase() === "super_admin";
+    const requestedTenantId = url.searchParams.get("tenantId");
+    // Only the platform super_admin may read another tenant's SSO audit logs.
+    // Normal tenant admins are always scoped to their own tenant.
+    const tenantId = isSuperAdmin && requestedTenantId ? requestedTenantId : authResult.user.tenantId;
     const limit = Number(url.searchParams.get("limit") || "100");
 
     if (!tenantId) {

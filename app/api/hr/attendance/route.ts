@@ -22,7 +22,10 @@ export async function GET(request: Request) {
     const start = dayjs(month + "-01").startOf("month");
     const end = start.endOf("month");
 
-    const employeesSnap = await adminDb.collection("employees").get();
+    const employeesSnap = await adminDb
+      .collection("employees")
+      .where("tenantId", "==", me.tenantId)
+      .get();
     const employees = employeesSnap.docs.map((d) => ({
       id: d.id,
       ...d.data(),

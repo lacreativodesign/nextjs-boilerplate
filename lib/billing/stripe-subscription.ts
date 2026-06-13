@@ -3,7 +3,15 @@ import Stripe from "stripe";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getStripeClient } from "@/lib/payments/stripe";
 import { type BillingPlanKey, getStripePriceId, normalizePlanKey, plans } from "@/lib/billing/plans";
+import { PLAN_MODULES } from "@/app/config/plans";
 import { ingestMetric } from "@/lib/monitoring/dashboard-service";
+
+// Module access must follow the plan. resolveTenantModules treats the explicit
+// `modules` field as authoritative, so every plan write must rewrite it or a
+// downgrade would retain paid modules.
+function modulesForPlan(plan: BillingPlanKey) {
+  return PLAN_MODULES[plan as keyof typeof PLAN_MODULES] ?? PLAN_MODULES.starter;
+}
 
 export type UsageMetric = "api_calls" | "storage" | "users";
 
@@ -146,6 +154,8 @@ export async function subscribeTenantToPlan(input: {
   await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(input.tenantId).set(payload, { merge: true });
   await updateTenantBillingSummary(input.tenantId, {
     plan: input.plan,
+    modules: modulesForPlan(input.plan),
+    modulesEnabled: modulesForPlan(input.plan),
     billingStatus: subscription.status,
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscription.id,
@@ -192,6 +202,8 @@ export async function changeTenantPlan(input: { tenantId: string; newPlan: Billi
 
   await updateTenantBillingSummary(input.tenantId, {
     plan: input.newPlan,
+    modules: modulesForPlan(input.newPlan),
+    modulesEnabled: modulesForPlan(input.newPlan),
     billingStatus: updated.status,
   });
 }
@@ -356,6 +368,45 @@ export async function enforceUsageLimit(input: { tenantId: string; metric: Usage
 }
 
 export async function handleBillingWebhook(event: Stripe.Event) {
+  // Idempotency: skip events already processed; mark processed only AFTER the
+  // handler succeeds so a transient failure can be safely retried by Stripe.
+  const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+  const processedSnap = await processedRef.get();
+  if (processedSnap.exists) return;
+
+  await applyBillingEvent(event);
+
+  await processedRef.set({
+    eventId: event.id,
+    type: event.type,
+    processedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+async function applyBillingEvent(event: Stripe.Event) {
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const tenantId = String(subscription.metadata?.tenantId || "");
+    if (!tenantId) return;
+
+    await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(tenantId).set(
+      {
+        status: "canceled",
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+        canceledAt: toIsoFromUnix(subscription.canceled_at) || new Date().toISOString(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // Cancellation locks the tenant out until billing is restored.
+    await updateTenantBillingSummary(tenantId, {
+      billingStatus: "canceled",
+      subscriptionState: "hard_locked",
+    });
+    return;
+  }
+
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
     const subscription = event.data.object as Stripe.Subscription;
     const tenantId = String(subscription.metadata?.tenantId || "");
@@ -380,6 +431,8 @@ export async function handleBillingWebhook(event: Stripe.Event) {
 
     await updateTenantBillingSummary(tenantId, {
       plan: planFromMetadata,
+      modules: modulesForPlan(planFromMetadata),
+      modulesEnabled: modulesForPlan(planFromMetadata),
       billingStatus: subscription.status,
       stripeCustomerId: String(subscription.customer || ""),
       stripeSubscriptionId: subscription.id,

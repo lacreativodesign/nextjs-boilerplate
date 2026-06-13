@@ -77,18 +77,23 @@ async function upstashPipeline(commands: unknown[][]): Promise<UpstashPipelineRe
   const upstash = getUpstashConfig();
   if (!upstash) return null;
 
-  const response = await fetch(`${upstash.url}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${upstash.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(commands),
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${upstash.url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${upstash.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+      cache: "no-store",
+    });
 
-  if (!response.ok) return null;
-  return (await response.json()) as UpstashPipelineResult;
+    if (!response.ok) return null;
+    return (await response.json()) as UpstashPipelineResult;
+  } catch {
+    // Network/timeout error talking to Upstash — treat as backend unavailable.
+    return null;
+  }
 }
 
 async function upstashGetJson<T>(key: string): Promise<T | null> {
@@ -234,7 +239,9 @@ function resolveRule(pathname: string, method: string, rules: RateLimitRule[], a
   return matched[0] || defaultRuleForEndpoint(pathname, method, authenticated);
 }
 
-async function slidingWindowCount(key: string, windowSeconds: number, nowMs: number) {
+// Returns null when the rate-limit backend (Upstash) is unavailable, so callers
+// can decide whether to fail open or closed rather than silently allowing.
+async function slidingWindowCount(key: string, windowSeconds: number, nowMs: number): Promise<number | null> {
   const member = `${nowMs}-${crypto.randomUUID()}`;
   const min = nowMs - windowSeconds * 1000;
   const pipeline = await upstashPipeline([
@@ -244,8 +251,9 @@ async function slidingWindowCount(key: string, windowSeconds: number, nowMs: num
     ["PEXPIRE", key, String(windowSeconds * 1000)],
   ]);
 
-  const count = Number(pipeline?.[2]?.result || 1);
-  return count;
+  if (!pipeline) return null;
+  const count = Number(pipeline?.[2]?.result);
+  return Number.isFinite(count) ? count : null;
 }
 
 async function incrementCounterFallback(key: string, windowSeconds: number) {
@@ -255,20 +263,55 @@ async function incrementCounterFallback(key: string, windowSeconds: number) {
     ["TTL", key],
   ]);
 
+  if (!pipeline) return null;
   return {
     count: Number(pipeline?.[0]?.result || 1),
     ttl: Number(pipeline?.[2]?.result || windowSeconds),
   };
 }
 
-async function enforceLimit(scope: "tenant" | "user", id: string, rule: RateLimitRule, nowMs: number) {
+async function enforceLimit(
+  scope: "tenant" | "user",
+  id: string,
+  rule: RateLimitRule,
+  nowMs: number,
+  failClosed: boolean
+) {
   const key = `rl:sw:${scope}:${hash(id)}:${hash(rule.endpointPattern)}:${rule.windowSeconds}`;
 
   const count = await slidingWindowCount(key, rule.windowSeconds, nowMs);
+
+  // Backend unavailable: fail CLOSED for sensitive endpoints (auth), fail open otherwise.
+  if (count === null) {
+    const fallback = await incrementCounterFallback(`${key}:fallback`, rule.windowSeconds);
+    if (!fallback) {
+      return {
+        allowed: !failClosed,
+        count: failClosed ? rule.limit + 1 : 0,
+        remaining: 0,
+        resetSeconds: rule.windowSeconds,
+      };
+    }
+    return {
+      allowed: fallback.count <= rule.limit,
+      count: fallback.count,
+      remaining: Math.max(0, rule.limit - fallback.count),
+      resetSeconds: Math.max(1, fallback.ttl),
+    };
+  }
+
   const over = count > rule.limit;
 
   if (!Number.isFinite(count) || count <= 0) {
     const fallback = await incrementCounterFallback(`${key}:fallback`, rule.windowSeconds);
+    if (!fallback) {
+      return {
+        allowed: !failClosed,
+        count: failClosed ? rule.limit + 1 : 0,
+        remaining: 0,
+        resetSeconds: rule.windowSeconds,
+      };
+    }
     return {
       allowed: fallback.count <= rule.limit,
       count: fallback.count,
@@ -285,6 +328,16 @@ async function enforceLimit(scope: "tenant" | "user", id: string, rule: RateLimi
   };
 }
 
+function isSensitiveAuthEndpoint(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/session-login") ||
+    pathname.startsWith("/api/logout") ||
+    pathname.startsWith("/api/signup") ||
+    pathname.startsWith("/api/create-user")
+  );
+}
+
 async function enforceQuota(tenantId: string, quota: TenantQuota) {
   const now = new Date();
   const dayKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
@@ -292,6 +345,12 @@ async function enforceQuota(tenantId: string, quota: TenantQuota) {
 
   const dayCounter = await incrementCounterFallback(`rl:quota:day:${hash(tenantId)}:${dayKey}`, 172800);
   const monthCounter = await incrementCounterFallback(`rl:quota:month:${hash(tenantId)}:${monthKey}`, 2678400);
+
+  // Backend unavailable: do not block on quota (rate-limit fail-closed already
+  // covers sensitive auth endpoints; tenant quotas fail open to avoid outages).
+  if (!dayCounter || !monthCounter) {
+    return { allowed: true, dailyUsed: 0, monthlyUsed: 0 };
+  }
 
   const over = dayCounter.count > quota.dailyLimit || monthCounter.count > quota.monthlyLimit;
 
@@ -319,15 +378,18 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
 
   const rule = resolveRule(context.endpoint, context.method, config.rules, Boolean(context.authenticated));
   const nowMs = context.timestamp;
+  // Auth/credential endpoints must fail CLOSED if the limiter backend is down,
+  // so a Redis outage can't open a brute-force window. Everything else fails open.
+  const failClosed = isSensitiveAuthEndpoint(context.endpoint);
 
   let tenantResult = { allowed: true, remaining: rule.limit, resetSeconds: rule.windowSeconds };
   let userResult = { allowed: true, remaining: rule.limit, resetSeconds: rule.windowSeconds };
 
   if (rule.scope === "tenant" || rule.scope === "both") {
-    tenantResult = await enforceLimit("tenant", context.tenantId, rule, nowMs);
+    tenantResult = await enforceLimit("tenant", context.tenantId, rule, nowMs, failClosed);
   }
   if (rule.scope === "user" || rule.scope === "both") {
-    userResult = await enforceLimit("user", context.userId, rule, nowMs);
+    userResult = await enforceLimit("user", context.userId, rule, nowMs, failClosed);
   }
 
   if (!tenantResult.allowed || !userResult.allowed) {

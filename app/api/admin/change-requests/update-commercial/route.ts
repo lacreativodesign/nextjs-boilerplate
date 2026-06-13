@@ -50,6 +50,10 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
+    // Tenant isolation: only edit change requests in the caller's tenant (super_admin exempt).
+    if (role !== "super_admin" && String(data.tenantId || "") !== String(me.tenantId || "")) {
+      return NextResponse.json({ ok: false, error: "Change request not found." }, { status: 404 });
+    }
     const impactsTimeline = typeof estimatedTimelineDays === "number" && estimatedTimelineDays > 0;
     const impactsCost = typeof estimatedCost === "number" && estimatedCost > 0;
     const requiresApproval = impactsTimeline || impactsCost;

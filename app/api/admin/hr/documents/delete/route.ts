@@ -26,6 +26,14 @@ export async function POST(req: Request) {
 
     const data = snap.data() || {};
 
+    // Tenant isolation: only delete documents that belong to the caller's tenant.
+    if (
+      access.user.role !== 'super_admin' &&
+      String(data.tenantId || '') !== String(access.user.tenantId || '')
+    ) {
+      return NextResponse.json({ ok: false, error: 'Document not found' }, { status: 404 });
+    }
+
     await ref.update({
       isDeleted: true,
       updatedAt: serverTimestamp(),

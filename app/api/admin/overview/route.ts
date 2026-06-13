@@ -65,7 +65,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
     }
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings()]);
+    const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings(tenantId)]);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
     const startYearMs = new Date(now.getFullYear(), 0, 1).getTime();

@@ -27,6 +27,16 @@ export async function POST(req: Request) {
     }
 
     const payroll = snap.data() || {};
+
+    // Tenant isolation: a finance user may only mutate payroll in their own tenant.
+    // super_admin (platform operator) is exempt.
+    if (
+      auth.user.role !== "super_admin" &&
+      String(payroll.tenantId || "") !== String(auth.user.tenantId || "")
+    ) {
+      return NextResponse.json({ ok: false, error: "Payroll entry not found." }, { status: 404 });
+    }
+
     const userName = String(payroll.userName || "");
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
 
