@@ -39,6 +39,8 @@ export type TenantContext = {
   plan?: "starter" | "pro" | "enterprise";
   modules?: Record<string, boolean>;
   subscriptionState?: SubscriptionState;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
 };
 
 export type TenantContextResponse = {
