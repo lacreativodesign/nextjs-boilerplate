@@ -375,13 +375,21 @@ export const sidebarNavigation: NavItem[] = [
   },
 
   // ─── AM Manager ────────────────────────────────────────────────────────────
-  // KEEP LEAN — /am_manager/team page does not exist yet (would 404).
   {
     id: "am-manager-dashboard",
     label: "Dashboard",
     labelKey: "navigation.dashboard",
     href: "/am_manager",
     icon: "LayoutDashboard",
+    roles: ["am_manager"],
+    module: null,
+  },
+  {
+    id: "am-manager-team",
+    label: "My Team",
+    labelKey: "navigation.team",
+    href: "/am_manager/team",
+    icon: "Users",
     roles: ["am_manager"],
     module: null,
   },
@@ -452,13 +460,21 @@ export const sidebarNavigation: NavItem[] = [
   },
 
   // ─── Production Manager ────────────────────────────────────────────────────
-  // KEEP LEAN — /production_manager/team page does not exist yet (would 404).
   {
     id: "production-manager-dashboard",
     label: "Dashboard",
     labelKey: "navigation.dashboard",
     href: "/production_manager",
     icon: "LayoutDashboard",
+    roles: ["production_manager"],
+    module: null,
+  },
+  {
+    id: "production-manager-team",
+    label: "My Team",
+    labelKey: "navigation.team",
+    href: "/production_manager/team",
+    icon: "Users",
     roles: ["production_manager"],
     module: null,
   },

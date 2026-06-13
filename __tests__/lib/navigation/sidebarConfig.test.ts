@@ -48,9 +48,9 @@ const EXPECTED_HREFS: Record<string, string[]> = {
     "/reports",
   ],
   am: ["/am", "/am/clients", "/am/projects", "/am/pipeline", "/am/change-requests", "/am/files"],
-  am_manager: ["/am_manager", "/reports"],
+  am_manager: ["/am_manager", "/am_manager/team", "/reports"],
   production: ["/production", "/production/jobs", "/production/workload", "/production/qa", "/production/files"],
-  production_manager: ["/production_manager", "/reports"],
+  production_manager: ["/production_manager", "/production_manager/team", "/reports"],
   client: [
     "/client",
     "/client/projects",
