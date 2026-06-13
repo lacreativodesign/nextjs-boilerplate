@@ -65,6 +65,8 @@ export async function GET(req: NextRequest) {
             plan: planState?.plan || "pro",
             modules: planState?.modules || {},
             subscriptionState,
+            isTrial: String((tenant as any).subscriptionState || "").toLowerCase() === "trial",
+            trialEndsAt: (tenant as any).trialEndsAt || null,
             stripeConnect: tenant.stripeConnect || null,
           }
         : null,
