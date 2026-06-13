@@ -33,6 +33,8 @@ export default function SettingsProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [manager, setManager] = useState<{ name: string; role: string } | null>(null);
+  const [managerLoaded, setManagerLoaded] = useState(false);
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -49,6 +51,25 @@ export default function SettingsProfilePage() {
       });
     }
     setLoading(false);
+  }, [tenantData, tenantLoading]);
+
+  useEffect(() => {
+    if (tenantLoading || !tenantData?.user) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/me/manager", { credentials: "include" });
+        const json = await res.json();
+        if (active) setManager(json?.manager ?? null);
+      } catch {
+        if (active) setManager(null);
+      } finally {
+        if (active) setManagerLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [tenantData, tenantLoading]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,6 +250,27 @@ export default function SettingsProfilePage() {
                 Role is assigned by your admin.
               </p>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+              Reports to
+            </label>
+            <input
+              className="input w-full capitalize"
+              value={
+                managerLoaded
+                  ? manager
+                    ? `${manager.name} · ${manager.role.replace(/_/g, " ")}`
+                    : "CEO / Admin"
+                  : ""
+              }
+              readOnly
+              style={{ opacity: 0.55 }}
+            />
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Your line manager is assigned by your admin.
+            </p>
           </div>
 
           <button type="submit" className="btn w-full" disabled={saving}>
