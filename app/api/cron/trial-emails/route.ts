@@ -61,13 +61,18 @@ export async function GET(request: NextRequest) {
   let emailsSent = 0;
 
   try {
-    const tenantsSnapshot = await adminDb
-      .collection("tenants")
-      .where("plan", "==", "trial")
-      .limit(500)
-      .get();
+    // Select tenants still on trial (signups set subscriptionState:'trial', NOT
+    // plan:'trial') AND tenants already moved to post-trial grace (so the hard-lock
+    // stage remains reachable across cron runs). Merge + dedupe by id.
+    const [trialSnap, graceSnap] = await Promise.all([
+      adminDb.collection("tenants").where("subscriptionState", "==", "trial").limit(500).get(),
+      adminDb.collection("tenants").where("status", "==", "grace_period").limit(500).get(),
+    ]);
+    const byId = new Map<string, (typeof trialSnap.docs)[number]>();
+    for (const d of [...trialSnap.docs, ...graceSnap.docs]) byId.set(d.id, d);
+    const tenantDocs = Array.from(byId.values());
 
-    for (const tenantDoc of tenantsSnapshot.docs) {
+    for (const tenantDoc of tenantDocs) {
       const tenantId = tenantDoc.id;
       try {
         const tenantData = tenantDoc.data() as {
@@ -143,7 +148,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        if (daysRemaining <= 0 && daysRemaining >= -7 && !scheduledState.expiredSent) {
+        if (daysRemaining <= 0 && !scheduledState.expiredSent) {
           await sendTrialExpiredEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ expiredSent: true, expiredSentAt: now, email: ownerData.email }, { merge: true });
           // Downgrade to starter modules so sidebar hides Finance, Production, HR
@@ -159,7 +164,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        if (daysRemaining < -12 && daysRemaining >= -14 && !scheduledState.gracePeriodEndSent) {
+        if (daysRemaining <= -12 && !scheduledState.gracePeriodEndSent) {
           await sendTrialGracePeriodEndingEmail(ownerData.email, ownerName, tenantId);
           await scheduledRef.set({ gracePeriodEndSent: true, gracePeriodEndSentAt: now, email: ownerData.email }, { merge: true });
           // Hard lock — middleware blocks all access, module state does not matter
@@ -181,7 +186,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      processedTenants: tenantsSnapshot.size,
+      processedTenants: tenantDocs.length,
       emailsSent,
       errors,
     });

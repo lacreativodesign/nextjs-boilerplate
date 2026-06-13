@@ -29,8 +29,20 @@ export async function GET(req: Request) {
       return redirectWithQuery(requestUrl, "error", "invalid_callback");
     }
 
-    const [tenantId, userId, ...extra] = state.split(":");
-    if (!tenantId || !userId || extra.length > 0) {
+    // Validate + consume the single-use OAuth state nonce (CSRF protection).
+    const stateRef = adminDb.collection("stripe_connect_oauth_states").doc(state);
+    const stateSnap = await stateRef.get();
+    if (!stateSnap.exists) {
+      return redirectWithQuery(requestUrl, "error", "invalid_state");
+    }
+    const stateData = stateSnap.data() || {};
+    // One-time use: delete immediately regardless of outcome.
+    await stateRef.delete().catch(() => undefined);
+
+    const tenantId = String(stateData.tenantId || "");
+    const userId = String(stateData.userId || "");
+    const expiresAt = stateData.expiresAt ? new Date(stateData.expiresAt).getTime() : 0;
+    if (!tenantId || !userId || !expiresAt || expiresAt < Date.now()) {
       return redirectWithQuery(requestUrl, "error", "invalid_state");
     }
 

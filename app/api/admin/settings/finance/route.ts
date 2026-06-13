@@ -26,12 +26,16 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const [snap, tenantSnap, invoiceCounterSnap] = await Promise.all([
+    // Tenant-scoped settings doc. Falls back to the legacy global "finance" doc
+    // (read-only) for tenants whose settings have not yet been migrated.
+    const financeDocId = `${auth.user.tenantId}_finance`;
+    const [snap, legacySnap, tenantSnap, invoiceCounterSnap] = await Promise.all([
+      adminDb.collection("settings").doc(financeDocId).get(),
       adminDb.collection("settings").doc("finance").get(),
       adminDb.collection("tenants").doc(auth.user.tenantId).get(),
       adminDb.collection("tenants").doc(auth.user.tenantId).collection("counters").doc("invoices").get(),
     ]);
-    const data = snap.exists ? snap.data() : {};
+    const data = snap.exists ? snap.data() : legacySnap.exists ? legacySnap.data() : {};
     const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
     const invoiceCounter = Number(invoiceCounterSnap.data()?.value || 0);
 
@@ -111,7 +115,7 @@ export async function PUT(req: Request) {
     }
 
     await Promise.all([
-      adminDb.collection("settings").doc("finance").set(payload, { merge: true }),
+      adminDb.collection("settings").doc(`${auth.user.tenantId}_finance`).set(payload, { merge: true }),
       adminDb.collection("tenants").doc(auth.user.tenantId).set(tenantPatch, { merge: true }),
     ]);
 

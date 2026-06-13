@@ -17,13 +17,16 @@ function getAppUrl(): string {
   return appUrl.replace(/\/$/, "");
 }
 
-export function getConnectAuthorizeUrl(tenantId: string, userId: string): string {
+// `state` must be an unguessable, single-use nonce that the start route persists
+// server-side (mapped to tenantId/userId) and the callback validates + consumes.
+// Never encode tenantId/userId directly into state — that enables OAuth CSRF.
+export function getConnectAuthorizeUrl(state: string): string {
   const authorizeUrl = new URL("https://connect.stripe.com/oauth/authorize");
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("client_id", getConnectClientId());
   authorizeUrl.searchParams.set("scope", "read_write");
   authorizeUrl.searchParams.set("redirect_uri", `${getAppUrl()}/api/stripe/connect/callback`);
-  authorizeUrl.searchParams.set("state", `${tenantId}:${userId}`);
+  authorizeUrl.searchParams.set("state", state);
   return authorizeUrl.toString();
 }
 

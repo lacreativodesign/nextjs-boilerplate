@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripePriceId } from '@/lib/billing/plans';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { PLAN_MODULES } from '@/app/config/plans';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,6 +65,10 @@ async function handlePlanChange(req: Request) {
     await tenantRef.set(
       {
         plan: newPlan,
+        // Re-derive module access from the new plan so a downgrade actually
+        // revokes paid modules (modules is authoritative in resolveTenantModules).
+        modules: PLAN_MODULES[newPlan as keyof typeof PLAN_MODULES],
+        modulesEnabled: PLAN_MODULES[newPlan as keyof typeof PLAN_MODULES],
         updatedAt: new Date().toISOString(),
       },
       { merge: true },

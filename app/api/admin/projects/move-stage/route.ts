@@ -139,6 +139,13 @@ export async function POST(req: Request) {
     if (data.isDeleted) {
       return NextResponse.json({ ok: false, error: "Project not found" }, { status: 404 });
     }
+    // Tenant isolation: only act on projects in the caller's tenant (super_admin exempt).
+    if (
+      String(me.role || "").toLowerCase() !== "super_admin" &&
+      String(data.tenantId || "") !== String(me.tenantId || "")
+    ) {
+      return NextResponse.json({ ok: false, error: "Project not found" }, { status: 404 });
+    }
     const role = normalizeRole(me.role);
     const fromStage = normalizeStage(data.stage);
 

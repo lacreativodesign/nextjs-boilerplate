@@ -22,8 +22,11 @@ export async function GET(request: Request) {
     const start = dayjs(month + "-01").startOf("month");
     const end = start.endOf("month");
 
-    // Get all employees
-    const empSnap = await adminDb.collection("employees").get();
+    // Get employees for THIS tenant only (tenant isolation)
+    const empSnap = await adminDb
+      .collection("employees")
+      .where("tenantId", "==", me.tenantId)
+      .get();
     const employees = empSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     // Get logs for whole month

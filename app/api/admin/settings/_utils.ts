@@ -164,8 +164,14 @@ export async function getWorkflowSettings() {
   };
 }
 
-export async function getFinanceSettings() {
-  const snap = await adminDb.collection("settings").doc("finance").get();
+export async function getFinanceSettings(tenantId?: string) {
+  // Tenant-scoped doc with read-only fallback to the legacy global doc.
+  let snap = tenantId
+    ? await adminDb.collection("settings").doc(`${tenantId}_finance`).get()
+    : null;
+  if (!snap || !snap.exists) {
+    snap = await adminDb.collection("settings").doc("finance").get();
+  }
   const data = snap.exists ? snap.data() : {};
   return {
     invoicePrefix: parseString(data?.invoicePrefix, DEFAULT_FINANCE_SETTINGS.invoicePrefix),
