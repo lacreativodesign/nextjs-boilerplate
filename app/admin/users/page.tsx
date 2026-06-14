@@ -7,6 +7,7 @@ import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { AdvancedSearchDialog } from "@/components/search/AdvancedSearchDialog";
 import { toastError, toastPromise } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 import type { SearchFilter } from "@/types/search";
 
 type UserRecord = {
@@ -138,10 +139,9 @@ export default function UsersPage() {
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch("/api/admin/users/list", {
+        const res = await apiFetch("/api/admin/users/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
           signal: controller.signal,
         }).finally(() => clearTimeout(timeoutId));
 
@@ -182,7 +182,7 @@ export default function UsersPage() {
         setLoading(true);
         setError("");
         const payloadFilters = buildSearchFilters(filters);
-        const res = await fetch("/api/users/search", {
+        const res = await apiFetch("/api/users/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -217,7 +217,7 @@ export default function UsersPage() {
     async (name: string, filters: FilterRow[]) => {
       const payloadFilters = buildSearchFilters(filters);
       await toastPromise(
-        fetch("/api/saved-searches", {
+        apiFetch("/api/saved-searches", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -250,10 +250,9 @@ export default function UsersPage() {
     if (advancedActive) {
       setAdvancedActive(false);
       setLoading(true);
-      fetch("/api/admin/users/list", {
+      apiFetch("/api/admin/users/list", {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       })
         .then(async (res) => {
           const json = await res.json().catch(() => null);
@@ -288,11 +287,10 @@ export default function UsersPage() {
     try {
       setDeletingUid(uid);
       await toastPromise(
-        fetch("/api/admin/users/delete", {
+        apiFetch("/api/admin/users/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid }),
-          credentials: "include",
         }).then(async (res) => {
           const msg = await res.text().catch(() => "");
           if (!res.ok) {
@@ -397,7 +395,7 @@ export default function UsersPage() {
     try {
       setResettingMfaUid(uid);
       await toastPromise(
-        fetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE", credentials: "include" }).then(async (res) => {
+        apiFetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE" }).then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             throw new Error(data?.error || "Failed to reset MFA.");

@@ -15,6 +15,7 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import type { Unsubscribe } from "firebase/auth";
 import { toastSuccess } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type UserStatus = "active" | "disabled";
 
@@ -135,8 +136,7 @@ export default function EditUserPage() {
   useEffect(() => {
     if (!role) return;
     let alive = true;
-    fetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
-      credentials: "include",
+    apiFetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
       cache: "no-store",
     })
       .then((r) => r.json())
@@ -185,10 +185,9 @@ export default function EditUserPage() {
       setError(null);
 
       try {
-        const res = await fetch(`/api/admin/users/${uid}`, {
+        const res = await apiFetch(`/api/admin/users/${uid}`, {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         if (!res.ok) {
@@ -255,10 +254,9 @@ export default function EditUserPage() {
     setSaving(true);
 
     try {
-      const res = await fetch("/api/admin/users/update", {
+      const res = await apiFetch("/api/admin/users/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           uid,
           name: fullName.trim(),
