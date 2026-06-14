@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
+import { apiFetch } from "@/lib/api/client";
 
 type NewRateState = {
   name: string;
@@ -37,10 +38,9 @@ export default function TaxRatesPage() {
   const fetchTaxRates = async () => {
     try {
       setError(null);
-      const response = await fetch("/api/admin/finance/tax-rates", {
+      const response = await apiFetch("/api/admin/finance/tax-rates", {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       });
 
       const result = await response.json();
@@ -77,9 +77,8 @@ export default function TaxRatesPage() {
         description: newRate.description.trim() || undefined,
       };
 
-      const response = await fetch("/api/admin/finance/tax-rates", {
+      const response = await apiFetch("/api/admin/finance/tax-rates", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -104,9 +103,8 @@ export default function TaxRatesPage() {
       setError(null);
       const nextEnabled = !taxRate.enabled;
 
-      const response = await fetch("/api/admin/finance/tax-rates", {
+      const response = await apiFetch("/api/admin/finance/tax-rates", {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: taxRate.id, enabled: nextEnabled }),
       });
@@ -128,9 +126,8 @@ export default function TaxRatesPage() {
 
     try {
       setError(null);
-      const response = await fetch(`/api/admin/finance/tax-rates?id=${encodeURIComponent(id)}`, {
+      const response = await apiFetch(`/api/admin/finance/tax-rates?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        credentials: "include",
       });
 
       const result = await response.json();

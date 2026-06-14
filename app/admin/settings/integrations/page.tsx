@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 import { WEBHOOK_EVENT_TYPES } from "@/lib/webhooks/types";
+import { apiFetch } from "@/lib/api/client";
 
 type Webhook = {
   id: string;
@@ -92,8 +93,8 @@ export default function IntegrationSettingsPage() {
     try {
       // Webhooks are required — if these fail it is a real error
       const [subRes, deliveryRes] = await Promise.all([
-        fetch("/api/webhooks/subscriptions", { cache: "no-store", credentials: "include" }),
-        fetch("/api/webhooks/deliveries?limit=100", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/webhooks/subscriptions", { cache: "no-store" }),
+        apiFetch("/api/webhooks/deliveries?limit=100", { cache: "no-store" }),
       ]);
 
       const subData = await subRes.json();
@@ -113,9 +114,9 @@ export default function IntegrationSettingsPage() {
       };
 
       const [googleRes, slackRes, microsoftRes] = await Promise.allSettled([
-        fetch("/api/integrations/google/connection", { cache: "no-store", credentials: "include" }),
-        fetch("/api/integrations/slack/connection", { cache: "no-store", credentials: "include" }),
-        fetch("/api/integrations/microsoft/connection", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/integrations/google/connection", { cache: "no-store" }),
+        apiFetch("/api/integrations/slack/connection", { cache: "no-store" }),
+        apiFetch("/api/integrations/microsoft/connection", { cache: "no-store" }),
       ]);
 
       if (googleRes.status === "fulfilled") {
@@ -155,10 +156,9 @@ export default function IntegrationSettingsPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/webhooks/subscriptions", {
+      const res = await apiFetch("/api/webhooks/subscriptions", {
         method: "POST",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newWebhook),
       });
@@ -176,7 +176,7 @@ export default function IntegrationSettingsPage() {
 
   const removeWebhook = async (id: string) => {
     try {
-      const res = await fetch(`/api/webhooks/subscriptions/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await apiFetch(`/api/webhooks/subscriptions/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to delete webhook.");
       await load();
@@ -187,7 +187,7 @@ export default function IntegrationSettingsPage() {
 
   const testWebhook = async (id: string) => {
     try {
-      const res = await fetch(`/api/webhooks/subscriptions/${id}/test`, { method: "POST", credentials: "include" });
+      const res = await apiFetch(`/api/webhooks/subscriptions/${id}/test`, { method: "POST" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to send test event.");
       setSuccess(`Test sent. Deliveries created: ${data.deliveriesCreated}.`);
@@ -199,7 +199,7 @@ export default function IntegrationSettingsPage() {
 
   const retryDelivery = async (id: string) => {
     try {
-      const res = await fetch(`/api/webhooks/deliveries/${id}/retry`, { method: "POST", credentials: "include" });
+      const res = await apiFetch(`/api/webhooks/deliveries/${id}/retry`, { method: "POST" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to retry delivery.");
       await load();
@@ -215,9 +215,8 @@ export default function IntegrationSettingsPage() {
   const connectSlackWorkspace = async () => {
     try {
       setSaving(true);
-      const res = await fetch("/api/integrations/slack/oauth", {
+      const res = await apiFetch("/api/integrations/slack/oauth", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ start: true, returnTo: "/admin/settings/integrations" }),
       });
@@ -238,9 +237,8 @@ export default function IntegrationSettingsPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/slack/connection", {
+      const res = await apiFetch("/api/integrations/slack/connection", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
@@ -258,9 +256,8 @@ export default function IntegrationSettingsPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/google/connection", {
+      const res = await apiFetch("/api/integrations/google/connection", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
@@ -278,9 +275,8 @@ export default function IntegrationSettingsPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/microsoft/connection", {
+      const res = await apiFetch("/api/integrations/microsoft/connection", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });

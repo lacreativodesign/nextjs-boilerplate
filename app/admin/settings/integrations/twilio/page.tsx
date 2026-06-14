@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type TriggerType =
   | "invoice_overdue_7_days"
@@ -57,8 +58,8 @@ export default function TwilioIntegrationPage() {
     setError(null);
     try {
       const [connectionRes, logsRes] = await Promise.all([
-        fetch("/api/integrations/twilio/connection", { cache: "no-store", credentials: "include" }),
-        fetch("/api/integrations/twilio/logs?limit=50", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/integrations/twilio/connection", { cache: "no-store" }),
+        apiFetch("/api/integrations/twilio/logs?limit=50", { cache: "no-store" }),
       ]);
 
       const connectionData = await connectionRes.json();
@@ -97,9 +98,8 @@ export default function TwilioIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/twilio/connection", {
+      const res = await apiFetch("/api/integrations/twilio/connection", {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(connection),
       });
@@ -146,9 +146,8 @@ export default function TwilioIntegrationPage() {
         metadata: { source: "twilio_setup_page_test" },
       };
 
-      const res = await fetch("/api/integrations/twilio/send", {
+      const res = await apiFetch("/api/integrations/twilio/send", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });

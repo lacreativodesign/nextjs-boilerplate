@@ -6,6 +6,7 @@ import { PermissionTemplateLibrary } from "@/components/permissions/PermissionTe
 import { RoleAssignmentInterface } from "@/components/permissions/RoleAssignmentInterface";
 import { PermissionPreview } from "@/components/permissions/PermissionPreview";
 import type { RoleDocument, UserPermissionSnapshot } from "@/lib/permissions/types";
+import { apiFetch } from "@/lib/api/client";
 
 export default function RolesPermissionsPage() {
   const [roles, setRoles] = useState<RoleDocument[]>([]);
@@ -15,13 +16,13 @@ export default function RolesPermissionsPage() {
   const [error, setError] = useState("");
 
   async function loadRoles() {
-    const res = await fetch("/api/permissions/roles", { cache: "no-store" });
+    const res = await apiFetch("/api/permissions/roles", { cache: "no-store" });
     const data = await res.json();
     setRoles(data.roles || []);
   }
 
   async function loadUsers() {
-    const res = await fetch("/api/users", { cache: "no-store" });
+    const res = await apiFetch("/api/users", { cache: "no-store" });
     const data = await res.json();
     const payload = Array.isArray(data.users) ? data.users : [];
     setUsers(payload.map((user: { id: string; email?: string; name?: string }) => ({ id: user.id, email: user.email, name: user.name })));
@@ -29,7 +30,7 @@ export default function RolesPermissionsPage() {
 
   async function saveRole(payload: { name: string; description: string; parentRoleId?: string; permissions: RoleDocument["permissions"] }) {
     setError("");
-    const res = await fetch("/api/permissions/roles", {
+    const res = await apiFetch("/api/permissions/roles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -46,7 +47,7 @@ export default function RolesPermissionsPage() {
 
   async function applyTemplate(templateKey: string) {
     setError("");
-    const res = await fetch("/api/permissions/templates/apply", {
+    const res = await apiFetch("/api/permissions/templates/apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ templateKey }),
@@ -63,7 +64,7 @@ export default function RolesPermissionsPage() {
 
   async function assignRole(userId: string, roleId: string) {
     setError("");
-    const res = await fetch(`/api/permissions/roles/${roleId}`, {
+    const res = await apiFetch(`/api/permissions/roles/${roleId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignedUserIds: [userId] }),
@@ -76,7 +77,7 @@ export default function RolesPermissionsPage() {
     }
 
     if (selectedUserId === userId) {
-      const next = await fetch(`/api/permissions/user/${userId}`, { cache: "no-store" });
+      const next = await apiFetch(`/api/permissions/user/${userId}`, { cache: "no-store" });
       setPreview(await next.json());
     }
   }
@@ -91,7 +92,7 @@ export default function RolesPermissionsPage() {
       return;
     }
 
-    void fetch(`/api/permissions/user/${selectedUserId}`, { cache: "no-store" })
+    void apiFetch(`/api/permissions/user/${selectedUserId}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => setPreview(data))
       .catch(() => setError("Failed to load permission preview"));

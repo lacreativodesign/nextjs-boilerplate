@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type NotificationSettings = {
   enableInApp: boolean;
@@ -35,7 +36,7 @@ export default function NotificationSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/notifications", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/notifications", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         if (res.status === 403) throw new Error("You do not have access to notification settings.");
@@ -79,10 +80,9 @@ export default function NotificationSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/settings/notifications", {
+      const res = await apiFetch("/api/admin/settings/notifications", {
         method: "PUT",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

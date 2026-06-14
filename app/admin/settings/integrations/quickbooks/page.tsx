@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type SyncSettings = {
   syncInvoicesToQuickBooks: boolean;
@@ -53,8 +54,8 @@ export default function QuickBooksIntegrationPage() {
     setError(null);
     try {
       const [statusRes, logsRes] = await Promise.all([
-        fetch("/api/integrations/quickbooks/status", { cache: "no-store", credentials: "include" }),
-        fetch("/api/integrations/quickbooks/logs?limit=30", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/integrations/quickbooks/status", { cache: "no-store" }),
+        apiFetch("/api/integrations/quickbooks/logs?limit=30", { cache: "no-store" }),
       ]);
       const statusData = await statusRes.json();
       const logsData = await logsRes.json();
@@ -81,9 +82,8 @@ export default function QuickBooksIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/quickbooks/status", {
+      const res = await apiFetch("/api/integrations/quickbooks/status", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
@@ -103,9 +103,8 @@ export default function QuickBooksIntegrationPage() {
       setSyncing(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/integrations/quickbooks/sync", {
+      const res = await apiFetch("/api/integrations/quickbooks/sync", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ forceInitial }),
       });

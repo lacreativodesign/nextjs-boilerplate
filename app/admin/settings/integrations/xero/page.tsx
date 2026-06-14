@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type SyncSettings = {
   syncInvoicesToXero: boolean;
@@ -53,8 +54,8 @@ export default function XeroIntegrationPage() {
     setError(null);
     try {
       const [statusRes, logsRes] = await Promise.all([
-        fetch("/api/integrations/xero/status", { cache: "no-store", credentials: "include" }),
-        fetch("/api/integrations/xero/logs?limit=30", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/integrations/xero/status", { cache: "no-store" }),
+        apiFetch("/api/integrations/xero/logs?limit=30", { cache: "no-store" }),
       ]);
       const statusData = await statusRes.json();
       const logsData = await logsRes.json();
@@ -81,9 +82,8 @@ export default function XeroIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/xero/status", {
+      const res = await apiFetch("/api/integrations/xero/status", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
@@ -103,9 +103,8 @@ export default function XeroIntegrationPage() {
       setSyncing(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/integrations/xero/sync", {
+      const res = await apiFetch("/api/integrations/xero/sync", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ forceInitial }),
       });
