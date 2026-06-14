@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SkeletonForm } from "@/components/ui/Skeleton";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api/client";
 
 export default function EditUserPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function EditUserPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/admin/users/get?uid=${uid}`);
+        const res = await apiFetch(`/api/admin/users/get?uid=${uid}`);
         if (!res.ok) {
           setError("Failed to load user");
           setLoading(false);
@@ -52,7 +53,7 @@ export default function EditUserPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users/update", {
+      const res = await apiFetch("/api/admin/users/update", {
         method: "POST",
         body: JSON.stringify({
           uid,
@@ -83,7 +84,7 @@ export default function EditUserPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/admin/users/delete", {
+      const res = await apiFetch("/api/admin/users/delete", {
         method: "POST",
         body: JSON.stringify({ uid }),
       });

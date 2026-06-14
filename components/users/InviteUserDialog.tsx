@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type InviteUserDialogProps = {
   onSuccess: () => void;
@@ -21,7 +22,7 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/users/invite", {
+      const response = await apiFetch("/api/users/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

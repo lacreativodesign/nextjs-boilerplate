@@ -11,6 +11,7 @@ import {
   getDefaultDepartmentForRole,
 } from "@/lib/userOptions";
 import { toastSuccess } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type UserStatus = "active" | "disabled";
 
@@ -50,10 +51,9 @@ async function postWithFallback(urls: string[], body: UserCreatePayload): Promis
 
   for (const url of urls) {
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         cache: "no-store",
         body: JSON.stringify(body),
       });
@@ -100,8 +100,7 @@ export default function CreateUserPage() {
     let alive = true;
     setManagerId("");
     setManagers([]);
-    fetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
-      credentials: "include",
+    apiFetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
       cache: "no-store",
     })
       .then((r) => r.json())
