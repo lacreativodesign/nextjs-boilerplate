@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type WorkflowSettings = {
   projectStages: string[];
@@ -39,7 +40,7 @@ export default function WorkflowSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/workflows", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/workflows", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         if (res.status === 403) throw new Error("You do not have access to workflow settings.");
@@ -72,10 +73,9 @@ export default function WorkflowSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/settings/workflows", {
+      const res = await apiFetch("/api/admin/settings/workflows", {
         method: "PUT",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

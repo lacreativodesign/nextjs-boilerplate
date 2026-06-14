@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type SalesSettings = {
   pipelineStages: string[];
@@ -54,7 +55,7 @@ export default function SalesSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/sales", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/sales", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         if (res.status === 403) throw new Error("You do not have access to sales settings.");
@@ -94,10 +95,9 @@ export default function SalesSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/settings/sales", {
+      const res = await apiFetch("/api/admin/settings/sales", {
         method: "PUT",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "./_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 const WORKING_DAYS = [
   "Monday",
@@ -51,9 +52,8 @@ export default function AdminSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/system", {
+      const res = await apiFetch("/api/admin/settings/system", {
         cache: "no-store",
-        credentials: "include",
       });
       const data = await res.json();
 
@@ -94,9 +94,8 @@ export default function AdminSettingsPage() {
       setError(null);
       setSuccess(null);
 
-      const res = await fetch("/api/admin/settings/system", {
+      const res = await apiFetch("/api/admin/settings/system", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
