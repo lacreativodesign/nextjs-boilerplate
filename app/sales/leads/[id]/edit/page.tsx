@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/utils/toast";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGES = ["New", "Contacted", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
 const SOURCES = ["Website", "Referral", "Cold Outreach", "LinkedIn", "Event", "Social Media", "Other"];
@@ -34,7 +35,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/admin/sales/leads/list", { credentials: "include" });
+        const res = await apiFetch("/api/admin/sales/leads/list");
         const json = await res.json().catch(() => ({}));
         if (!json?.ok) {
           showToast.error("Failed to load lead.");
@@ -75,9 +76,8 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/sales/leads/update", {
+      const res = await apiFetch("/api/admin/sales/leads/update", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...form }),
       });

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { showToast } from "@/lib/utils/toast";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
 
@@ -19,7 +20,7 @@ export default function SalesPipelinePage() {
   const [deals, setDeals] = useState<Deal[]>([]);
 
   async function loadDeals() {
-    const res = await fetch("/api/crm/deals", { cache: "no-store" });
+    const res = await apiFetch("/api/crm/deals", { cache: "no-store" });
     const data = await res.json();
     if (data.ok) setDeals(data.deals || []);
   }
@@ -43,7 +44,7 @@ export default function SalesPipelinePage() {
       return;
     }
 
-    const res = await fetch(`/api/crm/deals/${deal.id}`, {
+    const res = await apiFetch(`/api/crm/deals/${deal.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage: next }),

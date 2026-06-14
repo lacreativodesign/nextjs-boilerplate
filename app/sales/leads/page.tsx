@@ -6,6 +6,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { toastError, toastPromise } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type Lead = {
   id: string;
@@ -30,7 +31,7 @@ export default function SalesLeadsPage() {
   const loadLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/sales/leads/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/sales/leads/list", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || "Failed to load leads.");
@@ -64,10 +65,9 @@ export default function SalesLeadsPage() {
     try {
       setActionLoading(`stage:${id}`);
       await toastPromise(
-        fetch("/api/sales/leads/update", {
+        apiFetch("/api/sales/leads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ id, stage }),
         }).then(async (res) => {
           const data = await res.json().catch(() => ({}));
@@ -91,10 +91,9 @@ export default function SalesLeadsPage() {
     try {
       setActionLoading(`delete:${id}`);
       await toastPromise(
-        fetch("/api/sales/leads/update", {
+        apiFetch("/api/sales/leads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ id, isDeleted: true }),
         }).then(async (res) => {
           const data = await res.json().catch(() => ({}));

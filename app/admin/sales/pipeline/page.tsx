@@ -6,6 +6,7 @@ import SalesDrawer from "@/components/sales/SalesDrawer";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
 import { PIPELINE_STAGES } from "@/lib/sales/utils";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGE_OPTIONS = PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }));
 
@@ -32,7 +33,7 @@ export default function SalesPipelinePage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/pipeline/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/sales/pipeline/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load pipeline.");
@@ -64,7 +65,7 @@ export default function SalesPipelinePage() {
         stage === "Closed Won" || stage === "Closed Lost"
           ? "/api/admin/sales/deals/update"
           : "/api/admin/sales/pipeline/update";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deal.id, stage }),
@@ -86,7 +87,7 @@ export default function SalesPipelinePage() {
     if (!selectedDeal) return;
     try {
       setActionLoading("update");
-      const res = await fetch("/api/admin/sales/deals/update", {
+      const res = await apiFetch("/api/admin/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -114,7 +115,7 @@ export default function SalesPipelinePage() {
     if (!selectedDeal) return;
     try {
       setActionLoading(status);
-      const res = await fetch("/api/admin/sales/deals/update", {
+      const res = await apiFetch("/api/admin/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: selectedDeal.id, stage: status }),

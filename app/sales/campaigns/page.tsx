@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate } from "@/components/finance/financeUtils";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["All", "Active", "Paused", "Completed"];
 
@@ -54,7 +55,7 @@ export default function SalesCampaignsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/sales/campaigns/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/sales/campaigns/list", { cache: "no-store" });
       const data = (await res.json()) as CampaignResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load campaigns.");
@@ -163,10 +164,9 @@ export default function SalesCampaignsPage() {
     try {
       setActionLoading(true);
       const endpoint = drawerMode === "create" ? "/api/sales/campaigns/create" : "/api/sales/campaigns/update";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(form),
       });
       const data = await res.json();

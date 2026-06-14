@@ -5,6 +5,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatDateTime } from "@/components/finance/financeUtils";
 import { LEAD_STAGES } from "@/lib/sales/utils";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGE_OPTIONS = [{ label: "All Stages", value: "" }, ...LEAD_STAGES.map((stage) => ({ label: stage, value: stage }))];
 
@@ -63,7 +64,7 @@ export default function SalesLeadsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/leads/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/sales/leads/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load leads.");
@@ -79,7 +80,7 @@ export default function SalesLeadsPage() {
 
   const loadOwners = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/users/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/users/list", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       setOwners(Array.isArray(data) ? data : []);
@@ -154,7 +155,7 @@ export default function SalesLeadsPage() {
         ...form,
       };
       const endpoint = drawerMode === "create" ? "/api/admin/sales/leads/create" : "/api/admin/sales/leads/update";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -176,7 +177,7 @@ export default function SalesLeadsPage() {
   const handleDelete = async (lead: LeadRecord) => {
     try {
       setActionLoading(lead.id);
-      const res = await fetch("/api/admin/sales/leads/delete", {
+      const res = await apiFetch("/api/admin/sales/leads/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: lead.id }),
@@ -197,7 +198,7 @@ export default function SalesLeadsPage() {
   const handleConvert = async (lead: LeadRecord) => {
     try {
       setActionLoading(`${lead.id}-convert`);
-      const res = await fetch("/api/admin/sales/deals/create", {
+      const res = await apiFetch("/api/admin/sales/deals/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -215,7 +216,7 @@ export default function SalesLeadsPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to convert lead.");
       }
-      await fetch("/api/admin/sales/leads/update", {
+      await apiFetch("/api/admin/sales/leads/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: lead.id, stage: "Converted" }),
