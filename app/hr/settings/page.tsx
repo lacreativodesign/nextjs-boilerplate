@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 type Settings = {
@@ -29,8 +30,8 @@ export default function HrSettingsPage() {
       try {
         setLoading(true);
         const [settingsRes, templatesRes] = await Promise.all([
-          fetch("/api/hr/settings", { cache: "no-store", credentials: "include" }),
-          fetch("/api/hr/onboarding/templates/list", { cache: "no-store", credentials: "include" }),
+          apiFetch("/api/hr/settings", { cache: "no-store" }),
+          apiFetch("/api/hr/onboarding/templates/list", { cache: "no-store" }),
         ]);
         const settingsJson = await settingsRes.json();
         const templatesJson = await templatesRes.json();
@@ -61,10 +62,9 @@ export default function HrSettingsPage() {
   async function saveSettings() {
     try {
       setSaving(true);
-      const res = await fetch("/api/hr/settings", {
+      const res = await apiFetch("/api/hr/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           defaultOnboardingTemplateId: settings.defaultOnboardingTemplateId || null,
           retentionNote: settings.retentionNote,

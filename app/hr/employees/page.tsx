@@ -8,6 +8,7 @@ import {
   type InternalRole,
   type UserDepartment,
 } from "@/lib/userOptions";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 const STATUS_OPTIONS = [
@@ -146,9 +147,8 @@ export default function HrEmployeesPage() {
     async function load() {
       try {
         setLoading(true);
-        const res = await fetch("/api/hr/employees/list", {
+        const res = await apiFetch("/api/hr/employees/list", {
           cache: "no-store",
-          credentials: "include",
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to load employees.");
@@ -249,10 +249,9 @@ export default function HrEmployeesPage() {
     if (!selectedUser) return;
     try {
       setSaving(true);
-      const res = await fetch("/api/hr/employees/update", {
+      const res = await apiFetch("/api/hr/employees/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           uid: selectedUser.uid,
           ...formState,

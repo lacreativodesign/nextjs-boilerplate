@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 export default function AddEmployeePage() {
@@ -21,9 +22,8 @@ export default function AddEmployeePage() {
     };
 
     try {
-      const res = await fetch("/api/hr/employees/create", {
+      const res = await apiFetch("/api/hr/employees/create", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });

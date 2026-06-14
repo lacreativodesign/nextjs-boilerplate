@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
 import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 const STATUS_OPTIONS = [
@@ -108,9 +109,9 @@ export default function HrOnboardingPage() {
       try {
         setLoading(true);
         const [usersRes, templatesRes, tasksRes] = await Promise.all([
-          fetch("/api/hr/employees/list", { cache: "no-store", credentials: "include" }),
-          fetch("/api/hr/onboarding/templates/list", { cache: "no-store", credentials: "include" }),
-          fetch("/api/hr/onboarding/tasks/list", { cache: "no-store", credentials: "include" }),
+          apiFetch("/api/hr/employees/list", { cache: "no-store" }),
+          apiFetch("/api/hr/onboarding/templates/list", { cache: "no-store" }),
+          apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" }),
         ]);
         const usersJson = await usersRes.json();
         const templatesJson = await templatesRes.json();
@@ -198,17 +199,15 @@ export default function HrOnboardingPage() {
       const endpoint = templateForm.id
         ? "/api/hr/onboarding/templates/update"
         : "/api/hr/onboarding/templates/create";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(templateForm),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to save template.");
-      const refresh = await fetch("/api/hr/onboarding/templates/list", {
+      const refresh = await apiFetch("/api/hr/onboarding/templates/list", {
         cache: "no-store",
-        credentials: "include",
       });
       const refreshData = await refresh.json();
       setTemplates(refreshData.templates || []);
@@ -221,10 +220,9 @@ export default function HrOnboardingPage() {
   async function assignTemplate() {
     try {
       setSavingAssign(true);
-      const res = await fetch("/api/hr/onboarding/assign", {
+      const res = await apiFetch("/api/hr/onboarding/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           userId: assignUserId,
           templateId: assignTemplateId,
@@ -233,7 +231,7 @@ export default function HrOnboardingPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to assign onboarding.");
-      const refresh = await fetch("/api/hr/onboarding/tasks/list", { cache: "no-store", credentials: "include" });
+      const refresh = await apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" });
       const refreshData = await refresh.json();
       setTasks(refreshData.tasks || []);
       setAssignUserId("");
@@ -250,15 +248,14 @@ export default function HrOnboardingPage() {
   async function updateTask(task: TaskRecord) {
     try {
       setTaskSaving(true);
-      const res = await fetch("/api/hr/onboarding/tasks/update", {
+      const res = await apiFetch("/api/hr/onboarding/tasks/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ taskId: task.id, status: task.status, steps: task.steps }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update task.");
-      const refresh = await fetch("/api/hr/onboarding/tasks/list", { cache: "no-store", credentials: "include" });
+      const refresh = await apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" });
       const refreshData = await refresh.json();
       setTasks(refreshData.tasks || []);
       setTaskDrawerOpen(false);

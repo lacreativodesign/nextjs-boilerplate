@@ -10,6 +10,7 @@ import {
   type InternalRole,
   type UserDepartment,
 } from "@/lib/userOptions";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
   { label: "All Status", value: "all" },
@@ -120,9 +121,8 @@ export default function HrEmployeesPage() {
     async function load() {
       try {
         setLoading(true);
-        const res = await fetch("/api/admin/hr/employees/list", {
+        const res = await apiFetch("/api/admin/hr/employees/list", {
           cache: "no-store",
-          credentials: "include",
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to load employees.");
@@ -234,11 +234,10 @@ export default function HrEmployeesPage() {
         commission: formState.commission,
         status: formState.status,
       };
-      const res = await fetch("/api/admin/hr/employees/update", {
+      const res = await apiFetch("/api/admin/hr/employees/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update employee.");
@@ -263,11 +262,10 @@ export default function HrEmployeesPage() {
     if (!selectedUser) return;
     try {
       setSaving(true);
-      const res = await fetch("/api/admin/hr/employees/update", {
+      const res = await apiFetch("/api/admin/hr/employees/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: getRowId(selectedUser), status }),
-        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update status.");
