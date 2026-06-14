@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { BudgetCategory } from "@/lib/types/budget";
+import { apiFetch } from "@/lib/api/client";
 
 type EditableCategory = Pick<BudgetCategory, "id" | "name" | "type" | "monthlyBudgets">;
 
@@ -85,7 +86,7 @@ export default function CreateBudgetPage() {
 
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/finance/budgets", {
+      const response = await apiFetch("/api/admin/finance/budgets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

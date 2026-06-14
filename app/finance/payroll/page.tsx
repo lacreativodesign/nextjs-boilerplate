@@ -5,6 +5,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatPkr } from "@/components/finance/financeUtils";
 import type { PayrollRecord } from "@/lib/finance/types";
 import EmptyState from "@/components/ui/EmptyState";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["", "Draft", "Approved", "Paid"].map((status) => ({
   label: status || "All Statuses",
@@ -37,7 +38,7 @@ export default function FinancePayrollPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/payroll/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/finance/payroll/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payroll.");
@@ -114,10 +115,9 @@ export default function FinancePayrollPage() {
   const handleAction = async (row: PayrollRecord, action: "approve" | "mark_paid") => {
     try {
       setActionLoading(row.id);
-      const res = await fetch("/api/finance/payroll/update", {
+      const res = await apiFetch("/api/finance/payroll/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: row.id, action }),
       });
       const data = await res.json();
@@ -137,10 +137,9 @@ export default function FinancePayrollPage() {
     if (!runMonth) return;
     try {
       setActionLoading("run");
-      const res = await fetch("/api/finance/payroll/run", {
+      const res = await apiFetch("/api/finance/payroll/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ month: runMonth }),
       });
       const data = await res.json();

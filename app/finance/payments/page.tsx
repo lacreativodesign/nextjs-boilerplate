@@ -5,6 +5,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate, formatDateTime, formatUsd } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
 import EmptyState from "@/components/ui/EmptyState";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["", "Pending", "Paid", "Failed", "Refunded"].map((status) => ({
   label: status || "All Statuses",
@@ -48,7 +49,7 @@ export default function FinancePaymentsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/payments/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/finance/payments/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payments.");
@@ -65,7 +66,7 @@ export default function FinancePaymentsPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/finance/clients/list", { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -153,10 +154,9 @@ export default function FinancePaymentsPage() {
   const handleAction = async (payment: PaymentRecord, action: "mark_paid") => {
     try {
       setActionLoading(payment.id);
-      const res = await fetch("/api/finance/payments/update", {
+      const res = await apiFetch("/api/finance/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: payment.id, action }),
       });
       const data = await res.json();
@@ -175,10 +175,9 @@ export default function FinancePaymentsPage() {
   const handleUpdateNotes = async (payment: PaymentRecord, notes: string) => {
     try {
       setActionLoading(`notes-${payment.id}`);
-      const res = await fetch("/api/finance/payments/update", {
+      const res = await apiFetch("/api/finance/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: payment.id, action: "update_notes", notes }),
       });
       const data = await res.json();

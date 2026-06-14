@@ -11,6 +11,7 @@ import type { InvoiceRecord } from "@/lib/finance/types";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { generatePaymentLink } from "@/lib/payments/payment-link";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
   "",
@@ -64,7 +65,7 @@ export default function FinanceInvoicesPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/finance/invoices/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/finance/invoices/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load invoices.");
@@ -85,7 +86,7 @@ export default function FinanceInvoicesPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/finance/clients/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/finance/clients/list", { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -181,10 +182,9 @@ export default function FinanceInvoicesPage() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        fetch("/api/finance/invoices/mark-paid", {
+        apiFetch("/api/finance/invoices/mark-paid", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ id: invoice.id, isDeleted: true }),
         }).then(async (res) => {
           const data = await res.json().catch(() => null);
@@ -213,10 +213,9 @@ export default function FinanceInvoicesPage() {
     try {
       setActionLoading(`delete-${invoice.id}`);
       await toastPromise(
-        fetch("/api/finance/invoices/update", {
+        apiFetch("/api/finance/invoices/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ id: invoice.id }),
         }).then(async (res) => {
           const data = await res.json().catch(() => null);
