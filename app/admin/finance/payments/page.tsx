@@ -9,6 +9,7 @@ import {
   } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
   "",
@@ -60,7 +61,7 @@ export default function FinancePaymentsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/payments/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/finance/payments/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payments.");
@@ -77,7 +78,7 @@ export default function FinancePaymentsPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/clients/list", { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -165,7 +166,7 @@ export default function FinancePaymentsPage() {
   const handleAction = async (payment: PaymentRecord, action: "mark_paid" | "refund") => {
     try {
       setActionLoading(payment.id);
-      const res = await fetch("/api/admin/finance/payments/update", {
+      const res = await apiFetch("/api/admin/finance/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: payment.id, action }),

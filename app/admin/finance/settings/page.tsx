@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type FinanceSettingsResponse = {
   ok: boolean;
@@ -28,7 +29,7 @@ export default function FinanceSettingsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/admin/settings/finance", { cache: "no-store" });
+        const res = await apiFetch("/api/admin/settings/finance", { cache: "no-store" });
         const data = (await res.json()) as FinanceSettingsResponse;
         if (!res.ok || !data.ok || !data.settings) {
           throw new Error(data.error || "Failed to load finance settings.");
@@ -68,7 +69,7 @@ export default function FinanceSettingsPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/settings/finance", {
+      const res = await apiFetch("/api/admin/settings/finance", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

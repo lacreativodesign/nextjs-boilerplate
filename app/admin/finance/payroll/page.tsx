@@ -8,6 +8,7 @@ import {
   formatPkr,
   } from "@/components/finance/financeUtils";
 import type { PayrollRecord } from "@/lib/finance/types";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
   "",
@@ -42,7 +43,7 @@ export default function FinancePayrollPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/payroll/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/finance/payroll/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load payroll.");
@@ -119,7 +120,7 @@ export default function FinancePayrollPage() {
   const handleAction = async (row: PayrollRecord, action: "approve" | "mark_paid") => {
     try {
       setActionLoading(row.id);
-      const res = await fetch("/api/admin/finance/payroll/update", {
+      const res = await apiFetch("/api/admin/finance/payroll/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: row.id, action }),
@@ -141,7 +142,7 @@ export default function FinancePayrollPage() {
     if (!runMonth) return;
     try {
       setActionLoading("run");
-      const res = await fetch("/api/admin/finance/payroll/run", {
+      const res = await apiFetch("/api/admin/finance/payroll/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month: runMonth }),

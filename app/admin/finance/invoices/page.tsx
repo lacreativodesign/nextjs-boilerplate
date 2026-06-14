@@ -21,6 +21,7 @@ import { calculateTax } from "@/lib/tax/calculator";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { SearchFilter } from "@/types/search";
+import { apiFetch } from "@/lib/api/client";
 
 const AdvancedSearchDialog = dynamic(
   () => import("@/components/search/AdvancedSearchDialog").then((mod) => mod.AdvancedSearchDialog),
@@ -126,7 +127,7 @@ function FinanceInvoicesContent() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/finance/invoices/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/finance/invoices/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load invoices.");
@@ -147,7 +148,7 @@ function FinanceInvoicesContent() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/clients/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/clients/list", { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
@@ -197,7 +198,7 @@ function FinanceInvoicesContent() {
         setError(null);
         setLoading(true);
         const payloadFilters = buildSearchFilters(filters);
-        const res = await fetch("/api/invoices/search", {
+        const res = await apiFetch("/api/invoices/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -236,7 +237,7 @@ function FinanceInvoicesContent() {
     async (name: string, filters: FilterRow[]) => {
       const payloadFilters = buildSearchFilters(filters);
       await toastPromise(
-        fetch("/api/saved-searches", {
+        apiFetch("/api/saved-searches", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -367,7 +368,7 @@ function FinanceInvoicesContent() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        fetch("/api/admin/finance/invoices/update", {
+        apiFetch("/api/admin/finance/invoices/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
@@ -397,7 +398,7 @@ function FinanceInvoicesContent() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        fetch("/api/admin/finance/invoices/update", {
+        apiFetch("/api/admin/finance/invoices/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: invoice.id, action: "send" }),
@@ -826,7 +827,7 @@ function CreateInvoiceDrawer({
       setError(null);
       setSubmitting(true);
       await toastPromise(
-        fetch("/api/admin/finance/invoices/create", {
+        apiFetch("/api/admin/finance/invoices/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -979,7 +980,7 @@ function CreateInvoiceDrawer({
                   onChange={async (value) => {
                     setTaxRateId(value);
                     if (!value) { setSelectedTaxRate(null); return; }
-                    const res = await fetch(`/api/finance/tax-rates/${value}`, { cache: "no-store" });
+                    const res = await apiFetch(`/api/finance/tax-rates/${value}`, { cache: "no-store" });
                     const data = await res.json().catch(() => null);
                     if (res.ok && data?.ok && data.taxRate) {
                       setSelectedTaxRate({ id: data.taxRate.id, name: data.taxRate.name, rate: Number(data.taxRate.rate || 0), inclusive: Boolean(data.taxRate.inclusive) });
