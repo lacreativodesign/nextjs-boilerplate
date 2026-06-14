@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type AISettings = {
   provider: "openai" | "anthropic" | null;
@@ -29,7 +30,7 @@ export default function AIWorkforceSettingsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/settings/ai-workforce", { credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/ai-workforce");
       const json = await res.json().catch(() => null);
       if (json?.ok) {
         setData(json);
@@ -50,9 +51,8 @@ export default function AIWorkforceSettingsPage() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/admin/settings/ai-workforce", {
+      const res = await apiFetch("/api/admin/settings/ai-workforce", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, apiKey: apiKey.trim() }),
       });
@@ -75,9 +75,8 @@ export default function AIWorkforceSettingsPage() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/admin/settings/ai-workforce", {
+      const res = await apiFetch("/api/admin/settings/ai-workforce", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ removeKey: true }),
       });

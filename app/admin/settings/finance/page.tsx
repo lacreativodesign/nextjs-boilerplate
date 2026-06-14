@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type FinanceSettings = {
   invoicePrefix: string;
@@ -51,7 +52,7 @@ export default function FinanceSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/finance", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/finance", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         if (res.status === 403) throw new Error("You do not have access to finance settings.");
@@ -99,10 +100,9 @@ export default function FinanceSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/settings/finance", {
+      const res = await apiFetch("/api/admin/settings/finance", {
         method: "PUT",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

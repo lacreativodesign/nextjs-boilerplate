@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from "@/types/email-templates";
+import { apiFetch } from "@/lib/api/client";
 
 type TemplateTranslation = { subject: string; body: string };
 type TemplateRecord = {
@@ -66,7 +67,7 @@ export default function EmailTemplatesSettingsPage() {
     setError(null);
     try {
       const qs = category && category !== "all" ? `?category=${category}` : "";
-      const res = await fetch(`/api/email/templates${qs}`, { cache: "no-store", credentials: "include" });
+      const res = await apiFetch(`/api/email/templates${qs}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load templates");
       setTemplates(data.templates || []);
@@ -88,7 +89,7 @@ export default function EmailTemplatesSettingsPage() {
 
   const loadTemplateDetails = async (id: string) => {
     try {
-      const detailRes = await fetch(`/api/email/templates/${id}`, { cache: "no-store", credentials: "include" });
+      const detailRes = await apiFetch(`/api/email/templates/${id}`, { cache: "no-store" });
       const detail = await detailRes.json();
       if (!detailRes.ok || !detail?.ok) throw new Error(detail?.error || "Failed to load template details");
 
@@ -115,7 +116,7 @@ export default function EmailTemplatesSettingsPage() {
         setCompareB(null);
       }
 
-      const varsRes = await fetch(`/api/email/templates/${id}/variables`, { cache: "no-store", credentials: "include" });
+      const varsRes = await apiFetch(`/api/email/templates/${id}/variables`, { cache: "no-store" });
       const varsData = await varsRes.json();
       if (varsRes.ok && varsData?.ok) {
         setVariables(varsData.variables || []);
@@ -162,9 +163,8 @@ export default function EmailTemplatesSettingsPage() {
         body: editorRef.current?.innerHTML || draft.body,
       };
       const isUpdate = Boolean(selectedTemplateId);
-      const res = await fetch(isUpdate ? `/api/email/templates/${selectedTemplateId}` : "/api/email/templates", {
+      const res = await apiFetch(isUpdate ? `/api/email/templates/${selectedTemplateId}` : "/api/email/templates", {
         method: isUpdate ? "PUT" : "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -189,9 +189,8 @@ export default function EmailTemplatesSettingsPage() {
     if (!selectedTemplateId) return;
     setError(null);
     try {
-      const res = await fetch(`/api/email/templates/${selectedTemplateId}/preview`, {
+      const res = await apiFetch(`/api/email/templates/${selectedTemplateId}/preview`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale }),
       });
@@ -208,9 +207,8 @@ export default function EmailTemplatesSettingsPage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch(`/api/email/templates/${selectedTemplateId}/send`, {
+      const res = await apiFetch(`/api/email/templates/${selectedTemplateId}/send`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: testEmail, locale }),
       });
