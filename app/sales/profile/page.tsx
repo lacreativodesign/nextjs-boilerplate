@@ -14,6 +14,7 @@ import PasswordStrengthMeter from "@/components/auth/PasswordStrengthMeter";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebaseClient";
 import { validatePasswordStrength } from "@/lib/auth/passwordPolicy";
 import { isMFAEnabled, unenrollMFA, verifyMFASignIn } from "@/lib/auth/mfa";
+import { apiFetch } from "@/lib/api/client";
 
 export default function SalesProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -143,10 +144,9 @@ export default function SalesProfilePage() {
 
       await updatePassword(user, newPassword);
 
-      await fetch("/api/auth/sessions/invalidate-all", {
+      await apiFetch("/api/auth/sessions/invalidate-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
       });
 
       setMessage("Password updated successfully.");

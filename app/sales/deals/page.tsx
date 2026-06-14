@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["All", "Open", "Won", "Lost"];
 
@@ -60,7 +61,7 @@ export default function SalesDealsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/sales/deals/list", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/sales/deals/list", { cache: "no-store" });
       const data = (await res.json()) as DealResponseWithSettings;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load deals.");
@@ -173,10 +174,9 @@ export default function SalesDealsPage() {
   const closeDeal = async (deal: DealRecord, status: "Won" | "Lost") => {
     try {
       setActionLoading(deal.id + status);
-      const res = await fetch("/api/sales/deals/update", {
+      const res = await apiFetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: deal.id, status, stage: status === "Won" ? "Closed Won" : "Closed Lost" }),
       });
       const data = await res.json();
@@ -197,10 +197,9 @@ export default function SalesDealsPage() {
     try {
       setDiscountSaving(true);
       setDiscountError(null);
-      const res = await fetch("/api/sales/deals/update", {
+      const res = await apiFetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: selected.id,
           discountPct,
@@ -255,10 +254,9 @@ export default function SalesDealsPage() {
     if (!window.confirm("Delete this deal?")) return;
     try {
       setActionLoading(`delete-${id}`);
-      const res = await fetch("/api/sales/deals/update", {
+      const res = await apiFetch("/api/sales/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id, isDeleted: true }),
       });
       const data = await res.json();

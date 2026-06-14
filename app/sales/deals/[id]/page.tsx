@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { showToast } from "@/lib/utils/toast";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
 
@@ -11,7 +12,7 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
   const [reason, setReason] = useState("");
 
   async function loadDeal() {
-    const res = await fetch(`/api/crm/deals/${params.id}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/crm/deals/${params.id}`, { cache: "no-store" });
     const data = await res.json();
     if (data.ok) setDeal(data.deal);
   }
@@ -21,7 +22,7 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
   }, [params.id]);
 
   async function updateStage(stage: string) {
-    const res = await fetch(`/api/crm/deals/${params.id}`, {
+    const res = await apiFetch(`/api/crm/deals/${params.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage }),
@@ -35,7 +36,7 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
   }
 
   async function requestDiscount() {
-    const res = await fetch(`/api/crm/deals/${params.id}/discount-request`, {
+    const res = await apiFetch(`/api/crm/deals/${params.id}/discount-request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ discountPercent, reason }),

@@ -8,6 +8,7 @@ import TableSkeleton from "@/components/ui/skeleton/TableSkeleton";
 import { toastError } from "@/lib/toast";
 import { useOptimisticUpdate } from "@/lib/hooks/useOptimisticUpdate";
 import { PIPELINE_STAGES, toInputDate } from "@/lib/sales/utils";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGE_OPTIONS = [{ label: "All Stages", value: "" }, ...PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }))];
 
@@ -79,7 +80,7 @@ export default function SalesDealsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/deals/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/sales/deals/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load deals.");
@@ -95,7 +96,7 @@ export default function SalesDealsPage() {
 
   const loadOwners = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/users/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/users/list", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       setOwners(Array.isArray(data) ? data : []);
@@ -195,7 +196,7 @@ export default function SalesDealsPage() {
     try {
       setActionLoading("save");
       const endpoint = drawerMode === "create" ? "/api/admin/sales/deals/create" : "/api/admin/sales/deals/update";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -226,7 +227,7 @@ export default function SalesDealsPage() {
         previousData: deals,
         optimisticData: deals.filter((entry) => entry.id !== deal.id),
         mutation: async () => {
-          const res = await fetch("/api/admin/sales/deals/delete", {
+          const res = await apiFetch("/api/admin/sales/deals/delete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: deal.id }),
@@ -259,7 +260,7 @@ export default function SalesDealsPage() {
         optimisticData: optimisticDeals,
         rollbackData: previousDeals,
         mutation: async () => {
-          const res = await fetch("/api/admin/sales/deals/update", {
+          const res = await apiFetch("/api/admin/sales/deals/update", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: deal.id, stage: status }),
@@ -292,7 +293,7 @@ export default function SalesDealsPage() {
     try {
       const actionKey = `mark-paid-${deal.id}`;
       setActionLoading(actionKey);
-      const res = await fetch("/api/deals/mark-paid", {
+      const res = await apiFetch("/api/deals/mark-paid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deal.id }),

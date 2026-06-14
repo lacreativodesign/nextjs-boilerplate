@@ -5,6 +5,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from "@/lib/sales/utils";
+import { apiFetch } from "@/lib/api/client";
 
 const TYPE_OPTIONS = [{ label: "All Types", value: "" }, ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))];
 const STATUS_OPTIONS = [{ label: "All Status", value: "" }, ...FOLLOW_UP_STATUS.map((status) => ({ label: status, value: status }))];
@@ -66,7 +67,7 @@ export default function SalesFollowUpsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/follow-ups/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/sales/follow-ups/list", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load follow-ups.");
@@ -82,7 +83,7 @@ export default function SalesFollowUpsPage() {
 
   const loadOwners = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/users/list", { cache: "no-store" });
+      const res = await apiFetch("/api/admin/users/list", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       setOwners(Array.isArray(data) ? data : []);
@@ -159,7 +160,7 @@ export default function SalesFollowUpsPage() {
     try {
       setActionLoading("save");
       const endpoint = drawerMode === "create" ? "/api/admin/sales/follow-ups/create" : "/api/admin/sales/follow-ups/update";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -185,7 +186,7 @@ export default function SalesFollowUpsPage() {
   const handleDelete = async (item: FollowUpRecord) => {
     try {
       setActionLoading(item.id);
-      const res = await fetch("/api/admin/sales/follow-ups/delete", {
+      const res = await apiFetch("/api/admin/sales/follow-ups/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id }),
@@ -206,7 +207,7 @@ export default function SalesFollowUpsPage() {
   const markDone = async (item: FollowUpRecord) => {
     try {
       setActionLoading(`${item.id}-done`);
-      const res = await fetch("/api/admin/sales/follow-ups/update", {
+      const res = await apiFetch("/api/admin/sales/follow-ups/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, status: "Done" }),
