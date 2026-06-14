@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toastError } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type ProjectStage =
   | "Inquiry"
@@ -225,10 +226,9 @@ export default function AllProjectsPage() {
         if (typeFilter) params.set("type", typeFilter);
         if (priorityFilter) params.set("priority", priorityFilter);
 
-        const res = await fetch(`/api/admin/projects/list?${params.toString()}`, {
+        const res = await apiFetch(`/api/admin/projects/list?${params.toString()}`, {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -269,10 +269,9 @@ export default function AllProjectsPage() {
 
     async function loadUsers() {
       try {
-        const res = await fetch("/api/admin/users/list", {
+        const res = await apiFetch("/api/admin/users/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => null);
@@ -303,10 +302,9 @@ export default function AllProjectsPage() {
 
     async function loadClients() {
       try {
-        const res = await fetch("/api/admin/clients/list", {
+        const res = await apiFetch("/api/admin/clients/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -487,10 +485,9 @@ export default function AllProjectsPage() {
     if (typeFilter) params.set("type", typeFilter);
     if (priorityFilter) params.set("priority", priorityFilter);
 
-    const res = await fetch(`/api/admin/projects/list?${params.toString()}`, {
+    const res = await apiFetch(`/api/admin/projects/list?${params.toString()}`, {
       method: "GET",
       cache: "no-store",
-      credentials: "include",
     });
 
     const json = await res.json().catch(() => ({}));
@@ -505,10 +502,9 @@ export default function AllProjectsPage() {
 
     try {
       setCreateSaving(true);
-      const res = await fetch("/api/admin/projects/create", {
+      const res = await apiFetch("/api/admin/projects/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectName: createForm.projectName,
           clientId: createForm.clientId,
@@ -537,10 +533,9 @@ export default function AllProjectsPage() {
 
     try {
       setSaving(true);
-      const res = await fetch("/api/admin/projects/update", {
+      const res = await apiFetch("/api/admin/projects/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: selected.id,
           projectName: editForm.projectName,
@@ -573,10 +568,9 @@ export default function AllProjectsPage() {
 
     try {
       setDeletingId(id);
-      const res = await fetch("/api/admin/projects/delete", {
+      const res = await apiFetch("/api/admin/projects/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id }),
       });
 

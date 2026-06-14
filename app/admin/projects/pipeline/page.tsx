@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toastError } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type ProjectStage =
   | "Inquiry"
@@ -247,10 +248,9 @@ export default function DeliveryPipelinePage() {
         params.set("health", healthFilter);
       }
 
-      const res = await fetch(`/api/admin/projects/pipeline?${params.toString()}`, {
+      const res = await apiFetch(`/api/admin/projects/pipeline?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       });
 
       const json = await res.json().catch(() => ({}));
@@ -286,10 +286,9 @@ export default function DeliveryPipelinePage() {
 
     async function loadUsers() {
       try {
-        const res = await fetch("/api/admin/users/list", {
+        const res = await apiFetch("/api/admin/users/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => null);
@@ -401,10 +400,9 @@ export default function DeliveryPipelinePage() {
     );
 
     try {
-      const res = await fetch("/api/admin/projects/move-stage", {
+      const res = await apiFetch("/api/admin/projects/move-stage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: project.id,
           toStage,

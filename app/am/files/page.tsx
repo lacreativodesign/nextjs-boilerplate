@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { apiFetch } from "@/lib/api/client";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final", "Asset", "Other"] as const;
 
@@ -102,8 +103,7 @@ export default function AMFilesPage() {
       if (search.trim()) params.set("q", search.trim());
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (projectFilter !== "all") params.set("projectId", projectFilter);
-      const res = await fetch(`/api/am/files/list?${params.toString()}`, {
-        credentials: "include",
+      const res = await apiFetch(`/api/am/files/list?${params.toString()}`, {
         cache: "no-store",
       });
       const payload = (await res.json()) as FilePayload;
@@ -138,7 +138,7 @@ export default function AMFilesPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const res = await fetch("/api/am/projects/list", { credentials: "include", cache: "no-store" });
+        const res = await apiFetch("/api/am/projects/list", { cache: "no-store" });
         const payload = (await res.json()) as { ok: boolean; projects: Array<{ id: string; projectName: string }> };
         if (!res.ok || !payload.ok) return;
         const options = (payload.projects || []).map((project) => ({
@@ -179,10 +179,9 @@ export default function AMFilesPage() {
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await fetch("/api/am/files/upload", {
+      const res = await apiFetch("/api/am/files/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: fileId,
           projectId: uploadProjectId,
