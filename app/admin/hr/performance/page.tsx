@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
+import { apiFetch } from "@/lib/api/client";
 import { toastError } from "@/lib/toast";
 
 const RATING_OPTIONS = [
@@ -57,8 +58,8 @@ export default function HrPerformancePage() {
       try {
         setLoading(true);
         const [usersRes, reviewsRes] = await Promise.all([
-          fetch("/api/admin/hr/employees/list", { cache: "no-store", credentials: "include" }),
-          fetch("/api/admin/hr/performance/list", { cache: "no-store", credentials: "include" }),
+          apiFetch("/api/admin/hr/employees/list", { cache: "no-store" }),
+          apiFetch("/api/admin/hr/performance/list", { cache: "no-store" }),
         ]);
         const usersJson = await usersRes.json();
         const reviewsJson = await reviewsRes.json();
@@ -112,15 +113,14 @@ export default function HrPerformancePage() {
           .filter(Boolean),
         notes: form.notes,
       };
-      const res = await fetch("/api/admin/hr/performance/create", {
+      const res = await apiFetch("/api/admin/hr/performance/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to add review.");
-      const refresh = await fetch("/api/admin/hr/performance/list", { cache: "no-store", credentials: "include" });
+      const refresh = await apiFetch("/api/admin/hr/performance/list", { cache: "no-store" });
       const refreshData = await refresh.json();
       setReviews(refreshData.reviews || []);
       setForm({ userId: "", period: "", rating: "", tags: "", notes: "" });

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 export default function EditEmployeePage() {
@@ -15,7 +16,7 @@ export default function EditEmployeePage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/hr/employees/get?id=${id}`);
+        const res = await apiFetch(`/api/hr/employees/get?id=${id}`);
         const data = await res.json();
         if (data.success) setEmployee(data.employee);
       } catch (e) {
@@ -30,7 +31,7 @@ export default function EditEmployeePage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/hr/employees/update?id=${id}`, {
+      const res = await apiFetch(`/api/hr/employees/update?id=${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employee),

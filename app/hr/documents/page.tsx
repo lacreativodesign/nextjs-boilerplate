@@ -5,6 +5,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
+import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
 
 const DOC_TYPES = [
@@ -65,8 +66,8 @@ export default function HrDocumentsPage() {
       try {
         setLoading(true);
         const [usersRes, docsRes] = await Promise.all([
-          fetch("/api/hr/employees/list", { cache: "no-store", credentials: "include" }),
-          fetch("/api/hr/documents/list", { cache: "no-store", credentials: "include" }),
+          apiFetch("/api/hr/employees/list", { cache: "no-store" }),
+          apiFetch("/api/hr/documents/list", { cache: "no-store" }),
         ]);
         const usersJson = await usersRes.json();
         const docsJson = await docsRes.json();
@@ -141,10 +142,9 @@ export default function HrDocumentsPage() {
       await uploadBytes(fileRef, selectedFile);
       const downloadUrl = await getDownloadURL(fileRef);
 
-      const res = await fetch("/api/hr/documents/upload", {
+      const res = await apiFetch("/api/hr/documents/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: docId,
           userId: selectedUserId,
@@ -157,7 +157,7 @@ export default function HrDocumentsPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to store document metadata.");
 
-      const refresh = await fetch("/api/hr/documents/list", { cache: "no-store", credentials: "include" });
+      const refresh = await apiFetch("/api/hr/documents/list", { cache: "no-store" });
       const refreshData = await refresh.json();
       setDocuments(refreshData.documents || []);
       setSelectedFile(null);
@@ -173,10 +173,9 @@ export default function HrDocumentsPage() {
   async function deleteDocument(doc: DocumentRecord) {
     if (!window.confirm("Delete this document?")) return;
     try {
-      const res = await fetch("/api/hr/documents/delete", {
+      const res = await apiFetch("/api/hr/documents/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ docId: doc.id }),
       });
       const data = await res.json();

@@ -7,6 +7,7 @@ import { getFirebaseStorage } from "@/lib/firebaseClient";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { ListSkeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/components/finance/financeUtils";
+import { apiFetch } from "@/lib/api/client";
 
 const DOC_TYPES = [
   { label: "Contract", value: "Contract" },
@@ -53,8 +54,8 @@ export default function HrDocumentsPage() {
       try {
         setLoading(true);
         const [usersRes, docsRes] = await Promise.all([
-          fetch("/api/admin/hr/employees/list", { cache: "no-store", credentials: "include" }),
-          fetch("/api/admin/hr/documents/list", { cache: "no-store", credentials: "include" }),
+          apiFetch("/api/admin/hr/employees/list", { cache: "no-store" }),
+          apiFetch("/api/admin/hr/documents/list", { cache: "no-store" }),
         ]);
         const usersJson = await usersRes.json();
         const docsJson = await docsRes.json();
@@ -112,10 +113,9 @@ export default function HrDocumentsPage() {
       await uploadBytes(fileRef, selectedFile);
       const downloadUrl = await getDownloadURL(fileRef);
 
-      const res = await fetch("/api/admin/hr/documents/upload", {
+      const res = await apiFetch("/api/admin/hr/documents/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           userId: selectedUserId,
           docType: selectedDocType,
@@ -127,7 +127,7 @@ export default function HrDocumentsPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to store document metadata.");
 
-      const refresh = await fetch("/api/admin/hr/documents/list", { cache: "no-store", credentials: "include" });
+      const refresh = await apiFetch("/api/admin/hr/documents/list", { cache: "no-store" });
       const refreshData = await refresh.json();
       setDocuments(refreshData.documents || []);
       setSelectedFile(null);
@@ -143,10 +143,9 @@ export default function HrDocumentsPage() {
   async function deleteDocument(doc: DocumentRecord) {
     if (!window.confirm("Delete this document?")) return;
     try {
-      const res = await fetch("/api/admin/hr/documents/delete", {
+      const res = await apiFetch("/api/admin/hr/documents/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ docId: doc.id }),
       });
       const data = await res.json();
