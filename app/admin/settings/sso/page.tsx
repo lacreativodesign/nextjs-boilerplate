@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 import SsoAuditLogViewer from "@/components/admin/SsoAuditLogViewer";
 import UserSsoStatusIndicator from "@/components/users/UserSsoStatusIndicator";
+import { apiFetch } from "@/lib/api/client";
 
 type ProviderKey = "google" | "microsoft";
 
@@ -47,9 +48,8 @@ export default function SsoSettingsPage() {
 
     try {
       const config = configs[provider];
-      const response = await fetch("/api/admin/sso/configure", {
+      const response = await apiFetch("/api/admin/sso/configure", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId,

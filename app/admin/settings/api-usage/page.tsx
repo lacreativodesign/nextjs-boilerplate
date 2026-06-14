@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
 import UsageChartsSkeleton from "./_components/UsageChartsSkeleton";
+import { apiFetch } from "@/lib/api/client";
 
 type UsageStats = {
   totalCalls: number;
@@ -48,8 +49,8 @@ export default function ApiUsageSettingsPage() {
   const load = async () => {
     try {
       const [statsRes, logsRes] = await Promise.all([
-        fetch("/api/admin/usage/stats", { cache: "no-store", credentials: "include" }),
-        fetch("/api/admin/usage/logs?pageSize=50", { cache: "no-store", credentials: "include" }),
+        apiFetch("/api/admin/usage/stats", { cache: "no-store" }),
+        apiFetch("/api/admin/usage/logs?pageSize=50", { cache: "no-store" }),
       ]);
 
       const statsJson = await statsRes.json();
@@ -77,9 +78,8 @@ export default function ApiUsageSettingsPage() {
   const realtimePoints = useMemo(() => stats.timeSeries.slice(-24), [stats.timeSeries]);
 
   const saveRule = async () => {
-    const res = await fetch("/api/admin/rate-limits", {
+    const res = await apiFetch("/api/admin/rate-limits", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ruleForm),
     });
@@ -89,9 +89,8 @@ export default function ApiUsageSettingsPage() {
   };
 
   const saveQuota = async () => {
-    const res = await fetch("/api/admin/quotas", {
+    const res = await apiFetch("/api/admin/quotas", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(quotaForm),
     });

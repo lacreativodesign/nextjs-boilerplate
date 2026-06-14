@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type SecuritySettings = {
   sessionTimeoutMinutes: number;
@@ -32,7 +33,7 @@ export default function SecuritySettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/settings/security", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/settings/security", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         if (res.status === 403) throw new Error("You do not have access to security settings.");
@@ -58,10 +59,9 @@ export default function SecuritySettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/settings/security", {
+      const res = await apiFetch("/api/admin/settings/security", {
         method: "PUT",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

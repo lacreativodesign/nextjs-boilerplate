@@ -3,6 +3,7 @@
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useEffect, useMemo, useState } from "react";
 import { SettingsAlert } from "../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type BrandingState = {
   logoUrl: string | null;
@@ -68,7 +69,7 @@ export default function BrandingSettingsPage() {
   const load = async () => {
     setLoading(true);
     setError(null);
-    const res = await fetch("/api/admin/branding", { credentials: "include", cache: "no-store" });
+    const res = await apiFetch("/api/admin/branding", { cache: "no-store" });
     const data = await res.json();
     if (!res.ok || !data?.ok) {
       setError(data?.error || "Failed to load branding settings.");
@@ -88,9 +89,8 @@ export default function BrandingSettingsPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = String(reader.result || "");
-      const res = await fetch("/api/admin/branding/logo", {
+      const res = await apiFetch("/api/admin/branding/logo", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dataUrl, contentType: file.type }),
       });
@@ -109,9 +109,8 @@ export default function BrandingSettingsPage() {
     setSaving(true);
     setError(null);
     setSuccess(null);
-    const res = await fetch("/api/admin/branding", {
+    const res = await apiFetch("/api/admin/branding", {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         logoUrl: state.logoUrl,
@@ -141,9 +140,8 @@ export default function BrandingSettingsPage() {
 
   const verifyDomain = async () => {
     setError(null);
-    const res = await fetch("/api/admin/domains/verify", {
+    const res = await apiFetch("/api/admin/domains/verify", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domain: domainInput }),
     });
@@ -158,9 +156,8 @@ export default function BrandingSettingsPage() {
 
   const verifyEmail = async () => {
     setError(null);
-    const res = await fetch("/api/admin/email/verify", {
+    const res = await apiFetch("/api/admin/email/verify", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fromEmail: state.emailBranding.fromEmail }),
     });

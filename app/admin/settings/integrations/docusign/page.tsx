@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SettingsAlert } from "../../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type DocusignConnection = {
   connected: boolean;
@@ -39,7 +40,7 @@ export default function DocusignIntegrationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/integrations/docusign/oauth", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/integrations/docusign/oauth", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load DocuSign state.");
       setConnection(data.connection || null);
@@ -58,9 +59,8 @@ export default function DocusignIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/docusign/oauth", {
+      const res = await apiFetch("/api/integrations/docusign/oauth", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ start: true, returnTo: "/admin/settings/integrations/docusign" }),
       });
@@ -88,9 +88,8 @@ export default function DocusignIntegrationPage() {
       formData.append("subject", subject);
       formData.append("message", message);
 
-      const res = await fetch("/api/integrations/docusign/send", {
+      const res = await apiFetch("/api/integrations/docusign/send", {
         method: "POST",
-        credentials: "include",
         body: formData,
       });
       const data = await res.json();
@@ -115,9 +114,8 @@ export default function DocusignIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch(`/api/integrations/docusign/status/${encodeURIComponent(envelopeId.trim())}`, {
+      const res = await apiFetch(`/api/integrations/docusign/status/${encodeURIComponent(envelopeId.trim())}`, {
         cache: "no-store",
-        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to fetch envelope status.");
@@ -144,9 +142,8 @@ export default function DocusignIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/docusign/send", {
+      const res = await apiFetch("/api/integrations/docusign/send", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "remind", envelopeId: envelopeId.trim(), signerEmails: recipients }),
       });

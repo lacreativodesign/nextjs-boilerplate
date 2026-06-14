@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SettingsAlert } from "../../_components/SettingsAlert";
+import { apiFetch } from "@/lib/api/client";
 
 type Audience = { id: string; name: string; memberCount: number };
 
@@ -41,7 +42,7 @@ export default function MailchimpIntegrationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/integrations/mailchimp/audiences", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/integrations/mailchimp/audiences", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load Mailchimp state.");
       setConnection(data.connection || null);
@@ -62,9 +63,8 @@ export default function MailchimpIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/mailchimp/oauth", {
+      const res = await apiFetch("/api/integrations/mailchimp/oauth", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ start: true, returnTo: "/admin/settings/integrations/mailchimp" }),
       });
@@ -81,9 +81,8 @@ export default function MailchimpIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch("/api/integrations/mailchimp/oauth", {
+      const res = await apiFetch("/api/integrations/mailchimp/oauth", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey }),
       });
@@ -104,9 +103,8 @@ export default function MailchimpIntegrationPage() {
       setSaving(true);
       setError(null);
       const parsed = JSON.parse(tagMappingText || "{}");
-      const res = await fetch("/api/integrations/mailchimp/audiences", {
+      const res = await apiFetch("/api/integrations/mailchimp/audiences", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           autoSyncEnabled: Boolean(connection?.settings?.autoSyncEnabled),
@@ -141,9 +139,8 @@ export default function MailchimpIntegrationPage() {
             }
           : undefined;
 
-      const res = await fetch("/api/integrations/mailchimp/sync", {
+      const res = await apiFetch("/api/integrations/mailchimp/sync", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode,
