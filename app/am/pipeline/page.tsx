@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import AMProjectDrawer, { type AMProject } from "@/components/am/AMProjectDrawer";
+import { apiFetch } from "@/lib/api/client";
 
 const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
 
@@ -44,7 +45,7 @@ export default function AMPipelinePage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/am/pipeline", { credentials: "include", cache: "no-store" });
+        const res = await apiFetch("/api/am/pipeline", { cache: "no-store" });
         const payload = (await res.json()) as PipelinePayload;
         if (!res.ok || !payload.ok) {
           throw new Error(payload?.error || "Unable to load pipeline.");
@@ -91,10 +92,9 @@ export default function AMPipelinePage() {
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/am/projects/request-stage-move", {
+      const res = await apiFetch("/api/am/projects/request-stage-move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: project.id,
           requestedStage,
@@ -118,10 +118,9 @@ export default function AMPipelinePage() {
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/am/projects/move-stage", {
+      const res = await apiFetch("/api/am/projects/move-stage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: project.id,
           toStage: "Draft",

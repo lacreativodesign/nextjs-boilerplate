@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { apiFetch } from "@/lib/api/client";
 
 type FileRecord = {
   id: string;
@@ -66,7 +67,7 @@ export default function ClientFilesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/client/files/list", { credentials: "include", cache: "no-store" });
+      const res = await apiFetch("/api/client/files/list", { cache: "no-store" });
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load files.");
       setFiles(payload.files || []);
@@ -84,7 +85,7 @@ export default function ClientFilesPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const res = await fetch("/api/client/projects/list", { credentials: "include", cache: "no-store" });
+        const res = await apiFetch("/api/client/projects/list", { cache: "no-store" });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) return;
         const options = (payload.projects || []).map((project: any) => ({
@@ -120,10 +121,9 @@ export default function ClientFilesPage() {
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await fetch("/api/client/files/upload", {
+      const res = await apiFetch("/api/client/files/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: uploadProjectId,
           fileName: file.name,

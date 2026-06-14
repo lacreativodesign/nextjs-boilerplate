@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 const PIPELINE_STAGES = ["Inquiry", "Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 
@@ -85,7 +86,7 @@ export default function ClientProjectsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/client/projects/list", { credentials: "include", cache: "no-store" });
+        const res = await apiFetch("/api/client/projects/list", { cache: "no-store" });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load projects.");
         if (!alive) return;
@@ -119,8 +120,7 @@ export default function ClientProjectsPage() {
     setSelected(null);
     setCrOpen(false);
     try {
-      const res = await fetch(`/api/client/projects/get?id=${project.id}`, {
-        credentials: "include",
+      const res = await apiFetch(`/api/client/projects/get?id=${project.id}`, {
         cache: "no-store",
       });
       const payload = (await res.json()) as ProjectDetailPayload;
@@ -143,10 +143,9 @@ export default function ClientProjectsPage() {
     if (!selected?.project?.id) return;
     setActionLoading(true);
     try {
-      const res = await fetch("/api/client/projects/approve", {
+      const res = await apiFetch("/api/client/projects/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ projectId: selected.project.id }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -171,10 +170,9 @@ export default function ClientProjectsPage() {
     if (!crTitle.trim() || !crDescription.trim()) return;
     setActionLoading(true);
     try {
-      const res = await fetch("/api/client/change-requests/create", {
+      const res = await apiFetch("/api/client/change-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: selected.project.id,
           type: "Revision",

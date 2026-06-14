@@ -4,6 +4,7 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { apiFetch } from "@/lib/api/client";
 
 type FileCategory = "Draft" | "Revision" | "Final" | "Asset" | "Other";
 
@@ -183,9 +184,8 @@ export default function GlobalFilesPage() {
       if (startDate) params.set("start", startDate);
       if (endDate) params.set("end", endDate);
 
-      const res = await fetch(`/api/admin/files/list?${params.toString()}`, {
+      const res = await apiFetch(`/api/admin/files/list?${params.toString()}`, {
         cache: "no-store",
-        credentials: "include",
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload?.ok) {
@@ -204,7 +204,7 @@ export default function GlobalFilesPage() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/projects/pipeline", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/projects/pipeline", { cache: "no-store" });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload?.ok) {
         return;
@@ -313,7 +313,7 @@ export default function GlobalFilesPage() {
       await uploadBytes(storageRef, selectedFile);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await fetch("/api/admin/files/create", {
+      const res = await apiFetch("/api/admin/files/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -329,7 +329,6 @@ export default function GlobalFilesPage() {
           notes: uploadNotes || null,
         }),
         cache: "no-store",
-        credentials: "include",
       });
 
       const payload = await res.json().catch(() => null);
@@ -351,12 +350,11 @@ export default function GlobalFilesPage() {
     if (!canDelete(currentUser?.role)) return;
     setDeletingId(file.id);
     try {
-      const res = await fetch("/api/admin/files/delete", {
+      const res = await apiFetch("/api/admin/files/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: file.id }),
         cache: "no-store",
-        credentials: "include",
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload?.ok) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type InvoiceRecord = {
   id: string;
@@ -114,9 +115,9 @@ export default function ClientBillingPage() {
 
       try {
         const [invResS, payResS, crResS] = await Promise.allSettled([
-          fetch("/api/client/billing/invoices/list", { credentials: "include", cache: "no-store" }),
-          fetch("/api/payments/history", { credentials: "include", cache: "no-store" }),
-          fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" }),
+          apiFetch("/api/client/billing/invoices/list", { cache: "no-store" }),
+          apiFetch("/api/payments/history", { cache: "no-store" }),
+          apiFetch("/api/client/change-requests/list", { cache: "no-store" }),
         ]);
 
         if (!alive) return;
@@ -200,8 +201,7 @@ export default function ClientBillingPage() {
     setDetail(null);
 
     try {
-      const res = await fetch(`/api/client/billing/invoices/get?id=${invoice.id}`, {
-        credentials: "include",
+      const res = await apiFetch(`/api/client/billing/invoices/get?id=${invoice.id}`, {
         cache: "no-store",
       });
       const payload = await res.json();
@@ -224,9 +224,8 @@ export default function ClientBillingPage() {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      const res = await fetch("/api/payments/create-intent", {
+      const res = await apiFetch("/api/payments/create-intent", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoiceId }),
       });

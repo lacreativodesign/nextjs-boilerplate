@@ -2,6 +2,7 @@
 
 import MasterSelect from "@/components/ui/MasterSelect";
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type ChangeRequestType = "Scope Change" | "Revision" | "New Feature" | "Bug Fix" | "Other";
 
@@ -268,10 +269,9 @@ export default function ChangeRequestsPage() {
       setError(null);
 
       try {
-        const res = await fetch("/api/admin/change-requests/list", {
+        const res = await apiFetch("/api/admin/change-requests/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -301,10 +301,9 @@ export default function ChangeRequestsPage() {
 
     async function loadProjects() {
       try {
-        const res = await fetch("/api/admin/projects/list", {
+        const res = await apiFetch("/api/admin/projects/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -324,10 +323,9 @@ export default function ChangeRequestsPage() {
 
     async function loadUsers() {
       try {
-        const res = await fetch("/api/admin/list-users", {
+        const res = await apiFetch("/api/admin/list-users", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !Array.isArray(json?.users)) return;
@@ -357,11 +355,10 @@ export default function ChangeRequestsPage() {
 
     async function loadFiles() {
       try {
-        const res = await fetch(`/api/admin/files/list?projectId=${createProjectId}`,
+        const res = await apiFetch(`/api/admin/files/list?projectId=${createProjectId}`,
           {
             method: "GET",
             cache: "no-store",
-            credentials: "include",
           }
         );
         const json = await res.json().catch(() => ({}));
@@ -400,11 +397,10 @@ export default function ChangeRequestsPage() {
 
     async function loadFiles() {
       try {
-        const res = await fetch(`/api/admin/files/list?projectId=${currentSelected.projectId}`,
+        const res = await apiFetch(`/api/admin/files/list?projectId=${currentSelected.projectId}`,
           {
             method: "GET",
             cache: "no-store",
-            credentials: "include",
           }
         );
         const json = await res.json().catch(() => ({}));
@@ -547,10 +543,9 @@ export default function ChangeRequestsPage() {
 
   async function refreshList() {
     try {
-      const res = await fetch("/api/admin/change-requests/list", {
+      const res = await apiFetch("/api/admin/change-requests/list", {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
@@ -575,10 +570,9 @@ export default function ChangeRequestsPage() {
     }
 
     try {
-      const res = await fetch("/api/admin/change-requests/create", {
+      const res = await apiFetch("/api/admin/change-requests/create", {
         method: "POST",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: createProjectId,
@@ -607,10 +601,9 @@ export default function ChangeRequestsPage() {
     setDrawerError(null);
 
     try {
-      const res = await fetch("/api/admin/change-requests/update-status", {
+      const res = await apiFetch("/api/admin/change-requests/update-status", {
         method: "POST",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           changeRequestId: selected.id,
@@ -636,10 +629,9 @@ export default function ChangeRequestsPage() {
     setDrawerError(null);
 
     try {
-      const res = await fetch("/api/admin/change-requests/update-commercial", {
+      const res = await apiFetch("/api/admin/change-requests/update-commercial", {
         method: "POST",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           changeRequestId: selected.id,

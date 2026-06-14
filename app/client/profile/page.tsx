@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SkeletonForm } from "@/components/ui/Skeleton";
+import { apiFetch } from "@/lib/api/client";
 
 type ClientProfile = {
   companyName?: string;
@@ -39,10 +40,9 @@ export default function ClientProfilePage() {
       setError(null);
       setSuccess(null);
       try {
-        const res = await fetch("/api/client/profile/get", {
+        const res = await apiFetch("/api/client/profile/get", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to load profile.");
@@ -69,10 +69,9 @@ export default function ClientProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/client/profile/update", {
+      const res = await apiFetch("/api/client/profile/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           companyName: profile.companyName || "",
           contactName: profile.primaryContactName || "",

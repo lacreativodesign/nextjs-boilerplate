@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"];
 const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"];
@@ -73,7 +74,7 @@ export default function ClientChangeRequestsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/client/change-requests/list", { credentials: "include", cache: "no-store" });
+      const res = await apiFetch("/api/client/change-requests/list", { cache: "no-store" });
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load change requests.");
       setChangeRequests(payload.changeRequests || []);
@@ -91,7 +92,7 @@ export default function ClientChangeRequestsPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const res = await fetch("/api/client/projects/list", { credentials: "include", cache: "no-store" });
+        const res = await apiFetch("/api/client/projects/list", { cache: "no-store" });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) return;
         const options = (payload.projects || []).map((project: any) => ({
@@ -129,10 +130,9 @@ export default function ClientChangeRequestsPage() {
     if (!formState.projectId || !formState.title.trim() || !formState.description.trim()) return;
     setActionLoading(true);
     try {
-      const res = await fetch("/api/client/change-requests/create", {
+      const res = await apiFetch("/api/client/change-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: formState.projectId,
           type: formState.type,
@@ -162,10 +162,9 @@ export default function ClientChangeRequestsPage() {
   const handleDecision = async (request: ChangeRequestRecord, decision: "approve" | "reject") => {
     setDecisionLoading(true);
     try {
-      const res = await fetch("/api/client/change-requests/update-status", {
+      const res = await apiFetch("/api/client/change-requests/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ changeRequestId: request.id, decision }),
       });
       const payload = await res.json();

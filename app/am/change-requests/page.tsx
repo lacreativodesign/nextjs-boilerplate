@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
+import { apiFetch } from "@/lib/api/client";
 
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
 const CHANGE_REQUEST_STATUSES = [
@@ -119,8 +120,7 @@ export default function AMChangeRequestsPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (typeFilter !== "all") params.set("type", typeFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
-      const res = await fetch(`/api/am/change-requests/list?${params.toString()}`, {
-        credentials: "include",
+      const res = await apiFetch(`/api/am/change-requests/list?${params.toString()}`, {
         cache: "no-store",
       });
       const payload = (await res.json()) as ChangeRequestsPayload;
@@ -187,10 +187,9 @@ export default function AMChangeRequestsPage() {
     if (!selected) return;
     setActionLoading(true);
     try {
-      const res = await fetch("/api/am/change-requests/update-status", {
+      const res = await apiFetch("/api/am/change-requests/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ changeRequestId: selected.id, toStatus }),
       });
       const payload = await res.json();
@@ -210,10 +209,9 @@ export default function AMChangeRequestsPage() {
     if (!selected) return;
     setApprovalLoading(true);
     try {
-      const res = await fetch("/api/approvals/request", {
+      const res = await apiFetch("/api/approvals/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           type: "change_request",
           entityType: "project",
@@ -252,10 +250,9 @@ export default function AMChangeRequestsPage() {
     if (!createProjectId.trim() || !createTitle.trim() || !createDescription.trim()) return;
     setActionLoading(true);
     try {
-      const res = await fetch("/api/am/change-requests/create", {
+      const res = await apiFetch("/api/am/change-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: createProjectId.trim(),
           title: createTitle.trim(),

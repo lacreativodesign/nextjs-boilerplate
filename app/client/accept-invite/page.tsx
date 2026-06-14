@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { SkeletonForm } from "@/components/ui/Skeleton";
 import { useSearchParams, useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api/client";
 
 function AcceptInviteClient() {
   const searchParams = useSearchParams();
@@ -27,7 +28,7 @@ function AcceptInviteClient() {
       }
 
       try {
-        const res = await fetch(`/api/client/invites/validate?token=${encodeURIComponent(token)}`, {
+        const res = await apiFetch(`/api/client/invites/validate?token=${encodeURIComponent(token)}`, {
           cache: "no-store",
         });
         const data = await res.json();
@@ -65,7 +66,7 @@ function AcceptInviteClient() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/client/invites/complete", {
+      const res = await apiFetch("/api/client/invites/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
