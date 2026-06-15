@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SegmentDefinition, SegmentType } from "@/lib/segments";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const tabOptions: Array<{ label: string; value: SegmentType }> = [
@@ -255,17 +257,15 @@ export default function ClientSegmentsPage() {
     });
   }, [normalizedClients, selectedSegment]);
 
-  const filteredDrawerClients = useMemo(() => {
-    const q = clientSearch.trim().toLowerCase();
-    if (!q) return drawerClients;
-    return drawerClients.filter((client) => {
-      const hay = [client.companyName, client.primaryContactName, client.primaryContactEmail]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [clientSearch, drawerClients]);
+  const filteredDrawerClients = useMemo(
+    () =>
+      smartMatch(drawerClients, clientSearch, (client) => [
+        client.companyName,
+        client.primaryContactName,
+        client.primaryContactEmail,
+      ]),
+    [clientSearch, drawerClients]
+  );
 
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
@@ -662,12 +662,7 @@ export default function ClientSegmentsPage() {
                 Clients in Segment
               </div>
               <div style={{ marginTop: 10 }}>
-                <input
-                  className="input"
-                  placeholder="Search keyword"
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                />
+                <SmartSearchBar value={clientSearch} onChange={setClientSearch} />
               </div>
               <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                 {filteredDrawerClients.length === 0 ? (

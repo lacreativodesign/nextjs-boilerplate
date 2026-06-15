@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
 import { FOLLOW_UP_STATUS, FOLLOW_UP_TYPES, isOverdue, toInputDateTime } from "@/lib/sales/utils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const TYPE_OPTIONS = ["All", ...FOLLOW_UP_TYPES];
@@ -84,7 +86,6 @@ export default function SalesFollowUpsPage() {
   }, [loadFollowUps]);
 
   const filteredFollowUps = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = [...followUps];
     if (typeFilter !== "All") {
       list = list.filter((item) => item.type === typeFilter);
@@ -92,13 +93,7 @@ export default function SalesFollowUpsPage() {
     if (statusFilter !== "All") {
       list = list.filter((item) => item.status === statusFilter);
     }
-    if (q) {
-      list = list.filter((item) => {
-        const hay = [item.relatedName, item.type, item.ownerName].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(q);
-      });
-    }
-    return list;
+    return smartMatch(list, query, (item) => [item.relatedName, item.type, item.ownerName]);
   }, [followUps, query, typeFilter, statusFilter]);
 
   const sortedFollowUps = useMemo(() => {
@@ -286,12 +281,7 @@ export default function SalesFollowUpsPage() {
         <div className="grid gap-4 md:grid-cols-[1.2fr_0.6fr_0.6fr]">
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search keyword"
-              className="input mt-2"
-            />
+            <SmartSearchBar value={query} onChange={setQuery} className="mt-2" />
           </div>
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Type</label>

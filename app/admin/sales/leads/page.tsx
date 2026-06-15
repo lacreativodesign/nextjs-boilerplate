@@ -5,6 +5,8 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatDateTime } from "@/components/finance/financeUtils";
 import { LEAD_STAGES } from "@/lib/sales/utils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STAGE_OPTIONS = [{ label: "All Stages", value: "" }, ...LEAD_STAGES.map((stage) => ({ label: stage, value: stage }))];
@@ -103,19 +105,12 @@ export default function SalesLeadsPage() {
   );
 
   const filteredLeads = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return leads.filter((lead) => {
+    const list = leads.filter((lead) => {
       if (stageFilter && lead.stage !== stageFilter) return false;
       if (ownerFilter && lead.ownerId !== ownerFilter) return false;
-      if (q) {
-        const hay = [lead.name, lead.email, lead.phone, lead.source, lead.ownerName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(list, query, (lead) => [lead.name, lead.email, lead.phone, lead.source, lead.ownerName]);
   }, [leads, query, stageFilter, ownerFilter]);
 
   const openCreate = () => {
@@ -263,13 +258,9 @@ export default function SalesLeadsPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <SmartSearchBar value={query} onChange={setQuery} />
+        </div>
         <MasterSelect value={stageFilter} onChange={(value) => setStageFilter(value)} options={STAGE_OPTIONS} />
         <MasterSelect value={ownerFilter} onChange={(value) => setOwnerFilter(value)} options={ownerOptions} />
         <button

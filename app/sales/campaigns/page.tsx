@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["All", "Active", "Paused", "Completed"];
@@ -74,18 +76,11 @@ export default function SalesCampaignsPage() {
   }, [loadCampaigns]);
 
   const filteredCampaigns = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = [...campaigns];
     if (statusFilter !== "All") {
       list = list.filter((campaign) => campaign.status === statusFilter);
     }
-    if (q) {
-      list = list.filter((campaign) => {
-        const hay = [campaign.name, campaign.channel, campaign.status].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(q);
-      });
-    }
-    return list;
+    return smartMatch(list, query, (campaign) => [campaign.name, campaign.channel, campaign.status]);
   }, [campaigns, query, statusFilter]);
 
   const sortedCampaigns = useMemo(() => {
@@ -219,12 +214,7 @@ export default function SalesCampaignsPage() {
         <div className="grid gap-4 md:grid-cols-[1.2fr_0.6fr]">
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search keyword"
-              className="input mt-2"
-            />
+            <SmartSearchBar value={query} onChange={setQuery} className="mt-2" />
           </div>
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>

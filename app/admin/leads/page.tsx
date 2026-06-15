@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
@@ -76,16 +78,12 @@ export default function AdminLeadsPage() {
   }, [loadData]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return leads.filter((lead) => {
+    const list = leads.filter((lead) => {
       if (statusFilter && lead.status !== statusFilter) return false;
       if (ownerFilter && lead.ownerUid !== ownerFilter) return false;
-      if (q) {
-        const hay = [lead.name, lead.company, lead.source, lead.ownerName].filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(list, query, (lead) => [lead.name, lead.company, lead.source, lead.ownerName]);
   }, [leads, ownerFilter, query, statusFilter]);
 
   const handleAssign = async (lead: LeadRecord, ownerUid: string) => {
@@ -154,7 +152,7 @@ export default function AdminLeadsPage() {
           alignItems: "center",
         }}
       >
-        <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search leads" />
+        <SmartSearchBar value={query} onChange={setQuery} />
         <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           {STATUS_OPTIONS.map((status) => (
             <option key={status.value} value={status.value}>
