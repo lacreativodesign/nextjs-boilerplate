@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ErrorCard } from "../_components/ReportsUI";
+import { apiFetch } from "@/lib/api/client";
 
 type ReportSettings = {
   arAgingBucketsDays: number[];
@@ -38,7 +39,7 @@ export default function ReportsSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await fetch("/api/admin/reports/settings", { cache: "no-store", credentials: "include" });
+      const res = await apiFetch("/api/admin/reports/settings", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json?.ok) {
         if (res.status === 403) throw new Error("You do not have access to Admin reports.");
@@ -82,10 +83,9 @@ export default function ReportsSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/admin/reports/settings", {
+      const res = await apiFetch("/api/admin/reports/settings", {
         method: "POST",
         cache: "no-store",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });

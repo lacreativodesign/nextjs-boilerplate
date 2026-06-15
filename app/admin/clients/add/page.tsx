@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 import type { SegmentDefinition } from "@/lib/segments";
 
 type SalesStage =
@@ -312,10 +313,9 @@ export default function AddClientPage() {
 
     async function loadSegments() {
       try {
-        const res = await fetch("/api/admin/clients/segments/list", {
+        const res = await apiFetch("/api/admin/clients/segments/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -331,10 +331,9 @@ export default function AddClientPage() {
 
     async function loadSalesUsers() {
       try {
-        const res = await fetch("/api/admin/users/by-role?role=sales", {
+        const res = await apiFetch("/api/admin/users/by-role?role=sales", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -350,10 +349,9 @@ export default function AddClientPage() {
 
     async function loadAmUsers() {
       try {
-        const res = await fetch("/api/admin/users/by-role?role=am,am_manager", {
+        const res = await apiFetch("/api/admin/users/by-role?role=am,am_manager", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -369,10 +367,9 @@ export default function AddClientPage() {
 
     async function loadProductionUsers() {
       try {
-        const res = await fetch("/api/admin/users/by-role?role=production", {
+        const res = await apiFetch("/api/admin/users/by-role?role=production", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -571,11 +568,10 @@ export default function AddClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      const res = await fetch("/api/admin/clients/create", {
+      const res = await apiFetch("/api/admin/clients/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include",
       });
 
       const json = (await res.json().catch(() => ({}))) as ApiResp;

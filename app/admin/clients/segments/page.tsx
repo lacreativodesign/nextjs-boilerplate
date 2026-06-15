@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SegmentDefinition, SegmentType } from "@/lib/segments";
 import { getValueBand, slugify, valueBands } from "@/lib/segments";
+import { apiFetch } from "@/lib/api/client";
 
 const tabOptions: Array<{ label: string; value: SegmentType }> = [
   { label: "Service", value: "service" },
@@ -71,15 +72,13 @@ export default function ClientSegmentsPage() {
 
       try {
         const [segmentsRes, clientsRes] = await Promise.all([
-          fetch("/api/admin/clients/segments/list", {
+          apiFetch("/api/admin/clients/segments/list", {
             method: "GET",
             cache: "no-store",
-            credentials: "include",
           }),
-          fetch("/api/admin/clients/list", {
+          apiFetch("/api/admin/clients/list", {
             method: "GET",
             cache: "no-store",
-            credentials: "include",
           }),
         ]);
 
@@ -329,10 +328,9 @@ export default function ClientSegmentsPage() {
     setManageLoading(true);
 
     try {
-      const res = await fetch("/api/admin/clients/segments/update", {
+      const res = await apiFetch("/api/admin/clients/segments/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: selectedSegment.id,
           name: manageName.trim(),
@@ -372,10 +370,9 @@ export default function ClientSegmentsPage() {
 
     setManageLoading(true);
     try {
-      const res = await fetch("/api/admin/clients/segments/delete", {
+      const res = await apiFetch("/api/admin/clients/segments/delete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: selectedSegment.id }),
       });
       const json = await res.json().catch(() => ({}));

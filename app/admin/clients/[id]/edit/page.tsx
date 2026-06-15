@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SegmentDefinition } from "@/lib/segments";
 import { toastSuccess } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 
 type SalesStage =
   | "New Lead"
@@ -65,10 +66,9 @@ export default function EditClientPage() {
 
     async function loadSegments() {
       try {
-        const res = await fetch("/api/admin/clients/segments/list", {
+        const res = await apiFetch("/api/admin/clients/segments/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -229,10 +229,9 @@ export default function EditClientPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/admin/clients/get?id=${encodeURIComponent(id)}`, {
+        const res = await apiFetch(`/api/admin/clients/get?id=${encodeURIComponent(id)}`, {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -330,11 +329,10 @@ export default function EditClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      const res = await fetch("/api/admin/clients/update", {
+      const res = await apiFetch("/api/admin/clients/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include",
       });
 
       const json = await res.json().catch(() => ({}));

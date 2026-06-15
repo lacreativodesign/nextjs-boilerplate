@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type JobStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -49,10 +50,9 @@ export default function AdminJobsPage() {
       if (status) params.set("status", status);
       params.set("limit", "200");
 
-      const response = await fetch(`/api/admin/jobs?${params.toString()}`, {
+      const response = await apiFetch(`/api/admin/jobs?${params.toString()}`, {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       });
 
       const json = (await response.json()) as JobsResponse;
@@ -81,9 +81,8 @@ export default function AdminJobsPage() {
     setRetrying(jobId);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/jobs/${jobId}/retry`, {
+      const response = await apiFetch(`/api/admin/jobs/${jobId}/retry`, {
         method: "POST",
-        credentials: "include",
       });
       const json = await response.json();
       if (!response.ok || !json.ok) {

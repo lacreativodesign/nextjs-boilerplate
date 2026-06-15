@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/components/finance/financeUtils";
+import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -46,8 +47,8 @@ export default function AdminLeadsPage() {
       setLoading(true);
       setError(null);
       const [leadRes, ownerRes] = await Promise.all([
-        fetch("/api/admin/leads/list", { cache: "no-store" }),
-        fetch("/api/admin/users/by-role?role=sales", { cache: "no-store" }),
+        apiFetch("/api/admin/leads/list", { cache: "no-store" }),
+        apiFetch("/api/admin/users/by-role?role=sales", { cache: "no-store" }),
       ]);
 
       const leadJson = (await leadRes.json()) as LeadListResponse;
@@ -90,7 +91,7 @@ export default function AdminLeadsPage() {
   const handleAssign = async (lead: LeadRecord, ownerUid: string) => {
     setUpdatingId(lead.id);
     try {
-      const res = await fetch("/api/sales/leads/update", {
+      const res = await apiFetch("/api/sales/leads/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: lead.id, ownerUid }),
