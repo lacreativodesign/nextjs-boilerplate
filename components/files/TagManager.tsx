@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 export function TagManager({ fileId, onUpdated }: { fileId: string; onUpdated: () => void }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#3b82f6");
 
   const addTag = async () => {
     if (!name.trim()) return;
-    const res = await fetch(`/api/files/${fileId}/tags`, {
+    const res = await apiFetch(`/api/files/${fileId}/tags`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tags: [{ name, color }] }),

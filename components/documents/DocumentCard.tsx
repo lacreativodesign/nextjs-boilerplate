@@ -3,6 +3,7 @@
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useState } from "react";
 import type { Document } from "@/types/documents";
+import { apiFetch } from "@/lib/api/client";
 
 export function DocumentCard({
   document,
@@ -22,7 +23,7 @@ export function DocumentCard({
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/documents/${document.id}/download`);
+      const response = await apiFetch(`/api/documents/${document.id}/download`);
       const data = await response.json();
       if (response.ok && data.downloadUrl) {
         window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
@@ -37,7 +38,7 @@ export function DocumentCard({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/documents/bulk-delete", {
+      const response = await apiFetch("/api/documents/bulk-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ documentIds: [document.id] }),

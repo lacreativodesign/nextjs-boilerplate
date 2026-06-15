@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 export function TimeTracker({ projectId, projectName = "Project" }: { projectId: string; projectName?: string }) {
   const [taskId, setTaskId] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -11,7 +13,7 @@ export function TimeTracker({ projectId, projectName = "Project" }: { projectId:
   const start = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/time-entries/start", {
+      const response = await apiFetch("/api/time-entries/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, projectName, taskId, taskTitle, billable: true }),
@@ -29,7 +31,7 @@ export function TimeTracker({ projectId, projectName = "Project" }: { projectId:
     if (!entryId) return;
     setLoading(true);
     try {
-      await fetch("/api/time-entries/stop", {
+      await apiFetch("/api/time-entries/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entryId }),

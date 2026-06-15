@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type TicketMessage = {
   id: string;
   content: string;
@@ -40,7 +42,7 @@ export function TicketThread({ ticketId, messages, onRefresh }: TicketThreadProp
     setError(null);
 
     try {
-      const response = await fetch(`/api/support/tickets/${ticketId}/messages`, {
+      const response = await apiFetch(`/api/support/tickets/${ticketId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: content.trim(), isInternal }),

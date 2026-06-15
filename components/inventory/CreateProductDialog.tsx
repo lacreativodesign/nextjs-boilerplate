@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type CreateProductDialogProps = {
   onSuccess: () => Promise<void>;
 };
@@ -32,7 +34,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/inventory/products", {
+      const response = await apiFetch("/api/inventory/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

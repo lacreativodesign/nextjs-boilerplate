@@ -3,6 +3,8 @@
 import { optimizeImageForUpload } from "@/lib/images/client-image-optimizer";
 import { useRef, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 const CHUNK_SIZE = 5 * 1024 * 1024;
 
 export function FileUploader({ folderId, onCompleted }: { folderId?: string; onCompleted: () => void }) {
@@ -36,7 +38,7 @@ export function FileUploader({ folderId, onCompleted }: { folderId?: string; onC
       if (folderId) form.append("folderId", folderId);
       form.append("chunk", chunk);
 
-      const res = await fetch("/api/files/upload", { method: "POST", body: form });
+      const res = await apiFetch("/api/files/upload", { method: "POST", body: form });
       const payload = await res.json();
       if (!res.ok) {
         throw new Error(payload?.error || "Upload failed");

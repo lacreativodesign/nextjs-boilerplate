@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type Version = { id: string; versionNumber: number; createdAt?: { _seconds?: number } };
 
 export function VersionHistoryViewer({ fileId, onRestored }: { fileId: string; onRestored: () => void }) {
   const [versions, setVersions] = useState<Version[]>([]);
 
   const load = async () => {
-    const res = await fetch(`/api/files/${fileId}/versions`, { cache: "no-store" });
+    const res = await apiFetch(`/api/files/${fileId}/versions`, { cache: "no-store" });
     const payload = await res.json();
     setVersions(payload.versions || []);
   };
@@ -18,7 +20,7 @@ export function VersionHistoryViewer({ fileId, onRestored }: { fileId: string; o
   }, [fileId]);
 
   const restore = async (versionId: string) => {
-    const res = await fetch(`/api/files/${fileId}/restore`, {
+    const res = await apiFetch(`/api/files/${fileId}/restore`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ versionId }),
