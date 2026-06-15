@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type InvitePageProps = {
   params: { token: string };
@@ -27,7 +28,7 @@ export default function InvitePage({ params }: InvitePageProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/users/accept-invitation", {
+      const response = await apiFetch("/api/users/accept-invitation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

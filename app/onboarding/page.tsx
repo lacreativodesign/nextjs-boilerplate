@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Circle, ArrowRight, Users, Briefcase, FileText, User } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 
 type Step = {
   id: "profile" | "team" | "client" | "invoice";
@@ -52,7 +53,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/onboarding/progress", { credentials: "include" })
+    apiFetch("/api/onboarding/progress")
       .then((r) => r.json())
       .then((data) => {
         if (data?.steps) {
@@ -74,9 +75,8 @@ export default function OnboardingPage() {
   const allDone = completed === total;
 
   const markComplete = async (id: string) => {
-    await fetch("/api/onboarding/progress", {
+    await apiFetch("/api/onboarding/progress", {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stepId: id }),
     });

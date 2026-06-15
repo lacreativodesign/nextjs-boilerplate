@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { showToast } from "@/lib/utils/toast";
 import SSOLoginButtons from "@/components/auth/SSOLoginButtons";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api/client";
 
 function getFriendlyAuthError(code?: string): string {
   switch (code) {
@@ -86,9 +87,8 @@ export default function LoginPage() {
   useEffect(() => {
     let active = true;
 
-    fetch(`/api/auth/sso/providers?tenantId=${encodeURIComponent(tenantId)}`, {
+    apiFetch(`/api/auth/sso/providers?tenantId=${encodeURIComponent(tenantId)}`, {
       cache: "no-store",
-      credentials: "include",
     })
       .then((res) => res.json())
       .then((data) => {
@@ -117,9 +117,8 @@ export default function LoginPage() {
       try {
         const userCred = await signInWithCustomToken(firebaseAuth, ssoToken);
         const idToken = await userCred.user.getIdToken(true);
-        const cookieRes = await fetch("/api/session-login", {
+        const cookieRes = await apiFetch("/api/session-login", {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken, rememberMe: true }),
         });
@@ -179,9 +178,8 @@ export default function LoginPage() {
       const idToken = await userCred.user.getIdToken(true);
 
       // Create session cookie
-      const cookieRes = await fetch('/api/session-login', {
+      const cookieRes = await apiFetch('/api/session-login', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, rememberMe: remember, extendedSession: remember }),
       });
@@ -195,8 +193,7 @@ export default function LoginPage() {
       // Get user role via server API (Admin SDK — bypasses Firestore rules, works regardless of claims)
       let dest = "/login";
       try {
-        const ctxRes = await fetch("/api/tenant/context", {
-          credentials: "include",
+        const ctxRes = await apiFetch("/api/tenant/context", {
           cache: "no-store",
         });
         if (ctxRes.ok) {
@@ -244,7 +241,7 @@ export default function LoginPage() {
     }
 
     try {
-      const res = await fetch("/api/auth/request-password-reset", {
+      const res = await apiFetch("/api/auth/request-password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

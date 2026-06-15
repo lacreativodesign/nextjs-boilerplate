@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithCustomToken } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
+import { apiFetch } from "@/lib/api/client";
 
 function ImpersonateInner() {
   const router = useRouter();
@@ -27,10 +28,9 @@ function ImpersonateInner() {
         const auth = await getFirebaseAuth();
         const cred = await signInWithCustomToken(auth, token);
         const idToken = await cred.user.getIdToken();
-        const sessionRes = await fetch("/api/session-login", {
+        const sessionRes = await apiFetch("/api/session-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ idToken, rememberMe: false }),
         });
         if (!sessionRes.ok) throw new Error("Failed to create session");
