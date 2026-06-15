@@ -6,6 +6,8 @@ import { formatDate } from "@/components/finance/financeUtils";
 import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
 import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const STATUS_OPTIONS = [
   { label: "All Status", value: "all" },
@@ -144,11 +146,7 @@ export default function HrOnboardingPage() {
   );
 
   const filteredTemplates = useMemo(() => {
-    const term = templateSearch.trim().toLowerCase();
-    const list = templates.filter((template) => {
-      if (!term) return true;
-      return [template.name, template.role].some((value) => String(value || "").toLowerCase().includes(term));
-    });
+    const list = smartMatch(templates, templateSearch, (template) => [template.name, template.role]);
 
     const sorted = [...list].sort((a, b) => {
       const dir = templateSortDir === "asc" ? 1 : -1;
@@ -163,20 +161,18 @@ export default function HrOnboardingPage() {
   }, [templates, templateSearch, templateSortKey, templateSortDir]);
 
   const taskRows = useMemo(() => {
-    const term = taskSearch.trim().toLowerCase();
-    return tasks.filter((task) => {
+    const byFilters = tasks.filter((task) => {
       const matchesStatus = taskFilterStatus === "all" ? true : task.status === taskFilterStatus;
       const matchesUser = taskFilterUser === "all" ? true : task.userId === taskFilterUser;
       const user = users.find((u) => u.uid === task.userId);
       const role = String(user?.role || "").toLowerCase();
-      const template = templates.find((t) => t.id === task.templateId);
       const matchesRole = taskFilterRole === "all" ? true : role === taskFilterRole;
-      const matchesSearch = !term
-        ? true
-        : [user?.name, template?.name, task.status]
-            .filter(Boolean)
-            .some((value) => String(value || "").toLowerCase().includes(term));
-      return matchesStatus && matchesUser && matchesRole && matchesSearch;
+      return matchesStatus && matchesUser && matchesRole;
+    });
+    return smartMatch(byFilters, taskSearch, (task) => {
+      const user = users.find((u) => u.uid === task.userId);
+      const template = templates.find((t) => t.id === task.templateId);
+      return [user?.name, template?.name, task.status];
     });
   }, [tasks, taskFilterStatus, taskFilterUser, taskFilterRole, taskSearch, users, templates]);
 
@@ -390,12 +386,7 @@ export default function HrOnboardingPage() {
 
           <div className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
             <div className="p-4">
-              <input
-                className="input"
-                placeholder="Search keyword"
-                value={templateSearch}
-                onChange={(e) => setTemplateSearch(e.target.value)}
-              />
+              <SmartSearchBar value={templateSearch} onChange={setTemplateSearch} />
             </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
@@ -511,12 +502,7 @@ export default function HrOnboardingPage() {
         <section className="space-y-4">
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div className="filter-bar filter-bar--search">
-              <input
-                className="input"
-                placeholder="Search keyword"
-                value={taskSearch}
-                onChange={(e) => setTaskSearch(e.target.value)}
-              />
+              <SmartSearchBar value={taskSearch} onChange={setTaskSearch} />
               <MasterSelect value={taskFilterUser} onChange={setTaskFilterUser} options={[{ label: "All Employees", value: "all" }, ...userOptions]} />
               <MasterSelect value={taskFilterRole} onChange={setTaskFilterRole} options={ROLE_OPTIONS} />
               <MasterSelect value={taskFilterStatus} onChange={setTaskFilterStatus} options={STATUS_OPTIONS} />

@@ -7,6 +7,8 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDate } from "@/components/finance/financeUtils";
 import { apiFetch } from "@/lib/api/client";
 import { showToast } from "@/lib/utils/toast";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const DOC_TYPES = [
   { label: "Contract", value: "Contract" },
@@ -102,15 +104,12 @@ export default function HrDocumentsPage() {
   );
 
   const filteredDocuments = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return documents.filter((doc) => {
+    const byFilters = documents.filter((doc) => {
       if (doc.isDeleted) return false;
       if (filterUser !== "all" && doc.userId !== filterUser) return false;
-      if (!term) return true;
-      return [doc.docType, doc.fileName]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term));
+      return true;
     });
+    return smartMatch(byFilters, search, (doc) => [doc.docType, doc.fileName]);
   }, [documents, filterUser, search]);
 
   const sortedDocuments = useMemo(() => {
@@ -237,12 +236,7 @@ export default function HrDocumentsPage() {
 
       <section className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
         <div className="p-4 filter-bar filter-bar--search">
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect value={filterUser} onChange={setFilterUser} options={filterOptions} />
         </div>
         <div style={{ overflowX: "auto" }}>

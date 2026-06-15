@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const PIPELINE_STAGES = ["Inquiry", "Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
 
@@ -105,14 +107,10 @@ export default function ClientProjectsPage() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((project) => {
-      const hay = [project.projectName, project.projectType, project.stage].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [projects, search]);
+  const filtered = useMemo(
+    () => smartMatch(projects, search, (project) => [project.projectName, project.projectType, project.stage]),
+    [projects, search]
+  );
 
   const openDrawer = async (project: ProjectRecord) => {
     setDrawerOpen(true);
@@ -203,7 +201,7 @@ export default function ClientProjectsPage() {
 
       <div className="card p-4">
         <div className="filter-bar filter-bar--search">
-          <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
             {loading ? "Loading..." : `${filtered.length} project(s)`}
           </div>

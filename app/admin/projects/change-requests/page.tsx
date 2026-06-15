@@ -3,6 +3,8 @@
 import MasterSelect from "@/components/ui/MasterSelect";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type ChangeRequestType = "Scope Change" | "Revision" | "New Feature" | "Bug Fix" | "Other";
 
@@ -432,8 +434,6 @@ export default function ChangeRequestsPage() {
   }, [drawerOpen, selected]);
 
   const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
     let list = [...rows];
 
     if (projectFilter) {
@@ -456,15 +456,7 @@ export default function ChangeRequestsPage() {
       list = list.filter((row) => row.assignedToUid === assignedFilter);
     }
 
-    if (q) {
-      list = list.filter((row) => {
-        const hay = [row.title, row.description, row.projectName, row.clientName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(q);
-      });
-    }
+    list = smartMatch(list, query, (row) => [row.title, row.description, row.projectName, row.clientName]);
 
     list.sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
@@ -673,12 +665,7 @@ export default function ChangeRequestsPage() {
       </div>
 
       <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <SmartSearchBar value={query} onChange={setQuery} />
         <MasterSelect
           className="input"
           value={projectFilter}
