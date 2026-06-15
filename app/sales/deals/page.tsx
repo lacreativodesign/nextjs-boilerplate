@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = ["All", "Open", "Won", "Lost"];
@@ -91,21 +93,11 @@ export default function SalesDealsPage() {
   }, [deals, selected?.id]);
 
   const filteredDeals = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = [...deals];
     if (statusFilter !== "All") {
       list = list.filter((deal) => deal.status === statusFilter || deal.stage === `Closed ${statusFilter}`);
     }
-    if (q) {
-      list = list.filter((deal) => {
-        const hay = [deal.dealName, deal.clientName, deal.leadName, deal.ownerName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(q);
-      });
-    }
-    return list;
+    return smartMatch(list, query, (deal) => [deal.dealName, deal.clientName, deal.leadName, deal.ownerName]);
   }, [deals, query, statusFilter]);
 
   const sortedDeals = useMemo(() => {
@@ -303,12 +295,7 @@ export default function SalesDealsPage() {
         <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search keyword"
-              className="input mt-2"
-            />
+            <SmartSearchBar value={query} onChange={setQuery} className="mt-2" />
           </div>
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type SalesStage =
   | "New Lead"
@@ -172,27 +174,16 @@ export default function KeyAccountsPage() {
   }, []);
 
   const keyAccountsFiltered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const base = (rows || []).filter((c) => Number(c?.totalPaidUsd || 0) >= KEY_ACCOUNT_THRESHOLD);
 
-    if (!q) return base;
-
-    return base.filter((c) => {
-      const oid = normalizeOrderId(c.orderId);
-      const hay = [
-        c.companyName,
-        c.primaryContactName,
-        c.primaryContactEmail,
-        c.primaryContactPhone,
-        c.orderId,
-        oid,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return hay.includes(q);
-    });
+    return smartMatch(base, query, (c) => [
+      c.companyName,
+      c.primaryContactName,
+      c.primaryContactEmail,
+      c.primaryContactPhone,
+      c.orderId,
+      normalizeOrderId(c.orderId),
+    ]);
   }, [rows, query]);
 
   const keyAccountsSorted = useMemo(() => {
@@ -271,7 +262,7 @@ export default function KeyAccountsPage() {
           alignItems: "center",
         }}
       >
-        <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
+        <SmartSearchBar value={query} onChange={setQuery} />
         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${keyAccountsSorted.length} key account(s)`}
         </div>

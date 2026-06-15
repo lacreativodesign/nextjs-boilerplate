@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { toastError, toastPromise } from "@/lib/toast";
 import { apiFetch } from "@/lib/api/client";
 
@@ -49,17 +51,18 @@ export default function SalesLeadsPage() {
     loadLeads();
   }, [loadLeads]);
 
-  const filteredLeads = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return leads;
-    return leads.filter((lead) =>
-      [lead.name, lead.email, lead.phone, lead.source, lead.stage, lead.ownerName]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [leads, query]);
+  const filteredLeads = useMemo(
+    () =>
+      smartMatch(leads, query, (lead) => [
+        lead.name,
+        lead.email,
+        lead.phone,
+        lead.source,
+        lead.stage,
+        lead.ownerName,
+      ]),
+    [leads, query]
+  );
 
   const updateStage = async (id: string, stage: string) => {
     try {
@@ -120,13 +123,7 @@ export default function SalesLeadsPage() {
       </div>
 
       <div className="card p-4">
-        <input
-          className="input"
-          placeholder="Search leads"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 260 }}
-        />
+        <SmartSearchBar value={query} onChange={setQuery} />
       </div>
 
       {loading ? (

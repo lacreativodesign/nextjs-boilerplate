@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type EmailRecord = {
   id: string;
@@ -48,14 +50,16 @@ export default function SalesInboxPage() {
     loadEmails();
   }, [loadEmails]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return emails;
-    return emails.filter((email) => {
-      const hay = [email.subject, email.from?.[0], email.to?.[0], email.bodyText].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [emails, query]);
+  const filtered = useMemo(
+    () =>
+      smartMatch(emails, query, (email) => [
+        email.subject,
+        email.from?.[0],
+        email.to?.[0],
+        email.bodyText,
+      ]),
+    [emails, query]
+  );
 
   const headerCellStyle: React.CSSProperties = {
     padding: "12px 14px",
@@ -111,12 +115,7 @@ export default function SalesInboxPage() {
 
       <div className="card" style={{ marginTop: 18, padding: 18, borderRadius: 18 }}>
         <label className="text-xs font-semibold text-[var(--text-muted)]">Search</label>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search inbox"
-          className="input mt-2"
-        />
+        <SmartSearchBar value={query} onChange={setQuery} className="mt-2" />
       </div>
 
       <div style={{ marginTop: 20 }}>

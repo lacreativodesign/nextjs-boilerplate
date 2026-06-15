@@ -5,6 +5,8 @@ import MasterSelect from "@/components/ui/MasterSelect";
 import SalesDrawer from "@/components/sales/SalesDrawer";
 import { formatDateTime } from "@/components/finance/financeUtils";
 import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from "@/lib/sales/utils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const TYPE_OPTIONS = [{ label: "All Types", value: "" }, ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))];
@@ -106,20 +108,13 @@ export default function SalesFollowUpsPage() {
   );
 
   const filteredFollowUps = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return followUps.filter((item) => {
+    const list = followUps.filter((item) => {
       if (typeFilter && item.type !== typeFilter) return false;
       if (statusFilter && item.status !== statusFilter) return false;
       if (ownerFilter && item.ownerId !== ownerFilter) return false;
-      if (q) {
-        const hay = [item.relatedName, item.type, item.ownerName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(list, query, (item) => [item.relatedName, item.type, item.ownerName]);
   }, [followUps, query, typeFilter, statusFilter, ownerFilter]);
 
   const openCreate = () => {
@@ -258,13 +253,9 @@ export default function SalesFollowUpsPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <SmartSearchBar value={query} onChange={setQuery} />
+        </div>
         <MasterSelect value={typeFilter} onChange={(value) => setTypeFilter(value)} options={TYPE_OPTIONS} />
         <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
         <MasterSelect value={ownerFilter} onChange={(value) => setOwnerFilter(value)} options={ownerOptions} />

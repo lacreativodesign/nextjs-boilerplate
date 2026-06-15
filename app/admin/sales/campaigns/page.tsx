@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUsd } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const toPercent = (value: number) => `${Number(value || 0).toFixed(1)}%`;
 
@@ -45,14 +47,10 @@ export default function SalesCampaignsPage() {
     loadCampaigns();
   }, [loadCampaigns]);
 
-  const filteredCampaigns = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return campaigns;
-    return campaigns.filter((item) => {
-      const hay = [item.name, item.channel].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [campaigns, query]);
+  const filteredCampaigns = useMemo(
+    () => smartMatch(campaigns, query, (item) => [item.name, item.channel]),
+    [campaigns, query]
+  );
 
   return (
     <div className="w-full">
@@ -86,14 +84,8 @@ export default function SalesCampaignsPage() {
         </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+      <div className="mt-4">
+        <SmartSearchBar value={query} onChange={setQuery} />
       </div>
 
       <div className="table-shell">
