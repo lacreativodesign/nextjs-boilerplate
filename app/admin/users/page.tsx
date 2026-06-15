@@ -93,6 +93,7 @@ export default function UsersPage() {
   const [resettingMfaUid, setResettingMfaUid] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedActive, setAdvancedActive] = useState(false);
+  const [addingUser, setAddingUser] = useState(false);
 
   const router = useRouter();
 
@@ -463,6 +464,21 @@ export default function UsersPage() {
           </div>
         </div>
 
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <LoadingButton
+            type="button"
+            className="btn"
+            loading={addingUser}
+            loadingText="Opening..."
+            onClick={() => {
+              setAddingUser(true);
+              router.push("/users/add");
+            }}
+            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
+          >
+            + Add User
+          </LoadingButton>
+        </div>
       </div>
 
       <div
