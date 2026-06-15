@@ -7,6 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { toastError, toastPromise } from "@/lib/toast";
+import { apiFetch } from "@/lib/api/client";
 import type { SearchFilter } from "@/types/search";
 
 const AdvancedSearchDialog = dynamic(
@@ -210,10 +211,9 @@ export default function ClientsPage() {
       setError(null);
 
       try {
-        const res = await fetch("/api/admin/clients/list", {
+        const res = await apiFetch("/api/admin/clients/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         if (res.status === 403) {
@@ -256,7 +256,7 @@ export default function ClientsPage() {
       setError(null);
       try {
         const payloadFilters = buildSearchFilters(filters);
-        const res = await fetch("/api/clients/search", {
+        const res = await apiFetch("/api/clients/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -290,7 +290,7 @@ export default function ClientsPage() {
     async (name: string, filters: FilterRow[]) => {
       const payloadFilters = buildSearchFilters(filters);
       await toastPromise(
-        fetch("/api/saved-searches", {
+        apiFetch("/api/saved-searches", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -323,10 +323,9 @@ export default function ClientsPage() {
     if (advancedActive) {
       setAdvancedActive(false);
       setLoading(true);
-      fetch("/api/admin/clients/list", {
+      apiFetch("/api/admin/clients/list", {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
       })
         .then(async (res) => {
           const json = await res.json().catch(() => ({}));
@@ -353,10 +352,9 @@ export default function ClientsPage() {
 
     async function loadSegments() {
       try {
-        const res = await fetch("/api/admin/clients/segments/list", {
+        const res = await apiFetch("/api/admin/clients/segments/list", {
           method: "GET",
           cache: "no-store",
-          credentials: "include",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -472,10 +470,9 @@ export default function ClientsPage() {
     setActivationSending(true);
     try {
       await toastPromise(
-        fetch("/api/admin/clients/activation", {
+        apiFetch("/api/admin/clients/activation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ clientId: selected.id }),
         }).then(async (res) => {
           const payload = await res.json().catch(() => ({}));
@@ -504,10 +501,9 @@ export default function ClientsPage() {
     try {
       setDeletingId(id);
       await toastPromise(
-        fetch("/api/admin/clients/delete", {
+        apiFetch("/api/admin/clients/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ id }),
         }).then(async (res) => {
           const json = await res.json().catch(() => ({}));

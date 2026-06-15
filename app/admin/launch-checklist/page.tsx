@@ -7,6 +7,7 @@ import {
   PRODUCTION_CONFIGURATION_ITEMS,
   normalizeManualCheckId,
 } from "@/lib/launch-checklist";
+import { apiFetch } from "@/lib/api/client";
 
 type AutomatedCheckResult = {
   key: (typeof AUTOMATED_CHECKS)[number]["key"];
@@ -57,7 +58,7 @@ export default function AdminLaunchChecklistPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const response = await fetch("/api/admin/launch-checklist", { cache: "no-store" });
+    const response = await apiFetch("/api/admin/launch-checklist", { cache: "no-store" });
     const payload = (await response.json()) as LaunchChecklistPayload;
 
     if (!response.ok || !payload.ok) {
@@ -79,7 +80,7 @@ export default function AdminLaunchChecklistPage() {
   const execute = useCallback(
     async (action: string, extra: Record<string, unknown> = {}) => {
       setBusyAction(action);
-      const response = await fetch("/api/admin/launch-checklist", {
+      const response = await apiFetch("/api/admin/launch-checklist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...extra }),
