@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { USER_NOTIFICATION_CHANNELS } from "@/lib/notifications/preferences-config";
 import type { UserNotificationEventType, UserNotificationPreferences } from "@/types/notifications";
 
@@ -29,7 +30,7 @@ export default function NotificationSettingsPage() {
   useEffect(() => {
     const run = async () => {
       setLoading(true);
-      const response = await fetch("/api/users/notifications/preferences", { cache: "no-store" });
+      const response = await apiFetch("/api/users/notifications/preferences", { cache: "no-store" });
       const data = await response.json();
       setPreferences(data.preferences);
       setLoading(false);
@@ -53,7 +54,7 @@ export default function NotificationSettingsPage() {
     if (!preferences) return;
     setSaving(true);
     setError(null);
-    const response = await fetch("/api/users/notifications/preferences", {
+    const response = await apiFetch("/api/users/notifications/preferences", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(preferences),
@@ -68,7 +69,7 @@ export default function NotificationSettingsPage() {
   const sendTest = async () => {
     setTesting(true);
     setError(null);
-    const response = await fetch("/api/users/notifications/test", { method: "POST" });
+    const response = await apiFetch("/api/users/notifications/test", { method: "POST" });
     if (!response.ok) {
       setError("Failed to send test notification.");
     }

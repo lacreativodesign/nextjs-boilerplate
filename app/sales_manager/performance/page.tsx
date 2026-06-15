@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import PeriodSelector from "@/components/performance/PeriodSelector";
 import ProgressBar from "@/components/performance/ProgressBar";
 import { getCurrentPeriod, PeriodType } from "@/lib/performance/periods";
@@ -23,7 +24,7 @@ export default function SalesManagerPerformancePage() {
   useEffect(() => setPeriod(getCurrentPeriod(periodType)), [periodType]);
 
   useEffect(() => {
-    fetch("/api/sales_manager/overview", { credentials: "include" })
+    apiFetch("/api/sales_manager/overview")
       .then((r) => r.json())
       .then((d) => { if (d.ok) setData(d.kpis); else setError(d.error || "Failed to load"); })
       .catch(() => setError("Network error"))
@@ -33,7 +34,7 @@ export default function SalesManagerPerformancePage() {
   useEffect(() => {
     let active = true;
     setTeamLoading(true);
-    fetch("/api/admin/users/list", { credentials: "include" })
+    apiFetch("/api/admin/users/list")
       .then((r) => r.json())
       .then(async (list) => {
         const users = (Array.isArray(list) ? list : list.users || []).filter((u: any) => u.role === "sales");
@@ -42,8 +43,8 @@ export default function SalesManagerPerformancePage() {
         const rows = await Promise.all(
           users.map(async (u: TeamUser) => {
             const [t, a] = await Promise.all([
-              fetch(`/api/performance/targets?userId=${u.uid}&period=${period}&periodType=${periodType}`, { credentials: "include" }).then((r) => r.json()),
-              fetch(`/api/performance/actuals?userId=${u.uid}&period=${period}&periodType=${periodType}&role=sales`, { credentials: "include" }).then((r) => r.json()),
+              apiFetch(`/api/performance/targets?userId=${u.uid}&period=${period}&periodType=${periodType}`).then((r) => r.json()),
+              apiFetch(`/api/performance/actuals?userId=${u.uid}&period=${period}&periodType=${periodType}&role=sales`).then((r) => r.json()),
             ]);
             const metrics = t.targets?.[0]?.metrics || {};
             const actuals = a.actuals || {};
@@ -92,9 +93,8 @@ export default function SalesManagerPerformancePage() {
 
   async function saveTargets() {
     if (!editingUser) return;
-    await fetch("/api/performance/targets", {
+    await apiFetch("/api/performance/targets", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: editingUser,

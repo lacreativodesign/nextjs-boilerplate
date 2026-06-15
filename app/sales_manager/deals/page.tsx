@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { formatDate, formatUsd, toInputDate } from "@/components/finance/financeUtils";
 import { Label } from "@/components/ui/label";
 
@@ -76,7 +77,7 @@ export default function SalesManagerDealsPage() {
       setError(null);
 
       try {
-        const res = await fetch("/api/sales_manager/deals/list", { cache: "no-store" });
+        const res = await apiFetch("/api/sales_manager/deals/list", { cache: "no-store" });
         const json = (await res.json()) as DealListResponse;
         if (!res.ok || !json.ok) {
           throw new Error(json?.ok ? "" : "Failed to load deals");
@@ -148,7 +149,7 @@ export default function SalesManagerDealsPage() {
     if (!selected || !formState) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/sales_manager/deals/update", {
+      const res = await apiFetch("/api/sales_manager/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,7 +196,7 @@ export default function SalesManagerDealsPage() {
     if (!selected) return;
     setApprovalLoading(true);
     try {
-      const res = await fetch("/api/sales_manager/deals/update", {
+      const res = await apiFetch("/api/sales_manager/deals/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: selected.id, discountAction: action }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 export default function SalesManagerDealDetailPage({ params }: { params: { id: string } }) {
   const [deal, setDeal] = useState<any>(null);
@@ -8,8 +9,8 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
 
   async function load() {
     const [dealRes, reqRes] = await Promise.all([
-      fetch(`/api/crm/deals/${params.id}`, { cache: "no-store" }),
-      fetch(`/api/crm/discount-requests?dealId=${params.id}`, { cache: "no-store" }),
+      apiFetch(`/api/crm/deals/${params.id}`, { cache: "no-store" }),
+      apiFetch(`/api/crm/discount-requests?dealId=${params.id}`, { cache: "no-store" }),
     ]);
 
     const dealData = await dealRes.json();
@@ -23,7 +24,7 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
   }, [params.id]);
 
   async function review(id: string, decision: "approved" | "rejected") {
-    const res = await fetch(`/api/crm/discount-requests/${id}/review`, {
+    const res = await apiFetch(`/api/crm/discount-requests/${id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),

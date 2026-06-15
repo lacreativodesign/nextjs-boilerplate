@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { apiFetch } from "@/lib/api/client";
 import type { NotificationCategory } from "@/types/notifications";
 
 type NotificationItem = {
@@ -62,7 +63,7 @@ export default function NotificationsPage() {
       });
       if (category !== "all") params.set("category", category);
 
-      const res = await fetch(`/api/notifications?${params.toString()}`);
+      const res = await apiFetch(`/api/notifications?${params.toString()}`);
       if (!res.ok) return;
       const data = await res.json();
       setNotifications(data.notifications || []);
@@ -77,12 +78,12 @@ export default function NotificationsPage() {
   }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+    await apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
     void fetchNotifications();
   };
 
   const markAllAsRead = async () => {
-    await fetch("/api/notifications/mark-all-read", { method: "POST" });
+    await apiFetch("/api/notifications/mark-all-read", { method: "POST" });
     void fetchNotifications();
   };
 

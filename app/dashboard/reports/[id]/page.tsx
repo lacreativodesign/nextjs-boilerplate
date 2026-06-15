@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import type { Report, ReportFilter } from "@/types/reports";
 
@@ -26,7 +27,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
   }, [params.id]);
 
   const fetchReport = async () => {
-    const response = await fetch(`/api/reports/${params.id}`);
+    const response = await apiFetch(`/api/reports/${params.id}`);
     const data = await response.json();
     setReport(data);
     setFilters(data.filters || []);
@@ -35,7 +36,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
 
   const executeReport = async (customFilters?: ReportFilter[], options?: { append?: boolean; pageToken?: string | null }) => {
     setLoading(true);
-    const response = await fetch(`/api/reports/${params.id}/execute`, {
+    const response = await apiFetch(`/api/reports/${params.id}/execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -53,7 +54,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
   };
 
   const exportReport = async (format: "csv" | "json") => {
-    const response = await fetch(`/api/reports/${params.id}/execute`, {
+    const response = await apiFetch(`/api/reports/${params.id}/execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
