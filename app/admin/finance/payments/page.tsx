@@ -9,6 +9,8 @@ import {
   } from "@/components/finance/financeUtils";
 import type { PaymentRecord } from "@/lib/finance/types";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
@@ -99,26 +101,25 @@ export default function FinancePaymentsPage() {
   }, [currentUser?.role]);
 
   const filteredPayments = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const start = startDate ? new Date(startDate).getTime() : null;
     const end = endDate ? new Date(endDate).getTime() : null;
 
-    return payments.filter((payment) => {
+    const list = payments.filter((payment) => {
       if (statusFilter && payment.status !== statusFilter) return false;
       if (methodFilter && payment.method !== methodFilter) return false;
       if (clientFilter && payment.clientId !== clientFilter) return false;
-      if (q) {
-        const hay = [payment.id, payment.clientName, payment.method, payment.orderId]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       const paidAt = payment.paidAt ? new Date(payment.paidAt).getTime() : null;
       if (start && (!paidAt || paidAt < start)) return false;
       if (end && (!paidAt || paidAt > end + 86400000)) return false;
       return true;
     });
+
+    return smartMatch(list, query, (payment) => [
+      payment.id,
+      payment.clientName,
+      payment.method,
+      payment.orderId,
+    ]);
   }, [payments, query, statusFilter, methodFilter, clientFilter, startDate, endDate]);
 
   const sortedPayments = useMemo(() => {
@@ -201,13 +202,9 @@ export default function FinancePaymentsPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <SmartSearchBar value={query} onChange={setQuery} />
+        </div>
         <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
         <MasterSelect value={methodFilter} onChange={(value) => setMethodFilter(value)} options={METHOD_OPTIONS} />
         <MasterSelect

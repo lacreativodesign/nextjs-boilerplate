@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDate, useInterval } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart, useSortableData } from "../_components/ReportsUI";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type DeliveryResponse = {
   projectsByStage: Array<{ stage: string; count: number }>;
@@ -114,13 +116,16 @@ export default function DeliveryReportsPage() {
 
   useInterval(loadDelivery, 45000);
 
-  const filteredProjects = useMemo(() => {
-    if (!search) return data.atRiskProjects;
-    const q = search.toLowerCase();
-    return data.atRiskProjects.filter((project) => {
-      return `${project.projectName} ${project.clientName} ${project.stage} ${project.health}`.toLowerCase().includes(q);
-    });
-  }, [data.atRiskProjects, search]);
+  const filteredProjects = useMemo(
+    () =>
+      smartMatch(data.atRiskProjects, search, (project) => [
+        project.projectName,
+        project.clientName,
+        project.stage,
+        project.health,
+      ]),
+    [data.atRiskProjects, search]
+  );
 
   const owners = useMemo(() => {
     const unique = new Map<string, string>();
@@ -205,13 +210,9 @@ export default function DeliveryReportsPage() {
           <MasterSelect value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
           <MasterSelect value={ownerId} onChange={setOwnerId} options={owners} />
           <MasterSelect value={productionOwnerId} onChange={setProductionOwnerId} options={productionOwners} />
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+            <SmartSearchBar value={search} onChange={setSearch} />
+          </div>
           <button
             type="button"
             className="btn ghost"

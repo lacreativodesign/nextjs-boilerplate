@@ -6,6 +6,8 @@ import ProductionProjectDrawer, {
   type ProductionProject,
   type ProductionUserOption,
 } from '@/components/production/ProductionProjectDrawer';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type QueuePayload = {
   ok: boolean;
@@ -123,26 +125,19 @@ export default function ProductionQAPage() {
   };
 
   const finalProjects = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projects.filter((project) => {
+    const list = projects.filter((project) => {
       if (project.stage !== 'Final') return false;
       if (typeFilter !== 'all' && project.projectType !== typeFilter) return false;
       if (ownerFilter && project.ownerAmUid !== ownerFilter) return false;
       if (productionFilter && project.productionUid !== productionFilter) return false;
-      if (q) {
-        const hay = [
-          project.projectName,
-          project.clientName,
-          project.ownerAmName,
-          project.productionName,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(list, search, (project) => [
+      project.projectName,
+      project.clientName,
+      project.ownerAmName,
+      project.productionName,
+    ]);
   }, [projects, search, typeFilter, ownerFilter, productionFilter]);
 
   const kpis = useMemo(() => {
@@ -194,12 +189,7 @@ export default function ProductionQAPage() {
             alignItems: 'center',
           }}
         >
-          <input
-            className="input"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search keyword"
-          />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect
             value={typeFilter}
             onChange={setTypeFilter}

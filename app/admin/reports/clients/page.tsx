@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart, useSortableData } from "../_components/ReportsUI";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type ClientResponse = {
   keyAccounts: Array<{ id: string; name: string; totalPaidUsd: number }>;
@@ -88,11 +90,10 @@ export default function ClientReportsPage() {
     return [{ label: "All Values", value: "" }, ...list.map((item) => ({ label: item, value: item }))];
   }, [data.segmentOptions, segmentType]);
 
-  const filteredClients = useMemo(() => {
-    if (!search) return data.clients;
-    const q = search.toLowerCase();
-    return data.clients.filter((client) => `${client.name}`.toLowerCase().includes(q));
-  }, [data.clients, search]);
+  const filteredClients = useMemo(
+    () => smartMatch(data.clients, search, (client) => [client.name]),
+    [data.clients, search]
+  );
 
   const sortedClients = useSortableData(filteredClients, sortKey, sortDirection);
 
@@ -153,13 +154,9 @@ export default function ClientReportsPage() {
           <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <MasterSelect value={segmentType} onChange={setSegmentType} options={SEGMENT_TYPES} />
           <MasterSelect value={segmentValue} onChange={setSegmentValue} options={segmentValueOptions} />
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+            <SmartSearchBar value={search} onChange={setSearch} />
+          </div>
           <button
             type="button"
             className="btn ghost"
