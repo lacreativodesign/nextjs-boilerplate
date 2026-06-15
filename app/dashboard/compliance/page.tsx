@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type Policy = {
   id: string;
@@ -45,13 +46,13 @@ export default function CompliancePage() {
   }, [policies]);
 
   async function refreshPolicies() {
-    const response = await fetch("/api/compliance/policies", { credentials: "include" });
+    const response = await apiFetch("/api/compliance/policies");
     const json = await response.json();
     setPolicies(json.policies || []);
   }
 
   async function refreshConsentRecords() {
-    const response = await fetch("/api/compliance/consent", { credentials: "include" });
+    const response = await apiFetch("/api/compliance/consent");
     const json = await response.json();
     setConsents(json.consentRecords || []);
   }
@@ -64,9 +65,8 @@ export default function CompliancePage() {
   async function onCreatePolicy(e: FormEvent) {
     e.preventDefault();
     setStatus("");
-    const response = await fetch("/api/compliance/policies", {
+    const response = await apiFetch("/api/compliance/policies", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(policyForm),
     });
@@ -81,9 +81,8 @@ export default function CompliancePage() {
   async function onRequestExport(e: FormEvent) {
     e.preventDefault();
     setStatus("");
-    const response = await fetch("/api/compliance/export-data", {
+    const response = await apiFetch("/api/compliance/export-data", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(exportForm),
     });
@@ -104,9 +103,8 @@ export default function CompliancePage() {
   async function onRequestDeletion(e: FormEvent) {
     e.preventDefault();
     setStatus("");
-    const response = await fetch("/api/compliance/delete-data", {
+    const response = await apiFetch("/api/compliance/delete-data", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(deleteForm),
     });
@@ -114,7 +112,7 @@ export default function CompliancePage() {
   }
 
   async function onExportAuditCsv() {
-    const response = await fetch("/api/compliance/audit-trail?format=csv", { credentials: "include" });
+    const response = await apiFetch("/api/compliance/audit-trail?format=csv");
     if (!response.ok) {
       setStatus("Audit trail export failed.");
       return;
@@ -134,9 +132,8 @@ export default function CompliancePage() {
     const periodStart = new Date();
     periodStart.setUTCDate(periodStart.getUTCDate() - 30);
 
-    const response = await fetch("/api/compliance/reports/generate", {
+    const response = await apiFetch("/api/compliance/reports/generate", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "summary", periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString() }),
     });
@@ -146,9 +143,8 @@ export default function CompliancePage() {
 
   async function onRecordConsent(e: FormEvent) {
     e.preventDefault();
-    const response = await fetch("/api/compliance/consent", {
+    const response = await apiFetch("/api/compliance/consent", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(consentForm),
     });

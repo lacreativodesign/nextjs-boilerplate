@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
+import { apiFetch } from "@/lib/api/client";
 
 export default function ActivityLayout({
   children,
@@ -90,9 +91,8 @@ export default function ActivityLayout({
 
           <button
             onClick={async () => {
-              await fetch("/api/logout", {
+              await apiFetch("/api/logout", {
                 method: "POST",
-                credentials: "include",
               });
               window.location.href = "/login";
             }}

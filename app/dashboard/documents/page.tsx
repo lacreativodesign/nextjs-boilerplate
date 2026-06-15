@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { FileUploader } from "@/components/files/FileUploader";
 import { FolderTreeNavigation } from "@/components/files/FolderTreeNavigation";
 import { FileBrowser } from "@/components/files/FileBrowser";
@@ -32,7 +33,7 @@ export default function DocumentsPage() {
   const loadFiles = async () => {
     const params = new URLSearchParams();
     if (folderId) params.set("folderId", folderId);
-    const res = await fetch(`/api/files?${params.toString()}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/files?${params.toString()}`, { cache: "no-store" });
     const payload = await res.json();
     setFiles(payload.files || []);
   };
@@ -43,7 +44,7 @@ export default function DocumentsPage() {
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    const res = await fetch("/api/folders", {
+    const res = await apiFetch("/api/folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

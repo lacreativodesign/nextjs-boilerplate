@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import { formatDate } from "@/components/finance/financeUtils";
 
 const STATUS_OPTIONS = [
@@ -66,8 +67,8 @@ export default function SalesManagerLeadsPage() {
 
       try {
         const [leadsRes, ownersRes] = await Promise.all([
-          fetch("/api/sales_manager/leads/list", { cache: "no-store" }),
-          fetch("/api/sales_manager/leads/owners", { cache: "no-store" }),
+          apiFetch("/api/sales_manager/leads/list", { cache: "no-store" }),
+          apiFetch("/api/sales_manager/leads/owners", { cache: "no-store" }),
         ]);
 
         const leadsJson = (await leadsRes.json()) as LeadListResponse;
@@ -197,7 +198,7 @@ export default function SalesManagerLeadsPage() {
     );
 
     try {
-      const res = await fetch("/api/sales/leads/update", {
+      const res = await apiFetch("/api/sales/leads/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -221,7 +222,7 @@ export default function SalesManagerLeadsPage() {
     if (!confirmed) return;
     setUpdatingId(lead.id);
     try {
-      const res = await fetch("/api/leads/convert-to-deal", {
+      const res = await apiFetch("/api/leads/convert-to-deal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId: lead.id }),
@@ -241,7 +242,7 @@ export default function SalesManagerLeadsPage() {
   const handleCreate = async () => {
     setUpdatingId("create");
     try {
-      const res = await fetch("/api/sales/leads/create", {
+      const res = await apiFetch("/api/sales/leads/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -260,7 +261,7 @@ export default function SalesManagerLeadsPage() {
       }
       setDrawerOpen(false);
       setForm({ name: "", company: "", email: "", phone: "", source: "website", status: "new", ownerUid: "" });
-      const refresh = await fetch("/api/sales_manager/leads/list", { cache: "no-store" });
+      const refresh = await apiFetch("/api/sales_manager/leads/list", { cache: "no-store" });
       const data = (await refresh.json()) as LeadListResponse;
       if (refresh.ok && data.ok) {
         setRows(Array.isArray(data.leads) ? data.leads : []);
