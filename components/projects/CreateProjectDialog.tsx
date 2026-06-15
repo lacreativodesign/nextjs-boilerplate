@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,7 +16,7 @@ export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<vo
     event.preventDefault();
     setLoading(true);
     try {
-      await fetch("/api/projects", {
+      await apiFetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

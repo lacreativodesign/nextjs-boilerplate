@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 const statuses = ["todo", "in_progress", "in_review", "blocked", "completed"] as const;
 
 type Task = {
@@ -31,7 +33,7 @@ export function TaskBoard({
   );
 
   const moveTask = async (taskId: string, status: string) => {
-    await fetch(`/api/projects/${projectId}/tasks/${taskId}/status`, {
+    await apiFetch(`/api/projects/${projectId}/tasks/${taskId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),

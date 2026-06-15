@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 export function ShareLinkGenerator({ fileId }: { fileId: string }) {
   const [shareLink, setShareLink] = useState("");
 
   const generate = async () => {
     const expiresAt = new Date(Date.now() + 86400000).toISOString();
-    const res = await fetch("/api/files/share", {
+    const res = await apiFetch("/api/files/share", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileId, expiresAt, permissions: ["view", "download"] }),

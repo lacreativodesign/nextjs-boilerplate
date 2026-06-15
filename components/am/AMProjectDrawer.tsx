@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { apiFetch } from "@/lib/api/client";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final"] as const;
 const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
@@ -121,8 +122,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setLoadingPanel(true);
     setActionError(null);
     Promise.all([
-      fetch(`/api/am/files/list?projectId=${project.id}`, {
-        credentials: "include",
+      apiFetch(`/api/am/files/list?projectId=${project.id}`, {
         cache: "no-store",
       })
         .then(async (res) => {
@@ -134,8 +134,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           console.error(err);
           setFiles([]);
         }),
-      fetch(`/api/am/change-requests/list?projectId=${project.id}`, {
-        credentials: "include",
+      apiFetch(`/api/am/change-requests/list?projectId=${project.id}`, {
         cache: "no-store",
       })
         .then(async (res) => {
@@ -147,8 +146,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           console.error(err);
           setChangeRequests([]);
         }),
-      fetch(`/api/am/messages/list?projectId=${project.id}`, {
-        credentials: "include",
+      apiFetch(`/api/am/messages/list?projectId=${project.id}`, {
         cache: "no-store",
       })
         .then(async (res) => {
@@ -222,10 +220,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await fetch("/api/am/files/upload", {
+      const res = await apiFetch("/api/am/files/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           id: fileId,
           projectId: activeProject.id,
@@ -243,8 +240,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
         throw new Error(payload?.error || "Unable to upload file.");
       }
 
-      const listRes = await fetch(`/api/am/files/list?projectId=${activeProject.id}`, {
-        credentials: "include",
+      const listRes = await apiFetch(`/api/am/files/list?projectId=${activeProject.id}`, {
         cache: "no-store",
       });
       const listPayload = await listRes.json();
@@ -265,10 +261,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionError(null);
 
     try {
-      const res = await fetch("/api/am/projects/request-stage-move", {
+      const res = await apiFetch("/api/am/projects/request-stage-move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: activeProject.id,
           requestedStage: selectedStage,
@@ -294,10 +289,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/am/projects/move-stage", {
+      const res = await apiFetch("/api/am/projects/move-stage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: activeProject.id,
           toStage: "Draft",
@@ -326,10 +320,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/am/messages/send", {
+      const res = await apiFetch("/api/am/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: activeProject.id,
           body: messageBody.trim(),
@@ -340,8 +333,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
         throw new Error(payload?.error || "Unable to send message.");
       }
       setMessageBody("");
-      const listRes = await fetch(`/api/am/messages/list?projectId=${activeProject.id}`, {
-        credentials: "include",
+      const listRes = await apiFetch(`/api/am/messages/list?projectId=${activeProject.id}`, {
         cache: "no-store",
       });
       const listPayload = await listRes.json();
@@ -359,10 +351,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/am/change-requests/create", {
+      const res = await apiFetch("/api/am/change-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           projectId: activeProject.id,
           type: crType,
@@ -378,8 +369,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       setCrTitle("");
       setCrDescription("");
       setCrOpen(false);
-      const listRes = await fetch(`/api/am/change-requests/list?projectId=${activeProject.id}`, {
-        credentials: "include",
+      const listRes = await apiFetch(`/api/am/change-requests/list?projectId=${activeProject.id}`, {
         cache: "no-store",
       });
       const listPayload = await listRes.json();

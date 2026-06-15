@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type CreateCustomerDialogProps = {
   onSuccess: () => Promise<void> | void;
 };
@@ -25,7 +27,7 @@ export function CreateCustomerDialog({ onSuccess }: CreateCustomerDialogProps) {
     event.preventDefault();
     setSaving(true);
     try {
-      const response = await fetch("/api/crm/customers", {
+      const response = await apiFetch("/api/crm/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

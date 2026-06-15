@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { Bug, X, CheckCircle, Camera, Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
+import { apiFetch } from "@/lib/api/client";
 
 export default function BugReportButton() {
   const [open, setOpen] = useState(false);
@@ -105,10 +106,9 @@ export default function BugReportButton() {
         });
       }
 
-      await fetch("/api/support/tickets", {
+      await apiFetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           title: `Bug: ${description.slice(0, 60)}`,
           description,

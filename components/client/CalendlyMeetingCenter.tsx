@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type Meeting = {
   id: string;
   status: "scheduled" | "canceled" | "rescheduled";
@@ -41,7 +43,7 @@ export default function CalendlyMeetingCenter({ prefillEmail, prefillName, widge
     try {
       const params = new URLSearchParams({ limit: "20" });
       if (sync) params.set("sync", "true");
-      const res = await fetch(`/api/integrations/calendly/events?${params.toString()}`, { cache: "no-store", credentials: "include" });
+      const res = await apiFetch(`/api/integrations/calendly/events?${params.toString()}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load meetings.");
       setMeetings(data.events || []);
@@ -59,9 +61,8 @@ export default function CalendlyMeetingCenter({ prefillEmail, prefillName, widge
 
   const cancelMeeting = async (meetingId: string) => {
     try {
-      const res = await fetch("/api/integrations/calendly/cancel", {
+      const res = await apiFetch("/api/integrations/calendly/cancel", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ meetingId }),
       });

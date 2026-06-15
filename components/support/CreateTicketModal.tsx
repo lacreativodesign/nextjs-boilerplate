@@ -2,6 +2,8 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
+import { apiFetch } from "@/lib/api/client";
+
 type TicketPriority = "low" | "medium" | "high" | "urgent";
 type TicketCategory = "bug" | "feature" | "question" | "billing";
 
@@ -56,7 +58,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
       .filter(Boolean);
 
     try {
-      const response = await fetch("/api/support/tickets", {
+      const response = await apiFetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
