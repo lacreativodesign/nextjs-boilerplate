@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
 const CHANGE_REQUEST_STATUSES = [
@@ -304,11 +305,11 @@ export default function AMChangeRequestsPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input
-            className="input"
-            placeholder="Search keyword"
+          <SmartSearchBar
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={setSearch}
+            onSubmit={() => loadChangeRequests()}
+            placeholder="Search keyword"
           />
           <MasterSelect
             value={statusFilter}

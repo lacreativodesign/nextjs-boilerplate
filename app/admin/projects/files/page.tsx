@@ -5,6 +5,7 @@ import { getFirebaseStorage } from "@/lib/firebaseClient";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 type FileCategory = "Draft" | "Revision" | "Final" | "Asset" | "Other";
 
@@ -417,11 +418,11 @@ export default function GlobalFilesPage() {
       {error && <AlertCard error={error} />}
 
       <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
-        <input
-          className="input"
-          placeholder="Search keyword"
+        <SmartSearchBar
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
+          onSubmit={fetchFiles}
+          placeholder="Search keyword"
         />
         <MasterSelect
           className="input"
