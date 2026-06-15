@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/layout/AppShell";
 import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+import { apiFetch } from "@/lib/api/client";
 function SuperAdminAccessAuditLogger({ pathname }: { pathname: string }) {
   useEffect(() => {
     try {
-      void fetch("/api/audit/log", {
+      void apiFetch("/api/audit/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

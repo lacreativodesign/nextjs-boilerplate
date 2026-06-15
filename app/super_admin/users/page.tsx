@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type UserRecord = {
   id: string;
@@ -30,8 +31,8 @@ export default function SuperAdminUsersPage() {
 
   const loadData = async () => {
     const [usersRes, tenantsRes] = await Promise.all([
-      fetch("/api/super_admin/users", { cache: "no-store", credentials: "include" }),
-      fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" }),
+      apiFetch("/api/super_admin/users", { cache: "no-store" }),
+      apiFetch("/api/super_admin/tenants", { cache: "no-store" }),
     ]);
     const usersJson = await usersRes.json().catch(() => null);
     const tenantsJson = await tenantsRes.json().catch(() => null);
@@ -71,10 +72,9 @@ export default function SuperAdminUsersPage() {
     if (!form.displayName || !form.email || !form.tenantId) return;
     setSaving(true);
     try {
-      await fetch("/api/super_admin/users", {
+      await apiFetch("/api/super_admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(form),
       });
       setForm({ displayName: "", email: "", role: "admin", tenantId: form.tenantId });

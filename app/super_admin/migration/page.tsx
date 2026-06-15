@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 export default function SuperAdminMigrationPage() {
   const [tenantId, setTenantId] = useState("");
@@ -11,10 +12,9 @@ export default function SuperAdminMigrationPage() {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/super_admin/migration", {
+      const res = await apiFetch("/api/super_admin/migration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ tenantId: tenantId || undefined }),
       });
       const json = await res.json().catch(() => null);

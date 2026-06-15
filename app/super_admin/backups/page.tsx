@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 
 type BackupRow = {
   id: string;
@@ -28,7 +29,7 @@ export default function SuperAdminBackupsPage() {
       setError(null);
 
       try {
-        const response = await fetch("/api/backup/list", { cache: "no-store", credentials: "include" });
+        const response = await apiFetch("/api/backup/list", { cache: "no-store" });
         const payload = (await response.json()) as { ok: boolean; backups?: BackupRow[]; error?: string };
 
         if (!response.ok || !payload.ok) {
@@ -72,9 +73,8 @@ export default function SuperAdminBackupsPage() {
     setRestoringBackupId(backupId);
 
     try {
-      const response = await fetch("/api/backup/restore", {
+      const response = await apiFetch("/api/backup/restore", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

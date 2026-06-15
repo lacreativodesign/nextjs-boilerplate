@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
+import { apiFetch } from "@/lib/api/client";
 
 export default function TeamLayout({
   children,
@@ -90,9 +91,8 @@ export default function TeamLayout({
 
           <button
             onClick={async () => {
-              await fetch("/api/logout", {
+              await apiFetch("/api/logout", {
                 method: "POST",
-                credentials: "include",
               });
               window.location.href = "/login";
             }}

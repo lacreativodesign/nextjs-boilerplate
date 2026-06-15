@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type Session = {
   id: string;
@@ -20,7 +21,7 @@ export default function SettingsSecurityPage() {
   const [pwMsg, setPwMsg] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/settings/security", { credentials: "include" })
+    apiFetch("/api/admin/settings/security")
       .then((r) => r.json())
       .then((res) => {
         if (res.ok) setSessions(res.sessions || []);
@@ -32,10 +33,9 @@ export default function SettingsSecurityPage() {
   const revokeSession = async (id: string) => {
     try {
       setRevoking(id);
-      await fetch("/api/admin/settings/security", {
+      await apiFetch("/api/admin/settings/security", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ sessionId: id }),
       });
       setSessions((prev) => prev.filter((s) => s.id !== id));

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 const DEMO_PASSWORD = "BizostoDemo2026!";
 
@@ -54,7 +55,7 @@ export default function DemoEnvironmentPage() {
   const [appUrl, setAppUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || "");
 
   async function loadCounts() {
-    const res = await fetch("/api/super_admin/demo/status", { credentials: "include" });
+    const res = await apiFetch("/api/super_admin/demo/status");
     const payload = await res.json();
     if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to load counts");
     setCounts(payload.counts as Counts);
@@ -74,7 +75,7 @@ export default function DemoEnvironmentPage() {
     setSeedMessage(null);
     setSeedError(null);
     try {
-      const res = await fetch("/api/super_admin/demo/seed", { method: "POST", credentials: "include" });
+      const res = await apiFetch("/api/super_admin/demo/seed", { method: "POST" });
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Seed failed");
       setSeedMessage(`Demo environment seeded successfully at ${new Date(payload.seededAt).toLocaleString()}`);
@@ -91,7 +92,7 @@ export default function DemoEnvironmentPage() {
     setErrorMessage(null);
     setStatusMessage(null);
     try {
-      const res = await fetch("/api/super_admin/demo/reset", { method: "POST", credentials: "include" });
+      const res = await apiFetch("/api/super_admin/demo/reset", { method: "POST" });
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Reset failed");
       setStatusMessage(`Demo environment reset successfully at ${new Date(payload.seededAt).toLocaleString()}`);

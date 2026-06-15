@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import { MAX_IMAGE_UPLOAD_SIZE_BYTES, optimizeImageForUpload } from "@/lib/images/client-image-optimizer";
+import { apiFetch } from "@/lib/api/client";
 
 type Tenant = {
   id: string;
@@ -86,9 +87,9 @@ export default function TenantDetailPage() {
     if (!tenantId) return;
     setImpersonating(true);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/super_admin/tenants/${tenantId}/impersonate`,
-        { method: "POST", credentials: "include" }
+        { method: "POST" }
       );
       const json = await res.json().catch(() => null);
       if (!json?.ok || !json?.customToken) {
@@ -116,9 +117,8 @@ export default function TenantDetailPage() {
   const [rolesEnabled, setRolesEnabled] = useState<Record<string, boolean>>({});
 
   const loadTenant = async () => {
-    const res = await fetch(`/api/super_admin/tenants/${tenantId}`, {
+    const res = await apiFetch(`/api/super_admin/tenants/${tenantId}`, {
       cache: "no-store",
-      credentials: "include",
     });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
@@ -164,10 +164,9 @@ export default function TenantDetailPage() {
         logoUrl = await getDownloadURL(storageRef);
       }
 
-      await fetch(`/api/super_admin/tenants/${tenant.id}/branding`, {
+      await apiFetch(`/api/super_admin/tenants/${tenant.id}/branding`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           name: brandName.trim() || tenant.name,
           logoUrl,
@@ -184,10 +183,9 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingModules(true);
     try {
-      await fetch(`/api/super_admin/tenants/${tenant.id}/modules`, {
+      await apiFetch(`/api/super_admin/tenants/${tenant.id}/modules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ modulesEnabled: nextModules }),
       });
       await loadTenant();
@@ -201,10 +199,9 @@ export default function TenantDetailPage() {
     setSavingRoles(true);
 
     try {
-      const res = await fetch(`/api/super_admin/tenants/${tenant.id}/roles`, {
+      const res = await apiFetch(`/api/super_admin/tenants/${tenant.id}/roles`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ rolesEnabled: roles }),
       });
       const json = await res.json().catch(() => null);
@@ -221,10 +218,9 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingStatus(true);
     try {
-      await fetch(`/api/super_admin/tenants/${tenant.id}`, {
+      await apiFetch(`/api/super_admin/tenants/${tenant.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ status }),
       });
       await loadTenant();
@@ -237,10 +233,9 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingPlan(true);
     try {
-      await fetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
+      await apiFetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ plan: nextPlan }),
       });
       await loadTenant();
@@ -253,10 +248,9 @@ export default function TenantDetailPage() {
     if (!tenant) return;
     setSavingPlanModules(true);
     try {
-      await fetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
+      await apiFetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ modules: nextModules }),
       });
       await loadTenant();
