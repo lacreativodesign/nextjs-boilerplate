@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DataSource, Report, ReportFilter, ReportFormat, ReportSchedule } from "@/types/reports";
+import { apiFetch } from "@/lib/api/client";
 
 const availableFieldsBySource: Record<DataSource, string[]> = {
   invoices: ["invoiceNumber", "customerId", "status", "total", "tax", "createdAt", "dueDate"],
@@ -72,7 +73,7 @@ export function VisualReportBuilder() {
   }, []);
 
   const loadReports = async () => {
-    const response = await fetch("/api/reports/custom");
+    const response = await apiFetch("/api/reports/custom");
     const payload = await response.json();
     setReports(payload.reports || []);
   };
@@ -84,7 +85,7 @@ export function VisualReportBuilder() {
   const saveReport = async () => {
     if (!name.trim()) return;
 
-    await fetch("/api/reports/custom", {
+    await apiFetch("/api/reports/custom", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -112,7 +113,7 @@ export function VisualReportBuilder() {
     const targetId = reportId || activeReportId;
     if (!targetId) return;
     setPreviewLoading(true);
-    const response = await fetch(`/api/reports/custom/${targetId}/run`, { method: "POST" });
+    const response = await apiFetch(`/api/reports/custom/${targetId}/run`, { method: "POST" });
     const payload = await response.json();
     setPreviewRows(payload.rows || []);
     setPreviewLoading(false);
@@ -121,7 +122,7 @@ export function VisualReportBuilder() {
   const scheduleReport = async () => {
     if (!activeReportId) return;
 
-    await fetch(`/api/reports/custom/${activeReportId}/schedule`, {
+    await apiFetch(`/api/reports/custom/${activeReportId}/schedule`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -140,7 +141,7 @@ export function VisualReportBuilder() {
   const exportReport = async () => {
     if (!activeReportId) return;
 
-    const response = await fetch(`/api/reports/custom/${activeReportId}/export`, {
+    const response = await apiFetch(`/api/reports/custom/${activeReportId}/export`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: exportFormat }),

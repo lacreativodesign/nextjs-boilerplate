@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DashboardLayout, DashboardWidget, DashboardWidgetLayoutItem, DashboardWidgetType, WidgetDataEnvelope } from "@/lib/dashboard/types";
+import { apiFetch } from "@/lib/api/client";
 
 type Props = {
   heading: string;
@@ -70,7 +71,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
 
   const fetchLayout = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/dashboard/layout", { cache: "no-store" });
+    const res = await apiFetch("/api/dashboard/layout", { cache: "no-store" });
     if (!res.ok) {
       setLoading(false);
       return;
@@ -84,7 +85,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
   }, []);
 
   const refreshWidget = useCallback(async (widgetId: string) => {
-    const res = await fetch(`/api/dashboard/widgets/${widgetId}/data`, { cache: "no-store" });
+    const res = await apiFetch(`/api/dashboard/widgets/${widgetId}/data`, { cache: "no-store" });
     if (!res.ok) return;
     const payload = (await res.json()) as WidgetDataEnvelope;
     setDataMap((prev) => ({ ...prev, [widgetId]: payload }));
@@ -108,7 +109,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
 
   const persistLayout = useCallback(async (items: DashboardWidgetLayoutItem[]) => {
     setLayout((prev) => (prev ? { ...prev, items } : prev));
-    await fetch("/api/dashboard/layout", {
+    await apiFetch("/api/dashboard/layout", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
@@ -174,7 +175,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
           defaultValue=""
           onChange={async (event) => {
             if (!event.target.value) return;
-            await fetch("/api/dashboard/layout", {
+            await apiFetch("/api/dashboard/layout", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ templateId: event.target.value }),
@@ -224,7 +225,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
                   <button
                     className="text-xs text-red-600"
                     onClick={async () => {
-                      await fetch(`/api/dashboard/widgets/${widget.id}`, { method: "DELETE" });
+                      await apiFetch(`/api/dashboard/widgets/${widget.id}`, { method: "DELETE" });
                       await fetchLayout();
                     }}
                   >
@@ -263,7 +264,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
                   key={widgetType.type}
                   className="rounded border p-3 text-left hover:bg-gray-50"
                   onClick={async () => {
-                    await fetch("/api/dashboard/widgets", {
+                    await apiFetch("/api/dashboard/widgets", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ type: widgetType.type }),

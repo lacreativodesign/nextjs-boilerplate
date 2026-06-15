@@ -4,9 +4,10 @@ import Script from "next/script";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useReportWebVitals } from "next/web-vitals";
+import { apiFetch } from "@/lib/api/client";
 
 function postMetric(body: Record<string, unknown>) {
-  void fetch("/api/monitoring/ingest", {
+  void apiFetch("/api/monitoring/ingest", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

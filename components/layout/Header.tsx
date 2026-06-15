@@ -7,6 +7,7 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
+import { apiFetch } from "@/lib/api/client";
 import type { CSSProperties, ReactNode } from "react";
 
 type HeaderUser = {
@@ -144,7 +145,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   };
 
   const doLogout = async () => {
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    await apiFetch("/api/logout", { method: "POST" });
     window.location.href = "/login";
   };
 

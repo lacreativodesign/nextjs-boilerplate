@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BarChart3 } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 import type { SalesProposedAction } from "@/lib/ai/sales-agent";
 
 type TaskStatus = "queued" | "processing" | "completed" | "failed" | "awaiting_approval";
@@ -30,7 +31,7 @@ export default function SalesAgentWidget() {
 
   const pollTask = useCallback(async (taskId: string) => {
     try {
-      const res = await fetch(`/api/ai/agent-tasks/${taskId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/ai/agent-tasks/${taskId}`);
       const json = await res.json().catch(() => null);
       if (!json?.ok) return;
       const t: Task = json.task;
@@ -49,9 +50,8 @@ export default function SalesAgentWidget() {
     stopPolling();
 
     try {
-      const createRes = await fetch("/api/ai/agent-tasks", {
+      const createRes = await apiFetch("/api/ai/agent-tasks", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentType: "sales",
@@ -64,7 +64,7 @@ export default function SalesAgentWidget() {
       const taskId: string = createJson.task.id;
       setWidgetState("processing");
 
-      fetch(`/api/ai/agent-tasks/${taskId}/run-sales`, { method: "POST", credentials: "include" }).catch(() => {});
+      apiFetch(`/api/ai/agent-tasks/${taskId}/run-sales`, { method: "POST" }).catch(() => {});
       pollRef.current = setInterval(() => pollTask(taskId), 2000);
       pollTask(taskId);
     } catch (err: any) {
@@ -77,9 +77,8 @@ export default function SalesAgentWidget() {
     if (!task) return;
     setActionStates((prev) => ({ ...prev, [action.id]: "loading" }));
     try {
-      const res = await fetch("/api/ai/tools/sales-write", {
+      const res = await apiFetch("/api/ai/tools/sales-write", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: action.toolName,

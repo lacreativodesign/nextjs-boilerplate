@@ -6,6 +6,7 @@ import {
   PlusCircle, Trash2, UserRoundPlus, X,
 } from "lucide-react";
 import type { ActivityRecord, PresenceRecord } from "@/types/activity-feed";
+import { apiFetch } from "@/lib/api/client";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -57,7 +58,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const r = await fetch("/api/activities/unread-count", { cache: "no-store" });
+      const r = await apiFetch("/api/activities/unread-count", { cache: "no-store" });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.ok) setUnreadCount(Number(d.count || 0));
     } catch {}
@@ -65,7 +66,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const fetchPresence = useCallback(async () => {
     try {
-      const r = await fetch("/api/activities/presence", { cache: "no-store" });
+      const r = await apiFetch("/api/activities/presence", { cache: "no-store" });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.ok && Array.isArray(d.users)) setPresence(d.users);
     } catch {}
@@ -73,7 +74,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const sendPresence = useCallback(async (online: boolean) => {
     try {
-      await fetch("/api/activities/presence", {
+      await apiFetch("/api/activities/presence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ online }),
@@ -92,7 +93,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       if (append) setLoadingMore(true);
       else setLoading(true);
       try {
-        const r = await fetch(`/api/activities/feed?${p}`, { cache: "no-store" });
+        const r = await apiFetch(`/api/activities/feed?${p}`, { cache: "no-store" });
         const d = await r.json().catch(() => null);
         if (!r.ok || !d?.ok) return;
         const fetched: ActivityRecord[] = Array.isArray(d.items) ? d.items : [];
@@ -168,14 +169,14 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   }, [items]);
 
   const markRead = useCallback(async (id: string) => {
-    const r = await fetch(`/api/activities/${id}/read`, { method: "PUT" });
+    const r = await apiFetch(`/api/activities/${id}/read`, { method: "PUT" });
     if (r.ok) setUnreadCount((p) => Math.max(0, p - 1));
   }, []);
 
   const markAllRead = useCallback(async () => {
     setMarkingAll(true);
     try {
-      await fetch("/api/activities/mark-all-read", { method: "POST" });
+      await apiFetch("/api/activities/mark-all-read", { method: "POST" });
       setUnreadCount(0);
     } finally {
       setMarkingAll(false);

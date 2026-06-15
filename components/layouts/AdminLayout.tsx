@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Activity, BarChart3, Settings, Menu, LogOut } from "lucide-react";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/api/client";
 
 const navItems = [
   { label: "Overview", path: "/admin", icon: <LayoutDashboard size={18} /> },
@@ -78,9 +79,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <button
               onClick={async () => {
-                await fetch("/api/logout", {
+                await apiFetch("/api/logout", {
                   method: "POST",
-                  credentials: "include",
                 });
                 window.location.href = "/login";
               }}

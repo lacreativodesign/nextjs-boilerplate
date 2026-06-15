@@ -5,6 +5,7 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i
 import { detectBrowserLocale, getStoredLocale, isRtlLocale, persistLocale } from "@/lib/i18n/locale";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/i18n/format";
 import { translate } from "@/lib/i18n/translate";
+import { apiFetch } from "@/lib/api/client";
 
 type I18nContextValue = {
   locale: SupportedLocale;
@@ -44,9 +45,8 @@ export function I18nProvider({ children, userId, userLocale }: { children: React
 
       if (!userId) return;
 
-      await fetch(`/api/users/${encodeURIComponent(userId)}/locale`, {
+      await apiFetch(`/api/users/${encodeURIComponent(userId)}/locale`, {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: nextLocale }),
       });

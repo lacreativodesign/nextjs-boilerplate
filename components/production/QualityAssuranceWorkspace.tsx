@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DefectRecord, DefectSeverity, DefectStatus, DefectType, QualityMetrics, TestCaseRecord } from "@/lib/production/qa";
+import { apiFetch } from "@/lib/api/client";
 
 type QaPayload = {
   ok: boolean;
@@ -87,8 +88,8 @@ export default function QualityAssuranceWorkspace() {
       if (statusFilter !== "all") params.set("status", statusFilter);
 
       const [defectsRes, casesRes] = await Promise.all([
-        fetch(`/api/production/defects?${params.toString()}`, { cache: "no-store", credentials: "include" }),
-        fetch("/api/production/test-cases", { cache: "no-store", credentials: "include" }),
+        apiFetch(`/api/production/defects?${params.toString()}`, { cache: "no-store" }),
+        apiFetch("/api/production/test-cases", { cache: "no-store" }),
       ]);
 
       const defectsPayload = (await defectsRes.json()) as QaPayload;
@@ -144,8 +145,8 @@ export default function QualityAssuranceWorkspace() {
   }, [selectedDefect]);
 
   async function submitDefect() {
-    const res = await fetch("/api/production/defects", {
-      method: "POST", credentials: "include",
+    const res = await apiFetch("/api/production/defects", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newDefect),
     });
@@ -157,8 +158,8 @@ export default function QualityAssuranceWorkspace() {
 
   async function saveDefectUpdate() {
     if (!selectedDefectId) return;
-    const res = await fetch(`/api/production/defects/${selectedDefectId}`, {
-      method: "PUT", credentials: "include",
+    const res = await apiFetch(`/api/production/defects/${selectedDefectId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editDefect),
     });
@@ -169,8 +170,8 @@ export default function QualityAssuranceWorkspace() {
 
   async function submitTestCase() {
     const steps = newTestCase.steps.split("\n").map((s) => s.trim()).filter(Boolean);
-    const res = await fetch("/api/production/test-cases", {
-      method: "POST", credentials: "include",
+    const res = await apiFetch("/api/production/test-cases", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...newTestCase, steps }),
     });
@@ -181,8 +182,8 @@ export default function QualityAssuranceWorkspace() {
   }
 
   async function submitTestRun() {
-    const res = await fetch("/api/production/test-runs", {
-      method: "POST", credentials: "include",
+    const res = await apiFetch("/api/production/test-runs", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newTestRun),
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type TimeEntry = {
   id: string;
@@ -60,8 +61,8 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     setError(null);
     try {
       const [entriesRes, sheetsRes] = await Promise.all([
-        fetch("/api/hr/time-entries"),
-        fetch("/api/hr/timesheets?mode=list&periodType=weekly"),
+        apiFetch("/api/hr/time-entries"),
+        apiFetch("/api/hr/timesheets?mode=list&periodType=weekly"),
       ]);
 
       const entriesData = await entriesRes.json();
@@ -101,7 +102,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   async function handleClockIn() {
     setError(null);
-    const res = await fetch("/api/hr/time-entries", {
+    const res = await apiFetch("/api/hr/time-entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -123,7 +124,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
   async function handleClockOut() {
     if (!runningEntryId) return;
     setError(null);
-    const res = await fetch(`/api/hr/time-entries/${runningEntryId}/clock-out`, {
+    const res = await apiFetch(`/api/hr/time-entries/${runningEntryId}/clock-out`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ breakMinutes: Number(clockOutBreakMinutes) || 0 }),
@@ -142,7 +143,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     event.preventDefault();
     setError(null);
 
-    const res = await fetch("/api/hr/time-entries", {
+    const res = await apiFetch("/api/hr/time-entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -169,7 +170,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   async function handleGenerateWeeklyTimesheet() {
     setError(null);
-    const res = await fetch("/api/hr/timesheets?periodType=weekly&mode=generate");
+    const res = await apiFetch("/api/hr/timesheets?periodType=weekly&mode=generate");
     const data = await res.json();
     if (!data.ok) {
       setError(data.error || "Failed to generate timesheet");
@@ -180,7 +181,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   async function handleSubmitTimesheet(timesheetId: string) {
     setError(null);
-    const res = await fetch(`/api/hr/timesheets/${timesheetId}/submit`, { method: "PUT" });
+    const res = await apiFetch(`/api/hr/timesheets/${timesheetId}/submit`, { method: "PUT" });
     const data = await res.json();
     if (!data.ok) {
       setError(data.error || "Submit failed");
@@ -192,7 +193,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
   async function handleReviewTimesheet(timesheetId: string, approve: boolean) {
     const reason = approve ? undefined : window.prompt("Rejection reason", "Missing details") || "Rejected by manager";
     setError(null);
-    const res = await fetch(`/api/hr/timesheets/${timesheetId}/approve`, {
+    const res = await apiFetch(`/api/hr/timesheets/${timesheetId}/approve`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ approve, rejectionReason: reason }),
