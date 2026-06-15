@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type ClientRecord = {
   id: string;
@@ -90,22 +92,16 @@ export default function AMClientsPage() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter((client) => {
-      const hay = [
+  const filtered = useMemo(
+    () =>
+      smartMatch(clients, search, (client) => [
         client.companyName,
         client.primaryContactName,
         client.primaryContactEmail,
         client.primaryContactPhone,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [clients, search]);
+      ]),
+    [clients, search]
+  );
 
   const openDrawer = (client: ClientRecord) => {
     setSelected(client);
@@ -132,12 +128,7 @@ export default function AMClientsPage() {
           </button>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" />
         </div>
       </div>
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type InvoiceRecord = {
   id: string;
@@ -186,14 +188,10 @@ export default function ClientBillingPage() {
     return { outstandingUsd, pendingApprovals, paidInvoices };
   }, [invoices, changeRequests]);
 
-  const filteredInvoices = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return invoices;
-    return invoices.filter((invoice) => {
-      const hay = [invoice.orderId, invoice.status].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [invoices, search]);
+  const filteredInvoices = useMemo(
+    () => smartMatch(invoices, search, (invoice) => [invoice.orderId, invoice.status]),
+    [invoices, search]
+  );
 
   const openDrawer = async (invoice: InvoiceRecord) => {
     setDrawerOpen(true);
@@ -274,12 +272,7 @@ export default function ClientBillingPage() {
       </div>
 
       <div className="card p-4">
-        <input
-          className="input"
-          placeholder="Search invoice keyword"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <SmartSearchBar value={search} onChange={setSearch} placeholder="Search invoice keyword" />
       </div>
 
       <div className="table-shell">

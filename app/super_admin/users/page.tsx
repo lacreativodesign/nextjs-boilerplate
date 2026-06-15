@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type UserRecord = {
   id: string;
@@ -55,18 +57,16 @@ export default function SuperAdminUsersPage() {
     loadData();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((user) => {
-      return (
-        user.displayName.toLowerCase().includes(q) ||
-        user.email.toLowerCase().includes(q) ||
-        user.role.toLowerCase().includes(q) ||
-        user.tenantId.toLowerCase().includes(q)
-      );
-    });
-  }, [users, query]);
+  const filtered = useMemo(
+    () =>
+      smartMatch(users, query, (user) => [
+        user.displayName,
+        user.email,
+        user.role,
+        user.tenantId,
+      ]),
+    [users, query]
+  );
 
   const handleCreate = async () => {
     if (!form.displayName || !form.email || !form.tenantId) return;
@@ -150,11 +150,11 @@ export default function SuperAdminUsersPage() {
             <div className="section-title">Users</div>
             <p className="section-subtitle">Manage roles + tenant assignments.</p>
           </div>
-          <input
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
-            placeholder="Search users..."
+          <SmartSearchBar
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
+            placeholder="Search users..."
+            className="w-full max-w-xs"
           />
         </div>
         <div className="mt-4 overflow-x-auto">

@@ -5,6 +5,8 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import ProductionProjectDrawer, {
   type ProductionProject,
 } from '@/components/production/ProductionProjectDrawer';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'] as const;
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'] as const;
@@ -146,8 +148,7 @@ export default function ProductionQueuePage() {
   };
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projects.filter((project) => {
+    const byFilters = projects.filter((project) => {
       if (!ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number])) return false;
       if (stageFilter !== 'all' && project.stage !== stageFilter) return false;
       if (priorityFilter !== 'all' && project.priority !== priorityFilter) return false;
@@ -166,15 +167,9 @@ export default function ProductionQueuePage() {
           if (!due || Number.isNaN(due.getTime()) || due > toDate) return false;
         }
       }
-      if (q) {
-        const hay = [project.projectName, project.clientName]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(byFilters, search, (project) => [project.projectName, project.clientName]);
   }, [projects, search, stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
 
   const sorted = useMemo(() => {
@@ -264,12 +259,7 @@ export default function ProductionQueuePage() {
             alignItems: 'center',
           }}
         >
-          <input
-            className="input"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search keyword"
-          />
+          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" />
           <MasterSelect
             value={stageFilter}
             onChange={setStageFilter}

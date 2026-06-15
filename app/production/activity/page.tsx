@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type ActivityEntry = {
   id: string;
@@ -92,17 +94,17 @@ export default function ProductionActivityPage() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((item) => {
-      const hay = [item.projectName, item.clientName, item.byName, item.fromStage, item.toStage]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [rows, search]);
+  const filtered = useMemo(
+    () =>
+      smartMatch(rows, search, (item) => [
+        item.projectName,
+        item.clientName,
+        item.byName,
+        item.fromStage,
+        item.toStage,
+      ]),
+    [rows, search]
+  );
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
@@ -122,12 +124,7 @@ export default function ProductionActivityPage() {
             alignItems: 'center',
           }}
         >
-          <input
-            className="input"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search keyword"
-          />
+          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" />
         </div>
       </section>
 
