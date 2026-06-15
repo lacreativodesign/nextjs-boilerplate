@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type PublicInvoiceResponse = {
   ok: boolean;
@@ -73,7 +74,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}`, { cache: "no-store" });
+        const res = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}`, { cache: "no-store" });
         const payload = (await res.json()) as PublicInvoiceResponse;
         if (!active) return;
 
@@ -174,7 +175,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         return;
       }
 
-      const payRes = await fetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/pay`, {
+      const payRes = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentMethodId: pm.paymentMethod.id, email: receiptEmail || undefined }),
@@ -198,7 +199,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
           return;
         }
 
-        const confirmRes = await fetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/confirm`, {
+        const confirmRes = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ paymentIntentId: actionResult.paymentIntent.id }),

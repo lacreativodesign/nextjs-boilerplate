@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { apiFetch } from "@/lib/api/client";
 
 export default function SetPasswordPage() {
   return (
@@ -69,7 +70,7 @@ function SetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/consume-set-password-token", {
+      const res = await apiFetch("/api/auth/consume-set-password-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
