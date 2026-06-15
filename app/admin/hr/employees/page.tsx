@@ -11,6 +11,8 @@ import {
   type UserDepartment,
 } from "@/lib/userOptions";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const STATUS_OPTIONS = [
   { label: "All Status", value: "all" },
@@ -170,24 +172,19 @@ export default function HrEmployeesPage() {
   }, [selectedUser]);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return users.filter((user) => {
+    const byFilters = users.filter((user) => {
       const role = String(user.role || "").toLowerCase();
       const department = String(user.department || "").toLowerCase();
       const status = normalizeStatus(user.status);
-      const matchesSearch = !term
-        ? true
-        : [user.name, user.email, user.role, user.department]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(term));
       const matchesRole = roleFilter === "all" ? true : role === roleFilter;
       const matchesDept = departmentFilter === "all" ? true : department === departmentFilter;
       const matchesStatus = statusFilter === "all" ? true : status === statusFilter;
       const joined = user.joiningDate ? new Date(user.joiningDate) : null;
       const matchesStart = dateStart && joined ? joined >= new Date(dateStart) : true;
       const matchesEnd = dateEnd && joined ? joined <= new Date(`${dateEnd}T23:59:59`) : true;
-      return matchesSearch && matchesRole && matchesDept && matchesStatus && matchesStart && matchesEnd;
+      return matchesRole && matchesDept && matchesStatus && matchesStart && matchesEnd;
     });
+    return smartMatch(byFilters, search, (user) => [user.name, user.email, user.role, user.department]);
   }, [users, search, roleFilter, departmentFilter, statusFilter, dateStart, dateEnd]);
 
   const sorted = useMemo(() => {
@@ -300,12 +297,7 @@ export default function HrEmployeesPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              className="input"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search keyword"
-            />
+            <SmartSearchBar value={search} onChange={setSearch} />
             <MasterSelect value={roleFilter} onChange={setRoleFilter} options={ROLE_OPTIONS} />
             <MasterSelect value={departmentFilter} onChange={setDepartmentFilter} options={DEPARTMENT_OPTIONS} />
             <MasterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />

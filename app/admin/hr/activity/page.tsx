@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { formatDateTime } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const TYPE_OPTIONS = [
   { label: "All Types", value: "all" },
@@ -59,19 +61,14 @@ export default function HrActivityPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return activity.filter((event) => {
+    const byFilters = activity.filter((event) => {
       const matchesType = typeFilter === "all" ? true : event.type === typeFilter;
-      const matchesSearch = !term
-        ? true
-        : [event.title, event.description, event.createdByName]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(term));
       const created = event.createdAt ? new Date(event.createdAt) : null;
       const matchesStart = dateStart && created ? created >= new Date(dateStart) : true;
       const matchesEnd = dateEnd && created ? created <= new Date(`${dateEnd}T23:59:59`) : true;
-      return matchesType && matchesSearch && matchesStart && matchesEnd;
+      return matchesType && matchesStart && matchesEnd;
     });
+    return smartMatch(byFilters, search, (event) => [event.title, event.description, event.createdByName]);
   }, [activity, search, typeFilter, dateStart, dateEnd]);
 
   return (
@@ -82,7 +79,7 @@ export default function HrActivityPage() {
           Audit trail of HR actions across onboarding, users, and documents.
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
           <input className="input" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
           <input className="input" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />

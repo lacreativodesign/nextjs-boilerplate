@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
 import AMProjectDrawer, { type AMProject } from "@/components/am/AMProjectDrawer";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"] as const;
@@ -139,12 +141,7 @@ export default function AMProjectsPage() {
   }, [stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projects.filter((project) => {
-      if (q) {
-        const hay = [project.projectName, project.clientName].filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+    const byFilters = projects.filter((project) => {
       if (stageFilter !== "all" && project.stage !== stageFilter) return false;
       if (priorityFilter !== "all" && project.priority !== priorityFilter) return false;
       if (healthFilter !== "all" && project.health !== healthFilter) return false;
@@ -164,6 +161,7 @@ export default function AMProjectsPage() {
       }
       return true;
     });
+    return smartMatch(byFilters, search, (project) => [project.projectName, project.clientName]);
   }, [projects, search, stageFilter, priorityFilter, healthFilter, dueFrom, dueTo]);
 
   const sorted = useMemo(() => {
@@ -240,12 +238,7 @@ export default function AMProjectsPage() {
           </button>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect
             value={stageFilter}
             onChange={setStageFilter}
