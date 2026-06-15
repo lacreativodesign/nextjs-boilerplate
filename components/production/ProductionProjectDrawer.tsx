@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
+import { apiFetch } from "@/lib/api/client";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final"] as const;
 const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
@@ -160,8 +161,7 @@ export default function ProductionProjectDrawer({
       ? `/api/production/change-requests/list?projectId=${project.id}`
       : `/api/admin/change-requests/list?projectId=${project.id}`;
     Promise.all([
-      fetch(filesUrl, {
-        credentials: "include",
+      apiFetch(filesUrl, {
         cache: "no-store",
       })
         .then(async (res) => {
@@ -173,8 +173,7 @@ export default function ProductionProjectDrawer({
           console.error(err);
           setFiles([]);
         }),
-      fetch(changeRequestsUrl, {
-        credentials: "include",
+      apiFetch(changeRequestsUrl, {
         cache: "no-store",
       })
         .then(async (res) => {
@@ -248,9 +247,8 @@ export default function ProductionProjectDrawer({
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/admin/production/project/assign", {
+      const res = await apiFetch("/api/admin/production/project/assign", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: activeProject.id, productionUid: selectedProduction || null }),
       });
@@ -274,11 +272,10 @@ export default function ProductionProjectDrawer({
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         isProductionRole ? "/api/production/project/move-stage" : "/api/admin/production/project/move-stage",
         {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             projectId: activeProject.id,
@@ -311,9 +308,8 @@ export default function ProductionProjectDrawer({
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/production/project/qa", {
+      const res = await apiFetch("/api/production/project/qa", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: activeProject.id,
@@ -341,12 +337,11 @@ export default function ProductionProjectDrawer({
   async function refreshFiles() {
     if (!activeProject) return;
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         isProductionRole
           ? `/api/production/files/list?projectId=${activeProject.id}`
           : `/api/admin/production/files/list?projectId=${activeProject.id}`,
         {
-          credentials: "include",
           cache: "no-store",
         }
       );
@@ -364,10 +359,9 @@ export default function ProductionProjectDrawer({
     setOverrideLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/approvals/request", {
+      const res = await apiFetch("/api/approvals/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           type: "production_override",
           entityType: "project",
@@ -407,9 +401,8 @@ export default function ProductionProjectDrawer({
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const createRes = await fetch(isProductionRole ? "/api/production/files/upload" : "/api/admin/files/create", {
+      const createRes = await apiFetch(isProductionRole ? "/api/production/files/upload" : "/api/admin/files/create", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: activeProject.id,
@@ -429,9 +422,8 @@ export default function ProductionProjectDrawer({
       }
 
       if (!isProductionRole) {
-        await fetch("/api/admin/production/events/create", {
+        await apiFetch("/api/admin/production/events/create", {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "file.uploaded",

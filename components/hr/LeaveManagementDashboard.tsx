@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 
 type LeaveTypeCode = "vacation" | "sick" | "personal" | "unpaid" | "bereavement";
 type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
@@ -82,7 +83,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     setLoading(true);
     setError(null);
     try {
-      const [balanceRes, requestRes] = await Promise.all([fetch("/api/hr/leave/balance"), fetch("/api/hr/leave/requests")]);
+      const [balanceRes, requestRes] = await Promise.all([apiFetch("/api/hr/leave/balance"), apiFetch("/api/hr/leave/requests")]);
       const balanceData = await balanceRes.json();
       const requestData = await requestRes.json();
 
@@ -110,7 +111,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     event.preventDefault();
     setError(null);
 
-    const response = await fetch("/api/hr/leave/request", {
+    const response = await apiFetch("/api/hr/leave/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -133,7 +134,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
 
   async function handleApprove(id: string) {
     setError(null);
-    const response = await fetch(`/api/hr/leave/requests/${id}/approve`, { method: "PUT" });
+    const response = await apiFetch(`/api/hr/leave/requests/${id}/approve`, { method: "PUT" });
     const data = await response.json();
     if (!data.ok) {
       setError(data.error || "Unable to approve leave request");
@@ -147,7 +148,7 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     if (!rejectionReason) return;
 
     setError(null);
-    const response = await fetch(`/api/hr/leave/requests/${id}/reject`, {
+    const response = await apiFetch(`/api/hr/leave/requests/${id}/reject`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: rejectionReason }),

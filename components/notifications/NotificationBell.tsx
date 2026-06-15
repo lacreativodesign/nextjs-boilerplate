@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebaseClient";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { apiFetch } from "@/lib/api/client";
 import NotificationDrawer, { type NotificationItem } from "@/components/notifications/NotificationDrawer";
 
 type NotificationBellProps = {
@@ -126,10 +127,9 @@ export default function NotificationBell({ enabled = true }: NotificationBellPro
 
   const handleMarkRead = async (item: NotificationItem) => {
     try {
-      await fetch("/api/notifications/mark-read", {
+      await apiFetch("/api/notifications/mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: item.id }),
       });
     } catch (err) {
@@ -149,9 +149,8 @@ export default function NotificationBell({ enabled = true }: NotificationBellPro
 
   const handleMarkAllRead = async () => {
     try {
-      await fetch("/api/notifications/mark-all-read", {
+      await apiFetch("/api/notifications/mark-all-read", {
         method: "POST",
-        credentials: "include",
       });
     } catch (err) {
       console.error("Notification mark all read error:", err);

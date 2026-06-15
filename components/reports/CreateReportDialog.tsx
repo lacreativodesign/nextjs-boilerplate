@@ -3,6 +3,7 @@
 import { Dialog } from "@headlessui/react";
 import { useMemo, useState } from "react";
 import type { Aggregation, ReportFilter, ReportSchedule } from "@/types/reports";
+import { apiFetch } from "@/lib/api/client";
 
 const DATA_SOURCES = [
   "invoices",
@@ -166,7 +167,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
         : undefined,
     };
 
-    const response = await fetch("/api/reports", {
+    const response = await apiFetch("/api/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

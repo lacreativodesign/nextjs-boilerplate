@@ -2,6 +2,7 @@
 
 import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { DependencyType } from "@/lib/production/critical-path";
+import { apiFetch } from "@/lib/api/client";
 
 type ZoomLevel = "day" | "week" | "month";
 
@@ -135,9 +136,8 @@ export default function GanttChart({
     .filter((arrow): arrow is NonNullable<typeof arrow> => Boolean(arrow));
 
   async function persistReschedule(taskId: string, startDate: string, endDate: string) {
-    await fetch(`/api/production/tasks/${taskId}/reschedule`, {
+    await apiFetch(`/api/production/tasks/${taskId}/reschedule`, {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ startDate, endDate }),
     });

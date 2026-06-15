@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { CurrencySelector } from "./CurrencySelector";
 import { CurrencyCode } from "@/lib/finance/currencies";
 import { CurrencyDisplay } from "./CurrencyDisplay";
+import { apiFetch } from "@/lib/api/client";
 
 export function CurrencyConverter() {
   const [amount, setAmount] = useState<number>(100);
@@ -19,7 +20,7 @@ export function CurrencyConverter() {
 
       setLoading(true);
       try {
-        const response = await fetch("/api/finance/currency/convert", {
+        const response = await apiFetch("/api/finance/currency/convert", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount, from: fromCurrency, to: toCurrency }),

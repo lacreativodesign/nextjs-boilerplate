@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 import type { AgentTask } from "@/lib/ai/agent-task";
 
 type WidgetState = "idle" | "creating" | "processing" | "done" | "error";
@@ -21,7 +22,7 @@ export default function COOSummaryWidget() {
 
   const pollTask = useCallback(async (taskId: string) => {
     try {
-      const res = await fetch(`/api/ai/agent-tasks/${taskId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/ai/agent-tasks/${taskId}`);
       const json = await res.json().catch(() => null);
       if (!json?.ok) return;
 
@@ -47,9 +48,8 @@ export default function COOSummaryWidget() {
 
     try {
       // 1. Create the task
-      const createRes = await fetch("/api/ai/agent-tasks", {
+      const createRes = await apiFetch("/api/ai/agent-tasks", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentType: "coo",
@@ -66,9 +66,8 @@ export default function COOSummaryWidget() {
       setState("processing");
 
       // 2. Trigger execution
-      fetch(`/api/ai/agent-tasks/${taskId}/run`, {
+      apiFetch(`/api/ai/agent-tasks/${taskId}/run`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
       }).catch(() => {});
 

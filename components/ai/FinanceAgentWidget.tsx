@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TrendingUp } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 import type { ProposedAction } from "@/lib/ai/finance-agent";
 
 type TaskStatus = "queued" | "processing" | "completed" | "failed" | "awaiting_approval";
@@ -37,7 +38,7 @@ export default function FinanceAgentWidget() {
 
   const pollTask = useCallback(async (taskId: string) => {
     try {
-      const res = await fetch(`/api/ai/agent-tasks/${taskId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/ai/agent-tasks/${taskId}`);
       const json = await res.json().catch(() => null) as TaskResponse | null;
       if (!json?.ok || !json.task) return;
       const t = json.task;
@@ -56,9 +57,8 @@ export default function FinanceAgentWidget() {
     stopPolling();
 
     try {
-      const createRes = await fetch("/api/ai/agent-tasks", {
+      const createRes = await apiFetch("/api/ai/agent-tasks", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentType: "finance",
@@ -71,7 +71,7 @@ export default function FinanceAgentWidget() {
       const taskId = createJson.task.id;
       setWidgetState("processing");
 
-      fetch(`/api/ai/agent-tasks/${taskId}/run-finance`, { method: "POST", credentials: "include" }).catch(() => {});
+      apiFetch(`/api/ai/agent-tasks/${taskId}/run-finance`, { method: "POST" }).catch(() => {});
       pollRef.current = setInterval(() => pollTask(taskId), 2000);
       pollTask(taskId);
     } catch (err: unknown) {
@@ -84,9 +84,8 @@ export default function FinanceAgentWidget() {
     if (!task) return;
     setActionStates((prev) => ({ ...prev, [action.id]: "loading" }));
     try {
-      const res = await fetch("/api/ai/tools/finance-write", {
+      const res = await apiFetch("/api/ai/tools/finance-write", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: action.toolName, taskId: task.id, actionId: action.id, input: action.input }),
       });
@@ -103,9 +102,8 @@ export default function FinanceAgentWidget() {
     if (!task) return;
     setActionStates((prev) => ({ ...prev, [action.id]: "loading" }));
     try {
-      const res = await fetch("/api/ai/tools/finance-write", {
+      const res = await apiFetch("/api/ai/tools/finance-write", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject_proposed_action", taskId: task.id, actionId: action.id, input: action.input }),
       });

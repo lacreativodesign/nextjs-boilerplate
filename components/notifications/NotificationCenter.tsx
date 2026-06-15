@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebaseClient";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { apiFetch } from "@/lib/api/client";
 import type { Notification } from "@/types/notifications";
 
 type NotificationItem = Omit<Notification, "createdAt" | "readAt" | "archivedAt"> & {
@@ -117,13 +118,13 @@ export function NotificationCenter() {
   );
 
   const markAsRead = async (id: string) => {
-    await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+    await apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
     setAllNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
 
   const markAllAsRead = async () => {
-    await fetch("/api/notifications/mark-all-read", { method: "POST" });
+    await apiFetch("/api/notifications/mark-all-read", { method: "POST" });
     setAllNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };

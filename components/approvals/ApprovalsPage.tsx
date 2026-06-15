@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Skeleton } from "../ui/Skeleton";
+import { apiFetch } from "@/lib/api/client";
 
 type ApprovalItem = {
   id: string;
@@ -45,7 +46,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/approvals/pending", { cache: "no-store" });
+      const res = await apiFetch("/api/approvals/pending", { cache: "no-store" });
       const data = (await res.json()) as ApprovalsResponse;
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Unable to load approvals.");
@@ -71,7 +72,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
   const resolveApproval = async (item: ApprovalItem, action: "approve" | "reject") => {
     try {
       setActionLoading(true);
-      const res = await fetch(action === "approve" ? "/api/approvals/approve" : "/api/approvals/reject", {
+      const res = await apiFetch(action === "approve" ? "/api/approvals/approve" : "/api/approvals/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id }),

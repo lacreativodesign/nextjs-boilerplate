@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api/client";
 import type { WorkflowAction, WorkflowCondition, WorkflowDefinition, WorkflowTrigger } from "@/lib/automation/workflow-types";
 
 type WorkflowRun = {
@@ -39,7 +40,7 @@ export default function WorkflowAutomationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/automation/workflows", { cache: "no-store" });
+      const res = await apiFetch("/api/automation/workflows", { cache: "no-store" });
       const payload = await res.json();
       if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load workflows");
       setWorkflows(payload.workflows || []);
@@ -55,9 +56,9 @@ export default function WorkflowAutomationPage() {
   };
 
   const loadApprovals = async () => {
-    const snap = await fetch("/api/automation/workflows", { cache: "no-store" });
+    const snap = await apiFetch("/api/automation/workflows", { cache: "no-store" });
     if (!snap.ok) return;
-    const approvalSnap = await fetch("/api/approvals/pending", { cache: "no-store" });
+    const approvalSnap = await apiFetch("/api/approvals/pending", { cache: "no-store" });
     if (!approvalSnap.ok) return;
     const payload = await approvalSnap.json();
     const items = Array.isArray(payload?.approvals)
@@ -67,7 +68,7 @@ export default function WorkflowAutomationPage() {
   };
 
   const loadRuns = async (workflowId: string) => {
-    const res = await fetch(`/api/automation/workflows/${workflowId}/runs`, { cache: "no-store" });
+    const res = await apiFetch(`/api/automation/workflows/${workflowId}/runs`, { cache: "no-store" });
     const payload = await res.json();
     if (res.ok && payload?.ok) setRuns(payload.runs || []);
   };
@@ -99,7 +100,7 @@ export default function WorkflowAutomationPage() {
     try {
       const method = selected.id ? "PUT" : "POST";
       const url = selected.id ? `/api/automation/workflows/${selected.id}` : "/api/automation/workflows";
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(selected),
@@ -115,13 +116,13 @@ export default function WorkflowAutomationPage() {
   };
 
   const toggleWorkflow = async (id: string) => {
-    await fetch(`/api/automation/workflows/${id}/toggle`, { method: "PUT" });
+    await apiFetch(`/api/automation/workflows/${id}/toggle`, { method: "PUT" });
     await loadWorkflows();
   };
 
   const testRun = async () => {
     if (!selected.id) return;
-    await fetch(`/api/automation/workflows/${selected.id}/test`, {
+    await apiFetch(`/api/automation/workflows/${selected.id}/test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ record: { id: "test-record", entity: "tasks", priority: "high", amount: 120 } }),
@@ -153,7 +154,7 @@ export default function WorkflowAutomationPage() {
   const activeCount = useMemo(() => workflows.filter((item) => item.status === "active").length, [workflows]);
 
   const respondApproval = async (id: string, decision: "approve" | "reject") => {
-    await fetch(`/api/automation/approvals/${id}/respond`, {
+    await apiFetch(`/api/automation/approvals/${id}/respond`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),

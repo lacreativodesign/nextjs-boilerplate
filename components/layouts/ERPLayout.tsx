@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api/client";
 
 export default function ERPLayout({
   children,
@@ -37,7 +38,7 @@ export default function ERPLayout({
 
   async function handleLogout() {
     try {
-      await fetch("/api/logout", { method: "POST", credentials: "include" });
+      await apiFetch("/api/logout", { method: "POST" });
       window.location.href = "/login";
     } catch (err) {
       console.error("Logout failed:", err);
