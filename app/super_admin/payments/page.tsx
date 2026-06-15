@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type Metrics = {
   mrr: number;
@@ -200,24 +202,21 @@ export default function PaymentTerminalPage() {
 
   const filteredTenants = useMemo(() => {
     const list = data?.tenants || [];
-    const query = search.trim().toLowerCase();
-    return list
-      .filter((tenant) => {
-        if (tab === "active" && tenant.subscriptionState !== "active") return false;
-        if (tab === "trial" && tenant.plan !== "trial") return false;
-        if (tab === "grace" && tenant.subscriptionState !== "grace") return false;
-        if (tab === "locked" && !["soft_locked", "hard_locked"].includes(tenant.subscriptionState)) return false;
-        if (query && !tenant.tenantName.toLowerCase().includes(query)) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const direction = sort.dir === "asc" ? 1 : -1;
-        if (sort.key === "mrr") return (a.mrr - b.mrr) * direction;
+    const byTab = list.filter((tenant) => {
+      if (tab === "active" && tenant.subscriptionState !== "active") return false;
+      if (tab === "trial" && tenant.plan !== "trial") return false;
+      if (tab === "grace" && tenant.subscriptionState !== "grace") return false;
+      if (tab === "locked" && !["soft_locked", "hard_locked"].includes(tenant.subscriptionState)) return false;
+      return true;
+    });
+    return smartMatch(byTab, search, (tenant) => [tenant.tenantName]).sort((a, b) => {
+      const direction = sort.dir === "asc" ? 1 : -1;
+      if (sort.key === "mrr") return (a.mrr - b.mrr) * direction;
 
-        const left = a[sort.key] ? new Date(String(a[sort.key])).getTime() : 0;
-        const right = b[sort.key] ? new Date(String(b[sort.key])).getTime() : 0;
-        return (left - right) * direction;
-      });
+      const left = a[sort.key] ? new Date(String(a[sort.key])).getTime() : 0;
+      const right = b[sort.key] ? new Date(String(b[sort.key])).getTime() : 0;
+      return (left - right) * direction;
+    });
   }, [data?.tenants, search, sort, tab]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTenants.length / PAGE_SIZE));
@@ -287,11 +286,11 @@ export default function PaymentTerminalPage() {
       <div className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="section-title">Tenant Subscriptions</div>
-          <input
+          <SmartSearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search tenants..."
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
+            className="w-full max-w-xs"
           />
         </div>
 

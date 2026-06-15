@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type FileRecord = {
   id: string;
@@ -100,14 +102,11 @@ export default function ClientFilesPage() {
     void loadProjects();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return files.filter((file) => {
-      if (!q) return true;
-      const hay = [file.fileName, file.projectName, file.category].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [files, search]);
+  const filtered = useMemo(
+    () =>
+      smartMatch(files, search, (file) => [file.fileName, file.projectName, file.category]),
+    [files, search]
+  );
 
   const handleUpload = async () => {
     if (!uploadProjectId || !fileInputRef.current?.files?.[0]) return;
@@ -168,7 +167,7 @@ export default function ClientFilesPage() {
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
-          <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" />
         </div>
       </div>
 

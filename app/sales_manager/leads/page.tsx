@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { formatDate } from "@/components/finance/financeUtils";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const STATUS_OPTIONS = [
   { value: "All", label: "All statuses" },
@@ -110,7 +112,6 @@ export default function SalesManagerLeadsPage() {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = [...rows];
 
     if (statusFilter !== "All") {
@@ -148,17 +149,15 @@ export default function SalesManagerLeadsPage() {
       }
     }
 
-    if (q) {
-      list = list.filter((row) => {
-        const hay = [row.name, row.company, row.email, row.phone, row.source, row.status, row.ownerName]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(q);
-      });
-    }
-
-    return list;
+    return smartMatch(list, query, (row) => [
+      row.name,
+      row.company,
+      row.email,
+      row.phone,
+      row.source,
+      row.status,
+      row.ownerName,
+    ]);
   }, [rows, statusFilter, sourceFilter, ownerFilter, dateFrom, dateTo, query]);
 
   const headerCellStyle: React.CSSProperties = {
@@ -302,7 +301,7 @@ export default function SalesManagerLeadsPage() {
           alignItems: "center",
         }}
       >
-        <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search leads" />
+        <SmartSearchBar value={query} onChange={setQuery} placeholder="Search leads" />
         <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           {STATUS_OPTIONS.map((status) => (
             <option key={status.value} value={status.value}>

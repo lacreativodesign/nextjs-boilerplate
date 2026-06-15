@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"];
 const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"];
@@ -107,14 +109,15 @@ export default function ClientChangeRequestsPage() {
     void loadProjects();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return changeRequests;
-    return changeRequests.filter((request) => {
-      const hay = [request.title, request.projectName, request.type].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
-    });
-  }, [changeRequests, search]);
+  const filtered = useMemo(
+    () =>
+      smartMatch(changeRequests, search, (request) => [
+        request.title,
+        request.projectName,
+        request.type,
+      ]),
+    [changeRequests, search]
+  );
 
   const openDrawer = (request: ChangeRequestRecord) => {
     setSelected(request);
@@ -187,7 +190,7 @@ export default function ClientChangeRequestsPage() {
 
       <div className="card p-4">
         <div className="page-header">
-          <input className="input" placeholder="Search keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" className="flex-1" />
           <button className="btn" onClick={() => setCreateOpen(true)}>
             New Change Request
           </button>

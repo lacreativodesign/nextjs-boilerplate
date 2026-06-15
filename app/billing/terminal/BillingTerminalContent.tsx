@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 import type { Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import {
   Bar,
@@ -194,16 +196,11 @@ export function BillingTerminalContent({ showShell = true }: { showShell?: boole
 
   const transactions = data?.transactions || [];
   const filteredTransactions = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return transactions.filter((item) => {
-      const derivedStatus = getTransactionStatus(item);
-      const statusMatch = filter === 'all' ? true : derivedStatus === filter;
-      const textMatch =
-        !term ||
-        item.customerEmail?.toLowerCase().includes(term) ||
-        item.invoiceId?.toLowerCase().includes(term);
-      return Boolean(statusMatch && textMatch);
-    });
+    const byStatus =
+      filter === 'all'
+        ? transactions
+        : transactions.filter((item) => getTransactionStatus(item) === filter);
+    return smartMatch(byStatus, query, (item) => [item.customerEmail, item.invoiceId]);
   }, [transactions, query, filter]);
 
   const pageSize = 20;
@@ -400,15 +397,14 @@ export function BillingTerminalContent({ showShell = true }: { showShell?: boole
           <section className="card">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="section-title">Transactions</h2>
-              <input
+              <SmartSearchBar
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
+                onChange={(value) => {
+                  setQuery(value);
                   setPage(1);
                 }}
                 placeholder="Search by email or invoice ID"
-                className="input"
-                style={{ maxWidth: 280 }}
+                className="w-full max-w-[280px]"
               />
             </div>
             <div className="tabs-bar" style={{ marginBottom: 12 }}>

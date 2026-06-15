@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type Tenant = {
   id: string;
@@ -92,17 +94,10 @@ export default function SuperAdminTenantsPage() {
     loadTenants();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return tenants;
-    return tenants.filter((tenant) => {
-      return (
-        tenant.name.toLowerCase().includes(q) ||
-        tenant.slug.toLowerCase().includes(q) ||
-        tenant.id.toLowerCase().includes(q)
-      );
-    });
-  }, [tenants, query]);
+  const filtered = useMemo(
+    () => smartMatch(tenants, query, (tenant) => [tenant.name, tenant.slug, tenant.id]),
+    [tenants, query]
+  );
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -175,11 +170,11 @@ export default function SuperAdminTenantsPage() {
             <div className="section-title">All Tenants</div>
             <p className="section-subtitle">Switch into each tenant to manage branding and modules.</p>
           </div>
-          <input
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
-            placeholder="Search tenants..."
+          <SmartSearchBar
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
+            placeholder="Search tenants..."
+            className="w-full max-w-xs"
           />
         </div>
 
