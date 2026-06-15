@@ -54,8 +54,16 @@ function WidgetBody({ widget, payload }: { widget: DashboardWidget; payload?: Wi
       return <div className="space-y-1 text-sm">{leaves.map((leave) => <div key={leave.id} className="flex justify-between"><span>{leave.employee}</span><span className="capitalize">{leave.status}</span></div>)}</div>;
     }
     default:
-      return <div className="text-sm text-gray-500">No data.</div>;
+      return <div className="text-sm text-[var(--text-muted)]">No data.</div>;
   }
+}
+
+function WidgetPlaceholder() {
+  return (
+    <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
+      No data yet
+    </div>
+  );
 }
 
 export default function CustomizableDashboard({ heading, subtitle }: Props) {
@@ -158,20 +166,20 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
   );
 
   if (loading) {
-    return <div className="rounded-lg border border-gray-200 bg-white p-6">Loading dashboard...</div>;
+    return <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 text-[var(--text-muted)]">Loading dashboard...</div>;
   }
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">{heading}</h1>
-        <p className="text-sm text-gray-600">{subtitle}</p>
+        <p className="text-sm text-[var(--text-muted)]">{subtitle}</p>
       </div>
 
       <div className="flex gap-2">
-        <button className="rounded border px-3 py-2 text-sm" onClick={() => setShowSelector(true)}>Add Widget</button>
+        <button className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm" onClick={() => setShowSelector(true)}>Add Widget</button>
         <select
-          className="rounded border px-3 py-2 text-sm"
+          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
           defaultValue=""
           onChange={async (event) => {
             if (!event.target.value) return;
@@ -191,14 +199,14 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
         </select>
       </div>
 
-      <div ref={boardRef} className="relative min-h-[500px] rounded border border-gray-200 bg-gray-50" style={{ height: `${Math.max(...(layout?.items.map((x) => x.y + x.h) || [8])) * ROW_HEIGHT}px` }}>
+      <div ref={boardRef} className="relative min-h-[500px] rounded border border-[var(--border-subtle)] bg-[var(--surface-muted)]" style={{ height: `${Math.max(...(layout?.items.map((x) => x.y + x.h) || [8])) * ROW_HEIGHT}px` }}>
         {widgets.map((widget) => {
           const place = placementById.get(widget.id);
           if (!place) return null;
           return (
             <article
               key={widget.id}
-              className="absolute overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+              className="absolute overflow-hidden rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-sm"
               style={{
                 left: `${(place.x / COLUMNS) * 100}%`,
                 top: place.y * ROW_HEIGHT,
@@ -207,7 +215,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
               }}
             >
               <header
-                className="flex cursor-move items-center justify-between border-b px-3 py-2"
+                className="flex cursor-move items-center justify-between border-b border-[var(--border-subtle)] px-3 py-2"
                 onMouseDown={(event) => {
                   const startX = event.clientX;
                   const startY = event.clientY;
@@ -221,7 +229,7 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
                 <h3 className="text-sm font-medium">{widget.title}</h3>
                 <div className="flex gap-2">
                   <button className="text-xs text-blue-600" onClick={() => void refreshWidget(widget.id)}>Refresh</button>
-                  <button className="text-xs text-gray-600" onClick={() => setActiveConfigWidget(widget.id)}>Config</button>
+                  <button className="text-xs text-[var(--text-muted)]" onClick={() => setActiveConfigWidget(widget.id)}>Config</button>
                   <button
                     className="text-xs text-red-600"
                     onClick={async () => {
@@ -234,10 +242,14 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
                 </div>
               </header>
               <div className="h-[calc(100%-36px)] overflow-auto p-3">
-                <WidgetBody widget={widget} payload={dataMap[widget.id]} />
+                {dataMap[widget.id] ? (
+                  <WidgetBody widget={widget} payload={dataMap[widget.id]} />
+                ) : (
+                  <WidgetPlaceholder />
+                )}
               </div>
               <div
-                className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize bg-gray-200"
+                className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize bg-[var(--surface-muted)]"
                 onMouseDown={(event) => {
                   event.stopPropagation();
                   const startX = event.clientX;
@@ -256,13 +268,13 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
 
       {showSelector ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl rounded bg-white p-4">
+          <div className="w-full max-w-xl rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
             <h2 className="mb-3 text-lg font-semibold">Add Widget</h2>
             <div className="grid gap-2">
               {widgetTypes.map((widgetType) => (
                 <button
                   key={widgetType.type}
-                  className="rounded border p-3 text-left hover:bg-gray-50"
+                  className="rounded border border-[var(--border-subtle)] p-3 text-left hover:bg-[var(--surface-muted)]"
                   onClick={async () => {
                     await apiFetch("/api/dashboard/widgets", {
                       method: "POST",
@@ -274,12 +286,12 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
                   }}
                 >
                   <div className="font-medium">{widgetType.title}</div>
-                  <div className="text-xs text-gray-600">{widgetType.description}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{widgetType.description}</div>
                 </button>
               ))}
             </div>
             <div className="mt-3 text-right">
-              <button className="rounded border px-3 py-2 text-sm" onClick={() => setShowSelector(false)}>Close</button>
+              <button className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm" onClick={() => setShowSelector(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -287,14 +299,14 @@ export default function CustomizableDashboard({ heading, subtitle }: Props) {
 
       {activeConfigWidget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded bg-white p-4">
+          <div className="w-full max-w-md rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
             <h2 className="mb-2 text-lg font-semibold">Widget Configuration</h2>
-            <p className="text-sm text-gray-600">Configuration is managed server-side and persisted per widget instance.</p>
-            <pre className="mt-3 overflow-auto rounded bg-gray-100 p-2 text-xs">
+            <p className="text-sm text-[var(--text-muted)]">Configuration is managed server-side and persisted per widget instance.</p>
+            <pre className="mt-3 overflow-auto rounded bg-[var(--surface-muted)] p-2 text-xs">
               {JSON.stringify(widgets.find((x) => x.id === activeConfigWidget)?.config || {}, null, 2)}
             </pre>
             <div className="mt-3 text-right">
-              <button className="rounded border px-3 py-2 text-sm" onClick={() => setActiveConfigWidget(null)}>Close</button>
+              <button className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm" onClick={() => setActiveConfigWidget(null)}>Close</button>
             </div>
           </div>
         </div>

@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCountUp } from "@/lib/hooks/useCountUp";
-import { useI18n } from "@/components/i18n/I18nProvider";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { PlatformTour } from "@/components/onboarding/PlatformTour";
 import { normalizeRole, type ErpRole } from "@/lib/erpAccess";
@@ -30,8 +29,6 @@ const ROLE_OVERVIEW_SUBTITLES: Record<ErpRole, string> = {
 type Stats = {
   users: number;
   clients: number;
-  activeProjects: number;
-  openInvoices: number;
 };
 
 function StatCard({
@@ -69,7 +66,6 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const { t } = useI18n();
   const { data: tenantData } = useTenantContext();
   const modulesEnabled = tenantData?.tenant?.modulesEnabled || {};
   const currentRole = normalizeRole(tenantData?.user?.role || "");
@@ -113,8 +109,6 @@ export default function DashboardPage() {
         setStats({
           users: userList.length,
           clients: clientList.length,
-          activeProjects: 0,
-          openInvoices: 0,
         });
       } catch (err) {
         console.error("Dashboard stats error", err);
@@ -137,18 +131,6 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Team Members" value={val(stats?.users ?? 0)} sub="Active users" href="/users" />
         <StatCard label="Clients" value={val(stats?.clients ?? 0)} sub="Total accounts" href="/clients" />
-        <StatCard
-          label={t("dashboard.widgets.activeProjects")}
-          value={val(stats?.activeProjects ?? 0)}
-          sub="In progress"
-          href="/projects"
-        />
-        <StatCard
-          label={t("dashboard.widgets.openInvoices")}
-          value={val(stats?.openInvoices ?? 0)}
-          sub="Pending payment"
-          href="/finance/invoices"
-        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
