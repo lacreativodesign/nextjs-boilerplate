@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api/client";
 
 type Tenant = {
   id: string;
@@ -80,7 +81,7 @@ export default function SuperAdminTenantsPage() {
   const [saving, setSaving] = useState(false);
 
   const loadTenants = async () => {
-    const res = await fetch("/api/super_admin/tenants", { cache: "no-store", credentials: "include" });
+    const res = await apiFetch("/api/super_admin/tenants", { cache: "no-store" });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
       setTenants(json.tenants || []);
@@ -107,10 +108,9 @@ export default function SuperAdminTenantsPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await fetch("/api/super_admin/tenants", {
+      await apiFetch("/api/super_admin/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           name: name.trim(),
           slug: slugify(slug.trim() || name.trim()),

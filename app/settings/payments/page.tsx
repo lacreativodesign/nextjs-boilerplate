@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/lib/api/client";
 
 type ConnectStatusResponse = {
   ok: boolean;
@@ -27,9 +28,8 @@ export default function SettingsPaymentsPage() {
   const loadStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/stripe/connect/status", {
+      const response = await apiFetch("/api/stripe/connect/status", {
         cache: "no-store",
-        credentials: "include",
       });
       const payload = (await response.json()) as ConnectStatusResponse;
       if (!response.ok || !payload.ok) {
@@ -81,9 +81,8 @@ export default function SettingsPaymentsPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/stripe/connect/start", {
+      const response = await apiFetch("/api/stripe/connect/start", {
         method: "GET",
-        credentials: "include",
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok || !payload.url) {
@@ -110,9 +109,8 @@ export default function SettingsPaymentsPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/stripe/connect/disconnect", {
+      const response = await apiFetch("/api/stripe/connect/disconnect", {
         method: "POST",
-        credentials: "include",
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) {

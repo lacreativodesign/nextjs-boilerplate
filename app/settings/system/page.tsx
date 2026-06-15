@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { apiFetch } from "@/lib/api/client";
 
 type SystemSettings = {
   maintenanceMode?: boolean;
@@ -26,7 +27,7 @@ export default function SettingsSystemPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/settings/system", { credentials: "include" })
+    apiFetch("/api/admin/settings/system")
       .then((r) => r.json())
       .then((res) => {
         if (res.ok && res.settings) setSettings(res.settings);
@@ -50,10 +51,9 @@ export default function SettingsSystemPage() {
     e.preventDefault();
     try {
       setSaving(true);
-      await fetch("/api/admin/settings/system", {
+      await apiFetch("/api/admin/settings/system", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(settings),
       });
       setSaved(true);

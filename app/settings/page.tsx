@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
+import { apiFetch } from "@/lib/api/client";
 
 type Profile = {
   name: string;
@@ -58,7 +59,7 @@ export default function SettingsProfilePage() {
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/me/manager", { credentials: "include" });
+        const res = await apiFetch("/api/me/manager");
         const json = await res.json();
         if (active) setManager(json?.manager ?? null);
       } catch {
@@ -84,10 +85,9 @@ export default function SettingsProfilePage() {
     e.preventDefault();
     try {
       setSaving(true);
-      await fetch("/api/users/profile", {
+      await apiFetch("/api/users/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           displayName: profile.name,
           phone: profile.phone,
