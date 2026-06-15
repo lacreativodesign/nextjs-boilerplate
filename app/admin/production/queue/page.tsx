@@ -6,6 +6,8 @@ import ProductionProjectDrawer, {
   type ProductionProject,
   type ProductionUserOption,
 } from '@/components/production/ProductionProjectDrawer';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'] as const;
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'] as const;
@@ -160,8 +162,7 @@ export default function ProductionQueuePage() {
   };
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projects.filter((project) => {
+    const list = projects.filter((project) => {
       if (!ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number])) return false;
       if (stageFilter !== 'all' && project.stage !== stageFilter) return false;
       if (priorityFilter !== 'all' && project.priority !== priorityFilter) return false;
@@ -170,20 +171,14 @@ export default function ProductionQueuePage() {
       if (productionFilter && project.productionUid !== productionFilter) return false;
       if (dueFilter === 'overdue' && !isOverdue(project.dueDate)) return false;
       if (dueFilter === 'week' && !isDueThisWeek(project.dueDate)) return false;
-      if (q) {
-        const hay = [
-          project.projectName,
-          project.clientName,
-          project.ownerAmName,
-          project.productionName,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
+    return smartMatch(list, search, (project) => [
+      project.projectName,
+      project.clientName,
+      project.ownerAmName,
+      project.productionName,
+    ]);
   }, [
     projects,
     search,
@@ -285,12 +280,7 @@ export default function ProductionQueuePage() {
             alignItems: 'center',
           }}
         >
-          <input
-            className="input"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search keyword"
-          />
+          <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect
             value={stageFilter}
             onChange={setStageFilter}

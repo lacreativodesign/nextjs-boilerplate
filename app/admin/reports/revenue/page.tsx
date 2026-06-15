@@ -5,6 +5,8 @@ import { formatDate, formatUsd } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart, useSortableData } from "../_components/ReportsUI";
 import { CurrencyConverter } from "@/components/currency/CurrencyConverter";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type RevenueResponse = {
   revenueByMonth: Array<{ label: string; revenueUsd: number }>;
@@ -109,13 +111,15 @@ export default function RevenueReportsPage() {
     loadRevenue();
   }, [dateFrom, dateTo, clientId, status]);
 
-  const filteredInvoices = useMemo(() => {
-    if (!search) return data.outstandingInvoices;
-    const q = search.toLowerCase();
-    return data.outstandingInvoices.filter((invoice) => {
-      return `${invoice.orderId} ${invoice.clientName} ${invoice.status}`.toLowerCase().includes(q);
-    });
-  }, [data.outstandingInvoices, search]);
+  const filteredInvoices = useMemo(
+    () =>
+      smartMatch(data.outstandingInvoices, search, (invoice) => [
+        invoice.orderId,
+        invoice.clientName,
+        invoice.status,
+      ]),
+    [data.outstandingInvoices, search]
+  );
 
   const sortedInvoices = useSortableData(filteredInvoices, sortKey, sortDirection);
 
@@ -179,13 +183,9 @@ export default function RevenueReportsPage() {
           <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <MasterSelect value={clientId} onChange={setClientId} options={clients} />
           <MasterSelect value={status} onChange={setStatus} options={STATUS_OPTIONS} />
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+            <SmartSearchBar value={search} onChange={setSearch} />
+          </div>
           <button
             type="button"
             className="btn ghost"

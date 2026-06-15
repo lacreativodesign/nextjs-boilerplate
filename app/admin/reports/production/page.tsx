@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart, useSortableData } from "../_components/ReportsUI";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type ProductionResponse = {
   workloadByProductionOwner: Array<{ productionOwnerId: string; productionOwnerName: string; total: number; overdue: number }>;
@@ -93,13 +95,15 @@ export default function ProductionReportsPage() {
     ];
   }, [data.workloadByProductionOwner]);
 
-  const filteredProjects = useMemo(() => {
-    if (!search) return data.stuckProjects;
-    const q = search.toLowerCase();
-    return data.stuckProjects.filter((project) => {
-      return `${project.projectName} ${project.clientName} ${project.stage}`.toLowerCase().includes(q);
-    });
-  }, [data.stuckProjects, search]);
+  const filteredProjects = useMemo(
+    () =>
+      smartMatch(data.stuckProjects, search, (project) => [
+        project.projectName,
+        project.clientName,
+        project.stage,
+      ]),
+    [data.stuckProjects, search]
+  );
 
   const sortedProjects = useSortableData(filteredProjects, sortKey, sortDirection);
 
@@ -154,13 +158,9 @@ export default function ProductionReportsPage() {
           <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <MasterSelect value={productionOwnerId} onChange={setProductionOwnerId} options={ownerOptions} />
           <MasterSelect value={stage} onChange={setStage} options={STAGE_OPTIONS} />
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+            <SmartSearchBar value={search} onChange={setSearch} />
+          </div>
           <button
             type="button"
             className="btn ghost"

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatUsd, useInterval } from "@/components/finance/financeUtils";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { CardShell, ErrorCard, KpiCard, MiniBarChart } from "./_components/ReportsUI";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 
 type OverviewResponse = {
   kpis: {
@@ -80,12 +82,8 @@ export default function ReportsOverviewPage() {
   useInterval(loadOverview, 30000);
 
   const filteredActivity = useMemo(() => {
-    return overview.recentActivity.filter((event) => {
+    const list = overview.recentActivity.filter((event) => {
       if (activityType && !event.type.startsWith(activityType)) return false;
-      if (activitySearch) {
-        const hay = `${event.title} ${event.description} ${event.type}`.toLowerCase();
-        if (!hay.includes(activitySearch.toLowerCase())) return false;
-      }
       if (dateFrom) {
         const start = new Date(dateFrom).getTime();
         const eventMs = event.createdAt ? new Date(event.createdAt).getTime() : 0;
@@ -98,6 +96,11 @@ export default function ReportsOverviewPage() {
       }
       return true;
     });
+    return smartMatch(list, activitySearch, (event) => [
+      event.title,
+      event.description,
+      event.type,
+    ]);
   }, [overview.recentActivity, activityType, activitySearch, dateFrom, dateTo]);
 
   return (
@@ -171,13 +174,9 @@ export default function ReportsOverviewPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <input
-            className="input"
-            placeholder="Search keyword"
-            value={activitySearch}
-            onChange={(e) => setActivitySearch(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+            <SmartSearchBar value={activitySearch} onChange={setActivitySearch} />
+          </div>
           <MasterSelect value={activityType} onChange={setActivityType} options={activityOptions} />
           <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />

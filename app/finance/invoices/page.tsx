@@ -11,6 +11,8 @@ import type { InvoiceRecord } from "@/lib/finance/types";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { generatePaymentLink } from "@/lib/payments/payment-link";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
 
 const STATUS_OPTIONS = [
@@ -108,19 +110,11 @@ export default function FinanceInvoicesPage() {
   }, [currentUser?.role]);
 
   const filteredInvoices = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const now = new Date();
 
-    return invoices.filter((invoice) => {
+    const list = invoices.filter((invoice) => {
       if (statusFilter && invoice.status !== statusFilter) return false;
       if (clientFilter && invoice.clientId !== clientFilter) return false;
-      if (q) {
-        const hay = [invoice.orderId, invoice.clientName, invoice.clientId]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
 
       if (dueFilter) {
         const due = invoice.dueDate ? new Date(invoice.dueDate) : null;
@@ -133,6 +127,12 @@ export default function FinanceInvoicesPage() {
 
       return true;
     });
+
+    return smartMatch(list, query, (invoice) => [
+      invoice.orderId,
+      invoice.clientName,
+      invoice.clientId,
+    ]);
   }, [invoices, query, statusFilter, clientFilter, dueFilter]);
 
   const sortedInvoices = useMemo(() => {
@@ -260,13 +260,9 @@ export default function FinanceInvoicesPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <SmartSearchBar value={query} onChange={setQuery} />
+        </div>
         <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
         <MasterSelect value={dueFilter} onChange={(value) => setDueFilter(value)} options={DUE_OPTIONS} />
         <MasterSelect
