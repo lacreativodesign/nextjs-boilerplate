@@ -5,6 +5,7 @@ import { Search, X } from "lucide-react";
 interface SmartSearchBarProps {
   value: string;
   onChange: (value: string) => void;
+  onSubmit?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -20,6 +21,7 @@ interface SmartSearchBarProps {
 export function SmartSearchBar({
   value,
   onChange,
+  onSubmit,
   placeholder = "Search by name, email, ID, phone…",
   className,
 }: SmartSearchBarProps) {
@@ -52,6 +54,9 @@ export function SmartSearchBar({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && onSubmit) onSubmit();
+        }}
         placeholder={placeholder}
         aria-label={placeholder}
         style={{

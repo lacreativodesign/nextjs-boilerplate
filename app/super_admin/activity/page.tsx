@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 type ActivityEvent = {
   id: string;
@@ -78,13 +79,11 @@ export default function SuperAdminActivityPage() {
 
       {/* Filters */}
       <div className="card p-4 space-y-3">
-        <input
-          type="text"
-          className="input w-full"
-          placeholder="Search activity..."
+        <SmartSearchBar
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && load()}
+          onChange={setSearch}
+          onSubmit={load}
+          placeholder="Search activity..."
         />
         <div className="grid grid-cols-2 gap-3">
           <select className="input w-full" value={type} onChange={(e) => setType(e.target.value)}>

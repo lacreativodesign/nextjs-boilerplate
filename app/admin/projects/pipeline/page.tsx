@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toastError } from "@/lib/toast";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 type ProjectStage =
   | "Inquiry"
@@ -459,7 +460,7 @@ export default function DeliveryPipelinePage() {
       </div>
 
       <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
-        <input className="input" placeholder="Search keyword" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <SmartSearchBar value={query} onChange={setQuery} onSubmit={fetchPipeline} placeholder="Search keyword" />
         {canViewOwners(currentUser?.role) && (
           <FilterSelect
             value={ownerFilter}

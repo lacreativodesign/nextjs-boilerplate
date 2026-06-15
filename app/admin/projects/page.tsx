@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toastError } from "@/lib/toast";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 type ProjectStage =
   | "Inquiry"
@@ -627,11 +628,13 @@ export default function AllProjectsPage() {
       </div>
 
       <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
-        <input
-          className="input"
-          placeholder="Search keyword"
+        <SmartSearchBar
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
+          onSubmit={() => {
+            refreshList().catch((err) => console.error("Failed to load projects:", err));
+          }}
+          placeholder="Search keyword"
         />
         <FilterSelect
           value={stageFilter}

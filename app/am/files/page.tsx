@@ -5,6 +5,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import MasterSelect from "@/components/ui/MasterSelect";
 import { getFirebaseStorage } from "@/lib/firebaseClient";
 import { apiFetch } from "@/lib/api/client";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 const FILE_CATEGORIES = ["Draft", "Revision", "Final", "Asset", "Other"] as const;
 
@@ -238,11 +239,11 @@ export default function AMFilesPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input
-            className="input"
-            placeholder="Search keyword"
+          <SmartSearchBar
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={setSearch}
+            onSubmit={() => loadFiles()}
+            placeholder="Search keyword"
           />
           <MasterSelect
             value={categoryFilter}
