@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import MasterSelect from "@/components/ui/MasterSelect";
@@ -20,16 +19,9 @@ import { TaxRateSelector } from "@/components/finance/TaxRateSelector";
 import { calculateTax } from "@/lib/tax/calculator";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import type { SearchFilter } from "@/types/search";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
-
-const AdvancedSearchDialog = dynamic(
-  () => import("@/components/search/AdvancedSearchDialog").then((mod) => mod.AdvancedSearchDialog),
-  {
-    loading: () => null,
-    ssr: false,
-  },
-);
 
 const STATUS_OPTIONS = [
   "",
@@ -58,40 +50,8 @@ type CurrentUser = { uid: string; role: string; name?: string };
 
 type ErrorState = { title: string; message: string };
 
-type FilterRow = {
-  id: string;
-  field: string;
-  operator: string;
-  value: string;
-};
-
-type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
-
-const invoiceSearchFields: SearchField[] = [
-  { name: "orderId", label: "Invoice / Order ID", type: "string" },
-  { name: "clientName", label: "Client Name", type: "string" },
-  { name: "clientId", label: "Client ID", type: "string" },
-  { name: "status", label: "Status", type: "string" },
-  { name: "amountTotalUsd", label: "Total Amount (USD)", type: "number" },
-  { name: "dueDate", label: "Due Date", type: "string" },
-  { name: "updatedAt", label: "Updated At", type: "string" },
-];
-
 const getCurrencySymbol = (code?: string) => {
   return SUPPORTED_CURRENCIES.find((currency) => currency.code === code)?.symbol || code || "USD";
-};
-
-const normalizeFilterValue = (value: string | undefined, type?: SearchField["type"]) => {
-  if (value === undefined) return value;
-  if (type === "number") {
-    const numeric = Number(value);
-    return Number.isNaN(numeric) ? value : numeric;
-  }
-  if (type === "boolean") {
-    if (value.toLowerCase() === "true") return true;
-    if (value.toLowerCase() === "false") return false;
-  }
-  return value;
 };
 
 export default function FinanceInvoicesPage() {
@@ -120,8 +80,6 @@ function FinanceInvoicesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advancedActive, setAdvancedActive] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -159,122 +117,12 @@ function FinanceInvoicesContent() {
     }
   }, []);
 
-  const buildSearchFilters = useCallback((filters: FilterRow[]): SearchFilter[] => {
-    const fieldMap = new Map(invoiceSearchFields.map((field) => [field.name, field]));
-
-    return filters
-      .filter((filter) => filter.field && filter.operator)
-      .map((filter) => {
-        const fieldConfig = fieldMap.get(filter.field);
-        const trimmed = filter.value?.toString().trim();
-
-        if (filter.operator === "isNull" || filter.operator === "isNotNull") {
-          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: null };
-        }
-
-        if (filter.operator === "between") {
-          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
-          const normalized = parts.slice(0, 2).map((part) => normalizeFilterValue(part, fieldConfig?.type));
-          return { field: filter.field, operator: "between", value: normalized };
-        }
-
-        if (filter.operator === "in" || filter.operator === "notIn") {
-          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
-          const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
-          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
-        }
-
-        return {
-          field: filter.field,
-          operator: filter.operator as SearchFilter["operator"],
-          value: normalizeFilterValue(trimmed, fieldConfig?.type),
-        };
-      });
-  }, []);
-
-  const handleAdvancedSearch = useCallback(
-    async (filters: FilterRow[]) => {
-      try {
-        setError(null);
-        setLoading(true);
-        const payloadFilters = buildSearchFilters(filters);
-        const res = await apiFetch("/api/invoices/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filters: payloadFilters,
-            sortBy: sortKey,
-            sortOrder: sortDir,
-            page: 1,
-            limit: 200,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data?.error || "Unable to search invoices.");
-        }
-        setInvoices(Array.isArray(data?.results) ? data.results : []);
-        setAdvancedActive(true);
-        setQuery("");
-        setStatusFilter("");
-        setDueFilter("");
-        setClientFilter("");
-      } catch (err: any) {
-        console.error("Advanced invoice search error", err);
-        toastError(err?.message || "Unable to search invoices.");
-        setError({
-          title: "Unable to search invoices",
-          message: "Please try again in a moment.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [buildSearchFilters, sortDir, sortKey]
-  );
-
-  const handleSaveSearch = useCallback(
-    async (name: string, filters: FilterRow[]) => {
-      const payloadFilters = buildSearchFilters(filters);
-      await toastPromise(
-        apiFetch("/api/saved-searches", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            module: "invoices",
-            filters: payloadFilters,
-            sortBy: sortKey,
-            sortOrder: sortDir,
-            isShared: false,
-          }),
-        }).then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(data?.error || "Unable to save search.");
-          }
-          return data;
-        }),
-        {
-          loading: "Saving search...",
-          success: "Search saved.",
-          error: (err) => err?.message || "Unable to save search.",
-        }
-      );
-    },
-    [buildSearchFilters, sortDir, sortKey]
-  );
-
-  const handleResetFilters = useCallback(async () => {
+  const handleResetFilters = useCallback(() => {
     setQuery("");
     setStatusFilter("");
     setDueFilter("");
     setClientFilter("");
-    if (advancedActive) {
-      setAdvancedActive(false);
-      await loadInvoices();
-    }
-  }, [advancedActive, loadInvoices]);
+  }, []);
 
   useEffect(() => {
     loadInvoices();
@@ -293,19 +141,11 @@ function FinanceInvoicesContent() {
   }, [currentUser?.role]);
 
   const filteredInvoices = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const now = new Date();
 
-    return invoices.filter((invoice) => {
+    const statusFiltered = invoices.filter((invoice) => {
       if (statusFilter && invoice.status !== statusFilter) return false;
       if (clientFilter && invoice.clientId !== clientFilter) return false;
-      if (q) {
-        const hay = [invoice.orderId, invoice.clientName, invoice.clientId]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
 
       if (dueFilter) {
         const due = invoice.dueDate ? new Date(invoice.dueDate) : null;
@@ -318,6 +158,8 @@ function FinanceInvoicesContent() {
 
       return true;
     });
+
+    return smartMatch(statusFiltered, query, (inv) => [inv.orderId, inv.clientName, inv.clientId]);
   }, [invoices, query, statusFilter, clientFilter, dueFilter]);
 
   const sortedInvoices = useMemo(() => {
@@ -441,9 +283,6 @@ function FinanceInvoicesContent() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn" onClick={() => setAdvancedOpen(true)} style={{ borderRadius: 999 }}>
-            🔍 Advanced Search
-          </button>
           <button className="btn" onClick={() => setCreateOpen(true)} style={{ borderRadius: 999 }}>
             Create Invoice
           </button>
@@ -451,13 +290,7 @@ function FinanceInvoicesContent() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <input
-          className="input"
-          placeholder="Search keyword"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 220 }}
-        />
+        <SmartSearchBar value={query} onChange={setQuery} placeholder="Search invoices…" />
         <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
         <MasterSelect value={dueFilter} onChange={(value) => setDueFilter(value)} options={DUE_OPTIONS} />
         <MasterSelect
@@ -471,7 +304,7 @@ function FinanceInvoicesContent() {
           onClick={handleResetFilters}
           style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
         >
-          {advancedActive ? "Reset Search" : "Reset Filters"}
+          Reset Filters
         </button>
       </div>
 
@@ -571,15 +404,6 @@ function FinanceInvoicesContent() {
           </table>
         </div>
       </div>
-
-      <AdvancedSearchDialog
-        open={advancedOpen}
-        onClose={() => setAdvancedOpen(false)}
-        module="invoices"
-        fields={invoiceSearchFields}
-        onSearch={handleAdvancedSearch}
-        onSave={handleSaveSearch}
-      />
 
       {drawerOpen && selectedInvoice && (
         <InvoiceDrawer
