@@ -1,22 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingButton from "@/components/ui/LoadingButton";
 import { SkeletonTable } from "@/components/ui/Skeleton";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 import { toastError, toastPromise } from "@/lib/toast";
 import { apiFetch } from "@/lib/api/client";
-import type { SearchFilter } from "@/types/search";
-
-const AdvancedSearchDialog = dynamic(
-  () => import("@/components/search/AdvancedSearchDialog").then((mod) => mod.AdvancedSearchDialog),
-  {
-    loading: () => null,
-    ssr: false,
-  },
-);
 
 type SalesStage =
   | "New Lead"
@@ -82,39 +73,6 @@ type SortKey =
 
 type SortDir = "asc" | "desc";
 
-type FilterRow = {
-  id: string;
-  field: string;
-  operator: string;
-  value: string;
-};
-
-type SearchField = { name: string; label: string; type: "string" | "number" | "boolean" };
-
-const clientSearchFields: SearchField[] = [
-  { name: "orderId", label: "Order ID", type: "string" },
-  { name: "companyName", label: "Company Name", type: "string" },
-  { name: "primaryContactName", label: "Primary Contact", type: "string" },
-  { name: "primaryContactEmail", label: "Primary Email", type: "string" },
-  { name: "primaryContactPhone", label: "Primary Phone", type: "string" },
-  { name: "paymentStatus", label: "Payment Status", type: "string" },
-  { name: "totalPaidUsd", label: "Total Paid (USD)", type: "number" },
-  { name: "createdAt", label: "Created At", type: "string" },
-];
-
-const normalizeFilterValue = (value: string | undefined, type?: SearchField["type"]) => {
-  if (value === undefined) return value;
-  if (type === "number") {
-    const numeric = Number(value);
-    return Number.isNaN(numeric) ? value : numeric;
-  }
-  if (type === "boolean") {
-    if (value.toLowerCase() === "true") return true;
-    if (value.toLowerCase() === "false") return false;
-  }
-  return value;
-};
-
 function fmtMoney(n: number) {
   try {
     return new Intl.NumberFormat("en-US", {
@@ -165,187 +123,95 @@ export default function ClientsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activationSending, setActivationSending] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advancedActive, setAdvancedActive] = useState(false);
   const [segmentMap, setSegmentMap] = useState<Record<string, { name: string; type: string }>>({});
 
-  const buildSearchFilters = useCallback((filters: FilterRow[]): SearchFilter[] => {
-    const fieldMap = new Map(clientSearchFields.map((field) => [field.name, field]));
+  // Default list load (used on mount and when the search term is cleared).
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-    return filters
-      .filter((filter) => filter.field && filter.operator)
-      .map((filter) => {
-        const fieldConfig = fieldMap.get(filter.field);
-        const trimmed = filter.value?.toString().trim();
-
-        if (filter.operator === "isNull" || filter.operator === "isNotNull") {
-          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: null };
-        }
-
-        if (filter.operator === "between") {
-          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
-          const normalized = parts.slice(0, 2).map((part) => normalizeFilterValue(part, fieldConfig?.type));
-          return { field: filter.field, operator: "between", value: normalized };
-        }
-
-        if (filter.operator === "in" || filter.operator === "notIn") {
-          const parts = trimmed ? trimmed.split(",").map((part) => part.trim()).filter(Boolean) : [];
-          const normalized = parts.map((part) => normalizeFilterValue(part, fieldConfig?.type));
-          return { field: filter.field, operator: filter.operator as SearchFilter["operator"], value: normalized };
-        }
-
-        return {
-          field: filter.field,
-          operator: filter.operator as SearchFilter["operator"],
-          value: normalizeFilterValue(trimmed, fieldConfig?.type),
-        };
+    try {
+      const res = await apiFetch("/api/admin/clients/list", {
+        method: "GET",
+        cache: "no-store",
       });
+
+      if (res.status === 403) {
+        setAccessDenied(true);
+        setRows([]);
+        return;
+      }
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || res.statusText || "Failed to load clients");
+      }
+
+      const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
+      setRows(list);
+    } catch (e: any) {
+      const message = e?.message || "Failed to load clients";
+      setError(message);
+      toastError(message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Load Clients from API
   useEffect(() => {
-    let alive = true;
+    loadList();
+  }, [loadList]);
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const res = await apiFetch("/api/admin/clients/list", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (res.status === 403) {
-          if (!alive) return;
-          setAccessDenied(true);
-          setRows([]);
-          return;
-        }
-
-        const json = await res.json().catch(() => ({}));
-
-        if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || res.statusText || "Failed to load clients");
-        }
-
-        const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
-        if (!alive) return;
-        setRows(list);
-      } catch (e: any) {
-        if (!alive) return;
-        const message = e?.message || "Failed to load clients";
-        setError(message);
-        toastError(message);
-        setRows([]);
-      } finally {
-        if (!alive) return;
-        setLoading(false);
-      }
+  // Server-side full-text search driven by the SmartSearchBar.
+  const runSearch = useCallback(async () => {
+    const term = query.trim();
+    if (!term) {
+      loadList();
+      return;
     }
 
-    load();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const handleAdvancedSearch = useCallback(
-    async (filters: FilterRow[]) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const payloadFilters = buildSearchFilters(filters);
-        const res = await apiFetch("/api/clients/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filters: payloadFilters,
-            sortBy: sortKey,
-            sortOrder: sortDir,
-            page: 1,
-            limit: 200,
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(json?.error || "Failed to search clients");
-        }
-        const list: ClientRecord[] = Array.isArray(json?.results) ? json.results : [];
-        setRows(list);
-        setQuery("");
-        setAdvancedActive(true);
-      } catch (e: any) {
-        const message = e?.message || "Failed to search clients";
-        setError(message);
-        toastError(message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [buildSearchFilters, sortDir, sortKey]
-  );
-
-  const handleSaveSearch = useCallback(
-    async (name: string, filters: FilterRow[]) => {
-      const payloadFilters = buildSearchFilters(filters);
-      await toastPromise(
-        apiFetch("/api/saved-searches", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            module: "clients",
-            filters: payloadFilters,
-            sortBy: sortKey,
-            sortOrder: sortDir,
-            isShared: false,
-          }),
-        }).then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(data?.error || "Failed to save search");
-          }
-          return data;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/clients/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          searchText: term,
+          sortBy: sortKey,
+          sortOrder: sortDir,
+          page: 1,
+          limit: 200,
         }),
-        {
-          loading: "Saving search...",
-          success: "Search saved.",
-          error: (err) => err?.message || "Failed to save search.",
-        }
-      );
-    },
-    [buildSearchFilters, sortDir, sortKey]
-  );
-
-  const handleResetSearch = useCallback(() => {
-    setQuery("");
-    if (advancedActive) {
-      setAdvancedActive(false);
-      setLoading(true);
-      apiFetch("/api/admin/clients/list", {
-        method: "GET",
-        cache: "no-store",
-      })
-        .then(async (res) => {
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json?.ok) {
-            throw new Error(json?.error || res.statusText || "Failed to load clients");
-          }
-          const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
-          setRows(list);
-        })
-        .catch((e: any) => {
-          const message = e?.message || "Failed to load clients";
-          setError(message);
-          toastError(message);
-          setRows([]);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || "Failed to search clients");
+      }
+      const list: ClientRecord[] = Array.isArray(json?.results) ? json.results : [];
+      setRows(list);
+    } catch (e: any) {
+      const message = e?.message || "Failed to search clients";
+      setError(message);
+      toastError(message);
+    } finally {
+      setLoading(false);
     }
-  }, [advancedActive]);
+  }, [query, sortKey, sortDir, loadList]);
+
+  // Clearing the term (including the × button) reloads the full list.
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setQuery(value);
+      if (!value.trim()) {
+        loadList();
+      }
+    },
+    [loadList]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -381,30 +247,6 @@ export default function ClientsPage() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows || [];
-
-    return (rows || []).filter((c) => {
-      const oid = normalizeOrderId(c.orderId);
-      const hay = [
-        c.companyName,
-        c.primaryContactName,
-        c.primaryContactEmail,
-        c.primaryContactPhone,
-        c.paymentStatus,
-        c.orderId,
-        oid,
-        String(c.totalPaidUsd ?? ""),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return hay.includes(q);
-    });
-  }, [rows, query]);
-
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
 
@@ -431,7 +273,7 @@ export default function ClientsPage() {
       }
     };
 
-    const arr = [...filtered];
+    const arr = [...(rows || [])];
     arr.sort((a, b) => {
       const av = getVal(a);
       const bv = getVal(b);
@@ -441,7 +283,7 @@ export default function ClientsPage() {
     });
 
     return arr;
-  }, [filtered, sortKey, sortDir]);
+  }, [rows, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
     if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -572,14 +414,6 @@ export default function ClientsPage() {
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setAdvancedOpen(true)}
-            style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 600 }}
-          >
-            🔍 Advanced Search
-          </button>
           <LoadingButton
             type="button"
             className="btn"
@@ -611,17 +445,7 @@ export default function ClientsPage() {
           alignItems: "center",
         }}
       >
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search keyword" />
-          <button
-            type="button"
-            className="btn"
-            onClick={handleResetSearch}
-            style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 600 }}
-          >
-            {advancedActive ? "Reset Search" : "Reset Filters"}
-          </button>
-        </div>
+        <SmartSearchBar value={query} onChange={handleSearchChange} onSubmit={runSearch} />
         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {loading ? "Loading..." : `${sorted.length} client(s)`}
         </div>
@@ -704,15 +528,6 @@ export default function ClientsPage() {
         )}
         </div>
       </div>
-
-      <AdvancedSearchDialog
-        open={advancedOpen}
-        onClose={() => setAdvancedOpen(false)}
-        module="clients"
-        fields={clientSearchFields}
-        onSearch={handleAdvancedSearch}
-        onSave={handleSaveSearch}
-      />
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
