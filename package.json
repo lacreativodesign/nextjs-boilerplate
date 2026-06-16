@@ -10,6 +10,7 @@
     "qa": "node scripts/qa-smoke.mjs",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
+    "test:smoke": "playwright test e2e/smoke",
     "analyze": "ANALYZE=true next build",
     "typecheck": "tsc --noEmit",
     "format": "npx prettier --write .",
