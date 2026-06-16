@@ -338,8 +338,9 @@ body { background: var(--app-bg); color: var(--text-primary); overflow-x: hidden
 @media (max-width: 768px) { .filter-bar, .filter-bar--search { grid-template-columns: 1fr; } }
 
 .table-shell {
-  padding: 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--border-subtle);
-  background: var(--surface-card); box-shadow: var(--shadow-md); max-width: 100%; position: relative; overflow-x: auto;
+  padding: 0; border-radius: 18px; border: 1px solid var(--border-subtle);
+  background: var(--surface-card); box-shadow: var(--shadow-md); max-width: 100%; position: relative;
+  overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
 }
 .table-shell > div { width: 100%; }
 
@@ -361,18 +362,12 @@ table tbody tr:hover { background: var(--table-row-hover); }
 .table-col-secondary, .table-col-tertiary { display: table-cell; }
 
 @media (max-width: 1024px) {
-  .table-shell { overflow: visible; }
-  .table-shell > div { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table thead, table tbody { display: table; width: 100%; }
-  table th:nth-child(n + 7):not(:last-child), table td:nth-child(n + 7):not(:last-child) { display: none; }
-  .table-col-tertiary { display: none; }
+  .table-shell { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-shell > div { overflow-x: visible; min-width: max-content; }
 }
 
 @media (max-width: 768px) {
   .table-shell { box-shadow: inset 14px 0 14px -14px rgba(15,23,42,0.25), inset -14px 0 14px -14px rgba(15,23,42,0.25); }
-  .table-col-secondary { display: none; }
-  table th:nth-child(n + 4):not(:last-child), table td:nth-child(n + 4):not(:last-child) { display: none; }
 }
 
 .table-card { width: 100%; }
