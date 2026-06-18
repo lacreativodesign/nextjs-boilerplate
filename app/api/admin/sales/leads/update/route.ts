@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,21 @@ export async function POST(req: Request) {
       createdByName: auth.user.name || auth.user.fullName || "",
       tenantId: auth.user.tenantId,
     });
+
+    const newOwnerId = updates.ownerId;
+    if (newOwnerId && newOwnerId !== data.ownerId && newOwnerId !== auth.user.uid) {
+      await createNotification({
+        toUserId: newOwnerId,
+        recipientRole: "sales",
+        tenantId: auth.user.tenantId,
+        type: "info",
+        title: "Lead assigned to you",
+        message: `${updates.name || data.name || "A lead"} was assigned to you.`,
+        entityType: "lead",
+        entityId: id,
+        deepLink: "/sales/leads",
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
