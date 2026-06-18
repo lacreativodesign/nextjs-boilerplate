@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,20 @@ export async function POST(req: Request) {
       createdByName: auth.user.name || auth.user.fullName || "",
       tenantId: auth.user.tenantId,
     });
+
+    if (ownerId && ownerId !== auth.user.uid) {
+      await createNotification({
+        toUserId: ownerId,
+        recipientRole: "sales",
+        tenantId: auth.user.tenantId,
+        type: "info",
+        title: "Follow-up assigned to you",
+        message: `${type} follow-up${relatedName ? ` for ${relatedName}` : ""} due ${dueDateObj.toLocaleDateString()}.`,
+        entityType: "task",
+        entityId: docRef.id,
+        deepLink: "/sales/follow-ups",
+      });
+    }
 
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (err: any) {

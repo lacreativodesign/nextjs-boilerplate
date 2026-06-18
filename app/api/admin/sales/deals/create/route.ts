@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { arrayUnion, createSalesEvent, parseNumber, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,18 @@ export async function POST(req: Request) {
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || "",
       tenantId: auth.user.tenantId,
+    });
+
+    const dealNotifyTargets = await getUsersByRoles(["admin", "super_admin", "sales_manager"], auth.user.tenantId);
+    await createNotifications({
+      recipients: dealNotifyTargets,
+      tenantId: auth.user.tenantId,
+      type: "info",
+      title: "New deal created",
+      message: `${dealName || "A new deal"} was added to the pipeline.`,
+      entityType: "deal",
+      entityId: docRef.id,
+      deepLink: "/admin/sales/deals",
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });

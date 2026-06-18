@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { canCreateLeads, requireCrmUser } from "@/lib/crm";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +52,18 @@ export async function POST(req: Request) {
       });
 
       tx.set(leadRef, { status: "converted" }, { merge: true });
+    });
+
+    const convertNotifyTargets = await getUsersByRoles(["admin", "super_admin", "sales_manager"], auth.tenantId);
+    await createNotifications({
+      recipients: convertNotifyTargets,
+      tenantId: auth.tenantId,
+      type: "info",
+      title: "Lead converted to deal",
+      message: `${title} was created from a converted lead.`,
+      entityType: "deal",
+      entityId: dealRef.id,
+      deepLink: "/admin/sales/deals",
     });
 
     return NextResponse.json({ ok: true, dealId: dealRef.id });
