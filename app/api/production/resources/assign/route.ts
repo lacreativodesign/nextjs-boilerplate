@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getResourcePlannerUser } from "../_utils";
 import type { ResourceType } from "@/lib/production/capacity";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -125,6 +126,18 @@ export async function POST(request: Request) {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: me.uid,
       });
+    });
+
+    const assignNotifyTargets = await getUsersByRoles(["admin", "super_admin", "production_manager"], me.tenantId);
+    await createNotifications({
+      recipients: assignNotifyTargets,
+      tenantId: me.tenantId,
+      type: "info",
+      title: "Resource assigned",
+      message: `${resourceName} was assigned to a task.`,
+      entityType: "task",
+      entityId: taskId,
+      deepLink: "/production/resources",
     });
 
     return NextResponse.json({ ok: true, assignmentId: assignmentRef.id });

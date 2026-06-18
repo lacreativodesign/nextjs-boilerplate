@@ -7,6 +7,7 @@ import type { Task } from "@/types/project-management";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
 import { dispatchZapierTriggerEvent } from "@/lib/zapier/service";
+import { createNotification } from "@/lib/notifications";
 
 const updateTaskStatusSchema = z.object({
   status: z.enum(["todo", "in_progress", "in_review", "blocked", "completed", "cancelled"]),
@@ -59,6 +60,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       } catch (error) {
         logError(error, { route: "PATCH /api/projects/[id]/tasks/[taskId]/status", metadata: { action: "zapier-dispatch" } });
       }
+    }
+
+    const taskAssigneeId = task.assignedTo ? String(task.assignedTo) : "";
+    if (taskAssigneeId && taskAssigneeId !== me.uid) {
+      await createNotification({
+        toUserId: taskAssigneeId,
+        tenantId: me.tenantId,
+        type: "info",
+        title: "Task status updated",
+        message: `A task assigned to you was marked ${validated.data.status}.`,
+        entityType: "task",
+        entityId: params.taskId,
+        deepLink: "/projects",
+      });
     }
 
     return NextResponse.json({ success: true });
