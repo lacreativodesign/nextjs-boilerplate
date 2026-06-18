@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireHrAccess } from "../../_utils";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   try {
@@ -35,6 +36,18 @@ export async function POST(req: Request) {
 
     // Firestore Path: employees/{autoID}
     const docRef = await adminDb.collection("employees").add(newEmployee);
+
+    const employeeNotifyTargets = await getUsersByRoles(["admin", "super_admin", "hr"], access.user.tenantId);
+    await createNotifications({
+      recipients: employeeNotifyTargets,
+      tenantId: access.user.tenantId,
+      type: "info",
+      title: "New employee added",
+      message: `${name} was added to ${department}.`,
+      entityType: "hr",
+      entityId: docRef.id,
+      deepLink: "/admin/hr/employees",
+    });
 
     return NextResponse.json(
       {

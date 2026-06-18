@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
 import { TimeTrackingService } from "@/lib/hr/time-tracking";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       approve: payload.approve,
       rejectionReason: payload.rejectionReason,
     });
+
+    const timesheetOwnerId = (timesheet as any)?.userId ? String((timesheet as any).userId) : "";
+    if (timesheetOwnerId && timesheetOwnerId !== me.uid) {
+      await createNotification({
+        toUserId: timesheetOwnerId,
+        tenantId: me.tenantId,
+        type: payload.approve ? "success" : "info",
+        title: payload.approve ? "Timesheet approved" : "Timesheet rejected",
+        message: payload.approve ? "Your timesheet was approved." : "Your timesheet was rejected.",
+        entityType: "hr",
+        entityId: id,
+        deepLink: "/hr",
+      });
+    }
 
     return NextResponse.json({ ok: true, timesheet });
   } catch (err) {
