@@ -134,7 +134,7 @@ export default function ApiKeySettingsPage() {
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 space-y-3">
             <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
               <AlertTriangle className="h-4 w-4" />
-              Save this key now — it won't be shown again.
+              Save this key now — it won&apos;t be shown again.
             </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all rounded-lg bg-black/5 dark:bg-white/5 px-3 py-2 text-xs">
