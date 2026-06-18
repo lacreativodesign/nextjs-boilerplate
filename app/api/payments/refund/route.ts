@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { requireFinance } from "../../finance/_utils";
 import { assertPermission, Permission } from "../../../lib/permissions";
 import { createStripeRefund, getStripeClient } from "@/lib/payments/stripe";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,18 @@ export async function POST(req: Request) {
         },
         { merge: true }
       );
+    });
+
+    const refundNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], auth.user.tenantId);
+    await createNotifications({
+      recipients: refundNotifyTargets,
+      tenantId: auth.user.tenantId,
+      type: "info",
+      title: "Refund issued",
+      message: `A refund of USD ${refundAmountUsd} was issued.`,
+      entityType: "payment",
+      entityId: paymentId,
+      deepLink: "/finance/payments",
     });
 
     return NextResponse.json({ ok: true, refundId: refund.id });
