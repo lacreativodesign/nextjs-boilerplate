@@ -273,9 +273,12 @@ export async function executeZapierAction(params: {
         title: cleanString(params.input.title),
         body: cleanString(params.input.body),
         toUserId: cleanString(params.input.toUserId) || null,
+        userId: cleanString(params.input.toUserId) || null,
+        recipientUid: cleanString(params.input.toUserId) || null,
         toRole: cleanString(params.input.toRole) || null,
         type: cleanString(params.input.type || "info"),
         read: false,
+        isRead: false,
         createdAt: now,
         updatedAt: now,
       };
