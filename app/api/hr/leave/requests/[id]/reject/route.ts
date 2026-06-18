@@ -5,6 +5,7 @@ import { isPlanAccessError, requireModule } from "@/app/lib/plan-enforcement";
 import { LeaveService } from "@/lib/hr/leave";
 import { sendEmail } from "@/lib/email/email-service";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       const req = snap.data() || {};
       const employeeId = String(req.employeeId || "");
       if (!employeeId) return;
+      await createNotification({
+        toUserId: employeeId,
+        tenantId: me.tenantId,
+        type: "info",
+        title: "Leave request declined",
+        message: `Your ${req.leaveType || "leave"} request was declined.`,
+        entityType: "hr",
+        entityId: params.id,
+        deepLink: "/hr/leave",
+      });
       const userSnap = await adminDb.collection("users").doc(employeeId).get();
       const user = userSnap.data() || {};
       const employeeEmail = String(user.email || "");

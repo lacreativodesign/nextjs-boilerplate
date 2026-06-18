@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,19 @@ export async function POST(req: Request) {
       createdByName: access.user.name || access.user.email || "Admin",
       metadata: { userId },
     });
+
+    if (userId && userId !== access.user.uid) {
+      await createNotification({
+        toUserId: userId,
+        tenantId: access.user.tenantId,
+        type: "info",
+        title: "Onboarding tasks assigned",
+        message: "Onboarding tasks were assigned to you.",
+        entityType: "hr",
+        entityId: ref.id,
+        deepLink: "/hr/onboarding",
+      });
+    }
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err) {

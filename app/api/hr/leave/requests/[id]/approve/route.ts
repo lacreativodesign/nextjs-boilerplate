@@ -5,6 +5,7 @@ import { LeaveService } from "@/lib/hr/leave";
 import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
 import { sendEmail } from "@/lib/email/email-service";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,16 @@ export async function PUT(_: NextRequest, { params }: { params: { id: string } }
       const req = snap.data() || {};
       const employeeId = String(req.employeeId || "");
       if (!employeeId) return;
+      await createNotification({
+        toUserId: employeeId,
+        tenantId: me.tenantId,
+        type: "success",
+        title: "Leave request approved",
+        message: `Your ${req.leaveType || "leave"} request was approved.`,
+        entityType: "hr",
+        entityId: params.id,
+        deepLink: "/hr/leave",
+      });
       const userSnap = await adminDb.collection("users").doc(employeeId).get();
       const user = userSnap.data() || {};
       const employeeEmail = String(user.email || "");

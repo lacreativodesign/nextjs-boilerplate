@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/api/admin/_utils";
 import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
 import { TimeTrackingService } from "@/lib/hr/time-tracking";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,18 @@ export async function PUT(_: Request, { params }: { params: Promise<{ id: string
       tenantId: me.tenantId,
       requesterUserId: me.uid,
       requesterRole: me.role,
+    });
+
+    const submitNotifyTargets = await getUsersByRoles(["admin", "super_admin", "hr"], me.tenantId);
+    await createNotifications({
+      recipients: submitNotifyTargets,
+      tenantId: me.tenantId,
+      type: "info",
+      title: "Timesheet submitted",
+      message: `${me.name || me.email || "An employee"} submitted a timesheet for review.`,
+      entityType: "hr",
+      entityId: id,
+      deepLink: "/admin/hr",
     });
 
     return NextResponse.json({ ok: true, timesheet });
