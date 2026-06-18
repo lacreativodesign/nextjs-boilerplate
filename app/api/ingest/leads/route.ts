@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
-import crypto from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
+import { docTenantId } from "@/lib/tenant";
+import { authenticateIngest } from "@/lib/ingest/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,37 +42,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
     }
 
-    // Accept API key from header, query param, or body (body last for legacy compat)
-    const reqUrl = new URL(req.url);
-    const apiKey =
-      req.headers.get("x-api-key")?.trim() ||
-      reqUrl.searchParams.get("apiKey")?.trim() ||
-      normalizeOptionalString(body.apiKey);
-
-    if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
+    const auth = await authenticateIngest(req, {
+      fallbackApiKey: normalizeOptionalString(body.apiKey),
+      fallbackTenantId: normalizeOptionalString(body.tenantId),
+      allowGlobalKeyFallback: true,
+    });
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: auth.status });
     }
-
-    const keyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
-
-    // Resolve tenantId: look up by per-tenant apiKeyHash first (secure path)
-    let tenantId: string;
-    const tenantsSnap = await adminDb
-      .collection("tenants")
-      .where("apiKeyHash", "==", keyHash)
-      .limit(1)
-      .get();
-
-    if (!tenantsSnap.empty) {
-      // Secure path: tenantId is bound to the matched key — not caller-controlled
-      tenantId = tenantsSnap.docs[0].id;
-    } else if (apiKey === String(process.env.ERP_INGEST_KEY || "")) {
-      // Legacy fallback: global key still works but tenantId comes from request body
-      const rawTenantId = normalizeOptionalString(body.tenantId);
-      tenantId = normalizeTenantId(rawTenantId || DEFAULT_TENANT_ID);
-    } else {
-      return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
-    }
+    const tenantId = auth.tenantId;
 
     const lead = (body.lead || {}) as Record<string, any>;
     const name = normalizeOptionalString(lead.name) || "";

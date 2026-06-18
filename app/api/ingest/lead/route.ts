@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
-import crypto from "crypto";
 import { createNotification, getUsersByRoles } from "@/lib/notifications";
+import { authenticateIngest } from "@/lib/ingest/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const hashKey = (key: string) => crypto.createHash("sha256").update(key).digest("hex");
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
@@ -95,18 +93,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "message_required" }, { status: 400 });
     }
 
-    const tenantSnap = await adminDb.doc(`tenants/${tenantId}`).get();
-    if (!tenantSnap.exists) {
-      return NextResponse.json({ ok: false, error: "invalid_tenant" }, { status: 401 });
-    }
-
-    const tenantData = tenantSnap.data() || {};
-    const hashedProvided = hashKey(apiKey);
-    const keyValid =
-      (tenantData.apiKeyHash && tenantData.apiKeyHash === hashedProvided) ||
-      (!tenantData.apiKeyHash && tenantData.apiKey === apiKey);
-    if (!keyValid) {
-      return NextResponse.json({ ok: false, error: "invalid_api_key" }, { status: 401 });
+    const auth = await authenticateIngest(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const leadRef = adminDb.collection("leads").doc();
