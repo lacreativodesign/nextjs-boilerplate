@@ -192,6 +192,7 @@ export async function createNotifications({
         id: ref.id,
         tenantId: scopedTenantId,
         recipientUid: uid,
+        userId: uid,
         recipientRole: role,
         type: payload.type || "system",
         title: payload.title,
