@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { parseNumber, parseString, requireAdmin, serverTimestamp } from "../../_utils";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,18 @@ export async function POST(req: Request) {
     } catch (auditError) {
       console.error("audit log error:", auditError);
     }
+
+    const expenseNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], auth.user.tenantId);
+    await createNotifications({
+      recipients: expenseNotifyTargets,
+      tenantId: auth.user.tenantId,
+      type: "info",
+      title: "Expense recorded",
+      message: `${category} expense of PKR ${amountPkr} recorded for ${vendor}.`,
+      entityType: null,
+      entityId: ref.id,
+      deepLink: "/finance",
+    });
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {

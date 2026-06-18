@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, serverTimestamp } from "../../_utils";
 import { normalizeTenantId } from "@/lib/tenant";
 import { queryWithTenant } from "@/lib/tenant/query";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,20 @@ export async function POST(req: Request) {
 
     if (created > 0) {
       await batch.commit();
+    }
+
+    if (created > 0) {
+      const payrollNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
+      await createNotifications({
+        recipients: payrollNotifyTargets,
+        tenantId,
+        type: "info",
+        title: "Payroll run completed",
+        message: `Payroll run for ${month} created ${created} entr${created === 1 ? "y" : "ies"}.`,
+        entityType: "payroll",
+        entityId: month,
+        deepLink: "/admin/finance/payroll",
+      });
     }
 
     return NextResponse.json({ ok: true, created });

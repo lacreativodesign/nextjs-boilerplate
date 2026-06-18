@@ -6,6 +6,7 @@ import { logError } from "@/lib/logging";
 import { checkRateLimit } from "@/lib/security";
 import { calculateNextGenerationDate } from "@/lib/finance/recurring";
 import { z } from "zod";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +149,18 @@ export async function POST(req: Request) {
       tenantId: auth.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    });
+
+    const recurringNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], auth.user.tenantId);
+    await createNotifications({
+      recipients: recurringNotifyTargets,
+      tenantId: auth.user.tenantId,
+      type: "info",
+      title: "Recurring invoice created",
+      message: `Recurring invoice "${validated.name}" (${validated.frequency}) was set up.`,
+      entityType: "invoice",
+      entityId: docRef.id,
+      deepLink: "/finance/invoices",
     });
 
     return NextResponse.json({ ok: true, templateId: docRef.id });

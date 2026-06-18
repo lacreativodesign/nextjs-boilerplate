@@ -22,6 +22,7 @@ import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { getExchangeRate, storeHistoricalRate } from "@/lib/finance/exchangeRates";
 import { calculateTax } from "@/lib/tax/calculator";
 import { incrementTenantStats } from "@/lib/tenant/stats";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -386,6 +387,18 @@ export async function POST(req: Request) {
         logError(emailError, { route: "finance.invoice_created.email" });
       });
     }
+
+    const invoiceNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
+    await createNotifications({
+      recipients: invoiceNotifyTargets,
+      tenantId,
+      type: "info",
+      title: "Invoice created",
+      message: `Invoice ${orderId} was created for ${clientName || clientId}.`,
+      entityType: "invoice",
+      entityId: docRef.id,
+      deepLink: "/finance/invoices",
+    });
 
     return NextResponse.json({ ok: true, invoiceId: docRef.id });
   } catch (err) {
