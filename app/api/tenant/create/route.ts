@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createTenantWorkspace } from "@/lib/tenant/onboarding";
 import { getCurrentUserOrThrow, isAdmin } from "@/lib/tenant/server";
+import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 
 export const runtime = "nodejs";
 
@@ -37,6 +39,22 @@ export async function POST(req: NextRequest) {
       ...parsed.data,
       ownerId: currentUser.uid,
     });
+
+    try {
+      const platformAdmins = await getUsersByRoles(["super_admin"], DEFAULT_TENANT_ID);
+      await createNotifications({
+        recipients: platformAdmins,
+        tenantId: DEFAULT_TENANT_ID,
+        type: "info",
+        title: "New tenant created",
+        message: `${parsed.data.name} signed up on the ${parsed.data.plan} plan.`,
+        entityType: "tenant",
+        entityId: parsed.data.tenantId,
+        deepLink: "/super_admin/tenants",
+      });
+    } catch (notifyError) {
+      console.error("tenant.create platform notify error:", notifyError);
+    }
 
     return NextResponse.json(result);
   } catch (error) {
