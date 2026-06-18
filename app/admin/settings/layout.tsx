@@ -15,6 +15,7 @@ const tabs = [
   { label: "Branding", path: "/admin/settings/branding" },
   { label: "Workflows", path: "/admin/settings/workflows" },
   { label: "Integrations", path: "/admin/settings/integrations" },
+  { label: "API Key", path: "/admin/settings/api-key" },
   { label: "API Usage", path: "/admin/settings/api-usage" },
   { label: "AI Workforce", path: "/admin/settings/ai-workforce" },
 ];
