@@ -37,11 +37,10 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
     return { error: "Invoice not found", status: 404 as const };
   }
 
-  if (token) {
-    const storedToken = String(invoice.paymentToken || invoice.publicToken || "").trim();
-    if (storedToken && storedToken !== token.trim()) {
-      return { error: "Invoice not found", status: 404 as const };
-    }
+  const providedToken = String(token || "").trim();
+  const storedToken = String(invoice.paymentToken || invoice.publicToken || "").trim();
+  if (!storedToken || !providedToken || storedToken !== providedToken) {
+    return { error: "Invoice not found", status: 404 as const };
   }
 
   const status = String(invoice.status || "draft");
