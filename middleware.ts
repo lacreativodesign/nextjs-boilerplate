@@ -13,7 +13,7 @@ import {
   applySecurityHeaders,
   getClientIp,
 } from "@/lib/security";
-import { verifyRequestSignature, verifyRotatingApiKey } from "@/lib/security/request-signing";
+import { verifyRequestSignature, verifyRotatingApiKey, signCacheValue, verifyCacheValue } from "@/lib/security/request-signing";
 import { buildRateLimitHeaders, checkRateLimit } from "@/lib/rate-limit/limiter";
 import { applyVersionHeaders, getApiVersion } from "@/lib/api/versioning";
 
@@ -67,9 +67,11 @@ function parseModuleCache(value: string | undefined): { tenantId: string; module
   };
 }
 
-function parseSubCache(value: string | undefined): { role: string; state: string; expiresAt: number } | null {
-  if (!value) return null;
-  const parts = value.split(":");
+async function parseSubCache(value: string | undefined): Promise<{ role: string; state: string; expiresAt: number } | null> {
+  const secret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || "";
+  const verified = await verifyCacheValue(value, secret);
+  if (!verified) return null;
+  const parts = verified.split(":");
   if (parts.length !== 3) return null;
   const [role, state, expiresAtStr] = parts;
   const expiresAt = Number(expiresAtStr);
@@ -77,8 +79,10 @@ function parseSubCache(value: string | undefined): { role: string; state: string
   return { role, state, expiresAt };
 }
 
-function buildSubCache(role: string, state: string): string {
-  return `${role}:${state}:${Date.now() + 60 * 1000}`;
+async function buildSubCache(role: string, state: string): Promise<string | null> {
+  const secret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || "";
+  const raw = `${role}:${state}:${Date.now() + 60 * 1000}`;
+  return signCacheValue(raw, secret);
 }
 
 async function fetchModuleEnabled(req: NextRequest, tenantId: string, moduleKey: string): Promise<boolean | null> {
@@ -423,7 +427,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   let subCacheValue: string | null = null;
 
   if (requiresSubscriptionCheck) {
-    const cachedSub = parseSubCache(req.cookies.get("sub_cache")?.value);
+    const cachedSub = await parseSubCache(req.cookies.get("sub_cache")?.value);
     let subscriptionState: ReturnType<typeof normalizeSubscriptionState>;
 
     if (cachedSub && cachedSub.expiresAt > Date.now()) {
@@ -433,7 +437,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       const status = await fetchSubscriptionStatus(req);
       sessionRole = normalizeRole(status?.role);
       subscriptionState = normalizeSubscriptionState(status?.subscriptionState);
-      subCacheValue = buildSubCache(sessionRole ?? "", subscriptionState);
+      subCacheValue = await buildSubCache(sessionRole ?? "", subscriptionState);
     }
 
     if (sessionRole !== "super_admin") {
