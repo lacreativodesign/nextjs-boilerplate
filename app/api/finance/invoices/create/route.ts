@@ -11,6 +11,7 @@ import {
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { logError } from "@/lib/logging";
 import { computeBalanceDue, computeInvoiceStatus, normalizeInvoiceStatus } from "@/lib/finance/status";
+import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
 import { docTenantId, normalizeTenantId } from "@/lib/tenant";
 import { logEvent } from "@/lib/audit";
 import { assertPermission, Permission } from "../../../../lib/permissions";
@@ -280,6 +281,7 @@ export async function POST(req: Request) {
       orderId,
       clientId,
       clientName,
+      paymentToken: generateInvoiceToken(),
 
       currency: currencyCode,
       currencySymbol: currencyInfo.symbol,

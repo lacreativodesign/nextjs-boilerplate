@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
 import crypto from "crypto";
+import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
 
 const ZAPIER_HOOKS_COLLECTION = "zapier_hook_subscriptions";
 const ZAPIER_EVENTS_COLLECTION = "zapier_events";
@@ -187,6 +188,7 @@ export async function executeZapierAction(params: {
       const record = {
         tenantId: params.tenantId,
         orderId,
+        paymentToken: generateInvoiceToken(),
         clientId: cleanString(params.input.clientId),
         clientName: cleanString(params.input.clientName),
         amountTotal,

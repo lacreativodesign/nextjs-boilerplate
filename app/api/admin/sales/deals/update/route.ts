@@ -10,6 +10,7 @@ import {
   requireAdmin,
   serverTimestamp,
 } from "../../_utils";
+import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,7 @@ export async function POST(req: Request) {
             orderId: `DEAL-${id}`,
             clientId,
             clientName,
+            paymentToken: generateInvoiceToken(),
             currency: "USD",
             amountSubtotalUsd: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
             amountTaxUsd: 0,
