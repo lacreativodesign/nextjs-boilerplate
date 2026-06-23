@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { CHART_COLORS } from '@/lib/charts/palette';
 
 type SalesStats = {
   newLeads30d: number;
@@ -22,7 +23,7 @@ type SalesStats = {
   closedWonMonth: number;
 };
 
-const COLORS = ['#6692f9', '#012167', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = CHART_COLORS;
 
 export default function ReportsSalesPage() {
   const [stats, setStats] = useState<SalesStats | null>(null);

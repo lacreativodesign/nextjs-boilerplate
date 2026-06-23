@@ -14,8 +14,9 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { CHART_COLORS } from '@/lib/charts/palette';
 
-const COLORS = ['#6692f9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#012167'];
+const COLORS = CHART_COLORS;
 
 type ProjectStats = {
   total?: number;
