@@ -16,6 +16,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { ReportResult } from '@/app/api/ai/natural-language-report/route';
+import { CHART_COLORS } from '@/lib/charts/palette';
 
 const EXAMPLES = [
   'Show me revenue by client',
@@ -26,17 +27,6 @@ const EXAMPLES = [
   'Where are my leads coming from?',
   'List all outstanding invoices',
   'Break down the team by role',
-];
-
-const CHART_COLORS = [
-  '#6692f9',
-  '#012167',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#f97316',
 ];
 
 function ReportChart({ report }: { report: ReportResult }) {
@@ -128,9 +118,9 @@ function ReportChart({ report }: { report: ReportResult }) {
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#6692f9"
+            stroke={CHART_COLORS[0]}
             strokeWidth={2.5}
-            dot={{ r: 4, fill: '#6692f9' }}
+            dot={{ r: 4, fill: CHART_COLORS[0] }}
             activeDot={{ r: 6 }}
           />
         </LineChart>
