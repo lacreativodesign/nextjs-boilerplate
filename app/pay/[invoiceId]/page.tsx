@@ -67,14 +67,19 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
   const [receiptEmail, setReceiptEmail] = useState("");
   const stripeRef = useRef<StripeInstance | null>(null);
   const cardRef = useRef<StripeCardElement | null>(null);
+  const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
     async function loadInvoice() {
       setLoading(true);
       setError(null);
+      tokenRef.current = new URLSearchParams(window.location.search).get("token");
       try {
-        const res = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}`, { cache: "no-store" });
+        const url = `/api/public/invoice/${encodeURIComponent(params.invoiceId)}${
+          tokenRef.current ? `?token=${encodeURIComponent(tokenRef.current)}` : ""
+        }`;
+        const res = await apiFetch(url, { cache: "no-store" });
         const payload = (await res.json()) as PublicInvoiceResponse;
         if (!active) return;
 
@@ -178,7 +183,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       const payRes = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentMethodId: pm.paymentMethod.id, email: receiptEmail || undefined }),
+        body: JSON.stringify({ paymentMethodId: pm.paymentMethod.id, email: receiptEmail || undefined, token: tokenRef.current || undefined }),
       });
       const payPayload = await payRes.json();
 
@@ -202,7 +207,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         const confirmRes = await apiFetch(`/api/public/invoice/${encodeURIComponent(params.invoiceId)}/confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentIntentId: actionResult.paymentIntent.id }),
+          body: JSON.stringify({ paymentIntentId: actionResult.paymentIntent.id, token: tokenRef.current || undefined }),
         });
         const confirmPayload = await confirmRes.json();
 

@@ -10,7 +10,7 @@ import { formatDate, formatDateTime, formatUsd } from "@/components/finance/fina
 import type { InvoiceRecord } from "@/lib/finance/types";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
 import { toastError, toastPromise, toastWarning } from "@/lib/toast";
-import { generatePaymentLink } from "@/lib/payments/payment-link";
+import { generatePaymentLinkWithToken } from "@/lib/payments/payment-link";
 import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 import { smartMatch } from "@/lib/search/smartMatch";
 import { apiFetch } from "@/lib/api/client";
@@ -445,12 +445,13 @@ function InvoiceDrawer({
   const paymentLink = canShowPaymentLink
     ? (() => {
         try {
-          return generatePaymentLink(invoice.id);
+          return generatePaymentLinkWithToken(invoice.id, invoice.paymentToken);
         } catch {
+          const t = invoice.paymentToken ? `?token=${encodeURIComponent(invoice.paymentToken)}` : "";
           if (typeof window !== "undefined") {
-            return `${window.location.origin}/pay/${invoice.id}`;
+            return `${window.location.origin}/pay/${invoice.id}${t}`;
           }
-          return `/pay/${invoice.id}`;
+          return `/pay/${invoice.id}${t}`;
         }
       })()
     : "";
