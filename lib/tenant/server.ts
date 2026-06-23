@@ -145,7 +145,7 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     const data = userDoc.data() || {};
     const role = (data.role as string | undefined)?.toLowerCase() || 'sales';
 
-    if (sessionStatus?.expired === true && role !== 'super_admin') {
+    if (!sessionStatus?.valid) {
       throw new Error('Session expired');
     }
     const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
