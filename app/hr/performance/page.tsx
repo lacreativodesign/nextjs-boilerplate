@@ -9,7 +9,7 @@ type ReviewRecord = { id: string; userId: string; period: string; rating: number
 type Target = { userId: string; metric: string; target: number; achieved: number; period: string };
 
 const SCORE_COLOR = (pct: number) =>
-  pct >= 90 ? "#10b981" : pct >= 75 ? "#3b82f6" : pct >= 50 ? "#f59e0b" : "#ef4444";
+  pct >= 90 ? "var(--success)" : pct >= 75 ? "var(--erp-blue)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
 
 const SCORE_LABEL = (pct: number) =>
   pct >= 90 ? "Exceeding" : pct >= 75 ? "On Track" : pct >= 50 ? "Needs Improvement" : "Underperforming";
@@ -213,9 +213,9 @@ export default function PerformancePage() {
           label="Avg Rating"
           value={avgRating ? avgRating.toFixed(1) + " / 5" : "—"}
           sub="Across all employees"
-          color={avgRating >= 4 ? "#10b981" : avgRating >= 3 ? "#3b82f6" : "#f59e0b"}
+          color={avgRating >= 4 ? "var(--success)" : avgRating >= 3 ? "var(--erp-blue)" : "var(--warning)"}
         />
-        <StatCard label="Top Performer" value={topPerformer} sub="Highest avg rating" color="#10b981" />
+        <StatCard label="Top Performer" value={topPerformer} sub="Highest avg rating" color="var(--success)" />
         <StatCard label="Departments" value={departments.length} sub="Active departments" />
       </div>
 
