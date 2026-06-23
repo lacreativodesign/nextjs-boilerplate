@@ -37,6 +37,7 @@ export type InvoiceRecord = {
   paidAt: string | null;
   lineItems: InvoiceLineItem[];
   notes: string | null;
+  paymentToken?: string;
   createdAt: string | null;
   updatedAt: string | null;
   isDeleted: boolean;

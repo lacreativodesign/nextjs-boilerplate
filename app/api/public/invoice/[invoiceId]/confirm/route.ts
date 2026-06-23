@@ -5,7 +5,7 @@ import { getInvoiceWithValidation, getTenantRecord } from "../../shared";
 
 export const runtime = "nodejs";
 
-type Body = { paymentIntentId?: string };
+type Body = { paymentIntentId?: string; token?: string };
 
 export async function POST(req: Request, { params }: { params: { invoiceId: string } }) {
   try {
@@ -16,11 +16,13 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
 
     const body = (await req.json().catch(() => ({}))) as Body;
     const paymentIntentId = String(body.paymentIntentId || "").trim();
+    const token =
+      String(body.token || "").trim() || new URL(req.url).searchParams.get("token") || undefined;
     if (!paymentIntentId) {
       return NextResponse.json({ ok: false, error: "paymentIntentId is required." }, { status: 400 });
     }
 
-    const validation = await getInvoiceWithValidation(invoiceId);
+    const validation = await getInvoiceWithValidation(invoiceId, token);
     if ("error" in validation) {
       return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
     }

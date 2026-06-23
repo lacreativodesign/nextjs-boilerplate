@@ -12,6 +12,5 @@ export function generatePaymentLink(invoiceId: string): string {
 
 export function generatePaymentLinkWithToken(invoiceId: string, token?: string): string {
   const base = generatePaymentLink(invoiceId);
-  if (!token) return base;
-  return `${base}`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }

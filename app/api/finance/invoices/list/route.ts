@@ -27,6 +27,7 @@ type InvoiceDoc = {
   paidAt?: any;
   lineItems?: any[];
   notes?: string | null;
+  paymentToken?: string;
   createdAt?: any;
   updatedAt?: any;
   isDeleted?: boolean;
@@ -86,6 +87,7 @@ export async function GET(req: Request) {
         paidAt: toISO(data.paidAt),
         lineItems: Array.isArray(data.lineItems) ? data.lineItems : [],
         notes: data.notes || null,
+        paymentToken: data.paymentToken || "",
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
         isDeleted: Boolean(data.isDeleted),
