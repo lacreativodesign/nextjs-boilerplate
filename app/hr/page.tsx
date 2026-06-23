@@ -71,15 +71,15 @@ export default function HrOverviewPage() {
           label="Active Employees"
           value={v(data?.activeEmployees ?? 0)}
           sub="Currently active"
-          color="#10b981"
+          color="var(--success)"
           href="/hr/employees"
         />
-        <StatCard label="New Hires (30d)" value={v(data?.newHires ?? 0)} sub="Joined this month" color="#3b82f6" />
+        <StatCard label="New Hires (30d)" value={v(data?.newHires ?? 0)} sub="Joined this month" color="var(--erp-blue)" />
         <StatCard
           label="Open Onboarding"
           value={v(data?.openOnboarding ?? 0)}
           sub="Tasks pending"
-          color={data?.openOnboarding ? "#f59e0b" : undefined}
+          color={data?.openOnboarding ? "var(--warning)" : undefined}
         />
       </div>
 

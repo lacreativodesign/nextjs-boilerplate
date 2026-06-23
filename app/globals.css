@@ -8,6 +8,10 @@
   --erp-blue-soft: rgba(37, 99, 235, 0.12);
   --danger: #ef4444;
   --danger-soft: color-mix(in srgb, var(--danger) 14%, transparent);
+  --success: #10b981;
+  --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+  --warning: #f59e0b;
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
 
   --color-purple: #7c3aed;
   --color-blue: #2563eb;
