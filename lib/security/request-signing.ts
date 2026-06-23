@@ -83,3 +83,21 @@ export async function verifyRequestSignature(params: {
   const expected = await buildRequestSignature(payload, timestamp, secret);
   return constantTimeEquals(signature, expected);
 }
+
+export async function signCacheValue(value: string, secret: string): Promise<string | null> {
+  if (!secret) return null;
+  const sig = await hmacSha256Hex(secret, value);
+  return `${value}.${sig}`;
+}
+
+export async function verifyCacheValue(signed: string | undefined, secret: string): Promise<string | null> {
+  if (!signed || !secret) return null;
+  const idx = signed.lastIndexOf(".");
+  if (idx <= 0) return null;
+  const value = signed.slice(0, idx);
+  const sig = signed.slice(idx + 1);
+  if (!value || !sig) return null;
+  const expected = await hmacSha256Hex(secret, value);
+  if (!constantTimeEquals(sig, expected)) return null;
+  return value;
+}
