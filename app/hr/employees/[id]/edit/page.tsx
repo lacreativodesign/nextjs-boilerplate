@@ -70,10 +70,10 @@ export default function EditEmployeePage() {
     <div className="space-y-6">
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface-card)",
           padding: 30,
           borderRadius: 12,
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-subtle)",
           maxWidth: 800,
         }}
       >
@@ -126,7 +126,7 @@ export default function EditEmployeePage() {
           disabled={saving}
           style={{
             marginTop: 30,
-            background: "#2563eb",
+            background: "var(--erp-blue)",
             color: "white",
             padding: "12px 24px",
             borderRadius: 8,
@@ -153,7 +153,7 @@ function FormInput({
 }) {
   return (
     <div>
-      <label style={{ fontSize: 14, color: "#374151" }}>{label}</label>
+      <label style={{ fontSize: 14, color: "var(--text-primary)" }}>{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -162,7 +162,7 @@ function FormInput({
           width: "100%",
           padding: "10px 12px",
           borderRadius: 8,
-          border: "1px solid #d1d5db",
+          border: "1px solid var(--input-border)",
           fontSize: 15,
         }}
       />

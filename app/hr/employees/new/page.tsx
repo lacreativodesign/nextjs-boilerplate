@@ -49,7 +49,7 @@ export default function AddEmployeePage() {
         Add New Employee
       </h2>
 
-      <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 30 }}>
+      <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 30 }}>
         Fill in the details below to create a new employee profile.
       </p>
 
@@ -58,10 +58,10 @@ export default function AddEmployeePage() {
         onSubmit={handleSubmit}
         style={{
           maxWidth: 700,
-          background: "#fff",
+          background: "var(--surface-card)",
           padding: 30,
           borderRadius: 12,
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-subtle)",
           boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         }}
       >
@@ -115,7 +115,7 @@ export default function AddEmployeePage() {
           style={{
             padding: "12px 22px",
             borderRadius: 8,
-            background: loading ? "#9ca3af" : "#111827",
+            background: loading ? "var(--text-soft)" : "var(--erp-blue)",
             color: "white",
             border: "none",
             fontWeight: 600,
@@ -132,7 +132,7 @@ export default function AddEmployeePage() {
 const labelStyle = {
   fontSize: 12,
   fontWeight: 600,
-  color: "#6b7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase" as const,
   marginBottom: 6,
   display: "block",
@@ -142,7 +142,7 @@ const inputStyle = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--input-border)",
   fontSize: 15,
   outline: "none",
 };

@@ -43,10 +43,10 @@ export default function EmployeeProfilePage() {
     <div className="space-y-6">
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface-card)",
           padding: 30,
           borderRadius: 12,
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-subtle)",
         }}
       >
         {/* HEADER */}
@@ -54,7 +54,7 @@ export default function EmployeeProfilePage() {
           {employee.name}
         </h2>
 
-        <p style={{ color: "#6b7280", marginBottom: 25 }}>{employee.email}</p>
+        <p style={{ color: "var(--text-muted)", marginBottom: 25 }}>{employee.email}</p>
 
         {/* GRID */}
         <div
@@ -82,13 +82,13 @@ export default function EmployeeProfilePage() {
         </h3>
         <div
           style={{
-            background: "#f9fafb",
+            background: "var(--surface-muted)",
             padding: 20,
             borderRadius: 10,
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--border-subtle)",
           }}
         >
-          <p style={{ color: "#6b7280" }}>
+          <p style={{ color: "var(--text-muted)" }}>
             Attendance charts and logs will show here once we complete Step 5.
           </p>
         </div>
@@ -100,13 +100,13 @@ export default function EmployeeProfilePage() {
         </h3>
         <div
           style={{
-            background: "#f9fafb",
+            background: "var(--surface-muted)",
             padding: 20,
             borderRadius: 10,
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--border-subtle)",
           }}
         >
-          <p style={{ color: "#6b7280" }}>
+          <p style={{ color: "var(--text-muted)" }}>
             Recent activity will appear here after backend integration.
           </p>
         </div>
@@ -120,12 +120,12 @@ function ProfileCard({ label, value }: { label: string; value: string }) {
     <div
       style={{
         padding: 20,
-        background: "#fff",
+        background: "var(--surface-card)",
         borderRadius: 10,
-        border: "1px solid #e5e7eb",
+        border: "1px solid var(--border-subtle)",
       }}
     >
-      <p style={{ fontSize: 14, color: "#6b7280" }}>{label}</p>
+      <p style={{ fontSize: 14, color: "var(--text-muted)" }}>{label}</p>
       <p style={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>{value}</p>
     </div>
   );
