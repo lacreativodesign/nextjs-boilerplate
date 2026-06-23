@@ -270,7 +270,7 @@ export default function EmployeeAttendanceDetail() {
               if (info && info.hours) {
                 status = "Present";
                 badgeBg = "rgba(34,197,94,0.12)";
-                badgeColor = "#16a34a";
+                badgeColor = "var(--success)";
               }
 
               const rowBg = index % 2 === 0 ? "var(--surface-card)" : "var(--surface-muted)";

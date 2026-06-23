@@ -644,7 +644,7 @@ export default function HrOnboardingPage() {
                   <div>
                     <div style={{ fontWeight: 600 }}>{step.title || "Untitled step"}</div>
                     <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{step.description || "-"}</div>
-                    {step.required && <div style={{ fontSize: 11, color: "#38bdf8" }}>Required</div>}
+                    {step.required && <div style={{ fontSize: 11, color: "var(--erp-blue)" }}>Required</div>}
                   </div>
                 </label>
               ))}
