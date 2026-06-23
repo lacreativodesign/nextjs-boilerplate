@@ -6,6 +6,7 @@ import { queueClientActivationInvite } from "@/lib/clientActivation";
 import { logEvent } from "@/lib/audit";
 import { getClientIp } from "@/lib/security";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
+import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
 import { currencyConverter } from "@/lib/currency/currencyConverter";
 import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
 import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
@@ -140,6 +141,7 @@ export async function POST(req: Request) {
       orderId,
       clientId,
       clientName,
+      paymentToken: generateInvoiceToken(),
       currency: currencyCode,
       currencySymbol: getCurrency(currencyCode).symbol,
       baseCurrency,
