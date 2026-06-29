@@ -1,4 +1,6 @@
-export const DEFAULT_TENANT_ID = "default";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+
+export { DEFAULT_TENANT_ID };
 
 export function normalizeTenantId(t?: string | null): string {
   return (t || DEFAULT_TENANT_ID).trim() || DEFAULT_TENANT_ID;
