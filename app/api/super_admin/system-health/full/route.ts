@@ -104,14 +104,13 @@ export async function GET(req: NextRequest) {
       }),
       runWithTimeout({ id: "environment-variables", name: "Environment Variables" }, async () => {
         const envVars = [
-          "FIREBASE_PROJECT_ID",
-          "FIREBASE_CLIENT_EMAIL",
-          "FIREBASE_PRIVATE_KEY",
+          "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+          "FIREBASE_ADMIN_KEY",
           "NEXT_PUBLIC_FIREBASE_API_KEY",
           "RESEND_API_KEY",
           "STRIPE_SECRET_KEY",
           "STRIPE_INVOICE_WEBHOOK_SECRET",
-          "UPLOADCARE_PUBLIC_KEY",
+          "NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY",
           "EXCHANGE_RATE_API_KEY",
           "NEXT_PUBLIC_DEFAULT_TENANT_ID",
           "NEXT_PUBLIC_SENTRY_DSN",
@@ -141,13 +140,13 @@ export async function GET(req: NextRequest) {
       runWithTimeout({ id: "env_vars", name: "Environment Variables" }, async () => {
         const requiredEnv = [
           "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-          "FIREBASE_PRIVATE_KEY",
-          "FIREBASE_CLIENT_EMAIL",
+          "FIREBASE_ADMIN_KEY",
           "STRIPE_SECRET_KEY",
           "STRIPE_WEBHOOK_SECRET",
           "RESEND_API_KEY",
           "NEXT_PUBLIC_SENTRY_DSN",
           "NEXT_PUBLIC_APP_URL",
+          "ONBOARDING_FROM_EMAIL",
         ];
 
         const configured = requiredEnv.filter((key) => Boolean(process.env[key])).length;
