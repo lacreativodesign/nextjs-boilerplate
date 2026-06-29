@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useTenantContext } from "@/lib/tenant/useTenantContext";
 import { PlatformTour } from "@/components/onboarding/PlatformTour";
+import { ActivationChecklist } from "@/components/onboarding/ActivationChecklist";
 import { normalizeRole, type ErpRole } from "@/lib/erpAccess";
 import dynamic from "next/dynamic";
 import {
@@ -127,6 +128,8 @@ export default function DashboardPage() {
         <h1 className="page-title">Overview</h1>
         <p className="page-subtitle">{overviewSubtitle}</p>
       </div>
+
+      {currentRole === "admin" && <ActivationChecklist />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Team Members" value={val(stats?.users ?? 0)} sub="Active users" href="/users" />
