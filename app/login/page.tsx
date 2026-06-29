@@ -61,7 +61,7 @@ export default function LoginPage() {
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
   const [ssoProviders, setSsoProviders] = useState<Array<{ provider: "google" | "microsoft" | "okta" | "auth0" }>>([]);
-  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "default";
+  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "bizosto";
 
   useEffect(() => {
     let active = true;

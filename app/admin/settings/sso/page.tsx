@@ -37,7 +37,7 @@ export default function SsoSettingsPage() {
   const [saving, setSaving] = useState<ProviderKey | null>(null);
 
   useEffect(() => {
-    const envTenant = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "default";
+    const envTenant = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "bizosto";
     setTenantId(envTenant);
   }, []);
 

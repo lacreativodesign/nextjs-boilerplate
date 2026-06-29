@@ -6,7 +6,7 @@ type Provider = "google" | "microsoft";
 
 export default function UserSsoStatusIndicator() {
   const [providers, setProviders] = useState<string[]>([]);
-  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "default";
+  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "bizosto";
 
   useEffect(() => {
     let active = true;
