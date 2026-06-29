@@ -13,41 +13,55 @@ service cloud.firestore {
     function isClientRole() {
       return isAuthed() && request.auth.token.role == 'client';
     }
+
     // Super admin can read/write everything
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
-    // Tenant users can only read their own tenant doc (not write — admins use server SDK)
+
+    // Tenant document: members may read their own tenant doc. Writes server-only.
     match /tenants/{tenantId} {
       allow read: if belongsToTenant(tenantId);
-      allow write: if false; // Server SDK only
+      allow write: if false;
     }
+
+    // Tenant subcollections (e.g. activity_feed): internal staff only, read-only.
+    // Client role excluded. All writes go through the server (Admin SDK).
     match /tenants/{tenantId}/{subcollection=**} {
-      allow read, write: if belongsToTenant(tenantId);
+      allow read: if belongsToTenant(tenantId) && !isClientRole();
+      allow write: if false;
     }
-    // All other collections: server SDK only (Admin SDK bypasses rules)
-    // Client SDK access locked down — only server-side API routes touch these
+
+    // users: a user may read ONLY their own document. Writes server-only.
     match /users/{docId} {
-      allow read: if belongsToTenant(resource.data.tenantId);
+      allow read: if isAuthed() && request.auth.uid == docId;
       allow write: if false;
     }
+
+    // clients: server SDK only (no client-SDK reader exists).
     match /clients/{docId} {
-      allow read: if belongsToTenant(resource.data.tenantId);
-      allow write: if false;
+      allow read, write: if false;
     }
+
+    // projects: server SDK only (super_admin still covered by the rule above).
     match /projects/{docId} {
-      allow read: if belongsToTenant(resource.data.tenantId);
-      allow write: if false;
+      allow read, write: if false;
     }
+
+    // invoices: server SDK only.
     match /invoices/{docId} {
-      allow read: if belongsToTenant(resource.data.tenantId);
-      allow write: if false;
+      allow read, write: if false;
     }
+
+    // notifications: a user may read ONLY their own notifications. Writes server-only.
     match /notifications/{docId} {
-      allow read: if belongsToTenant(resource.data.tenantId);
+      allow read: if isAuthed()
+                  && request.auth.uid == resource.data.userId
+                  && belongsToTenant(resource.data.tenantId);
       allow write: if false;
     }
-    // Everything else: server SDK only
+
+    // Everything else: server SDK only.
     match /{document=**} {
       allow read, write: if false;
     }
