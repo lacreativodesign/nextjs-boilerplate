@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -127,6 +128,11 @@ function parsePlanKey(value: unknown): PlanKey | null {
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdminOrSuperAdmin();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
     const body = await req.json().catch(() => ({}));
     const planKey = parsePlanKey(body?.plan);
 
@@ -140,7 +146,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const tenantId = typeof body?.tenantId === 'string' ? body.tenantId.trim() : '';
+    // tenantId MUST come from the authenticated session, never the request body.
+    const tenantId = String(auth.user.tenantId || '').trim();
+    if (!tenantId) {
+      return NextResponse.json(
+        { ok: false, error: 'No tenant is associated with this account.' },
+        { status: 400 },
+      );
+    }
     const customerEmail =
       typeof body?.customerEmail === 'string' ? body.customerEmail.trim().toLowerCase() : '';
     const trialPeriodDays = body?.trialPeriodDays === 14 ? 14 : undefined;
