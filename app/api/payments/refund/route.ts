@@ -54,8 +54,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid refund amount." }, { status: 400 });
     }
 
+    // Resolve which Stripe account the PaymentIntent lives on.
+    // Platform Checkout payments (create-intent) carry a stripeCheckoutSessionId and
+    // live on the platform account. Client-portal invoice payments (pay/confirm) are
+    // Connect DIRECT charges on the tenant's connected account.
+    const isPlatformCharge = Boolean(String(payment.stripeCheckoutSessionId || "").trim());
+    let stripeAccount: string | undefined;
+    let refundApplicationFee = false;
+    if (!isPlatformCharge) {
+      const tenantSnap = await adminDb.collection("tenants").doc(String(payment.tenantId || "")).get();
+      stripeAccount = String(tenantSnap.data()?.stripeConnectAccountId || "").trim() || undefined;
+      if (!stripeAccount) {
+        return NextResponse.json(
+          { ok: false, error: "Connected account not found for this payment; cannot refund." },
+          { status: 400 },
+        );
+      }
+      // Return the platform fee to the tenant proportionally on refund.
+      // Set this to false if the platform should RETAIN its fee on refunds.
+      refundApplicationFee = true;
+    }
+
     const stripe = getStripeClient();
-    const refund = await createStripeRefund({ stripe, paymentIntentId: stripePaymentIntentId, amountUsd, reason });
+    const refund = await createStripeRefund({
+      stripe,
+      paymentIntentId: stripePaymentIntentId,
+      amountUsd,
+      reason,
+      stripeAccount,
+      refundApplicationFee,
+    });
     const refundAmountUsd = Number(refund.amount || 0) / 100;
     const now = admin.firestore.FieldValue.serverTimestamp();
 
