@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 
 export const runtime = 'nodejs';
@@ -154,6 +155,25 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // Prevent creating a SECOND Stripe subscription for a tenant that already has a
+    // live one (active or past_due). Re-subscribing is only allowed after cancellation
+    // (billingStatus 'canceled'); trial conversion has no subscription yet so it passes.
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantData = tenantSnap.data() || {};
+    const existingSubscriptionId = String(tenantData.stripeSubscriptionId || '').trim();
+    const billingStatus = String(tenantData.billingStatus || '').toLowerCase();
+    if (existingSubscriptionId && billingStatus !== 'canceled') {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'This account already has an active subscription. Change your plan instead of starting a new checkout.',
+          code: 'subscription_exists',
+        },
+        { status: 409 },
+      );
+    }
+
     const customerEmail =
       typeof body?.customerEmail === 'string' ? body.customerEmail.trim().toLowerCase() : '';
     const trialPeriodDays = body?.trialPeriodDays === 14 ? 14 : undefined;
