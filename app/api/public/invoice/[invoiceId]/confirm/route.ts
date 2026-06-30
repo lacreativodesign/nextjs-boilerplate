@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { getStripeClient } from "@/lib/payments/stripe";
+import { calculatePlatformFee } from "@/lib/stripe/connect";
 import { getInvoiceWithValidation, getTenantRecord } from "../../shared";
 
 export const runtime = "nodejs";
@@ -42,14 +43,40 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
 
     if (paymentIntent.status === "succeeded") {
       const nowIso = new Date().toISOString();
-      await adminDb.collection("invoices").doc(invoiceId).update({
+      const invoiceAmount = validation.payload.amount;
+      const platformFee = calculatePlatformFee(Math.round(invoiceAmount * 100));
+
+      // Deterministic id = PaymentIntent id, identical shape to the pay route, so a
+      // 3DS/SCA confirmation records a ledger entry exactly once and converges with
+      // the pay route / webhook backstop instead of creating duplicates.
+      const paymentRef = adminDb.collection("payments").doc(paymentIntent.id);
+
+      const batch = adminDb.batch();
+      batch.update(adminDb.collection("invoices").doc(invoiceId), {
         status: "paid",
         paidAt: nowIso,
-        paidAmount: validation.payload.amount,
+        paidAmount: invoiceAmount,
         paymentMethod: "stripe",
         stripePaymentIntentId: paymentIntent.id,
         updatedAt: nowIso,
       });
+      batch.set(paymentRef, {
+        tenantId: validation.payload.tenantId,
+        clientId: validation.payload.clientId || null,
+        invoiceId,
+        orderId: validation.payload.orderId,
+        amountUsd: invoiceAmount,
+        platformFeeUsd: platformFee / 100,
+        currency: validation.payload.currency,
+        status: "succeeded",
+        method: "stripe_checkout",
+        stripePaymentIntentId: paymentIntent.id,
+        paidAt: nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        isDeleted: false,
+      });
+      await batch.commit();
 
       return NextResponse.json({ ok: true, status: "succeeded" });
     }
