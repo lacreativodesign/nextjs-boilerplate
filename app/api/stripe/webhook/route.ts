@@ -19,6 +19,14 @@ const ALLOWED_EVENTS = new Set([
   "customer.subscription.deleted",
 ]);
 
+// Checkout sessions Bizosto itself originated (app signup, platform, marketing site).
+// Only these provision/link a tenant; any other checkout.session.completed is ignored.
+const TRUSTED_CHECKOUT_SOURCES = new Set([
+  "bizosto_app",
+  "bizosto_platform",
+  "bizosto_website",
+]);
+
 type BillingCycle = "monthly" | "annual";
 
 type BillingStatus = "active" | "past_due" | "canceled";
@@ -177,6 +185,35 @@ async function ensureAdminUser({
   }
 
   return userRecord.uid;
+}
+
+async function linkExistingTenant({
+  tenantId,
+  stripeCustomerId,
+  stripeSubscriptionId,
+  billingCycle,
+}: {
+  tenantId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  billingCycle: BillingCycle;
+}): Promise<boolean> {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const ref = adminDb.collection("tenants").doc(tenantId);
+  const snap = await ref.get();
+  if (!snap.exists) return false;
+  await ref.set(
+    {
+      stripeCustomerId,
+      stripeSubscriptionId,
+      billingStatus: "active",
+      billingCycle,
+      status: "active",
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+  return true;
 }
 
 async function ensureTenantForCheckout({
@@ -401,7 +438,7 @@ export async function POST(req: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata || {};
 
-      if (metadata.source !== "bizosto_website") {
+      if (!TRUSTED_CHECKOUT_SOURCES.has(metadata.source || "")) {
         return NextResponse.json({ ok: true, received: true });
       }
 
@@ -410,12 +447,35 @@ export async function POST(req: Request) {
       const stripeSubscriptionId =
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id || "";
       const billingCycle = parseBillingCycle(metadata.billingCycle) || "monthly";
+      const metadataTenantId = typeof metadata.tenantId === "string" ? metadata.tenantId.trim() : "";
 
-      if (!email || !stripeCustomerId || !stripeSubscriptionId) {
+      if (!stripeCustomerId || !stripeSubscriptionId) {
         return NextResponse.json({ ok: false, error: "Missing checkout details." }, { status: 400 });
       }
 
       try {
+        // App signup flow: /api/signup already created the tenant, admin user,
+        // claims, plan, modules, and welcome email. Here we only link the Stripe
+        // customer/subscription to that existing tenant and activate billing.
+        if (metadataTenantId) {
+          const linked = await linkExistingTenant({
+            tenantId: metadataTenantId,
+            stripeCustomerId,
+            stripeSubscriptionId,
+            billingCycle,
+          });
+          if (linked) {
+            await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+            return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
+          }
+          // Tenant id present but not found — fall through to legacy create-by-email.
+        }
+
+        // Legacy / marketing-site checkout with no pre-created tenant.
+        if (!email) {
+          return NextResponse.json({ ok: false, error: "Missing checkout details." }, { status: 400 });
+        }
+
         const tenantResult = await ensureTenantForCheckout({
           email,
           stripeCustomerId,
