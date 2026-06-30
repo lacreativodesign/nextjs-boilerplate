@@ -24,6 +24,13 @@ function mapStripeStatusToSubscriptionState(status: string) {
   }
 }
 
+function normalizeBillingStatus(status: string): "active" | "past_due" | "canceled" {
+  if (status === "active" || status === "trialing") return "active";
+  if (status === "canceled") return "canceled";
+  // past_due, unpaid, incomplete, incomplete_expired, paused -> restrict
+  return "past_due";
+}
+
 async function resolveTenantIdFromInvoice(
   stripe: Stripe,
   invoice: Stripe.Invoice,
@@ -82,10 +89,10 @@ export async function POST(req: Request) {
   if (processedSnap.exists) {
     return NextResponse.json({ ok: true, received: true });
   }
-  await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
 
   try {
     switch (event.type) {
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = String(subscription.metadata?.tenantId || '').trim();
@@ -98,7 +105,7 @@ export async function POST(req: Request) {
           .set(
             {
               subscriptionState: mapStripeStatusToSubscriptionState(subscription.status),
-              billingStatus: subscription.status,
+              billingStatus: normalizeBillingStatus(subscription.status),
               currentPeriodEnd: subscription.current_period_end
                 ? new Date(subscription.current_period_end * 1000).toISOString()
                 : null,
@@ -294,11 +301,11 @@ export async function POST(req: Request) {
           },
           { merge: true },
         );
-        return NextResponse.json({ ok: true });
+        break;
       }
       case 'customer.tax_id.created': {
         console.info('[TAX] Tax ID created for customer', event.data.object);
-        return NextResponse.json({ ok: true });
+        break;
       }
       default:
         break;
@@ -308,7 +315,10 @@ export async function POST(req: Request) {
       type: event.type,
       error,
     });
+    // Do NOT mark processed; return non-2xx so Stripe retries.
+    return NextResponse.json({ ok: false, error: 'Webhook handler failed' }, { status: 500 });
   }
 
+  await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
   return NextResponse.json({ ok: true, received: true });
 }

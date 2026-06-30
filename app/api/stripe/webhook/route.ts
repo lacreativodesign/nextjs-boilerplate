@@ -14,9 +14,6 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_EVENTS = new Set([
   "checkout.session.completed",
-  "customer.subscription.created",
-  "customer.subscription.updated",
-  "customer.subscription.deleted",
 ]);
 
 // Checkout sessions Bizosto itself originated (app signup, platform, marketing site).
@@ -431,7 +428,9 @@ export async function POST(req: Request) {
     }
 
     if (!ALLOWED_EVENTS.has(event.type)) {
-      return NextResponse.json({ ok: false, error: "Unhandled event type." }, { status: 400 });
+      // Subscription/invoice events are owned solely by /api/stripe/subscription-webhook.
+      // Ack-and-ignore here so Stripe does not retry against this endpoint.
+      return NextResponse.json({ ok: true, received: true });
     }
 
     if (event.type === "checkout.session.completed") {
