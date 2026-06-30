@@ -33,6 +33,7 @@ const TABS = [
   { href: "/super_admin/tenants",       label: "Tenants"           },
   { href: "/super_admin/users",         label: "All Users"         },
   { href: "/super_admin/payments",      label: "Revenue"           },
+  { href: "/super_admin/activation",    label: "Activation"        },
   { href: "/super_admin/tax",           label: "Tax Filing"        },
   { href: "/super_admin/monitoring",    label: "Monitoring"        },
   { href: "/super_admin/system-health", label: "System Health"     },
