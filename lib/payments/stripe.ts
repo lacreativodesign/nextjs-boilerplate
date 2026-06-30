@@ -90,11 +90,15 @@ export async function createStripeRefund({
   paymentIntentId,
   amountUsd,
   reason,
+  stripeAccount,
+  refundApplicationFee,
 }: {
   stripe: Stripe;
   paymentIntentId: string;
   amountUsd?: number;
   reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+  stripeAccount?: string;
+  refundApplicationFee?: boolean;
 }) {
   const payload: Stripe.RefundCreateParams = {
     payment_intent: paymentIntentId,
@@ -106,6 +110,13 @@ export async function createStripeRefund({
   if (reason) {
     payload.reason = reason;
   }
+  // For Connect direct charges, refund the platform application fee proportionally.
+  if (refundApplicationFee) {
+    payload.refund_application_fee = true;
+  }
 
-  return stripe.refunds.create(payload);
+  // When the PaymentIntent lives on a connected account, the refund must be issued
+  // on that account; otherwise it is a platform refund.
+  const options: Stripe.RequestOptions | undefined = stripeAccount ? { stripeAccount } : undefined;
+  return stripe.refunds.create(payload, options);
 }
