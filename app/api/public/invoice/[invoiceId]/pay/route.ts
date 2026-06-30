@@ -79,13 +79,19 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
           destination: connectAccountId,
         },
       },
-      { stripeAccount: connectAccountId }
+      {
+        stripeAccount: connectAccountId,
+        idempotencyKey: `inv_pay_${invoiceId}_${paymentMethodId}`,
+      }
     );
 
     if (paymentIntent.status === "succeeded") {
       const nowIso = new Date().toISOString();
       const invoiceAmount = validation.payload.amount;
-      const paymentRef = adminDb.collection("payments").doc();
+      // Deterministic id = PaymentIntent id makes the ledger write idempotent, so
+      // retries (and the confirm route / webhook backstop added later) converge on
+      // a single payment record instead of creating duplicates.
+      const paymentRef = adminDb.collection("payments").doc(paymentIntent.id);
 
       const batch = adminDb.batch();
       batch.update(adminDb.collection("invoices").doc(invoiceId), {
