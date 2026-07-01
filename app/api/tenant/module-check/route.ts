@@ -5,8 +5,20 @@ import { isModuleEnabled } from "@/lib/tenant/access";
 
 export const runtime = "nodejs";
 
+// Internal-only endpoint: called solely by middleware (server-to-server), which holds
+// the signing secret. Prevents unauthenticated tenant enumeration / module probing.
+function verifyInternalSecret(req: NextRequest): boolean {
+  const secret = req.headers.get("x-internal-secret");
+  const expected = process.env.INTERNAL_REQUEST_SIGNING_SECRET;
+  return Boolean(expected && secret && secret === expected);
+}
+
 export async function GET(req: NextRequest) {
   try {
+    if (!verifyInternalSecret(req)) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const tenantId = req.nextUrl.searchParams.get("tenantId");
     const moduleKey = req.nextUrl.searchParams.get("module");
 
