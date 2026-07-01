@@ -95,6 +95,9 @@ async function fetchModuleEnabled(req: NextRequest, tenantId: string, moduleKey:
       method: "GET",
       cache: "no-store",
       signal: controller.signal,
+      headers: {
+        "x-internal-secret": process.env.INTERNAL_REQUEST_SIGNING_SECRET || "",
+      },
     });
 
     if (!res.ok) return null;
