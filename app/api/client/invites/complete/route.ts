@@ -13,10 +13,22 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const token = String(body?.token || "").trim();
-    const uid = String(body?.uid || "").trim();
-    if (!token || !uid) {
-      return NextResponse.json({ ok: false, error: "Missing token or uid." }, { status: 400 });
+    const idToken = String(body?.idToken || "").trim();
+    if (!token || !idToken) {
+      return NextResponse.json({ ok: false, error: "Missing token or idToken." }, { status: 400 });
     }
+
+    // uid is derived from a VERIFIED Firebase ID token — never from the request body —
+    // so an attacker who holds an invite token cannot bind it to an arbitrary uid.
+    // checkRevoked=true rejects revoked/disabled accounts.
+    let decoded;
+    try {
+      decoded = await adminAuth.verifyIdToken(idToken, true);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Invalid authentication." }, { status: 401 });
+    }
+    const uid = decoded.uid;
+    const decodedEmail = String(decoded.email || "").trim().toLowerCase();
 
     const tokenHash = hashInviteToken(token);
     const snap = await adminDb.collection("inviteTokens").where("tokenHash", "==", tokenHash).limit(1).get();
@@ -42,6 +54,9 @@ export async function POST(req: Request) {
     }
 
     const email = String(data.email || "").trim().toLowerCase();
+    if (!decodedEmail || decodedEmail !== email) {
+      return NextResponse.json({ ok: false, error: "This invite was issued to a different email address." }, { status: 403 });
+    }
     const clientId = String(data.clientId || "");
 
     const clientSnap = await adminDb.collection("clients").doc(clientId).get();

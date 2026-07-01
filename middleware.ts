@@ -212,6 +212,7 @@ function isPublicApiPath(pathname: string) {
     || pathname.startsWith("/api/subscription/status")
     || pathname.startsWith("/api/public")
     || pathname.startsWith("/api/signup")
+    || pathname.startsWith("/api/client/invites/")
     || pathname.startsWith("/api/auth")
   );
 }
