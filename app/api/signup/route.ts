@@ -113,6 +113,27 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Verify-before-provision gate: never create a tenant/user until the email is proven via OTP.
+    // /api/auth/send-otp is rate-limited (3 per email per 10 min); /api/auth/verify-otp sets
+    // verified:true on email_otps/{email}. Without this gate a bot could provision unlimited real
+    // tenants and Auth users. Requiring a fresh verified OTP also serves as bot defense, since it
+    // requires control of the target inbox.
+    const otpSnap = await adminDb.collection('email_otps').doc(email).get();
+    const otpData = otpSnap.data();
+    if (!otpSnap.exists || otpData?.verified !== true) {
+      return NextResponse.json(
+        { ok: false, error: 'Please verify your email with the code we sent before continuing.' },
+        { status: 403 },
+      );
+    }
+    const otpCreatedAt = Number(otpData?.createdAt || 0);
+    if (!otpCreatedAt || Date.now() - otpCreatedAt > 24 * 60 * 60 * 1000) {
+      return NextResponse.json(
+        { ok: false, error: 'Your email verification has expired. Please request a new code.' },
+        { status: 403 },
+      );
+    }
+
     const existingUserQuery = await adminDb
       .collection('users')
       .where('email', '==', email)
