@@ -23,18 +23,19 @@ export async function POST(req: NextRequest) {
       : 60 * 60 * 24 * 1 * 1000;
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-    try {
-      await createSession(decodedToken.uid, {
-        sessionCookie,
-        rememberMe: Boolean(rememberMe),
-        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-          req.headers.get('x-real-ip') ||
-          null,
-        userAgent: req.headers.get('user-agent') || null,
-      });
-    } catch (sessionWriteError) {
-      console.error('session-login: failed to write session record', sessionWriteError);
-    }
+
+    // Fail closed: the session ledger write MUST succeed before we set the auth cookie. If swallowed,
+    // the user gets a cookie with no tracked session — validateSession then rejects every subsequent
+    // request, and concurrent-session limits / server-side revocation don't cover it. Let a failure
+    // propagate to the outer catch so we return 500 and set no cookie.
+    await createSession(decodedToken.uid, {
+      sessionCookie,
+      rememberMe: Boolean(rememberMe),
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        req.headers.get('x-real-ip') ||
+        null,
+      userAgent: req.headers.get('user-agent') || null,
+    });
 
     const response = NextResponse.json({ success: true });
 
