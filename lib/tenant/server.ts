@@ -143,10 +143,22 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     }
 
     const data = userDoc.data() || {};
-    const role = (data.role as string | undefined)?.toLowerCase() || 'sales';
 
     if (!sessionStatus?.valid) {
       throw new Error('Session expired');
+    }
+
+    // Fail closed on identity: a user doc with no role must be rejected, never silently treated as
+    // 'sales'. Deactivated or soft-deleted accounts must lose access on their next request,
+    // regardless of whether their sessions were explicitly invalidated.
+    const role = (data.role as string | undefined)?.toLowerCase() || '';
+    if (!role) {
+      throw new Error('Role missing');
+    }
+    const accountStatus = String(data.status || 'active').toLowerCase();
+    const DEACTIVATED_STATUSES = ['inactive', 'suspended', 'disabled', 'deactivated'];
+    if (data.isDeleted === true || DEACTIVATED_STATUSES.includes(accountStatus)) {
+      throw new Error('Account is inactive');
     }
 
     // Fail closed: never fall back to a real tenant. DEFAULT_TENANT_ID ("bizosto") is the live
