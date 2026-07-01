@@ -213,16 +213,29 @@ async function linkExistingTenant({
   return true;
 }
 
+function resolveCheckoutPlan(value: unknown): keyof typeof PLAN_MODULES {
+  const plan = String(value || "").trim().toLowerCase();
+  if (plan === "starter" || plan === "pro" || plan === "enterprise") {
+    return plan;
+  }
+  // Fail closed: never silently grant a plan (previously hardcoded to "pro"). If checkout metadata
+  // lacks a valid bizosto_plan, reject so Stripe retries and this surfaces, rather than provisioning
+  // the wrong (higher) tier.
+  throw new Error(`Unable to resolve Bizosto plan from checkout metadata: "${String(value)}"`);
+}
+
 async function ensureTenantForCheckout({
   email,
   stripeCustomerId,
   stripeSubscriptionId,
   billingCycle,
+  plan,
 }: {
   email: string;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   billingCycle: BillingCycle;
+  plan: keyof typeof PLAN_MODULES;
 }) {
   const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -275,14 +288,14 @@ async function ensureTenantForCheckout({
       },
       modulesEnabled: DEFAULT_MODULES,
       rolesEnabled: DEFAULT_ROLES,
-      plan: "pro",
+      plan,
       settings: {
         currency: "USD",
         timezone: "UTC",
         country: "",
         state: "",
       },
-      modules: { ...PLAN_MODULES.pro, sales: true, production: true },
+      modules: { ...PLAN_MODULES[plan] },
       planSetBy: { uid: "system", role: "super_admin" },
       planUpdatedAt: now,
       stripeCustomerId,
@@ -480,6 +493,7 @@ export async function POST(req: Request) {
           stripeCustomerId,
           stripeSubscriptionId,
           billingCycle,
+          plan: resolveCheckoutPlan(metadata.bizosto_plan),
         });
 
         await ensureAdminUser({
