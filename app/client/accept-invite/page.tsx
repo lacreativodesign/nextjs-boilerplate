@@ -4,6 +4,8 @@ import React, { Suspense, useEffect, useState } from "react";
 import { SkeletonForm } from "@/components/ui/Skeleton";
 import { useSearchParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 function AcceptInviteClient() {
   const searchParams = useSearchParams();
@@ -59,25 +61,59 @@ function AcceptInviteClient() {
       setError("Missing invite token.");
       return;
     }
-    if (!password || password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!email) {
+      setError("Invite email missing. Please reopen the invite link.");
       return;
     }
 
     setSubmitting(true);
     try {
+      const auth = await getFirebaseAuth();
+
+      // Create the Firebase account for the invited email (or sign in if it already exists and
+      // the password matches — proving the caller controls the account).
+      let userCred;
+      try {
+        userCred = await createUserWithEmailAndPassword(auth, email, password);
+      } catch (createErr: any) {
+        if (createErr?.code === "auth/email-already-in-use") {
+          userCred = await signInWithEmailAndPassword(auth, email, password);
+        } else {
+          throw createErr;
+        }
+      }
+
+      // Bind the invite to the VERIFIED account — the server takes the uid from this token.
+      const activationToken = await userCred.user.getIdToken(true);
       const res = await apiFetch("/api/client/invites/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, idToken: activationToken }),
       });
-
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to complete invite.");
 
+      // Establish a session with a fresh token that now carries the client role/tenant claims.
+      const sessionToken = await userCred.user.getIdToken(true);
+      const sessionRes = await apiFetch("/api/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: sessionToken }),
+      });
+      if (!sessionRes.ok) throw new Error("Account activated, but sign-in failed. Please log in.");
+
       router.replace("/client");
     } catch (err: any) {
-      setError(err?.message || "Something went wrong.");
+      const code = err?.code || "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("An account already exists for this email. Enter the correct password or contact support.");
+      } else {
+        setError(err?.message || "Something went wrong.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +156,7 @@ function AcceptInviteClient() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Set a secure password"
+            placeholder="Set a secure password (8+ characters)"
           />
         </div>
 
