@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       address: body?.address,
       industry: body?.industry,
       website: body?.website,
-      tenantId: me.tenantId || body?.tenantId || "",
+      tenantId: me.tenantId || "",
     });
 
     const companyName = validatedData.companyName;
