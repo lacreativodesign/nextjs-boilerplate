@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getStripePriceId } from '@/lib/billing/stripe-prices';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -66,47 +67,7 @@ function getStripeClient() {
   return new Stripe(secretKey, { apiVersion: '2024-04-10' });
 }
 
-async function ensureProduct(
-  stripe: Stripe,
-  productName: string,
-  plan: string,
-): Promise<Stripe.Product> {
-  const products = await stripe.products.list({ active: true, limit: 100 });
-  const existing = products.data.find(
-    (p) => p.name === productName || p.metadata?.bizosto_plan === plan,
-  );
-  if (existing) return existing;
-  return stripe.products.create({
-    name: productName,
-    metadata: { bizosto_plan: plan, source: 'bizosto_platform' },
-  });
-}
-
-async function ensurePrice(
-  stripe: Stripe,
-  productId: string,
-  config: (typeof PLAN_CONFIGS)[PlanKey],
-): Promise<Stripe.Price> {
-  const prices = await stripe.prices.list({
-    lookup_keys: [config.lookupKey],
-    active: true,
-    limit: 1,
-  });
-  if (prices.data[0]) return prices.data[0];
-
-  return stripe.prices.create({
-    currency: 'usd',
-    unit_amount: config.amount,
-    recurring: { interval: config.interval },
-    product: productId,
-    lookup_key: config.lookupKey,
-    metadata: {
-      bizosto_plan: config.plan,
-      billingCycle: config.billingCycle,
-      source: 'bizosto_platform',
-    },
-  });
-}
+// Price IDs are fixed and read from env via getStripePriceId() — never created at runtime.
 
 function resolveCheckoutUrl(value: unknown, fallback: string, allowedOrigin: string) {
   if (typeof value !== 'string' || !value.trim()) return fallback;
@@ -187,12 +148,11 @@ export async function POST(req: Request) {
     const cancelUrl = resolveCheckoutUrl(body?.cancelUrl, `${appUrl}/billing`, appUrl);
     const config = PLAN_CONFIGS[planKey];
     const stripe = getStripeClient();
-    const product = await ensureProduct(stripe, config.productName, config.plan);
-    const price = await ensurePrice(stripe, product.id, config);
+    const priceId = getStripePriceId(planKey);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      line_items: [{ price: price.id, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: customerEmail || undefined,
