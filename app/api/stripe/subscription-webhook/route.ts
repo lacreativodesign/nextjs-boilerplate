@@ -70,8 +70,14 @@ export async function POST(req: Request) {
 
   const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('[STRIPE] STRIPE_SUBSCRIPTION_WEBHOOK_SECRET is missing');
-    return NextResponse.json({ ok: true, received: true });
+    // Fail closed: never acknowledge (200) when the signature cannot be verified. A 200 here makes
+    // Stripe consider the event delivered and stop retrying, silently dropping subscription
+    // lifecycle events (upgrade/cancel/past_due). Return 500 so Stripe retries and this alerts.
+    console.error('[STRIPE] STRIPE_SUBSCRIPTION_WEBHOOK_SECRET is missing — rejecting webhook');
+    return NextResponse.json(
+      { ok: false, error: 'Stripe subscription webhook secret is not configured' },
+      { status: 500 },
+    );
   }
 
   const rawBody = await req.text();
