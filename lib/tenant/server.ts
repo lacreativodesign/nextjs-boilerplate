@@ -148,7 +148,16 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     if (!sessionStatus?.valid) {
       throw new Error('Session expired');
     }
-    const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
+
+    // Fail closed: never fall back to a real tenant. DEFAULT_TENANT_ID ("bizosto") is the live
+    // primary tenant — a non-super_admin whose user doc has no tenantId must be rejected, not
+    // silently scoped into the primary tenant's data. super_admin may carry an empty tenantId and
+    // resolves the working tenant per-request in getTenantIdForRequestOrThrow (cookie/query).
+    const rawTenantId = typeof data.tenantId === 'string' ? data.tenantId.trim() : '';
+    if (!rawTenantId && role !== 'super_admin') {
+      throw new Error('Tenant context missing');
+    }
+    const tenantId = rawTenantId;
 
     void refreshSession(sessionCookie);
 
@@ -160,10 +169,10 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     });
 
     return {
+      ...data,
       uid,
       role,
       tenantId,
-      ...data,
     };
   } catch (error) {
     captureApiError(error, {
@@ -209,16 +218,18 @@ export async function ensureDefaultTenant() {
 
 export async function getTenantIdForRequestOrThrow(req?: RequestLike): Promise<string> {
   const user = await getCurrentUserOrThrow(req);
-  let tenantId = user.tenantId || DEFAULT_TENANT_ID;
+  let tenantId = (user.tenantId || '').trim();
 
   if (isSuperAdmin(user)) {
+    // super_admin may operate without a tenantId on their own doc; they select the working tenant
+    // via the bizosto_tenant cookie / tenantId query param, defaulting to the primary tenant only
+    // for the platform operator.
     const cookieTenant = readCookie(req, 'bizosto_tenant');
     const queryTenant = readQueryTenantId(req);
-    tenantId = queryTenant || cookieTenant || tenantId;
-  }
-
-  if (!tenantId) {
-    tenantId = DEFAULT_TENANT_ID;
+    tenantId = (queryTenant || cookieTenant || tenantId || DEFAULT_TENANT_ID).trim();
+  } else if (!tenantId) {
+    // Fail closed: non-super_admin must have an explicit tenant. Never default to a real tenant.
+    throw new Error('Tenant context missing');
   }
 
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
