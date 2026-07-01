@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
       { merge: true }
     );
 
+    // Set custom claims (role + tenantId) so the user passes middleware and the
+    // Firestore security-rules layer (belongsToTenant reads claims.tenantId).
+    await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
+
     await writeAuditLog({
       tenantId,
       actorUserId: user.uid,

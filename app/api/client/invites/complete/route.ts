@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { hashInviteToken } from "@/lib/clientInvites";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { logEvent } from "@/lib/audit";
@@ -72,6 +72,10 @@ export async function POST(req: Request) {
       },
       { merge: true }
     );
+
+    // Set custom claims (role + tenantId) so the client user passes middleware and
+    // the Firestore security-rules layer (belongsToTenant reads claims.tenantId).
+    await adminAuth.setCustomUserClaims(uid, { role: "client", tenantId });
 
     await adminDb.collection("clients").doc(clientId).set(
       {
