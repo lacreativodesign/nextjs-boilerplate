@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       email: body?.email,
       displayName: displayNameInput,
       role: body?.role,
-      tenantId: current.tenantId || body?.tenantId || '',
+      tenantId: current.tenantId || '',
       phone: body?.phone,
       department: body?.department,
       managerId: body?.managerId,
