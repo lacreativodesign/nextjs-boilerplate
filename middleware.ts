@@ -139,12 +139,15 @@ function hash(value: string): string {
 }
 
 function resolveTenantId(req: NextRequest) {
-  return req.headers.get("x-tenant-id") || req.cookies.get("tenant_id")?.value || "unknown";
+  // Do NOT trust an inbound x-tenant-id header — it is client-spoofable and would let a caller
+  // poison or evade another tenant's rate-limit bucket and pollute usage logs. Use only the
+  // server-set httpOnly tenant_id cookie (written at session-login from verified claims).
+  return req.cookies.get("tenant_id")?.value || "unknown";
 }
 
 function resolveUserId(req: NextRequest) {
-  const headerUser = req.headers.get("x-user-id");
-  if (headerUser) return headerUser;
+  // Do NOT trust an inbound x-user-id header — it is client-spoofable. Derive the identity key from
+  // the session cookie (non-spoofable), falling back to client IP for unauthenticated requests.
   const sessionToken = req.cookies.get("lac_session")?.value;
   if (sessionToken) return `session:${hash(sessionToken)}`;
   return `ip:${getClientIp(req)}`;

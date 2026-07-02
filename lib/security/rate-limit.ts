@@ -129,7 +129,10 @@ function resolveRateLimitKey(req: Request, tier: RateLimitTier, identifier?: str
     return `${tier}:ip:${toHashedKey(ip)}`;
   }
   if (config.scope === "user") {
-    const token = cleanIdentifier || req.headers.get("x-user-id")?.trim() || ip;
+    // Do NOT trust an inbound x-user-id header — it is client-spoofable and would let a caller share
+    // or evade another user's rate-limit bucket. Callers that want per-user limiting must pass an
+    // explicit server-derived identifier; otherwise fall back to the (non-spoofable) client IP.
+    const token = cleanIdentifier || ip;
     return `${tier}:user:${toHashedKey(token)}`;
   }
 
