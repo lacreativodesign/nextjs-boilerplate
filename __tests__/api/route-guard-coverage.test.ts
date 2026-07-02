@@ -13,7 +13,8 @@ import path from "path";
 const API_ROOT = path.join(process.cwd(), "app", "api");
 
 // Approved auth / guard mechanisms (named guards, internal signing, webhook
-// signatures, ingest keys, rate limiting). Matched against raw file text.
+// signatures, ingest keys). Matched against raw file text. Rate limiting and a
+// spoofable x-tenant-id header are NOT authorization and are intentionally excluded.
 const GUARD_PATTERNS = [
   "require[A-Z][A-Za-z]+",
   "getCurrentUser",
@@ -30,7 +31,6 @@ const GUARD_PATTERNS = [
   "getTenantIdForRequest",
   "getTenantIdForRequestOrThrow",
   "authenticateIngest",
-  "checkRateLimit",
   "INTERNAL_REQUEST_SIGNING_SECRET",
   "INTERNAL_USAGE_LOG_KEY",
   "x-internal-secret",
@@ -44,7 +44,6 @@ const GUARD_PATTERNS = [
   "[a-z]+-signature",
   "x-slack-signature",
   "x-api-key",
-  "x-tenant-id",
 ];
 const GUARD_RE = new RegExp(GUARD_PATTERNS.join("|"));
 
