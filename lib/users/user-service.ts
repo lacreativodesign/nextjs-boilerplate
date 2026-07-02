@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import crypto from "crypto";
+import { hashInviteToken } from "@/lib/clientInvites";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { sendEmail } from "@/lib/email/email-service";
@@ -71,7 +72,7 @@ export class UserService {
       invitedBy: params.invitedBy,
       invitedByEmail: params.invitedByEmail,
       status: "pending",
-      token,
+      tokenHash: hashInviteToken(token),
       expiresAt: Timestamp.fromDate(
         new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
       ),
@@ -113,7 +114,7 @@ export class UserService {
   }): Promise<string> {
     const inviteSnapshot = await adminDb
       .collection("user_invitations")
-      .where("token", "==", params.token)
+      .where("tokenHash", "==", hashInviteToken(params.token))
       .where("status", "==", "pending")
       .limit(1)
       .get();
