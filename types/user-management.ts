@@ -33,7 +33,7 @@ export interface UserInvitation {
   invitedBy: string;
   invitedByEmail: string;
   status: InvitationStatus;
-  token: string;
+  tokenHash: string;
   expiresAt: Timestamp;
   acceptedAt?: Timestamp;
   acceptedByUserId?: string;
