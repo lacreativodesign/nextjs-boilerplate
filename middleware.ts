@@ -517,9 +517,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     }
   }
 
-  if (isApiRequest && sessionRole) {
+  if (isApiRequest) {
     const allowedRoles = rolesAllowedForApi(pathname);
-    if (allowedRoles && !allowedRoles.includes(sessionRole)) {
+    // Fail closed: an API path with a defined role allow-list must have a resolved role that is in
+    // the list. If the role could not be resolved (e.g. the subscription-status lookup failed) or is
+    // not allowed, deny rather than letting the request through unchecked.
+    if (allowedRoles && (!sessionRole || !allowedRoles.includes(sessionRole))) {
       return applyRateHeaders(pathname, jsonError(req, 403, "Unauthorized for this API scope.", "FORBIDDEN"), rateContext);
     }
   }
