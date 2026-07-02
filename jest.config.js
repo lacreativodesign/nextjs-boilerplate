@@ -5,8 +5,9 @@ const createJestConfig = nextJest({
 });
 
 const customJestConfig = {
+  setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jsdom',
+  testEnvironment: 'jest-fixed-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -34,4 +35,27 @@ const customJestConfig = {
   },
 };
 
-module.exports = createJestConfig(customJestConfig);
+// next/jest prepends a catch-all `/node_modules/` transformIgnorePattern, which
+// would keep msw v2's ESM-only dependencies untransformed and break the suite.
+// Override the resolved config so those packages are transformed while keeping
+// the CSS-module ignore pattern that next/jest relies on.
+const esmPackages = [
+  'msw',
+  '@mswjs',
+  '@bundled-es-modules',
+  'rettime',
+  'until-async',
+  'headers-polyfill',
+  'strict-event-emitter',
+  'outvariant',
+  '@open-draft',
+];
+
+module.exports = async () => {
+  const config = await createJestConfig(customJestConfig)();
+  config.transformIgnorePatterns = [
+    `/node_modules/(?!(?:${esmPackages.join('|')})/)`,
+    '^.+\\.module\\.(css|sass|scss)$',
+  ];
+  return config;
+};
