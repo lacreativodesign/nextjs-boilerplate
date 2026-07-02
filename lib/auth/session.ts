@@ -92,7 +92,13 @@ export async function createSession(
     { merge: true }
   );
 
-  await enforceSessionLimit(uid, token, db);
+  // Session-limit enforcement is best-effort cleanup and must NEVER block login. The security-
+  // critical part (S8) is the session ledger write (ref.set) above, which stays fail-closed.
+  try {
+    await enforceSessionLimit(uid, token, db);
+  } catch (limitErr) {
+    console.error("createSession: session limit enforcement skipped", limitErr);
+  }
 
   await setCached(sessionCacheKeyFromToken(token), { valid: true, uid, expired: false } satisfies CachedSessionValidation, CACHE_TTL_SECONDS.sessions, [`user:${uid}:sessions`]);
 
@@ -268,15 +274,23 @@ export async function enforceSessionLimit(
   dbOverride?: Firestore
 ): Promise<void> {
   const db = getDb(dbOverride);
+  // Two equality filters only (no orderBy) so this needs NO composite index — a missing
+  // sessions(uid, active, createdAt) index made this throw, which S8 surfaced as a login-blocking
+  // 500. Sort oldest-first in memory instead; a user has only a handful of sessions.
   const query = await db
     .collection("sessions")
     .where("uid", "==", uid)
     .where("active", "==", true)
-    .orderBy("createdAt", "asc")
     .get();
 
   const exceptId = exceptToken ? hashToken(exceptToken) : null;
-  const docs = query.docs.filter((doc) => !exceptId || doc.id !== exceptId);
+  const docs = query.docs
+    .filter((doc) => !exceptId || doc.id !== exceptId)
+    .sort((a, b) => {
+      const at = toDate(a.data()?.createdAt)?.getTime() ?? 0;
+      const bt = toDate(b.data()?.createdAt)?.getTime() ?? 0;
+      return at - bt;
+    });
 
   if (docs.length <= SESSION_CONFIG.maxConcurrentSessions) return;
 
