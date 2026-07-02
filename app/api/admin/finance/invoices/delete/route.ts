@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireAdmin, parseString, serverTimestamp } from "../../_utils";
+import { normalizeInvoiceStatus } from "@/lib/finance/status";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,21 @@ export async function POST(req: Request) {
     const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
     if (!isSuperAdmin && String(data.tenantId || "") !== String(auth.user.tenantId || "")) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    }
+
+    // Financial immutability: an invoice that has received money must never be deleted (which would
+    // erase revenue from reports). Paid / partially-paid invoices can only be voided (with a credit
+    // note), preserving the audit record. Draft / issued / void invoices remain deletable.
+    const status = normalizeInvoiceStatus(data.status);
+    if (status === "paid" || status === "partially_paid") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Paid or partially paid invoices cannot be deleted. Void the invoice and issue a credit note instead.",
+        },
+        { status: 409 },
+      );
     }
 
     await adminDb.collection("invoices").doc(id).set(
