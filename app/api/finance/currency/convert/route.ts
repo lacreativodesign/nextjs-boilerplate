@@ -3,12 +3,20 @@ import { convertCurrency } from "@/lib/finance/exchangeRates";
 import { CurrencyCode, getCurrency } from "@/lib/finance/currencies";
 import { AppError, resolveErrorResponse } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security";
+import { getCurrentUser } from "../../../admin/_utils";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
     await checkRateLimit(req, "standard");
+
+    // Require an authenticated user — this endpoint hits the external exchange-rate API and must not
+    // be callable anonymously. Any logged-in user may convert currency; no tenant data is touched.
+    const me = await getCurrentUser();
+    if (!me) {
+      throw new AppError({ message: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
+    }
 
     const body = await req.json();
     const amountRaw = body?.amount;
