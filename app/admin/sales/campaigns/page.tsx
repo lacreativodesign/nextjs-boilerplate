@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatUsd } from "@/components/finance/financeUtils";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatUsd } from '@/components/finance/financeUtils';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 const toPercent = (value: number) => `${Number(value || 0).toFixed(1)}%`;
 
@@ -23,21 +23,21 @@ export default function SalesCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
 
   const loadCampaigns = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetch("/api/admin/sales/campaigns/list", { cache: "no-store" });
+      const res = await fetch('/api/admin/sales/campaigns/list', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load campaigns.");
+        throw new Error(data?.error || 'Unable to load campaigns.');
       }
       setCampaigns(data.campaigns || []);
     } catch (err) {
-      console.error("Campaigns load error", err);
-      setError({ title: "Unable to load campaigns", message: "Please try again in a moment." });
+      console.error('Campaigns load error', err);
+      setError({ title: 'Unable to load campaigns', message: 'Please try again in a moment.' });
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function SalesCampaignsPage() {
 
   const filteredCampaigns = useMemo(
     () => smartMatch(campaigns, query, (item) => [item.name, item.channel]),
-    [campaigns, query]
+    [campaigns, query],
   );
 
   return (
@@ -60,9 +60,9 @@ export default function SalesCampaignsPage() {
           style={{
             borderRadius: 14,
             padding: 16,
-            border: "1px solid rgba(239,68,68,0.35)",
-            background: "var(--danger-soft)",
-            color: "var(--danger)",
+            border: '1px solid rgba(239,68,68,0.35)',
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -75,7 +75,7 @@ export default function SalesCampaignsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 style={{ fontSize: 20, fontWeight: 700 }}>Sources & Campaigns</h3>
-          <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
             Attribution snapshot for lead sources and marketing performance.
           </p>
         </div>
@@ -89,40 +89,56 @@ export default function SalesCampaignsPage() {
       </div>
 
       <div className="table-shell">
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 920 }}>
             <thead>
-              <tr style={{ background: "var(--surface-muted)" }}>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Source / Campaign</th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Channel</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Leads Count</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Deals Count</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Revenue (USD)</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Conversion %</th>
+              <tr style={{ background: 'var(--surface-muted)' }}>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
+                  Source / Campaign
+                </th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
+                  Channel
+                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Leads Count
+                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Deals Count
+                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Revenue (USD)
+                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Conversion %
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
+                  <td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>
                     Loading campaigns...
                   </td>
                 </tr>
               ) : filteredCampaigns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
+                  <td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>
                     No campaigns found.
                   </td>
                 </tr>
               ) : (
                 filteredCampaigns.map((item) => (
-                  <tr key={item.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "14px 16px", fontWeight: 600 }}>{item.name}</td>
-                    <td style={{ padding: "14px 16px" }}>{item.channel || "-"}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{item.leadsCount}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{item.dealsCount}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatUsd(item.revenueUsd)}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{toPercent(item.conversionRate)}</td>
+                  <tr key={item.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ padding: '14px 16px' }}>{item.channel || '-'}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{item.leadsCount}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{item.dealsCount}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      {formatUsd(item.revenueUsd)}
+                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      {toPercent(item.conversionRate)}
+                    </td>
                   </tr>
                 ))
               )}

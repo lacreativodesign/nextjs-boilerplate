@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { getSessionUser, isClientRole } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { getSessionUser, isClientRole } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type SegmentDoc = {
   type: string;
@@ -14,11 +14,16 @@ type SegmentDoc = {
 
 export async function GET() {
   const me = await getSessionUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  if (!isClientRole(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!isClientRole(me.role))
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
 
   try {
-    const snap = await db.collection("clientSegments").where("tenantId", "==", me.tenantId).where("isActive", "==", true).get();
+    const snap = await db
+      .collection('clientSegments')
+      .where('tenantId', '==', me.tenantId)
+      .where('isActive', '==', true)
+      .get();
     const segments = snap.docs
       .map((doc) => {
         const data = (doc.data() || {}) as SegmentDoc;
@@ -34,6 +39,9 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, segments });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to load segments" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Failed to load segments' },
+      { status: 500 },
+    );
   }
 }

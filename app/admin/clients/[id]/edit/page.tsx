@@ -1,74 +1,74 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import type { SegmentDefinition } from "@/lib/segments";
-import { toastSuccess } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { SegmentDefinition } from '@/lib/segments';
+import { toastSuccess } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
 
 type SalesStage =
-  | "New Lead"
-  | "Contacted"
-  | "Qualified"
-  | "Proposal Sent"
-  | "Negotiation"
-  | "Closed Won"
-  | "Closed Lost";
+  | 'New Lead'
+  | 'Contacted'
+  | 'Qualified'
+  | 'Proposal Sent'
+  | 'Negotiation'
+  | 'Closed Won'
+  | 'Closed Lost';
 
-type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
+type PaymentStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Refunded';
 
-type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
+type RetainerStatus = 'None' | 'Active' | 'Paused' | 'Cancelled';
 
 export default function EditClientPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const id = params?.id ? String(params.id) : "";
+  const id = params?.id ? String(params.id) : '';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [companyName, setCompanyName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [businessType, setBusinessType] = useState("");
-  const [country, setCountry] = useState("");
-  const [city, setCity] = useState("");
-  const [timezone, setTimezone] = useState("");
-  const [employeeCountRange, setEmployeeCountRange] = useState("");
-  const [yearsInBusinessRange, setYearsInBusinessRange] = useState("");
+  const [companyName, setCompanyName] = useState('');
+  const [website, setWebsite] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [employeeCountRange, setEmployeeCountRange] = useState('');
+  const [yearsInBusinessRange, setYearsInBusinessRange] = useState('');
   const [segmentServices, setSegmentServices] = useState<string[]>([]);
-  const [segmentIndustry, setSegmentIndustry] = useState("");
-  const [segmentBusinessType, setSegmentBusinessType] = useState("");
-  const [segmentGeo, setSegmentGeo] = useState("");
+  const [segmentIndustry, setSegmentIndustry] = useState('');
+  const [segmentBusinessType, setSegmentBusinessType] = useState('');
+  const [segmentGeo, setSegmentGeo] = useState('');
 
   const [segments, setSegments] = useState<SegmentDefinition[]>([]);
 
-  const [primaryContactName, setPrimaryContactName] = useState("");
-  const [primaryContactTitle, setPrimaryContactTitle] = useState("");
-  const [primaryContactEmail, setPrimaryContactEmail] = useState("");
-  const [primaryContactPhone, setPrimaryContactPhone] = useState("");
-  const [initialEmail, setInitialEmail] = useState("");
+  const [primaryContactName, setPrimaryContactName] = useState('');
+  const [primaryContactTitle, setPrimaryContactTitle] = useState('');
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
+  const [primaryContactPhone, setPrimaryContactPhone] = useState('');
+  const [initialEmail, setInitialEmail] = useState('');
 
-  const [salesOwner, setSalesOwner] = useState("");
-  const [accountManager, setAccountManager] = useState("");
-  const [productionOwner, setProductionOwner] = useState("");
+  const [salesOwner, setSalesOwner] = useState('');
+  const [accountManager, setAccountManager] = useState('');
+  const [productionOwner, setProductionOwner] = useState('');
 
-  const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
-  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
+  const [salesStage, setSalesStage] = useState<SalesStage>('New Lead');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('Unpaid');
+  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>('None');
 
   // ✅ keep value as string so we can avoid number spinner UI entirely
-  const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
+  const [totalPaidUsd, setTotalPaidUsd] = useState<string>('0');
 
   useEffect(() => {
     let alive = true;
 
     async function loadSegments() {
       try {
-        const res = await apiFetch("/api/admin/clients/segments/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/clients/segments/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -104,98 +104,89 @@ export default function EditClientPage() {
     return map;
   }, [segments]);
 
-  const employeeRanges = [
-    "1-5",
-    "6-10",
-    "11-25",
-    "26-50",
-    "51-100",
-    "101-250",
-    "251-500",
-    "500+",
-  ];
+  const employeeRanges = ['1-5', '6-10', '11-25', '26-50', '51-100', '101-250', '251-500', '500+'];
 
-  const yearsRanges = ["<1", "1-3", "4-7", "8-12", "13-20", "20+"];
+  const yearsRanges = ['<1', '1-3', '4-7', '8-12', '13-20', '20+'];
 
   const styles = useMemo(() => {
     const pageTitle: React.CSSProperties = {
       fontSize: 34,
       fontWeight: 900,
       marginBottom: 8,
-      color: "var(--text-primary)",
+      color: 'var(--text-primary)',
     };
 
     const pageSub: React.CSSProperties = {
       marginBottom: 18,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
       fontSize: 14,
       lineHeight: 1.5,
     };
 
     // full-width like Create User (NOT centered)
     const fullWidthWrap: React.CSSProperties = {
-      width: "100%",
-      maxWidth: "none",
+      width: '100%',
+      maxWidth: 'none',
     };
 
     // KEY-ACCOUNTS master shell
     const formShell: React.CSSProperties = {
       borderRadius: 20,
       padding: 18,
-      border: "1px solid var(--border-subtle)",
-      background: "var(--surface-card)",
-      boxShadow: "var(--shadow-md)",
+      border: '1px solid var(--border-subtle)',
+      background: 'var(--surface-card)',
+      boxShadow: 'var(--shadow-md)',
     };
 
     // inner section surfaces MUST be grey in dark mode (not blue)
     const sectionCard: React.CSSProperties = {
       borderRadius: 16,
       padding: 14,
-      border: "1px solid var(--border-subtle)",
-      background: "var(--surface-muted)",
+      border: '1px solid var(--border-subtle)',
+      background: 'var(--surface-muted)',
     };
 
     const sectionTitle: React.CSSProperties = {
       fontSize: 12,
       fontWeight: 900,
-      letterSpacing: "0.06em",
-      textTransform: "uppercase",
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
       opacity: 0.72,
       marginBottom: 10,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const label: React.CSSProperties = {
       fontSize: 11,
-      letterSpacing: "0.06em",
-      textTransform: "uppercase",
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
       fontWeight: 900,
       marginBottom: 6,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const help: React.CSSProperties = {
       fontSize: 12,
       marginTop: 6,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const actions: React.CSSProperties = {
-      display: "flex",
-      justifyContent: "flex-end",
+      display: 'flex',
+      justifyContent: 'flex-end',
       gap: 10,
       marginTop: 14,
     };
 
     const errorText: React.CSSProperties = {
       fontSize: 14,
-      color: "#FCA5A5",
+      color: '#FCA5A5',
       marginBottom: 12,
     };
 
     const okText: React.CSSProperties = {
       fontSize: 14,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
       marginBottom: 12,
     };
 
@@ -215,7 +206,7 @@ export default function EditClientPage() {
   }, []);
 
   function toMoneyNumber(v: string) {
-    const cleaned = (v || "").replace(/[^0-9.]/g, "");
+    const cleaned = (v || '').replace(/[^0-9.]/g, '');
     const n = Number(cleaned || 0);
     if (!Number.isFinite(n)) return 0;
     return n;
@@ -230,49 +221,49 @@ export default function EditClientPage() {
       setError(null);
       try {
         const res = await apiFetch(`/api/admin/clients/get?id=${encodeURIComponent(id)}`, {
-          method: "GET",
-          cache: "no-store",
+          method: 'GET',
+          cache: 'no-store',
         });
 
         const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to load client");
+        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to load client');
 
         if (!alive) return;
         const c = json.client || {};
 
-        setCompanyName(String(c.companyName || ""));
-        setWebsite(String(c.website || ""));
-        setIndustry(String(c.industry || ""));
-        setBusinessType(String(c.businessType || ""));
-        setCountry(String(c.country || ""));
-        setCity(String(c.city || ""));
-        setTimezone(String(c.timezone || ""));
-        setEmployeeCountRange(String(c.employeeCountRange || ""));
-        setYearsInBusinessRange(String(c.yearsInBusinessRange || ""));
+        setCompanyName(String(c.companyName || ''));
+        setWebsite(String(c.website || ''));
+        setIndustry(String(c.industry || ''));
+        setBusinessType(String(c.businessType || ''));
+        setCountry(String(c.country || ''));
+        setCity(String(c.city || ''));
+        setTimezone(String(c.timezone || ''));
+        setEmployeeCountRange(String(c.employeeCountRange || ''));
+        setYearsInBusinessRange(String(c.yearsInBusinessRange || ''));
         setSegmentServices(Array.isArray(c.segmentServices) ? c.segmentServices : []);
-        setSegmentIndustry(String(c.segmentIndustry || ""));
-        setSegmentBusinessType(String(c.segmentBusinessType || ""));
-        setSegmentGeo(String(c.segmentGeo || ""));
+        setSegmentIndustry(String(c.segmentIndustry || ''));
+        setSegmentBusinessType(String(c.segmentBusinessType || ''));
+        setSegmentGeo(String(c.segmentGeo || ''));
 
-        setPrimaryContactName(String(c.primaryContactName || ""));
-        setPrimaryContactTitle(String(c.primaryContactTitle || ""));
-        const email = String(c.primaryContactEmail || "");
+        setPrimaryContactName(String(c.primaryContactName || ''));
+        setPrimaryContactTitle(String(c.primaryContactTitle || ''));
+        const email = String(c.primaryContactEmail || '');
         setPrimaryContactEmail(email);
         setInitialEmail(email);
-        setPrimaryContactPhone(String(c.primaryContactPhone || ""));
+        setPrimaryContactPhone(String(c.primaryContactPhone || ''));
 
-        setSalesOwner(String(c.salesOwner || ""));
-        setAccountManager(String(c.accountManager || ""));
-        setProductionOwner(String(c.productionOwner || ""));
+        setSalesOwner(String(c.salesOwner || ''));
+        setAccountManager(String(c.accountManager || ''));
+        setProductionOwner(String(c.productionOwner || ''));
 
-        setSalesStage((c.salesStage as SalesStage) || "New Lead");
-        setPaymentStatus((c.paymentStatus as PaymentStatus) || "Unpaid");
-        setRetainerStatus((c.retainerStatus as RetainerStatus) || "None");
+        setSalesStage((c.salesStage as SalesStage) || 'New Lead');
+        setPaymentStatus((c.paymentStatus as PaymentStatus) || 'Unpaid');
+        setRetainerStatus((c.retainerStatus as RetainerStatus) || 'None');
 
         setTotalPaidUsd(String(Number(c.totalPaidUsd ?? 0)));
       } catch (e: unknown) {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : "Failed to load client");
+        setError(e instanceof Error ? e.message : 'Failed to load client');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -288,12 +279,12 @@ export default function EditClientPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!id) return setError("Missing client id");
-    if (!companyName.trim()) return setError("Company name is required.");
-    if (!primaryContactName.trim()) return setError("Primary contact name is required.");
+    if (!id) return setError('Missing client id');
+    if (!companyName.trim()) return setError('Company name is required.');
+    if (!primaryContactName.trim()) return setError('Primary contact name is required.');
 
     const emailToSend = (primaryContactEmail || initialEmail).trim();
-    if (!emailToSend) return setError("Primary contact email is required.");
+    if (!emailToSend) return setError('Primary contact email is required.');
 
     setSaving(true);
     try {
@@ -302,7 +293,8 @@ export default function EditClientPage() {
         companyName: companyName.trim(),
         website: website.trim() || undefined,
         industry: (segmentLookup[segmentIndustry]?.name || industry).trim() || undefined,
-        businessType: (segmentLookup[segmentBusinessType]?.name || businessType).trim() || undefined,
+        businessType:
+          (segmentLookup[segmentBusinessType]?.name || businessType).trim() || undefined,
         country: country.trim() || undefined,
         city: city.trim() || undefined,
         timezone: timezone.trim() || undefined,
@@ -329,37 +321,42 @@ export default function EditClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      const res = await apiFetch("/api/admin/clients/update", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const res = await apiFetch('/api/admin/clients/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Failed to update client");
+        throw new Error(json?.error || 'Failed to update client');
       }
 
-      toastSuccess("Saved successfully.");
-      setTimeout(() => router.push("/admin/clients"), 800);
+      toastSuccess('Saved successfully.');
+      setTimeout(() => router.push('/admin/clients'), 800);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update client");
+      setError(err instanceof Error ? err.message : 'Failed to update client');
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <div style={{ color: "var(--text-muted)" }}>Loading...</div>;
+    return <div style={{ color: 'var(--text-muted)' }}>Loading...</div>;
   }
 
   return (
     <div style={styles.fullWidthWrap}>
-      <Link href="/admin/crm" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+      <Link
+        href="/admin/crm"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block"
+      >
         ← Back to CRM
       </Link>
       <h1 style={styles.pageTitle}>Edit Client</h1>
-      <div style={styles.pageSub}>Update client details and keep pipeline, payments and ownership aligned.</div>
+      <div style={styles.pageSub}>
+        Update client details and keep pipeline, payments and ownership aligned.
+      </div>
 
       <div style={styles.formShell}>
         {error ? <div style={styles.errorText}>{error}</div> : null}
@@ -371,19 +368,31 @@ export default function EditClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Company Name <span style={{ color: "#EF4444" }}>*</span>
+                  Company Name <span style={{ color: '#EF4444' }}>*</span>
                 </div>
-                <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                <input
+                  className="input"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
               </div>
 
               <div>
                 <div style={styles.label}>Website</div>
-                <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                <input
+                  className="input"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
               </div>
 
               <div>
                 <div style={styles.label}>Country</div>
-                <input className="input" value={country} onChange={(e) => setCountry(e.target.value)} />
+                <input
+                  className="input"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                />
               </div>
 
               <div>
@@ -397,7 +406,11 @@ export default function EditClientPage() {
             <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Timezone</div>
-                <select className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                <select
+                  className="input"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                >
                   <option value="">Select timezone (optional)</option>
                   <option value="UTC">UTC</option>
                   <option value="America/New_York">America/New_York</option>
@@ -419,7 +432,9 @@ export default function EditClientPage() {
                   <option value="Australia/Sydney">Australia/Sydney</option>
                   <option value="Pacific/Auckland">Pacific/Auckland</option>
                 </select>
-                <div style={styles.help}>Keep it short. Don’t stretch the field across the whole page.</div>
+                <div style={styles.help}>
+                  Keep it short. Don’t stretch the field across the whole page.
+                </div>
               </div>
 
               <div>
@@ -453,7 +468,7 @@ export default function EditClientPage() {
                   onChange={(e) => {
                     const slug = e.target.value;
                     setSegmentIndustry(slug);
-                    setIndustry(segmentLookup[slug]?.name || "");
+                    setIndustry(segmentLookup[slug]?.name || '');
                   }}
                 >
                   <option value="">Select Industry</option>
@@ -473,7 +488,7 @@ export default function EditClientPage() {
                   onChange={(e) => {
                     const slug = e.target.value;
                     setSegmentBusinessType(slug);
-                    setBusinessType(segmentLookup[slug]?.name || "");
+                    setBusinessType(segmentLookup[slug]?.name || '');
                   }}
                 >
                   <option value="">Select Business Type</option>
@@ -542,20 +557,20 @@ export default function EditClientPage() {
 
             <div>
               <div style={styles.label}>Services</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {(segmentsByType.service || []).map((segment) => {
                   const checked = segmentServices.includes(segment.slug);
                   return (
                     <label
                       key={segment.id}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 6,
-                        padding: "6px 10px",
+                        padding: '6px 10px',
                         borderRadius: 999,
-                        border: "1px solid rgba(148,163,184,0.35)",
-                        background: checked ? "rgba(59,130,246,0.08)" : "transparent",
+                        border: '1px solid rgba(148,163,184,0.35)',
+                        background: checked ? 'rgba(59,130,246,0.08)' : 'transparent',
                         fontSize: 12,
                       }}
                     >
@@ -566,7 +581,7 @@ export default function EditClientPage() {
                           setSegmentServices((prev) =>
                             prev.includes(segment.slug)
                               ? prev.filter((slug) => slug !== segment.slug)
-                              : [...prev, segment.slug]
+                              : [...prev, segment.slug],
                           );
                         }}
                       />
@@ -587,7 +602,7 @@ export default function EditClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Contact Name <span style={{ color: "#EF4444" }}>*</span>
+                  Contact Name <span style={{ color: '#EF4444' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -607,7 +622,7 @@ export default function EditClientPage() {
 
               <div>
                 <div style={styles.label}>
-                  Contact Email <span style={{ color: "#EF4444" }}>*</span>
+                  Contact Email <span style={{ color: '#EF4444' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -636,7 +651,11 @@ export default function EditClientPage() {
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Sales Owner</div>
-                <input className="input" value={salesOwner} onChange={(e) => setSalesOwner(e.target.value)} />
+                <input
+                  className="input"
+                  value={salesOwner}
+                  onChange={(e) => setSalesOwner(e.target.value)}
+                />
               </div>
 
               <div>
@@ -668,7 +687,11 @@ export default function EditClientPage() {
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Sales Stage</div>
-                <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
+                <select
+                  className="input"
+                  value={salesStage}
+                  onChange={(e) => setSalesStage(e.target.value as SalesStage)}
+                >
                   <option value="New Lead">New Lead</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Qualified">Qualified</option>
@@ -711,7 +734,7 @@ export default function EditClientPage() {
 
           <div style={styles.actions}>
             <button className="btn" type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

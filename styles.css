@@ -2,7 +2,7 @@
 
 :root {
   /* Backgrounds */
-  --bg: #020617;                /* overall app background */
+  --bg: #020617; /* overall app background */
   --bg-elevated: #020617;
   --card-bg: #020617;
   --card-bg-alt: #020617;
@@ -39,7 +39,7 @@
 }
 
 /* LIGHT THEME OVERRIDES */
-[data-theme="light"] {
+[data-theme='light'] {
   --bg: #f3f4f6;
   --bg-elevated: #ffffff;
   --card-bg: #ffffff;
@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: center;
   padding: 48px 20px;
-  font-family: "Inter", sans-serif;
+  font-family: 'Inter', sans-serif;
   background: var(--login-bg);
   color: var(--login-title);
 }
@@ -154,10 +154,12 @@
   background: rgba(127, 29, 29, 0.22);
   opacity: 0;
   transform: translateY(-6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
-[data-theme="light"] .login-error {
+[data-theme='light'] .login-error {
   color: #b91c1c;
   background: rgba(248, 113, 113, 0.12);
 }
@@ -206,14 +208,17 @@
   font-size: 14px;
   font-weight: 400;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .login-input::placeholder {
   color: rgba(148, 163, 184, 0.8);
 }
 
-[data-theme="light"] .login-input::placeholder {
+[data-theme='light'] .login-input::placeholder {
   color: rgba(100, 116, 139, 0.8);
 }
 
@@ -246,7 +251,10 @@
   cursor: pointer;
   padding: 6px 8px;
   border-radius: 999px;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .login-toggle:hover {
@@ -255,7 +263,7 @@
   background: rgba(15, 23, 42, 0.2);
 }
 
-[data-theme="light"] .login-toggle:hover {
+[data-theme='light'] .login-toggle:hover {
   background: rgba(148, 163, 184, 0.2);
 }
 
@@ -294,7 +302,10 @@
   color: #f8fafc;
   background: var(--login-accent);
   box-shadow: 0 10px 18px rgba(37, 99, 235, 0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .login-submit:hover {
@@ -349,7 +360,10 @@
   font-weight: 600;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .btn-primary {
@@ -380,7 +394,9 @@
 }
 
 .kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .kpi-card:hover {

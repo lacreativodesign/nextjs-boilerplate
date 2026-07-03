@@ -1,15 +1,15 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification } from "@/lib/notifications";
-import { getCurrentUser, isAdminRole } from "../_utils";
-import { isPlanAccessError, requireModule } from "../../../lib/plan-enforcement";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createNotification } from '@/lib/notifications';
+import { getCurrentUser, isAdminRole } from '../_utils';
+import { isPlanAccessError, requireModule } from '../../../lib/plan-enforcement';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -19,7 +19,7 @@ export function parseNumber(value: any, fallback = 0) {
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: any, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
@@ -35,18 +35,18 @@ export function arrayUnion(value: unknown) {
 export async function requireAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isAdminRole(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   try {
-    await requireModule(me.tenantId, "sales", { role: me.role });
+    await requireModule(me.tenantId, 'sales', { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };
     }
-    return { ok: false as const, status: 500, error: "Unable to validate plan access." };
+    return { ok: false as const, status: 500, error: 'Unable to validate plan access.' };
   }
   return { ok: true as const, user: me };
 }
@@ -72,7 +72,7 @@ export async function createSalesEvent({
   metadata?: Record<string, unknown>;
   tenantId?: string | null;
 }) {
-  await adminDb.collection("events").add({
+  await adminDb.collection('events').add({
     type,
     title,
     description,
@@ -105,8 +105,8 @@ export async function queueSalesNotification({
     toUserId: userId,
     title,
     body,
-    type: "info",
-    entityType: "client",
+    type: 'info',
+    entityType: 'client',
     createdBy: null,
     tenantId: tenantId || null,
     metadata: metadata || null,
@@ -128,13 +128,13 @@ export async function queueSalesEmail({
   metadata?: Record<string, unknown>;
   tenantId?: string | null;
 }) {
-  await adminDb.collection("emails").add({
+  await adminDb.collection('emails').add({
     to,
     template,
     subject,
     data: data || {},
     metadata: metadata || {},
-    status: "pending",
+    status: 'pending',
     tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

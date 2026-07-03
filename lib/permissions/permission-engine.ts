@@ -1,5 +1,11 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import { CACHE_TTL_SECONDS, cacheKeys, deleteCached, getCached, setCached } from "@/lib/cache/redis-client";
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  CACHE_TTL_SECONDS,
+  cacheKeys,
+  deleteCached,
+  getCached,
+  setCached,
+} from '@/lib/cache/redis-client';
 import type {
   FieldAccess,
   PermissionAction,
@@ -9,14 +15,16 @@ import type {
   RoleAssignmentDocument,
   RoleDocument,
   UserPermissionSnapshot,
-} from "@/lib/permissions/types";
+} from '@/lib/permissions/types';
 
 const MEMORY_CACHE_TTL_SECONDS = CACHE_TTL_SECONDS.userPermissions;
 const memoryCache = new Map<string, { expiresAt: number; value: UserPermissionSnapshot }>();
 const FIELD_ACCESS_WEIGHT: Record<FieldAccess, number> = { hidden: 0, read: 1, write: 2 };
 
 function normalizeString(value: string | null | undefined) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function matchesScope(permission: PermissionSet, module: string, entity: string) {
@@ -25,8 +33,8 @@ function matchesScope(permission: PermissionSet, module: string, entity: string)
   const inputModule = normalizeString(module);
   const inputEntity = normalizeString(entity);
 
-  const moduleMatch = permissionModule === inputModule || permissionModule === "*";
-  const entityMatch = permissionEntity === inputEntity || permissionEntity === "*";
+  const moduleMatch = permissionModule === inputModule || permissionModule === '*';
+  const entityMatch = permissionEntity === inputEntity || permissionEntity === '*';
 
   return moduleMatch && entityMatch;
 }
@@ -41,21 +49,29 @@ function mergePermissionSets(permissionSets: PermissionSet[]) {
       mergedByScope.set(scopeKey, {
         module: normalizeString(set.module),
         entity: normalizeString(set.entity),
-        actions: [...new Set(set.actions.map((action) => normalizeString(action) as PermissionAction))],
+        actions: [
+          ...new Set(set.actions.map((action) => normalizeString(action) as PermissionAction)),
+        ],
         ownOnly: !!set.ownOnly,
         fields: set.fields ? { ...set.fields } : undefined,
       });
       continue;
     }
 
-    existing.actions = [...new Set([...existing.actions, ...set.actions.map((action) => normalizeString(action) as PermissionAction)])];
+    existing.actions = [
+      ...new Set([
+        ...existing.actions,
+        ...set.actions.map((action) => normalizeString(action) as PermissionAction),
+      ]),
+    ];
     existing.ownOnly = !!existing.ownOnly || !!set.ownOnly;
 
     if (set.fields) {
       existing.fields = existing.fields || {};
       for (const [field, level] of Object.entries(set.fields)) {
-        const current = existing.fields[field] || "hidden";
-        existing.fields[field] = FIELD_ACCESS_WEIGHT[level] >= FIELD_ACCESS_WEIGHT[current] ? level : current;
+        const current = existing.fields[field] || 'hidden';
+        existing.fields[field] =
+          FIELD_ACCESS_WEIGHT[level] >= FIELD_ACCESS_WEIGHT[current] ? level : current;
       }
     }
   }
@@ -65,21 +81,23 @@ function mergePermissionSets(permissionSets: PermissionSet[]) {
 
 async function fetchAssignedRoles(tenantId: string, userId: string): Promise<RoleDocument[]> {
   const assignmentsSnap = await adminDb
-    .collection("permission_role_assignments")
-    .where("tenantId", "==", tenantId)
-    .where("userId", "==", userId)
+    .collection('permission_role_assignments')
+    .where('tenantId', '==', tenantId)
+    .where('userId', '==', userId)
     .get();
 
   const assignments = assignmentsSnap.docs.map((doc) => doc.data() as RoleAssignmentDocument);
   if (!assignments.length) return [];
 
-  const roleDocPromises = assignments.map((assignment) => adminDb.collection("permission_roles").doc(assignment.roleId).get());
+  const roleDocPromises = assignments.map((assignment) =>
+    adminDb.collection('permission_roles').doc(assignment.roleId).get(),
+  );
   const roleDocs = await Promise.all(roleDocPromises);
 
   return roleDocs
     .filter((doc) => doc.exists)
     .map((doc) => {
-      const data = doc.data() as Omit<RoleDocument, "id">;
+      const data = doc.data() as Omit<RoleDocument, 'id'>;
       return {
         id: doc.id,
         ...data,
@@ -98,9 +116,12 @@ async function resolveRoleHierarchy(tenantId: string, startingRoles: RoleDocumen
     resolved.set(current.id, current);
 
     if (current.parentRoleId) {
-      const parentDoc = await adminDb.collection("permission_roles").doc(current.parentRoleId).get();
+      const parentDoc = await adminDb
+        .collection('permission_roles')
+        .doc(current.parentRoleId)
+        .get();
       if (parentDoc.exists) {
-        const data = parentDoc.data() as Omit<RoleDocument, "id">;
+        const data = parentDoc.data() as Omit<RoleDocument, 'id'>;
         if (data.tenantId === tenantId) {
           queue.push({ id: parentDoc.id, ...data });
         }
@@ -118,7 +139,10 @@ export async function invalidateUserPermissionCache(tenantId: string, userId: st
   await deleteCached(key);
 }
 
-export async function buildUserPermissionSnapshot(tenantId: string, userId: string): Promise<UserPermissionSnapshot> {
+export async function buildUserPermissionSnapshot(
+  tenantId: string,
+  userId: string,
+): Promise<UserPermissionSnapshot> {
   const key = cacheKeys.userPermissions(tenantId, userId);
   const memoryEntry = memoryCache.get(key);
   if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
@@ -127,7 +151,10 @@ export async function buildUserPermissionSnapshot(tenantId: string, userId: stri
 
   const redisEntry = await getCached<UserPermissionSnapshot>(key);
   if (redisEntry) {
-    memoryCache.set(key, { expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000, value: redisEntry });
+    memoryCache.set(key, {
+      expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000,
+      value: redisEntry,
+    });
     return redisEntry;
   }
 
@@ -148,43 +175,65 @@ export async function buildUserPermissionSnapshot(tenantId: string, userId: stri
     permissions: mergedPermissions,
   };
 
-  memoryCache.set(key, { expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000, value: snapshot });
-  await setCached(key, snapshot, CACHE_TTL_SECONDS.userPermissions, [`tenant:${tenantId}:permissions`, `user:${userId}:permissions`]);
+  memoryCache.set(key, {
+    expiresAt: Date.now() + MEMORY_CACHE_TTL_SECONDS * 1000,
+    value: snapshot,
+  });
+  await setCached(key, snapshot, CACHE_TTL_SECONDS.userPermissions, [
+    `tenant:${tenantId}:permissions`,
+    `user:${userId}:permissions`,
+  ]);
 
   return snapshot;
 }
 
 function evaluateFieldAccess(permission: PermissionSet, field?: string): FieldAccess {
-  if (!field) return "write";
-  if (!permission.fields || !(field in permission.fields)) return "write";
-  return permission.fields[field] || "hidden";
+  if (!field) return 'write';
+  if (!permission.fields || !(field in permission.fields)) return 'write';
+  return permission.fields[field] || 'hidden';
 }
 
 export async function checkPermission(input: PermissionCheckInput): Promise<PermissionCheckResult> {
   const snapshot = await buildUserPermissionSnapshot(input.tenantId, input.userId);
 
-  const candidatePermissions = snapshot.permissions.filter((permission) => matchesScope(permission, input.module, input.entity));
+  const candidatePermissions = snapshot.permissions.filter((permission) =>
+    matchesScope(permission, input.module, input.entity),
+  );
   if (!candidatePermissions.length) {
-    return { allowed: false, fieldAccess: "hidden", reason: "No permission set found for module/entity." };
+    return {
+      allowed: false,
+      fieldAccess: 'hidden',
+      reason: 'No permission set found for module/entity.',
+    };
   }
 
-  const allowedByAction = candidatePermissions.filter((permission) => permission.actions.includes(input.action));
+  const allowedByAction = candidatePermissions.filter((permission) =>
+    permission.actions.includes(input.action),
+  );
   if (!allowedByAction.length) {
-    return { allowed: false, fieldAccess: "hidden", reason: `Action ${input.action} is not allowed.` };
+    return {
+      allowed: false,
+      fieldAccess: 'hidden',
+      reason: `Action ${input.action} is not allowed.`,
+    };
   }
 
   const ownershipRestricted = allowedByAction.some((permission) => permission.ownOnly);
   if (ownershipRestricted && input.ownerId && input.ownerId !== input.userId) {
-    return { allowed: false, fieldAccess: "hidden", reason: "Permission is limited to owned records." };
+    return {
+      allowed: false,
+      fieldAccess: 'hidden',
+      reason: 'Permission is limited to owned records.',
+    };
   }
 
   const fieldAccess = allowedByAction.reduce<FieldAccess>((access, permission) => {
     const candidate = evaluateFieldAccess(permission, input.field);
     return FIELD_ACCESS_WEIGHT[candidate] > FIELD_ACCESS_WEIGHT[access] ? candidate : access;
-  }, "hidden");
+  }, 'hidden');
 
-  if (input.field && fieldAccess === "hidden") {
-    return { allowed: false, fieldAccess: "hidden", reason: "Field is hidden by role policy." };
+  if (input.field && fieldAccess === 'hidden') {
+    return { allowed: false, fieldAccess: 'hidden', reason: 'Field is hidden by role policy.' };
   }
 
   return { allowed: true, fieldAccess };
@@ -198,16 +247,16 @@ export async function assignRolesToUser(params: {
 }) {
   const now = Date.now();
   const existingAssignments = await adminDb
-    .collection("permission_role_assignments")
-    .where("tenantId", "==", params.tenantId)
-    .where("userId", "==", params.userId)
+    .collection('permission_role_assignments')
+    .where('tenantId', '==', params.tenantId)
+    .where('userId', '==', params.userId)
     .get();
 
   const batch = adminDb.batch();
   existingAssignments.docs.forEach((doc) => batch.delete(doc.ref));
 
   for (const roleId of params.roleIds) {
-    const ref = adminDb.collection("permission_role_assignments").doc();
+    const ref = adminDb.collection('permission_role_assignments').doc();
     const assignment: RoleAssignmentDocument = {
       id: ref.id,
       tenantId: params.tenantId,

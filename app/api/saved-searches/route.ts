@@ -1,31 +1,40 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
-import type { SearchModule } from "@/types/search";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import type { SearchModule } from '@/types/search';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const createSavedSearchSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  module: z.enum(["invoices", "customers", "products", "users", "audit_logs", "payments", "expenses", "clients"]),
+  module: z.enum([
+    'invoices',
+    'customers',
+    'products',
+    'users',
+    'audit_logs',
+    'payments',
+    'expenses',
+    'clients',
+  ]),
   filters: z.array(
     z.object({
       field: z.string().min(1),
       operator: z.string().min(1),
       value: z.any(),
-    })
+    }),
   ),
   sortBy: z.string().optional(),
-  sortOrder: z.enum(["asc", "desc"]).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
   isShared: z.boolean().default(false),
 });
 
 function isAdminOrOwner(role?: string | null) {
-  const normalized = normalizeRole(role || "");
-  return normalized === "admin" || normalized === "super_admin" || normalized === "owner";
+  const normalized = normalizeRole(role || '');
+  return normalized === 'admin' || normalized === 'super_admin' || normalized === 'owner';
 }
 
 // GET - List saved searches
@@ -33,26 +42,26 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const savedModule = searchParams.get("module") as SearchModule | null;
+    const savedModule = searchParams.get('module') as SearchModule | null;
 
-    let query = adminDb.collection("saved_searches").where("tenantId", "==", session.tenantId);
+    let query = adminDb.collection('saved_searches').where('tenantId', '==', session.tenantId);
     if (savedModule) {
-      query = query.where("module", "==", savedModule);
+      query = query.where('module', '==', savedModule);
     }
 
-    const userSearchesSnapshot = await query.where("userId", "==", session.uid).get();
+    const userSearchesSnapshot = await query.where('userId', '==', session.uid).get();
 
     let sharedQuery = adminDb
-      .collection("saved_searches")
-      .where("tenantId", "==", session.tenantId)
-      .where("isShared", "==", true);
+      .collection('saved_searches')
+      .where('tenantId', '==', session.tenantId)
+      .where('isShared', '==', true);
 
     if (savedModule) {
-      sharedQuery = sharedQuery.where("module", "==", savedModule);
+      sharedQuery = sharedQuery.where('module', '==', savedModule);
     }
 
     const sharedSearchesSnapshot = await sharedQuery.get();
@@ -62,12 +71,14 @@ export async function GET(request: NextRequest) {
       ...sharedSearchesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
 
-    const uniqueSearches = Array.from(new Map(allSearches.map((entry) => [entry.id, entry])).values());
+    const uniqueSearches = Array.from(
+      new Map(allSearches.map((entry) => [entry.id, entry])).values(),
+    );
 
     return NextResponse.json({ searches: uniqueSearches });
   } catch (error) {
-    console.error("Error fetching saved searches:", error);
-    return NextResponse.json({ error: "Failed to fetch saved searches" }, { status: 500 });
+    console.error('Error fetching saved searches:', error);
+    return NextResponse.json({ error: 'Failed to fetch saved searches' }, { status: 500 });
   }
 }
 
@@ -76,14 +87,17 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const data = createSavedSearchSchema.parse(body);
 
     if (data.isShared && !isAdminOrOwner(session.role)) {
-      return NextResponse.json({ error: "Only admins can create shared searches" }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Only admins can create shared searches' },
+        { status: 403 },
+      );
     }
 
     const savedSearch = {
@@ -95,14 +109,14 @@ export async function POST(request: NextRequest) {
       updatedAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("saved_searches").add(savedSearch);
+    const docRef = await adminDb.collection('saved_searches').add(savedSearch);
 
     return NextResponse.json({
       id: docRef.id,
       ...savedSearch,
     });
   } catch (error) {
-    console.error("Error creating saved search:", error);
-    return NextResponse.json({ error: "Failed to create saved search" }, { status: 500 });
+    console.error('Error creating saved search:', error);
+    return NextResponse.json({ error: 'Failed to create saved search' }, { status: 500 });
   }
 }

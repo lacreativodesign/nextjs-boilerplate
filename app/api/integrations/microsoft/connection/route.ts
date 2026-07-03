@@ -1,15 +1,16 @@
-import admin from "firebase-admin";
-import { NextResponse } from "next/server";
-import { requireAdmin } from "@/app/api/admin/settings/_utils";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getMicrosoftIntegration } from "@/lib/integrations/microsoft-auth";
+import admin from 'firebase-admin';
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/settings/_utils';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getMicrosoftIntegration } from '@/lib/integrations/microsoft-auth';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
     const auth = await requireAdmin();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const integration = await getMicrosoftIntegration(auth.user.tenantId);
     return NextResponse.json({
@@ -28,7 +29,7 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to load Microsoft connection.";
+    const message = error instanceof Error ? error.message : 'Failed to load Microsoft connection.';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
@@ -36,7 +37,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const auth = await requireAdmin();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const body = (await request.json().catch(() => ({}))) as {
       calendarSyncEnabled?: boolean;
@@ -46,16 +48,22 @@ export async function PUT(request: Request) {
     };
 
     await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(auth.user.tenantId)
-      .collection("integrations")
-      .doc("microsoft365")
+      .collection('integrations')
+      .doc('microsoft365')
       .set(
         {
-          calendarSyncEnabled: body.calendarSyncEnabled !== undefined ? Boolean(body.calendarSyncEnabled) : undefined,
-          outlookEmailEnabled: body.outlookEmailEnabled !== undefined ? Boolean(body.outlookEmailEnabled) : undefined,
+          calendarSyncEnabled:
+            body.calendarSyncEnabled !== undefined ? Boolean(body.calendarSyncEnabled) : undefined,
+          outlookEmailEnabled:
+            body.outlookEmailEnabled !== undefined ? Boolean(body.outlookEmailEnabled) : undefined,
           oneDriveRootFolderId:
-            body.oneDriveRootFolderId !== undefined ? (body.oneDriveRootFolderId ? String(body.oneDriveRootFolderId) : null) : undefined,
+            body.oneDriveRootFolderId !== undefined
+              ? body.oneDriveRootFolderId
+                ? String(body.oneDriveRootFolderId)
+                : null
+              : undefined,
           oneDriveRootFolderName:
             body.oneDriveRootFolderName !== undefined
               ? body.oneDriveRootFolderName
@@ -65,12 +73,13 @@ export async function PUT(request: Request) {
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedBy: auth.user.uid,
         },
-        { merge: true }
+        { merge: true },
       );
 
     return NextResponse.json({ ok: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to update Microsoft connection.";
+    const message =
+      error instanceof Error ? error.message : 'Failed to update Microsoft connection.';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

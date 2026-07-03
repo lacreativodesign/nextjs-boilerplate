@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { OptimizedImage } from "@/components/OptimizedImage";
-import { useState } from "react";
-import type { Document } from "@/types/documents";
-import { apiFetch } from "@/lib/api/client";
+import { OptimizedImage } from '@/components/OptimizedImage';
+import { useState } from 'react';
+import type { Document } from '@/types/documents';
+import { apiFetch } from '@/lib/api/client';
 
 export function DocumentCard({
   document,
@@ -13,7 +13,7 @@ export function DocumentCard({
   onSelect,
 }: {
   document: Document;
-  view: "grid" | "list";
+  view: 'grid' | 'list';
   onDelete?: () => void;
   selected?: boolean;
   onSelect?: (id: string, next: boolean) => void;
@@ -26,10 +26,10 @@ export function DocumentCard({
       const response = await apiFetch(`/api/documents/${document.id}/download`);
       const data = await response.json();
       if (response.ok && data.downloadUrl) {
-        window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+        window.open(data.downloadUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      console.error("Download error", error);
+      console.error('Download error', error);
     } finally {
       setLoading(false);
     }
@@ -38,32 +38,30 @@ export function DocumentCard({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const response = await apiFetch("/api/documents/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/documents/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentIds: [document.id] }),
       });
       if (response.ok) {
         onDelete?.();
       }
     } catch (error) {
-      console.error("Delete error", error);
+      console.error('Delete error', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const isImage = document.mimeType.startsWith("image/");
-  const isPdf = document.mimeType === "application/pdf";
+  const isImage = document.mimeType.startsWith('image/');
+  const isPdf = document.mimeType === 'application/pdf';
   const previewUrl = document.previewUrl || document.storageUrl;
 
   return (
     <div
-      className={`card p-4 ${
-        view === "list" ? "flex items-center justify-between" : "space-y-3"
-      }`}
+      className={`card p-4 ${view === 'list' ? 'flex items-center justify-between' : 'space-y-3'}`}
     >
-      <div className={view === "list" ? "flex items-center gap-3" : "space-y-3"}>
+      <div className={view === 'list' ? 'flex items-center gap-3' : 'space-y-3'}>
         <input
           type="checkbox"
           checked={selected}
@@ -89,9 +87,13 @@ export function DocumentCard({
         </div>
 
         <div>
-          <div className="font-medium text-[var(--text-primary)]">{document.title || document.originalFileName}</div>
+          <div className="font-medium text-[var(--text-primary)]">
+            {document.title || document.originalFileName}
+          </div>
           <div className="text-xs text-[var(--text-muted)]">{document.category}</div>
-          <div className="text-xs text-[var(--text-muted)]">{(document.fileSize / 1024).toFixed(1)} KB</div>
+          <div className="text-xs text-[var(--text-muted)]">
+            {(document.fileSize / 1024).toFixed(1)} KB
+          </div>
         </div>
       </div>
 
@@ -99,7 +101,7 @@ export function DocumentCard({
         {(isImage || isPdf) && previewUrl && (
           <button
             type="button"
-            onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+            onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
             className="px-3 py-1 text-sm rounded bg-gray-100 text-gray-800"
           >
             Preview

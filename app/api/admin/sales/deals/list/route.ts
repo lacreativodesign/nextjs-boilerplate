@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, toISO } from "../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, toISO } from '../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type DealDoc = {
   dealName?: string;
@@ -32,17 +32,17 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 500);
+    const cursor = req.nextUrl.searchParams.get('cursor');
 
     let baseQuery: FirebaseFirestore.Query = adminDb
-      .collection("deals")
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
+      .collection('deals')
+      .where('isDeleted', '==', false)
+      .orderBy('createdAt', 'desc')
       .limit(limit + 1);
 
     if (cursor) {
-      const cursorDoc = await adminDb.collection("deals").doc(cursor).get();
+      const cursorDoc = await adminDb.collection('deals').doc(cursor).get();
       if (cursorDoc.exists && normalizeTenantId(cursorDoc.data()?.tenantId) === tenantId) {
         baseQuery = baseQuery.startAfter(cursorDoc);
       }
@@ -63,10 +63,10 @@ export async function GET(req: NextRequest) {
       const data = (doc.data() || {}) as DealDoc;
       return {
         id: doc.id,
-        dealName: data.dealName || "",
-        clientName: data.clientName || "",
-        leadName: data.leadName || "",
-        stage: data.stage || "New",
+        dealName: data.dealName || '',
+        clientName: data.clientName || '',
+        leadName: data.leadName || '',
+        stage: data.stage || 'New',
         valueUsd: Number(data.valueUsd || 0),
         probability: Number(data.probability || 0),
         ownerId: data.ownerId || null,
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("sales deals list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load deals." }, { status: 500 });
+    console.error('sales deals list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load deals.' }, { status: 500 });
   }
 }

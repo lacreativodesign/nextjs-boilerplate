@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -12,16 +12,23 @@ import {
   Bar,
   BarChart,
   Legend,
-} from "recharts";
-import type { MonitoringDashboardPayload } from "@/lib/monitoring/types";
+} from 'recharts';
+import type { MonitoringDashboardPayload } from '@/lib/monitoring/types';
 
 type MonitoringResponse =
-  | { ok: true; data: MonitoringDashboardPayload }
-  | { ok: false; error: string; details?: string };
+  { ok: true; data: MonitoringDashboardPayload } | { ok: false; error: string; details?: string };
 
 const POLL_INTERVAL_MS = 30_000;
 
-function MetricCard({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
+function MetricCard({
+  label,
+  value,
+  suffix = '',
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+}) {
   return (
     <div className="card p-4">
       <p className="text-sm text-slate-500">{label}</p>
@@ -41,7 +48,7 @@ export default function AdminMonitoringPage() {
     let active = true;
 
     const load = async () => {
-      const response = await fetch("/api/admin/monitoring/overview", { cache: "no-store" });
+      const response = await fetch('/api/admin/monitoring/overview', { cache: 'no-store' });
       const payload = (await response.json()) as MonitoringResponse;
       if (!active) return;
 
@@ -69,13 +76,17 @@ export default function AdminMonitoringPage() {
     () =>
       (data?.windows || []).map((item) => ({
         ...item,
-        time: new Date(item.bucket).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: new Date(item.bucket).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       })),
-    [data]
+    [data],
   );
 
   if (error) {
-    return <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>;
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {error}
+      </div>
+    );
   }
 
   if (!data) {
@@ -86,7 +97,9 @@ export default function AdminMonitoringPage() {
     <div className="space-y-6 p-4 md:p-8">
       <div>
         <h1 className="page-title">Monitoring Dashboard</h1>
-        <p className="page-subtitle">Auto-refresh every 30 seconds · Last update: {new Date(data.generatedAt).toLocaleString()}</p>
+        <p className="page-subtitle">
+          Auto-refresh every 30 seconds · Last update: {new Date(data.generatedAt).toLocaleString()}
+        </p>
       </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -95,12 +108,18 @@ export default function AdminMonitoringPage() {
         <MetricCard label="Active Users" value={data.summary.activeUsers} />
         <MetricCard label="Cache Hit Rate" value={data.summary.cacheHitRate} suffix=" %" />
         <MetricCard label="DB Query P95" value={data.summary.databaseQueryP95} suffix=" ms" />
-        <MetricCard label="Trial → Paid" value={data.summary.conversionTrialToPaidRate} suffix=" %" />
+        <MetricCard
+          label="Trial → Paid"
+          value={data.summary.conversionTrialToPaidRate}
+          suffix=" %"
+        />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Response Time & Error Trend</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+            Response Time & Error Trend
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={timeline}>
@@ -110,15 +129,31 @@ export default function AdminMonitoringPage() {
                 <YAxis yAxisId="right" orientation="right" />
                 <Tooltip />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="responseTimeP95" stroke="#2563eb" dot={false} name="Response P95 (ms)" />
-                <Line yAxisId="right" type="monotone" dataKey="errorRate" stroke="#dc2626" dot={false} name="Error Rate (%)" />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="responseTimeP95"
+                  stroke="#2563eb"
+                  dot={false}
+                  name="Response P95 (ms)"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="errorRate"
+                  stroke="#dc2626"
+                  dot={false}
+                  name="Error Rate (%)"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Database / Cache / Users</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+            Database / Cache / Users
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timeline}>
@@ -138,7 +173,9 @@ export default function AdminMonitoringPage() {
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Endpoint Metrics</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+            Endpoint Metrics
+          </h2>
           <div className="max-h-80 overflow-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-[var(--text-muted)]">
@@ -164,20 +201,25 @@ export default function AdminMonitoringPage() {
         </div>
 
         <div className="card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Alert Configuration</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+            Alert Configuration
+          </h2>
           <div className="space-y-2">
             {data.alerts.map((alert) => (
               <div
                 key={alert.id}
-                className={`rounded-lg border p-3 text-sm ${alert.active ? "border-red-200 bg-red-50" : "border-[var(--border-subtle)] bg-[var(--surface-muted)]"}`}
+                className={`rounded-lg border p-3 text-sm ${alert.active ? 'border-red-200 bg-red-50' : 'border-[var(--border-subtle)] bg-[var(--surface-muted)]'}`}
               >
                 <p className="font-medium text-[var(--text-primary)]">{alert.label}</p>
                 <p className="text-[var(--text-muted)]">
-                  Channel: {alert.channel.toUpperCase()} · Threshold: {alert.comparison} {alert.threshold}
+                  Channel: {alert.channel.toUpperCase()} · Threshold: {alert.comparison}{' '}
+                  {alert.threshold}
                 </p>
                 <p className="text-[var(--text-muted)]">
                   Current: {alert.currentValue.toFixed(2)}
-                  {alert.lastTriggeredAt ? ` · Last triggered: ${new Date(alert.lastTriggeredAt).toLocaleString()}` : ""}
+                  {alert.lastTriggeredAt
+                    ? ` · Last triggered: ${new Date(alert.lastTriggeredAt).toLocaleString()}`
+                    : ''}
                 </p>
               </div>
             ))}

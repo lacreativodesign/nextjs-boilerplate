@@ -1,7 +1,7 @@
-"use client";
-import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+'use client';
+import { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 
 type ActivityEvent = {
   id: string;
@@ -17,29 +17,29 @@ export default function SuperAdminActivityPage() {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState("");
-  const [range, setRange] = useState("30");
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState('');
+  const [range, setRange] = useState('30');
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (search) params.set("q", search);
-      if (type) params.set("type", type);
-      const res = await fetch(`/api/super_admin/events/list?${params}`, { credentials: "include" });
+      if (search) params.set('q', search);
+      if (type) params.set('type', type);
+      const res = await fetch(`/api/super_admin/events/list?${params}`, { credentials: 'include' });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Failed to load");
+      if (!data.ok) throw new Error(data.error || 'Failed to load');
       setEvents(data.events || []);
     } catch (err: any) {
-      const msg = err?.message || "";
+      const msg = err?.message || '';
       setError(
-        msg.includes("Session") || msg.includes("Unauthorized")
-          ? "Your session has expired. Please refresh the page."
-          : msg.includes("index") || msg.includes("Index")
-          ? "Activity feed is being set up. Check back in a moment."
-          : "Unable to load activity. Please try again.",
+        msg.includes('Session') || msg.includes('Unauthorized')
+          ? 'Your session has expired. Please refresh the page.'
+          : msg.includes('index') || msg.includes('Index')
+            ? 'Activity feed is being set up. Check back in a moment.'
+            : 'Unable to load activity. Please try again.',
       );
     } finally {
       setLoading(false);
@@ -72,7 +72,7 @@ export default function SuperAdminActivityPage() {
           className="btn flex items-center gap-2"
           style={{ borderRadius: 999 }}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
@@ -104,25 +104,35 @@ export default function SuperAdminActivityPage() {
       {/* Results */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading activity...</div>
+          <div className="p-6 text-center text-sm text-[var(--text-muted)]">
+            Loading activity...
+          </div>
         ) : error ? (
           <div className="p-6 text-center text-sm text-[var(--text-muted)]">{error}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-6 text-center text-sm text-[var(--text-muted)]">No activity found for this period.</div>
+          <div className="p-6 text-center text-sm text-[var(--text-muted)]">
+            No activity found for this period.
+          </div>
         ) : (
           <div className="divide-y divide-[var(--border-subtle)]">
             {filtered.map((e) => (
               <div key={e.id} className="flex items-start gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">{e.title || e.type}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                    {e.title || e.type}
+                  </p>
                   {e.description && (
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{e.description}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                      {e.description}
+                    </p>
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
                   {e.actorName && <p className="text-xs text-[var(--text-muted)]">{e.actorName}</p>}
                   {e.createdAt && (
-                    <p className="text-xs text-[var(--text-muted)]">{new Date(e.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {new Date(e.createdAt).toLocaleDateString()}
+                    </p>
                   )}
                 </div>
               </div>

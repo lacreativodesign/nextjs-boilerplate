@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
-import type { NotificationCategory } from "@/types/notifications";
+import { useEffect, useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import type { NotificationCategory } from '@/types/notifications';
 
 type NotificationItem = {
   id: string;
@@ -18,50 +18,50 @@ type NotificationItem = {
 };
 
 function formatTimestamp(value?: string | Date) {
-  if (!value) return "";
+  if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleString();
 }
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
-  system: "System",
-  financial: "Financial",
-  sales: "Sales",
-  operations: "Operations",
-  security: "Security",
-  team: "Team",
-  custom: "Custom",
+  system: 'System',
+  financial: 'Financial',
+  sales: 'Sales',
+  operations: 'Operations',
+  security: 'Security',
+  team: 'Team',
+  custom: 'Custom',
 };
 
-const CATEGORIES: Array<"all" | NotificationCategory> = [
-  "all",
-  "system",
-  "financial",
-  "sales",
-  "operations",
-  "security",
-  "team",
-  "custom",
+const CATEGORIES: Array<'all' | NotificationCategory> = [
+  'all',
+  'system',
+  'financial',
+  'sales',
+  'operations',
+  'security',
+  'team',
+  'custom',
 ];
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
-  const [category, setCategory] = useState<"all" | NotificationCategory>("all");
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [category, setCategory] = useState<'all' | NotificationCategory>('all');
   const [page, setPage] = useState(1);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        unreadOnly: String(filter === "unread"),
+        unreadOnly: String(filter === 'unread'),
         page: String(page),
-        limit: "25",
+        limit: '25',
       });
-      if (category !== "all") params.set("category", category);
+      if (category !== 'all') params.set('category', category);
 
       const res = await apiFetch(`/api/notifications?${params.toString()}`);
       if (!res.ok) return;
@@ -78,12 +78,12 @@ export default function NotificationsPage() {
   }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    await apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
+    await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
     void fetchNotifications();
   };
 
   const markAllAsRead = async () => {
-    await apiFetch("/api/notifications/mark-all-read", { method: "POST" });
+    await apiFetch('/api/notifications/mark-all-read', { method: 'POST' });
     void fetchNotifications();
   };
 
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold">Notifications</h1>
           <p className="text-sm text-[var(--text-muted)]">
-            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+            {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -107,17 +107,20 @@ export default function NotificationsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(["all", "unread"] as const).map((f) => (
+        {(['all', 'unread'] as const).map((f) => (
           <button
             key={f}
-            onClick={() => { setFilter(f); setPage(1); }}
+            onClick={() => {
+              setFilter(f);
+              setPage(1);
+            }}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               filter === f
-                ? "bg-[var(--erp-blue)] text-white"
-                : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-card)]"
+                ? 'bg-[var(--erp-blue)] text-white'
+                : 'bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-card)]'
             }`}
           >
-            {f === "all" ? "All" : `Unread (${unreadCount})`}
+            {f === 'all' ? 'All' : `Unread (${unreadCount})`}
           </button>
         ))}
       </div>
@@ -126,14 +129,17 @@ export default function NotificationsPage() {
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
-            onClick={() => { setCategory(cat); setPage(1); }}
+            onClick={() => {
+              setCategory(cat);
+              setPage(1);
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               category === cat
-                ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]"
-                : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-card)]"
+                ? 'bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]'
+                : 'bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-card)]'
             }`}
           >
-            {cat === "all" ? "All Categories" : CATEGORY_LABELS[cat]}
+            {cat === 'all' ? 'All Categories' : CATEGORY_LABELS[cat]}
           </button>
         ))}
       </div>
@@ -150,7 +156,7 @@ export default function NotificationsPage() {
                 key={n.id}
                 onClick={() => !n.isRead && markAsRead(n.id)}
                 className={`flex cursor-pointer gap-4 p-4 hover:bg-[var(--table-row-hover)] ${
-                  !n.isRead ? "bg-blue-50/50" : ""
+                  !n.isRead ? 'bg-blue-50/50' : ''
                 }`}
               >
                 <div className="min-w-0 flex-1">
@@ -167,7 +173,7 @@ export default function NotificationsPage() {
                       onClick={(e) => e.stopPropagation()}
                       className="mt-2 inline-block text-sm text-blue-600 hover:underline"
                     >
-                      {n.actionLabel || "View"}
+                      {n.actionLabel || 'View'}
                     </a>
                   )}
                   <p className="mt-2 text-xs text-[var(--text-soft)]">

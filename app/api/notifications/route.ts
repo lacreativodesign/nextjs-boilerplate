@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { normalizeTenantId } from "@/lib/tenant";
-import { NotificationService } from "@/lib/notifications/notification-service";
-import { getCurrentUser } from "../admin/_utils";
-import { requireNotificationsModule } from "./_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { normalizeTenantId } from '@/lib/tenant';
+import { NotificationService } from '@/lib/notifications/notification-service';
+import { getCurrentUser } from '../admin/_utils';
+import { requireNotificationsModule } from './_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function toIso(value: any) {
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
@@ -30,27 +30,27 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const page = Math.max(parseInt(searchParams.get("page") || "1"), 1);
-    const limitRaw = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+    const limitRaw = parseInt(searchParams.get('limit') || '20');
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 20;
-    const unreadOnly = searchParams.get("unreadOnly") === "true";
-    const category = searchParams.get("category");
+    const unreadOnly = searchParams.get('unreadOnly') === 'true';
+    const category = searchParams.get('category');
 
     await NotificationService.processPendingDeliveriesForUser(me.uid, tenantId);
 
     let query: FirebaseFirestore.Query = adminDb
-      .collection("notifications")
-      .where("tenantId", "==", tenantId)
-      .where("userId", "==", me.uid)
-      .where("isArchived", "==", false)
-      .orderBy("createdAt", "desc");
+      .collection('notifications')
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', me.uid)
+      .where('isArchived', '==', false)
+      .orderBy('createdAt', 'desc');
 
     if (unreadOnly) {
-      query = query.where("isRead", "==", false);
+      query = query.where('isRead', '==', false);
     }
 
     if (category) {
-      query = query.where("category", "==", category);
+      query = query.where('category', '==', category);
     }
 
     const offset = (page - 1) * limit;
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching notifications:", error);
-    return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });
+    console.error('Error fetching notifications:', error);
+    return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
   }
 }

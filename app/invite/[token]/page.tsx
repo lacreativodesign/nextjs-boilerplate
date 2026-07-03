@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type InvitePageProps = {
   params: { token: string };
@@ -9,9 +9,9 @@ type InvitePageProps = {
 
 export default function InvitePage({ params }: InvitePageProps) {
   const [formData, setFormData] = useState({
-    name: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,16 +21,16 @@ export default function InvitePage({ params }: InvitePageProps) {
     setError(null);
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await apiFetch("/api/users/accept-invitation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/users/accept-invitation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: params.token,
           name: formData.name,
@@ -40,12 +40,12 @@ export default function InvitePage({ params }: InvitePageProps) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data?.error || "Unable to accept invitation");
+        throw new Error(data?.error || 'Unable to accept invitation');
       }
 
-      window.location.href = "/login";
+      window.location.href = '/login';
     } catch (err: any) {
-      setError(err?.message || "Unable to accept invitation");
+      setError(err?.message || 'Unable to accept invitation');
     } finally {
       setIsSubmitting(false);
     }
@@ -96,12 +96,8 @@ export default function InvitePage({ params }: InvitePageProps) {
               required
             />
           </div>
-          <button
-            type="submit"
-            className="btn w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating Account..." : "Create Account"}
+          <button type="submit" className="btn w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
       </div>

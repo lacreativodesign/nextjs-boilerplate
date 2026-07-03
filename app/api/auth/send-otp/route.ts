@@ -1,9 +1,9 @@
-import crypto from "crypto";
-import { NextResponse } from "next/server";
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebaseAdmin";
+import crypto from 'crypto';
+import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import { adminDb } from '@/lib/firebaseAdmin';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function generateOtp(): string {
   return String(crypto.randomInt(100000, 999999));
@@ -42,19 +42,24 @@ function otpEmailHtml(otp: string, email: string): string {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const email = String(body?.email || "").trim().toLowerCase();
+    const email = String(body?.email || '')
+      .trim()
+      .toLowerCase();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ ok: false, error: "Valid email is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Valid email is required.' }, { status: 400 });
     }
 
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "Email service is not configured." }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: 'Email service is not configured.' },
+        { status: 500 },
+      );
     }
 
     // Check rate limit: max 3 OTPs per email per 10 minutes
-    const rateLimitRef = adminDb.collection("otp_rate_limits").doc(email);
+    const rateLimitRef = adminDb.collection('otp_rate_limits').doc(email);
     const rateLimitSnap = await rateLimitRef.get();
     const now = Date.now();
 
@@ -66,8 +71,8 @@ export async function POST(req: Request) {
 
       if (now - windowStart < windowDuration && attempts >= 3) {
         return NextResponse.json(
-          { ok: false, error: "Too many code requests. Please wait 10 minutes." },
-          { status: 429 }
+          { ok: false, error: 'Too many code requests. Please wait 10 minutes.' },
+          { status: 429 },
         );
       }
 
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
     const expiresAt = now + 10 * 60 * 1000; // 10 minutes
 
     // Store OTP in Firestore
-    await adminDb.collection("email_otps").doc(email).set({
+    await adminDb.collection('email_otps').doc(email).set({
       otp,
       email,
       expiresAt,
@@ -95,7 +100,7 @@ export async function POST(req: Request) {
 
     const resend = new Resend(apiKey);
     await resend.emails.send({
-      from: process.env.ONBOARDING_FROM_EMAIL || "Bizosto <welcome@bizosto.com>",
+      from: process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <welcome@bizosto.com>',
       to: email,
       subject: `${otp} is your Bizosto verification code`,
       html: otpEmailHtml(otp, email),
@@ -103,10 +108,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("send-otp error:", err?.message || err);
-    return NextResponse.json({
-      ok: false,
-      error: "Could not send verification code. Please check your email address and try again. If the problem continues, contact support@bizosto.com.",
-    }, { status: 500 });
+    console.error('send-otp error:', err?.message || err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          'Could not send verification code. Please check your email address and try again. If the problem continues, contact support@bizosto.com.',
+      },
+      { status: 500 },
+    );
   }
 }

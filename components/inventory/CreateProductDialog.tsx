@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState } from 'react';
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch } from '@/lib/api/client';
 
 type CreateProductDialogProps = {
   onSuccess: () => Promise<void>;
 };
 
 const defaultFormState = {
-  name: "",
-  sku: "",
-  description: "",
-  category: "",
-  type: "physical",
+  name: '',
+  sku: '',
+  description: '',
+  category: '',
+  type: 'physical',
   costPrice: 0,
   sellingPrice: 0,
   trackInventory: true,
@@ -34,24 +34,24 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
     setError(null);
 
     try {
-      const response = await apiFetch("/api/inventory/products", {
-        method: "POST",
+      const response = await apiFetch('/api/inventory/products', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(form),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create product");
+        throw new Error(data.error || 'Failed to create product');
       }
 
       await onSuccess();
       setForm(defaultFormState);
       setOpen(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Failed to create product");
+      setError(submitError instanceof Error ? submitError.message : 'Failed to create product');
     } finally {
       setSubmitting(false);
     }
@@ -59,10 +59,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="btn"
-      >
+      <button onClick={() => setOpen(true)} className="btn">
         Create Product
       </button>
 
@@ -90,13 +87,17 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                 <input
                   required
                   value={form.category}
-                  onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, category: event.target.value }))
+                  }
                   placeholder="Category"
                   className="input"
                 />
                 <select
                   value={form.type}
-                  onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as typeof form.type }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, type: event.target.value as typeof form.type }))
+                  }
                   className="input"
                 >
                   <option value="physical">Physical</option>
@@ -110,7 +111,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   step="0.01"
                   required
                   value={form.costPrice}
-                  onChange={(event) => setForm((prev) => ({ ...prev, costPrice: Number(event.target.value) }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, costPrice: Number(event.target.value) }))
+                  }
                   placeholder="Cost price"
                   className="input"
                 />
@@ -120,7 +123,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   step="0.01"
                   required
                   value={form.sellingPrice}
-                  onChange={(event) => setForm((prev) => ({ ...prev, sellingPrice: Number(event.target.value) }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, sellingPrice: Number(event.target.value) }))
+                  }
                   placeholder="Selling price"
                   className="input"
                 />
@@ -129,7 +134,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   min={0}
                   required
                   value={form.minStockLevel}
-                  onChange={(event) => setForm((prev) => ({ ...prev, minStockLevel: Number(event.target.value) }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, minStockLevel: Number(event.target.value) }))
+                  }
                   placeholder="Min stock level"
                   className="input"
                 />
@@ -138,7 +145,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   min={0}
                   required
                   value={form.reorderPoint}
-                  onChange={(event) => setForm((prev) => ({ ...prev, reorderPoint: Number(event.target.value) }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, reorderPoint: Number(event.target.value) }))
+                  }
                   placeholder="Reorder point"
                   className="input"
                 />
@@ -147,7 +156,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   min={0}
                   required
                   value={form.reorderQuantity}
-                  onChange={(event) => setForm((prev) => ({ ...prev, reorderQuantity: Number(event.target.value) }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, reorderQuantity: Number(event.target.value) }))
+                  }
                   placeholder="Reorder quantity"
                   className="input"
                 />
@@ -155,7 +166,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   <input
                     type="checkbox"
                     checked={form.trackInventory}
-                    onChange={(event) => setForm((prev) => ({ ...prev, trackInventory: event.target.checked }))}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, trackInventory: event.target.checked }))
+                    }
                   />
                   Track inventory
                 </label>
@@ -163,7 +176,9 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
 
               <textarea
                 value={form.description}
-                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                }
                 placeholder="Description"
                 className="w-full input"
               />
@@ -184,7 +199,7 @@ export function CreateProductDialog({ onSuccess }: CreateProductDialogProps) {
                   className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   disabled={submitting}
                 >
-                  {submitting ? "Saving..." : "Save product"}
+                  {submitting ? 'Saving...' : 'Save product'}
                 </button>
               </div>
             </form>

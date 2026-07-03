@@ -1,11 +1,10 @@
-"use client";
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+'use client';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 
-const FinanceAgentWidget = dynamic(
-  () => import("@/components/ai/FinanceAgentWidget"),
-  { ssr: false }
-);
+const FinanceAgentWidget = dynamic(() => import('@/components/ai/FinanceAgentWidget'), {
+  ssr: false,
+});
 
 type Overview = {
   kpisUsd: {
@@ -27,19 +26,25 @@ type Overview = {
   recentEvents: { id: string; title: string; description: string; createdAt: string | null }[];
 };
 
-const fmt = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(2)}`;
+const fmt = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(2)}`);
 
-const fmtPkr = (n: number) =>
-  n >= 1000 ? `PKR ${(n / 1000).toFixed(1)}k` : `PKR ${n.toFixed(0)}`;
+const fmtPkr = (n: number) => (n >= 1000 ? `PKR ${(n / 1000).toFixed(1)}k` : `PKR ${n.toFixed(0)}`);
 
-function KpiCard({ label, value, sub, color }: {
-  label: string; value: string; sub: string; color?: string;
+function KpiCard({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  color?: string;
 }) {
   return (
     <div className="card">
       <div className="helper-text mb-2">{label}</div>
-      <div className="text-3xl font-bold" style={{ color: color || "var(--text-primary)" }}>
+      <div className="text-3xl font-bold" style={{ color: color || 'var(--text-primary)' }}>
         {value}
       </div>
       <div className="mt-1 text-xs text-[var(--text-muted)]">{sub}</div>
@@ -50,16 +55,16 @@ function KpiCard({ label, value, sub, color }: {
 export default function FinanceOverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch("/api/finance/overview", { credentials: "include" })
-      .then(r => r.json())
-      .then(res => {
+    fetch('/api/finance/overview', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((res) => {
         if (res.ok) setData(res.overview);
-        else setError(res.error || "Failed to load");
+        else setError(res.error || 'Failed to load');
       })
-      .catch(() => setError("Failed to load finance data"))
+      .catch(() => setError('Failed to load finance data'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -67,13 +72,10 @@ export default function FinanceOverviewPage() {
   const pkr = data?.kpisPkr;
   const aging = kpi?.agingBuckets;
 
-  if (loading) return (
-    <div className="card p-6 text-[var(--text-muted)]">Loading finance data...</div>
-  );
+  if (loading)
+    return <div className="card p-6 text-[var(--text-muted)]">Loading finance data...</div>;
 
-  if (error) return (
-    <div className="card p-6 text-red-400">{error}</div>
-  );
+  if (error) return <div className="card p-6 text-red-400">{error}</div>;
 
   return (
     <div className="space-y-6">
@@ -88,19 +90,19 @@ export default function FinanceOverviewPage() {
             label="Total Revenue (This Month)"
             value={fmt(kpi?.totalRevenueMonth || 0)}
             sub="Paid invoices"
-            color={kpi?.totalRevenueMonth ? "#10b981" : undefined}
+            color={kpi?.totalRevenueMonth ? '#10b981' : undefined}
           />
           <KpiCard
             label="Outstanding Invoices"
             value={fmt(kpi?.outstandingInvoices || 0)}
             sub="Sent / overdue"
-            color={kpi?.outstandingInvoices ? "#f59e0b" : undefined}
+            color={kpi?.outstandingInvoices ? '#f59e0b' : undefined}
           />
           <KpiCard
             label="Payments Received"
             value={fmt(kpi?.paymentsReceivedMonth || 0)}
             sub="This month"
-            color={kpi?.paymentsReceivedMonth ? "#3b82f6" : undefined}
+            color={kpi?.paymentsReceivedMonth ? '#3b82f6' : undefined}
           />
           <KpiCard
             label="AR Aging (0–30d)"
@@ -110,19 +112,28 @@ export default function FinanceOverviewPage() {
         </div>
       </section>
 
-      {(aging?.bucket31to60 || aging?.bucket61to90 || aging?.bucket90plus) ? (
+      {aging?.bucket31to60 || aging?.bucket61to90 || aging?.bucket90plus ? (
         <section>
           <h2 className="section-title mb-4">Aging Buckets</h2>
           <div className="kpis">
-            <KpiCard label="31–60 Days"
+            <KpiCard
+              label="31–60 Days"
               value={fmt(aging?.bucket31to60 || 0)}
-              sub="Overdue" color="#f59e0b" />
-            <KpiCard label="61–90 Days"
+              sub="Overdue"
+              color="#f59e0b"
+            />
+            <KpiCard
+              label="61–90 Days"
               value={fmt(aging?.bucket61to90 || 0)}
-              sub="Overdue" color="#ef4444" />
-            <KpiCard label="90+ Days"
+              sub="Overdue"
+              color="#ef4444"
+            />
+            <KpiCard
+              label="90+ Days"
               value={fmt(aging?.bucket90plus || 0)}
-              sub="Critical" color="#ef4444" />
+              sub="Critical"
+              color="#ef4444"
+            />
           </div>
         </section>
       ) : null}
@@ -150,19 +161,24 @@ export default function FinanceOverviewPage() {
             <div className="flex items-end gap-2 h-32">
               {data.revenueSeries.map((row) => {
                 const max = Math.max(
-                  ...data.revenueSeries.map(r => Math.max(r.invoices, r.payments)), 1
+                  ...data.revenueSeries.map((r) => Math.max(r.invoices, r.payments)),
+                  1,
                 );
                 const invH = Math.round((row.invoices / max) * 100);
                 const payH = Math.round((row.payments / max) * 100);
                 return (
                   <div key={row.label} className="flex-1 flex flex-col items-center gap-1">
                     <div className="w-full flex items-end gap-0.5 h-24">
-                      <div className="flex-1 rounded-t transition-all"
-                        style={{ height: `${invH}%`, backgroundColor: "#3b82f6", minHeight: 2 }}
-                        title={`Invoices: ${fmt(row.invoices)}`} />
-                      <div className="flex-1 rounded-t transition-all"
-                        style={{ height: `${payH}%`, backgroundColor: "#10b981", minHeight: 2 }}
-                        title={`Payments: ${fmt(row.payments)}`} />
+                      <div
+                        className="flex-1 rounded-t transition-all"
+                        style={{ height: `${invH}%`, backgroundColor: '#3b82f6', minHeight: 2 }}
+                        title={`Invoices: ${fmt(row.invoices)}`}
+                      />
+                      <div
+                        className="flex-1 rounded-t transition-all"
+                        style={{ height: `${payH}%`, backgroundColor: '#10b981', minHeight: 2 }}
+                        title={`Payments: ${fmt(row.payments)}`}
+                      />
                     </div>
                     <p className="text-xs text-[var(--text-muted)] truncate w-full text-center">
                       {row.label.slice(5)}
@@ -173,11 +189,11 @@ export default function FinanceOverviewPage() {
             </div>
             <div className="flex gap-4 mt-2 justify-center">
               <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
-                <span className="h-2 w-4 rounded" style={{ background: "#3b82f6" }} />
+                <span className="h-2 w-4 rounded" style={{ background: '#3b82f6' }} />
                 Invoices
               </span>
               <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
-                <span className="h-2 w-4 rounded" style={{ background: "#10b981" }} />
+                <span className="h-2 w-4 rounded" style={{ background: '#10b981' }} />
                 Payments
               </span>
             </div>

@@ -1,17 +1,17 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
-import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import RequireAuth from '@/components/RequireAuth';
+import AppShell from '@/components/layout/AppShell';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 
 const TABS = [
-  { href: "/reports", label: "Overview" },
-  { href: "/reports/sales", label: "Sales" },
-  { href: "/reports/projects", label: "Projects" },
-  { href: "/reports/team", label: "Team" },
-  { href: "/reports/finance", label: "Finance" },
-  { href: "/reports/ai", label: "🤖 AI Reports" },
+  { href: '/reports', label: 'Overview' },
+  { href: '/reports/sales', label: 'Sales' },
+  { href: '/reports/projects', label: 'Projects' },
+  { href: '/reports/team', label: 'Team' },
+  { href: '/reports/finance', label: 'Finance' },
+  { href: '/reports/ai', label: '🤖 AI Reports' },
 ];
 
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
@@ -19,13 +19,13 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
   return (
     <RequireAuth
       allowed={[
-        "admin",
-        "super_admin",
-        "finance",
-        "hr",
-        "sales_manager",
-        "am_manager",
-        "production_manager",
+        'admin',
+        'super_admin',
+        'finance',
+        'hr',
+        'sales_manager',
+        'am_manager',
+        'production_manager',
       ]}
     >
       <ModuleErrorBoundary moduleName="Reports">
@@ -33,20 +33,18 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
           <div>
             <div className="mb-6">
               <h1 className="page-title">Reports & Analytics</h1>
-              <p className="page-subtitle">
-                Business performance across all departments.
-              </p>
+              <p className="page-subtitle">Business performance across all departments.</p>
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =
                   pathname === tab.href ||
-                  (tab.href !== "/reports" && pathname.startsWith(tab.href));
+                  (tab.href !== '/reports' && pathname.startsWith(tab.href));
                 return (
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`tab-pill ${isActive ? "active" : ""}`}
+                    className={`tab-pill ${isActive ? 'active' : ''}`}
                   >
                     {tab.label}
                   </Link>

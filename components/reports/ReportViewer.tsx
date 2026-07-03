@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Area,
@@ -17,9 +17,15 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { ChartContainer, chartAxisProps, chartGridProps, chartTooltipProps, CHART_COLORS } from "@/components/charts/ChartContainer";
-import type { ChartConfiguration, ChartType } from "@/types/reports";
+} from 'recharts';
+import {
+  ChartContainer,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipProps,
+  CHART_COLORS,
+} from '@/components/charts/ChartContainer';
+import type { ChartConfiguration, ChartType } from '@/types/reports';
 
 const resolveSeries = (data: any[], config?: ChartConfiguration) => {
   if (config?.yAxis?.length) return config.yAxis;
@@ -40,12 +46,12 @@ export function ReportViewer({
     return <div className="card p-6 text-sm text-[var(--text-muted)]">No data available.</div>;
   }
 
-  const type = chartType || "table";
+  const type = chartType || 'table';
   const xAxisKey = chartConfig?.xAxis || Object.keys(data[0] || {})[0];
   const series = resolveSeries(data, chartConfig).filter((key) => key !== xAxisKey);
   const colors = chartConfig?.colors?.length ? chartConfig.colors : CHART_COLORS;
 
-  if (type === "table") {
+  if (type === 'table') {
     const headers = Object.keys(data[0] || {});
     return (
       <div className="card overflow-hidden">
@@ -61,10 +67,13 @@ export function ReportViewer({
           </thead>
           <tbody className="divide-y divide-[var(--border-subtle)]">
             {data.map((row, idx) => (
-              <tr key={idx} className="text-[var(--text-primary)] hover:bg-[var(--table-row-hover)] transition">
+              <tr
+                key={idx}
+                className="text-[var(--text-primary)] hover:bg-[var(--table-row-hover)] transition"
+              >
                 {headers.map((header) => (
                   <td key={header} className="px-4 py-3">
-                    {String(row[header] ?? "")}
+                    {String(row[header] ?? '')}
                   </td>
                 ))}
               </tr>
@@ -75,7 +84,7 @@ export function ReportViewer({
     );
   }
 
-  if (type === "metric") {
+  if (type === 'metric') {
     const metricKey = series[0] || xAxisKey;
     const value = data[0]?.[metricKey];
     return (
@@ -86,8 +95,8 @@ export function ReportViewer({
     );
   }
 
-  if (type === "pie") {
-    const pieValueKey = series[0] || "value";
+  if (type === 'pie') {
+    const pieValueKey = series[0] || 'value';
     return (
       <ChartContainer title="Report" description="Pie chart view" height={320}>
         {({ legendVisible }) => (
@@ -120,14 +129,20 @@ export function ReportViewer({
     </>
   );
 
-  if (type === "line") {
+  if (type === 'line') {
     return (
       <ChartContainer title="Report" description="Line chart view" height={320}>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             {common}
             {series.map((key, index) => (
-              <Line key={key} type="monotone" dataKey={key} stroke={colors[index % colors.length]} strokeWidth={2} />
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={colors[index % colors.length]}
+                strokeWidth={2}
+              />
             ))}
           </LineChart>
         </ResponsiveContainer>
@@ -135,7 +150,7 @@ export function ReportViewer({
     );
   }
 
-  if (type === "area") {
+  if (type === 'area') {
     return (
       <ChartContainer title="Report" description="Area chart view" height={320}>
         <ResponsiveContainer width="100%" height={300}>
@@ -157,7 +172,7 @@ export function ReportViewer({
     );
   }
 
-  if (type === "scatter") {
+  if (type === 'scatter') {
     const scatterKey = series[0] || xAxisKey;
     return (
       <ChartContainer title="Report" description="Scatter plot view" height={320}>

@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireClient } from "../../client/_utils";
-import { createInvoiceCheckoutSession, getStripeClient, resolveAppOrigin } from "@/lib/payments/stripe";
-import { normalizeInvoiceStatus } from "@/lib/finance/status";
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireClient } from '../../client/_utils';
+import {
+  createInvoiceCheckoutSession,
+  getStripeClient,
+  resolveAppOrigin,
+} from '@/lib/payments/stripe';
+import { normalizeInvoiceStatus } from '@/lib/finance/status';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -16,30 +20,36 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const invoiceId = String(body?.invoiceId || "").trim();
+    const invoiceId = String(body?.invoiceId || '').trim();
     if (!invoiceId) {
-      return NextResponse.json({ ok: false, error: "Invoice is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invoice is required.' }, { status: 400 });
     }
 
-    const invoiceSnap = await adminDb.collection("invoices").doc(invoiceId).get();
+    const invoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
     if (!invoiceSnap.exists || invoiceSnap.data()?.isDeleted) {
-      return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invoice not found.' }, { status: 404 });
     }
 
     const invoice = invoiceSnap.data() || {};
-    const tenantId = String(auth.tenantId || "");
-    if (String(invoice.tenantId || "") !== tenantId || String(invoice.clientId || "") !== auth.clientId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    const tenantId = String(auth.tenantId || '');
+    if (
+      String(invoice.tenantId || '') !== tenantId ||
+      String(invoice.clientId || '') !== auth.clientId
+    ) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const status = normalizeInvoiceStatus(invoice.status);
-    if (status === "paid" || status === "void") {
-      return NextResponse.json({ ok: false, error: "Invoice is not payable." }, { status: 400 });
+    if (status === 'paid' || status === 'void') {
+      return NextResponse.json({ ok: false, error: 'Invoice is not payable.' }, { status: 400 });
     }
 
     const amountUsd = Math.max(0, Number(invoice.balanceDue ?? invoice.amountTotalUsd ?? 0));
     if (amountUsd <= 0) {
-      return NextResponse.json({ ok: false, error: "Invoice has no outstanding balance." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Invoice has no outstanding balance.' },
+        { status: 400 },
+      );
     }
 
     const origin = resolveAppOrigin(req);
@@ -54,14 +64,17 @@ export async function POST(req: Request) {
       tenantId,
       invoiceId,
       clientId: auth.clientId,
-      customerEmail: String(auth.user.email || "").trim() || undefined,
+      customerEmail: String(auth.user.email || '').trim() || undefined,
       successUrl,
       cancelUrl,
     });
 
-    const paymentIntentId = String(session.payment_intent || "");
+    const paymentIntentId = String(session.payment_intent || '');
     if (!paymentIntentId || !session.url) {
-      return NextResponse.json({ ok: false, error: "Unable to initialize Stripe checkout." }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: 'Unable to initialize Stripe checkout.' },
+        { status: 500 },
+      );
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
@@ -70,17 +83,17 @@ export async function POST(req: Request) {
     const batch = adminDb.batch();
 
     batch.set(
-      adminDb.collection("payments").doc(paymentId),
+      adminDb.collection('payments').doc(paymentId),
       {
         id: paymentId,
         tenantId,
         clientId: auth.clientId,
         invoiceId,
-        orderId: String(invoice.orderId || ""),
+        orderId: String(invoice.orderId || ''),
         amountUsd,
-        currency: "USD",
-        status: "pending",
-        method: "stripe_checkout",
+        currency: 'USD',
+        status: 'pending',
+        method: 'stripe_checkout',
         stripePaymentIntentId: paymentIntentId,
         stripeCheckoutSessionId: session.id,
         stripeCustomerId: session.customer ? String(session.customer) : null,
@@ -91,11 +104,11 @@ export async function POST(req: Request) {
         createdAt: now,
         updatedAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
 
     batch.set(
-      adminDb.collection("payment_intents").doc(`pi_${paymentIntentId}`),
+      adminDb.collection('payment_intents').doc(`pi_${paymentIntentId}`),
       {
         id: `pi_${paymentIntentId}`,
         tenantId,
@@ -105,12 +118,12 @@ export async function POST(req: Request) {
         stripePaymentIntentId: paymentIntentId,
         stripeCheckoutSessionId: session.id,
         amountUsd,
-        currency: "USD",
-        status: "requires_payment_method",
+        currency: 'USD',
+        status: 'requires_payment_method',
         createdAt: now,
         updatedAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
 
     await batch.commit();
@@ -122,7 +135,10 @@ export async function POST(req: Request) {
       stripePaymentIntentId: paymentIntentId,
     });
   } catch (err: any) {
-    console.error("payments/create-intent error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to create payment intent." }, { status: 500 });
+    console.error('payments/create-intent error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Unable to create payment intent.' },
+      { status: 500 },
+    );
   }
 }

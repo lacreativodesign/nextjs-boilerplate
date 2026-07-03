@@ -40,8 +40,8 @@ Sentry.init({
 });
 
 // Capture user context from Firebase Auth if available
-if (typeof window !== "undefined") {
-  import("@/lib/firebaseClient")
+if (typeof window !== 'undefined') {
+  import('@/lib/firebaseClient')
     .then(({ getFirebaseAuth }) => {
       return getFirebaseAuth();
     })
@@ -58,10 +58,10 @@ if (typeof window !== "undefined") {
               const tenantId = tokenResult.claims?.tenantId;
               const role = tokenResult.claims?.role;
               if (tenantId) {
-                Sentry.setTag("tenant_id", tenantId);
+                Sentry.setTag('tenant_id', tenantId);
               }
               if (role) {
-                Sentry.setTag("user_role", role);
+                Sentry.setTag('user_role', role);
               }
             })
             .catch(() => undefined);

@@ -1,14 +1,14 @@
-"use client";
-import BizostoSplash from "@/components/ui/BizostoSplash";
+'use client';
+import BizostoSplash from '@/components/ui/BizostoSplash';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, LogOut, Moon, Settings, Sun } from "lucide-react";
-import { useTheme } from "@/components/providers/ThemeProvider";
-import { useRouter } from "next/navigation";
-import { useI18n } from "@/components/i18n/I18nProvider";
-import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
-import { apiFetch } from "@/lib/api/client";
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { useTheme } from '@/components/providers/ThemeProvider';
+import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@/lib/i18n/config';
+import { apiFetch } from '@/lib/api/client';
+import type { CSSProperties, ReactNode } from 'react';
 
 type HeaderUser = {
   name: string;
@@ -24,45 +24,45 @@ type HeaderProps = {
   onMenuToggle?: () => void;
 };
 
-type DayPeriod = "morning" | "afternoon" | "evening";
+type DayPeriod = 'morning' | 'afternoon' | 'evening';
 
 const ROLE_BADGE_STYLES: Record<string, CSSProperties> = {
-  super_admin: { backgroundColor: "var(--color-purple)", color: "#ffffff" },
-  admin: { backgroundColor: "var(--color-blue)", color: "#ffffff" },
-  finance: { backgroundColor: "var(--color-green)", color: "#ffffff" },
-  hr: { backgroundColor: "var(--color-teal)", color: "#ffffff" },
-  sales: { backgroundColor: "var(--color-orange)", color: "#ffffff" },
-  sales_manager: { backgroundColor: "var(--color-orange)", color: "#ffffff" },
-  production: { backgroundColor: "var(--color-yellow)", color: "#111827" },
-  production_manager: { backgroundColor: "var(--color-yellow)", color: "#111827" },
-  am: { backgroundColor: "var(--color-cyan)", color: "#0f172a" },
-  am_manager: { backgroundColor: "var(--color-cyan)", color: "#0f172a" },
-  client: { backgroundColor: "var(--color-gray)", color: "#ffffff" },
+  super_admin: { backgroundColor: 'var(--color-purple)', color: '#ffffff' },
+  admin: { backgroundColor: 'var(--color-blue)', color: '#ffffff' },
+  finance: { backgroundColor: 'var(--color-green)', color: '#ffffff' },
+  hr: { backgroundColor: 'var(--color-teal)', color: '#ffffff' },
+  sales: { backgroundColor: 'var(--color-orange)', color: '#ffffff' },
+  sales_manager: { backgroundColor: 'var(--color-orange)', color: '#ffffff' },
+  production: { backgroundColor: 'var(--color-yellow)', color: '#111827' },
+  production_manager: { backgroundColor: 'var(--color-yellow)', color: '#111827' },
+  am: { backgroundColor: 'var(--color-cyan)', color: '#0f172a' },
+  am_manager: { backgroundColor: 'var(--color-cyan)', color: '#0f172a' },
+  client: { backgroundColor: 'var(--color-gray)', color: '#ffffff' },
 };
 
 function normalizeRoleKey(role?: string | null) {
-  return String(role || "")
+  return String(role || '')
     .trim()
     .toLowerCase()
-    .replace(/-/g, "_")
-    .replace(/^account_manager$/, "am");
+    .replace(/-/g, '_')
+    .replace(/^account_manager$/, 'am');
 }
 
 function formatRoleLabel(role?: string | null) {
   const normalized = normalizeRoleKey(role);
-  if (!normalized) return "User";
+  if (!normalized) return 'User';
 
   return normalized
-    .split("_")
+    .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .join(' ');
 }
 
 function getDayPeriod(date: Date): DayPeriod {
   const hour = date.getHours();
-  if (hour >= 5 && hour <= 11) return "morning";
-  if (hour >= 12 && hour <= 17) return "afternoon";
-  return "evening";
+  if (hour >= 5 && hour <= 11) return 'morning';
+  if (hour >= 12 && hour <= 17) return 'afternoon';
+  return 'evening';
 }
 
 function getFirstName(displayName?: string | null) {
@@ -75,12 +75,12 @@ function getUserInitials(name?: string | null, email?: string | null) {
   const trimmedName = name?.trim();
   if (trimmedName) {
     const parts = trimmedName.split(/\s+/).filter(Boolean);
-    const firstInitial = parts[0]?.charAt(0) || "";
-    const lastInitial = parts.length > 1 ? parts[parts.length - 1]?.charAt(0) || "" : "";
-    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+    const firstInitial = parts[0]?.charAt(0) || '';
+    const lastInitial = parts.length > 1 ? parts[parts.length - 1]?.charAt(0) || '' : '';
+    return `${firstInitial}${lastInitial}`.toUpperCase() || 'U';
   }
 
-  return (email?.trim().charAt(0) || "U").toUpperCase();
+  return (email?.trim().charAt(0) || 'U').toUpperCase();
 }
 
 export default function Header({ currentUser, activityTrigger }: HeaderProps) {
@@ -98,15 +98,15 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   const roleLabel = formatRoleLabel(currentUser.role);
   const fullName = currentUser.displayName?.trim() || currentUser.name?.trim() || currentUser.email;
   const firstName = useMemo(() => getFirstName(currentUser.displayName), [currentUser.displayName]);
-  const greeting = firstName ? `Good ${dayPeriod}, ${firstName}` : "Welcome back";
+  const greeting = firstName ? `Good ${dayPeriod}, ${firstName}` : 'Welcome back';
   const userInitials = useMemo(
     () => getUserInitials(fullName, currentUser.email),
     [fullName, currentUser.email],
   );
-  const profileSettingsPath = roleKey === "admin" || roleKey === "super_admin" ? "/admin/settings" : "/settings";
+  const profileSettingsPath =
+    roleKey === 'admin' || roleKey === 'super_admin' ? '/admin/settings' : '/settings';
 
-  const currentLocale =
-    SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
+  const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
 
   useEffect(() => {
     const updateDayPeriod = () => setDayPeriod(getDayPeriod(new Date()));
@@ -121,8 +121,8 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
         setLangOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
@@ -131,8 +131,8 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const navigateFromMenu = (path: string) => {
@@ -145,214 +145,211 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
   };
 
   const doLogout = async () => {
-    await apiFetch("/api/logout", { method: "POST" });
-    window.location.href = "/login";
+    await apiFetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login';
   };
 
   const iconBtn =
-    "relative flex h-11 w-11 items-center justify-center rounded-xl border " +
-    "border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] " +
-    "shadow-sm hover:bg-[var(--surface-muted)] transition-colors";
+    'relative flex h-11 w-11 items-center justify-center rounded-xl border ' +
+    'border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] ' +
+    'shadow-sm hover:bg-[var(--surface-muted)] transition-colors';
   const menuItemClass =
-    "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[var(--text-primary)] " +
-    "hover:bg-[var(--surface-muted)] transition-colors";
+    'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[var(--text-primary)] ' +
+    'hover:bg-[var(--surface-muted)] transition-colors';
 
   return (
     <>
-    <header className="fixed top-0 left-0 right-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
-      <div className="flex h-[var(--header-height)] items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
+        <div className="flex h-[var(--header-height)] items-center justify-between">
+          <div className="flex-1" />
 
-        <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            {activityTrigger || null}
 
-        <div className="flex items-center gap-2">
-          {activityTrigger || null}
+            <div className="relative hidden items-center gap-2 sm:flex" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex h-11 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors"
+                title={currentUser.displayName || currentUser.email || greeting}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold"
+                  style={roleBadgeStyle}
+                >
+                  {currentUser.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.displayName || currentUser.email || 'Current user'}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </span>
+                <span className="max-w-[220px] truncate text-sm font-semibold">{greeting}</span>
+              </button>
 
-          <div className="relative hidden items-center gap-2 sm:flex" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex h-11 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors"
-              title={currentUser.displayName || currentUser.email || greeting}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
               <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold"
+                className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm"
                 style={roleBadgeStyle}
               >
-                {currentUser.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentUser.avatarUrl}
-                    alt={currentUser.displayName || currentUser.email || "Current user"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  userInitials
-                )}
+                {roleLabel}
               </span>
-              <span className="max-w-[220px] truncate text-sm font-semibold">{greeting}</span>
-            </button>
 
-            <span
-              className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm"
-              style={roleBadgeStyle}
-            >
-              {roleLabel}
-            </span>
-
-            {menuOpen && (
-              <div
-                className="absolute right-0 top-full mt-2 z-50 w-80 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-xl"
-                role="menu"
-              >
-                <div className="flex items-center gap-3 px-4 py-4">
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold"
-                    style={roleBadgeStyle}
-                  >
-                    {currentUser.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={currentUser.avatarUrl}
-                        alt={currentUser.displayName || currentUser.email || "Current user"}
-                        className="w-9 h-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      userInitials
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{fullName}</p>
-                    <p className="truncate text-xs text-[var(--text-muted)]">{currentUser.email}</p>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 z-50 w-80 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-xl"
+                  role="menu"
+                >
+                  <div className="flex items-center gap-3 px-4 py-4">
                     <span
-                      className="mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold"
                       style={roleBadgeStyle}
                     >
-                      {roleLabel}
+                      {currentUser.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={currentUser.avatarUrl}
+                          alt={currentUser.displayName || currentUser.email || 'Current user'}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        userInitials
+                      )}
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                        {fullName}
+                      </p>
+                      <p className="truncate text-xs text-[var(--text-muted)]">
+                        {currentUser.email}
+                      </p>
+                      <span
+                        className="mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm"
+                        style={roleBadgeStyle}
+                      >
+                        {roleLabel}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="h-px bg-[var(--border-subtle)]" />
+                  <div className="h-px bg-[var(--border-subtle)]" />
 
-                <button
-                  type="button"
-                  onClick={() => navigateFromMenu(profileSettingsPath)}
-                  className={menuItemClass}
-                  role="menuitem"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Profile Settings</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigateFromMenu("/admin/settings/notifications")}
-                  className={menuItemClass}
-                  role="menuitem"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span>Notification Preferences</span>
-                </button>
-
-                <div className="h-px bg-[var(--border-subtle)]" />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    toggle();
-                  }}
-                  className={menuItemClass}
-                  role="menuitem"
-                >
-                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  <span>{isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}</span>
-                </button>
-
-                <div className="h-px bg-[var(--border-subtle)]" />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    handleLogout();
-                  }}
-                  className={`${menuItemClass} text-[var(--danger)]`}
-                  role="menuitem"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Log out</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={toggle}
-            className={iconBtn}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            title={isDark ? "Light mode" : "Dark mode"}
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-
-          <div className="relative" ref={langRef}>
-            <button
-              type="button"
-              onClick={() => setLangOpen((p) => !p)}
-              className={`${iconBtn} text-base`}
-              aria-label={t("common.language")}
-            >
-              {currentLocale.flag}
-            </button>
-
-            {langOpen && (
-              <div className="absolute right-0 mt-2 w-14 overflow-hidden rounded-xl
-                border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50">
-                {SUPPORTED_LOCALES.map((item) => (
                   <button
-                    key={item.code}
+                    type="button"
+                    onClick={() => navigateFromMenu(profileSettingsPath)}
+                    className={menuItemClass}
+                    role="menuitem"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Profile Settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateFromMenu('/admin/settings/notifications')}
+                    className={menuItemClass}
+                    role="menuitem"
+                  >
+                    <Bell className="h-4 w-4" />
+                    <span>Notification Preferences</span>
+                  </button>
+
+                  <div className="h-px bg-[var(--border-subtle)]" />
+
+                  <button
                     type="button"
                     onClick={() => {
-                      setLocale(item.code as SupportedLocale);
-                      setLangOpen(false);
+                      setMenuOpen(false);
+                      toggle();
                     }}
-                    className={[
-                      "flex w-full items-center justify-center py-2.5 text-base",
-                      "hover:bg-[var(--surface-muted)] transition-colors",
-                      locale === item.code
-                        ? "bg-[var(--erp-blue-soft)]"
-                        : "",
-                    ].join(" ")}
+                    className={menuItemClass}
+                    role="menuitem"
                   >
-                    <span>{item.flag}</span>
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    <span>{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
                   </button>
-                ))}
-              </div>
-            )}
+
+                  <div className="h-px bg-[var(--border-subtle)]" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className={`${menuItemClass} text-[var(--danger)]`}
+                    role="menuitem"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={toggle}
+              className={iconBtn}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? 'Light mode' : 'Dark mode'}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
+            <div className="relative" ref={langRef}>
+              <button
+                type="button"
+                onClick={() => setLangOpen((p) => !p)}
+                className={`${iconBtn} text-base`}
+                aria-label={t('common.language')}
+              >
+                {currentLocale.flag}
+              </button>
+
+              {langOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-14 overflow-hidden rounded-xl
+                border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50"
+                >
+                  {SUPPORTED_LOCALES.map((item) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => {
+                        setLocale(item.code as SupportedLocale);
+                        setLangOpen(false);
+                      }}
+                      className={[
+                        'flex w-full items-center justify-center py-2.5 text-base',
+                        'hover:bg-[var(--surface-muted)] transition-colors',
+                        locale === item.code ? 'bg-[var(--erp-blue-soft)]' : '',
+                      ].join(' ')}
+                    >
+                      <span>{item.flag}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className={iconBtn}
+              aria-label={t('common.logout')}
+              title={t('common.logout')}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className={iconBtn}
-            aria-label={t("common.logout")}
-            title={t("common.logout")}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
         </div>
-
-      </div>
-    </header>
-    {showLogoutSplash && (
-      <BizostoSplash
-        duration={2000}
-        onDone={doLogout}
-      />
-    )}
+      </header>
+      {showLogoutSplash && <BizostoSplash duration={2000} onDone={doLogout} />}
     </>
   );
 }

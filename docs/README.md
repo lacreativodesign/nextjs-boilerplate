@@ -1,11 +1,13 @@
 # Bizosto Documentation
 
 ## Product
+
 Bizosto ERP — a product of LA CREATIVO GROUP, LLC
 
 ## Quick Links
 
 ### Guides
+
 - [Super Admin Guide](guides/super-admin-guide.md)
 - [Tenant Admin Guide](guides/tenant-admin-guide.md)
 - [New Tenant Onboarding Checklist](guides/new-tenant-onboarding-checklist.md)
@@ -18,15 +20,18 @@ Bizosto ERP — a product of LA CREATIVO GROUP, LLC
 - [Client Portal Guide](guides/user-guides/client-portal-guide.md)
 
 ### Technical
+
 - [Environment Setup](env-setup.md)
 - [API Reference](api-reference.md)
 - [Stripe Tax Setup](stripe-tax-setup.md)
 - [Demo Environment](demo-environment.md)
 
 ### Business
+
 - [Pricing Page Content](bizosto-com-content/pricing-page.md)
 
 ## Platform Summary
+
 - 16 development prompts completed
 - 160K+ lines of code
 - 1300+ files
@@ -38,4 +43,5 @@ Bizosto ERP — a product of LA CREATIVO GROUP, LLC
 - Demo environment with seed data
 
 ## Build History
+
 All 16 prompts merged successfully. Platform is production-ready.

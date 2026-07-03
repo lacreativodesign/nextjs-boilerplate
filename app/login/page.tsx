@@ -1,67 +1,69 @@
-"use client";
-import BizostoSplash from "@/components/ui/BizostoSplash";
+'use client';
+import BizostoSplash from '@/components/ui/BizostoSplash';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   type Auth,
   getMultiFactorResolver,
   signInWithCustomToken,
   signInWithEmailAndPassword,
   type MultiFactorResolver,
-} from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebaseClient";
-import { getRoleRoute } from "@/lib/roleRouting";
-import MFAVerify from "@/components/auth/MFAVerify";
-import { verifyMFASignIn } from "@/lib/auth/mfa";
-import { Button } from "@/components/ui/button";
-import { showToast } from "@/lib/utils/toast";
-import SSOLoginButtons from "@/components/auth/SSOLoginButtons";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+} from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebaseClient';
+import { getRoleRoute } from '@/lib/roleRouting';
+import MFAVerify from '@/components/auth/MFAVerify';
+import { verifyMFASignIn } from '@/lib/auth/mfa';
+import { Button } from '@/components/ui/button';
+import { showToast } from '@/lib/utils/toast';
+import SSOLoginButtons from '@/components/auth/SSOLoginButtons';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api/client';
 
 function getFriendlyAuthError(code?: string): string {
   switch (code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/invalid-password":
-      return "Incorrect password. Please try again.";
-    case "auth/user-not-found":
-    case "auth/invalid-email":
-      return "No account found with this email address.";
-    case "auth/too-many-requests":
-      return "Too many failed attempts. Please wait a few minutes and try again.";
-    case "auth/user-disabled":
-      return "This account has been disabled. Contact your administrator.";
-    case "auth/network-request-failed":
-      return "Network error. Please check your connection and try again.";
-    case "auth/email-already-in-use":
-      return "An account with this email already exists.";
-    case "auth/weak-password":
-      return "Password is too weak. Please choose a stronger password.";
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/invalid-password':
+      return 'Incorrect password. Please try again.';
+    case 'auth/user-not-found':
+    case 'auth/invalid-email':
+      return 'No account found with this email address.';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please wait a few minutes and try again.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Contact your administrator.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Please choose a stronger password.';
     default:
-      return "Sign-in failed. Please check your credentials and try again.";
+      return 'Sign-in failed. Please check your credentials and try again.';
   }
 }
 
 export default function LoginPage() {
   const [email, setEmail] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("bizosto_saved_email") || "";
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem('bizosto_saved_email') || '';
   });
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("bizosto_remember") === "true";
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('bizosto_remember') === 'true';
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
-  const [splashDest, setSplashDest] = useState("");
+  const [splashDest, setSplashDest] = useState('');
   const [firebaseAuth, setFirebaseAuth] = useState<Auth | null>(null);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
-  const [ssoProviders, setSsoProviders] = useState<Array<{ provider: "google" | "microsoft" | "okta" | "auth0" }>>([]);
-  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "bizosto";
+  const [ssoProviders, setSsoProviders] = useState<
+    Array<{ provider: 'google' | 'microsoft' | 'okta' | 'auth0' }>
+  >([]);
+  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'bizosto';
 
   useEffect(() => {
     let active = true;
@@ -73,9 +75,9 @@ export default function LoginPage() {
         }
       })
       .catch((err) => {
-        console.error("Failed to initialize Firebase auth", err);
+        console.error('Failed to initialize Firebase auth', err);
         if (active) {
-          setError(err?.message || "Unable to load authentication.");
+          setError(err?.message || 'Unable to load authentication.');
         }
       });
 
@@ -88,7 +90,7 @@ export default function LoginPage() {
     let active = true;
 
     apiFetch(`/api/auth/sso/providers?tenantId=${encodeURIComponent(tenantId)}`, {
-      cache: "no-store",
+      cache: 'no-store',
     })
       .then((res) => res.json())
       .then((data) => {
@@ -105,9 +107,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (!firebaseAuth) return;
     const params = new URLSearchParams(window.location.search);
-    const ssoToken = params.get("ssoToken");
-    const returnTo = params.get("returnTo") || "/";
-    const emailParam = params.get("email");
+    const ssoToken = params.get('ssoToken');
+    const returnTo = params.get('returnTo') || '/';
+    const emailParam = params.get('email');
     if (emailParam) {
       setEmail(emailParam);
     }
@@ -117,15 +119,15 @@ export default function LoginPage() {
       try {
         const userCred = await signInWithCustomToken(firebaseAuth, ssoToken);
         const idToken = await userCred.user.getIdToken(true);
-        const cookieRes = await apiFetch("/api/session-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const cookieRes = await apiFetch('/api/session-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken, rememberMe: true }),
         });
 
         if (!cookieRes.ok) {
           const payload = await cookieRes.json().catch(() => null);
-          throw new Error(payload?.error || "Failed to create SSO session.");
+          throw new Error(payload?.error || 'Failed to create SSO session.');
         }
 
         window.location.href = returnTo;
@@ -141,27 +143,27 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firebaseAuth) {
-      setError("Authentication is still loading. Please try again.");
+      setError('Authentication is still loading. Please try again.');
       return;
     }
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       if (remember) {
-        window.localStorage.setItem("bizosto_saved_email", email);
+        window.localStorage.setItem('bizosto_saved_email', email);
       } else {
-        window.localStorage.removeItem("bizosto_saved_email");
+        window.localStorage.removeItem('bizosto_saved_email');
       }
       await completeLogin(userCred);
-      showToast.success("Login successful!");
+      showToast.success('Login successful!');
     } catch (err: any) {
-      if (firebaseAuth && err?.code === "auth/multi-factor-auth-required") {
+      if (firebaseAuth && err?.code === 'auth/multi-factor-auth-required') {
         // Firebase returns a MultiFactorResolver when TOTP is required.
         const resolver = getMultiFactorResolver(firebaseAuth, err);
         setMfaResolver(resolver);
-        setError("Two-factor authentication required.");
+        setError('Two-factor authentication required.');
       } else {
         const friendlyError = getFriendlyAuthError(err?.code);
         setError(friendlyError);
@@ -172,8 +174,10 @@ export default function LoginPage() {
     }
   }
 
-  async function completeLogin(userCred: { user: { uid: string; getIdToken: (forceRefresh: boolean) => Promise<string> } }) {
-    const sessionToast = showToast.loading("Creating session...");
+  async function completeLogin(userCred: {
+    user: { uid: string; getIdToken: (forceRefresh: boolean) => Promise<string> };
+  }) {
+    const sessionToast = showToast.loading('Creating session...');
     try {
       const idToken = await userCred.user.getIdToken(true);
 
@@ -191,10 +195,10 @@ export default function LoginPage() {
       }
 
       // Get user role via server API (Admin SDK — bypasses Firestore rules, works regardless of claims)
-      let dest = "/login";
+      let dest = '/login';
       try {
-        const ctxRes = await apiFetch("/api/tenant/context", {
-          cache: "no-store",
+        const ctxRes = await apiFetch('/api/tenant/context', {
+          cache: 'no-store',
         });
         if (ctxRes.ok) {
           const ctx = await ctxRes.json();
@@ -213,15 +217,15 @@ export default function LoginPage() {
 
   async function handleVerifyMfa(code: string) {
     if (!firebaseAuth || !mfaResolver) {
-      throw new Error("MFA session expired. Please sign in again.");
+      throw new Error('MFA session expired. Please sign in again.');
     }
     setLoading(true);
-    setError("");
+    setError('');
     try {
       const credential = await verifyMFASignIn(mfaResolver, code);
       await completeLogin(credential);
     } catch (err: any) {
-      setError("Invalid verification code. Please try again.");
+      setError('Invalid verification code. Please try again.');
       throw err;
     } finally {
       setLoading(false);
@@ -231,30 +235,30 @@ export default function LoginPage() {
   // FORGOT PASSWORD (unchanged)
   async function handleForgot() {
     if (!firebaseAuth) {
-      setError("Authentication is still loading. Please try again.");
+      setError('Authentication is still loading. Please try again.');
       return;
     }
 
     if (!email) {
-      setError("Enter your email first.");
+      setError('Enter your email first.');
       return;
     }
 
     try {
-      const res = await apiFetch("/api/auth/request-password-reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json?.error || "Failed to send reset email.");
+        throw new Error(json?.error || 'Failed to send reset email.');
       }
 
-      showToast.success("If an account exists for this email, a reset link has been sent.");
+      showToast.success('If an account exists for this email, a reset link has been sent.');
     } catch (err: any) {
-      setError("Unable to send reset email. Please verify your email address.");
+      setError('Unable to send reset email. Please verify your email address.');
     }
   }
 
@@ -278,9 +282,15 @@ export default function LoginPage() {
             <p className="login-tagline">The complete business operating system</p>
 
             <div className="login-feature-list">
-              <p><span>✓</span>Multi-tenant workspace management</p>
-              <p><span>✓</span>15 integrated business modules</p>
-              <p><span>✓</span>Enterprise-grade security & compliance</p>
+              <p>
+                <span>✓</span>Multi-tenant workspace management
+              </p>
+              <p>
+                <span>✓</span>15 integrated business modules
+              </p>
+              <p>
+                <span>✓</span>Enterprise-grade security & compliance
+              </p>
             </div>
 
             <p className="login-brand-footer">A product of LA CREATIVO GROUP</p>
@@ -318,7 +328,7 @@ export default function LoginPage() {
                   onVerify={handleVerifyMfa}
                   onCancel={() => {
                     setMfaResolver(null);
-                    setError("");
+                    setError('');
                   }}
                 />
               ) : (
@@ -339,7 +349,7 @@ export default function LoginPage() {
                     <span className="login-label">Password</span>
                     <div className="login-input-wrap">
                       <input
-                        type={showPass ? "text" : "password"}
+                        type={showPass ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -350,20 +360,24 @@ export default function LoginPage() {
                         type="button"
                         className="login-toggle"
                         onClick={() => setShowPass(!showPass)}
-                        aria-label={showPass ? "Hide password" : "Show password"}
+                        aria-label={showPass ? 'Hide password' : 'Show password'}
                       >
-                        {showPass ? "🙈" : "👁️"}
+                        {showPass ? '🙈' : '👁️'}
                       </button>
                     </div>
                   </label>
 
                   <div className="login-row">
                     <label className="login-check">
-                      <input type="checkbox" checked={remember} onChange={() => {
+                      <input
+                        type="checkbox"
+                        checked={remember}
+                        onChange={() => {
                           const next = !remember;
                           setRemember(next);
-                          window.localStorage.setItem("bizosto_remember", String(next));
-                        }} />
+                          window.localStorage.setItem('bizosto_remember', String(next));
+                        }}
+                      />
                       <span>Remember me</span>
                     </label>
 
@@ -376,7 +390,7 @@ export default function LoginPage() {
                     type="submit"
                     disabled={!firebaseAuth || loading}
                     loading={loading || !firebaseAuth}
-                    loadingText={!firebaseAuth ? "Loading..." : "Signing in..."}
+                    loadingText={!firebaseAuth ? 'Loading...' : 'Signing in...'}
                     className="login-submit"
                     fullWidth
                   >
@@ -385,7 +399,9 @@ export default function LoginPage() {
 
                   {ssoProviders.length > 0 ? (
                     <>
-                      <div className="login-divider"><span>or</span></div>
+                      <div className="login-divider">
+                        <span>or</span>
+                      </div>
                       <SSOLoginButtons tenantId={tenantId} providers={ssoProviders} />
                     </>
                   ) : null}
@@ -461,7 +477,10 @@ export default function LoginPage() {
             color: #ffffff;
             letter-spacing: -0.02em;
             line-height: 1;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family:
+              system-ui,
+              -apple-system,
+              sans-serif;
           }
 
           .login-logo-icon--sm .login-logo-b {
@@ -712,7 +731,7 @@ export default function LoginPage() {
 
           .login-divider::before,
           .login-divider::after {
-            content: "";
+            content: '';
             flex: 1;
             height: 1px;
             background: var(--border-subtle);
@@ -776,12 +795,14 @@ export default function LoginPage() {
           }
         `}</style>
       </div>
-    {showSplash && (
-      <BizostoSplash
-        duration={2000}
-        onDone={() => { window.location.href = splashDest; }}
-      />
-    )}
+      {showSplash && (
+        <BizostoSplash
+          duration={2000}
+          onDone={() => {
+            window.location.href = splashDest;
+          }}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import type { AuditAction, AuditLog, AuditResource } from "@/types/audit";
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import type { AuditAction, AuditLog, AuditResource } from '@/types/audit';
 
 interface LogAuditParams {
   tenantId: string;
@@ -21,17 +21,17 @@ interface LogAuditParams {
     location?: string;
     sessionId?: string;
   };
-  status: "success" | "failure";
+  status: 'success' | 'failure';
   errorMessage?: string;
 }
 
 export class AuditLogger {
-  private static readonly COLLECTION = "audit_logs";
+  private static readonly COLLECTION = 'audit_logs';
 
   static async log(params: LogAuditParams): Promise<void> {
     try {
       const now = Timestamp.now();
-      const auditLog: Omit<AuditLog, "id"> = {
+      const auditLog: Omit<AuditLog, 'id'> = {
         tenantId: params.tenantId,
         userId: params.userId,
         userEmail: params.userEmail,
@@ -49,21 +49,21 @@ export class AuditLogger {
 
       await adminDb.collection(this.COLLECTION).add(auditLog);
     } catch (error) {
-      console.error("Failed to log audit event:", error);
+      console.error('Failed to log audit event:', error);
     }
   }
 
-  static async logSuccess(params: Omit<LogAuditParams, "status">): Promise<void> {
-    await this.log({ ...params, status: "success" });
+  static async logSuccess(params: Omit<LogAuditParams, 'status'>): Promise<void> {
+    await this.log({ ...params, status: 'success' });
   }
 
   static async logFailure(
-    params: Omit<LogAuditParams, "status" | "errorMessage">,
-    error: Error
+    params: Omit<LogAuditParams, 'status' | 'errorMessage'>,
+    error: Error,
   ): Promise<void> {
     await this.log({
       ...params,
-      status: "failure",
+      status: 'failure',
       errorMessage: error.message,
     });
   }
@@ -74,7 +74,7 @@ export class AuditLogger {
       userId?: string;
       resource?: AuditResource;
       action?: AuditAction;
-      status?: "success" | "failure";
+      status?: 'success' | 'failure';
       startDate?: Date;
       endDate?: Date;
     };
@@ -83,26 +83,26 @@ export class AuditLogger {
   }): Promise<{ logs: AuditLog[]; total: number }> {
     let query: FirebaseFirestore.Query = adminDb
       .collection(this.COLLECTION)
-      .where("tenantId", "==", params.tenantId)
-      .orderBy("timestamp", "desc");
+      .where('tenantId', '==', params.tenantId)
+      .orderBy('timestamp', 'desc');
 
     if (params.filters?.userId) {
-      query = query.where("userId", "==", params.filters.userId);
+      query = query.where('userId', '==', params.filters.userId);
     }
     if (params.filters?.resource) {
-      query = query.where("resource", "==", params.filters.resource);
+      query = query.where('resource', '==', params.filters.resource);
     }
     if (params.filters?.action) {
-      query = query.where("action", "==", params.filters.action);
+      query = query.where('action', '==', params.filters.action);
     }
     if (params.filters?.status) {
-      query = query.where("status", "==", params.filters.status);
+      query = query.where('status', '==', params.filters.status);
     }
     if (params.filters?.startDate) {
-      query = query.where("timestamp", ">=", Timestamp.fromDate(params.filters.startDate));
+      query = query.where('timestamp', '>=', Timestamp.fromDate(params.filters.startDate));
     }
     if (params.filters?.endDate) {
-      query = query.where("timestamp", "<=", Timestamp.fromDate(params.filters.endDate));
+      query = query.where('timestamp', '<=', Timestamp.fromDate(params.filters.endDate));
     }
 
     const countSnapshot = await query.count().get();

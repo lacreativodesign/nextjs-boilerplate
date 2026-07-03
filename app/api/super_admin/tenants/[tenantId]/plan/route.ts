@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSuperAdmin } from "../../../_utils";
-import { writeAuditLog } from "@/lib/tenant/audit";
-import { normalizePlan, resolvePlanModules, resolveTenantModules } from "@/app/lib/plan-enforcement";
-import { createRoleNotifications } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSuperAdmin } from '../../../_utils';
+import { writeAuditLog } from '@/lib/tenant/audit';
+import {
+  normalizePlan,
+  resolvePlanModules,
+  resolveTenantModules,
+} from '@/app/lib/plan-enforcement';
+import { createRoleNotifications } from '@/lib/notifications';
 
 type ModuleMap = Record<string, boolean>;
 
@@ -29,12 +33,12 @@ function diffModules(current: ModuleMap, next: ModuleMap) {
 function formatModuleSummary(changes: { enabled: string[]; disabled: string[] }) {
   const parts: string[] = [];
   if (changes.enabled.length) {
-    parts.push(`Enabled: ${changes.enabled.join(", ")}`);
+    parts.push(`Enabled: ${changes.enabled.join(', ')}`);
   }
   if (changes.disabled.length) {
-    parts.push(`Disabled: ${changes.disabled.join(", ")}`);
+    parts.push(`Disabled: ${changes.disabled.join(', ')}`);
   }
-  return parts.join(" • ");
+  return parts.join(' • ');
 }
 
 export async function POST(req: NextRequest, { params }: { params: { tenantId: string } }) {
@@ -43,7 +47,10 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     const tenantId = params.tenantId;
 
     if (user.tenantId === tenantId) {
-      return NextResponse.json({ ok: false, error: "Cannot modify your own tenant plan." }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'Cannot modify your own tenant plan.' },
+        { status: 403 },
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -51,13 +58,13 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     const modulesProvided = body?.modules !== undefined;
 
     if (!planProvided && !modulesProvided) {
-      return NextResponse.json({ ok: false, error: "No plan updates provided." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'No plan updates provided.' }, { status: 400 });
     }
 
-    const tenantRef = adminDb.collection("tenants").doc(tenantId);
+    const tenantRef = adminDb.collection('tenants').doc(tenantId);
     const snap = await tenantRef.get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Tenant not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
     }
 
     const data = snap.data() || {};
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     const updates: Record<string, unknown> = {
       plan: nextPlan,
       modules: nextModules,
-      planSetBy: { uid: user.uid, role: "super_admin" },
+      planSetBy: { uid: user.uid, role: 'super_admin' },
       planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedBy: user.uid,
@@ -89,8 +96,8 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
       actorUserId: user.uid,
       actorName: user.displayName || user.email || null,
       actorRole: user.role,
-      actionType: planProvided ? "tenant_plan_updated" : "tenant_modules_override_updated",
-      entityType: "tenant",
+      actionType: planProvided ? 'tenant_plan_updated' : 'tenant_modules_override_updated',
+      entityType: 'tenant',
       entityId: tenantId,
       metadata: {
         oldPlan: currentPlan,
@@ -112,24 +119,24 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
         moduleSummary || null,
       ]
         .filter(Boolean)
-        .join(" • ");
+        .join(' • ');
 
-      const title = hasPlanChange ? "Plan updated" : "Module access updated";
-      const body = details || "Subscription access updated by a super admin.";
-      const type = moduleChanges.disabled.length > 0 ? "warning" : "info";
+      const title = hasPlanChange ? 'Plan updated' : 'Module access updated';
+      const body = details || 'Subscription access updated by a super admin.';
+      const type = moduleChanges.disabled.length > 0 ? 'warning' : 'info';
 
       await Promise.all([
         createRoleNotifications({
           tenantId,
-          roles: ["admin", "finance"],
+          roles: ['admin', 'finance'],
           title,
           body,
           type,
-          priority: moduleChanges.disabled.length > 0 ? "high" : "normal",
-          entityType: "tenant",
+          priority: moduleChanges.disabled.length > 0 ? 'high' : 'normal',
+          entityType: 'tenant',
           entityId: tenantId,
-          deepLink: "/billing",
-          createdBy: { uid: user.uid, name: user.displayName || user.email || "Super Admin" },
+          deepLink: '/billing',
+          createdBy: { uid: user.uid, name: user.displayName || user.email || 'Super Admin' },
           metadata: {
             oldPlan: currentPlan,
             newPlan: nextPlan,
@@ -139,16 +146,16 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
         }),
         createRoleNotifications({
           tenantId,
-          roles: ["super_admin"],
+          roles: ['super_admin'],
           recipientTenantId: null,
           title,
           body,
           type,
-          priority: moduleChanges.disabled.length > 0 ? "high" : "normal",
-          entityType: "tenant",
+          priority: moduleChanges.disabled.length > 0 ? 'high' : 'normal',
+          entityType: 'tenant',
           entityId: tenantId,
           deepLink: `/super_admin/tenants/${tenantId}`,
-          createdBy: { uid: user.uid, name: user.displayName || user.email || "Super Admin" },
+          createdBy: { uid: user.uid, name: user.displayName || user.email || 'Super Admin' },
           metadata: {
             oldPlan: currentPlan,
             newPlan: nextPlan,
@@ -161,8 +168,8 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
 
     return NextResponse.json({ ok: true, plan: nextPlan, modules: nextModules });
   } catch (err: any) {
-    const message = err?.message || "Server error";
-    const status = message === "Forbidden" ? 403 : 500;
+    const message = err?.message || 'Server error';
+    const status = message === 'Forbidden' ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { TicketThread } from "@/components/support/TicketThread";
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TicketThread } from '@/components/support/TicketThread';
 
-type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-type TicketPriority = "low" | "medium" | "high" | "urgent";
-type TicketCategory = "bug" | "feature" | "question" | "billing";
+type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+type TicketCategory = 'bug' | 'feature' | 'question' | 'billing';
 
 type SupportTicket = {
   id: string;
@@ -48,9 +48,9 @@ type RouteParams = {
 };
 
 function fmtDate(value: string | null) {
-  if (!value) return "-";
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString();
 }
 
@@ -61,7 +61,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
   const [error, setError] = useState<string | null>(null);
 
   const loadTicket = useCallback(async () => {
-    const response = await fetch("/api/support/tickets", { cache: "no-store" });
+    const response = await fetch('/api/support/tickets', { cache: 'no-store' });
     const body = (await response.json().catch(() => null)) as
       | {
           tickets?: SupportTicket[];
@@ -71,7 +71,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
       | null;
 
     if (!response.ok) {
-      throw new Error((body && !Array.isArray(body) && body.error) || "Failed to load ticket.");
+      throw new Error((body && !Array.isArray(body) && body.error) || 'Failed to load ticket.');
     }
 
     const allTickets = Array.isArray(body) ? body : body?.tickets || [];
@@ -80,7 +80,9 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
   }, [params.ticketId]);
 
   const loadMessages = useCallback(async () => {
-    const response = await fetch(`/api/support/tickets/${params.ticketId}/messages`, { cache: "no-store" });
+    const response = await fetch(`/api/support/tickets/${params.ticketId}/messages`, {
+      cache: 'no-store',
+    });
     const body = (await response.json().catch(() => null)) as
       | {
           messages?: TicketMessage[];
@@ -90,7 +92,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
       | null;
 
     if (!response.ok) {
-      throw new Error((body && !Array.isArray(body) && body.error) || "Failed to load messages.");
+      throw new Error((body && !Array.isArray(body) && body.error) || 'Failed to load messages.');
     }
 
     setMessages(Array.isArray(body) ? body : body?.messages || []);
@@ -102,7 +104,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
     try {
       await Promise.all([loadTicket(), loadMessages()]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load support ticket.");
+      setError(err instanceof Error ? err.message : 'Failed to load support ticket.');
     } finally {
       setLoading(false);
     }
@@ -124,15 +126,21 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      {!loading && !ticket ? <p className="text-sm text-[var(--text-muted)]">Ticket not found.</p> : null}
+      {!loading && !ticket ? (
+        <p className="text-sm text-[var(--text-muted)]">Ticket not found.</p>
+      ) : null}
 
       {ticket ? (
         <div className="card p-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">{ticket.title}</h1>
-            <span className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-muted)]">{ticket.ticketNumber}</span>
+            <span className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-muted)]">
+              {ticket.ticketNumber}
+            </span>
           </div>
-          <p className="mb-4 whitespace-pre-wrap text-sm text-[var(--text-primary)]">{ticket.description}</p>
+          <p className="mb-4 whitespace-pre-wrap text-sm text-[var(--text-primary)]">
+            {ticket.description}
+          </p>
 
           <div className="grid grid-cols-1 gap-3 text-sm text-[var(--text-muted)] md:grid-cols-2">
             <p>
@@ -145,10 +153,10 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
               <strong>Category:</strong> {ticket.category}
             </p>
             <p>
-              <strong>Assigned:</strong> {ticket.assignedTo?.name || "Unassigned"}
+              <strong>Assigned:</strong> {ticket.assignedTo?.name || 'Unassigned'}
             </p>
             <p>
-              <strong>Created by:</strong> {ticket.createdBy?.name || "Unknown"}
+              <strong>Created by:</strong> {ticket.createdBy?.name || 'Unknown'}
             </p>
             <p>
               <strong>Created at:</strong> {fmtDate(ticket.createdAt)}
@@ -158,7 +166,10 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
           {tagList.length ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {tagList.map((tag) => (
-                <span key={tag} className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-muted)]">
+                <span
+                  key={tag}
+                  className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-muted)]"
+                >
                   {tag}
                 </span>
               ))}

@@ -1,6 +1,6 @@
-"use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 type HROverview = {
   totalEmployees: number;
@@ -23,11 +23,13 @@ function StatCard({
   color?: string;
 }) {
   const inner = (
-    <div className={`card ${href ? "cursor-pointer hover:border-[var(--erp-blue)] transition-all group" : ""}`}>
+    <div
+      className={`card ${href ? 'cursor-pointer hover:border-[var(--erp-blue)] transition-all group' : ''}`}
+    >
       <div className="helper-text mb-2">{label}</div>
       <div
         className="text-3xl font-bold group-hover:text-[var(--erp-blue)]"
-        style={{ color: color || "var(--text-primary)" }}
+        style={{ color: color || 'var(--text-primary)' }}
       >
         {value}
       </div>
@@ -40,10 +42,10 @@ function StatCard({
 export default function HrOverviewPage() {
   const [data, setData] = useState<HROverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch("/api/hr/overview", { credentials: "include" })
+    fetch('/api/hr/overview', { credentials: 'include' })
       .then((r) => r.json())
       .then((res) => {
         if (res.ok) {
@@ -54,19 +56,24 @@ export default function HrOverviewPage() {
             openOnboarding: res.overview?.openOnboarding ?? 0,
           });
         } else {
-          setError(res.error || "Failed to load HR data");
+          setError(res.error || 'Failed to load HR data');
         }
       })
-      .catch(() => setError("Failed to load HR data"))
+      .catch(() => setError('Failed to load HR data'))
       .finally(() => setLoading(false));
   }, []);
 
-  const v = (n: number) => (loading ? "..." : n);
+  const v = (n: number) => (loading ? '...' : n);
 
   return (
     <div className="page-frame space-y-6">
       <div className="kpis">
-        <StatCard label="Total Employees" value={v(data?.totalEmployees ?? 0)} sub="All staff" href="/hr/employees" />
+        <StatCard
+          label="Total Employees"
+          value={v(data?.totalEmployees ?? 0)}
+          sub="All staff"
+          href="/hr/employees"
+        />
         <StatCard
           label="Active Employees"
           value={v(data?.activeEmployees ?? 0)}
@@ -74,12 +81,17 @@ export default function HrOverviewPage() {
           color="var(--success)"
           href="/hr/employees"
         />
-        <StatCard label="New Hires (30d)" value={v(data?.newHires ?? 0)} sub="Joined this month" color="var(--erp-blue)" />
+        <StatCard
+          label="New Hires (30d)"
+          value={v(data?.newHires ?? 0)}
+          sub="Joined this month"
+          color="var(--erp-blue)"
+        />
         <StatCard
           label="Open Onboarding"
           value={v(data?.openOnboarding ?? 0)}
           sub="Tasks pending"
-          color={data?.openOnboarding ? "var(--warning)" : undefined}
+          color={data?.openOnboarding ? 'var(--warning)' : undefined}
         />
       </div>
 
@@ -87,18 +99,32 @@ export default function HrOverviewPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
-          { title: "Employees", href: "/hr/employees", desc: "View and manage all team members." },
-          { title: "Attendance", href: "/hr/attendance", desc: "Track daily attendance and absences." },
-          { title: "Leave", href: "/hr/leave", desc: "Manage leave requests and approvals." },
-          { title: "Payroll", href: "/hr/payroll", desc: "Salaries, commissions, and payroll runs." },
-          { title: "Performance", href: "/hr/performance", desc: "KPI reviews and performance ratings." },
+          { title: 'Employees', href: '/hr/employees', desc: 'View and manage all team members.' },
+          {
+            title: 'Attendance',
+            href: '/hr/attendance',
+            desc: 'Track daily attendance and absences.',
+          },
+          { title: 'Leave', href: '/hr/leave', desc: 'Manage leave requests and approvals.' },
+          {
+            title: 'Payroll',
+            href: '/hr/payroll',
+            desc: 'Salaries, commissions, and payroll runs.',
+          },
+          {
+            title: 'Performance',
+            href: '/hr/performance',
+            desc: 'KPI reviews and performance ratings.',
+          },
         ].map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 hover:border-[var(--erp-blue)] transition-all group"
           >
-            <p className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--erp-blue)]">{item.title}</p>
+            <p className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--erp-blue)]">
+              {item.title}
+            </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>
           </Link>
         ))}

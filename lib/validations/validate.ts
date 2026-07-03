@@ -1,9 +1,9 @@
-import { z, ZodSchema, ZodTypeAny } from "zod";
-import { AppError } from "@/lib/errors";
+import { z, ZodSchema, ZodTypeAny } from 'zod';
+import { AppError } from '@/lib/errors';
 
 const formatZodErrors = (error: z.ZodError) =>
   error.errors.map((err) => ({
-    field: err.path.join(".") || "root",
+    field: err.path.join('.') || 'root',
     message: err.message,
   }));
 
@@ -15,8 +15,8 @@ export function validateRequest<T>(schema: ZodSchema<T>, data: unknown): T {
   if (!result.success) {
     const fieldErrors = formatZodErrors(result.error);
     throw new AppError({
-      message: "Validation failed",
-      code: "VALIDATION_ERROR",
+      message: 'Validation failed',
+      code: 'VALIDATION_ERROR',
       status: 400,
       cause: { fields: fieldErrors },
     });
@@ -31,14 +31,17 @@ export function validateQuery<T>(schema: ZodSchema<T>, params: URLSearchParams):
 }
 
 // Helper for partial validation (PATCH requests).
-export function validatePartial<T extends ZodTypeAny>(schema: T, data: unknown): Partial<z.infer<T>> {
+export function validatePartial<T extends ZodTypeAny>(
+  schema: T,
+  data: unknown,
+): Partial<z.infer<T>> {
   const partialSchema = schema instanceof z.ZodObject ? schema.partial() : schema;
   const result = partialSchema.safeParse(data);
   if (!result.success) {
     const fieldErrors = formatZodErrors(result.error);
     throw new AppError({
-      message: "Validation failed",
-      code: "VALIDATION_ERROR",
+      message: 'Validation failed',
+      code: 'VALIDATION_ERROR',
       status: 400,
       cause: { fields: fieldErrors },
     });

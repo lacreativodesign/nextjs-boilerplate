@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createFinanceEvent, requireAdmin, parseString, serverTimestamp } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createFinanceEvent, requireAdmin, parseString, serverTimestamp } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -15,60 +15,60 @@ export async function POST(req: Request) {
     const id = parseString(body?.id).trim();
     const action = parseString(body?.action).trim();
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Payroll id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Payroll id is required.' }, { status: 400 });
     }
 
-    const ref = adminDb.collection("payroll").doc(id);
+    const ref = adminDb.collection('payroll').doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Payroll entry not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Payroll entry not found.' }, { status: 404 });
     }
 
     const payroll = snap.data() || {};
-    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
-    if (!isSuperAdmin && String(payroll.tenantId || "") !== String(auth.user.tenantId || "")) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    const isSuperAdmin = (auth.user.role || '').toLowerCase() === 'super_admin';
+    if (!isSuperAdmin && String(payroll.tenantId || '') !== String(auth.user.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
-    const userName = String(payroll.userName || "");
+    const userName = String(payroll.userName || '');
 
-    if (action === "approve") {
+    if (action === 'approve') {
       await ref.update({
-        status: "Approved",
+        status: 'Approved',
         updatedAt: serverTimestamp(),
       });
       return NextResponse.json({ ok: true });
     }
 
-    if (action === "mark_paid") {
+    if (action === 'mark_paid') {
       await ref.update({
-        status: "Paid",
+        status: 'Paid',
         paidAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
       await createFinanceEvent({
-        type: "finance.payroll_paid",
-        title: "Payroll marked paid",
-        description: `Payroll paid for ${userName || "employee"}.`,
-        entityType: "payroll",
+        type: 'finance.payroll_paid',
+        title: 'Payroll marked paid',
+        description: `Payroll paid for ${userName || 'employee'}.`,
+        entityType: 'payroll',
         entityId: id,
         createdByUid: auth.user.uid,
-        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || '',
         tenantId: auth.user.tenantId,
       });
 
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'Invalid action.' }, { status: 400 });
   } catch (err: any) {
-    console.error("finance/payroll update error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/payroll update error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to update payroll.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to update payroll.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

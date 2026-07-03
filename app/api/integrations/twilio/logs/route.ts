@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { listTwilioLogs } from "@/lib/integrations/twilio";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { listTwilioLogs } from '@/lib/integrations/twilio';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,12 +11,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const limit = Number(request.nextUrl.searchParams.get("limit") || 50);
+    const limit = Number(request.nextUrl.searchParams.get('limit') || 50);
     const logs = await listTwilioLogs(auth.user.tenantId, Number.isFinite(limit) ? limit : 50);
 
     return NextResponse.json({ ok: true, logs });
   } catch (error: any) {
-    console.error("twilio/logs error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load SMS logs." }, { status: 500 });
+    console.error('twilio/logs error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to load SMS logs.' },
+      { status: 500 },
+    );
   }
 }

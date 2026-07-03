@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireClient, toISO } from "../../../_utils";
-import { toInvoiceStatusLabel } from "@/lib/finance/status";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireClient, toISO } from '../../../_utils';
+import { toInvoiceStatusLabel } from '@/lib/finance/status';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type InvoiceDoc = {
   orderId?: string;
@@ -30,13 +30,13 @@ export async function GET() {
 
     const tenantId = auth.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
     const snap = await adminDb
-      .collection("invoices")
-      .where("clientId", "==", auth.clientId)
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
+      .collection('invoices')
+      .where('clientId', '==', auth.clientId)
+      .where('isDeleted', '==', false)
+      .orderBy('createdAt', 'desc')
       .limit(500)
       .get();
 
@@ -45,8 +45,8 @@ export async function GET() {
         const data = (doc.data() || {}) as InvoiceDoc;
         return {
           id: doc.id,
-          tenantId: data.tenantId || "",
-          orderId: data.orderId || "",
+          tenantId: data.tenantId || '',
+          orderId: data.orderId || '',
           status: toInvoiceStatusLabel(data.status),
           amountUsd: Number(data.amountTotalUsd || 0),
           dueDate: toISO(data.dueDate),
@@ -55,17 +55,17 @@ export async function GET() {
           paidAt: toISO(data.paidAt),
         };
       })
-      .filter((invoice) => String((invoice as Record<string, any>).tenantId || "") === tenantId);
+      .filter((invoice) => String((invoice as Record<string, any>).tenantId || '') === tenantId);
 
     return NextResponse.json({ ok: true, invoices });
   } catch (err: any) {
-    console.error("client/billing invoices list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('client/billing invoices list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load invoices.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load invoices.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

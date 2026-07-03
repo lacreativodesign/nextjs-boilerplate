@@ -1,25 +1,25 @@
 export const WEBHOOK_EVENT_TYPES = [
-  "invoice.created",
-  "invoice.updated",
-  "invoice.paid",
-  "client.created",
-  "client.updated",
-  "project.created",
-  "project.completed",
-  "task.created",
-  "task.assigned",
-  "task.completed",
-  "payment.received",
-  "user.created",
-  "leave.requested",
-  "leave.approved",
+  'invoice.created',
+  'invoice.updated',
+  'invoice.paid',
+  'client.created',
+  'client.updated',
+  'project.created',
+  'project.completed',
+  'task.created',
+  'task.assigned',
+  'task.completed',
+  'payment.received',
+  'user.created',
+  'leave.requested',
+  'leave.approved',
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type WebhookSubscriptionStatus = "active" | "disabled";
+export type WebhookSubscriptionStatus = 'active' | 'disabled';
 
-export type WebhookDeliveryStatus = "pending" | "retrying" | "success" | "failed";
+export type WebhookDeliveryStatus = 'pending' | 'retrying' | 'success' | 'failed';
 
 export type WebhookSubscriptionRecord = {
   id: string;
@@ -46,7 +46,7 @@ export type WebhookEventEnvelope = {
   entityType: string;
   entityId: string;
   occurredAt: string;
-  source: "api" | "system";
+  source: 'api' | 'system';
   payload: Record<string, unknown>;
   actor: {
     uid: string;

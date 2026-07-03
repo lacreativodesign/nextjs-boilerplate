@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export default function RouteProgress() {
   const pathname = usePathname();
@@ -9,7 +9,10 @@ export default function RouteProgress() {
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
 
-  const key = useMemo(() => `${pathname}?${searchParams?.toString() ?? ""}`, [pathname, searchParams]);
+  const key = useMemo(
+    () => `${pathname}?${searchParams?.toString() ?? ''}`,
+    [pathname, searchParams],
+  );
 
   useEffect(() => {
     setVisible(true);
@@ -33,24 +36,24 @@ export default function RouteProgress() {
   return (
     <div
       style={{
-        position: "fixed",
+        position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        height: "2px",
+        height: '2px',
         zIndex: 99999,
-        pointerEvents: "none",
-        backgroundColor: "transparent",
+        pointerEvents: 'none',
+        backgroundColor: 'transparent',
       }}
     >
       <div
         style={{
-          height: "100%",
+          height: '100%',
           width: `${progress}%`,
-          backgroundColor: "var(--erp-blue)",
-          borderRadius: "0 2px 2px 0",
-          transition: "width 200ms ease-out",
-          boxShadow: "0 0 8px var(--erp-blue)",
+          backgroundColor: 'var(--erp-blue)',
+          borderRadius: '0 2px 2px 0',
+          transition: 'width 200ms ease-out',
+          boxShadow: '0 0 8px var(--erp-blue)',
         }}
       />
     </div>

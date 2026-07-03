@@ -3,11 +3,14 @@ export type FirestoreRecord = Record<string, any>;
 type DocSeed = { id: string; data: FirestoreRecord };
 type Seed = Record<string, DocSeed[]>;
 
-type WhereFilter = { field: string; op: "=="; value: unknown };
-type OrderRule = { field: string; direction: "asc" | "desc" };
+type WhereFilter = { field: string; op: '=='; value: unknown };
+type OrderRule = { field: string; direction: 'asc' | 'desc' };
 
 class MockDocSnapshot {
-  constructor(public readonly id: string, private readonly record: FirestoreRecord | undefined) {}
+  constructor(
+    public readonly id: string,
+    private readonly record: FirestoreRecord | undefined,
+  ) {}
 
   get exists() {
     return this.record !== undefined;
@@ -20,7 +23,11 @@ class MockDocSnapshot {
 }
 
 class MockDocRef {
-  constructor(private readonly db: FirestoreEmulator, private readonly collectionName: string, public readonly id: string) {}
+  constructor(
+    private readonly db: FirestoreEmulator,
+    private readonly collectionName: string,
+    public readonly id: string,
+  ) {}
 
   async get() {
     return new MockDocSnapshot(this.id, this.db.getDoc(this.collectionName, this.id));
@@ -57,12 +64,24 @@ class MockQuery {
     private readonly max: number | null = null,
   ) {}
 
-  where(field: string, op: "==", value: unknown) {
-    return new MockQuery(this.db, this.collectionName, [...this.filters, { field, op, value }], this.order, this.max);
+  where(field: string, op: '==', value: unknown) {
+    return new MockQuery(
+      this.db,
+      this.collectionName,
+      [...this.filters, { field, op, value }],
+      this.order,
+      this.max,
+    );
   }
 
-  orderBy(field: string, direction: "asc" | "desc" = "asc") {
-    return new MockQuery(this.db, this.collectionName, this.filters, { field, direction }, this.max);
+  orderBy(field: string, direction: 'asc' | 'desc' = 'asc') {
+    return new MockQuery(
+      this.db,
+      this.collectionName,
+      this.filters,
+      { field, direction },
+      this.max,
+    );
   }
 
   limit(max: number) {
@@ -70,7 +89,8 @@ class MockQuery {
   }
 
   async get() {
-    const rows = this.db.getCollectionDocs(this.collectionName)
+    const rows = this.db
+      .getCollectionDocs(this.collectionName)
       .filter(({ data }) => this.filters.every((f) => data[f.field] === f.value));
 
     if (this.order) {
@@ -79,7 +99,7 @@ class MockQuery {
         const bv = b.data[this.order!.field];
         if (av === bv) return 0;
         const result = av > bv ? 1 : -1;
-        return this.order!.direction === "desc" ? -result : result;
+        return this.order!.direction === 'desc' ? -result : result;
       });
     }
 
@@ -173,83 +193,118 @@ export function buildTenantSeed() {
   return {
     invoices: [
       {
-        id: "inv_tenant_a",
+        id: 'inv_tenant_a',
         data: {
-          tenantId: "tenant_a",
+          tenantId: 'tenant_a',
           isDeleted: false,
-          status: "draft",
-          orderId: "ORD-A",
-          clientId: "client_a",
+          status: 'draft',
+          orderId: 'ORD-A',
+          clientId: 'client_a',
           amountTotal: 150,
         },
       },
       {
-        id: "inv_tenant_b",
+        id: 'inv_tenant_b',
         data: {
-          tenantId: "tenant_b",
+          tenantId: 'tenant_b',
           isDeleted: false,
-          status: "draft",
-          orderId: "ORD-B",
-          clientId: "client_b",
+          status: 'draft',
+          orderId: 'ORD-B',
+          clientId: 'client_b',
           amountTotal: 220,
         },
       },
     ],
     tax_rates: [
-      { id: "tax_a_default", data: { tenantId: "tenant_a", name: "VAT", rate: 10, country: "US", isActive: true, isDefault: true } },
-      { id: "tax_b", data: { tenantId: "tenant_b", name: "GST", rate: 12, country: "CA", isActive: true, isDefault: true } },
-    ],
-    budgets: [
       {
-        id: "budget_a",
+        id: 'tax_a_default',
         data: {
-          tenantId: "tenant_a",
-          name: "Ops Budget",
-          status: "active",
-          type: "department",
-          ownerId: "owner_a",
-          startDate: new Date("2025-01-01"),
-          endDate: new Date("2025-12-31"),
-          totalAmount: 1000,
-          actualAmount: 600,
-          categories: [{ id: "cat_1", allocatedAmount: 1000, spentAmount: 600, remainingAmount: 400 }],
+          tenantId: 'tenant_a',
+          name: 'VAT',
+          rate: 10,
+          country: 'US',
+          isActive: true,
+          isDefault: true,
         },
       },
       {
-        id: "budget_b",
-        data: { tenantId: "tenant_b", name: "Other Budget", status: "active", type: "department", ownerId: "owner_b" },
+        id: 'tax_b',
+        data: {
+          tenantId: 'tenant_b',
+          name: 'GST',
+          rate: 12,
+          country: 'CA',
+          isActive: true,
+          isDefault: true,
+        },
+      },
+    ],
+    budgets: [
+      {
+        id: 'budget_a',
+        data: {
+          tenantId: 'tenant_a',
+          name: 'Ops Budget',
+          status: 'active',
+          type: 'department',
+          ownerId: 'owner_a',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-12-31'),
+          totalAmount: 1000,
+          actualAmount: 600,
+          categories: [
+            { id: 'cat_1', allocatedAmount: 1000, spentAmount: 600, remainingAmount: 400 },
+          ],
+        },
+      },
+      {
+        id: 'budget_b',
+        data: {
+          tenantId: 'tenant_b',
+          name: 'Other Budget',
+          status: 'active',
+          type: 'department',
+          ownerId: 'owner_b',
+        },
       },
     ],
     recurring_invoice_templates: [
       {
-        id: "template_a",
+        id: 'template_a',
         data: {
-          tenantId: "tenant_a",
-          clientId: "client_a",
-          status: "active",
-          name: "Monthly Retainer",
-          frequency: "monthly",
+          tenantId: 'tenant_a',
+          clientId: 'client_a',
+          status: 'active',
+          name: 'Monthly Retainer',
+          frequency: 'monthly',
           interval: 1,
-          createdAt: new Date("2025-01-01"),
+          createdAt: new Date('2025-01-01'),
         },
       },
       {
-        id: "template_b",
-        data: { tenantId: "tenant_b", clientId: "client_b", status: "active", name: "Tenant B", frequency: "monthly", interval: 1 },
+        id: 'template_b',
+        data: {
+          tenantId: 'tenant_b',
+          clientId: 'client_b',
+          status: 'active',
+          name: 'Tenant B',
+          frequency: 'monthly',
+          interval: 1,
+        },
       },
     ],
     clients: [
-      { id: "client_a", data: { tenantId: "tenant_a", companyName: "Tenant A Client" } },
-      { id: "client_b", data: { tenantId: "tenant_b", companyName: "Tenant B Client" } },
+      { id: 'client_a', data: { tenantId: 'tenant_a', companyName: 'Tenant A Client' } },
+      { id: 'client_b', data: { tenantId: 'tenant_b', companyName: 'Tenant B Client' } },
     ],
     users: [
-      { id: "owner_a", data: { tenantId: "tenant_a", name: "Owner A", role: "finance" } },
-      { id: "owner_b", data: { tenantId: "tenant_b", name: "Owner B", role: "finance" } },
+      { id: 'owner_a', data: { tenantId: 'tenant_a', name: 'Owner A', role: 'finance' } },
+      { id: 'owner_b', data: { tenantId: 'tenant_b', name: 'Owner B', role: 'finance' } },
     ],
     sessions: [
-      { id: "sess_current", data: { uid: "user_a", expiresAt: Date.now() + 60000 } },
-      { id: "sess_other", data: { uid: "user_a", expiresAt: Date.now() + 60000 } },
-      { id: "sess_foreign", data: { uid: "user_b", expiresAt: Date.now() + 60000 } },
+      { id: 'sess_current', data: { uid: 'user_a', expiresAt: Date.now() + 60000 } },
+      { id: 'sess_other', data: { uid: 'user_a', expiresAt: Date.now() + 60000 } },
+      { id: 'sess_foreign', data: { uid: 'user_b', expiresAt: Date.now() + 60000 } },
     ],
   } satisfies Seed;
 }

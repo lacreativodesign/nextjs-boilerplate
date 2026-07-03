@@ -1,11 +1,11 @@
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 type ChartSkeletonProps = {
   height?: number;
   className?: string;
 };
 
-export default function ChartSkeleton({ height = 240, className = "" }: ChartSkeletonProps) {
+export default function ChartSkeleton({ height = 240, className = '' }: ChartSkeletonProps) {
   return (
     <div className={`space-y-3 ${className}`.trim()} aria-hidden="true">
       <Skeleton className="h-4 w-1/3" />

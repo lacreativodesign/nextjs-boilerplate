@@ -1,11 +1,11 @@
 export interface TenantLateFeesSettings {
   enabled: boolean;
-  type: "percentage" | "fixed";
+  type: 'percentage' | 'fixed';
   value: number;
   gracePeriodDays: number;
 }
 
-export type SsoProviderType = "google" | "microsoft" | "okta" | "auth0";
+export type SsoProviderType = 'google' | 'microsoft' | 'okta' | 'auth0';
 
 export interface TenantSsoConnection {
   provider: SsoProviderType;

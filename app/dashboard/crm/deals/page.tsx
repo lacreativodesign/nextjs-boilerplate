@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { DealPipeline } from "@/components/crm/DealPipeline";
+import { useEffect, useState } from 'react';
+import { DealPipeline } from '@/components/crm/DealPipeline';
 
 type Deal = {
   id: string;
@@ -28,7 +28,7 @@ export default function DealsPage() {
   }, []);
 
   const fetchPipelines = async () => {
-    const response = await fetch("/api/crm/pipelines", { cache: "no-store" });
+    const response = await fetch('/api/crm/pipelines', { cache: 'no-store' });
     const data = await response.json();
     setPipelines(data.pipelines || []);
     if (data.pipelines?.length > 0) {
@@ -37,7 +37,7 @@ export default function DealsPage() {
   };
 
   const fetchDeals = async () => {
-    const response = await fetch("/api/crm/deals", { cache: "no-store" });
+    const response = await fetch('/api/crm/deals', { cache: 'no-store' });
     const data = await response.json();
     setDeals(data.deals || []);
   };
@@ -51,7 +51,7 @@ export default function DealsPage() {
           {pipelines.map((pipeline) => (
             <button
               key={pipeline.id}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activePipeline === pipeline.id ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activePipeline === pipeline.id ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-primary)]'}`}
               onClick={() => setActivePipeline(pipeline.id)}
             >
               {pipeline.name}
@@ -60,7 +60,9 @@ export default function DealsPage() {
         </div>
       )}
 
-      {activePipeline && <DealPipeline pipelineId={activePipeline} deals={deals} onUpdate={fetchDeals} />}
+      {activePipeline && (
+        <DealPipeline pipelineId={activePipeline} deals={deals} onUpdate={fetchDeals} />
+      )}
     </div>
   );
 }

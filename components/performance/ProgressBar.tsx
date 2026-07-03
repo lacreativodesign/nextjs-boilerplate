@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-type Unit = "USD" | "count" | "%";
+type Unit = 'USD' | 'count' | '%';
 
 type ProgressBarProps = {
   label: string;
@@ -8,28 +8,28 @@ type ProgressBarProps = {
   target: number;
   unit: Unit;
   periodLabel?: string;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
 };
 
-const heights = { sm: "h-[6px]", md: "h-[10px]", lg: "h-[14px]" };
+const heights = { sm: 'h-[6px]', md: 'h-[10px]', lg: 'h-[14px]' };
 
 function formatValue(value: number, unit: Unit) {
-  if (unit === "USD") {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+  if (unit === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(value);
   }
-  if (unit === "%") return `${value.toFixed(1)}%`;
+  if (unit === '%') return `${value.toFixed(1)}%`;
   return value.toLocaleString();
 }
 
 function getFillColor(percentage: number) {
-  if (percentage >= 100) return "#16a34a";
-  if (percentage >= 80) return "#2563eb";
-  if (percentage >= 50) return "#d97706";
-  return "#dc2626";
+  if (percentage >= 100) return '#16a34a';
+  if (percentage >= 80) return '#2563eb';
+  if (percentage >= 50) return '#d97706';
+  return '#dc2626';
 }
 
 export default function ProgressBar({
@@ -38,7 +38,7 @@ export default function ProgressBar({
   target,
   unit,
   periodLabel,
-  size = "md",
+  size = 'md',
 }: ProgressBarProps) {
   if (target <= 0) {
     return (
@@ -71,7 +71,7 @@ export default function ProgressBar({
         />
       </div>
       <div className="flex justify-end text-xs text-[var(--text-muted)]">
-        {percentage}%{percentage > 100 ? " ✓" : ""}
+        {percentage}%{percentage > 100 ? ' ✓' : ''}
       </div>
     </div>
   );

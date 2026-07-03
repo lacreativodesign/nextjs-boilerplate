@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash2 } from "lucide-react";
-import { toastError, toastSuccess } from "@/lib/toast";
-import type { BudgetCategory } from "@/lib/types/budget";
-import { apiFetch } from "@/lib/api/client";
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Plus, Trash2 } from 'lucide-react';
+import { toastError, toastSuccess } from '@/lib/toast';
+import type { BudgetCategory } from '@/lib/types/budget';
+import { apiFetch } from '@/lib/api/client';
 
-type EditableCategory = Pick<BudgetCategory, "id" | "name" | "type" | "monthlyBudgets">;
+type EditableCategory = Pick<BudgetCategory, 'id' | 'name' | 'type' | 'monthlyBudgets'>;
 
-function createEmptyCategory(name: string, type: "revenue" | "expense"): EditableCategory {
+function createEmptyCategory(name: string, type: 'revenue' | 'expense'): EditableCategory {
   return {
     id: crypto.randomUUID(),
     name,
@@ -29,20 +29,23 @@ function createEmptyCategory(name: string, type: "revenue" | "expense"): Editabl
 
 export default function CreateBudgetPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState('USD');
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<EditableCategory[]>([
-    createEmptyCategory("Revenue", "revenue"),
-    createEmptyCategory("Operating Expenses", "expense"),
+    createEmptyCategory('Revenue', 'revenue'),
+    createEmptyCategory('Operating Expenses', 'expense'),
   ]);
 
-  const months = useMemo(() => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], []);
+  const months = useMemo(
+    () => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    [],
+  );
 
   const addCategory = () => {
-    setCategories((prev) => [...prev, createEmptyCategory("New Category", "expense")]);
+    setCategories((prev) => [...prev, createEmptyCategory('New Category', 'expense')]);
   };
 
   const updateCategory = (index: number, updates: Partial<EditableCategory>) => {
@@ -61,10 +64,10 @@ export default function CreateBudgetPage() {
                   ...monthly,
                   budgeted: Number.isFinite(value) ? value : 0,
                 }
-              : monthly
+              : monthly,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -75,20 +78,20 @@ export default function CreateBudgetPage() {
   const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toastError("Please enter a budget name.");
+      toastError('Please enter a budget name.');
       return;
     }
 
     if (categories.length === 0) {
-      toastError("At least one category is required.");
+      toastError('At least one category is required.');
       return;
     }
 
     setSaving(true);
     try {
-      const response = await apiFetch("/api/admin/finance/budgets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/admin/finance/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: trimmedName,
           description: description.trim(),
@@ -100,14 +103,14 @@ export default function CreateBudgetPage() {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to create budget.");
+        throw new Error(data?.error || 'Unable to create budget.');
       }
 
-      toastSuccess("Budget created successfully.");
+      toastSuccess('Budget created successfully.');
       router.push(`/admin/finance/budgets/${data.id}`);
     } catch (error: any) {
-      console.error("Create budget error", error);
-      toastError(error?.message || "Unable to create budget.");
+      console.error('Create budget error', error);
+      toastError(error?.message || 'Unable to create budget.');
     } finally {
       setSaving(false);
     }
@@ -117,7 +120,9 @@ export default function CreateBudgetPage() {
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Create Budget</h1>
-        <Button onClick={handleSubmit} disabled={saving}>{saving ? "Saving..." : "Save Budget"}</Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Budget'}
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -128,11 +133,19 @@ export default function CreateBudgetPage() {
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div>
               <Label>Budget Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="2026 Annual Budget" />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="2026 Annual Budget"
+              />
             </div>
             <div>
               <Label>Description</Label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional budget context" />
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional budget context"
+              />
             </div>
             <div>
               <Label>Fiscal Year</Label>
@@ -141,12 +154,18 @@ export default function CreateBudgetPage() {
                 min={2000}
                 max={3000}
                 value={year}
-                onChange={(e) => setYear(Number.parseInt(e.target.value, 10) || new Date().getFullYear())}
+                onChange={(e) =>
+                  setYear(Number.parseInt(e.target.value, 10) || new Date().getFullYear())
+                }
               />
             </div>
             <div>
               <Label>Currency</Label>
-              <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} />
+              <Input
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                maxLength={3}
+              />
             </div>
           </CardContent>
         </Card>
@@ -164,13 +183,20 @@ export default function CreateBudgetPage() {
                   <select
                     className="h-10 rounded-md border bg-background px-3 text-sm"
                     value={category.type}
-                    onChange={(e) => updateCategory(catIndex, { type: e.target.value as "revenue" | "expense" })}
+                    onChange={(e) =>
+                      updateCategory(catIndex, { type: e.target.value as 'revenue' | 'expense' })
+                    }
                   >
                     <option value="revenue">Revenue</option>
                     <option value="expense">Expense</option>
                   </select>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => deleteCategory(catIndex)} disabled={categories.length === 1}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteCategory(catIndex)}
+                  disabled={categories.length === 1}
+                >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
@@ -183,14 +209,23 @@ export default function CreateBudgetPage() {
                     <Input
                       type="number"
                       value={monthly.budgeted}
-                      onChange={(e) => updateMonthlyBudget(catIndex, monthly.month, Number.parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateMonthlyBudget(
+                          catIndex,
+                          monthly.month,
+                          Number.parseFloat(e.target.value) || 0,
+                        )
+                      }
                       className="text-sm"
                     />
                   </div>
                 ))}
               </div>
               <div className="mt-4 text-right text-sm font-semibold">
-                Total: {currency} {category.monthlyBudgets.reduce((sum, month) => sum + month.budgeted, 0).toLocaleString()}
+                Total: {currency}{' '}
+                {category.monthlyBudgets
+                  .reduce((sum, month) => sum + month.budgeted, 0)
+                  .toLocaleString()}
               </div>
             </CardContent>
           </Card>

@@ -1,10 +1,15 @@
-import * as admin from "firebase-admin";
-import Stripe from "stripe";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getStripeClient } from "@/lib/payments/stripe";
-import { type BillingPlanKey, getStripePriceId, normalizePlanKey, plans } from "@/lib/billing/plans";
-import { PLAN_MODULES } from "@/app/config/plans";
-import { ingestMetric } from "@/lib/monitoring/dashboard-service";
+import * as admin from 'firebase-admin';
+import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getStripeClient } from '@/lib/payments/stripe';
+import {
+  type BillingPlanKey,
+  getStripePriceId,
+  normalizePlanKey,
+  plans,
+} from '@/lib/billing/plans';
+import { PLAN_MODULES } from '@/app/config/plans';
+import { ingestMetric } from '@/lib/monitoring/dashboard-service';
 
 // Module access must follow the plan. resolveTenantModules treats the explicit
 // `modules` field as authoritative, so every plan write must rewrite it or a
@@ -13,7 +18,7 @@ function modulesForPlan(plan: BillingPlanKey) {
   return PLAN_MODULES[plan as keyof typeof PLAN_MODULES] ?? PLAN_MODULES.starter;
 }
 
-export type UsageMetric = "api_calls" | "storage" | "users";
+export type UsageMetric = 'api_calls' | 'storage' | 'users';
 
 export type BillingSubscription = {
   tenantId: string;
@@ -30,11 +35,11 @@ export type BillingSubscription = {
 };
 
 const BILLING_COLLECTIONS = {
-  subscriptions: "billing_subscriptions",
-  usageRecords: "billing_usage_records",
-  usageMonthly: "billing_usage_monthly",
-  invoices: "billing_invoices",
-  paymentMethods: "billing_payment_methods",
+  subscriptions: 'billing_subscriptions',
+  usageRecords: 'billing_usage_records',
+  usageMonthly: 'billing_usage_monthly',
+  invoices: 'billing_invoices',
+  paymentMethods: 'billing_payment_methods',
 };
 
 function toIsoFromUnix(epoch?: number | null) {
@@ -43,11 +48,11 @@ function toIsoFromUnix(epoch?: number | null) {
 }
 
 function getUnixPeriod(month: string) {
-  const [yearStr, monthStr] = month.split("-");
+  const [yearStr, monthStr] = month.split('-');
   const year = Number(yearStr);
   const monthIndex = Number(monthStr) - 1;
   if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) {
-    throw new Error("Invalid period format. Use YYYY-MM");
+    throw new Error('Invalid period format. Use YYYY-MM');
   }
 
   const periodStart = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0));
@@ -55,21 +60,28 @@ function getUnixPeriod(month: string) {
   return {
     periodStart,
     periodEnd,
-    key: `${yearStr}-${monthStr.padStart(2, "0")}`,
+    key: `${yearStr}-${monthStr.padStart(2, '0')}`,
   };
 }
 
 async function updateTenantBillingSummary(tenantId: string, payload: Record<string, unknown>) {
-  await adminDb.collection("tenants").doc(tenantId).set(
-    {
-      ...payload,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await adminDb
+    .collection('tenants')
+    .doc(tenantId)
+    .set(
+      {
+        ...payload,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 }
 
-export async function ensureStripeCustomer(input: { tenantId: string; email?: string; name?: string }) {
+export async function ensureStripeCustomer(input: {
+  tenantId: string;
+  email?: string;
+  name?: string;
+}) {
   const ref = adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(input.tenantId);
   const snap = await ref.get();
   const existing = snap.data() || {};
@@ -83,7 +95,7 @@ export async function ensureStripeCustomer(input: { tenantId: string; email?: st
     name: input.name,
     metadata: {
       tenantId: input.tenantId,
-      source: "bizosto_erp",
+      source: 'bizosto_erp',
     },
   });
 
@@ -91,14 +103,14 @@ export async function ensureStripeCustomer(input: { tenantId: string; email?: st
     {
       tenantId: input.tenantId,
       stripeCustomerId: customer.id,
-      plan: "starter",
-      status: "incomplete",
+      plan: 'starter',
+      status: 'incomplete',
       cancelAtPeriodEnd: false,
       canceledAt: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   return customer.id;
@@ -119,7 +131,9 @@ export async function subscribeTenantToPlan(input: {
   });
 
   if (input.paymentMethodId) {
-    await stripe.paymentMethods.attach(input.paymentMethodId, { customer: customerId }).catch(() => null);
+    await stripe.paymentMethods
+      .attach(input.paymentMethodId, { customer: customerId })
+      .catch(() => null);
     await stripe.customers.update(customerId, {
       invoice_settings: { default_payment_method: input.paymentMethodId },
     });
@@ -128,9 +142,9 @@ export async function subscribeTenantToPlan(input: {
   const subscription = await stripe.subscriptions.create({
     customer: customerId,
     items: [{ price: getStripePriceId(input.plan) }],
-    proration_behavior: "create_prorations",
-    payment_behavior: "default_incomplete",
-    expand: ["latest_invoice.payment_intent"],
+    proration_behavior: 'create_prorations',
+    payment_behavior: 'default_incomplete',
+    expand: ['latest_invoice.payment_intent'],
     metadata: {
       tenantId: input.tenantId,
       plan: input.plan,
@@ -151,7 +165,10 @@ export async function subscribeTenantToPlan(input: {
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(input.tenantId).set(payload, { merge: true });
+  await adminDb
+    .collection(BILLING_COLLECTIONS.subscriptions)
+    .doc(input.tenantId)
+    .set(payload, { merge: true });
   await updateTenantBillingSummary(input.tenantId, {
     plan: input.plan,
     modules: modulesForPlan(input.plan),
@@ -168,18 +185,18 @@ export async function changeTenantPlan(input: { tenantId: string; newPlan: Billi
   const stripe = getStripeClient();
   const subscription = await getCurrentSubscription(input.tenantId);
   if (!subscription?.stripeSubscriptionId) {
-    throw new Error("No active subscription found for tenant.");
+    throw new Error('No active subscription found for tenant.');
   }
 
   const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
   const itemId = stripeSub.items.data[0]?.id;
   if (!itemId) {
-    throw new Error("Subscription item not found.");
+    throw new Error('Subscription item not found.');
   }
 
   const updated = await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
     items: [{ id: itemId, price: getStripePriceId(input.newPlan) }],
-    proration_behavior: "create_prorations",
+    proration_behavior: 'create_prorations',
     metadata: {
       ...stripeSub.metadata,
       plan: input.newPlan,
@@ -187,18 +204,21 @@ export async function changeTenantPlan(input: { tenantId: string; newPlan: Billi
     },
   });
 
-  await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(input.tenantId).set(
-    {
-      plan: input.newPlan,
-      status: updated.status,
-      currentPeriodStart: toIsoFromUnix(updated.current_period_start),
-      currentPeriodEnd: toIsoFromUnix(updated.current_period_end),
-      cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end),
-      canceledAt: toIsoFromUnix(updated.canceled_at),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await adminDb
+    .collection(BILLING_COLLECTIONS.subscriptions)
+    .doc(input.tenantId)
+    .set(
+      {
+        plan: input.newPlan,
+        status: updated.status,
+        currentPeriodStart: toIsoFromUnix(updated.current_period_start),
+        currentPeriodEnd: toIsoFromUnix(updated.current_period_end),
+        cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end),
+        canceledAt: toIsoFromUnix(updated.canceled_at),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   await updateTenantBillingSummary(input.tenantId, {
     plan: input.newPlan,
@@ -212,30 +232,37 @@ export async function cancelTenantSubscription(input: { tenantId: string; immedi
   const stripe = getStripeClient();
   const subscription = await getCurrentSubscription(input.tenantId);
   if (!subscription?.stripeSubscriptionId) {
-    throw new Error("No active subscription found for tenant.");
+    throw new Error('No active subscription found for tenant.');
   }
 
   const updated = input.immediate
     ? await stripe.subscriptions.cancel(subscription.stripeSubscriptionId)
-    : await stripe.subscriptions.update(subscription.stripeSubscriptionId, { cancel_at_period_end: true });
+    : await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
 
-  await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(input.tenantId).set(
-    {
-      status: updated.status,
-      cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end),
-      canceledAt: toIsoFromUnix(updated.canceled_at),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await adminDb
+    .collection(BILLING_COLLECTIONS.subscriptions)
+    .doc(input.tenantId)
+    .set(
+      {
+        status: updated.status,
+        cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end),
+        canceledAt: toIsoFromUnix(updated.canceled_at),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   await updateTenantBillingSummary(input.tenantId, {
     billingStatus: updated.status,
-    subscriptionState: updated.status === "canceled" ? "hard_locked" : "active",
+    subscriptionState: updated.status === 'canceled' ? 'hard_locked' : 'active',
   });
 }
 
-export async function getCurrentSubscription(tenantId: string): Promise<BillingSubscription | null> {
+export async function getCurrentSubscription(
+  tenantId: string,
+): Promise<BillingSubscription | null> {
   const snap = await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(tenantId).get();
   if (!snap.exists) return null;
   const data = snap.data() as BillingSubscription;
@@ -246,7 +273,7 @@ export async function updatePaymentMethod(input: { tenantId: string; paymentMeth
   const stripe = getStripeClient();
   const subscription = await getCurrentSubscription(input.tenantId);
   if (!subscription?.stripeCustomerId) {
-    throw new Error("Stripe customer not found for tenant.");
+    throw new Error('Stripe customer not found for tenant.');
   }
 
   const paymentMethod = await stripe.paymentMethods.attach(input.paymentMethodId, {
@@ -259,26 +286,29 @@ export async function updatePaymentMethod(input: { tenantId: string; paymentMeth
     },
   });
 
-  await adminDb.collection(BILLING_COLLECTIONS.paymentMethods).doc(input.tenantId).set(
-    {
-      tenantId: input.tenantId,
-      stripePaymentMethodId: paymentMethod.id,
-      brand: paymentMethod.card?.brand || null,
-      last4: paymentMethod.card?.last4 || null,
-      expMonth: paymentMethod.card?.exp_month || null,
-      expYear: paymentMethod.card?.exp_year || null,
-      isDefault: true,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await adminDb
+    .collection(BILLING_COLLECTIONS.paymentMethods)
+    .doc(input.tenantId)
+    .set(
+      {
+        tenantId: input.tenantId,
+        stripePaymentMethodId: paymentMethod.id,
+        brand: paymentMethod.card?.brand || null,
+        last4: paymentMethod.card?.last4 || null,
+        expMonth: paymentMethod.card?.exp_month || null,
+        expYear: paymentMethod.card?.exp_year || null,
+        isDefault: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 }
 
 export async function listInvoices(tenantId: string) {
   const snap = await adminDb
     .collection(BILLING_COLLECTIONS.invoices)
-    .where("tenantId", "==", tenantId)
-    .orderBy("createdAt", "desc")
+    .where('tenantId', '==', tenantId)
+    .orderBy('createdAt', 'desc')
     .limit(50)
     .get();
 
@@ -293,7 +323,7 @@ export async function recordUsage(input: {
   source?: string;
 }) {
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
-    throw new Error("Usage quantity must be > 0");
+    throw new Error('Usage quantity must be > 0');
   }
   const period = getUnixPeriod(input.period);
   const key = `${input.tenantId}_${input.metric}_${period.key}`;
@@ -307,7 +337,7 @@ export async function recordUsage(input: {
     period: period.key,
     periodStart: period.periodStart.toISOString(),
     periodEnd: period.periodEnd.toISOString(),
-    source: input.source || "system",
+    source: input.source || 'system',
     createdAt: now,
   });
 
@@ -320,14 +350,14 @@ export async function recordUsage(input: {
       quantity: admin.firestore.FieldValue.increment(input.quantity),
       updatedAt: now,
     },
-    { merge: true }
+    { merge: true },
   );
 
   await batch.commit();
 }
 
 export async function getUsageByTenant(tenantId: string, period: string) {
-  const metrics: UsageMetric[] = ["api_calls", "storage", "users"];
+  const metrics: UsageMetric[] = ['api_calls', 'storage', 'users'];
   const usage: Record<UsageMetric, number> = {
     api_calls: 0,
     storage: 0,
@@ -341,15 +371,20 @@ export async function getUsageByTenant(tenantId: string, period: string) {
       if (snap.exists) {
         usage[metric] = Number(snap.data()?.quantity || 0);
       }
-    })
+    }),
   );
 
   return usage;
 }
 
-export async function enforceUsageLimit(input: { tenantId: string; metric: UsageMetric; requested: number; period: string }) {
+export async function enforceUsageLimit(input: {
+  tenantId: string;
+  metric: UsageMetric;
+  requested: number;
+  period: string;
+}) {
   const subscription = await getCurrentSubscription(input.tenantId);
-  const currentPlan = normalizePlanKey(subscription?.plan || "starter");
+  const currentPlan = normalizePlanKey(subscription?.plan || 'starter');
   const limit = plans[currentPlan].limits[input.metric];
   if (limit < 0) {
     return { allowed: true, used: 0, limit, warning: false };
@@ -370,7 +405,7 @@ export async function enforceUsageLimit(input: { tenantId: string; metric: Usage
 export async function handleBillingWebhook(event: Stripe.Event) {
   // Idempotency: skip events already processed; mark processed only AFTER the
   // handler succeeds so a transient failure can be safely retried by Stripe.
-  const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+  const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
   const processedSnap = await processedRef.get();
   if (processedSnap.exists) return;
 
@@ -384,107 +419,122 @@ export async function handleBillingWebhook(event: Stripe.Event) {
 }
 
 async function applyBillingEvent(event: Stripe.Event) {
-  if (event.type === "customer.subscription.deleted") {
+  if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
-    const tenantId = String(subscription.metadata?.tenantId || "");
+    const tenantId = String(subscription.metadata?.tenantId || '');
     if (!tenantId) return;
 
-    await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(tenantId).set(
-      {
-        status: "canceled",
-        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-        canceledAt: toIsoFromUnix(subscription.canceled_at) || new Date().toISOString(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await adminDb
+      .collection(BILLING_COLLECTIONS.subscriptions)
+      .doc(tenantId)
+      .set(
+        {
+          status: 'canceled',
+          cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+          canceledAt: toIsoFromUnix(subscription.canceled_at) || new Date().toISOString(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
     // Cancellation locks the tenant out until billing is restored.
     await updateTenantBillingSummary(tenantId, {
-      billingStatus: "canceled",
-      subscriptionState: "hard_locked",
+      billingStatus: 'canceled',
+      subscriptionState: 'hard_locked',
     });
     return;
   }
 
-  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
+  if (
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.created'
+  ) {
     const subscription = event.data.object as Stripe.Subscription;
-    const tenantId = String(subscription.metadata?.tenantId || "");
+    const tenantId = String(subscription.metadata?.tenantId || '');
     if (!tenantId) return;
 
-    const planFromMetadata = normalizePlanKey(subscription.metadata?.plan || "starter");
-    await adminDb.collection(BILLING_COLLECTIONS.subscriptions).doc(tenantId).set(
-      {
-        tenantId,
-        stripeCustomerId: String(subscription.customer || ""),
-        stripeSubscriptionId: subscription.id,
-        plan: planFromMetadata,
-        status: subscription.status,
-        currentPeriodStart: toIsoFromUnix(subscription.current_period_start),
-        currentPeriodEnd: toIsoFromUnix(subscription.current_period_end),
-        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-        canceledAt: toIsoFromUnix(subscription.canceled_at),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const planFromMetadata = normalizePlanKey(subscription.metadata?.plan || 'starter');
+    await adminDb
+      .collection(BILLING_COLLECTIONS.subscriptions)
+      .doc(tenantId)
+      .set(
+        {
+          tenantId,
+          stripeCustomerId: String(subscription.customer || ''),
+          stripeSubscriptionId: subscription.id,
+          plan: planFromMetadata,
+          status: subscription.status,
+          currentPeriodStart: toIsoFromUnix(subscription.current_period_start),
+          currentPeriodEnd: toIsoFromUnix(subscription.current_period_end),
+          cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+          canceledAt: toIsoFromUnix(subscription.canceled_at),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
     await updateTenantBillingSummary(tenantId, {
       plan: planFromMetadata,
       modules: modulesForPlan(planFromMetadata),
       modulesEnabled: modulesForPlan(planFromMetadata),
       billingStatus: subscription.status,
-      stripeCustomerId: String(subscription.customer || ""),
+      stripeCustomerId: String(subscription.customer || ''),
       stripeSubscriptionId: subscription.id,
     });
 
-    if (event.type === "customer.subscription.created") {
+    if (event.type === 'customer.subscription.created') {
       await ingestMetric({
-        type: "conversion_event",
-        module: "billing",
-        endpoint: "stripe.subscription.created",
-        conversionStage: "trial",
+        type: 'conversion_event',
+        module: 'billing',
+        endpoint: 'stripe.subscription.created',
+        conversionStage: 'trial',
         metadata: { tenantId, plan: planFromMetadata, status: subscription.status },
       });
     }
     return;
   }
 
-  if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
+  if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
     const invoice = event.data.object as Stripe.Invoice;
-    const tenantId = String((invoice as any).subscription_details?.metadata?.tenantId || invoice.metadata?.tenantId || "");
+    const tenantId = String(
+      (invoice as any).subscription_details?.metadata?.tenantId || invoice.metadata?.tenantId || '',
+    );
     if (!tenantId) return;
 
     const amount = Number(invoice.amount_paid || invoice.amount_due || 0) / 100;
-    await adminDb.collection(BILLING_COLLECTIONS.invoices).doc(invoice.id).set(
-      {
-        id: invoice.id,
-        tenantId,
-        stripeSubscriptionId: typeof invoice.subscription === "string" ? invoice.subscription : null,
-        amount,
-        currency: String(invoice.currency || "usd").toUpperCase(),
-        status: invoice.status || (event.type === "invoice.paid" ? "paid" : "open"),
-        periodStart: toIsoFromUnix(invoice.period_start),
-        periodEnd: toIsoFromUnix(invoice.period_end),
-        pdfUrl: invoice.invoice_pdf || null,
-        hostedInvoiceUrl: invoice.hosted_invoice_url || null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await adminDb
+      .collection(BILLING_COLLECTIONS.invoices)
+      .doc(invoice.id)
+      .set(
+        {
+          id: invoice.id,
+          tenantId,
+          stripeSubscriptionId:
+            typeof invoice.subscription === 'string' ? invoice.subscription : null,
+          amount,
+          currency: String(invoice.currency || 'usd').toUpperCase(),
+          status: invoice.status || (event.type === 'invoice.paid' ? 'paid' : 'open'),
+          periodStart: toIsoFromUnix(invoice.period_start),
+          periodEnd: toIsoFromUnix(invoice.period_end),
+          pdfUrl: invoice.invoice_pdf || null,
+          hostedInvoiceUrl: invoice.hosted_invoice_url || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
     await updateTenantBillingSummary(tenantId, {
-      billingStatus: event.type === "invoice.paid" ? "active" : "past_due",
-      subscriptionState: event.type === "invoice.paid" ? "active" : "grace",
+      billingStatus: event.type === 'invoice.paid' ? 'active' : 'past_due',
+      subscriptionState: event.type === 'invoice.paid' ? 'active' : 'grace',
     });
 
-    if (event.type === "invoice.paid") {
+    if (event.type === 'invoice.paid') {
       await ingestMetric({
-        type: "conversion_event",
-        module: "billing",
-        endpoint: "stripe.invoice.paid",
-        conversionStage: "paid",
+        type: 'conversion_event',
+        module: 'billing',
+        endpoint: 'stripe.invoice.paid',
+        conversionStage: 'paid',
         metadata: { tenantId, invoiceId: invoice.id, amount },
       });
     }
@@ -492,9 +542,10 @@ async function applyBillingEvent(event: Stripe.Event) {
 }
 
 export async function verifyAndConstructBillingEvent(rawBody: string, signature: string) {
-  const secret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET || process.env.STRIPE_INVOICE_WEBHOOK_SECRET;
+  const secret =
+    process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET || process.env.STRIPE_INVOICE_WEBHOOK_SECRET;
   if (!secret) {
-    throw new Error("Missing STRIPE_SUBSCRIPTION_WEBHOOK_SECRET");
+    throw new Error('Missing STRIPE_SUBSCRIPTION_WEBHOOK_SECRET');
   }
   return getStripeClient().webhooks.constructEvent(rawBody, signature, secret);
 }

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSalesManager, toISO } from "../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSalesManager, toISO } from '../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -15,17 +15,17 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const docs = await queryWithTenant(
-      adminDb.collection("deals").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('deals').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const deals = docs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        dealName: String(data.dealName || ""),
-        clientName: String(data.clientName || ""),
-        stage: String(data.stage || "New Lead"),
+        dealName: String(data.dealName || ''),
+        clientName: String(data.clientName || ''),
+        stage: String(data.stage || 'New Lead'),
         valueUsd: Number(data.valueUsd || 0),
         probability: Number(data.probability || 0),
         ownerName: data.ownerName || null,
@@ -40,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, deals });
   } catch (err: any) {
-    console.error("sales manager pipeline list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load pipeline." }, { status: 500 });
+    console.error('sales manager pipeline list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load pipeline.' }, { status: 500 });
   }
 }

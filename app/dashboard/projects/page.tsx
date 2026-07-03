@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog";
-import { ProjectCard } from "@/components/projects/ProjectCard";
+import { useEffect, useState } from 'react';
+import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
+import { ProjectCard } from '@/components/projects/ProjectCard';
 
 type Project = {
   id: string;
@@ -17,11 +17,11 @@ type Project = {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [filter, setFilter] = useState("active");
+  const [filter, setFilter] = useState('active');
 
   const fetchProjects = async () => {
     const params = new URLSearchParams();
-    if (filter !== "all") params.append("status", filter);
+    if (filter !== 'all') params.append('status', filter);
 
     const response = await fetch(`/api/projects?${params.toString()}`);
     const data = await response.json();
@@ -40,11 +40,11 @@ export default function ProjectsPage() {
       </div>
 
       <div className="mb-6 flex gap-2 border-b">
-        {["all", "planning", "active", "completed"].map((status) => (
+        {['all', 'planning', 'active', 'completed'].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`tab-pill ${filter === status ? "active" : ""}`}
+            className={`tab-pill ${filter === status ? 'active' : ''}`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </button>

@@ -1,27 +1,27 @@
-import Stripe from "stripe";
+import Stripe from 'stripe';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured.");
+    throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
-  return new Stripe(secretKey, { apiVersion: "2024-04-10" });
+  return new Stripe(secretKey, { apiVersion: '2024-04-10' });
 }
 
 export function getStripeWebhookSecret() {
   const secret = process.env.STRIPE_INVOICE_WEBHOOK_SECRET;
   if (!secret) {
-    throw new Error("STRIPE_INVOICE_WEBHOOK_SECRET is not configured.");
+    throw new Error('STRIPE_INVOICE_WEBHOOK_SECRET is not configured.');
   }
   return secret;
 }
 
 export function resolveAppOrigin(req: Request) {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "";
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
   if (fromEnv) {
-    return fromEnv.replace(/\/$/, "");
+    return fromEnv.replace(/\/$/, '');
   }
   return new URL(req.url).origin;
 }
@@ -48,16 +48,16 @@ export async function createInvoiceCheckoutSession({
   cancelUrl: string;
 }) {
   return stripe.checkout.sessions.create({
-    mode: "payment",
+    mode: 'payment',
     customer_email: customerEmail || undefined,
     success_url: successUrl,
     cancel_url: cancelUrl,
-    payment_method_types: ["card"],
+    payment_method_types: ['card'],
     line_items: [
       {
         quantity: 1,
         price_data: {
-          currency: "usd",
+          currency: 'usd',
           unit_amount: Math.round(amountUsd * 100),
           product_data: {
             name: `Invoice ${orderId}`,
@@ -71,7 +71,7 @@ export async function createInvoiceCheckoutSession({
       invoiceId,
       clientId,
       orderId,
-      source: "client_portal",
+      source: 'client_portal',
     },
     payment_intent_data: {
       metadata: {
@@ -79,7 +79,7 @@ export async function createInvoiceCheckoutSession({
         invoiceId,
         clientId,
         orderId,
-        source: "client_portal",
+        source: 'client_portal',
       },
     },
   });
@@ -96,7 +96,7 @@ export async function createStripeRefund({
   stripe: Stripe;
   paymentIntentId: string;
   amountUsd?: number;
-  reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+  reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer';
   stripeAccount?: string;
   refundApplicationFee?: boolean;
 }) {
@@ -104,7 +104,7 @@ export async function createStripeRefund({
     payment_intent: paymentIntentId,
   };
 
-  if (typeof amountUsd === "number" && amountUsd > 0) {
+  if (typeof amountUsd === 'number' && amountUsd > 0) {
     payload.amount = Math.round(amountUsd * 100);
   }
   if (reason) {

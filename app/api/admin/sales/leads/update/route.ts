@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
-import { createNotification } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from '../../_utils';
+import { createNotification } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -13,43 +13,44 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const id = parseString(payload.id, "");
+    const id = parseString(payload.id, '');
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Missing lead id." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing lead id.' }, { status: 400 });
     }
 
     const updates: Record<string, any> = {
       updatedAt: serverTimestamp(),
     };
 
-    if (payload.name !== undefined) updates.name = parseString(payload.name, "");
-    if (payload.email !== undefined) updates.email = parseString(payload.email, "");
-    if (payload.phone !== undefined) updates.phone = parseString(payload.phone, "");
-    if (payload.source !== undefined) updates.source = parseString(payload.source, "");
-    if (payload.stage !== undefined) updates.stage = parseString(payload.stage, "New");
-    if (payload.ownerId !== undefined) updates.ownerId = parseString(payload.ownerId, "") || null;
-    if (payload.ownerName !== undefined) updates.ownerName = parseString(payload.ownerName, "") || null;
+    if (payload.name !== undefined) updates.name = parseString(payload.name, '');
+    if (payload.email !== undefined) updates.email = parseString(payload.email, '');
+    if (payload.phone !== undefined) updates.phone = parseString(payload.phone, '');
+    if (payload.source !== undefined) updates.source = parseString(payload.source, '');
+    if (payload.stage !== undefined) updates.stage = parseString(payload.stage, 'New');
+    if (payload.ownerId !== undefined) updates.ownerId = parseString(payload.ownerId, '') || null;
+    if (payload.ownerName !== undefined)
+      updates.ownerName = parseString(payload.ownerName, '') || null;
 
-    const snap = await adminDb.collection("leads").doc(id).get();
+    const snap = await adminDb.collection('leads').doc(id).get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
     const data = snap.data() || {};
-    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
-    if (!isSuperAdmin && String(data.tenantId || "") !== String(auth.user.tenantId || "")) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    const isSuperAdmin = (auth.user.role || '').toLowerCase() === 'super_admin';
+    if (!isSuperAdmin && String(data.tenantId || '') !== String(auth.user.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
 
-    await adminDb.collection("leads").doc(id).set(updates, { merge: true });
+    await adminDb.collection('leads').doc(id).set(updates, { merge: true });
 
     await createSalesEvent({
-      type: "lead_updated",
-      title: "Lead updated",
+      type: 'lead_updated',
+      title: 'Lead updated',
       description: `Lead ${id} updated`,
-      entityType: "lead",
+      entityType: 'lead',
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: auth.user.name || auth.user.fullName || '',
       tenantId: auth.user.tenantId,
     });
 
@@ -57,20 +58,20 @@ export async function POST(req: Request) {
     if (newOwnerId && newOwnerId !== data.ownerId && newOwnerId !== auth.user.uid) {
       await createNotification({
         toUserId: newOwnerId,
-        recipientRole: "sales",
+        recipientRole: 'sales',
         tenantId: auth.user.tenantId,
-        type: "info",
-        title: "Lead assigned to you",
-        message: `${updates.name || data.name || "A lead"} was assigned to you.`,
-        entityType: "lead",
+        type: 'info',
+        title: 'Lead assigned to you',
+        message: `${updates.name || data.name || 'A lead'} was assigned to you.`,
+        entityType: 'lead',
         entityId: id,
-        deepLink: "/sales/leads",
+        deepLink: '/sales/leads',
       });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("sales leads update error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to update lead." }, { status: 500 });
+    console.error('sales leads update error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to update lead.' }, { status: 500 });
   }
 }

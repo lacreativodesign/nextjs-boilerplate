@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireClient } from "../../_utils";
-import { createNotification, createNotificationEvent, getUserIdsByRoles } from "@/lib/notifications";
-import { validateFile } from "@/lib/files/validation";
+import { NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireClient } from '../../_utils';
+import {
+  createNotification,
+  createNotificationEvent,
+  getUserIdsByRoles,
+} from '@/lib/notifications';
+import { validateFile } from '@/lib/files/validation';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function cleanString(value: any) {
-  return String(value ?? "").trim();
+  return String(value ?? '').trim();
 }
 
 export async function POST(req: Request) {
@@ -26,9 +30,10 @@ export async function POST(req: Request) {
     const size = Number(body?.size || 0);
     const mimeType = cleanString(body?.mimeType);
 
-    if (!projectId) return NextResponse.json({ ok: false, error: "Project is required." }, { status: 400 });
+    if (!projectId)
+      return NextResponse.json({ ok: false, error: 'Project is required.' }, { status: 400 });
     if (!fileName || !storagePath || !downloadUrl) {
-      return NextResponse.json({ ok: false, error: "File details are required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'File details are required.' }, { status: 400 });
     }
 
     const fileValidation = validateFile(fileName, size);
@@ -36,37 +41,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    const projectSnap = await adminDb.collection("projects").doc(projectId).get();
+    const projectSnap = await adminDb.collection('projects').doc(projectId).get();
     if (!projectSnap.exists || projectSnap.data()?.isDeleted) {
-      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 
     const project = projectSnap.data() || {};
-    if (String(project.tenantId || "") !== auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (String(project.tenantId || '') !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
-    if (String(project.clientId || "") !== auth.clientId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (String(project.clientId || '') !== auth.clientId) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const ref = adminDb.collection("files").doc();
+    const ref = adminDb.collection('files').doc();
 
     await ref.set({
       id: ref.id,
       projectId,
-      projectName: cleanString(project.projectName || ""),
+      projectName: cleanString(project.projectName || ''),
       clientId: auth.clientId,
-      clientName: cleanString(project.clientName || ""),
-      category: "Client",
+      clientName: cleanString(project.clientName || ''),
+      category: 'Client',
       fileName,
       storagePath,
       downloadUrl,
       size,
       mimeType,
       uploadedByUid: auth.user.uid,
-      uploadedByName: cleanString(auth.user.name || auth.user.fullName || auth.user.displayName || ""),
-      uploadedByRole: "client",
+      uploadedByName: cleanString(
+        auth.user.name || auth.user.fullName || auth.user.displayName || '',
+      ),
+      uploadedByRole: 'client',
       version: null,
       notes: cleanString(body?.notes) || null,
       isLatest: true,
@@ -75,10 +82,12 @@ export async function POST(req: Request) {
       updatedAt: now,
     });
 
-    const actorName = cleanString(auth.user.name || auth.user.fullName || auth.user.displayName || "");
+    const actorName = cleanString(
+      auth.user.name || auth.user.fullName || auth.user.displayName || '',
+    );
     const recipients = new Set<string>();
     if (project.ownerAmUid) recipients.add(String(project.ownerAmUid));
-    const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
     adminIds.forEach((id) => recipients.add(id));
 
     await Promise.all(
@@ -87,22 +96,22 @@ export async function POST(req: Request) {
         .map((uid) =>
           createNotification({
             toUserId: uid,
-            title: "Client file uploaded",
-            body: `${project.projectName || "Project"} has a new client file: ${fileName}.`,
-            type: "info",
-            entityType: "project",
+            title: 'Client file uploaded',
+            body: `${project.projectName || 'Project'} has a new client file: ${fileName}.`,
+            type: 'info',
+            entityType: 'project',
             entityId: projectId,
-            deepLink: uid === project.ownerAmUid ? "/am/files" : "/admin/projects/files",
+            deepLink: uid === project.ownerAmUid ? '/am/files' : '/admin/projects/files',
             createdBy: { uid: auth.user.uid, name: actorName },
-          })
-        )
+          }),
+        ),
     );
 
     await createNotificationEvent({
-      type: "file.client_uploaded",
-      title: "Client file uploaded",
-      description: `${project.projectName || "Project"} has a new client file: ${fileName}.`,
-      entityType: "project",
+      type: 'file.client_uploaded',
+      title: 'Client file uploaded',
+      description: `${project.projectName || 'Project'} has a new client file: ${fileName}.`,
+      entityType: 'project',
       entityId: projectId,
       createdByUid: auth.user.uid,
       createdByName: actorName,
@@ -114,13 +123,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {
-    console.error("client/files upload error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('client/files upload error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to upload file.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to upload file.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

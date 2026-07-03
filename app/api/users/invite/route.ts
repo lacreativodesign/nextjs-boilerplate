@@ -1,41 +1,46 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { UserService } from "@/lib/users/user-service";
-import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { UserService } from '@/lib/users/user-service';
+import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const inviteSchema = z.object({
   email: z.string().email(),
   role: z.enum([
-    "admin",
-    "sales_manager",
-    "sales",
-    "am_manager",
-    "am",
-    "production_manager",
-    "production",
-    "finance",
-    "hr",
-    "client",
+    'admin',
+    'sales_manager',
+    'sales',
+    'am_manager',
+    'am',
+    'production_manager',
+    'production',
+    'finance',
+    'hr',
+    'client',
   ]),
   teamIds: z.array(z.string().min(1)).optional(),
 });
 
 function canInvite(role: string) {
   const normalized = normalizeRole(role);
-  return normalized === "admin" || normalized === "super_admin" || normalized === "manager" || normalized === "owner";
+  return (
+    normalized === 'admin' ||
+    normalized === 'super_admin' ||
+    normalized === 'manager' ||
+    normalized === 'owner'
+  );
 }
 
 export async function POST(request: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!canInvite(me.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -52,13 +57,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       invitationId,
-      message: "Invitation sent successfully",
+      message: 'Invitation sent successfully',
     });
   } catch (error: any) {
-    console.error("Error inviting user:", error);
+    console.error('Error inviting user:', error);
     return NextResponse.json(
-      { error: error?.message || "Failed to send invitation" },
-      { status: 500 }
+      { error: error?.message || 'Failed to send invitation' },
+      { status: 500 },
     );
   }
 }

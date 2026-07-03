@@ -51,29 +51,31 @@ export function ActivityFeed({ tenantId, maxItems = 10 }: ActivityFeedProps) {
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
-    getFirebaseDb().then((db) => {
-      if (cancelled) return;
-      const activityQuery = query(
-        collection(db, 'tenants', tenantId, 'activity_feed'),
-        orderBy('timestamp', 'desc'),
-        limit(maxItems),
-      );
-      unsubscribe = onSnapshot(
-        activityQuery,
-        (snapshot) => {
-          const items = snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id));
-          setActivities(items);
-          setLoading(false);
-        },
-        () => {
-          setActivities([]);
-          setLoading(false);
-        },
-      );
-    }).catch(() => {
-      setActivities([]);
-      setLoading(false);
-    });
+    getFirebaseDb()
+      .then((db) => {
+        if (cancelled) return;
+        const activityQuery = query(
+          collection(db, 'tenants', tenantId, 'activity_feed'),
+          orderBy('timestamp', 'desc'),
+          limit(maxItems),
+        );
+        unsubscribe = onSnapshot(
+          activityQuery,
+          (snapshot) => {
+            const items = snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id));
+            setActivities(items);
+            setLoading(false);
+          },
+          () => {
+            setActivities([]);
+            setLoading(false);
+          },
+        );
+      })
+      .catch(() => {
+        setActivities([]);
+        setLoading(false);
+      });
 
     return () => {
       cancelled = true;

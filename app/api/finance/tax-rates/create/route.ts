@@ -1,19 +1,19 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireFinance, serverTimestamp } from "@/app/api/finance/_utils";
-import { resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
-import { invalidateTag } from "@/lib/cache/redis-client";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireFinance, serverTimestamp } from '@/app/api/finance/_utils';
+import { resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
+import { invalidateTag } from '@/lib/cache/redis-client';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const createTaxRateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  type: z.enum(["sales_tax", "vat", "gst", "hst", "pst", "qst", "custom"]),
-  rate: z.number().min(0).max(100, "Rate must be between 0 and 100"),
-  country: z.string().min(2, "Country code is required"),
+  name: z.string().min(1, 'Name is required'),
+  type: z.enum(['sales_tax', 'vat', 'gst', 'hst', 'pst', 'qst', 'custom']),
+  rate: z.number().min(0).max(100, 'Rate must be between 0 and 100'),
+  country: z.string().min(2, 'Country code is required'),
   region: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const body = await req.json();
     const validated = createTaxRateSchema.parse(body);
@@ -37,9 +37,13 @@ export async function POST(req: Request) {
     if (validated.effectiveFrom && validated.effectiveTo) {
       const effectiveFrom = new Date(validated.effectiveFrom);
       const effectiveTo = new Date(validated.effectiveTo);
-      if (Number.isNaN(effectiveFrom.getTime()) || Number.isNaN(effectiveTo.getTime()) || effectiveFrom > effectiveTo) {
+      if (
+        Number.isNaN(effectiveFrom.getTime()) ||
+        Number.isNaN(effectiveTo.getTime()) ||
+        effectiveFrom > effectiveTo
+      ) {
         return NextResponse.json(
-          { ok: false, error: "effectiveFrom must be less than or equal to effectiveTo" },
+          { ok: false, error: 'effectiveFrom must be less than or equal to effectiveTo' },
           { status: 400 },
         );
       }
@@ -49,9 +53,9 @@ export async function POST(req: Request) {
 
     if (validated.isDefault) {
       const existingDefaults = await adminDb
-        .collection("tax_rates")
-        .where("tenantId", "==", tenantId)
-        .where("isDefault", "==", true)
+        .collection('tax_rates')
+        .where('tenantId', '==', tenantId)
+        .where('isDefault', '==', true)
         .get();
 
       const batch = adminDb.batch();
@@ -61,7 +65,7 @@ export async function POST(req: Request) {
       await batch.commit();
     }
 
-    const docRef = adminDb.collection("tax_rates").doc();
+    const docRef = adminDb.collection('tax_rates').doc();
     await docRef.set({
       name: validated.name,
       type: validated.type,
@@ -82,9 +86,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, taxRateId: docRef.id });
   } catch (err) {
-    logError(err, { route: "POST /api/finance/tax-rates/create" });
+    logError(err, { route: 'POST /api/finance/tax-rates/create' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to create tax rate",
+      fallbackMessage: 'Failed to create tax rate',
     });
     return NextResponse.json(body, { status });
   }

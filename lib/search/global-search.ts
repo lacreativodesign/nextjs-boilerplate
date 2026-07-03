@@ -1,19 +1,19 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export type GlobalSearchModule =
-  | "users"
-  | "customers"
-  | "projects"
-  | "invoices"
-  | "documents"
-  | "payments"
-  | "expenses"
-  | "inventory"
-  | "search_index";
+  | 'users'
+  | 'customers'
+  | 'projects'
+  | 'invoices'
+  | 'documents'
+  | 'payments'
+  | 'expenses'
+  | 'inventory'
+  | 'search_index';
 
 export type GlobalSearchFilters = {
-  module?: GlobalSearchModule | "all";
+  module?: GlobalSearchModule | 'all';
   status?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -43,94 +43,94 @@ type ModuleConfig = {
 
 const MODULE_CONFIGS: ModuleConfig[] = [
   {
-    module: "users",
-    collection: "users",
-    titleFields: ["name", "displayName", "email"],
-    subtitleFields: ["email", "role", "department"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'users',
+    collection: 'users',
+    titleFields: ['name', 'displayName', 'email'],
+    subtitleFields: ['email', 'role', 'department'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/users?selected=${id}`,
   },
   {
-    module: "customers",
-    collection: "customers",
-    titleFields: ["name", "company", "email"],
-    subtitleFields: ["email", "phone", "company"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'customers',
+    collection: 'customers',
+    titleFields: ['name', 'company', 'email'],
+    subtitleFields: ['email', 'phone', 'company'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/customers?selected=${id}`,
   },
   {
-    module: "projects",
-    collection: "projects",
-    titleFields: ["name", "title", "projectName"],
-    subtitleFields: ["clientName", "ownerName", "description"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'projects',
+    collection: 'projects',
+    titleFields: ['name', 'title', 'projectName'],
+    subtitleFields: ['clientName', 'ownerName', 'description'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/am/projects?selected=${id}`,
   },
   {
-    module: "invoices",
-    collection: "invoices",
-    titleFields: ["invoiceNumber", "number", "customerName"],
-    subtitleFields: ["customerName", "status", "notes"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'invoices',
+    collection: 'invoices',
+    titleFields: ['invoiceNumber', 'number', 'customerName'],
+    subtitleFields: ['customerName', 'status', 'notes'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/finance/invoices?selected=${id}`,
   },
   {
-    module: "documents",
-    collection: "documents",
-    titleFields: ["name", "fileName", "title"],
-    subtitleFields: ["category", "description", "ownerName"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'documents',
+    collection: 'documents',
+    titleFields: ['name', 'fileName', 'title'],
+    subtitleFields: ['category', 'description', 'ownerName'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/am/files?selected=${id}`,
   },
   {
-    module: "payments",
-    collection: "payments",
-    titleFields: ["reference", "invoiceNumber", "customerName"],
-    subtitleFields: ["status", "method", "customerName"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'payments',
+    collection: 'payments',
+    titleFields: ['reference', 'invoiceNumber', 'customerName'],
+    subtitleFields: ['status', 'method', 'customerName'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/finance/payments?selected=${id}`,
   },
   {
-    module: "expenses",
-    collection: "expenses",
-    titleFields: ["title", "vendor", "description"],
-    subtitleFields: ["vendor", "category", "status"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'expenses',
+    collection: 'expenses',
+    titleFields: ['title', 'vendor', 'description'],
+    subtitleFields: ['vendor', 'category', 'status'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/finance/expenses?selected=${id}`,
   },
   {
-    module: "inventory",
-    collection: "products",
-    titleFields: ["name", "sku"],
-    subtitleFields: ["sku", "category", "description"],
-    statusField: "status",
-    dateField: "createdAt",
+    module: 'inventory',
+    collection: 'products',
+    titleFields: ['name', 'sku'],
+    subtitleFields: ['sku', 'category', 'description'],
+    statusField: 'status',
+    dateField: 'createdAt',
     hrefBuilder: (id) => `/admin/inventory/products?selected=${id}`,
   },
   {
-    module: "search_index",
-    collection: "searchIndex",
-    titleFields: ["title", "name"],
-    subtitleFields: ["content", "module", "status"],
-    statusField: "status",
-    dateField: "createdAt",
-    hrefBuilder: (_id, row) => (typeof row.href === "string" ? row.href : "/"),
+    module: 'search_index',
+    collection: 'searchIndex',
+    titleFields: ['title', 'name'],
+    subtitleFields: ['content', 'module', 'status'],
+    statusField: 'status',
+    dateField: 'createdAt',
+    hrefBuilder: (_id, row) => (typeof row.href === 'string' ? row.href : '/'),
   },
 ];
 
 const MAX_PER_MODULE_SCAN = 80;
 
 function asString(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return "";
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
 }
 
 function extractFirst(row: Record<string, unknown>, fields: string[]): string {
@@ -138,19 +138,19 @@ function extractFirst(row: Record<string, unknown>, fields: string[]): string {
     const value = asString(row[field]);
     if (value) return value;
   }
-  return "";
+  return '';
 }
 
 function toDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value === "string" || typeof value === "number") {
+  if (typeof value === 'string' || typeof value === 'number') {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
-  if (typeof value === "object" && value && "toDate" in (value as Record<string, unknown>)) {
+  if (typeof value === 'object' && value && 'toDate' in (value as Record<string, unknown>)) {
     const fn = (value as { toDate?: () => Date }).toDate;
-    if (typeof fn === "function") return fn();
+    if (typeof fn === 'function') return fn();
   }
   return null;
 }
@@ -247,20 +247,21 @@ export async function globalSearch(params: {
     return [] as GlobalSearchResult[];
   }
 
-  const configs = filters.module && filters.module !== "all"
-    ? MODULE_CONFIGS.filter((config) => config.module === filters.module)
-    : MODULE_CONFIGS;
+  const configs =
+    filters.module && filters.module !== 'all'
+      ? MODULE_CONFIGS.filter((config) => config.module === filters.module)
+      : MODULE_CONFIGS;
 
   const records: GlobalSearchResult[] = [];
 
   for (const config of configs) {
     let moduleQuery: FirebaseFirestore.Query = adminDb
       .collection(config.collection)
-      .where("tenantId", "==", tenantId)
+      .where('tenantId', '==', tenantId)
       .limit(MAX_PER_MODULE_SCAN);
 
     if (filters.status && config.statusField) {
-      moduleQuery = moduleQuery.where(config.statusField, "==", filters.status);
+      moduleQuery = moduleQuery.where(config.statusField, '==', filters.status);
     }
 
     const snapshot = await moduleQuery.get();
@@ -272,9 +273,10 @@ export async function globalSearch(params: {
       const blobTokens = tokenize(blob);
       const score = fuzzyTokenScore(queryTokens, blobTokens);
       if (score < 0.42) continue;
-      if (!isInDateRange(row[config.dateField || "createdAt"], filters.dateFrom, filters.dateTo)) continue;
+      if (!isInDateRange(row[config.dateField || 'createdAt'], filters.dateFrom, filters.dateTo))
+        continue;
 
-      const date = toDate(row[config.dateField || "createdAt"]);
+      const date = toDate(row[config.dateField || 'createdAt']);
       records.push({
         id: doc.id,
         module: config.module,
@@ -307,24 +309,24 @@ export async function saveRecentSearch(params: {
   };
 
   const existing = await adminDb
-    .collection("searchRecent")
-    .where("tenantId", "==", params.tenantId)
-    .where("uid", "==", params.uid)
-    .where("query", "==", params.query)
+    .collection('searchRecent')
+    .where('tenantId', '==', params.tenantId)
+    .where('uid', '==', params.uid)
+    .where('query', '==', params.query)
     .limit(1)
     .get();
 
   if (!existing.empty) {
     await existing.docs[0].ref.set(payload, { merge: true });
   } else {
-    await adminDb.collection("searchRecent").add({ ...payload, createdAt: Timestamp.now() });
+    await adminDb.collection('searchRecent').add({ ...payload, createdAt: Timestamp.now() });
   }
 
   const trimSnapshot = await adminDb
-    .collection("searchRecent")
-    .where("tenantId", "==", params.tenantId)
-    .where("uid", "==", params.uid)
-    .orderBy("updatedAt", "desc")
+    .collection('searchRecent')
+    .where('tenantId', '==', params.tenantId)
+    .where('uid', '==', params.uid)
+    .orderBy('updatedAt', 'desc')
     .limit(30)
     .get();
 
@@ -334,10 +336,10 @@ export async function saveRecentSearch(params: {
 
 export async function getRecentSearches(params: { tenantId: string; uid: string; limit?: number }) {
   const snapshot = await adminDb
-    .collection("searchRecent")
-    .where("tenantId", "==", params.tenantId)
-    .where("uid", "==", params.uid)
-    .orderBy("updatedAt", "desc")
+    .collection('searchRecent')
+    .where('tenantId', '==', params.tenantId)
+    .where('uid', '==', params.uid)
+    .orderBy('updatedAt', 'desc')
     .limit(params.limit || 10)
     .get();
 
@@ -359,8 +361,11 @@ export async function trackSearchAnalytics(params: {
   query: string;
   totalResults: number;
 }) {
-  const key = params.query.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").slice(0, 120);
-  const ref = adminDb.collection("searchAnalytics").doc(`${params.tenantId}_${params.uid}_${key}`);
+  const key = params.query
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .slice(0, 120);
+  const ref = adminDb.collection('searchAnalytics').doc(`${params.tenantId}_${params.uid}_${key}`);
   await ref.set(
     {
       tenantId: params.tenantId,
@@ -388,29 +393,29 @@ export async function indexDocument(params: {
     tenantId: params.tenantId,
     module: params.module,
     title: params.title,
-    content: params.content || "",
-    status: params.status || "active",
+    content: params.content || '',
+    status: params.status || 'active',
     href: params.href,
     createdAt: params.createdAt ? Timestamp.fromDate(new Date(params.createdAt)) : Timestamp.now(),
     updatedAt: Timestamp.now(),
   };
 
   if (params.id) {
-    await adminDb.collection("searchIndex").doc(params.id).set(payload, { merge: true });
+    await adminDb.collection('searchIndex').doc(params.id).set(payload, { merge: true });
     return params.id;
   }
 
-  const doc = await adminDb.collection("searchIndex").add(payload);
+  const doc = await adminDb.collection('searchIndex').add(payload);
   return doc.id;
 }
 
 export async function removeIndexedDocument(params: { tenantId: string; id: string }) {
-  const ref = adminDb.collection("searchIndex").doc(params.id);
+  const ref = adminDb.collection('searchIndex').doc(params.id);
   const doc = await ref.get();
   if (!doc.exists) return false;
   const row = doc.data() as { tenantId?: string };
   if (row.tenantId !== params.tenantId) {
-    throw new Error("Forbidden");
+    throw new Error('Forbidden');
   }
   await ref.delete();
   return true;

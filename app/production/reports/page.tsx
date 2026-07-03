@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   BarChart,
@@ -12,7 +12,7 @@ import {
   Cell,
   Legend,
   CartesianGrid,
-} from "recharts";
+} from 'recharts';
 import {
   ChartContainer,
   CHART_COLORS,
@@ -20,32 +20,32 @@ import {
   chartGridProps,
   chartTooltipProps,
   useChartAnimation,
-} from "@/components/charts/ChartContainer";
+} from '@/components/charts/ChartContainer';
 
 export default function ProductionReportsPage() {
   const chartAnimation = useChartAnimation();
   // --- Dummy KPI data ---
   const kpis = [
-    { label: "Projects In Queue", value: 12 },
-    { label: "Projects Completed", value: 38 },
-    { label: "Revisions This Week", value: 21 },
-    { label: "Avg Turnaround (hrs)", value: "14.8" },
+    { label: 'Projects In Queue', value: 12 },
+    { label: 'Projects Completed', value: 38 },
+    { label: 'Revisions This Week', value: 21 },
+    { label: 'Avg Turnaround (hrs)', value: '14.8' },
   ];
 
   // --- Bar chart: Tasks completed per team member ---
   const barData = [
-    { name: "Ali", tasks: 18 },
-    { name: "Sara", tasks: 25 },
-    { name: "Imran", tasks: 12 },
-    { name: "Fatima", tasks: 30 },
+    { name: 'Ali', tasks: 18 },
+    { name: 'Sara', tasks: 25 },
+    { name: 'Imran', tasks: 12 },
+    { name: 'Fatima', tasks: 30 },
   ];
 
   // --- Pie chart: Project category distribution ---
   const pieData = [
-    { name: "Branding", value: 14 },
-    { name: "Web", value: 22 },
-    { name: "Social Media", value: 18 },
-    { name: "Video/Animation", value: 9 },
+    { name: 'Branding', value: 14 },
+    { name: 'Web', value: 22 },
+    { name: 'Social Media', value: 18 },
+    { name: 'Video/Animation', value: 9 },
   ];
 
   return (
@@ -53,9 +53,7 @@ export default function ProductionReportsPage() {
       {/* Title */}
       <div>
         <h1 className="page-title">Reports</h1>
-        <p className="page-subtitle">
-          Production analytics to track performance and workload.
-        </p>
+        <p className="page-subtitle">Production analytics to track performance and workload.</p>
       </div>
 
       {/* KPI CARDS */}
@@ -83,7 +81,12 @@ export default function ProductionReportsPage() {
                 <XAxis dataKey="name" {...chartAxisProps} />
                 <YAxis {...chartAxisProps} />
                 <Tooltip {...chartTooltipProps} />
-                <Bar dataKey="tasks" fill="var(--chart-series-1)" radius={[8, 8, 0, 0]} {...chartAnimation} />
+                <Bar
+                  dataKey="tasks"
+                  fill="var(--chart-series-1)"
+                  radius={[8, 8, 0, 0]}
+                  {...chartAnimation}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -120,7 +123,7 @@ export default function ProductionReportsPage() {
                       align="center"
                       verticalAlign="bottom"
                       iconType="circle"
-                      wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
+                      wrapperStyle={{ fontSize: 12, color: 'var(--text-muted)' }}
                     />
                   )}
                   <Tooltip {...chartTooltipProps} />

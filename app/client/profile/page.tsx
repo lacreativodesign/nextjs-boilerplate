@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { SkeletonForm } from "@/components/ui/Skeleton";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useState } from 'react';
+import { SkeletonForm } from '@/components/ui/Skeleton';
+import { apiFetch } from '@/lib/api/client';
 
 type ClientProfile = {
   companyName?: string;
@@ -23,13 +23,13 @@ export default function ClientProfilePage() {
 
   const [profile, setProfile] = useState<ClientProfile>({});
 
-  const displayName = profile.primaryContactName || profile.companyName || "Client";
+  const displayName = profile.primaryContactName || profile.companyName || 'Client';
   const initials = displayName
-    .split(" ")
+    .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0])
-    .join("")
+    .join('')
     .toUpperCase();
 
   useEffect(() => {
@@ -40,17 +40,17 @@ export default function ClientProfilePage() {
       setError(null);
       setSuccess(null);
       try {
-        const res = await apiFetch("/api/client/profile/get", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/client/profile/get', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const payload = await res.json();
-        if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to load profile.");
+        if (!res.ok || !payload?.ok) throw new Error(payload?.error || 'Failed to load profile.');
         if (!alive) return;
         setProfile(payload.client || {});
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Failed to load profile.");
+        setError(err?.message || 'Failed to load profile.');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -69,24 +69,24 @@ export default function ClientProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await apiFetch("/api/client/profile/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/client/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyName: profile.companyName || "",
-          contactName: profile.primaryContactName || "",
-          phone: profile.primaryContactPhone || "",
-          timezone: profile.timezone || "",
-          address: profile.address || "",
-          city: profile.city || "",
-          country: profile.country || "",
+          companyName: profile.companyName || '',
+          contactName: profile.primaryContactName || '',
+          phone: profile.primaryContactPhone || '',
+          timezone: profile.timezone || '',
+          address: profile.address || '',
+          city: profile.city || '',
+          country: profile.country || '',
         }),
       });
       const payload = await res.json();
-      if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Failed to update profile.");
-      setSuccess("Profile updated successfully.");
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error || 'Failed to update profile.');
+      setSuccess('Profile updated successfully.');
     } catch (err: any) {
-      setError(err?.message || "Failed to update profile.");
+      setError(err?.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
     }
@@ -127,23 +127,31 @@ export default function ClientProfilePage() {
 
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="card p-4 settings-section">
-            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Company</div>
+            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              Company
+            </div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Company Name</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Company Name
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.companyName || ""}
+                  value={profile.companyName || ''}
                   onChange={(e) => setProfile((prev) => ({ ...prev, companyName: e.target.value }))}
                 />
                 <p className="helper-text mt-2">Appears on invoices and client-facing screens.</p>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Contact Name</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Contact Name
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.primaryContactName || ""}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, primaryContactName: e.target.value }))}
+                  value={profile.primaryContactName || ''}
+                  onChange={(e) =>
+                    setProfile((prev) => ({ ...prev, primaryContactName: e.target.value }))
+                  }
                 />
                 <p className="helper-text mt-2">Primary point of contact for updates.</p>
               </div>
@@ -151,19 +159,27 @@ export default function ClientProfilePage() {
           </div>
 
           <div className="card p-4 settings-section">
-            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Contact</div>
+            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              Contact
+            </div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Email (Read-only)</div>
-                <input className="input mt-2" value={profile.primaryContactEmail || ""} disabled />
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Email (Read-only)
+                </div>
+                <input className="input mt-2" value={profile.primaryContactEmail || ''} disabled />
                 <p className="helper-text mt-2">This email is linked to the client account.</p>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Phone</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Phone
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.primaryContactPhone || ""}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, primaryContactPhone: e.target.value }))}
+                  value={profile.primaryContactPhone || ''}
+                  onChange={(e) =>
+                    setProfile((prev) => ({ ...prev, primaryContactPhone: e.target.value }))
+                  }
                 />
                 <p className="helper-text mt-2">Used for urgent delivery communications.</p>
               </div>
@@ -171,22 +187,28 @@ export default function ClientProfilePage() {
           </div>
 
           <div className="card p-4 settings-section">
-            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Location</div>
+            <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              Location
+            </div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Timezone</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Timezone
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.timezone || ""}
+                  value={profile.timezone || ''}
                   onChange={(e) => setProfile((prev) => ({ ...prev, timezone: e.target.value }))}
                 />
                 <p className="helper-text mt-2">Aligns project deadlines with your locale.</p>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Address</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Address
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.address || ""}
+                  value={profile.address || ''}
                   onChange={(e) => setProfile((prev) => ({ ...prev, address: e.target.value }))}
                 />
                 <p className="helper-text mt-2">Used for compliance and billing records.</p>
@@ -194,18 +216,22 @@ export default function ClientProfilePage() {
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3 max-[900px]:grid-cols-1">
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">City</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  City
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.city || ""}
+                  value={profile.city || ''}
                   onChange={(e) => setProfile((prev) => ({ ...prev, city: e.target.value }))}
                 />
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Country</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Country
+                </div>
                 <input
                   className="input mt-2"
-                  value={profile.country || ""}
+                  value={profile.country || ''}
                   onChange={(e) => setProfile((prev) => ({ ...prev, country: e.target.value }))}
                 />
               </div>
@@ -215,7 +241,7 @@ export default function ClientProfilePage() {
           <div className="flex items-center justify-end gap-3">
             <span className="helper-text">Changes are saved securely to your client profile.</span>
             <button className="btn subtle" type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

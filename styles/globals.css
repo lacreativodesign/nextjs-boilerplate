@@ -27,5 +27,7 @@
 body {
   background: var(--card-bg);
   color: var(--header-text);
-  transition: background 0.25s, color 0.25s;
+  transition:
+    background 0.25s,
+    color 0.25s;
 }

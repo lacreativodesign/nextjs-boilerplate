@@ -1,10 +1,13 @@
-export function isModuleEnabled(modulesEnabled: Record<string, boolean>, moduleKey: string): boolean {
+export function isModuleEnabled(
+  modulesEnabled: Record<string, boolean>,
+  moduleKey: string,
+): boolean {
   const value = modulesEnabled?.[moduleKey];
   return value !== false;
 }
 
 export function isRoleEnabled(rolesEnabled: Record<string, boolean>, role: string): boolean {
-  if (role === "super_admin") {
+  if (role === 'super_admin') {
     return true;
   }
 
@@ -17,10 +20,12 @@ export function getEnabledModules(modulesEnabled: Record<string, boolean>): stri
 }
 
 export function getEnabledRoles(rolesEnabled: Record<string, boolean>): string[] {
-  const enabledRoles = Object.keys(rolesEnabled || {}).filter((key) => isRoleEnabled(rolesEnabled, key));
+  const enabledRoles = Object.keys(rolesEnabled || {}).filter((key) =>
+    isRoleEnabled(rolesEnabled, key),
+  );
 
-  if (!enabledRoles.includes("super_admin")) {
-    enabledRoles.push("super_admin");
+  if (!enabledRoles.includes('super_admin')) {
+    enabledRoles.push('super_admin');
   }
 
   return enabledRoles;

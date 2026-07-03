@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Bell, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, X } from 'lucide-react';
 
 type ToastNotification = {
   id: string;
@@ -16,19 +16,19 @@ type ToastNotification = {
 type ToastItem = ToastNotification & { toastId: string };
 
 const TYPE_COLOR: Record<string, string> = {
-  success: "var(--success)",
-  warning: "#f59e0b",
-  error: "var(--danger)",
-  approval_requested: "#f59e0b",
-  new_lead: "var(--erp-blue)",
-  change_request: "#8b5cf6",
-  deal_paid: "var(--success)",
-  info: "var(--erp-blue)",
-  system: "var(--text-muted)",
+  success: 'var(--success)',
+  warning: '#f59e0b',
+  error: 'var(--danger)',
+  approval_requested: '#f59e0b',
+  new_lead: 'var(--erp-blue)',
+  change_request: '#8b5cf6',
+  deal_paid: 'var(--success)',
+  info: 'var(--erp-blue)',
+  system: 'var(--text-muted)',
 };
 
 function getColor(type: string) {
-  return TYPE_COLOR[type] || "var(--erp-blue)";
+  return TYPE_COLOR[type] || 'var(--erp-blue)';
 }
 
 export default function NotificationToast() {
@@ -43,9 +43,9 @@ export default function NotificationToast() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications/list?filter=unread&limit=10", {
-        cache: "no-store",
-        credentials: "include",
+      const res = await fetch('/api/notifications/list?filter=unread&limit=10', {
+        cache: 'no-store',
+        credentials: 'include',
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => null);
@@ -96,23 +96,23 @@ export default function NotificationToast() {
   return (
     <div
       style={{
-        position: "fixed",
+        position: 'fixed',
         top: 72,
         right: 16,
         zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
+        display: 'flex',
+        flexDirection: 'column',
         gap: 10,
         width: 320,
-        maxWidth: "calc(100vw - 32px)",
-        pointerEvents: "none",
+        maxWidth: 'calc(100vw - 32px)',
+        pointerEvents: 'none',
       }}
     >
       {toasts.map((toast) => (
         <div
           key={toast.toastId}
           className="notification-toast-card"
-          style={{ pointerEvents: "auto" }}
+          style={{ pointerEvents: 'auto' }}
           onClick={() => {
             if (toast.deepLink) router.push(toast.deepLink);
             dismiss(toast.toastId);
@@ -121,17 +121,17 @@ export default function NotificationToast() {
           {/* Colour accent bar */}
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: 0,
               top: 0,
               bottom: 0,
               width: 4,
-              borderRadius: "12px 0 0 12px",
+              borderRadius: '12px 0 0 12px',
               background: getColor(toast.type),
             }}
           />
 
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingLeft: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingLeft: 12 }}>
             {/* Icon */}
             <div
               style={{
@@ -139,16 +139,14 @@ export default function NotificationToast() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: getColor(toast.type) + "22",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                background: getColor(toast.type) + '22',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 marginTop: 2,
               }}
             >
-              <Bell
-                style={{ width: 15, height: 15, color: getColor(toast.type) }}
-              />
+              <Bell style={{ width: 15, height: 15, color: getColor(toast.type) }} />
             </div>
 
             {/* Content */}
@@ -158,11 +156,11 @@ export default function NotificationToast() {
                   margin: 0,
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "var(--text-primary)",
+                  color: 'var(--text-primary)',
                   lineHeight: 1.3,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
               >
                 {toast.title}
@@ -170,14 +168,14 @@ export default function NotificationToast() {
               {toast.body && (
                 <p
                   style={{
-                    margin: "3px 0 0",
+                    margin: '3px 0 0',
                     fontSize: 12,
-                    color: "var(--text-muted)",
+                    color: 'var(--text-muted)',
                     lineHeight: 1.4,
-                    display: "-webkit-box",
+                    display: '-webkit-box',
                     WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
                   }}
                 >
                   {toast.body}
@@ -194,13 +192,13 @@ export default function NotificationToast() {
               }}
               style={{
                 flexShrink: 0,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
                 padding: 2,
-                color: "var(--text-muted)",
-                display: "flex",
-                alignItems: "center",
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
               }}
             >
               <X style={{ width: 13, height: 13 }} />
@@ -210,13 +208,13 @@ export default function NotificationToast() {
           {/* Progress bar */}
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               bottom: 0,
               left: 0,
               right: 0,
               height: 2,
-              borderRadius: "0 0 12px 12px",
-              overflow: "hidden",
+              borderRadius: '0 0 12px 12px',
+              overflow: 'hidden',
             }}
           >
             <div className="notification-toast-progress" />

@@ -1,18 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { showToast } from "@/lib/utils/toast";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useState } from 'react';
+import { showToast } from '@/lib/utils/toast';
+import { apiFetch } from '@/lib/api/client';
 
-const STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"];
+const STAGES = [
+  'new',
+  'contacted',
+  'qualified',
+  'proposal_sent',
+  'negotiation',
+  'closed_won',
+  'closed_lost',
+];
 
 export default function SalesDealDetailPage({ params }: { params: { id: string } }) {
   const [deal, setDeal] = useState<any>(null);
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState('');
 
   async function loadDeal() {
-    const res = await apiFetch(`/api/crm/deals/${params.id}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/crm/deals/${params.id}`, { cache: 'no-store' });
     const data = await res.json();
     if (data.ok) setDeal(data.deal);
   }
@@ -23,13 +31,13 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
 
   async function updateStage(stage: string) {
     const res = await apiFetch(`/api/crm/deals/${params.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage }),
     });
     const data = await res.json();
     if (!data.ok) {
-      showToast.error(data.error || "Failed to update stage");
+      showToast.error(data.error || 'Failed to update stage');
       return;
     }
     await loadDeal();
@@ -37,16 +45,18 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
 
   async function requestDiscount() {
     const res = await apiFetch(`/api/crm/deals/${params.id}/discount-request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discountPercent, reason }),
     });
     const data = await res.json();
     if (!data.ok) {
-      showToast.error(data.error || "Failed to request discount");
+      showToast.error(data.error || 'Failed to request discount');
       return;
     }
-    showToast.success(data.autoApproved ? "Discount auto-approved ✓" : "Discount request sent to manager");
+    showToast.success(
+      data.autoApproved ? 'Discount auto-approved ✓' : 'Discount request sent to manager',
+    );
     await loadDeal();
   }
 
@@ -58,14 +68,18 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
       <div className="card p-4">
         <div>Title: {deal.title}</div>
         <div>Value (USD): ${Number(deal.valueUSD || 0).toLocaleString()}</div>
-        <div>Discount: {deal.discountPercent || 0}% ({deal.discountApproved ? "approved" : "pending"})</div>
+        <div>
+          Discount: {deal.discountPercent || 0}% ({deal.discountApproved ? 'approved' : 'pending'})
+        </div>
       </div>
 
       <div className="card p-4">
         <label className="mb-1 block">Stage</label>
         <select className="input" value={deal.stage} onChange={(e) => updateStage(e.target.value)}>
           {STAGES.map((stage) => (
-            <option key={stage} value={stage}>{stage}</option>
+            <option key={stage} value={stage}>
+              {stage}
+            </option>
           ))}
         </select>
       </div>
@@ -79,8 +93,15 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
           onChange={(e) => setDiscountPercent(Number(e.target.value))}
           placeholder="Discount %"
         />
-        <textarea className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" />
-        <button className="btn" onClick={requestDiscount}>Submit discount request</button>
+        <textarea
+          className="input"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason"
+        />
+        <button className="btn" onClick={requestDiscount}>
+          Submit discount request
+        </button>
       </div>
     </div>
   );

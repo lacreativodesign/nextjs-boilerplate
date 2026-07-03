@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { DEFAULT_LOCALE } from "@/lib/i18n/config";
-import { dictionaries } from "@/lib/i18n/dictionaries";
-import { flattenKeys } from "@/lib/i18n/translate";
-import { useI18n } from "@/components/i18n/I18nProvider";
+import { useMemo } from 'react';
+import { DEFAULT_LOCALE } from '@/lib/i18n/config';
+import { dictionaries } from '@/lib/i18n/dictionaries';
+import { flattenKeys } from '@/lib/i18n/translate';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export default function TranslationProgress() {
   const { locale, t } = useI18n();
@@ -27,11 +27,13 @@ export default function TranslationProgress() {
 
   return (
     <div className="hidden md:flex items-center gap-2 text-xs text-[var(--text-muted)]">
-      <span>{t("i18n.progress")}: {stats.coverage}%</span>
+      <span>
+        {t('i18n.progress')}: {stats.coverage}%
+      </span>
       <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5">
         {stats.missing === 0
-          ? t("i18n.complete")
-          : t("i18n.itemsRemaining", { count: stats.missing })}
+          ? t('i18n.complete')
+          : t('i18n.itemsRemaining', { count: stats.missing })}
       </span>
     </div>
   );

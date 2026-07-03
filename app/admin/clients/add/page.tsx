@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import LoadingButton from "@/components/ui/LoadingButton";
-import { toastError, toastSuccess } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
-import type { SegmentDefinition } from "@/lib/segments";
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import LoadingButton from '@/components/ui/LoadingButton';
+import { toastError, toastSuccess } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
+import type { SegmentDefinition } from '@/lib/segments';
 
 type SalesStage =
-  | "New Lead"
-  | "Contacted"
-  | "Qualified"
-  | "Proposal Sent"
-  | "Negotiation"
-  | "Closed Won"
-  | "Closed Lost";
+  | 'New Lead'
+  | 'Contacted'
+  | 'Qualified'
+  | 'Proposal Sent'
+  | 'Negotiation'
+  | 'Closed Won'
+  | 'Closed Lost';
 
-type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
-type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
+type PaymentStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Refunded';
+type RetainerStatus = 'None' | 'Active' | 'Paused' | 'Cancelled';
 
 type ClientRecord = {
   id: string;
@@ -56,9 +56,7 @@ type ClientRecord = {
   lastActivity?: string | null;
 };
 
-type ApiResp =
-  | { ok: true; clientId?: string }
-  | { ok?: false; error?: string };
+type ApiResp = { ok: true; clientId?: string } | { ok?: false; error?: string };
 
 type SalesUser = {
   uid: string;
@@ -66,205 +64,203 @@ type SalesUser = {
   role?: string;
 };
 
-type SalesUsersResp =
-  | { ok: true; users?: SalesUser[] }
-  | { ok?: false; error?: string };
+type SalesUsersResp = { ok: true; users?: SalesUser[] } | { ok?: false; error?: string };
 
 const COUNTRIES = [
-  "Afghanistan",
-  "Albania",
-  "Algeria",
-  "Andorra",
-  "Angola",
-  "Antigua and Barbuda",
-  "Argentina",
-  "Armenia",
-  "Australia",
-  "Austria",
-  "Azerbaijan",
-  "Bahamas",
-  "Bahrain",
-  "Bangladesh",
-  "Barbados",
-  "Belarus",
-  "Belgium",
-  "Belize",
-  "Benin",
-  "Bhutan",
-  "Bolivia",
-  "Bosnia and Herzegovina",
-  "Botswana",
-  "Brazil",
-  "Brunei",
-  "Bulgaria",
-  "Burkina Faso",
-  "Burundi",
-  "Cabo Verde",
-  "Cambodia",
-  "Cameroon",
-  "Canada",
-  "Central African Republic",
-  "Chad",
-  "Chile",
-  "China",
-  "Colombia",
-  "Comoros",
-  "Congo (DRC)",
-  "Congo (Republic)",
-  "Costa Rica",
-  "Croatia",
-  "Cuba",
-  "Cyprus",
-  "Czech Republic",
-  "Denmark",
-  "Djibouti",
-  "Dominica",
-  "Dominican Republic",
-  "Ecuador",
-  "Egypt",
-  "El Salvador",
-  "Equatorial Guinea",
-  "Eritrea",
-  "Estonia",
-  "Eswatini",
-  "Ethiopia",
-  "Fiji",
-  "Finland",
-  "France",
-  "Gabon",
-  "Gambia",
-  "Georgia",
-  "Germany",
-  "Ghana",
-  "Greece",
-  "Grenada",
-  "Guatemala",
-  "Guinea",
-  "Guinea-Bissau",
-  "Guyana",
-  "Haiti",
-  "Honduras",
-  "Hungary",
-  "Iceland",
-  "India",
-  "Indonesia",
-  "Iran",
-  "Iraq",
-  "Ireland",
-  "Israel",
-  "Italy",
-  "Jamaica",
-  "Japan",
-  "Jordan",
-  "Kazakhstan",
-  "Kenya",
-  "Kiribati",
-  "Korea (North)",
-  "Korea (South)",
-  "Kuwait",
-  "Kyrgyzstan",
-  "Laos",
-  "Latvia",
-  "Lebanon",
-  "Lesotho",
-  "Liberia",
-  "Libya",
-  "Liechtenstein",
-  "Lithuania",
-  "Luxembourg",
-  "Madagascar",
-  "Malawi",
-  "Malaysia",
-  "Maldives",
-  "Mali",
-  "Malta",
-  "Marshall Islands",
-  "Mauritania",
-  "Mauritius",
-  "Mexico",
-  "Micronesia",
-  "Moldova",
-  "Monaco",
-  "Mongolia",
-  "Montenegro",
-  "Morocco",
-  "Mozambique",
-  "Myanmar",
-  "Namibia",
-  "Nauru",
-  "Nepal",
-  "Netherlands",
-  "New Zealand",
-  "Nicaragua",
-  "Niger",
-  "Nigeria",
-  "North Macedonia",
-  "Norway",
-  "Oman",
-  "Pakistan",
-  "Palau",
-  "Panama",
-  "Papua New Guinea",
-  "Paraguay",
-  "Peru",
-  "Philippines",
-  "Poland",
-  "Portugal",
-  "Qatar",
-  "Romania",
-  "Russia",
-  "Rwanda",
-  "Saint Kitts and Nevis",
-  "Saint Lucia",
-  "Saint Vincent and the Grenadines",
-  "Samoa",
-  "San Marino",
-  "Sao Tome and Principe",
-  "Saudi Arabia",
-  "Senegal",
-  "Serbia",
-  "Seychelles",
-  "Sierra Leone",
-  "Singapore",
-  "Slovakia",
-  "Slovenia",
-  "Solomon Islands",
-  "Somalia",
-  "South Africa",
-  "South Sudan",
-  "Spain",
-  "Sri Lanka",
-  "Sudan",
-  "Suriname",
-  "Sweden",
-  "Switzerland",
-  "Syria",
-  "Taiwan",
-  "Tajikistan",
-  "Tanzania",
-  "Thailand",
-  "Timor-Leste",
-  "Togo",
-  "Tonga",
-  "Trinidad and Tobago",
-  "Tunisia",
-  "Turkey",
-  "Turkmenistan",
-  "Tuvalu",
-  "Uganda",
-  "Ukraine",
-  "United Arab Emirates",
-  "United Kingdom",
-  "United States",
-  "Uruguay",
-  "Uzbekistan",
-  "Vanuatu",
-  "Vatican City",
-  "Venezuela",
-  "Vietnam",
-  "Yemen",
-  "Zambia",
-  "Zimbabwe"
+  'Afghanistan',
+  'Albania',
+  'Algeria',
+  'Andorra',
+  'Angola',
+  'Antigua and Barbuda',
+  'Argentina',
+  'Armenia',
+  'Australia',
+  'Austria',
+  'Azerbaijan',
+  'Bahamas',
+  'Bahrain',
+  'Bangladesh',
+  'Barbados',
+  'Belarus',
+  'Belgium',
+  'Belize',
+  'Benin',
+  'Bhutan',
+  'Bolivia',
+  'Bosnia and Herzegovina',
+  'Botswana',
+  'Brazil',
+  'Brunei',
+  'Bulgaria',
+  'Burkina Faso',
+  'Burundi',
+  'Cabo Verde',
+  'Cambodia',
+  'Cameroon',
+  'Canada',
+  'Central African Republic',
+  'Chad',
+  'Chile',
+  'China',
+  'Colombia',
+  'Comoros',
+  'Congo (DRC)',
+  'Congo (Republic)',
+  'Costa Rica',
+  'Croatia',
+  'Cuba',
+  'Cyprus',
+  'Czech Republic',
+  'Denmark',
+  'Djibouti',
+  'Dominica',
+  'Dominican Republic',
+  'Ecuador',
+  'Egypt',
+  'El Salvador',
+  'Equatorial Guinea',
+  'Eritrea',
+  'Estonia',
+  'Eswatini',
+  'Ethiopia',
+  'Fiji',
+  'Finland',
+  'France',
+  'Gabon',
+  'Gambia',
+  'Georgia',
+  'Germany',
+  'Ghana',
+  'Greece',
+  'Grenada',
+  'Guatemala',
+  'Guinea',
+  'Guinea-Bissau',
+  'Guyana',
+  'Haiti',
+  'Honduras',
+  'Hungary',
+  'Iceland',
+  'India',
+  'Indonesia',
+  'Iran',
+  'Iraq',
+  'Ireland',
+  'Israel',
+  'Italy',
+  'Jamaica',
+  'Japan',
+  'Jordan',
+  'Kazakhstan',
+  'Kenya',
+  'Kiribati',
+  'Korea (North)',
+  'Korea (South)',
+  'Kuwait',
+  'Kyrgyzstan',
+  'Laos',
+  'Latvia',
+  'Lebanon',
+  'Lesotho',
+  'Liberia',
+  'Libya',
+  'Liechtenstein',
+  'Lithuania',
+  'Luxembourg',
+  'Madagascar',
+  'Malawi',
+  'Malaysia',
+  'Maldives',
+  'Mali',
+  'Malta',
+  'Marshall Islands',
+  'Mauritania',
+  'Mauritius',
+  'Mexico',
+  'Micronesia',
+  'Moldova',
+  'Monaco',
+  'Mongolia',
+  'Montenegro',
+  'Morocco',
+  'Mozambique',
+  'Myanmar',
+  'Namibia',
+  'Nauru',
+  'Nepal',
+  'Netherlands',
+  'New Zealand',
+  'Nicaragua',
+  'Niger',
+  'Nigeria',
+  'North Macedonia',
+  'Norway',
+  'Oman',
+  'Pakistan',
+  'Palau',
+  'Panama',
+  'Papua New Guinea',
+  'Paraguay',
+  'Peru',
+  'Philippines',
+  'Poland',
+  'Portugal',
+  'Qatar',
+  'Romania',
+  'Russia',
+  'Rwanda',
+  'Saint Kitts and Nevis',
+  'Saint Lucia',
+  'Saint Vincent and the Grenadines',
+  'Samoa',
+  'San Marino',
+  'Sao Tome and Principe',
+  'Saudi Arabia',
+  'Senegal',
+  'Serbia',
+  'Seychelles',
+  'Sierra Leone',
+  'Singapore',
+  'Slovakia',
+  'Slovenia',
+  'Solomon Islands',
+  'Somalia',
+  'South Africa',
+  'South Sudan',
+  'Spain',
+  'Sri Lanka',
+  'Sudan',
+  'Suriname',
+  'Sweden',
+  'Switzerland',
+  'Syria',
+  'Taiwan',
+  'Tajikistan',
+  'Tanzania',
+  'Thailand',
+  'Timor-Leste',
+  'Togo',
+  'Tonga',
+  'Trinidad and Tobago',
+  'Tunisia',
+  'Turkey',
+  'Turkmenistan',
+  'Tuvalu',
+  'Uganda',
+  'Ukraine',
+  'United Arab Emirates',
+  'United Kingdom',
+  'United States',
+  'Uruguay',
+  'Uzbekistan',
+  'Vanuatu',
+  'Vatican City',
+  'Venezuela',
+  'Vietnam',
+  'Yemen',
+  'Zambia',
+  'Zimbabwe',
 ];
 
 export default function AddClientPage() {
@@ -273,49 +269,49 @@ export default function AddClientPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [companyName, setCompanyName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [businessType, setBusinessType] = useState("");
-  const [country, setCountry] = useState("");
-  const [city, setCity] = useState("");
-  const [timezone, setTimezone] = useState("");
-  const [employeeCountRange, setEmployeeCountRange] = useState("");
-  const [yearsInBusinessRange, setYearsInBusinessRange] = useState("");
+  const [companyName, setCompanyName] = useState('');
+  const [website, setWebsite] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [employeeCountRange, setEmployeeCountRange] = useState('');
+  const [yearsInBusinessRange, setYearsInBusinessRange] = useState('');
   const [segmentServices, setSegmentServices] = useState<string[]>([]);
-  const [segmentIndustry, setSegmentIndustry] = useState("");
-  const [segmentBusinessType, setSegmentBusinessType] = useState("");
-  const [segmentGeo, setSegmentGeo] = useState("");
+  const [segmentIndustry, setSegmentIndustry] = useState('');
+  const [segmentBusinessType, setSegmentBusinessType] = useState('');
+  const [segmentGeo, setSegmentGeo] = useState('');
 
   const [segments, setSegments] = useState<SegmentDefinition[]>([]);
 
-  const [primaryContactName, setPrimaryContactName] = useState("");
-  const [primaryContactTitle, setPrimaryContactTitle] = useState("");
-  const [primaryContactEmail, setPrimaryContactEmail] = useState("");
-  const [primaryContactPhone, setPrimaryContactPhone] = useState("");
+  const [primaryContactName, setPrimaryContactName] = useState('');
+  const [primaryContactTitle, setPrimaryContactTitle] = useState('');
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
+  const [primaryContactPhone, setPrimaryContactPhone] = useState('');
 
-  const [salesOwner, setSalesOwner] = useState("");
+  const [salesOwner, setSalesOwner] = useState('');
   const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
-  const [accountManager, setAccountManager] = useState("");
+  const [accountManager, setAccountManager] = useState('');
   const [amUsers, setAmUsers] = useState<SalesUser[]>([]);
-  const [productionOwner, setProductionOwner] = useState("");
+  const [productionOwner, setProductionOwner] = useState('');
   const [productionUsers, setProductionUsers] = useState<SalesUser[]>([]);
 
-  const [salesStage, setSalesStage] = useState<SalesStage>("New Lead");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
-  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>("None");
+  const [salesStage, setSalesStage] = useState<SalesStage>('New Lead');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('Unpaid');
+  const [retainerStatus, setRetainerStatus] = useState<RetainerStatus>('None');
 
   // ✅ keep value as string so we can avoid number spinner UI entirely
-  const [totalPaidUsd, setTotalPaidUsd] = useState<string>("0");
+  const [totalPaidUsd, setTotalPaidUsd] = useState<string>('0');
 
   useEffect(() => {
     let alive = true;
 
     async function loadSegments() {
       try {
-        const res = await apiFetch("/api/admin/clients/segments/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/clients/segments/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -325,15 +321,15 @@ export default function AddClientPage() {
       } catch {
         if (!alive) return;
         setSegments([]);
-        toastError("Failed to load client segments.");
+        toastError('Failed to load client segments.');
       }
     }
 
     async function loadSalesUsers() {
       try {
-        const res = await apiFetch("/api/admin/users/by-role?role=sales", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/by-role?role=sales', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -343,15 +339,15 @@ export default function AddClientPage() {
       } catch {
         if (!alive) return;
         setSalesUsers([]);
-        toastError("Failed to load sales users.");
+        toastError('Failed to load sales users.');
       }
     }
 
     async function loadAmUsers() {
       try {
-        const res = await apiFetch("/api/admin/users/by-role?role=am,am_manager", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/by-role?role=am,am_manager', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -361,15 +357,15 @@ export default function AddClientPage() {
       } catch {
         if (!alive) return;
         setAmUsers([]);
-        toastError("Failed to load account managers.");
+        toastError('Failed to load account managers.');
       }
     }
 
     async function loadProductionUsers() {
       try {
-        const res = await apiFetch("/api/admin/users/by-role?role=production", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/by-role?role=production', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = (await res.json().catch(() => ({}))) as SalesUsersResp;
         if (!res.ok || !json?.ok) return;
@@ -379,7 +375,7 @@ export default function AddClientPage() {
       } catch {
         if (!alive) return;
         setProductionUsers([]);
-        toastError("Failed to load production users.");
+        toastError('Failed to load production users.');
       }
     }
 
@@ -409,98 +405,89 @@ export default function AddClientPage() {
     return map;
   }, [segments]);
 
-  const employeeRanges = [
-    "1-5",
-    "6-10",
-    "11-25",
-    "26-50",
-    "51-100",
-    "101-250",
-    "251-500",
-    "500+",
-  ];
+  const employeeRanges = ['1-5', '6-10', '11-25', '26-50', '51-100', '101-250', '251-500', '500+'];
 
-  const yearsRanges = ["<1", "1-3", "4-7", "8-12", "13-20", "20+"];
+  const yearsRanges = ['<1', '1-3', '4-7', '8-12', '13-20', '20+'];
 
   const styles = useMemo(() => {
     const pageTitle: React.CSSProperties = {
       fontSize: 34,
       fontWeight: 900,
       marginBottom: 8,
-      color: "var(--text-primary)",
+      color: 'var(--text-primary)',
     };
 
     const pageSub: React.CSSProperties = {
       marginBottom: 18,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
       fontSize: 14,
       lineHeight: 1.5,
     };
 
     // full-width like Create User (NOT centered)
     const fullWidthWrap: React.CSSProperties = {
-      width: "100%",
-      maxWidth: "none",
+      width: '100%',
+      maxWidth: 'none',
     };
 
     // KEY-ACCOUNTS master shell
     const formShell: React.CSSProperties = {
       borderRadius: 20,
       padding: 18,
-      border: "1px solid var(--border-subtle)",
-      background: "var(--surface-card)",
-      boxShadow: "var(--shadow-md)",
+      border: '1px solid var(--border-subtle)',
+      background: 'var(--surface-card)',
+      boxShadow: 'var(--shadow-md)',
     };
 
     // inner section surfaces MUST be grey in dark mode (not blue)
     const sectionCard: React.CSSProperties = {
       borderRadius: 16,
       padding: 14,
-      border: "1px solid var(--border-subtle)",
-      background: "var(--surface-muted)",
+      border: '1px solid var(--border-subtle)',
+      background: 'var(--surface-muted)',
     };
 
     const sectionTitle: React.CSSProperties = {
       fontSize: 12,
       fontWeight: 900,
-      letterSpacing: "0.06em",
-      textTransform: "uppercase",
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
       opacity: 0.72,
       marginBottom: 10,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const label: React.CSSProperties = {
       fontSize: 11,
-      letterSpacing: "0.06em",
-      textTransform: "uppercase",
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
       fontWeight: 900,
       marginBottom: 6,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const help: React.CSSProperties = {
       fontSize: 12,
       marginTop: 6,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
     };
 
     const actions: React.CSSProperties = {
-      display: "flex",
-      justifyContent: "flex-end",
+      display: 'flex',
+      justifyContent: 'flex-end',
       gap: 10,
       marginTop: 14,
     };
 
     const errorText: React.CSSProperties = {
       fontSize: 14,
-      color: "#FCA5A5",
+      color: '#FCA5A5',
       marginBottom: 12,
     };
 
     const okText: React.CSSProperties = {
       fontSize: 14,
-      color: "var(--text-muted)",
+      color: 'var(--text-muted)',
       marginBottom: 12,
     };
 
@@ -520,7 +507,7 @@ export default function AddClientPage() {
   }, []);
 
   function toMoneyNumber(v: string) {
-    const cleaned = (v || "").replace(/[^0-9.]/g, "");
+    const cleaned = (v || '').replace(/[^0-9.]/g, '');
     const n = Number(cleaned || 0);
     if (!Number.isFinite(n)) return 0;
     return n;
@@ -530,9 +517,9 @@ export default function AddClientPage() {
     e.preventDefault();
     setError(null);
 
-    if (!companyName.trim()) return setError("Company name is required.");
-    if (!primaryContactName.trim()) return setError("Primary contact name is required.");
-    if (!primaryContactEmail.trim()) return setError("Primary contact email is required.");
+    if (!companyName.trim()) return setError('Company name is required.');
+    if (!primaryContactName.trim()) return setError('Primary contact name is required.');
+    if (!primaryContactEmail.trim()) return setError('Primary contact email is required.');
 
     setLoading(true);
     try {
@@ -540,7 +527,8 @@ export default function AddClientPage() {
         companyName: companyName.trim(),
         website: website.trim() || undefined,
         industry: (segmentLookup[segmentIndustry]?.name || industry).trim() || undefined,
-        businessType: (segmentLookup[segmentBusinessType]?.name || businessType).trim() || undefined,
+        businessType:
+          (segmentLookup[segmentBusinessType]?.name || businessType).trim() || undefined,
         country: country.trim() || undefined,
         city: city.trim() || undefined,
         timezone: timezone.trim() || undefined,
@@ -568,52 +556,52 @@ export default function AddClientPage() {
         totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
-      const res = await apiFetch("/api/admin/clients/create", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const res = await apiFetch('/api/admin/clients/create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const json = (await res.json().catch(() => ({}))) as ApiResp;
-      if (!res.ok || !("ok" in json) || !json.ok) {
-        const message = "error" in json ? json.error : undefined;
-        throw new Error(message || "Failed to create client");
+      if (!res.ok || !('ok' in json) || !json.ok) {
+        const message = 'error' in json ? json.error : undefined;
+        throw new Error(message || 'Failed to create client');
       }
 
-      toastSuccess("Saved successfully.");
-      setTimeout(() => router.push("/admin/clients"), 800);
+      toastSuccess('Saved successfully.');
+      setTimeout(() => router.push('/admin/clients'), 800);
 
       // reset
-      setCompanyName("");
-      setWebsite("");
-      setIndustry("");
-      setBusinessType("");
-      setCountry("");
-      setCity("");
-      setTimezone("");
-      setEmployeeCountRange("");
-      setYearsInBusinessRange("");
+      setCompanyName('');
+      setWebsite('');
+      setIndustry('');
+      setBusinessType('');
+      setCountry('');
+      setCity('');
+      setTimezone('');
+      setEmployeeCountRange('');
+      setYearsInBusinessRange('');
       setSegmentServices([]);
-      setSegmentIndustry("");
-      setSegmentBusinessType("");
-      setSegmentGeo("");
+      setSegmentIndustry('');
+      setSegmentBusinessType('');
+      setSegmentGeo('');
 
-      setPrimaryContactName("");
-      setPrimaryContactTitle("");
-      setPrimaryContactEmail("");
-      setPrimaryContactPhone("");
+      setPrimaryContactName('');
+      setPrimaryContactTitle('');
+      setPrimaryContactEmail('');
+      setPrimaryContactPhone('');
 
-      setSalesOwner("");
-      setAccountManager("");
-      setProductionOwner("");
+      setSalesOwner('');
+      setAccountManager('');
+      setProductionOwner('');
 
-      setSalesStage("New Lead");
-      setPaymentStatus("Unpaid");
-      setRetainerStatus("None");
+      setSalesStage('New Lead');
+      setPaymentStatus('Unpaid');
+      setRetainerStatus('None');
 
-      setTotalPaidUsd("0");
+      setTotalPaidUsd('0');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to create client";
+      const message = err instanceof Error ? err.message : 'Failed to create client';
       setError(message);
       toastError(message);
     } finally {
@@ -623,7 +611,10 @@ export default function AddClientPage() {
 
   return (
     <div style={styles.fullWidthWrap}>
-      <Link href="/admin/crm" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+      <Link
+        href="/admin/crm"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block"
+      >
         ← Back to CRM
       </Link>
       <h1 style={styles.pageTitle}>Add Client</h1>
@@ -642,19 +633,31 @@ export default function AddClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Company Name <span style={{ color: "#EF4444" }}>*</span>
+                  Company Name <span style={{ color: '#EF4444' }}>*</span>
                 </div>
-                <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                <input
+                  className="input"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
               </div>
 
               <div>
                 <div style={styles.label}>Website</div>
-                <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                <input
+                  className="input"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
               </div>
 
               <div>
                 <div style={styles.label}>Country</div>
-                <select className="input" value={country} onChange={(e) => setCountry(e.target.value)}>
+                <select
+                  className="input"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                >
                   <option value="">Select country (optional)</option>
                   {COUNTRIES.map((countryName) => (
                     <option key={countryName} value={countryName}>
@@ -675,7 +678,11 @@ export default function AddClientPage() {
             <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Timezone</div>
-                <select className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                <select
+                  className="input"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                >
                   <option value="">Select timezone (optional)</option>
                   <option value="UTC">UTC</option>
                   <option value="America/New_York">America/New_York</option>
@@ -697,7 +704,9 @@ export default function AddClientPage() {
                   <option value="Australia/Sydney">Australia/Sydney</option>
                   <option value="Pacific/Auckland">Pacific/Auckland</option>
                 </select>
-                <div style={styles.help}>Keep it short. Don’t stretch the field across the whole page.</div>
+                <div style={styles.help}>
+                  Keep it short. Don’t stretch the field across the whole page.
+                </div>
               </div>
 
               <div>
@@ -731,7 +740,7 @@ export default function AddClientPage() {
                   onChange={(e) => {
                     const slug = e.target.value;
                     setSegmentIndustry(slug);
-                    setIndustry(segmentLookup[slug]?.name || "");
+                    setIndustry(segmentLookup[slug]?.name || '');
                   }}
                 >
                   <option value="">Select Industry</option>
@@ -751,7 +760,7 @@ export default function AddClientPage() {
                   onChange={(e) => {
                     const slug = e.target.value;
                     setSegmentBusinessType(slug);
-                    setBusinessType(segmentLookup[slug]?.name || "");
+                    setBusinessType(segmentLookup[slug]?.name || '');
                   }}
                 >
                   <option value="">Select Business Type</option>
@@ -820,20 +829,20 @@ export default function AddClientPage() {
 
             <div>
               <div style={styles.label}>Services</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {(segmentsByType.service || []).map((segment) => {
                   const checked = segmentServices.includes(segment.slug);
                   return (
                     <label
                       key={segment.id}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 6,
-                        padding: "6px 10px",
+                        padding: '6px 10px',
                         borderRadius: 999,
-                        border: "1px solid rgba(148,163,184,0.35)",
-                        background: checked ? "rgba(59,130,246,0.08)" : "transparent",
+                        border: '1px solid rgba(148,163,184,0.35)',
+                        background: checked ? 'rgba(59,130,246,0.08)' : 'transparent',
                         fontSize: 12,
                       }}
                     >
@@ -844,7 +853,7 @@ export default function AddClientPage() {
                           setSegmentServices((prev) =>
                             prev.includes(segment.slug)
                               ? prev.filter((slug) => slug !== segment.slug)
-                              : [...prev, segment.slug]
+                              : [...prev, segment.slug],
                           );
                         }}
                       />
@@ -865,7 +874,7 @@ export default function AddClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Contact Name <span style={{ color: "#EF4444" }}>*</span>
+                  Contact Name <span style={{ color: '#EF4444' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -885,7 +894,7 @@ export default function AddClientPage() {
 
               <div>
                 <div style={styles.label}>
-                  Contact Email <span style={{ color: "#EF4444" }}>*</span>
+                  Contact Email <span style={{ color: '#EF4444' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -914,7 +923,7 @@ export default function AddClientPage() {
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Sales Owner <span style={{ color: "#EF4444" }}>*</span>
+                  Sales Owner <span style={{ color: '#EF4444' }}>*</span>
                 </div>
                 <select
                   className="input"
@@ -974,7 +983,11 @@ export default function AddClientPage() {
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>Sales Stage</div>
-                <select className="input" value={salesStage} onChange={(e) => setSalesStage(e.target.value as SalesStage)}>
+                <select
+                  className="input"
+                  value={salesStage}
+                  onChange={(e) => setSalesStage(e.target.value as SalesStage)}
+                >
                   <option value="New Lead">New Lead</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Qualified">Qualified</option>
@@ -1016,7 +1029,12 @@ export default function AddClientPage() {
           </div>
 
           <div style={styles.actions}>
-            <LoadingButton className="btn" type="submit" loading={loading} loadingText="Creating...">
+            <LoadingButton
+              className="btn"
+              type="submit"
+              loading={loading}
+              loadingText="Creating..."
+            >
               Add Client
             </LoadingButton>
           </div>

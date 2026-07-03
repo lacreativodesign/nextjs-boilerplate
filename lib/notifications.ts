@@ -1,1 +1,1 @@
-export * from "@/app/lib/notifications";
+export * from '@/app/lib/notifications';

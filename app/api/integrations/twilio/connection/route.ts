@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { getTwilioIntegration, TWILIO_TRIGGER_TYPES, updateTwilioIntegration } from "@/lib/integrations/twilio";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import {
+  getTwilioIntegration,
+  TWILIO_TRIGGER_TYPES,
+  updateTwilioIntegration,
+} from '@/lib/integrations/twilio';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const updateSchema = z.object({
   enabled: z.boolean(),
@@ -27,15 +31,24 @@ export async function GET() {
       connection: {
         enabled: Boolean(connection?.enabled),
         fromNumber: connection?.fromNumber || process.env.TWILIO_FROM_NUMBER || null,
-        messagingServiceSid: connection?.messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID || null,
-        statusCallbackUrl: connection?.statusCallbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ""}/api/integrations/twilio/webhook` || null,
+        messagingServiceSid:
+          connection?.messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID || null,
+        statusCallbackUrl:
+          connection?.statusCallbackUrl ||
+          `${process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ''}/api/integrations/twilio/webhook` ||
+          null,
         enabledTriggers: connection?.enabledTriggers || [...TWILIO_TRIGGER_TYPES],
-        hasCredentials: Boolean(connection?.accountSid || process.env.TWILIO_ACCOUNT_SID) && Boolean(connection?.authToken || process.env.TWILIO_AUTH_TOKEN),
+        hasCredentials:
+          Boolean(connection?.accountSid || process.env.TWILIO_ACCOUNT_SID) &&
+          Boolean(connection?.authToken || process.env.TWILIO_AUTH_TOKEN),
       },
     });
   } catch (error: any) {
-    console.error("twilio/connection GET error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load Twilio configuration." }, { status: 500 });
+    console.error('twilio/connection GET error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to load Twilio configuration.' },
+      { status: 500 },
+    );
   }
 }
 
@@ -60,7 +73,10 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {
-    console.error("twilio/connection PATCH error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update Twilio configuration." }, { status: 400 });
+    console.error('twilio/connection PATCH error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to update Twilio configuration.' },
+      { status: 400 },
+    );
   }
 }

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Skeleton } from "../ui/Skeleton";
-import { apiFetch } from "@/lib/api/client";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Skeleton } from '../ui/Skeleton';
+import { apiFetch } from '@/lib/api/client';
 
 type ApprovalItem = {
   id: string;
   tenantId: string;
-  type: "discount" | "change_request" | "production_override";
+  type: 'discount' | 'change_request' | 'production_override';
   title: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   requestedAt: string;
   requestedBy?: { uid?: string; role?: string } | null;
   entityType: string;
@@ -29,9 +29,9 @@ type ApprovalsPageProps = {
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return '—';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString();
 }
 
@@ -46,15 +46,15 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiFetch("/api/approvals/pending", { cache: "no-store" });
+      const res = await apiFetch('/api/approvals/pending', { cache: 'no-store' });
       const data = (await res.json()) as ApprovalsResponse;
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load approvals.");
+        throw new Error(data?.error || 'Unable to load approvals.');
       }
       setApprovals(Array.isArray(data.approvals) ? data.approvals : []);
     } catch (err: any) {
-      console.error("Approvals fetch error", err);
-      setError(err?.message || "Unable to load approvals.");
+      console.error('Approvals fetch error', err);
+      setError(err?.message || 'Unable to load approvals.');
     } finally {
       setLoading(false);
     }
@@ -65,27 +65,30 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
   }, [loadApprovals]);
 
   const pendingCount = useMemo(
-    () => approvals.filter((item) => item.status === "pending").length,
-    [approvals]
+    () => approvals.filter((item) => item.status === 'pending').length,
+    [approvals],
   );
 
-  const resolveApproval = async (item: ApprovalItem, action: "approve" | "reject") => {
+  const resolveApproval = async (item: ApprovalItem, action: 'approve' | 'reject') => {
     try {
       setActionLoading(true);
-      const res = await apiFetch(action === "approve" ? "/api/approvals/approve" : "/api/approvals/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id }),
-      });
+      const res = await apiFetch(
+        action === 'approve' ? '/api/approvals/approve' : '/api/approvals/reject',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id }),
+        },
+      );
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Unable to resolve approval.");
+        throw new Error(data?.error || 'Unable to resolve approval.');
       }
       setSelected(null);
       loadApprovals();
     } catch (err: any) {
-      console.error("Approval resolve error", err);
-      setError(err?.message || "Unable to resolve approval.");
+      console.error('Approval resolve error', err);
+      setError(err?.message || 'Unable to resolve approval.');
     } finally {
       setActionLoading(false);
     }
@@ -107,13 +110,15 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
 
       <div className="kpis">
         <div className="card kpi-card" style={{ padding: 18, borderRadius: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>Pending approvals</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Pending approvals
+          </div>
           <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{pendingCount}</div>
         </div>
       </div>
 
       <div className="table-shell" style={{ marginTop: 18 }}>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: 'auto' }}>
           <table className="table" style={{ minWidth: 780 }}>
             <thead>
               <tr>
@@ -132,7 +137,11 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
                     <td colSpan={6}>
                       <div className="grid grid-cols-6 gap-4 py-2">
                         {Array.from({ length: 6 }).map((__, col) => (
-                          <Skeleton key={`approval-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                          <Skeleton
+                            key={`approval-skeleton-${index}-${col}`}
+                            variant="text"
+                            className="h-4 w-full"
+                          />
                         ))}
                       </div>
                     </td>
@@ -148,10 +157,10 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               {!loading &&
                 approvals.map((item) => (
                   <tr key={`${item.type}-${item.id}`}>
-                    <td>{item.type.replace("_", " ")}</td>
-                    <td>{item.title || "—"}</td>
+                    <td>{item.type.replace('_', ' ')}</td>
+                    <td>{item.title || '—'}</td>
                     <td>{formatDate(item.requestedAt)}</td>
-                    <td>{item.requestedBy?.uid || item.requestedBy?.role || "—"}</td>
+                    <td>{item.requestedBy?.uid || item.requestedBy?.role || '—'}</td>
                     <td>{item.status}</td>
                     <td>
                       <button className="btn ghost" onClick={() => setSelected(item)}>
@@ -163,20 +172,27 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
             </tbody>
           </table>
         </div>
-        {error && <div className="text-sm text-red-500" style={{ marginTop: 12 }}>{error}</div>}
+        {error && (
+          <div className="text-sm text-red-500" style={{ marginTop: 12 }}>
+            {error}
+          </div>
+        )}
       </div>
 
       {selected && (
         <div className="drawer-overlay" onClick={() => setSelected(null)}>
-          <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="drawer-panel drawer-panel--md"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-title">Approval details</div>
             <div className="drawer-subtitle" style={{ marginTop: 4 }}>
-              {selected.type.replace("_", " ")}
+              {selected.type.replace('_', ' ')}
             </div>
-            <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+            <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Title</div>
-                <div>{selected.title || "—"}</div>
+                <div>{selected.title || '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Requested</div>
@@ -184,7 +200,7 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Requested by</div>
-                <div>{selected.requestedBy?.uid || selected.requestedBy?.role || "—"}</div>
+                <div>{selected.requestedBy?.uid || selected.requestedBy?.role || '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Entity</div>
@@ -199,7 +215,10 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
                 ) : (
                   <div className="space-y-2">
                     {Object.entries(selected.requestedData).map(([key, value]) => (
-                      <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <div
+                        key={key}
+                        style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}
+                      >
                         <span className="text-xs text-[var(--text-muted)]">{key}</span>
                         <span className="text-sm">{String(value)}</span>
                       </div>
@@ -207,11 +226,19 @@ export default function ApprovalsPage({ title, subtitle }: ApprovalsPageProps) {
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button className="btn" disabled={actionLoading} onClick={() => resolveApproval(selected, "approve")}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  className="btn"
+                  disabled={actionLoading}
+                  onClick={() => resolveApproval(selected, 'approve')}
+                >
                   Approve
                 </button>
-                <button className="btn btn-danger" disabled={actionLoading} onClick={() => resolveApproval(selected, "reject")}>
+                <button
+                  className="btn btn-danger"
+                  disabled={actionLoading}
+                  onClick={() => resolveApproval(selected, 'reject')}
+                >
                   Reject
                 </button>
               </div>

@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
 const TIMEZONES = [
-  "UTC",
-  "Asia/Karachi",
-  "America/New_York",
-  "Europe/London",
-  "Asia/Dubai",
-  "America/Los_Angeles",
+  'UTC',
+  'Asia/Karachi',
+  'America/New_York',
+  'Europe/London',
+  'Asia/Dubai',
+  'America/Los_Angeles',
 ];
-const DATE_FORMATS = ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"];
+const DATE_FORMATS = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'];
 
 export default function SettingsPreferencesPage() {
   const [prefs, setPrefs] = useState({
-    timezone: "Asia/Karachi",
-    dateFormat: "DD/MM/YYYY",
+    timezone: 'Asia/Karachi',
+    dateFormat: 'DD/MM/YYYY',
     emailNotifications: true,
     browserNotifications: false,
     weeklyDigest: true,
@@ -47,8 +47,8 @@ export default function SettingsPreferencesPage() {
           </div>
 
           {[
-            { label: "Timezone", key: "timezone", options: TIMEZONES },
-            { label: "Date Format", key: "dateFormat", options: DATE_FORMATS },
+            { label: 'Timezone', key: 'timezone', options: TIMEZONES },
+            { label: 'Date Format', key: 'dateFormat', options: DATE_FORMATS },
           ].map((f) => (
             <div key={f.key}>
               <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
@@ -74,19 +74,19 @@ export default function SettingsPreferencesPage() {
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Notifications</h2>
           {[
             {
-              label: "Email Notifications",
-              key: "emailNotifications",
-              desc: "Receive updates and alerts via email.",
+              label: 'Email Notifications',
+              key: 'emailNotifications',
+              desc: 'Receive updates and alerts via email.',
             },
             {
-              label: "Browser Notifications",
-              key: "browserNotifications",
-              desc: "Push notifications in your browser.",
+              label: 'Browser Notifications',
+              key: 'browserNotifications',
+              desc: 'Push notifications in your browser.',
             },
             {
-              label: "Weekly Digest",
-              key: "weeklyDigest",
-              desc: "Summary email every Monday morning.",
+              label: 'Weekly Digest',
+              key: 'weeklyDigest',
+              desc: 'Summary email every Monday morning.',
             },
           ].map((f) => (
             <div
@@ -102,13 +102,13 @@ export default function SettingsPreferencesPage() {
                 onClick={() => set(f.key, !prefs[f.key as keyof typeof prefs])}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   prefs[f.key as keyof typeof prefs]
-                    ? "bg-[var(--erp-blue)]"
-                    : "bg-[var(--surface-muted)]"
+                    ? 'bg-[var(--erp-blue)]'
+                    : 'bg-[var(--surface-muted)]'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    prefs[f.key as keyof typeof prefs] ? "translate-x-6" : "translate-x-1"
+                    prefs[f.key as keyof typeof prefs] ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -117,7 +117,7 @@ export default function SettingsPreferencesPage() {
         </div>
 
         <button type="submit" className="btn w-full">
-          {saved ? "✓ Preferences Saved!" : "Save Preferences"}
+          {saved ? '✓ Preferences Saved!' : 'Save Preferences'}
         </button>
       </form>
     </div>

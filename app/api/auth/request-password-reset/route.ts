@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebaseAdmin";
-import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
+import { NextResponse } from 'next/server';
+import { adminAuth } from '@/lib/firebaseAdmin';
+import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 // Password reset now uses our own single-use, hashed, 24h set-password tokens instead
 // of Firebase's hosted reset link. Reason: the Firebase-hosted flow changes the
@@ -12,10 +12,12 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const email = String(body?.email || "").trim().toLowerCase();
+    const email = String(body?.email || '')
+      .trim()
+      .toLowerCase();
 
     if (!email) {
-      return NextResponse.json({ ok: false, error: "Email is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Email is required.' }, { status: 400 });
     }
 
     // Enumeration-safe: identical response whether or not the account exists.
@@ -34,7 +36,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("REQUEST PASSWORD RESET ERROR:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    console.error('REQUEST PASSWORD RESET ERROR:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }

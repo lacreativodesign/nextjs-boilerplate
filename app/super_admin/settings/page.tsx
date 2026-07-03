@@ -93,7 +93,10 @@ export default function SuperAdminSettingsPage() {
   const set = <K extends keyof PlatformSettings>(key: K, val: PlatformSettings[K]) =>
     setSettings((p) => ({ ...p, [key]: val }));
 
-  if (loading) return <div className="card p-6 text-sm text-[var(--text-muted)]">Loading platform settings...</div>;
+  if (loading)
+    return (
+      <div className="card p-6 text-sm text-[var(--text-muted)]">Loading platform settings...</div>
+    );
 
   return (
     <div className="space-y-6">
@@ -104,7 +107,9 @@ export default function SuperAdminSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">Allow Public Signup</p>
-              <p className="text-xs text-[var(--text-muted)]">When OFF, only invited users can create accounts</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                When OFF, only invited users can create accounts
+              </p>
             </div>
             <button
               onClick={() => set('allowPublicSignup', !settings.allowPublicSignup)}
@@ -118,7 +123,9 @@ export default function SuperAdminSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">Maintenance Mode</p>
-              <p className="text-xs text-[var(--text-muted)]">When ON, non-super-admins see a maintenance page</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                When ON, non-super-admins see a maintenance page
+              </p>
             </div>
             <button
               onClick={() => set('maintenanceMode', !settings.maintenanceMode)}
@@ -131,7 +138,9 @@ export default function SuperAdminSettingsPage() {
           </div>
           {settings.maintenanceMode && (
             <div>
-              <label className="text-xs font-medium text-[var(--text-muted)]">Maintenance Message</label>
+              <label className="text-xs font-medium text-[var(--text-muted)]">
+                Maintenance Message
+              </label>
               <input
                 value={settings.maintenanceMessage}
                 onChange={(e) => set('maintenanceMessage', e.target.value)}
@@ -144,7 +153,9 @@ export default function SuperAdminSettingsPage() {
 
       {/* Section 2 — Platform Configuration */}
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Platform Configuration</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+          Platform Configuration
+        </h2>
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-[var(--text-muted)]">Platform Name</label>
@@ -164,13 +175,17 @@ export default function SuperAdminSettingsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--text-muted)]">Default Trial Days (1–90)</label>
+            <label className="text-xs font-medium text-[var(--text-muted)]">
+              Default Trial Days (1–90)
+            </label>
             <input
               type="number"
               min={1}
               max={90}
               value={settings.defaultTrialDays}
-              onChange={(e) => set('defaultTrialDays', Math.max(1, Math.min(90, Number(e.target.value))))}
+              onChange={(e) =>
+                set('defaultTrialDays', Math.max(1, Math.min(90, Number(e.target.value))))
+              }
               className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--text-primary)]"
             />
           </div>
@@ -179,12 +194,16 @@ export default function SuperAdminSettingsPage() {
 
       {/* Section 3 — Announcement Banner */}
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Announcement Banner</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+          Announcement Banner
+        </h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">Enable Announcement</p>
-              <p className="text-xs text-[var(--text-muted)]">Shows a banner to all logged-in users</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Shows a banner to all logged-in users
+              </p>
             </div>
             <button
               onClick={() => set('announcementEnabled', !settings.announcementEnabled)}
@@ -198,7 +217,9 @@ export default function SuperAdminSettingsPage() {
           {settings.announcementEnabled && (
             <>
               <div>
-                <label className="text-xs font-medium text-[var(--text-muted)]">Announcement Message</label>
+                <label className="text-xs font-medium text-[var(--text-muted)]">
+                  Announcement Message
+                </label>
                 <textarea
                   value={settings.announcementMessage}
                   onChange={(e) => set('announcementMessage', e.target.value)}
@@ -207,7 +228,9 @@ export default function SuperAdminSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-[var(--text-muted)]">Announcement Type</label>
+                <label className="text-xs font-medium text-[var(--text-muted)]">
+                  Announcement Type
+                </label>
                 <select
                   value={settings.announcementType}
                   onChange={(e) => set('announcementType', e.target.value)}
@@ -230,7 +253,9 @@ export default function SuperAdminSettingsPage() {
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-lg bg-[var(--surface-hover)] p-4 text-center">
             <p className="text-xs text-[var(--text-muted)]">Starter</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{settings.maxUsersStarter}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]">
+              {settings.maxUsersStarter}
+            </p>
             <p className="text-xs text-[var(--text-muted)]">max users</p>
           </div>
           <div className="rounded-lg bg-[var(--surface-hover)] p-4 text-center">
@@ -240,7 +265,9 @@ export default function SuperAdminSettingsPage() {
           </div>
           <div className="rounded-lg bg-[var(--surface-hover)] p-4 text-center">
             <p className="text-xs text-[var(--text-muted)]">Enterprise</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{settings.maxUsersEnterprise}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]">
+              {settings.maxUsersEnterprise}
+            </p>
             <p className="text-xs text-[var(--text-muted)]">max users</p>
           </div>
         </div>
@@ -248,12 +275,16 @@ export default function SuperAdminSettingsPage() {
 
       {/* Section 5 — Reporting Hierarchy */}
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Reporting Hierarchy</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+          Reporting Hierarchy
+        </h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">Backfill Manager IDs</p>
-              <p className="text-xs text-[var(--text-muted)]">Assign any users missing a managerId to the tenant admin</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Assign any users missing a managerId to the tenant admin
+              </p>
             </div>
             <button
               onClick={handleBackfill}
@@ -263,9 +294,7 @@ export default function SuperAdminSettingsPage() {
               {backfilling ? 'Backfilling...' : 'Backfill Manager IDs'}
             </button>
           </div>
-          {backfillMessage && (
-            <p className="text-sm text-[var(--text-muted)]">{backfillMessage}</p>
-          )}
+          {backfillMessage && <p className="text-sm text-[var(--text-muted)]">{backfillMessage}</p>}
         </div>
       </div>
 

@@ -1,20 +1,20 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { checkRateLimit } from "@/lib/security";
-import { invalidateSession } from "@/lib/auth/session";
-import { resolveErrorResponse } from "@/lib/errors";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { checkRateLimit } from '@/lib/security';
+import { invalidateSession } from '@/lib/auth/session';
+import { resolveErrorResponse } from '@/lib/errors';
 
-const COOKIE_NAME = "lac_session";
+const COOKIE_NAME = 'lac_session';
 function getCookieDomain(hostname: string): string | undefined {
-  if (hostname === "localhost" || hostname === "127.0.0.1") return undefined;
-  const parts = hostname.split(".");
-  if (parts.length >= 2) return `.${parts.slice(-2).join(".")}`;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
+  const parts = hostname.split('.');
+  if (parts.length >= 2) return `.${parts.slice(-2).join('.')}`;
   return undefined;
 }
 
 export async function POST(request: Request) {
   try {
-    await checkRateLimit(request, "strict");
+    await checkRateLimit(request, 'strict');
     const sessionCookie = cookies().get(COOKIE_NAME)?.value;
     if (sessionCookie) {
       await invalidateSession(sessionCookie);
@@ -27,42 +27,42 @@ export async function POST(request: Request) {
     // Clear lac_session cookie
     res.cookies.set({
       name: COOKIE_NAME,
-      value: "",
+      value: '',
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
-      path: "/",
+      sameSite: 'lax',
+      path: '/',
       domain: cookieDomain,
       maxAge: 0,
     });
 
     // Clear tenant_id and user_role cookies (set without domain in session-login)
     res.cookies.set({
-      name: "tenant_id",
-      value: "",
+      name: 'tenant_id',
+      value: '',
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
-      path: "/",
+      sameSite: 'lax',
+      path: '/',
       maxAge: 0,
     });
     res.cookies.set({
-      name: "user_role",
-      value: "",
+      name: 'user_role',
+      value: '',
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
-      path: "/",
+      sameSite: 'lax',
+      path: '/',
       maxAge: 0,
     });
 
     return res;
   } catch (e) {
-    console.error("Logout error", e);
+    console.error('Logout error', e);
     const { status, body } = resolveErrorResponse(e, {
-      fallbackMessage: "Unable to log out.",
-      fallbackCode: "INTERNAL_SERVER_ERROR",
-      requestId: request.headers.get("x-request-id") || undefined,
+      fallbackMessage: 'Unable to log out.',
+      fallbackCode: 'INTERNAL_SERVER_ERROR',
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     return NextResponse.json(body, { status });
   }

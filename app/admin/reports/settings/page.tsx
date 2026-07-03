@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { ErrorCard } from "../_components/ReportsUI";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { ErrorCard } from '../_components/ReportsUI';
+import { apiFetch } from '@/lib/api/client';
 
 type ReportSettings = {
   arAgingBucketsDays: number[];
@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS: ReportSettings = {
   },
 };
 
-const PIPELINE_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+const PIPELINE_STAGES = ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'];
 
 export default function ReportsSettingsPage() {
   const [settings, setSettings] = useState<ReportSettings>(DEFAULT_SETTINGS);
@@ -39,17 +39,17 @@ export default function ReportsSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await apiFetch("/api/admin/reports/settings", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/reports/settings', { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok || !json?.ok) {
-        if (res.status === 403) throw new Error("You do not have access to Admin reports.");
-        if (res.status === 401) throw new Error("Please sign in again to view reports.");
-        throw new Error(json?.error || "Unable to load settings.");
+        if (res.status === 403) throw new Error('You do not have access to Admin reports.');
+        if (res.status === 401) throw new Error('Please sign in again to view reports.');
+        throw new Error(json?.error || 'Unable to load settings.');
       }
       setSettings(json.settings as ReportSettings);
     } catch (err: any) {
-      console.error("reports settings load error", err);
-      setError("Unable to load report settings.");
+      console.error('reports settings load error', err);
+      setError('Unable to load report settings.');
     } finally {
       setLoading(false);
     }
@@ -83,22 +83,22 @@ export default function ReportsSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await apiFetch("/api/admin/reports/settings", {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/reports/settings', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
       const json = await res.json();
       if (!res.ok || !json?.ok) {
-        if (res.status === 403) throw new Error("You do not have access to Admin reports.");
-        if (res.status === 401) throw new Error("Please sign in again to view reports.");
-        throw new Error(json?.error || "Unable to save settings.");
+        if (res.status === 403) throw new Error('You do not have access to Admin reports.');
+        if (res.status === 401) throw new Error('Please sign in again to view reports.');
+        throw new Error(json?.error || 'Unable to save settings.');
       }
-      setSuccess("Settings updated.");
+      setSuccess('Settings updated.');
     } catch (err: any) {
-      console.error("reports settings save error", err);
-      setError("Unable to save report settings right now.");
+      console.error('reports settings save error', err);
+      setError('Unable to save report settings right now.');
     } finally {
       setSaving(false);
     }
@@ -113,9 +113,9 @@ export default function ReportsSettingsPage() {
           style={{
             borderRadius: 14,
             padding: 16,
-            border: "1px solid rgba(16,185,129,0.35)",
-            background: "rgba(209,250,229,0.6)",
-            color: "#065f46",
+            border: '1px solid rgba(16,185,129,0.35)',
+            background: 'rgba(209,250,229,0.6)',
+            color: '#065f46',
             fontWeight: 600,
           }}
         >
@@ -127,12 +127,17 @@ export default function ReportsSettingsPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Report Settings</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
               Configure global thresholds used across revenue, delivery, and production analytics.
             </p>
           </div>
-          <button className="btn" onClick={handleSave} disabled={saving || loading} style={{ borderRadius: 999 }}>
-            {saving ? "Saving..." : "Save Settings"}
+          <button
+            className="btn"
+            onClick={handleSave}
+            disabled={saving || loading}
+            style={{ borderRadius: 999 }}
+          >
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
 
@@ -152,8 +157,8 @@ export default function ReportsSettingsPage() {
                 />
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>
-              Recommended: {DEFAULT_SETTINGS.arAgingBucketsDays.join(", ")} days.
+            <p style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+              Recommended: {DEFAULT_SETTINGS.arAgingBucketsDays.join(', ')} days.
             </p>
           </div>
 
@@ -161,7 +166,9 @@ export default function ReportsSettingsPage() {
             <div style={{ fontWeight: 700 }}>Key Account Threshold (USD)</div>
             <div className="card" style={{ padding: 12, borderRadius: 12 }}>
               <div style={{ fontWeight: 700 }}>${settings.keyAccountUsdThreshold}</div>
-              <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Locked baseline for key accounts.</p>
+              <p style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+                Locked baseline for key accounts.
+              </p>
             </div>
           </div>
 
@@ -172,7 +179,9 @@ export default function ReportsSettingsPage() {
               type="number"
               min={0}
               value={settings.atRiskAfterDays}
-              onChange={(e) => setSettings((prev) => ({ ...prev, atRiskAfterDays: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, atRiskAfterDays: Number(e.target.value) }))
+              }
               style={{ width: 160 }}
             />
           </div>
@@ -184,10 +193,14 @@ export default function ReportsSettingsPage() {
               type="number"
               min={0}
               value={settings.overdueAfterDays}
-              onChange={(e) => setSettings((prev) => ({ ...prev, overdueAfterDays: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, overdueAfterDays: Number(e.target.value) }))
+              }
               style={{ width: 160 }}
             />
-            <p style={{ fontSize: 12, color: "var(--sidebar-text)" }}>0 keeps the previous behavior (overdue on due date).</p>
+            <p style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+              0 keeps the previous behavior (overdue on due date).
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -195,7 +208,7 @@ export default function ReportsSettingsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               {PIPELINE_STAGES.map((stage) => (
                 <label key={stage} className="space-y-1">
-                  <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{stage}</div>
+                  <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>{stage}</div>
                   <input
                     className="input"
                     type="number"

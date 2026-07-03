@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api/client";
-import { showToast } from "@/lib/utils/toast";
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
+import { showToast } from '@/lib/utils/toast';
 
 export default function EditEmployeePage() {
   const { id } = useParams();
@@ -20,7 +20,7 @@ export default function EditEmployeePage() {
         const data = await res.json();
         if (data.success) setEmployee(data.employee);
       } catch (e) {
-        console.error("Error loading employee:", e);
+        console.error('Error loading employee:', e);
       } finally {
         setLoading(false);
       }
@@ -32,8 +32,8 @@ export default function EditEmployeePage() {
     setSaving(true);
     try {
       const res = await apiFetch(`/api/hr/employees/update?id=${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(employee),
       });
       const data = await res.json();
@@ -41,10 +41,10 @@ export default function EditEmployeePage() {
       if (data.success) {
         router.push(`/hr/employees/${id}`);
       } else {
-        showToast.error("Failed to update employee.");
+        showToast.error('Failed to update employee.');
       }
     } catch (err) {
-      console.error("Save error:", err);
+      console.error('Save error:', err);
     } finally {
       setSaving(false);
     }
@@ -70,22 +70,20 @@ export default function EditEmployeePage() {
     <div className="space-y-6">
       <div
         style={{
-          background: "var(--surface-card)",
+          background: 'var(--surface-card)',
           padding: 30,
           borderRadius: 12,
-          border: "1px solid var(--border-subtle)",
+          border: '1px solid var(--border-subtle)',
           maxWidth: 800,
         }}
       >
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 25 }}>
-          Edit Employee
-        </h2>
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 25 }}>Edit Employee</h2>
 
         {/* FORM GRID */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
             gap: 20,
           }}
         >
@@ -126,16 +124,16 @@ export default function EditEmployeePage() {
           disabled={saving}
           style={{
             marginTop: 30,
-            background: "var(--erp-blue)",
-            color: "white",
-            padding: "12px 24px",
+            background: 'var(--erp-blue)',
+            color: 'white',
+            padding: '12px 24px',
             borderRadius: 8,
-            border: "none",
+            border: 'none',
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: 'pointer',
           }}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </div>
@@ -153,19 +151,19 @@ function FormInput({
 }) {
   return (
     <div>
-      <label style={{ fontSize: 14, color: "var(--text-primary)" }}>{label}</label>
+      <label style={{ fontSize: 14, color: 'var(--text-primary)' }}>{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{
           marginTop: 6,
-          width: "100%",
-          padding: "10px 12px",
+          width: '100%',
+          padding: '10px 12px',
           borderRadius: 8,
-          border: "1px solid var(--input-border)",
+          border: '1px solid var(--input-border)',
           fontSize: 15,
         }}
       />
     </div>
   );
-         }
+}

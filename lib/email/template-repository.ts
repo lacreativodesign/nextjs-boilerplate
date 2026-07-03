@@ -1,9 +1,9 @@
-import admin from "firebase-admin";
-import { z } from "zod";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { normalizeTenantId } from "@/lib/tenant";
-import { getVariablesForCategory, PREBUILT_TEMPLATES } from "@/lib/email/template-catalog";
-import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from "@/types/email-templates";
+import admin from 'firebase-admin';
+import { z } from 'zod';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { normalizeTenantId } from '@/lib/tenant';
+import { getVariablesForCategory, PREBUILT_TEMPLATES } from '@/lib/email/template-catalog';
+import { EMAIL_TEMPLATE_CATEGORIES, EmailTemplateCategory } from '@/types/email-templates';
 
 export const emailTemplateSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -16,23 +16,35 @@ export const emailTemplateSchema = z.object({
   category: z.enum(EMAIL_TEMPLATE_CATEGORIES),
   subject: z.string().trim().min(3).max(240),
   body: z.string().trim().min(10).max(30000),
-  language: z.string().trim().min(2).max(10).default("en"),
-  translations: z.record(z.object({ subject: z.string().trim().min(3).max(240), body: z.string().trim().min(10).max(30000) })).default({}),
+  language: z.string().trim().min(2).max(10).default('en'),
+  translations: z
+    .record(
+      z.object({
+        subject: z.string().trim().min(3).max(240),
+        body: z.string().trim().min(10).max(30000),
+      }),
+    )
+    .default({}),
   variables: z.array(z.string().trim().min(1)).default([]),
   isActive: z.boolean().default(true),
 });
 
 export function toIso(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
+  if (typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   return null;
 }
 
-export function buildTemplatePayload(data: z.infer<typeof emailTemplateSchema>, user: { uid: string; tenantId?: string | null }) {
+export function buildTemplatePayload(
+  data: z.infer<typeof emailTemplateSchema>,
+  user: { uid: string; tenantId?: string | null },
+) {
   const tenantId = normalizeTenantId(user.tenantId || null);
-  const mergedVars = Array.from(new Set([...getVariablesForCategory(data.category), ...data.variables])).sort();
+  const mergedVars = Array.from(
+    new Set([...getVariablesForCategory(data.category), ...data.variables]),
+  ).sort();
   return {
     ...data,
     variables: mergedVars,
@@ -67,7 +79,7 @@ export async function writeTemplateVersion({
   version: number;
   uid: string;
 }) {
-  await adminDb.collection("email_template_versions").add({
+  await adminDb.collection('email_template_versions').add({
     templateId,
     tenantId,
     version,
@@ -86,9 +98,9 @@ export async function writeTemplateVersion({
 export async function ensurePrebuiltTemplates(user: { uid: string; tenantId?: string | null }) {
   const tenantId = normalizeTenantId(user.tenantId || null);
   const existing = await adminDb
-    .collection("email_templates")
-    .where("tenantId", "==", tenantId)
-    .where("isSystem", "==", true)
+    .collection('email_templates')
+    .where('tenantId', '==', tenantId)
+    .where('isSystem', '==', true)
     .limit(1)
     .get();
 
@@ -96,11 +108,11 @@ export async function ensurePrebuiltTemplates(user: { uid: string; tenantId?: st
 
   const batch = adminDb.batch();
   for (const seed of PREBUILT_TEMPLATES) {
-    const ref = adminDb.collection("email_templates").doc();
+    const ref = adminDb.collection('email_templates').doc();
     const variables = getVariablesForCategory(seed.category);
     batch.set(ref, {
       ...seed,
-      language: "en",
+      language: 'en',
       translations: {},
       variables,
       isSystem: true,

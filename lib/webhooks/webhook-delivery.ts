@@ -1,11 +1,17 @@
-import crypto from "crypto";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { dispatchZapierTriggerEvent } from "@/lib/zapier/service";
-import { WEBHOOK_EVENT_TYPES, type WebhookDeliveryRecord, type WebhookEventEnvelope, type WebhookEventType, type WebhookSubscriptionRecord } from "./types";
+import crypto from 'crypto';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { dispatchZapierTriggerEvent } from '@/lib/zapier/service';
+import {
+  WEBHOOK_EVENT_TYPES,
+  type WebhookDeliveryRecord,
+  type WebhookEventEnvelope,
+  type WebhookEventType,
+  type WebhookSubscriptionRecord,
+} from './types';
 
-const SUBSCRIPTIONS_COLLECTION = "webhook_subscriptions";
-const EVENTS_COLLECTION = "webhook_events";
-const DELIVERIES_COLLECTION = "webhook_deliveries";
+const SUBSCRIPTIONS_COLLECTION = 'webhook_subscriptions';
+const EVENTS_COLLECTION = 'webhook_events';
+const DELIVERIES_COLLECTION = 'webhook_deliveries';
 const MAX_RETRIES = 5;
 const DELIVERY_TIMEOUT_MS = 10000;
 
@@ -20,7 +26,7 @@ type CreateSubscriptionInput = {
   url: string;
   events: WebhookEventType[];
   secret: string;
-  status: "active" | "disabled";
+  status: 'active' | 'disabled';
   description?: string | null;
   actorUid: string;
 };
@@ -29,7 +35,7 @@ type UpdateSubscriptionInput = {
   url?: string;
   events?: WebhookEventType[];
   secret?: string;
-  status?: "active" | "disabled";
+  status?: 'active' | 'disabled';
   description?: string | null;
   actorUid: string;
 };
@@ -41,15 +47,21 @@ function nowIso() {
 function sanitizeEvents(events: unknown): WebhookEventType[] {
   if (!Array.isArray(events)) return [];
   const allowed = new Set<WebhookEventType>(WEBHOOK_EVENT_TYPES);
-  return Array.from(new Set(events.map((item) => String(item).trim()).filter((item): item is WebhookEventType => allowed.has(item as WebhookEventType))));
+  return Array.from(
+    new Set(
+      events
+        .map((item) => String(item).trim())
+        .filter((item): item is WebhookEventType => allowed.has(item as WebhookEventType)),
+    ),
+  );
 }
 
 export function computeWebhookSignature(secret: string, timestamp: string, payload: string) {
-  return crypto.createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex");
+  return crypto.createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex');
 }
 
 export function generateWebhookSecret() {
-  return crypto.randomBytes(32).toString("hex");
+  return crypto.randomBytes(32).toString('hex');
 }
 
 function toRecord<T>(id: string, data: FirebaseFirestore.DocumentData | undefined): T {
@@ -60,7 +72,7 @@ export async function createWebhookSubscription(input: CreateSubscriptionInput) 
   const timestamp = nowIso();
   const doc = adminDb.collection(SUBSCRIPTIONS_COLLECTION).doc();
 
-  const record: Omit<WebhookSubscriptionRecord, "id"> = {
+  const record: Omit<WebhookSubscriptionRecord, 'id'> = {
     tenantId: input.tenantId,
     url: input.url,
     events: sanitizeEvents(input.events),
@@ -82,11 +94,21 @@ export async function createWebhookSubscription(input: CreateSubscriptionInput) 
 }
 
 export async function listWebhookSubscriptions(tenantId: string) {
-  const snap = await adminDb.collection(SUBSCRIPTIONS_COLLECTION).where("tenantId", "==", tenantId).orderBy("createdAt", "desc").get();
-  return snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => toRecord<WebhookSubscriptionRecord>(doc.id, doc.data()));
+  const snap = await adminDb
+    .collection(SUBSCRIPTIONS_COLLECTION)
+    .where('tenantId', '==', tenantId)
+    .orderBy('createdAt', 'desc')
+    .get();
+  return snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) =>
+    toRecord<WebhookSubscriptionRecord>(doc.id, doc.data()),
+  );
 }
 
-export async function updateWebhookSubscription(id: string, tenantId: string, input: UpdateSubscriptionInput) {
+export async function updateWebhookSubscription(
+  id: string,
+  tenantId: string,
+  input: UpdateSubscriptionInput,
+) {
   const ref = adminDb.collection(SUBSCRIPTIONS_COLLECTION).doc(id);
   const snap = await ref.get();
   if (!snap.exists) return null;
@@ -98,10 +120,10 @@ export async function updateWebhookSubscription(id: string, tenantId: string, in
     updatedBy: input.actorUid,
   };
 
-  if (typeof input.url === "string") patch.url = input.url;
+  if (typeof input.url === 'string') patch.url = input.url;
   if (Array.isArray(input.events)) patch.events = sanitizeEvents(input.events);
-  if (typeof input.secret === "string") patch.secret = input.secret;
-  if (input.status === "active" || input.status === "disabled") patch.status = input.status;
+  if (typeof input.secret === 'string') patch.secret = input.secret;
+  if (input.status === 'active' || input.status === 'disabled') patch.status = input.status;
   if (input.description !== undefined) patch.description = input.description?.trim() || null;
 
   await ref.set(patch, { merge: true });
@@ -123,14 +145,14 @@ function nextRetryAt(retryCount: number) {
   return new Date(Date.now() + backoffMs).toISOString();
 }
 
-async function updateSubscriptionHealth(subscriptionId: string, status: "success" | "failed") {
+async function updateSubscriptionHealth(subscriptionId: string, status: 'success' | 'failed') {
   const ref = adminDb.collection(SUBSCRIPTIONS_COLLECTION).doc(subscriptionId);
   const snap = await ref.get();
   if (!snap.exists) return;
   const data = snap.data() || {};
   const now = nowIso();
 
-  if (status === "success") {
+  if (status === 'success') {
     await ref.set(
       {
         lastDeliveryAt: now,
@@ -138,7 +160,7 @@ async function updateSubscriptionHealth(subscriptionId: string, status: "success
         consecutiveFailures: 0,
         updatedAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
     return;
   }
@@ -150,7 +172,7 @@ async function updateSubscriptionHealth(subscriptionId: string, status: "success
       consecutiveFailures: Number(data.consecutiveFailures || 0) + 1,
       updatedAt: now,
     },
-    { merge: true }
+    { merge: true },
   );
 }
 
@@ -166,14 +188,14 @@ async function attemptDelivery(delivery: WebhookDeliveryRecord, subscriptionSecr
 
   try {
     const response = await fetch(delivery.subscriptionUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Bizosto-ERP-Webhooks/1.0",
-        "X-Bizosto-Event": delivery.eventType,
-        "X-Bizosto-Delivery": delivery.id,
-        "X-Bizosto-Timestamp": timestamp,
-        "X-Bizosto-Signature": `sha256=${signature}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'Bizosto-ERP-Webhooks/1.0',
+        'X-Bizosto-Event': delivery.eventType,
+        'X-Bizosto-Delivery': delivery.id,
+        'X-Bizosto-Timestamp': timestamp,
+        'X-Bizosto-Signature': `sha256=${signature}`,
       },
       body: payloadString,
       signal: controller.signal,
@@ -200,7 +222,10 @@ async function attemptDelivery(delivery: WebhookDeliveryRecord, subscriptionSecr
       statusCode: null,
       responseBody: null,
       responseHeaders: {},
-      errorMessage: error?.name === "AbortError" ? "Request timeout" : String(error?.message || "Delivery failed"),
+      errorMessage:
+        error?.name === 'AbortError'
+          ? 'Request timeout'
+          : String(error?.message || 'Delivery failed'),
       durationMs: Date.now() - started,
       signature,
       signatureTimestamp: timestamp,
@@ -217,23 +242,26 @@ async function executeDelivery(deliveryId: string) {
   if (!snap.exists) return null;
   const delivery = toRecord<WebhookDeliveryRecord>(snap.id, snap.data());
 
-  if (delivery.status === "success") return delivery;
+  if (delivery.status === 'success') return delivery;
 
   const subscriptionRef = adminDb.collection(SUBSCRIPTIONS_COLLECTION).doc(delivery.subscriptionId);
   const subscriptionSnap = await subscriptionRef.get();
   if (!subscriptionSnap.exists) {
     await ref.set(
       {
-        status: "failed",
-        errorMessage: "Subscription not found",
+        status: 'failed',
+        errorMessage: 'Subscription not found',
         updatedAt: nowIso(),
       },
-      { merge: true }
+      { merge: true },
     );
     return null;
   }
 
-  const subscription = toRecord<WebhookSubscriptionRecord>(subscriptionSnap.id, subscriptionSnap.data());
+  const subscription = toRecord<WebhookSubscriptionRecord>(
+    subscriptionSnap.id,
+    subscriptionSnap.data(),
+  );
 
   const result = await attemptDelivery(delivery, subscription.secret);
   const retryCount = Number(delivery.retryCount || 0);
@@ -241,7 +269,7 @@ async function executeDelivery(deliveryId: string) {
   if (result.ok) {
     await ref.set(
       {
-        status: "success",
+        status: 'success',
         retryCount,
         nextAttemptAt: null,
         lastAttemptAt: result.attemptAt,
@@ -254,16 +282,16 @@ async function executeDelivery(deliveryId: string) {
         signatureTimestamp: result.signatureTimestamp,
         updatedAt: nowIso(),
       },
-      { merge: true }
+      { merge: true },
     );
-    await updateSubscriptionHealth(subscription.id, "success");
-    return { ...delivery, status: "success" as const };
+    await updateSubscriptionHealth(subscription.id, 'success');
+    return { ...delivery, status: 'success' as const };
   }
 
   const hasRetries = retryCount < MAX_RETRIES;
   await ref.set(
     {
-      status: hasRetries ? "retrying" : "failed",
+      status: hasRetries ? 'retrying' : 'failed',
       retryCount: retryCount + 1,
       nextAttemptAt: hasRetries ? nextRetryAt(retryCount + 1) : null,
       lastAttemptAt: result.attemptAt,
@@ -276,11 +304,11 @@ async function executeDelivery(deliveryId: string) {
       signatureTimestamp: result.signatureTimestamp,
       updatedAt: nowIso(),
     },
-    { merge: true }
+    { merge: true },
   );
 
-  await updateSubscriptionHealth(subscription.id, "failed");
-  return { ...delivery, status: hasRetries ? "retrying" : "failed" as const };
+  await updateSubscriptionHealth(subscription.id, 'failed');
+  return { ...delivery, status: hasRetries ? 'retrying' : ('failed' as const) };
 }
 
 export async function dispatchWebhookEvent(params: {
@@ -290,7 +318,7 @@ export async function dispatchWebhookEvent(params: {
   entityId: string;
   payload: Record<string, unknown>;
   actor: Actor;
-  source?: "api" | "system";
+  source?: 'api' | 'system';
 }) {
   const occurredAt = nowIso();
   const eventRef = adminDb.collection(EVENTS_COLLECTION).doc();
@@ -301,7 +329,7 @@ export async function dispatchWebhookEvent(params: {
     entityType: params.entityType,
     entityId: params.entityId,
     occurredAt,
-    source: params.source || "api",
+    source: params.source || 'api',
     payload: params.payload,
     actor: {
       uid: params.actor.uid,
@@ -312,7 +340,13 @@ export async function dispatchWebhookEvent(params: {
 
   await eventRef.set(envelope);
 
-  const zapierEligibleEvents = new Set(["invoice.created", "invoice.paid", "client.created", "payment.received", "leave.requested"]);
+  const zapierEligibleEvents = new Set([
+    'invoice.created',
+    'invoice.paid',
+    'client.created',
+    'payment.received',
+    'leave.requested',
+  ]);
   if (zapierEligibleEvents.has(params.event)) {
     try {
       await dispatchZapierTriggerEvent({
@@ -324,15 +358,15 @@ export async function dispatchWebhookEvent(params: {
         actor: params.actor,
       });
     } catch (error) {
-      console.error("zapier dispatch error", error);
+      console.error('zapier dispatch error', error);
     }
   }
 
   const subSnap = await adminDb
     .collection(SUBSCRIPTIONS_COLLECTION)
-    .where("tenantId", "==", params.tenantId)
-    .where("status", "==", "active")
-    .where("events", "array-contains", params.event)
+    .where('tenantId', '==', params.tenantId)
+    .where('status', '==', 'active')
+    .where('events', 'array-contains', params.event)
     .get();
 
   const deliveries: WebhookDeliveryRecord[] = [];
@@ -347,10 +381,10 @@ export async function dispatchWebhookEvent(params: {
       subscriptionUrl: subscription.url,
       eventId: envelope.id,
       eventType: params.event,
-      status: "pending",
+      status: 'pending',
       payload: envelope,
-      signature: "",
-      signatureTimestamp: "",
+      signature: '',
+      signatureTimestamp: '',
       retryCount: 0,
       maxRetries: MAX_RETRIES,
       nextAttemptAt: nowIso(),
@@ -380,9 +414,9 @@ export async function processPendingWebhookDeliveries(limit = 50) {
   const now = nowIso();
   const snap = await adminDb
     .collection(DELIVERIES_COLLECTION)
-    .where("status", "in", ["pending", "retrying"])
-    .where("nextAttemptAt", "<=", now)
-    .orderBy("nextAttemptAt", "asc")
+    .where('status', 'in', ['pending', 'retrying'])
+    .where('nextAttemptAt', '<=', now)
+    .orderBy('nextAttemptAt', 'asc')
     .limit(limit)
     .get();
 
@@ -404,11 +438,11 @@ export async function retryWebhookDeliveryManually(deliveryId: string, tenantId:
 
   await ref.set(
     {
-      status: "retrying",
+      status: 'retrying',
       nextAttemptAt: nowIso(),
       updatedAt: nowIso(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   await executeDelivery(deliveryId);
@@ -422,12 +456,14 @@ export async function listWebhookDeliveries(tenantId: string, limit = 100) {
   try {
     const snap = await adminDb
       .collection(DELIVERIES_COLLECTION)
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc")
+      .where('tenantId', '==', tenantId)
+      .orderBy('createdAt', 'desc')
       .limit(Math.min(limit, 200))
       .get();
 
-    deliveries = snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => toRecord<WebhookDeliveryRecord>(doc.id, doc.data()));
+    deliveries = snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) =>
+      toRecord<WebhookDeliveryRecord>(doc.id, doc.data()),
+    );
   } catch {
     deliveries = [];
   }
@@ -440,7 +476,7 @@ export function computeWebhookHealth(subscriptions: WebhookSubscriptionRecord[])
     subscriptionId: sub.id,
     url: sub.url,
     status: sub.status,
-    healthy: sub.status === "active" && sub.consecutiveFailures < 3,
+    healthy: sub.status === 'active' && sub.consecutiveFailures < 3,
     consecutiveFailures: sub.consecutiveFailures,
     lastSuccessAt: sub.lastSuccessAt,
     lastFailureAt: sub.lastFailureAt,

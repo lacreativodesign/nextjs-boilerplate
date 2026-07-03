@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   arrayUnion,
   createSalesEvent,
@@ -9,10 +9,10 @@ import {
   queueSalesNotification,
   requireAdmin,
   serverTimestamp,
-} from "../../_utils";
-import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
+} from '../../_utils';
+import { generateInvoiceToken } from '@/lib/finance/invoiceToken';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -22,43 +22,49 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const id = parseString(payload.id, "");
+    const id = parseString(payload.id, '');
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Missing deal id." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing deal id.' }, { status: 400 });
     }
 
-    const dealRef = adminDb.collection("deals").doc(id);
+    const dealRef = adminDb.collection('deals').doc(id);
     const preSnap = await dealRef.get();
     if (!preSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
     const preData = preSnap.data() || {};
-    const isSuperAdmin = (auth.user.role || "").toLowerCase() === "super_admin";
-    if (!isSuperAdmin && String(preData.tenantId || "") !== String(auth.user.tenantId || "")) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    const isSuperAdmin = (auth.user.role || '').toLowerCase() === 'super_admin';
+    if (!isSuperAdmin && String(preData.tenantId || '') !== String(auth.user.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
     let closedWonTriggered = false;
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
       if (!snap.exists) {
-        throw new Error("Deal not found");
+        throw new Error('Deal not found');
       }
       const data = snap.data() || {};
-      const prevStage = parseString(data.stage, "New");
-      const nextStage = payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
+      const prevStage = parseString(data.stage, 'New');
+      const nextStage =
+        payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
       const updates: Record<string, any> = {
         updatedAt: serverTimestamp(),
       };
 
-      if (payload.dealName !== undefined) updates.dealName = parseString(payload.dealName, "");
-      if (payload.clientName !== undefined) updates.clientName = parseString(payload.clientName, "");
+      if (payload.dealName !== undefined) updates.dealName = parseString(payload.dealName, '');
+      if (payload.clientName !== undefined)
+        updates.clientName = parseString(payload.clientName, '');
       if (payload.valueUsd !== undefined) updates.valueUsd = parseNumber(payload.valueUsd, 0);
-      if (payload.probability !== undefined) updates.probability = parseNumber(payload.probability, 0);
-      if (payload.ownerId !== undefined) updates.ownerId = parseString(payload.ownerId, "") || null;
-      if (payload.ownerName !== undefined) updates.ownerName = parseString(payload.ownerName, "") || null;
+      if (payload.probability !== undefined)
+        updates.probability = parseNumber(payload.probability, 0);
+      if (payload.ownerId !== undefined) updates.ownerId = parseString(payload.ownerId, '') || null;
+      if (payload.ownerName !== undefined)
+        updates.ownerName = parseString(payload.ownerName, '') || null;
       if (payload.expectedCloseDate !== undefined) {
-        updates.expectedCloseDate = payload.expectedCloseDate ? new Date(payload.expectedCloseDate) : null;
+        updates.expectedCloseDate = payload.expectedCloseDate
+          ? new Date(payload.expectedCloseDate)
+          : null;
       }
 
       if (nextStage !== prevStage) {
@@ -68,18 +74,21 @@ export async function POST(req: Request) {
           to: nextStage,
           changedAt: serverTimestamp(),
           changedByUid: auth.user.uid,
-          changedByName: auth.user.name || auth.user.fullName || "",
+          changedByName: auth.user.name || auth.user.fullName || '',
         });
       }
 
-      const shouldProcessClosedWon = nextStage === "Closed Won" && !data.closedWonProcessed;
+      const shouldProcessClosedWon = nextStage === 'Closed Won' && !data.closedWonProcessed;
       if (shouldProcessClosedWon) {
         closedWonTriggered = true;
         const clientName =
-          parseString(payload.clientName, "") || parseString(data.clientName, "") || parseString(data.leadName, "") || "New Client";
+          parseString(payload.clientName, '') ||
+          parseString(data.clientName, '') ||
+          parseString(data.leadName, '') ||
+          'New Client';
         let clientId = data.clientId || null;
         if (!clientId) {
-          const clientRef = adminDb.collection("clients").doc();
+          const clientRef = adminDb.collection('clients').doc();
           clientId = clientRef.id;
           tx.set(clientRef, {
             companyName: clientName,
@@ -93,13 +102,13 @@ export async function POST(req: Request) {
 
         let projectId = data.projectId || null;
         if (!projectId) {
-          const projectRef = adminDb.collection("projects").doc();
+          const projectRef = adminDb.collection('projects').doc();
           projectId = projectRef.id;
           tx.set(projectRef, {
-            projectName: updates.dealName || data.dealName || "New Project",
+            projectName: updates.dealName || data.dealName || 'New Project',
             clientId,
             clientName,
-            stage: "Inquiry",
+            stage: 'Inquiry',
             ownerAmUid: updates.ownerId || data.ownerId || null,
             ownerAmName: updates.ownerName || data.ownerName || null,
             createdAt: serverTimestamp(),
@@ -110,23 +119,23 @@ export async function POST(req: Request) {
 
         let invoiceId = data.invoiceId || null;
         if (!invoiceId) {
-          const invoiceRef = adminDb.collection("invoices").doc();
+          const invoiceRef = adminDb.collection('invoices').doc();
           invoiceId = invoiceRef.id;
           tx.set(invoiceRef, {
             orderId: `DEAL-${id}`,
             clientId,
             clientName,
             paymentToken: generateInvoiceToken(),
-            currency: "USD",
+            currency: 'USD',
             amountSubtotalUsd: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
             amountTaxUsd: 0,
             amountTotalUsd: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
-            status: "draft",
+            status: 'draft',
             totalPaid: 0,
             balanceDue: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
             dueDate: null,
             issuedAt: serverTimestamp(),
-            notes: "Auto-generated from Closed Won deal.",
+            notes: 'Auto-generated from Closed Won deal.',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             isDeleted: false,
@@ -144,19 +153,19 @@ export async function POST(req: Request) {
     });
 
     await createSalesEvent({
-      type: closedWonTriggered ? "deal_closed_won" : "deal_updated",
-      title: closedWonTriggered ? "Deal closed won" : "Deal updated",
+      type: closedWonTriggered ? 'deal_closed_won' : 'deal_updated',
+      title: closedWonTriggered ? 'Deal closed won' : 'Deal updated',
       description: closedWonTriggered ? `Deal ${id} marked Closed Won` : `Deal ${id} updated`,
-      entityType: "deal",
+      entityType: 'deal',
       entityId: id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: auth.user.name || auth.user.fullName || '',
       tenantId: auth.user.tenantId,
     });
 
     if (closedWonTriggered) {
       await queueSalesNotification({
-        title: "Deal Closed Won",
+        title: 'Deal Closed Won',
         body: `Deal ${id} closed won. Project and finance flow created.`,
         userId: auth.user.uid,
         metadata: { dealId: id },
@@ -164,9 +173,9 @@ export async function POST(req: Request) {
       });
 
       await queueSalesEmail({
-        to: auth.user.email || "",
-        template: "deal_closed_won",
-        subject: "Deal Closed Won",
+        to: auth.user.email || '',
+        template: 'deal_closed_won',
+        subject: 'Deal Closed Won',
         data: { dealId: id },
         tenantId: auth.user.tenantId,
       });
@@ -174,7 +183,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("sales deals update error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to update deal." }, { status: 500 });
+    console.error('sales deals update error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to update deal.' }, { status: 500 });
   }
 }

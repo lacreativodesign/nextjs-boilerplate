@@ -1,10 +1,26 @@
-import { calculateUtilization, calculateVariance, getBudgetPeriodDates } from '@/lib/finance/budget';
+import {
+  calculateUtilization,
+  calculateVariance,
+  getBudgetPeriodDates,
+} from '@/lib/finance/budget';
 
 describe('finance/budget', () => {
   it('calculates budget variance and status', () => {
-    expect(calculateVariance(1000, 900)).toEqual({ variance: 100, variancePercentage: 10, status: 'under' });
-    expect(calculateVariance(1000, 960)).toEqual({ variance: 40, variancePercentage: 4, status: 'on-track' });
-    expect(calculateVariance(1000, 1200)).toEqual({ variance: -200, variancePercentage: -20, status: 'over' });
+    expect(calculateVariance(1000, 900)).toEqual({
+      variance: 100,
+      variancePercentage: 10,
+      status: 'under',
+    });
+    expect(calculateVariance(1000, 960)).toEqual({
+      variance: 40,
+      variancePercentage: 4,
+      status: 'on-track',
+    });
+    expect(calculateVariance(1000, 1200)).toEqual({
+      variance: -200,
+      variancePercentage: -20,
+      status: 'over',
+    });
   });
 
   it('calculates utilization safely for zero allocated budgets', () => {

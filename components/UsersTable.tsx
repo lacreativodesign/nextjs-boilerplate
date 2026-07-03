@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { User } from "@/types";
-import { ArrowUpDown } from "lucide-react";
-import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
+import { User } from '@/types';
+import { ArrowUpDown } from 'lucide-react';
+import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 
 interface UsersTableProps {
   users: User[];
   onSort: (field: keyof User) => void;
   sortField: keyof User;
-  sortDirection: "asc" | "desc";
+  sortDirection: 'asc' | 'desc';
   onView: (uid: string) => void;
 }
 
@@ -23,7 +23,11 @@ export default function UsersTable({
     if (sortField !== field) {
       return <ArrowUpDown className="h-4 w-4 opacity-40" />;
     }
-    return <ArrowUpDown className={`h-4 w-4 ${sortDirection === "asc" ? "rotate-180" : ""} transition`} />;
+    return (
+      <ArrowUpDown
+        className={`h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''} transition`}
+      />
+    );
   };
 
   return (
@@ -32,16 +36,19 @@ export default function UsersTable({
         <table className="min-w-full text-sm">
           <thead className="bg-neutral-100 dark:bg-neutral-800">
             <tr>
-              <th className="cursor-pointer px-4 py-3 text-left" onClick={() => onSort("displayName")}>
-                <div className="flex items-center gap-1">Name {renderSortIcon("displayName")}</div>
+              <th
+                className="cursor-pointer px-4 py-3 text-left"
+                onClick={() => onSort('displayName')}
+              >
+                <div className="flex items-center gap-1">Name {renderSortIcon('displayName')}</div>
               </th>
 
-              <th className="cursor-pointer px-4 py-3 text-left" onClick={() => onSort("email")}>
-                <div className="flex items-center gap-1">Email {renderSortIcon("email")}</div>
+              <th className="cursor-pointer px-4 py-3 text-left" onClick={() => onSort('email')}>
+                <div className="flex items-center gap-1">Email {renderSortIcon('email')}</div>
               </th>
 
-              <th className="cursor-pointer px-4 py-3 text-left" onClick={() => onSort("role")}>
-                <div className="flex items-center gap-1">Role {renderSortIcon("role")}</div>
+              <th className="cursor-pointer px-4 py-3 text-left" onClick={() => onSort('role')}>
+                <div className="flex items-center gap-1">Role {renderSortIcon('role')}</div>
               </th>
 
               <th className="px-4 py-3 text-left">Actions</th>
@@ -57,7 +64,10 @@ export default function UsersTable({
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user.uid} className="border-t hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                <tr
+                  key={user.uid}
+                  className="border-t hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                >
                   <td className="px-4 py-3">{user.displayName}</td>
                   <td className="px-4 py-3">{user.email}</td>
                   <td className="px-4 py-3 text-xs font-medium uppercase">{user.role}</td>
@@ -79,7 +89,6 @@ export default function UsersTable({
     </ErrorBoundary>
   );
 }
-
 
 function UsersTableErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
   return (

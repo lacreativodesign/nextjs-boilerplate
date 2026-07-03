@@ -5,7 +5,7 @@ import {
   type TotpSecret,
   type User as FirebaseUser,
   type UserCredential,
-} from "firebase/auth";
+} from 'firebase/auth';
 
 const enrollmentSecrets = new Map<string, TotpSecret>();
 
@@ -13,11 +13,13 @@ function getEnrollmentSecret(uid: string) {
   return enrollmentSecrets.get(uid);
 }
 
-export async function enrollMFA(user: FirebaseUser): Promise<{ secret: string; qrCodeUrl: string }> {
+export async function enrollMFA(
+  user: FirebaseUser,
+): Promise<{ secret: string; qrCodeUrl: string }> {
   const session = await multiFactor(user).getSession();
   const secret = await TotpMultiFactorGenerator.generateSecret(session);
   const accountName = user.email || user.uid;
-  const qrCodeUrl = secret.generateQrCodeUrl(accountName, "Bizosto");
+  const qrCodeUrl = secret.generateQrCodeUrl(accountName, 'Bizosto');
 
   enrollmentSecrets.set(user.uid, secret);
 
@@ -27,7 +29,10 @@ export async function enrollMFA(user: FirebaseUser): Promise<{ secret: string; q
   };
 }
 
-export async function verifyMFAEnrollment(user: FirebaseUser, verificationCode: string): Promise<boolean> {
+export async function verifyMFAEnrollment(
+  user: FirebaseUser,
+  verificationCode: string,
+): Promise<boolean> {
   try {
     const secret = getEnrollmentSecret(user.uid);
     if (!secret) {
@@ -35,22 +40,22 @@ export async function verifyMFAEnrollment(user: FirebaseUser, verificationCode: 
     }
 
     const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, verificationCode);
-    await multiFactor(user).enroll(assertion, "Authenticator app");
+    await multiFactor(user).enroll(assertion, 'Authenticator app');
     enrollmentSecrets.delete(user.uid);
     return true;
   } catch (error) {
-    console.error("MFA enrollment verification failed", error);
+    console.error('MFA enrollment verification failed', error);
     return false;
   }
 }
 
 export async function verifyMFASignIn(
   resolver: MultiFactorResolver,
-  verificationCode: string
+  verificationCode: string,
 ): Promise<UserCredential> {
   const hint = resolver.hints.find((item) => item.factorId === TotpMultiFactorGenerator.FACTOR_ID);
   if (!hint) {
-    throw new Error("No TOTP MFA enrollment available for this account.");
+    throw new Error('No TOTP MFA enrollment available for this account.');
   }
 
   const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, verificationCode);

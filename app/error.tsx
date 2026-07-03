@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from '@sentry/nextjs';
 
 export default function GlobalError({
   error,
@@ -38,9 +38,7 @@ export default function GlobalError({
             Go to Dashboard
           </Link>
         </div>
-        {error.digest && (
-          <p className="mt-6 text-xs text-[#94A3B8]">Error ID: {error.digest}</p>
-        )}
+        {error.digest && <p className="mt-6 text-xs text-[#94A3B8]">Error ID: {error.digest}</p>}
       </div>
     </div>
   );

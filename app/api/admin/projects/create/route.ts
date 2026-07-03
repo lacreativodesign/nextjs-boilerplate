@@ -6,7 +6,7 @@ import { ensureClientAccountActivation } from '@/lib/clientActivation';
 import { queueEmailEvent } from '@/lib/emailEvents';
 import { getCurrentUser } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 
@@ -125,16 +125,19 @@ export async function POST(req: Request) {
 
     await ref.set(payload, { merge: true });
 
-    const projectNotifyTargets = await getUsersByRoles(["admin", "super_admin", "production_manager", "am_manager"], me.tenantId);
+    const projectNotifyTargets = await getUsersByRoles(
+      ['admin', 'super_admin', 'production_manager', 'am_manager'],
+      me.tenantId,
+    );
     await createNotifications({
       recipients: projectNotifyTargets,
       tenantId: me.tenantId,
-      type: "info",
-      title: "New project created",
+      type: 'info',
+      title: 'New project created',
       message: `Project "${projectName}" was created.`,
-      entityType: "project",
+      entityType: 'project',
       entityId: ref.id,
-      deepLink: "/admin/projects",
+      deepLink: '/admin/projects',
     });
 
     let activationResult: Awaited<ReturnType<typeof ensureClientAccountActivation>> | null = null;

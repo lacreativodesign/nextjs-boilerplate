@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrEvent, requireHrAccess, serverTimestamp } from '../../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -12,13 +12,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const name = String(body?.name || "").trim();
-    const role = String(body?.role || "all").trim();
+    const name = String(body?.name || '').trim();
+    const role = String(body?.role || 'all').trim();
     const steps = Array.isArray(body?.steps) ? body.steps : [];
     const isActive = body?.isActive !== false;
 
     if (!name || steps.length === 0) {
-      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
     const payload = {
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
       name,
       role,
       steps: steps.map((step: any) => ({
-        title: String(step?.title || "").trim(),
-        description: String(step?.description || "").trim(),
+        title: String(step?.title || '').trim(),
+        description: String(step?.description || '').trim(),
         required: Boolean(step?.required),
       })),
       isActive,
@@ -36,21 +36,21 @@ export async function POST(req: Request) {
       createdBy: access.user.uid,
     };
 
-    const ref = await adminDb.collection("onboardingTemplates").add(payload);
+    const ref = await adminDb.collection('onboardingTemplates').add(payload);
 
     await createHrEvent({
-      type: "hr.onboarding_template_created",
-      title: "Onboarding template created",
+      type: 'hr.onboarding_template_created',
+      title: 'Onboarding template created',
       description: `${name} template created.`,
-      entityType: "onboardingTemplate",
+      entityType: 'onboardingTemplate',
       entityId: ref.id,
       createdByUid: access.user.uid,
-      createdByName: access.user.name || access.user.email || "Admin",
+      createdByName: access.user.name || access.user.email || 'Admin',
     });
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err) {
-    console.error("HR templates create error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR templates create error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

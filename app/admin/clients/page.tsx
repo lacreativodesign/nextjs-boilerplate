@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import EmptyState from "@/components/ui/EmptyState";
-import LoadingButton from "@/components/ui/LoadingButton";
-import { SkeletonTable } from "@/components/ui/Skeleton";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { toastError, toastPromise } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import EmptyState from '@/components/ui/EmptyState';
+import LoadingButton from '@/components/ui/LoadingButton';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { toastError, toastPromise } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
 
 type SalesStage =
-  | "New Lead"
-  | "Contacted"
-  | "Qualified"
-  | "Proposal Sent"
-  | "Negotiation"
-  | "Closed Won"
-  | "Closed Lost";
+  | 'New Lead'
+  | 'Contacted'
+  | 'Qualified'
+  | 'Proposal Sent'
+  | 'Negotiation'
+  | 'Closed Won'
+  | 'Closed Lost';
 
-type PaymentStatus = "Unpaid" | "Partially Paid" | "Paid" | "Refunded";
-type RetainerStatus = "None" | "Active" | "Paused" | "Cancelled";
+type PaymentStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Refunded';
+type RetainerStatus = 'None' | 'Active' | 'Paused' | 'Cancelled';
 
 type ClientRecord = {
   id: string;
@@ -62,22 +62,22 @@ type ClientRecord = {
 };
 
 type SortKey =
-  | "orderId"
-  | "companyName"
-  | "primaryContactName"
-  | "primaryContactEmail"
-  | "primaryContactPhone"
-  | "paymentStatus"
-  | "totalPaidUsd"
-  | "createdAt";
+  | 'orderId'
+  | 'companyName'
+  | 'primaryContactName'
+  | 'primaryContactEmail'
+  | 'primaryContactPhone'
+  | 'paymentStatus'
+  | 'totalPaidUsd'
+  | 'createdAt';
 
-type SortDir = "asc" | "desc";
+type SortDir = 'asc' | 'desc';
 
 function fmtMoney(n: number) {
   try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(Number(n || 0));
   } catch {
@@ -86,22 +86,22 @@ function fmtMoney(n: number) {
 }
 
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US");
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-US');
 }
 
 function normalizeOrderId(orderId?: string) {
-  const v = (orderId || "").trim();
-  if (!v) return "";
+  const v = (orderId || '').trim();
+  if (!v) return '';
   const up = v.toUpperCase();
 
-  if (up.startsWith("LC-")) return up;
-  if (up.startsWith("ORD-")) return `LC-${up.slice(4)}`;
+  if (up.startsWith('LC-')) return up;
+  if (up.startsWith('ORD-')) return `LC-${up.slice(4)}`;
 
-  const digits = up.replace(/\D/g, "");
-  if (digits) return `LC-${digits.padStart(4, "0")}`;
+  const digits = up.replace(/\D/g, '');
+  if (digits) return `LC-${digits.padStart(4, '0')}`;
 
   return `LC-${up}`;
 }
@@ -112,11 +112,11 @@ export default function ClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [rows, setRows] = useState<ClientRecord[]>([]);
 
-  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
@@ -131,9 +131,9 @@ export default function ClientsPage() {
     setError(null);
 
     try {
-      const res = await apiFetch("/api/admin/clients/list", {
-        method: "GET",
-        cache: "no-store",
+      const res = await apiFetch('/api/admin/clients/list', {
+        method: 'GET',
+        cache: 'no-store',
       });
 
       if (res.status === 403) {
@@ -145,13 +145,13 @@ export default function ClientsPage() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to load clients");
+        throw new Error(json?.error || res.statusText || 'Failed to load clients');
       }
 
       const list: ClientRecord[] = Array.isArray(json?.clients) ? json.clients : [];
       setRows(list);
     } catch (e: any) {
-      const message = e?.message || "Failed to load clients";
+      const message = e?.message || 'Failed to load clients';
       setError(message);
       toastError(message);
       setRows([]);
@@ -176,9 +176,9 @@ export default function ClientsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/clients/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/clients/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           searchText: term,
           sortBy: sortKey,
@@ -189,12 +189,12 @@ export default function ClientsPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json?.error || "Failed to search clients");
+        throw new Error(json?.error || 'Failed to search clients');
       }
       const list: ClientRecord[] = Array.isArray(json?.results) ? json.results : [];
       setRows(list);
     } catch (e: any) {
-      const message = e?.message || "Failed to search clients";
+      const message = e?.message || 'Failed to search clients';
       setError(message);
       toastError(message);
     } finally {
@@ -210,7 +210,7 @@ export default function ClientsPage() {
         loadList();
       }
     },
-    [loadList]
+    [loadList],
   );
 
   useEffect(() => {
@@ -218,9 +218,9 @@ export default function ClientsPage() {
 
     async function loadSegments() {
       try {
-        const res = await apiFetch("/api/admin/clients/segments/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/clients/segments/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
 
         const json = await res.json().catch(() => ({}));
@@ -229,7 +229,7 @@ export default function ClientsPage() {
 
         const map: Record<string, { name: string; type: string }> = {};
         segments.forEach((seg: any) => {
-          if (seg?.slug) map[seg.slug] = { name: seg.name || seg.slug, type: seg.type || "" };
+          if (seg?.slug) map[seg.slug] = { name: seg.name || seg.slug, type: seg.type || '' };
         });
 
         if (!alive) return;
@@ -237,7 +237,7 @@ export default function ClientsPage() {
       } catch {
         if (!alive) return;
         setSegmentMap({});
-        toastError("Unable to load client segments.");
+        toastError('Unable to load client segments.');
       }
     }
 
@@ -248,28 +248,28 @@ export default function ClientsPage() {
   }, []);
 
   const sorted = useMemo(() => {
-    const dir = sortDir === "asc" ? 1 : -1;
+    const dir = sortDir === 'asc' ? 1 : -1;
 
     const getVal = (c: ClientRecord) => {
       switch (sortKey) {
-        case "orderId":
-          return normalizeOrderId(c.orderId) || "";
-        case "companyName":
-          return c.companyName || "";
-        case "primaryContactName":
-          return c.primaryContactName || "";
-        case "primaryContactEmail":
-          return c.primaryContactEmail || "";
-        case "primaryContactPhone":
-          return c.primaryContactPhone || "";
-        case "paymentStatus":
-          return c.paymentStatus || "";
-        case "totalPaidUsd":
+        case 'orderId':
+          return normalizeOrderId(c.orderId) || '';
+        case 'companyName':
+          return c.companyName || '';
+        case 'primaryContactName':
+          return c.primaryContactName || '';
+        case 'primaryContactEmail':
+          return c.primaryContactEmail || '';
+        case 'primaryContactPhone':
+          return c.primaryContactPhone || '';
+        case 'paymentStatus':
+          return c.paymentStatus || '';
+        case 'totalPaidUsd':
           return Number(c.totalPaidUsd || 0);
-        case "createdAt":
-          return c.createdAt || "";
+        case 'createdAt':
+          return c.createdAt || '';
         default:
-          return "";
+          return '';
       }
     };
 
@@ -278,7 +278,7 @@ export default function ClientsPage() {
       const av = getVal(a);
       const bv = getVal(b);
 
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
 
@@ -286,14 +286,14 @@ export default function ClientsPage() {
   }, [rows, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
-    if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    if (k === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else {
       setSortKey(k);
-      setSortDir(k === "totalPaidUsd" ? "desc" : "asc");
+      setSortDir(k === 'totalPaidUsd' ? 'desc' : 'asc');
     }
   }
 
-  const sortBadge = (k: SortKey) => (k !== sortKey ? "" : sortDir === "asc" ? "▲" : "▼");
+  const sortBadge = (k: SortKey) => (k !== sortKey ? '' : sortDir === 'asc' ? '▲' : '▼');
 
   function openDrawer(c: ClientRecord) {
     setSelected(c);
@@ -312,22 +312,22 @@ export default function ClientsPage() {
     setActivationSending(true);
     try {
       await toastPromise(
-        apiFetch("/api/admin/clients/activation", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        apiFetch('/api/admin/clients/activation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clientId: selected.id }),
         }).then(async (res) => {
           const payload = await res.json().catch(() => ({}));
           if (!res.ok || !payload?.ok) {
-            throw new Error(payload?.error || "Unable to send activation email.");
+            throw new Error(payload?.error || 'Unable to send activation email.');
           }
           return payload;
         }),
         {
-          loading: "Sending activation email...",
-          success: "Activation email sent.",
-          error: (err) => err?.message || "Unable to send activation email.",
-        }
+          loading: 'Sending activation email...',
+          success: 'Activation email sent.',
+          error: (err) => err?.message || 'Unable to send activation email.',
+        },
       );
     } catch (err) {
       console.error(err);
@@ -337,26 +337,26 @@ export default function ClientsPage() {
   }
 
   async function handleDelete(id: string) {
-    const confirmed = window.confirm("Delete this client? This will archive the record for now.");
+    const confirmed = window.confirm('Delete this client? This will archive the record for now.');
     if (!confirmed) return;
 
     try {
       setDeletingId(id);
       await toastPromise(
-        apiFetch("/api/admin/clients/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        apiFetch('/api/admin/clients/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id }),
         }).then(async (res) => {
           const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete client");
+          if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to delete client');
           return json;
         }),
         {
-          loading: "Deleting client...",
-          success: "Client deleted successfully.",
-          error: (err) => err?.message || "Failed to delete client.",
-        }
+          loading: 'Deleting client...',
+          success: 'Client deleted successfully.',
+          error: (err) => err?.message || 'Failed to delete client.',
+        },
       );
 
       setRows((prev) => prev.filter((c) => c.id !== id));
@@ -372,48 +372,56 @@ export default function ClientsPage() {
   }
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    cursor: "pointer",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-muted)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
     fontWeight: 400, // IMPORTANT: body text regular (not bold)
   };
 
   const headerLabel = (label: string, badge?: string) => (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <span>{label}</span>
       {/* reserve space so sorting doesn't shift layout */}
-      <span style={{ width: 14, display: "inline-block", textAlign: "center", opacity: badge ? 1 : 0.35 }}>
-        {badge || "•"}
+      <span
+        style={{
+          width: 14,
+          display: 'inline-block',
+          textAlign: 'center',
+          opacity: badge ? 1 : 0.35,
+        }}
+      >
+        {badge || '•'}
       </span>
     </span>
   );
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">All Clients</h1>
 
           <div className="page-subtitle" style={{ marginBottom: 18 }}>
-            Track leads and clients — pipeline, payments, ownership, retainers — in one control panel.
+            Track leads and clients — pipeline, payments, ownership, retainers — in one control
+            panel.
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <LoadingButton
             type="button"
             className="btn"
@@ -421,9 +429,9 @@ export default function ClientsPage() {
             loadingText="Opening..."
             onClick={() => {
               setAddingClient(true);
-              router.push("/clients/add");
+              router.push('/clients/add');
             }}
-            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
+            style={{ borderRadius: 999, padding: '10px 20px', fontWeight: 600 }}
           >
             + Add Client
           </LoadingButton>
@@ -436,96 +444,100 @@ export default function ClientsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: "var(--surface-card)",
-          border: "1px solid var(--border-subtle)",
-          boxShadow: "var(--shadow-md)",
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))",
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: 'var(--shadow-md)',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(220px, 1.3fr) repeat(auto-fit, minmax(160px, 1fr))',
           gap: 12,
-          alignItems: "center",
+          alignItems: 'center',
         }}
       >
         <SmartSearchBar value={query} onChange={handleSearchChange} onSubmit={runSearch} />
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {loading ? "Loading..." : `${sorted.length} client(s)`}
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          {loading ? 'Loading...' : `${sorted.length} client(s)`}
         </div>
       </div>
 
       <div className="table-shell">
         <div>
-        {/* Loading state: keep table structure stable with skeletons. */}
-        {loading ? (
-          <SkeletonTable rows={6} columns={6} />
-        ) : accessDenied ? (
-          <EmptyState
-            title="You don't have access to this section."
-            description="Contact your administrator if you believe this is a mistake."
-            action={{ label: "Go to Dashboard", onClick: () => router.push("/") }}
-          />
-        ) : error ? (
-          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
-        ) : sorted.length === 0 ? (
-          <EmptyState
-            title="No clients found"
-            description="Add your first client to start tracking pipeline and payments."
-            action={{ label: "Add Client", onClick: () => router.push("/clients/add") }}
-          />
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1080 }}>
-              <thead>
-                <tr>
-                  <th style={headerCellStyle} onClick={() => toggleSort("orderId")}>
-                    {headerLabel("Order ID", sortBadge("orderId"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("companyName")}>
-                    {headerLabel("Company", sortBadge("companyName"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactName")}>
-                    {headerLabel("Contact", sortBadge("primaryContactName"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactEmail")}>
-                    {headerLabel("Email", sortBadge("primaryContactEmail"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("primaryContactPhone")}>
-                    {headerLabel("Phone", sortBadge("primaryContactPhone"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
-                    {headerLabel("Action")}
-                  </th>
-                </tr>
-              </thead>
+          {/* Loading state: keep table structure stable with skeletons. */}
+          {loading ? (
+            <SkeletonTable rows={6} columns={6} />
+          ) : accessDenied ? (
+            <EmptyState
+              title="You don't have access to this section."
+              description="Contact your administrator if you believe this is a mistake."
+              action={{ label: 'Go to Dashboard', onClick: () => router.push('/') }}
+            />
+          ) : error ? (
+            <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
+          ) : sorted.length === 0 ? (
+            <EmptyState
+              title="No clients found"
+              description="Add your first client to start tracking pipeline and payments."
+              action={{ label: 'Add Client', onClick: () => router.push('/clients/add') }}
+            />
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 1080 }}
+              >
+                <thead>
+                  <tr>
+                    <th style={headerCellStyle} onClick={() => toggleSort('orderId')}>
+                      {headerLabel('Order ID', sortBadge('orderId'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('companyName')}>
+                      {headerLabel('Company', sortBadge('companyName'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('primaryContactName')}>
+                      {headerLabel('Contact', sortBadge('primaryContactName'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('primaryContactEmail')}>
+                      {headerLabel('Email', sortBadge('primaryContactEmail'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('primaryContactPhone')}>
+                      {headerLabel('Phone', sortBadge('primaryContactPhone'))}
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center', cursor: 'default' }}>
+                      {headerLabel('Action')}
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {sorted.map((c) => {
-                  return (
-                    <tr key={c.id} onClick={() => openDrawer(c)}>
-                      <td style={cellStyle}>{normalizeOrderId(c.orderId) || "-"}</td>
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{c.companyName || "-"}</td>
-                      <td style={cellStyle}>{c.primaryContactName || "-"}</td>
-                      <td style={cellStyle}>{c.primaryContactEmail || "-"}</td>
-                      <td style={cellStyle}>{c.primaryContactPhone || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <div style={{ display: "flex", justifyContent: "center" }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDrawer(c);
-                            }}
-                            className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
-                          >
-                            View
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                <tbody>
+                  {sorted.map((c) => {
+                    return (
+                      <tr key={c.id} onClick={() => openDrawer(c)}>
+                        <td style={cellStyle}>{normalizeOrderId(c.orderId) || '-'}</td>
+                        <td style={{ ...cellStyle, whiteSpace: 'normal' }}>
+                          {c.companyName || '-'}
+                        </td>
+                        <td style={cellStyle}>{c.primaryContactName || '-'}</td>
+                        <td style={cellStyle}>{c.primaryContactEmail || '-'}</td>
+                        <td style={cellStyle}>{c.primaryContactPhone || '-'}</td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDrawer(c);
+                              }}
+                              className="btn ghost"
+                              style={{ padding: '8px 14px', borderRadius: 999, fontWeight: 500 }}
+                            >
+                              View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -536,12 +548,12 @@ export default function ClientsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="client-detail-drawer__scroll">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                     {selected.companyName}
                   </div>
-                  <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
+                  <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-muted)' }}>
                     {selected.primaryContactName} · {selected.primaryContactEmail}
                   </div>
                 </div>
@@ -558,13 +570,13 @@ export default function ClientsPage() {
               <div style={{ height: 14 }} />
 
               <Section title="Company">
-                <Row label="Order ID" value={normalizeOrderId(selected.orderId) || "-"} />
-                <Row label="Website" value={selected.website || "-"} />
-                <Row label="Industry" value={selected.industry || "-"} />
-                <Row label="Business Type" value={selected.businessType || "-"} />
-                <Row label="Country" value={selected.country || "-"} />
-                <Row label="City" value={selected.city || "-"} />
-                <Row label="Timezone" value={selected.timezone || "-"} />
+                <Row label="Order ID" value={normalizeOrderId(selected.orderId) || '-'} />
+                <Row label="Website" value={selected.website || '-'} />
+                <Row label="Industry" value={selected.industry || '-'} />
+                <Row label="Business Type" value={selected.businessType || '-'} />
+                <Row label="Country" value={selected.country || '-'} />
+                <Row label="City" value={selected.city || '-'} />
+                <Row label="Timezone" value={selected.timezone || '-'} />
               </Section>
 
               <div style={{ height: 12 }} />
@@ -576,39 +588,50 @@ export default function ClientsPage() {
                     (selected.segmentServices || [])
                       .map((slug) => segmentMap[slug]?.name || slug)
                       .filter(Boolean)
-                      .join(", ") || "-"
+                      .join(', ') || '-'
                   }
                 />
                 <Row
                   label="Segment (Industry)"
-                  value={segmentMap[selected.segmentIndustry || ""]?.name || selected.segmentIndustry || "-"}
+                  value={
+                    segmentMap[selected.segmentIndustry || '']?.name ||
+                    selected.segmentIndustry ||
+                    '-'
+                  }
                 />
                 <Row
                   label="Segment (Business)"
-                  value={segmentMap[selected.segmentBusinessType || ""]?.name || selected.segmentBusinessType || "-"}
+                  value={
+                    segmentMap[selected.segmentBusinessType || '']?.name ||
+                    selected.segmentBusinessType ||
+                    '-'
+                  }
                 />
                 <Row
                   label="Segment (Geo)"
-                  value={segmentMap[selected.segmentGeo || ""]?.name || selected.segmentGeo || "-"}
+                  value={segmentMap[selected.segmentGeo || '']?.name || selected.segmentGeo || '-'}
                 />
-                <Row label="Employee Count" value={selected.employeeCountRange || "-"} />
-                <Row label="Years in Business" value={selected.yearsInBusinessRange || "-"} />
+                <Row label="Employee Count" value={selected.employeeCountRange || '-'} />
+                <Row label="Years in Business" value={selected.yearsInBusinessRange || '-'} />
               </Section>
 
               <div style={{ height: 12 }} />
 
               <Section title="Contact">
-                <Row label="Name" value={selected.primaryContactName || "-"} />
-                <Row label="Title" value={selected.primaryContactTitle || "-"} />
-                <Row label="Email" value={selected.primaryContactEmail || "-"} />
-                <Row label="Phone" value={selected.primaryContactPhone || "-"} />
+                <Row label="Name" value={selected.primaryContactName || '-'} />
+                <Row label="Title" value={selected.primaryContactTitle || '-'} />
+                <Row label="Email" value={selected.primaryContactEmail || '-'} />
+                <Row label="Phone" value={selected.primaryContactPhone || '-'} />
               </Section>
 
               <div style={{ height: 12 }} />
 
               <Section title="Finance">
-                <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
-                <Row label="Total Paid (USD)" value={fmtMoney(Number(selected.totalPaidUsd || 0))} />
+                <Row label="Payment Status" value={(selected.paymentStatus as string) || '-'} />
+                <Row
+                  label="Total Paid (USD)"
+                  value={fmtMoney(Number(selected.totalPaidUsd || 0))}
+                />
                 <Row label="Created" value={fmtDate(selected.createdAt)} />
                 <Row label="Last Activity" value={fmtDate(selected.lastActivity)} />
               </Section>
@@ -616,24 +639,24 @@ export default function ClientsPage() {
               <div style={{ height: 12 }} />
 
               <Section title="Ownership">
-                <Row label="Sales Owner" value={selected.salesOwner || "-"} />
-                <Row label="Account Manager" value={selected.accountManager || "-"} />
-                <Row label="Production Owner" value={selected.productionOwner || "-"} />
+                <Row label="Sales Owner" value={selected.salesOwner || '-'} />
+                <Row label="Account Manager" value={selected.accountManager || '-'} />
+                <Row label="Production Owner" value={selected.productionOwner || '-'} />
               </Section>
 
               <div style={{ height: 12 }} />
 
               <Section title="Pipeline">
-                <Row label="Sales Stage" value={(selected.salesStage as string) || "-"} />
-                <Row label="Payment Status" value={(selected.paymentStatus as string) || "-"} />
-                <Row label="Retainer Status" value={(selected.retainerStatus as string) || "-"} />
+                <Row label="Sales Stage" value={(selected.salesStage as string) || '-'} />
+                <Row label="Payment Status" value={(selected.paymentStatus as string) || '-'} />
+                <Row label="Retainer Status" value={(selected.retainerStatus as string) || '-'} />
               </Section>
 
               <div style={{ height: 12 }} />
 
               <div
                 className="client-detail-drawer__actions"
-                style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}
+                style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}
               >
                 {!selected.portalUserUid && (
                   <LoadingButton
@@ -678,24 +701,20 @@ export default function ClientsPage() {
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        background: "var(--surface-muted)",
+        background: 'var(--surface-muted)',
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
+      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.06em', opacity: 0.75 }}>
+        {title}
+      </div>
+      <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>{children}</div>
     </div>
   );
 }
@@ -706,14 +725,14 @@ function Row({ label, value }: { label: string; value: string }) {
       style={{
         padding: 12,
         borderRadius: 12,
-        border: "1px solid var(--border-subtle)",
-        display: "flex",
-        justifyContent: "space-between",
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        justifyContent: 'space-between',
         gap: 12,
       }}
     >
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>{label}</div>
-      <div style={{ fontWeight: 400, textAlign: "right" }}>{value}</div>
+      <div style={{ fontWeight: 400, textAlign: 'right' }}>{value}</div>
     </div>
   );
 }

@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const expiresIn = extendedSession
       ? 60 * 60 * 24 * 14 * 1000
       : rememberMe
-      ? 60 * 60 * 24 * 5 * 1000
-      : 60 * 60 * 24 * 1 * 1000;
+        ? 60 * 60 * 24 * 5 * 1000
+        : 60 * 60 * 24 * 1 * 1000;
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
     await createSession(decodedToken.uid, {
       sessionCookie,
       rememberMe: Boolean(rememberMe),
-      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      ip:
+        req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         req.headers.get('x-real-ip') ||
         null,
       userAgent: req.headers.get('user-agent') || null,
@@ -72,10 +73,11 @@ export async function POST(req: NextRequest) {
       });
 
       // Stamp lastActiveAt on tenant doc — non-blocking, never fails the login
-      adminDb.collection('tenants').doc(tenantId).set(
-        { lastActiveAt: new Date().toISOString() },
-        { merge: true }
-      ).catch((err: any) => console.error('session-login: lastActiveAt stamp failed', err));
+      adminDb
+        .collection('tenants')
+        .doc(tenantId)
+        .set({ lastActiveAt: new Date().toISOString() }, { merge: true })
+        .catch((err: any) => console.error('session-login: lastActiveAt stamp failed', err));
     }
 
     // Also set role cookie for client-side role caching
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
         error: error.message || 'Failed to create session',
         details: error.code || 'unknown',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

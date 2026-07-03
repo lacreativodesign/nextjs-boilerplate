@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { getDirectReports } from "@/lib/team";
-import { requireProductionManagerOrAdmin } from "../../admin/_utils";
+import { NextResponse } from 'next/server';
+import { getDirectReports } from '@/lib/team';
+import { requireProductionManagerOrAdmin } from '../../admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -13,18 +13,18 @@ export async function GET() {
     }
 
     if (!auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
 
     const team = await getDirectReports({
       tenantId: auth.user.tenantId,
       managerUid: auth.user.uid,
-      reportRole: "production",
+      reportRole: 'production',
     });
 
     return NextResponse.json({ ok: true, team });
   } catch (err: any) {
-    console.error("production manager team error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load team." }, { status: 500 });
+    console.error('production manager team error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load team.' }, { status: 500 });
   }
 }

@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import Script from "next/script";
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { useReportWebVitals } from "next/web-vitals";
-import { apiFetch } from "@/lib/api/client";
+import Script from 'next/script';
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { useReportWebVitals } from 'next/web-vitals';
+import { apiFetch } from '@/lib/api/client';
 
 function postMetric(body: Record<string, unknown>) {
-  void apiFetch("/api/monitoring/ingest", {
-    method: "POST",
+  void apiFetch('/api/monitoring/ingest', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
     keepalive: true,
@@ -22,21 +22,21 @@ export default function ClientMonitoring() {
 
   useEffect(() => {
     postMetric({
-      type: "active_session",
+      type: 'active_session',
       activeUsers: 1,
       endpoint: pathname,
-      module: "frontend",
+      module: 'frontend',
       metadata: {
-        event: "page_view",
+        event: 'page_view',
       },
     });
   }, [pathname]);
 
   useReportWebVitals((metric) => {
     postMetric({
-      type: "web_vital",
+      type: 'web_vital',
       endpoint: pathname,
-      module: "frontend",
+      module: 'frontend',
       webVitalName: metric.name,
       webVitalValue: metric.value,
       metadata: {

@@ -1,18 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { SettingsAlert } from "./_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { SettingsAlert } from './_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
-const WORKING_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+const WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 type SystemSettings = {
   companyName: string;
@@ -27,12 +19,12 @@ type SystemSettings = {
 };
 
 const DEFAULT_SETTINGS: SystemSettings = {
-  companyName: "",
-  timezone: "",
-  dateFormat: "",
+  companyName: '',
+  timezone: '',
+  dateFormat: '',
   workingDays: [],
-  workingHours: { start: "", end: "" },
-  currency: "USD",
+  workingHours: { start: '', end: '' },
+  currency: 'USD',
   fiscalMonthStart: 1,
 };
 
@@ -44,33 +36,30 @@ export default function AdminSettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
 
-  const disabled = useMemo(
-    () => !canEdit || loading || saving,
-    [canEdit, loading, saving]
-  );
+  const disabled = useMemo(() => !canEdit || loading || saving, [canEdit, loading, saving]);
 
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await apiFetch("/api/admin/settings/system", {
-        cache: "no-store",
+      const res = await apiFetch('/api/admin/settings/system', {
+        cache: 'no-store',
       });
       const data = await res.json();
 
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have access.");
-        if (res.status === 401) throw new Error("Please sign in again.");
-        throw new Error(data?.error || "Failed to load settings.");
+        if (res.status === 403) throw new Error('You do not have access.');
+        if (res.status === 401) throw new Error('Please sign in again.');
+        throw new Error(data?.error || 'Failed to load settings.');
       }
 
       setSettings({
         ...DEFAULT_SETTINGS,
         ...data.settings,
-        currency: data.settings?.revenueCurrency || data.settings?.currency || "USD",
+        currency: data.settings?.revenueCurrency || data.settings?.currency || 'USD',
       });
       setCanEdit(Boolean(data.canEdit));
     } catch (err: any) {
-      setError(err.message || "Unable to load settings.");
+      setError(err.message || 'Unable to load settings.');
     } finally {
       setLoading(false);
     }
@@ -94,20 +83,20 @@ export default function AdminSettingsPage() {
       setError(null);
       setSuccess(null);
 
-      const res = await apiFetch("/api/admin/settings/system", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/settings/system', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
 
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Save failed.");
+        throw new Error(data?.error || 'Save failed.');
       }
 
-      setSuccess("System settings updated successfully.");
+      setSuccess('System settings updated successfully.');
     } catch (err: any) {
-      setError(err.message || "Unable to save settings.");
+      setError(err.message || 'Unable to save settings.');
     } finally {
       setSaving(false);
     }
@@ -121,9 +110,7 @@ export default function AdminSettingsPage() {
       {!canEdit && !loading && (
         <SettingsAlert tone="info">
           <strong>Read-only access</strong>
-          <p className="text-sm opacity-70">
-            Only Super Admins can edit system settings.
-          </p>
+          <p className="text-sm opacity-70">Only Super Admins can edit system settings.</p>
         </SettingsAlert>
       )}
 
@@ -135,7 +122,7 @@ export default function AdminSettingsPage() {
           </div>
 
           <button className="btn subtle rounded-full" onClick={handleSave} disabled={disabled}>
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
@@ -165,16 +152,34 @@ export default function AdminSettingsPage() {
             >
               <option value="">— Select timezone —</option>
               {[
-                "Pacific/Honolulu", "America/Anchorage", "America/Los_Angeles",
-                "America/Denver", "America/Chicago", "America/New_York",
-                "America/Sao_Paulo", "Atlantic/Reykjavik", "Europe/London",
-                "Europe/Paris", "Europe/Berlin", "Europe/Madrid",
-                "Europe/Rome", "Europe/Amsterdam", "Africa/Cairo",
-                "Asia/Dubai", "Asia/Karachi", "Asia/Kolkata",
-                "Asia/Dhaka", "Asia/Bangkok", "Asia/Singapore",
-                "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland",
+                'Pacific/Honolulu',
+                'America/Anchorage',
+                'America/Los_Angeles',
+                'America/Denver',
+                'America/Chicago',
+                'America/New_York',
+                'America/Sao_Paulo',
+                'Atlantic/Reykjavik',
+                'Europe/London',
+                'Europe/Paris',
+                'Europe/Berlin',
+                'Europe/Madrid',
+                'Europe/Rome',
+                'Europe/Amsterdam',
+                'Africa/Cairo',
+                'Asia/Dubai',
+                'Asia/Karachi',
+                'Asia/Kolkata',
+                'Asia/Dhaka',
+                'Asia/Bangkok',
+                'Asia/Singapore',
+                'Asia/Tokyo',
+                'Australia/Sydney',
+                'Pacific/Auckland',
               ].map((tz) => (
-                <option key={tz} value={tz}>{tz.replace("_", " ")}</option>
+                <option key={tz} value={tz}>
+                  {tz.replace('_', ' ')}
+                </option>
               ))}
             </select>
             <p className="helper-text mt-2">Affects scheduling across modules.</p>
@@ -209,29 +214,33 @@ export default function AdminSettingsPage() {
               disabled={disabled}
             >
               {[
-                { code: "USD", label: "USD — US Dollar ($)" },
-                { code: "EUR", label: "EUR — Euro (€)" },
-                { code: "GBP", label: "GBP — British Pound (£)" },
-                { code: "CAD", label: "CAD — Canadian Dollar (CA$)" },
-                { code: "AUD", label: "AUD — Australian Dollar (A$)" },
-                { code: "CHF", label: "CHF — Swiss Franc (Fr)" },
-                { code: "JPY", label: "JPY — Japanese Yen (¥)" },
-                { code: "CNY", label: "CNY — Chinese Yuan (¥)" },
-                { code: "INR", label: "INR — Indian Rupee (₹)" },
-                { code: "AED", label: "AED — UAE Dirham (د.إ)" },
-                { code: "SAR", label: "SAR — Saudi Riyal (﷼)" },
-                { code: "SGD", label: "SGD — Singapore Dollar (S$)" },
-                { code: "MYR", label: "MYR — Malaysian Ringgit (RM)" },
-                { code: "ZAR", label: "ZAR — South African Rand (R)" },
-                { code: "BRL", label: "BRL — Brazilian Real (R$)" },
-                { code: "MXN", label: "MXN — Mexican Peso (Mex$)" },
-                { code: "NGN", label: "NGN — Nigerian Naira (₦)" },
-                { code: "EGP", label: "EGP — Egyptian Pound (E£)" },
+                { code: 'USD', label: 'USD — US Dollar ($)' },
+                { code: 'EUR', label: 'EUR — Euro (€)' },
+                { code: 'GBP', label: 'GBP — British Pound (£)' },
+                { code: 'CAD', label: 'CAD — Canadian Dollar (CA$)' },
+                { code: 'AUD', label: 'AUD — Australian Dollar (A$)' },
+                { code: 'CHF', label: 'CHF — Swiss Franc (Fr)' },
+                { code: 'JPY', label: 'JPY — Japanese Yen (¥)' },
+                { code: 'CNY', label: 'CNY — Chinese Yuan (¥)' },
+                { code: 'INR', label: 'INR — Indian Rupee (₹)' },
+                { code: 'AED', label: 'AED — UAE Dirham (د.إ)' },
+                { code: 'SAR', label: 'SAR — Saudi Riyal (﷼)' },
+                { code: 'SGD', label: 'SGD — Singapore Dollar (S$)' },
+                { code: 'MYR', label: 'MYR — Malaysian Ringgit (RM)' },
+                { code: 'ZAR', label: 'ZAR — South African Rand (R)' },
+                { code: 'BRL', label: 'BRL — Brazilian Real (R$)' },
+                { code: 'MXN', label: 'MXN — Mexican Peso (Mex$)' },
+                { code: 'NGN', label: 'NGN — Nigerian Naira (₦)' },
+                { code: 'EGP', label: 'EGP — Egyptian Pound (E£)' },
               ].map(({ code, label }) => (
-                <option key={code} value={code}>{label}</option>
+                <option key={code} value={code}>
+                  {label}
+                </option>
               ))}
             </select>
-            <p className="helper-text mt-2">Applied to all revenue, expenses, invoices, and reports.</p>
+            <p className="helper-text mt-2">
+              Applied to all revenue, expenses, invoices, and reports.
+            </p>
           </div>
 
           <div>

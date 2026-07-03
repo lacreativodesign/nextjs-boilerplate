@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { requireFinance } from "@/app/api/finance/_utils";
-import { resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
+import { NextResponse } from 'next/server';
+import { requireFinance } from '@/app/api/finance/_utils';
+import { resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 interface TaxSummaryEntry {
   taxRateName: string;
@@ -21,15 +21,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const { searchParams } = new URL(req.url);
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     if (!startDate || !endDate) {
       return NextResponse.json(
-        { ok: false, error: "Start date and end date are required" },
+        { ok: false, error: 'Start date and end date are required' },
         { status: 400 },
       );
     }
@@ -37,14 +37,14 @@ export async function GET(req: Request) {
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
-      return NextResponse.json({ ok: false, error: "Invalid date range" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid date range' }, { status: 400 });
     }
 
     const invoicesSnap = await adminDb
-      .collection("invoices")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("createdAt", ">=", start)
-      .where("createdAt", "<=", end)
+      .collection('invoices')
+      .where('tenantId', '==', auth.user.tenantId)
+      .where('createdAt', '>=', start)
+      .where('createdAt', '<=', end)
       .get();
 
     const taxSummary: Record<string, TaxSummaryEntry> = {};
@@ -53,8 +53,8 @@ export async function GET(req: Request) {
     invoicesSnap.docs.forEach((doc) => {
       const invoice = doc.data();
       const taxAmount = Number(invoice.amountTax || 0);
-      const taxRateId = String(invoice.taxRateId || "no_tax");
-      const taxRateName = String(invoice.taxRateName || "No Tax");
+      const taxRateId = String(invoice.taxRateId || 'no_tax');
+      const taxRateName = String(invoice.taxRateName || 'No Tax');
       const taxRate = Number(invoice.taxRate || 0);
 
       if (!taxSummary[taxRateId]) {
@@ -82,9 +82,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (err) {
-    logError(err, { route: "GET /api/finance/reports/tax" });
+    logError(err, { route: 'GET /api/finance/reports/tax' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to generate tax report",
+      fallbackMessage: 'Failed to generate tax report',
     });
     return NextResponse.json(body, { status });
   }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 type CustomerCardProps = {
   customer: {
@@ -17,22 +17,27 @@ type CustomerCardProps = {
 };
 
 export function CustomerCard({ customer }: CustomerCardProps) {
-  const name = customer.fullName || `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || "Unnamed";
+  const name =
+    customer.fullName ||
+    `${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
+    'Unnamed';
 
   return (
     <article className="card p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-[var(--text-primary)]">{name}</h3>
-          <p className="text-sm text-[var(--text-muted)]">{customer.companyName || "No company"}</p>
+          <p className="text-sm text-[var(--text-muted)]">{customer.companyName || 'No company'}</p>
         </div>
-        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">{customer.type || "lead"}</span>
+        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+          {customer.type || 'lead'}
+        </span>
       </div>
       <div className="space-y-1 text-sm text-[var(--text-muted)]">
-        <p>{customer.email || "No email"}</p>
-        <p>Status: {customer.status || "new"}</p>
+        <p>{customer.email || 'No email'}</p>
+        <p>Status: {customer.status || 'new'}</p>
         <p>Lead Score: {customer.leadScore ?? 0}</p>
-        <p>Owner: {customer.ownerName || "Unassigned"}</p>
+        <p>Owner: {customer.ownerName || 'Unassigned'}</p>
       </div>
     </article>
   );

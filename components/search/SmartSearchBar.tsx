@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Search, X } from "lucide-react";
+import { Search, X } from 'lucide-react';
 
 interface SmartSearchBarProps {
   value: string;
@@ -22,19 +22,19 @@ export function SmartSearchBar({
   value,
   onChange,
   onSubmit,
-  placeholder = "Search by name, email, ID, phone…",
+  placeholder = 'Search by name, email, ID, phone…',
   className,
 }: SmartSearchBarProps) {
   return (
     <div
       className={className}
       style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        width: "100%",
-        background: "var(--surface-card)",
-        border: "1px solid var(--border-subtle)",
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-subtle)',
         borderRadius: 12,
       }}
     >
@@ -42,10 +42,10 @@ export function SmartSearchBar({
         size={18}
         aria-hidden="true"
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: 12,
-          color: "var(--text-muted)",
-          pointerEvents: "none",
+          color: 'var(--text-muted)',
+          pointerEvents: 'none',
         }}
       />
 
@@ -55,13 +55,13 @@ export function SmartSearchBar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && onSubmit) onSubmit();
+          if (e.key === 'Enter' && onSubmit) onSubmit();
         }}
         placeholder={placeholder}
         aria-label={placeholder}
         style={{
-          background: "transparent",
-          border: "none",
+          background: 'transparent',
+          border: 'none',
           paddingLeft: 40,
           paddingRight: value ? 40 : 12,
         }}
@@ -70,23 +70,23 @@ export function SmartSearchBar({
       {value && (
         <button
           type="button"
-          onClick={() => onChange("")}
+          onClick={() => onChange('')}
           aria-label="Clear search"
           style={{
-            position: "absolute",
+            position: 'absolute',
             right: 8,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             width: 26,
             height: 26,
             minHeight: 0,
             padding: 0,
-            border: "none",
+            border: 'none',
             borderRadius: 999,
-            background: "transparent",
-            color: "var(--text-muted)",
-            cursor: "pointer",
+            background: 'transparent',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
           }}
         >
           <X size={16} />

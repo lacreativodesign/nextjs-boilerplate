@@ -1,18 +1,21 @@
-import admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { USER_NOTIFICATION_CHANNELS, USER_NOTIFICATION_EVENT_TYPES } from "@/lib/notifications/preferences-config";
-import { normalizeTenantId } from "@/lib/tenant";
-import { sendEmail } from "@/lib/email/email-service";
+import admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  USER_NOTIFICATION_CHANNELS,
+  USER_NOTIFICATION_EVENT_TYPES,
+} from '@/lib/notifications/preferences-config';
+import { normalizeTenantId } from '@/lib/tenant';
+import { sendEmail } from '@/lib/email/email-service';
 import {
   NotificationFrequency,
   NotificationDigestItem,
   UserNotificationEventType,
   UserNotificationPreferences,
-} from "@/types/notifications";
+} from '@/types/notifications';
 
-const COLLECTION = "user_notification_preferences";
-const DIGEST_COLLECTION = "notification_digest_queue";
+const COLLECTION = 'user_notification_preferences';
+const DIGEST_COLLECTION = 'notification_digest_queue';
 
 type NotificationChannelKey = (typeof USER_NOTIFICATION_CHANNELS)[number];
 
@@ -36,12 +39,12 @@ export class NotificationPreferenceService {
       (acc, eventType) => {
         acc[eventType] = {
           enabled: true,
-          channels: ["in_app", "email"],
-          frequency: "instant",
+          channels: ['in_app', 'email'],
+          frequency: 'instant',
         };
         return acc;
       },
-      {} as UserNotificationPreferences["eventPreferences"]
+      {} as UserNotificationPreferences['eventPreferences'],
     );
 
     return {
@@ -57,16 +60,16 @@ export class NotificationPreferenceService {
       eventPreferences,
       digest: {
         enabled: true,
-        frequencies: ["daily"],
-        dailySendTime: "09:00",
+        frequencies: ['daily'],
+        dailySendTime: '09:00',
         weeklySendDay: 1,
-        weeklySendTime: "09:00",
+        weeklySendTime: '09:00',
       },
       quietHours: {
         enabled: false,
-        start: "22:00",
-        end: "08:00",
-        timezone: "UTC",
+        start: '22:00',
+        end: '08:00',
+        timezone: 'UTC',
       },
       unsubscribedEventTypes: [],
       createdAt: now,
@@ -74,7 +77,10 @@ export class NotificationPreferenceService {
     };
   }
 
-  static async getPreferences(userId: string, tenantId: string): Promise<UserNotificationPreferences> {
+  static async getPreferences(
+    userId: string,
+    tenantId: string,
+  ): Promise<UserNotificationPreferences> {
     const doc = await adminDb.collection(COLLECTION).doc(userId).get();
     if (!doc.exists) {
       return this.getDefaultPreferences(userId, tenantId);
@@ -116,11 +122,13 @@ export class NotificationPreferenceService {
           ...(params.updates.eventPreferences || {}),
         },
         unsubscribedEventTypes: Array.from(
-          new Set([...(params.updates.unsubscribedEventTypes || existing.unsubscribedEventTypes || [])])
+          new Set([
+            ...(params.updates.unsubscribedEventTypes || existing.unsubscribedEventTypes || []),
+          ]),
         ),
       },
       params.userId,
-      params.tenantId
+      params.tenantId,
     );
 
     await adminDb
@@ -134,7 +142,7 @@ export class NotificationPreferenceService {
           updatedAt: admin.firestore.Timestamp.now(),
           createdAt: existing.createdAt || admin.firestore.Timestamp.now(),
         },
-        { merge: true }
+        { merge: true },
       );
 
     return this.getPreferences(params.userId, params.tenantId);
@@ -142,7 +150,7 @@ export class NotificationPreferenceService {
 
   static async shouldSendNow(request: NotificationDispatchRequest): Promise<{
     deliverNow: boolean;
-    reason: "instant" | "digest" | "disabled" | "unsubscribed" | "quiet_hours";
+    reason: 'instant' | 'digest' | 'disabled' | 'unsubscribed' | 'quiet_hours';
     channels: NotificationChannelKey[];
     frequency: NotificationFrequency;
   }> {
@@ -150,30 +158,50 @@ export class NotificationPreferenceService {
     const eventSetting = preferences.eventPreferences[request.eventType];
 
     if (!eventSetting?.enabled) {
-      return { deliverNow: false, reason: "disabled", channels: [], frequency: "instant" };
+      return { deliverNow: false, reason: 'disabled', channels: [], frequency: 'instant' };
     }
 
     if (preferences.unsubscribedEventTypes.includes(request.eventType)) {
-      return { deliverNow: false, reason: "unsubscribed", channels: [], frequency: eventSetting.frequency };
+      return {
+        deliverNow: false,
+        reason: 'unsubscribed',
+        channels: [],
+        frequency: eventSetting.frequency,
+      };
     }
 
-    const channels = eventSetting.channels.filter((channel) => this.isChannelEnabled(preferences, channel));
+    const channels = eventSetting.channels.filter((channel) =>
+      this.isChannelEnabled(preferences, channel),
+    );
     if (!channels.length) {
-      return { deliverNow: false, reason: "disabled", channels: [], frequency: eventSetting.frequency };
+      return {
+        deliverNow: false,
+        reason: 'disabled',
+        channels: [],
+        frequency: eventSetting.frequency,
+      };
     }
 
-    if (eventSetting.frequency !== "instant") {
-      return { deliverNow: false, reason: "digest", channels, frequency: eventSetting.frequency };
+    if (eventSetting.frequency !== 'instant') {
+      return { deliverNow: false, reason: 'digest', channels, frequency: eventSetting.frequency };
     }
 
     if (this.isInQuietHours(preferences, request.now || new Date())) {
-      return { deliverNow: false, reason: "quiet_hours", channels, frequency: eventSetting.frequency };
+      return {
+        deliverNow: false,
+        reason: 'quiet_hours',
+        channels,
+        frequency: eventSetting.frequency,
+      };
     }
 
-    return { deliverNow: true, reason: "instant", channels, frequency: eventSetting.frequency };
+    return { deliverNow: true, reason: 'instant', channels, frequency: eventSetting.frequency };
   }
 
-  static async queueDigestItem(request: NotificationDispatchRequest, frequency: "hourly" | "daily" | "weekly") {
+  static async queueDigestItem(
+    request: NotificationDispatchRequest,
+    frequency: 'hourly' | 'daily' | 'weekly',
+  ) {
     const preferences = await this.getPreferences(request.userId, request.tenantId);
     const channels = preferences.eventPreferences[request.eventType]?.channels || [];
 
@@ -191,15 +219,18 @@ export class NotificationPreferenceService {
       createdAt: admin.firestore.Timestamp.now(),
       scheduledFor: Timestamp.fromDate(scheduledFor),
       frequency,
-    } satisfies Omit<NotificationDigestItem, "id">);
+    } satisfies Omit<NotificationDigestItem, 'id'>);
   }
 
-  static async processDigestBatch(frequency: "daily" | "weekly", now = new Date()): Promise<number> {
+  static async processDigestBatch(
+    frequency: 'daily' | 'weekly',
+    now = new Date(),
+  ): Promise<number> {
     const snapshot = await adminDb
       .collection(DIGEST_COLLECTION)
-      .where("frequency", "==", frequency)
-      .where("scheduledFor", "<=", Timestamp.fromDate(now))
-      .orderBy("scheduledFor", "asc")
+      .where('frequency', '==', frequency)
+      .where('scheduledFor', '<=', Timestamp.fromDate(now))
+      .orderBy('scheduledFor', 'asc')
       .limit(200)
       .get();
 
@@ -207,7 +238,7 @@ export class NotificationPreferenceService {
 
     const grouped = new Map<string, Array<NotificationDigestItem & { id: string }>>();
     snapshot.docs.forEach((doc) => {
-      const item = { id: doc.id, ...(doc.data() as Omit<NotificationDigestItem, "id">) };
+      const item = { id: doc.id, ...(doc.data() as Omit<NotificationDigestItem, 'id'>) };
       const key = `${item.tenantId}:${item.userId}`;
       const current = grouped.get(key) || [];
       current.push(item);
@@ -216,14 +247,14 @@ export class NotificationPreferenceService {
 
     for (const [, items] of grouped.entries()) {
       const [first] = items;
-      const userDoc = await adminDb.collection("users").doc(first.userId).get();
-      const userEmail = String(userDoc.data()?.email || "").trim();
+      const userDoc = await adminDb.collection('users').doc(first.userId).get();
+      const userEmail = String(userDoc.data()?.email || '').trim();
       if (!userEmail) continue;
 
       const html = this.buildDigestHtml(items, frequency);
       await sendEmail({
         to: userEmail,
-        subject: frequency === "daily" ? "Daily notification digest" : "Weekly notification digest",
+        subject: frequency === 'daily' ? 'Daily notification digest' : 'Weekly notification digest',
         html,
         text: this.buildDigestText(items, frequency),
       });
@@ -242,7 +273,9 @@ export class NotificationPreferenceService {
     eventType: UserNotificationEventType;
   }): Promise<void> {
     const preferences = await this.getPreferences(params.userId, params.tenantId);
-    const unsubscribed = Array.from(new Set([...preferences.unsubscribedEventTypes, params.eventType]));
+    const unsubscribed = Array.from(
+      new Set([...preferences.unsubscribedEventTypes, params.eventType]),
+    );
 
     await this.updatePreferences({
       userId: params.userId,
@@ -260,15 +293,28 @@ export class NotificationPreferenceService {
     });
   }
 
-  static buildUnsubscribeToken(params: { userId: string; tenantId: string; eventType: UserNotificationEventType }) {
-    return Buffer.from(`${normalizeTenantId(params.tenantId)}:${params.userId}:${params.eventType}`).toString("base64url");
+  static buildUnsubscribeToken(params: {
+    userId: string;
+    tenantId: string;
+    eventType: UserNotificationEventType;
+  }) {
+    return Buffer.from(
+      `${normalizeTenantId(params.tenantId)}:${params.userId}:${params.eventType}`,
+    ).toString('base64url');
   }
 
-  static parseUnsubscribeToken(token: string): { userId: string; tenantId: string; eventType: UserNotificationEventType } | null {
+  static parseUnsubscribeToken(
+    token: string,
+  ): { userId: string; tenantId: string; eventType: UserNotificationEventType } | null {
     try {
-      const raw = Buffer.from(token, "base64url").toString("utf8");
-      const [tenantId, userId, eventType] = raw.split(":");
-      if (!tenantId || !userId || !eventType || !USER_NOTIFICATION_EVENT_TYPES.includes(eventType as UserNotificationEventType)) {
+      const raw = Buffer.from(token, 'base64url').toString('utf8');
+      const [tenantId, userId, eventType] = raw.split(':');
+      if (
+        !tenantId ||
+        !userId ||
+        !eventType ||
+        !USER_NOTIFICATION_EVENT_TYPES.includes(eventType as UserNotificationEventType)
+      ) {
         return null;
       }
       return { tenantId, userId, eventType: eventType as UserNotificationEventType };
@@ -279,8 +325,8 @@ export class NotificationPreferenceService {
 
   static isInQuietHours(preferences: UserNotificationPreferences, now: Date): boolean {
     if (!preferences.quietHours?.enabled) return false;
-    const [startHour, startMinute] = preferences.quietHours.start.split(":").map(Number);
-    const [endHour, endMinute] = preferences.quietHours.end.split(":").map(Number);
+    const [startHour, startMinute] = preferences.quietHours.start.split(':').map(Number);
+    const [endHour, endMinute] = preferences.quietHours.end.split(':').map(Number);
     if ([startHour, startMinute, endHour, endMinute].some(Number.isNaN)) return false;
 
     const current = this.getCurrentTimeInTimezone(now, preferences.quietHours.timezone);
@@ -298,10 +344,13 @@ export class NotificationPreferenceService {
   private static normalizePreferences(
     preferences: Partial<UserNotificationPreferences>,
     userId: string,
-    tenantId: string
+    tenantId: string,
   ): UserNotificationPreferences {
     const defaults = this.getDefaultPreferences(userId, tenantId);
-    const eventPreferences = { ...defaults.eventPreferences, ...(preferences.eventPreferences || {}) };
+    const eventPreferences = {
+      ...defaults.eventPreferences,
+      ...(preferences.eventPreferences || {}),
+    };
 
     USER_NOTIFICATION_EVENT_TYPES.forEach((eventType) => {
       eventPreferences[eventType] = {
@@ -335,34 +384,37 @@ export class NotificationPreferenceService {
     };
   }
 
-  private static isChannelEnabled(preferences: UserNotificationPreferences, channel: NotificationChannelKey) {
-    if (channel === "in_app") return preferences.channels.inApp;
-    if (channel === "email") return preferences.channels.email;
-    if (channel === "sms") return preferences.channels.sms;
+  private static isChannelEnabled(
+    preferences: UserNotificationPreferences,
+    channel: NotificationChannelKey,
+  ) {
+    if (channel === 'in_app') return preferences.channels.inApp;
+    if (channel === 'email') return preferences.channels.email;
+    if (channel === 'sms') return preferences.channels.sms;
     return preferences.channels.push;
   }
 
   private static getNextDigestTime(
     preferences: UserNotificationPreferences,
-    frequency: "hourly" | "daily" | "weekly",
-    now: Date
+    frequency: 'hourly' | 'daily' | 'weekly',
+    now: Date,
   ): Date {
-    if (frequency === "hourly") {
+    if (frequency === 'hourly') {
       const next = new Date(now);
       next.setMinutes(0, 0, 0);
       next.setHours(next.getHours() + 1);
       return next;
     }
 
-    if (frequency === "daily") {
-      const [hour, minute] = preferences.digest.dailySendTime.split(":").map(Number);
+    if (frequency === 'daily') {
+      const [hour, minute] = preferences.digest.dailySendTime.split(':').map(Number);
       const next = new Date(now);
       next.setHours(hour || 9, minute || 0, 0, 0);
       if (next <= now) next.setDate(next.getDate() + 1);
       return next;
     }
 
-    const [hour, minute] = preferences.digest.weeklySendTime.split(":").map(Number);
+    const [hour, minute] = preferences.digest.weeklySendTime.split(':').map(Number);
     const targetDay = preferences.digest.weeklySendDay;
     const next = new Date(now);
     next.setHours(hour || 9, minute || 0, 0, 0);
@@ -374,57 +426,68 @@ export class NotificationPreferenceService {
   }
 
   private static getCurrentTimeInTimezone(now: Date, timezone: string) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone || "UTC",
-      hour: "2-digit",
-      minute: "2-digit",
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone || 'UTC',
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
     }).formatToParts(now);
 
     return {
-      hour: Number(parts.find((part) => part.type === "hour")?.value || "0"),
-      minute: Number(parts.find((part) => part.type === "minute")?.value || "0"),
+      hour: Number(parts.find((part) => part.type === 'hour')?.value || '0'),
+      minute: Number(parts.find((part) => part.type === 'minute')?.value || '0'),
     };
   }
 
-  private static buildDigestHtml(items: Array<NotificationDigestItem & { id: string }>, frequency: "daily" | "weekly") {
+  private static buildDigestHtml(
+    items: Array<NotificationDigestItem & { id: string }>,
+    frequency: 'daily' | 'weekly',
+  ) {
     const grouped = this.groupDigestItems(items);
     const groupsHtml = Object.entries(grouped)
       .map(
         ([eventType, notifications]) =>
-          `<h3>${eventType.replace(/_/g, " ")}</h3><ul>${notifications
+          `<h3>${eventType.replace(/_/g, ' ')}</h3><ul>${notifications
             .map(
               (item) =>
                 `<li><strong>${item.title}</strong><p>${item.message}</p>${
-                  item.actionUrl ? `<a href="${item.actionUrl}">${item.actionLabel || "Open"}</a>` : ""
-                }</li>`
+                  item.actionUrl
+                    ? `<a href="${item.actionUrl}">${item.actionLabel || 'Open'}</a>`
+                    : ''
+                }</li>`,
             )
-            .join("")}</ul>`
+            .join('')}</ul>`,
       )
-      .join("");
+      .join('');
 
-    return `<html><body><h2>${frequency === "daily" ? "Daily" : "Weekly"} Digest</h2>${groupsHtml}</body></html>`;
+    return `<html><body><h2>${frequency === 'daily' ? 'Daily' : 'Weekly'} Digest</h2>${groupsHtml}</body></html>`;
   }
 
-  private static buildDigestText(items: Array<NotificationDigestItem & { id: string }>, frequency: "daily" | "weekly") {
+  private static buildDigestText(
+    items: Array<NotificationDigestItem & { id: string }>,
+    frequency: 'daily' | 'weekly',
+  ) {
     const grouped = this.groupDigestItems(items);
-    const lines: string[] = [`${frequency === "daily" ? "Daily" : "Weekly"} notification digest`];
+    const lines: string[] = [`${frequency === 'daily' ? 'Daily' : 'Weekly'} notification digest`];
 
     Object.entries(grouped).forEach(([eventType, notifications]) => {
-      lines.push(`\n${eventType.replace(/_/g, " ")}:`);
+      lines.push(`\n${eventType.replace(/_/g, ' ')}:`);
       notifications.forEach((item) => {
         lines.push(`- ${item.title}: ${item.message}`);
       });
     });
 
-    return lines.join("\n");
+    return lines.join('\n');
   }
 
   private static groupDigestItems(items: Array<NotificationDigestItem & { id: string }>) {
-    return items.reduce<Record<string, Array<NotificationDigestItem & { id: string }>>>((acc, item) => {
-      if (!acc[item.eventType]) acc[item.eventType] = [];
-      acc[item.eventType].push(item);
-      return acc;
-    }, {});
+    return items.reduce<Record<string, Array<NotificationDigestItem & { id: string }>>>(
+      (acc, item) => {
+        if (!acc[item.eventType]) acc[item.eventType] = [];
+        acc[item.eventType].push(item);
+        return acc;
+      },
+      {},
+    );
   }
 }

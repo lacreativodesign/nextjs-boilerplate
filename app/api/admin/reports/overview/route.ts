@@ -1,14 +1,22 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { computeHealth, getMonthKey, getReportSettings, getStartOfMonth, requireReportsAccess, toISO, toMillis } from "../_utils";
-import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  computeHealth,
+  getMonthKey,
+  getReportSettings,
+  getStartOfMonth,
+  requireReportsAccess,
+  toISO,
+  toMillis,
+} from '../_utils';
+import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const ACTIVITY_PREFIXES = ["finance.", "project.", "production.", "hr."];
+const ACTIVITY_PREFIXES = ['finance.', 'project.', 'production.', 'hr.'];
 
 export async function GET() {
   try {
@@ -32,14 +40,38 @@ export async function GET() {
       onboardingSnap,
       eventsSnap,
     ] = await Promise.all([
-      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("change_requests").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("users").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(
+        adminDb.collection('invoices').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('payments').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('changeRequests').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('change_requests').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('users').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('onboardingTasks').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('events').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
     ]);
 
     type DocRecord = { id: string } & Record<string, any>;
@@ -51,25 +83,30 @@ export async function GET() {
       ...changeRequestAltSnap.map((doc) => ({ id: doc.id, ...doc.data() })),
     ];
     const users = usersSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
-    const onboardingTasks = onboardingSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const onboardingTasks = onboardingSnap.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as DocRecord[];
     const events = eventsSnap.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const safeEvents =
       events.length > 0
         ? events
-        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as DocRecord[];
+        : ((await queryWithTenant(adminDb.collection('events').limit(500), tenantId)).map(
+            (doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }),
+          ) as DocRecord[]);
 
     const revenueThisMonth = invoices.reduce((sum, inv) => {
-      if (normalizeInvoiceStatus(inv.status) !== "paid") return sum;
+      if (normalizeInvoiceStatus(inv.status) !== 'paid') return sum;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const paymentsThisMonth = payments.reduce((sum, payment) => {
-      if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
+      if (normalizePaymentStatus(payment.status) !== 'succeeded') return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
@@ -77,47 +114,51 @@ export async function GET() {
 
     const outstandingArTotal = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (["paid", "void"].includes(status)) return sum;
+      if (['paid', 'void'].includes(status)) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const overdueInvoicesCount = invoices.reduce((count, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (["paid", "void"].includes(status)) return count;
+      if (['paid', 'void'].includes(status)) return count;
       const dueMs = toMillis(inv.dueDate);
       if (!dueMs) return count;
       return dueMs < now.getTime() ? count + 1 : count;
     }, 0);
 
     const activeProjectsCount = projects.filter((project) => {
-      const stage = String(project.stage || "");
-      return stage.toLowerCase() !== "delivered";
+      const stage = String(project.stage || '');
+      return stage.toLowerCase() !== 'delivered';
     }).length;
 
     const overdueProjectsCount = projects.filter((project) => {
-      const stage = String(project.stage || "");
-      if (stage.toLowerCase() === "delivered") return false;
+      const stage = String(project.stage || '');
+      if (stage.toLowerCase() === 'delivered') return false;
       const due = toISO(project.dueDate);
       const health = computeHealth(due, settings.atRiskAfterDays, settings.overdueAfterDays);
-      return health === "Overdue";
+      return health === 'Overdue';
     }).length;
 
-    const qaQueueCount = projects.filter((project) => String(project.stage || "").toLowerCase() === "final").length;
+    const qaQueueCount = projects.filter(
+      (project) => String(project.stage || '').toLowerCase() === 'final',
+    ).length;
 
     const openChangeRequestsCount = changeRequests.filter((req) => {
-      const status = String(req.status || "").toLowerCase();
+      const status = String(req.status || '').toLowerCase();
       if (!status) return true;
-      return !["approved", "closed", "completed", "done", "resolved"].some((token) => status.includes(token));
+      return !['approved', 'closed', 'completed', 'done', 'resolved'].some((token) =>
+        status.includes(token),
+      );
     }).length;
 
     const activeEmployeesCount = users.filter((user) => {
-      const status = String(user.status || "active").toLowerCase();
-      return !["inactive", "terminated", "disabled"].includes(status);
+      const status = String(user.status || 'active').toLowerCase();
+      return !['inactive', 'terminated', 'disabled'].includes(status);
     }).length;
 
     const onboardingOpenCount = onboardingTasks.filter((task) => {
-      const status = String(task.status || "").toLowerCase();
-      return status !== "completed";
+      const status = String(task.status || '').toLowerCase();
+      return status !== 'completed';
     }).length;
 
     const seriesMonths = Array.from({ length: 6 }).map((_, idx) => {
@@ -128,7 +169,7 @@ export async function GET() {
     const revenueSeries = seriesMonths.map((key) => ({ label: key, revenue: 0, payments: 0 }));
 
     invoices.forEach((inv) => {
-      if (normalizeInvoiceStatus(inv.status) !== "paid") return;
+      if (normalizeInvoiceStatus(inv.status) !== 'paid') return;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -138,7 +179,7 @@ export async function GET() {
     });
 
     payments.forEach((pay) => {
-      if (normalizePaymentStatus(pay.status) !== "succeeded") return;
+      if (normalizePaymentStatus(pay.status) !== 'succeeded') return;
       const paidMs = toMillis(pay.paidAt || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -150,9 +191,9 @@ export async function GET() {
     const activity = safeEvents
       .map((event) => ({
         id: event.id,
-        type: String(event.type || ""),
-        title: String(event.title || ""),
-        description: String(event.description || ""),
+        type: String(event.type || ''),
+        title: String(event.title || ''),
+        description: String(event.description || ''),
         createdAt: toISO(event.createdAt),
       }))
       .filter((event) => ACTIVITY_PREFIXES.some((prefix) => event.type.startsWith(prefix)))
@@ -187,13 +228,15 @@ export async function GET() {
       },
     });
   } catch (err: any) {
-    console.error("reports/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('reports/overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load reports overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load reports overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireHrAccess, toIso } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireHrAccess, toIso } from '../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
@@ -12,8 +12,8 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("users")
-      .where("tenantId", "==", access.user.tenantId)
+      .collection('users')
+      .where('tenantId', '==', access.user.tenantId)
       .limit(500)
       .get();
     const users = snap.docs.map((doc) => {
@@ -37,7 +37,7 @@ export async function GET() {
       },
     });
   } catch (err) {
-    console.error("HR employees list error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR employees list error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

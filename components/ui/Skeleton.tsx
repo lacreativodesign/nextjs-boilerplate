@@ -1,9 +1,9 @@
-import React from "react";
+import React from 'react';
 
 const baseStyles =
-  "animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/80 transition-opacity duration-300";
+  'animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/80 transition-opacity duration-300';
 
-type SkeletonVariant = "text" | "card" | "block" | "avatar";
+type SkeletonVariant = 'text' | 'card' | 'block' | 'avatar';
 
 type SkeletonProps = {
   width?: string | number;
@@ -51,44 +51,66 @@ type SkeletonDashboardProps = {
   className?: string;
 };
 
-const sizeValue = (value?: string | number) =>
-  typeof value === "number" ? `${value}px` : value;
+const sizeValue = (value?: string | number) => (typeof value === 'number' ? `${value}px` : value);
 
-export function Skeleton({ width, height, variant = "block", className = "" }: SkeletonProps) {
+export function Skeleton({ width, height, variant = 'block', className = '' }: SkeletonProps) {
   const styles: React.CSSProperties = {
     width: sizeValue(width),
     height: sizeValue(height),
   };
 
   const variantClasses =
-    variant === "text"
-      ? "h-4 w-full"
-      : variant === "card"
-      ? "h-32 w-full"
-      : variant === "avatar"
-      ? "h-12 w-12 rounded-full"
-      : "";
+    variant === 'text'
+      ? 'h-4 w-full'
+      : variant === 'card'
+        ? 'h-32 w-full'
+        : variant === 'avatar'
+          ? 'h-12 w-12 rounded-full'
+          : '';
 
   return <div className={`${baseStyles} ${variantClasses} ${className}`} style={styles} />;
 }
 
-export function SkeletonLine({ width = "100%", height = "16px", className = "" }: SkeletonLineProps) {
-  return <div className={`skeleton-shimmer animate-pulse rounded ${className}`} style={{ width, height }} />;
+export function SkeletonLine({
+  width = '100%',
+  height = '16px',
+  className = '',
+}: SkeletonLineProps) {
+  return (
+    <div
+      className={`skeleton-shimmer animate-pulse rounded ${className}`}
+      style={{ width, height }}
+    />
+  );
 }
 
-export function SkeletonCircle({ size = 40, className = "" }: SkeletonCircleProps) {
-  return <div className={`skeleton-shimmer animate-pulse rounded-full ${className}`} style={{ width: size, height: size }} />;
+export function SkeletonCircle({ size = 40, className = '' }: SkeletonCircleProps) {
+  return (
+    <div
+      className={`skeleton-shimmer animate-pulse rounded-full ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
 }
 
-export function SkeletonCard({ width, height, lines = 3, showAvatar = false, className = "" }: SkeletonCardProps) {
+export function SkeletonCard({
+  width,
+  height,
+  lines = 3,
+  showAvatar = false,
+  className = '',
+}: SkeletonCardProps) {
   if (lines || showAvatar) {
     return (
-      <div className={`card ${className}`} style={{ padding: 16, width: sizeValue(width), height: sizeValue(height) }}>
+      <div
+        className={`card ${className}`}
+        style={{ padding: 16, width: sizeValue(width), height: sizeValue(height) }}
+      >
         <div className="flex items-start gap-3">
           {showAvatar ? <SkeletonCircle size={40} /> : null}
           <div className="flex-1 space-y-2">
             {Array.from({ length: lines }).map((_, idx) => (
-              <SkeletonLine key={idx} width={idx === lines - 1 ? "80%" : "100%"} />
+              <SkeletonLine key={idx} width={idx === lines - 1 ? '80%' : '100%'} />
             ))}
           </div>
         </div>
@@ -108,11 +130,14 @@ export function SkeletonCard({ width, height, lines = 3, showAvatar = false, cla
   );
 }
 
-export function SkeletonTable({ rows = 6, columns = 5, className = "" }: SkeletonTableProps) {
+export function SkeletonTable({ rows = 6, columns = 5, className = '' }: SkeletonTableProps) {
   return (
     <div className={`card ${className}`} style={{ padding: 16 }}>
       <div className="space-y-3">
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: columns }).map((_, idx) => (
             <SkeletonLine key={`header-${idx}`} height="14px" />
           ))}
@@ -133,7 +158,7 @@ export function SkeletonTable({ rows = 6, columns = 5, className = "" }: Skeleto
   );
 }
 
-export function SkeletonForm({ fields = 5, className = "" }: SkeletonFormProps) {
+export function SkeletonForm({ fields = 5, className = '' }: SkeletonFormProps) {
   return (
     <div className={`space-y-4 ${className}`}>
       {Array.from({ length: fields }).map((_, idx) => (
@@ -146,11 +171,11 @@ export function SkeletonForm({ fields = 5, className = "" }: SkeletonFormProps) 
   );
 }
 
-export function SkeletonChart({ height = 220, className = "" }: SkeletonChartProps) {
+export function SkeletonChart({ height = 220, className = '' }: SkeletonChartProps) {
   return <Skeleton variant="block" className={`w-full rounded-xl ${className}`} height={height} />;
 }
 
-export function SkeletonDashboard({ className = "" }: SkeletonDashboardProps) {
+export function SkeletonDashboard({ className = '' }: SkeletonDashboardProps) {
   return (
     <div className={`space-y-6 ${className}`}>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

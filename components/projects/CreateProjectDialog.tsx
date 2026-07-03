@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState } from 'react';
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch } from '@/lib/api/client';
 
 export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("internal");
-  const [startDate, setStartDate] = useState("");
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('internal');
+  const [startDate, setStartDate] = useState('');
   const [billable, setBillable] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     try {
-      await apiFetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           category,
@@ -28,9 +28,9 @@ export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<vo
         }),
       });
       setOpen(false);
-      setName("");
-      setCategory("internal");
-      setStartDate("");
+      setName('');
+      setCategory('internal');
+      setStartDate('');
       setBillable(false);
       await onSuccess();
     } finally {
@@ -55,8 +55,20 @@ export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<vo
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <select className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {["internal", "client_project", "product_development", "marketing", "sales", "operations", "other"].map((value) => (
+              <select
+                className="w-full rounded border px-3 py-2"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {[
+                  'internal',
+                  'client_project',
+                  'product_development',
+                  'marketing',
+                  'sales',
+                  'operations',
+                  'other',
+                ].map((value) => (
                   <option key={value} value={value}>
                     {value}
                   </option>
@@ -70,15 +82,28 @@ export function CreateProjectDialog({ onSuccess }: { onSuccess: () => Promise<vo
                 onChange={(e) => setStartDate(e.target.value)}
               />
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={billable} onChange={(e) => setBillable(e.target.checked)} /> Billable
+                <input
+                  type="checkbox"
+                  checked={billable}
+                  onChange={(e) => setBillable(e.target.checked)}
+                />{' '}
+                Billable
               </label>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="rounded border px-4 py-2" onClick={() => setOpen(false)}>
+              <button
+                type="button"
+                className="rounded border px-4 py-2"
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </button>
-              <button type="submit" disabled={loading} className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-60">
-                {loading ? "Creating..." : "Create"}
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-60"
+              >
+                {loading ? 'Creating...' : 'Create'}
               </button>
             </div>
           </form>

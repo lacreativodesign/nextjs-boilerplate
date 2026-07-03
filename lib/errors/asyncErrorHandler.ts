@@ -1,4 +1,4 @@
-import { showToast } from "@/lib/utils/toast";
+import { showToast } from '@/lib/utils/toast';
 
 interface AsyncErrorOptions {
   errorMessage?: string;
@@ -8,14 +8,14 @@ interface AsyncErrorOptions {
 
 export async function handleAsyncError<T>(
   fn: () => Promise<T>,
-  options?: AsyncErrorOptions
+  options?: AsyncErrorOptions,
 ): Promise<T | null> {
   try {
     return await fn();
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
 
-    console.error("Async Error:", error);
+    console.error('Async Error:', error);
     showToast.error(options?.errorMessage || errorMessage);
 
     if (options?.onError && error instanceof Error) {

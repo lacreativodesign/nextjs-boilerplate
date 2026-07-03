@@ -1,19 +1,21 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
-import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import RequireAuth from '@/components/RequireAuth';
+import AppShell from '@/components/layout/AppShell';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 const TABS = [
-  { href: "/projects", label: "Overview" },
-  { href: "/projects/pipeline", label: "Pipeline" },
-  { href: "/projects/change-requests", label: "Change Requests" },
-  { href: "/projects/files", label: "Files" },
+  { href: '/projects', label: 'Overview' },
+  { href: '/projects/pipeline', label: 'Pipeline' },
+  { href: '/projects/change-requests', label: 'Change Requests' },
+  { href: '/projects/files', label: 'Files' },
 ];
 export default function ProjectsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <RequireAuth allowed={["admin", "super_admin", "am", "am_manager", "production", "production_manager"]}>
+    <RequireAuth
+      allowed={['admin', 'super_admin', 'am', 'am_manager', 'production', 'production_manager']}
+    >
       <ModuleErrorBoundary moduleName="Projects">
         <AppShell>
           <div>
@@ -23,8 +25,18 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/projects" && pathname.startsWith(tab.href));
-                return <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>{tab.label}</Link>;
+                const isActive =
+                  pathname === tab.href ||
+                  (tab.href !== '/projects' && pathname.startsWith(tab.href));
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`tab-pill ${isActive ? 'active' : ''}`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
               })}
             </div>
             <div className="mt-6">{children}</div>

@@ -1,8 +1,14 @@
-import crypto from "crypto";
-import { z } from "zod";
-import * as admin from "firebase-admin";
-import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
-import type { ImportEntity, ImportFieldMapping, ImportFileFormat, ImportJob, ImportRowError } from "@/types/import-export";
+import crypto from 'crypto';
+import { z } from 'zod';
+import * as admin from 'firebase-admin';
+import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import type {
+  ImportEntity,
+  ImportFieldMapping,
+  ImportFileFormat,
+  ImportJob,
+  ImportRowError,
+} from '@/types/import-export';
 
 const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
   clients: z.object({
@@ -22,7 +28,7 @@ const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
     name: z.string().min(1),
     sku: z.string().min(1),
     category: z.string().min(1),
-    type: z.enum(["physical", "digital", "service", "bundle"]),
+    type: z.enum(['physical', 'digital', 'service', 'bundle']),
     costPrice: z.coerce.number().min(0),
     sellingPrice: z.coerce.number().min(0),
   }),
@@ -47,7 +53,7 @@ const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
   }),
   time_entries: z.object({
     userId: z.string().min(1),
-    source: z.enum(["clock", "manual", "timer"]),
+    source: z.enum(['clock', 'manual', 'timer']),
     startAt: z.string().min(1),
     endAt: z.string().optional(),
     projectId: z.string().optional(),
@@ -55,22 +61,22 @@ const entitySchemas: Record<ImportEntity, z.ZodObject<any>> = {
 };
 
 const duplicateFieldByEntity: Record<ImportEntity, string | null> = {
-  clients: "email",
-  invoices: "invoiceNumber",
-  products: "sku",
-  employees: "email",
-  projects: "name",
+  clients: 'email',
+  invoices: 'invoiceNumber',
+  products: 'sku',
+  employees: 'email',
+  projects: 'name',
   tasks: null,
   time_entries: null,
 };
 
 function normalizeHeader(value: string): string {
-  return value.trim().replace(/^"|"$/g, "").toLowerCase();
+  return value.trim().replace(/^"|"$/g, '').toLowerCase();
 }
 
 function parseCsv(content: string): Record<string, string>[] {
   const rows: string[][] = [];
-  let current = "";
+  let current = '';
   let row: string[] = [];
   let inQuotes = false;
 
@@ -88,18 +94,18 @@ function parseCsv(content: string): Record<string, string>[] {
       continue;
     }
 
-    if (char === "," && !inQuotes) {
+    if (char === ',' && !inQuotes) {
       row.push(current);
-      current = "";
+      current = '';
       continue;
     }
 
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") i += 1;
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i += 1;
       row.push(current);
       rows.push(row);
       row = [];
-      current = "";
+      current = '';
       continue;
     }
 
@@ -117,11 +123,11 @@ function parseCsv(content: string): Record<string, string>[] {
   const headers = headerRow.map(normalizeHeader);
 
   return dataRows
-    .filter((dataRow) => dataRow.some((cell) => String(cell || "").trim().length > 0))
+    .filter((dataRow) => dataRow.some((cell) => String(cell || '').trim().length > 0))
     .map((dataRow) => {
       const out: Record<string, string> = {};
       headers.forEach((header, index) => {
-        out[header] = String(dataRow[index] ?? "").trim();
+        out[header] = String(dataRow[index] ?? '').trim();
       });
       return out;
     });
@@ -129,9 +135,9 @@ function parseCsv(content: string): Record<string, string>[] {
 
 function decodeXmlText(value: string): string {
   return value
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .trim();
@@ -142,7 +148,9 @@ function parseExcelXml(content: string): Record<string, string>[] {
   if (!rows.length) return [];
 
   const cellsByRow = rows.map((rowXml) => {
-    const cells = [...rowXml.matchAll(/<Data[^>]*>([\s\S]*?)<\/Data>/gi)].map((match) => decodeXmlText(match[1]));
+    const cells = [...rowXml.matchAll(/<Data[^>]*>([\s\S]*?)<\/Data>/gi)].map((match) =>
+      decodeXmlText(match[1]),
+    );
     return cells;
   });
 
@@ -150,11 +158,11 @@ function parseExcelXml(content: string): Record<string, string>[] {
   const headers = (headerRow || []).map(normalizeHeader);
 
   return dataRows
-    .filter((dataRow) => dataRow.some((cell) => String(cell || "").trim().length > 0))
+    .filter((dataRow) => dataRow.some((cell) => String(cell || '').trim().length > 0))
     .map((dataRow) => {
       const out: Record<string, string> = {};
       headers.forEach((header, index) => {
-        out[header] = String(dataRow[index] ?? "").trim();
+        out[header] = String(dataRow[index] ?? '').trim();
       });
       return out;
     });
@@ -162,12 +170,18 @@ function parseExcelXml(content: string): Record<string, string>[] {
 
 function detectFormat(fileName: string, mimeType?: string): ImportFileFormat {
   const lower = fileName.toLowerCase();
-  if (lower.endsWith(".csv") || mimeType === "text/csv") return "csv";
-  if (lower.endsWith(".xml") || lower.endsWith(".xls") || mimeType === "application/vnd.ms-excel") return "excel_xml";
-  throw new Error("Unsupported file format. Only CSV and Excel XML (.xml/.xls) are supported.");
+  if (lower.endsWith('.csv') || mimeType === 'text/csv') return 'csv';
+  if (lower.endsWith('.xml') || lower.endsWith('.xls') || mimeType === 'application/vnd.ms-excel')
+    return 'excel_xml';
+  throw new Error('Unsupported file format. Only CSV and Excel XML (.xml/.xls) are supported.');
 }
 
-function toEntityPayload(entity: ImportEntity, row: Record<string, unknown>, tenantId: string, userId: string) {
+function toEntityPayload(
+  entity: ImportEntity,
+  row: Record<string, unknown>,
+  tenantId: string,
+  userId: string,
+) {
   const now = admin.firestore.Timestamp.now();
   const base = {
     tenantId,
@@ -177,7 +191,7 @@ function toEntityPayload(entity: ImportEntity, row: Record<string, unknown>, ten
   };
 
   switch (entity) {
-    case "products":
+    case 'products':
       return {
         ...base,
         ...row,
@@ -186,18 +200,18 @@ function toEntityPayload(entity: ImportEntity, row: Record<string, unknown>, ten
         reorderPoint: Number(row.reorderPoint ?? 0),
         reorderQuantity: Number(row.reorderQuantity ?? 0),
         minStockLevel: Number(row.minStockLevel ?? 0),
-        status: row.status ?? "active",
+        status: row.status ?? 'active',
       };
-    case "employees":
-      return { ...base, ...row, status: row.status ?? "Active" };
-    case "projects":
+    case 'employees':
+      return { ...base, ...row, status: row.status ?? 'Active' };
+    case 'projects':
       return {
         ...base,
         ...row,
-        status: row.status ?? "planning",
+        status: row.status ?? 'planning',
         startDate: row.startDate ? new Date(String(row.startDate)) : null,
         billable: Boolean(row.billable ?? false),
-        code: `PRJ-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+        code: `PRJ-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
       };
     default:
       return { ...base, ...row };
@@ -216,10 +230,11 @@ export class BulkImportService {
     templateId?: string | null;
   }) {
     const format = detectFormat(params.fileName, params.mimeType);
-    const key = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}-${params.fileName.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+    const key = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${params.fileName.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
     const storagePath = `tenants/${params.tenantId}/imports/${params.entity}/${key}`;
 
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     await bucket.file(storagePath).save(params.buffer, {
       metadata: {
@@ -228,13 +243,13 @@ export class BulkImportService {
     });
 
     const nowIso = new Date().toISOString();
-    const ref = await adminDb.collection("importJobs").add({
+    const ref = await adminDb.collection('importJobs').add({
       tenantId: params.tenantId,
       entity: params.entity,
       fileName: params.fileName,
       format,
       storagePath,
-      status: "uploaded",
+      status: 'uploaded',
       progress: 0,
       totalRows: 0,
       processedRows: 0,
@@ -244,39 +259,45 @@ export class BulkImportService {
       mappings: params.mappings,
       errors: [],
       templateId: params.templateId ?? null,
-    } satisfies Omit<ImportJob, "id">);
+    } satisfies Omit<ImportJob, 'id'>);
 
     return ref.id;
   }
 
   static async parseJobFile(job: ImportJob): Promise<Record<string, string>[]> {
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const [buffer] = await bucket.file(job.storagePath).download();
-    const content = buffer.toString("utf8");
+    const content = buffer.toString('utf8');
 
-    if (job.format === "csv") return parseCsv(content);
+    if (job.format === 'csv') return parseCsv(content);
     return parseExcelXml(content);
   }
 
-  static mapRow(rawRow: Record<string, string>, mappings: ImportFieldMapping[]): Record<string, unknown> {
+  static mapRow(
+    rawRow: Record<string, string>,
+    mappings: ImportFieldMapping[],
+  ): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const mapping of mappings) {
-      const raw = rawRow[normalizeHeader(mapping.sourceColumn)] ?? "";
+      const raw = rawRow[normalizeHeader(mapping.sourceColumn)] ?? '';
       if (!raw) {
         result[mapping.destinationField] = undefined;
         continue;
       }
 
       switch (mapping.transform) {
-        case "number":
+        case 'number':
           result[mapping.destinationField] = Number(raw);
           break;
-        case "boolean":
-          result[mapping.destinationField] = ["true", "1", "yes"].includes(String(raw).toLowerCase());
+        case 'boolean':
+          result[mapping.destinationField] = ['true', '1', 'yes'].includes(
+            String(raw).toLowerCase(),
+          );
           break;
-        case "date":
+        case 'date':
           result[mapping.destinationField] = new Date(raw).toISOString();
           break;
         default:
@@ -287,18 +308,22 @@ export class BulkImportService {
     return result;
   }
 
-  static async validateJob(params: { jobId: string; tenantId: string; mappings?: ImportFieldMapping[] }) {
-    const jobRef = adminDb.collection("importJobs").doc(params.jobId);
+  static async validateJob(params: {
+    jobId: string;
+    tenantId: string;
+    mappings?: ImportFieldMapping[];
+  }) {
+    const jobRef = adminDb.collection('importJobs').doc(params.jobId);
     const snapshot = await jobRef.get();
-    if (!snapshot.exists) throw new Error("Import job not found");
+    if (!snapshot.exists) throw new Error('Import job not found');
 
-    const job = { id: snapshot.id, ...(snapshot.data() as Omit<ImportJob, "id">) };
-    if (job.tenantId !== params.tenantId) throw new Error("Forbidden");
+    const job = { id: snapshot.id, ...(snapshot.data() as Omit<ImportJob, 'id'>) };
+    if (job.tenantId !== params.tenantId) throw new Error('Forbidden');
 
     const mappings = params.mappings && params.mappings.length ? params.mappings : job.mappings;
-    if (!mappings.length) throw new Error("Field mappings are required");
+    if (!mappings.length) throw new Error('Field mappings are required');
 
-    await jobRef.update({ status: "validating", updatedAt: new Date().toISOString(), mappings });
+    await jobRef.update({ status: 'validating', updatedAt: new Date().toISOString(), mappings });
 
     const rows = await this.parseJobFile(job as ImportJob);
     const schema = entitySchemas[job.entity];
@@ -315,7 +340,7 @@ export class BulkImportService {
           errors.push({
             row: rowNumber,
             field: mapping.destinationField,
-            code: "MISSING_REQUIRED",
+            code: 'MISSING_REQUIRED',
             message: `${mapping.destinationField} is required`,
           });
         }
@@ -326,8 +351,8 @@ export class BulkImportService {
         parsed.error.issues.forEach((issue) => {
           errors.push({
             row: rowNumber,
-            field: String(issue.path[0] || ""),
-            code: "VALIDATION",
+            field: String(issue.path[0] || ''),
+            code: 'VALIDATION',
             message: issue.message,
           });
         });
@@ -336,7 +361,12 @@ export class BulkImportService {
       if (duplicateField && mapped[duplicateField]) {
         const key = String(mapped[duplicateField]).toLowerCase();
         if (seen.has(key)) {
-          errors.push({ row: rowNumber, field: duplicateField, code: "DUPLICATE", message: `Duplicate ${duplicateField} in file` });
+          errors.push({
+            row: rowNumber,
+            field: duplicateField,
+            code: 'DUPLICATE',
+            message: `Duplicate ${duplicateField} in file`,
+          });
         }
         seen.add(key);
       }
@@ -351,22 +381,22 @@ export class BulkImportService {
         if (!chunk.length) continue;
         const existing = await adminDb
           .collection(job.entity)
-          .where("tenantId", "==", params.tenantId)
-          .where(duplicateField, "in", chunk)
+          .where('tenantId', '==', params.tenantId)
+          .where(duplicateField, 'in', chunk)
           .get();
         existing.docs.forEach((doc) => {
-          existingSet.add(String(doc.data()?.[duplicateField] || "").toLowerCase());
+          existingSet.add(String(doc.data()?.[duplicateField] || '').toLowerCase());
         });
       }
 
       rows.forEach((row, index) => {
         const mapped = this.mapRow(row, mappings);
-        const value = String(mapped[duplicateField] || "").toLowerCase();
+        const value = String(mapped[duplicateField] || '').toLowerCase();
         if (value && existingSet.has(value)) {
           errors.push({
             row: index + 2,
             field: duplicateField,
-            code: "DUPLICATE",
+            code: 'DUPLICATE',
             message: `${duplicateField} already exists`,
             value,
           });
@@ -375,7 +405,7 @@ export class BulkImportService {
     }
 
     await jobRef.update({
-      status: "validated",
+      status: 'validated',
       totalRows: rows.length,
       errors,
       updatedAt: new Date().toISOString(),
@@ -384,14 +414,19 @@ export class BulkImportService {
     return { totalRows: rows.length, errors };
   }
 
-  static async processJob(params: { jobId: string; tenantId: string; userId: string; rollbackOnCritical?: boolean }) {
+  static async processJob(params: {
+    jobId: string;
+    tenantId: string;
+    userId: string;
+    rollbackOnCritical?: boolean;
+  }) {
     const rollbackOnCritical = params.rollbackOnCritical ?? true;
-    const jobRef = adminDb.collection("importJobs").doc(params.jobId);
+    const jobRef = adminDb.collection('importJobs').doc(params.jobId);
     const snapshot = await jobRef.get();
-    if (!snapshot.exists) throw new Error("Import job not found");
-    const job = { id: snapshot.id, ...(snapshot.data() as Omit<ImportJob, "id">) } as ImportJob;
+    if (!snapshot.exists) throw new Error('Import job not found');
+    const job = { id: snapshot.id, ...(snapshot.data() as Omit<ImportJob, 'id'>) } as ImportJob;
 
-    if (job.tenantId !== params.tenantId) throw new Error("Forbidden");
+    if (job.tenantId !== params.tenantId) throw new Error('Forbidden');
 
     const rows = await this.parseJobFile(job);
     const schema = entitySchemas[job.entity];
@@ -400,7 +435,12 @@ export class BulkImportService {
     let inserted = 0;
     let duplicates = 0;
 
-    await jobRef.update({ status: "processing", processedRows: 0, progress: 0, updatedAt: new Date().toISOString() });
+    await jobRef.update({
+      status: 'processing',
+      processedRows: 0,
+      progress: 0,
+      updatedAt: new Date().toISOString(),
+    });
 
     try {
       for (let i = 0; i < rows.length; i += 1) {
@@ -410,7 +450,12 @@ export class BulkImportService {
 
         if (!parsed.success) {
           parsed.error.issues.forEach((issue) => {
-            errors.push({ row: rowNumber, field: String(issue.path[0] || ""), code: "VALIDATION", message: issue.message });
+            errors.push({
+              row: rowNumber,
+              field: String(issue.path[0] || ''),
+              code: 'VALIDATION',
+              message: issue.message,
+            });
           });
         } else {
           const duplicateField = duplicateFieldByEntity[job.entity];
@@ -419,20 +464,27 @@ export class BulkImportService {
           if (duplicateField && parsed.data[duplicateField]) {
             const existing = await adminDb
               .collection(job.entity)
-              .where("tenantId", "==", params.tenantId)
-              .where(duplicateField, "==", parsed.data[duplicateField])
+              .where('tenantId', '==', params.tenantId)
+              .where(duplicateField, '==', parsed.data[duplicateField])
               .limit(1)
               .get();
             if (!existing.empty) {
               duplicates += 1;
               isDuplicate = true;
-              errors.push({ row: rowNumber, field: duplicateField, code: "DUPLICATE", message: `${duplicateField} already exists` });
+              errors.push({
+                row: rowNumber,
+                field: duplicateField,
+                code: 'DUPLICATE',
+                message: `${duplicateField} already exists`,
+              });
             }
           }
 
           if (!isDuplicate) {
             const docRef = adminDb.collection(job.entity).doc();
-            await docRef.set(toEntityPayload(job.entity, parsed.data, params.tenantId, params.userId));
+            await docRef.set(
+              toEntityPayload(job.entity, parsed.data, params.tenantId, params.userId),
+            );
             insertedDocIds.push(docRef.id);
             inserted += 1;
           }
@@ -451,16 +503,16 @@ export class BulkImportService {
           await adminDb.collection(job.entity).doc(docId).delete();
         }
         await jobRef.update({
-          status: "rolled_back",
+          status: 'rolled_back',
           errors,
           summary: { inserted: 0, failed: errors.length, duplicates },
           updatedAt: new Date().toISOString(),
         });
-        return { status: "rolled_back", inserted: 0, errors, duplicates };
+        return { status: 'rolled_back', inserted: 0, errors, duplicates };
       }
 
       await jobRef.update({
-        status: "completed",
+        status: 'completed',
         errors,
         summary: { inserted, failed: errors.length, duplicates },
         processedRows: rows.length,
@@ -468,19 +520,19 @@ export class BulkImportService {
         updatedAt: new Date().toISOString(),
       });
 
-      return { status: "completed", inserted, errors, duplicates };
+      return { status: 'completed', inserted, errors, duplicates };
     } catch (error) {
       for (const docId of insertedDocIds) {
         await adminDb.collection(job.entity).doc(docId).delete();
       }
       await jobRef.update({
-        status: "failed",
+        status: 'failed',
         errors: [
           ...errors,
           {
             row: 0,
-            code: "SYSTEM",
-            message: error instanceof Error ? error.message : "Import failed",
+            code: 'SYSTEM',
+            message: error instanceof Error ? error.message : 'Import failed',
           },
         ],
         updatedAt: new Date().toISOString(),

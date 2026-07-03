@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useCallback, useRef } from "react";
-import React from "react";
-import toast from "react-hot-toast";
-import { toastError, toastSuccess } from "@/lib/toast";
+import { useCallback, useRef } from 'react';
+import React from 'react';
+import toast from 'react-hot-toast';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 type UpdateOptions<T> = {
   optimisticData: T[];
@@ -25,7 +25,7 @@ type DeleteOptions<T extends { id: string }> = {
 };
 
 export function useOptimisticUpdate<T extends { id: string }>(
-  setItems: React.Dispatch<React.SetStateAction<T[]>>
+  setItems: React.Dispatch<React.SetStateAction<T[]>>,
 ) {
   const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingDeletedItems = useRef<Map<string, T>>(new Map());
@@ -35,8 +35,8 @@ export function useOptimisticUpdate<T extends { id: string }>(
       optimisticData,
       mutation,
       rollbackData,
-      successMessage = "Saved successfully.",
-      errorMessage = "Unable to save changes.",
+      successMessage = 'Saved successfully.',
+      errorMessage = 'Unable to save changes.',
     }: UpdateOptions<T>) => {
       const previousSnapshot: T[] = rollbackData;
       setItems(optimisticData);
@@ -50,7 +50,7 @@ export function useOptimisticUpdate<T extends { id: string }>(
         throw error;
       }
     },
-    [setItems]
+    [setItems],
   );
 
   const executeOptimisticDelete = useCallback(
@@ -59,9 +59,9 @@ export function useOptimisticUpdate<T extends { id: string }>(
       previousData,
       optimisticData,
       mutation,
-      restoreMessage = "Delete canceled.",
-      successMessage = "Deleted successfully.",
-      errorMessage = "Unable to delete item.",
+      restoreMessage = 'Delete canceled.',
+      successMessage = 'Deleted successfully.',
+      errorMessage = 'Unable to delete item.',
       undoWindowMs = 5000,
     }: DeleteOptions<T>) => {
       const previousSnapshot = [...previousData];
@@ -81,32 +81,35 @@ export function useOptimisticUpdate<T extends { id: string }>(
         pendingDeletedItems.current.delete(item.id);
         setItems((current) => {
           const restored = [...current, deletedItem];
-          return previousSnapshot.map((snapshotItem) => restored.find((entry) => entry.id === snapshotItem.id) || snapshotItem);
+          return previousSnapshot.map(
+            (snapshotItem) =>
+              restored.find((entry) => entry.id === snapshotItem.id) || snapshotItem,
+          );
         });
         toastSuccess(restoreMessage);
       };
 
       const toastId = toast.custom((t) =>
         React.createElement(
-          "div",
+          'div',
           {
             className:
-              "flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900",
+              'flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900',
           },
-          React.createElement("span", null, "Item removed."),
+          React.createElement('span', null, 'Item removed.'),
           React.createElement(
-            "button",
+            'button',
             {
-              type: "button",
-              className: "font-semibold text-blue-600 dark:text-blue-400",
+              type: 'button',
+              className: 'font-semibold text-blue-600 dark:text-blue-400',
               onClick: () => {
                 toast.dismiss(t.id);
                 undoDelete();
               },
             },
-            "Undo"
-          )
-        )
+            'Undo',
+          ),
+        ),
       );
 
       const timer = setTimeout(async () => {
@@ -132,7 +135,7 @@ export function useOptimisticUpdate<T extends { id: string }>(
 
       pendingDeleteTimers.current.set(item.id, timer);
     },
-    [setItems]
+    [setItems],
   );
 
   return {

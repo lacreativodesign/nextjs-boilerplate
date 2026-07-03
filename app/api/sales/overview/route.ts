@@ -1,14 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import {
-  canWriteSales,
-  isSales,
-  normalizeStage,
-  requireSalesRead,
-  toISO,
-} from "../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { canWriteSales, isSales, normalizeStage, requireSalesRead, toISO } from '../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function isSameDay(dateA: Date, dateB: Date) {
   return (
@@ -37,26 +31,28 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const role = auth.user.role || "";
+    const role = auth.user.role || '';
     const isSalesRep = isSales(role);
-    const tenantId = auth.user.tenantId || "";
+    const tenantId = auth.user.tenantId || '';
 
     const leadsSnap = await adminDb
-      .collection("leads")
-      .where("tenantId", "==", tenantId)
-      .where("isDeleted", "==", false)
+      .collection('leads')
+      .where('tenantId', '==', tenantId)
+      .where('isDeleted', '==', false)
       .limit(1000)
       .get();
 
     const leads = leadsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
     const scopedLeads = isSalesRep
-      ? leads.filter((lead: any) => lead.ownerId === auth.user.uid || lead.createdById === auth.user.uid)
+      ? leads.filter(
+          (lead: any) => lead.ownerId === auth.user.uid || lead.createdById === auth.user.uid,
+        )
       : leads;
 
     const paymentsSnap = await adminDb
-      .collection("paymentRequests")
-      .where("tenantId", "==", tenantId)
-      .where("status", "==", "paid")
+      .collection('paymentRequests')
+      .where('tenantId', '==', tenantId)
+      .where('status', '==', 'paid')
       .limit(1000)
       .get();
 
@@ -82,27 +78,41 @@ export async function GET() {
 
     const closedWonRevenueMtd = closedWonPaymentsMtd.reduce(
       (sum: number, request: any) => sum + Number(request.amountUsd || 0),
-      0
+      0,
     );
 
-    const closedWonCount = scopedLeads.filter((lead: any) => String(lead.stage || "") === "Closed Won").length;
+    const closedWonCount = scopedLeads.filter(
+      (lead: any) => String(lead.stage || '') === 'Closed Won',
+    ).length;
     const totalLeads = scopedLeads.length;
-    const qualified = scopedLeads.filter((lead: any) => String(lead.stage || "") === "Qualified").length;
-    const activeDeals = scopedLeads.filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed")).length;
+    const qualified = scopedLeads.filter(
+      (lead: any) => String(lead.stage || '') === 'Qualified',
+    ).length;
+    const activeDeals = scopedLeads.filter(
+      (lead: any) =>
+        !String(lead.stage || '')
+          .toLowerCase()
+          .includes('closed'),
+    ).length;
     const followUpsDueToday = scopedLeads.filter((lead: any) => {
       const nextFollowUp = toISO(lead.nextFollowUpAt);
       if (!nextFollowUp) return false;
       return isSameDay(new Date(nextFollowUp), now);
     }).length;
     const pipelineValue = scopedLeads
-      .filter((lead: any) => !String(lead.stage || "").toLowerCase().includes("closed"))
+      .filter(
+        (lead: any) =>
+          !String(lead.stage || '')
+            .toLowerCase()
+            .includes('closed'),
+      )
       .reduce((sum: number, lead: any) => sum + Number(lead.expectedValueUsd || 0), 0);
     const conversionRate = totalLeads ? (closedWonCount / totalLeads) * 100 : 0;
     const aov = closedWonCount ? closedWonRevenueMtd / closedWonCount : 0;
 
     const stageMap = new Map<string, number>();
     scopedLeads.forEach((lead: any) => {
-      const stage = normalizeStage(lead.stage || "New Lead");
+      const stage = normalizeStage(lead.stage || 'New Lead');
       stageMap.set(stage, (stageMap.get(stage) || 0) + 1);
     });
 
@@ -114,7 +124,7 @@ export async function GET() {
       if (!updatedAt) return;
       const updated = new Date(updatedAt);
       if (updated < thirtyDaysAgo) return;
-      const disposition = String(lead.disposition || "Unspecified");
+      const disposition = String(lead.disposition || 'Unspecified');
       dispositionMap.set(disposition, (dispositionMap.get(disposition) || 0) + 1);
     });
 
@@ -130,20 +140,26 @@ export async function GET() {
     leads.forEach((lead: any) => leadMap.set(String(lead.id), lead));
     const revenueByOwner = new Map<string, number>();
     closedWonPaymentsMtd.forEach((request: any) => {
-      const lead = leadMap.get(String(request.leadId || ""));
-      const ownerId = String(lead?.ownerId || "");
+      const lead = leadMap.get(String(request.leadId || ''));
+      const ownerId = String(lead?.ownerId || '');
       if (!ownerId) return;
-      revenueByOwner.set(ownerId, (revenueByOwner.get(ownerId) || 0) + Number(request.amountUsd || 0));
+      revenueByOwner.set(
+        ownerId,
+        (revenueByOwner.get(ownerId) || 0) + Number(request.amountUsd || 0),
+      );
     });
     const topPerformerRevenueMtd = Math.max(0, ...Array.from(revenueByOwner.values()));
     const myRevenueMtd = revenueByOwner.get(auth.user.uid) || 0;
 
     const targetUsdMonthly = Number(
-      auth.user.targetUsdMonthly || auth.user.monthlyTargetUsd || auth.user.monthlyTarget || 0
+      auth.user.targetUsdMonthly || auth.user.monthlyTargetUsd || auth.user.monthlyTarget || 0,
     );
     const monthToDateRevenueUsd = closedWonRevenueMtd;
     const remainingTargetUsd = Math.max(targetUsdMonthly - monthToDateRevenueUsd, 0);
-    const remainingWorkingDays = getWorkingDaysRemaining(now, new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const remainingWorkingDays = getWorkingDaysRemaining(
+      now,
+      new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    );
     const requiredPerDayUsd = remainingTargetUsd / remainingWorkingDays;
 
     return NextResponse.json({
@@ -162,8 +178,14 @@ export async function GET() {
       },
       charts: {
         leadsByStage: Array.from(stageMap.entries()).map(([stage, count]) => ({ stage, count })),
-        leadsByDisposition: Array.from(dispositionMap.entries()).map(([disposition, count]) => ({ disposition, count })),
-        closedWonRevenueByDay: Array.from(revenueByDay.entries()).map(([day, value]) => ({ day, value })),
+        leadsByDisposition: Array.from(dispositionMap.entries()).map(([disposition, count]) => ({
+          disposition,
+          count,
+        })),
+        closedWonRevenueByDay: Array.from(revenueByDay.entries()).map(([day, value]) => ({
+          day,
+          value,
+        })),
       },
       targets: {
         targetUsdMonthly,
@@ -177,13 +199,13 @@ export async function GET() {
       },
     });
   } catch (err: any) {
-    console.error("sales overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('sales overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

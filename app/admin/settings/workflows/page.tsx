@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { SettingsAlert } from "../_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { SettingsAlert } from '../_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
 type WorkflowSettings = {
   projectStages: string[];
@@ -14,7 +14,7 @@ type WorkflowSettings = {
 };
 
 const DEFAULT_SETTINGS: WorkflowSettings = {
-  projectStages: ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"],
+  projectStages: ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'],
   slaDaysPerStage: {
     Kickoff: 3,
     Draft: 5,
@@ -40,18 +40,18 @@ export default function WorkflowSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await apiFetch("/api/admin/settings/workflows", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/settings/workflows', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have access to workflow settings.");
-        if (res.status === 401) throw new Error("Please sign in again to continue.");
-        throw new Error(data?.error || "Unable to load settings.");
+        if (res.status === 403) throw new Error('You do not have access to workflow settings.');
+        if (res.status === 401) throw new Error('Please sign in again to continue.');
+        throw new Error(data?.error || 'Unable to load settings.');
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
     } catch (err: any) {
-      console.error("workflow settings load error", err);
-      setError(err.message || "Unable to load workflow settings.");
+      console.error('workflow settings load error', err);
+      setError(err.message || 'Unable to load workflow settings.');
     } finally {
       setLoading(false);
     }
@@ -73,21 +73,22 @@ export default function WorkflowSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await apiFetch("/api/admin/settings/workflows", {
-        method: "PUT",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/settings/workflows', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have permission to edit workflow settings.");
-        throw new Error(data?.error || "Unable to save settings.");
+        if (res.status === 403)
+          throw new Error('You do not have permission to edit workflow settings.');
+        throw new Error(data?.error || 'Unable to save settings.');
       }
-      setSuccess("Workflow settings updated.");
+      setSuccess('Workflow settings updated.');
     } catch (err: any) {
-      console.error("workflow settings save error", err);
-      setError(err.message || "Unable to save workflow settings.");
+      console.error('workflow settings save error', err);
+      setError(err.message || 'Unable to save workflow settings.');
     } finally {
       setSaving(false);
     }
@@ -108,12 +109,17 @@ export default function WorkflowSettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Delivery Workflows</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
               SLA rules drive production health, overview KPIs, and delivery reporting.
             </p>
           </div>
-          <button className="btn" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
-            {saving ? "Saving..." : "Save Changes"}
+          <button
+            className="btn"
+            onClick={handleSave}
+            disabled={disabled}
+            style={{ borderRadius: 999 }}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
@@ -136,7 +142,7 @@ export default function WorkflowSettingsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               {settings.projectStages.map((stage) => (
                 <label key={stage} className="space-y-1">
-                  <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{stage}</div>
+                  <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>{stage}</div>
                   <input
                     className="input"
                     type="number"
@@ -159,7 +165,9 @@ export default function WorkflowSettingsPage() {
               type="number"
               min={0}
               value={settings.atRiskAfterDays}
-              onChange={(e) => setSettings((prev) => ({ ...prev, atRiskAfterDays: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, atRiskAfterDays: Number(e.target.value) }))
+              }
               disabled={disabled}
             />
           </label>
@@ -170,7 +178,9 @@ export default function WorkflowSettingsPage() {
               type="number"
               min={0}
               value={settings.overdueAfterDays}
-              onChange={(e) => setSettings((prev) => ({ ...prev, overdueAfterDays: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, overdueAfterDays: Number(e.target.value) }))
+              }
               disabled={disabled}
             />
           </label>

@@ -1,6 +1,6 @@
-export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded";
+export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded';
 
-export type PaymentMethod = "stripe_checkout" | "card" | "bank_transfer" | "manual";
+export type PaymentMethod = 'stripe_checkout' | 'card' | 'bank_transfer' | 'manual';
 
 export type PaymentRecord = {
   id: string;
@@ -37,7 +37,13 @@ export type PaymentIntentRecord = {
   stripeCheckoutSessionId: string;
   amountUsd: number;
   currency: string;
-  status: "requires_payment_method" | "requires_confirmation" | "requires_action" | "processing" | "succeeded" | "canceled";
+  status:
+    | 'requires_payment_method'
+    | 'requires_confirmation'
+    | 'requires_action'
+    | 'processing'
+    | 'succeeded'
+    | 'canceled';
   createdAt: unknown;
   updatedAt: unknown;
 };
@@ -52,8 +58,8 @@ export type PaymentRefundRecord = {
   stripePaymentIntentId: string;
   amountUsd: number;
   currency: string;
-  status: "pending" | "succeeded" | "failed" | "canceled";
-  reason: "duplicate" | "fraudulent" | "requested_by_customer" | "other";
+  status: 'pending' | 'succeeded' | 'failed' | 'canceled';
+  reason: 'duplicate' | 'fraudulent' | 'requested_by_customer' | 'other';
   createdByUid: string;
   createdAt: unknown;
   updatedAt: unknown;

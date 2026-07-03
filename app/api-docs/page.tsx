@@ -1,4 +1,4 @@
-import { SwaggerUi } from "@/components/docs/swagger-ui";
+import { SwaggerUi } from '@/components/docs/swagger-ui';
 
 /**
  * API documentation page backed by generated OpenAPI contracts.
@@ -13,8 +13,8 @@ export default function ApiDocsPage() {
       <SwaggerUi
         defaultVersion="v1"
         versions={[
-          { label: "v1 (current)", value: "v1" },
-          { label: "v2 (planned)", value: "v2" },
+          { label: 'v1 (current)', value: 'v1' },
+          { label: 'v2 (planned)', value: 'v2' },
         ]}
       />
     </main>

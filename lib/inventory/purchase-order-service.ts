@@ -1,8 +1,8 @@
-import * as admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { InventoryService } from "@/lib/inventory/inventory-service";
-import type { PurchaseOrder, PurchaseOrderItem } from "@/types/inventory";
+import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { InventoryService } from '@/lib/inventory/inventory-service';
+import type { PurchaseOrder, PurchaseOrderItem } from '@/types/inventory';
 
 export class PurchaseOrderService {
   static async createPurchaseOrder(params: {
@@ -25,11 +25,13 @@ export class PurchaseOrderService {
     const tax = subtotal * 0.1;
     const total = subtotal + tax;
 
-    const po: Omit<PurchaseOrder, "id"> = {
+    const po: Omit<PurchaseOrder, 'id'> = {
       tenantId: params.tenantId,
       poNumber,
       orderDate: Timestamp.fromDate(params.orderDate),
-      expectedDeliveryDate: params.expectedDeliveryDate ? Timestamp.fromDate(params.expectedDeliveryDate) : undefined,
+      expectedDeliveryDate: params.expectedDeliveryDate
+        ? Timestamp.fromDate(params.expectedDeliveryDate)
+        : undefined,
       supplierId: params.supplierId,
       supplierName: params.supplierName,
       warehouseId: params.warehouseId,
@@ -39,12 +41,12 @@ export class PurchaseOrderService {
       tax,
       shipping: 0,
       total,
-      currency: "USD",
-      status: "draft",
+      currency: 'USD',
+      status: 'draft',
       paymentTerms: params.paymentTerms,
-      paymentStatus: "unpaid",
+      paymentStatus: 'unpaid',
       paidAmount: 0,
-      receivingStatus: "pending",
+      receivingStatus: 'pending',
       receivedItems: 0,
       totalItems: params.items.reduce((sum, item) => sum + item.quantity, 0),
       createdBy: params.createdBy,
@@ -54,12 +56,15 @@ export class PurchaseOrderService {
       updatedAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("purchase_orders").add(po);
+    const docRef = await adminDb.collection('purchase_orders').add(po);
 
-    await adminDb.collection("suppliers").doc(params.supplierId).update({
-      totalOrders: admin.firestore.FieldValue.increment(1),
-      lastOrderDate: Timestamp.now(),
-    });
+    await adminDb
+      .collection('suppliers')
+      .doc(params.supplierId)
+      .update({
+        totalOrders: admin.firestore.FieldValue.increment(1),
+        lastOrderDate: Timestamp.now(),
+      });
 
     return docRef.id;
   }
@@ -75,19 +80,20 @@ export class PurchaseOrderService {
       quantityReceived: number;
     }>;
   }): Promise<void> {
-    const poDoc = await adminDb.collection("purchase_orders").doc(params.poId).get();
+    const poDoc = await adminDb.collection('purchase_orders').doc(params.poId).get();
     if (!poDoc.exists) {
-      throw new Error("Purchase order not found");
+      throw new Error('Purchase order not found');
     }
 
     const po = poDoc.data() as PurchaseOrder;
     if (po.tenantId !== params.tenantId) {
-      throw new Error("Cross-tenant access denied");
+      throw new Error('Cross-tenant access denied');
     }
 
     const updatedItems = po.items.map((item) => {
       const receivedItem = params.items.find(
-        (ri) => ri.productId === item.productId && (ri.variantId || null) === (item.variantId || null)
+        (ri) =>
+          ri.productId === item.productId && (ri.variantId || null) === (item.variantId || null),
       );
 
       if (!receivedItem) {
@@ -106,14 +112,15 @@ export class PurchaseOrderService {
     });
 
     const totalReceived = updatedItems.reduce((sum, item) => sum + (item.receivedQuantity || 0), 0);
-    const receivingStatus = totalReceived >= po.totalItems ? "received" : totalReceived > 0 ? "partial" : "pending";
+    const receivingStatus =
+      totalReceived >= po.totalItems ? 'received' : totalReceived > 0 ? 'partial' : 'pending';
 
     await poDoc.ref.update({
       items: updatedItems,
       receivedItems: totalReceived,
       receivingStatus,
-      status: receivingStatus === "received" ? "received" : po.status,
-      actualDeliveryDate: receivingStatus === "received" ? Timestamp.now() : po.actualDeliveryDate,
+      status: receivingStatus === 'received' ? 'received' : po.status,
+      actualDeliveryDate: receivingStatus === 'received' ? Timestamp.now() : po.actualDeliveryDate,
       updatedAt: Timestamp.now(),
     });
 
@@ -128,9 +135,9 @@ export class PurchaseOrderService {
         variantId: receivedItem.variantId,
         warehouseId: po.warehouseId,
         quantityChange: receivedItem.quantityReceived,
-        type: "increase",
-        reason: "Purchase order received",
-        referenceType: "purchase_order",
+        type: 'increase',
+        reason: 'Purchase order received',
+        referenceType: 'purchase_order',
         referenceId: params.poId,
         userId: params.userId,
         userName: params.userName,
@@ -141,19 +148,19 @@ export class PurchaseOrderService {
 
   static async generatePONumber(tenantId: string): Promise<string> {
     const snapshot = await adminDb
-      .collection("purchase_orders")
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc")
+      .collection('purchase_orders')
+      .where('tenantId', '==', tenantId)
+      .orderBy('createdAt', 'desc')
       .limit(1)
       .get();
 
     if (snapshot.empty) {
-      return "PO-0001";
+      return 'PO-0001';
     }
 
     const lastPO = snapshot.docs[0].data() as PurchaseOrder;
-    const lastNumber = Number.parseInt(lastPO.poNumber.split("-")[1] || "0", 10);
-    const nextNumber = (lastNumber + 1).toString().padStart(4, "0");
+    const lastNumber = Number.parseInt(lastPO.poNumber.split('-')[1] || '0', 10);
+    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
 
     return `PO-${nextNumber}`;
   }

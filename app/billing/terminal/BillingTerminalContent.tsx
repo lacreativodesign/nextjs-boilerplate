@@ -379,8 +379,7 @@ export function BillingTerminalContent({ showShell = true }: { showShell?: boole
                       }}
                       labelFormatter={(label, payload: Array<Payload<ValueType, string>>) => {
                         const row = payload?.[0]?.payload as
-                          | { revenue: number; fees: number; count: number }
-                          | undefined;
+                          { revenue: number; fees: number; count: number } | undefined;
                         if (!row) return label;
                         return `${label} • Net: ${formatMoney(row.revenue - row.fees)} • Transactions: ${row.count}`;
                       }}

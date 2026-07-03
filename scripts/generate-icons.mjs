@@ -1,9 +1,9 @@
-import { createCanvas } from "canvas";
-import { writeFileSync } from "fs";
+import { createCanvas } from 'canvas';
+import { writeFileSync } from 'fs';
 
 function renderLogo(size) {
   const canvas = createCanvas(size, size);
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d');
   const r = Math.max(1, Math.round(size * 0.046));
 
   // Rounded rect clip
@@ -22,21 +22,21 @@ function renderLogo(size) {
 
   // Gradient fill
   const grad = ctx.createLinearGradient(0, 0, 0, size);
-  grad.addColorStop(0, "#012167");
-  grad.addColorStop(1, "#6692f9");
+  grad.addColorStop(0, '#012167');
+  grad.addColorStop(1, '#6692f9');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
 
   // B letter
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = '#ffffff';
   ctx.font = `700 ${Math.round(size * 0.645)}px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("B", size / 2, size / 2 + size * 0.02);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('B', size / 2, size / 2 + size * 0.02);
 
-  return canvas.toBuffer("image/png");
+  return canvas.toBuffer('image/png');
 }
 
-writeFileSync("public/icons/icon-32.png",  renderLogo(32));
-writeFileSync("public/icons/icon-180.png", renderLogo(180));
-console.log("Icons generated.");
+writeFileSync('public/icons/icon-32.png', renderLogo(32));
+writeFileSync('public/icons/icon-180.png', renderLogo(180));
+console.log('Icons generated.');

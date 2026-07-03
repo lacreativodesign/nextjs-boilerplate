@@ -1,6 +1,6 @@
-"use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 type KPIs = {
   assigned: number;
@@ -25,37 +25,34 @@ export default function ProductionPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/production/overview", { credentials: "include" })
+    fetch('/api/production/overview', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
         if (d.ok) {
           setKpis(d.kpis);
           setQueue(d.myQueueTop10 ?? []);
         } else {
-          setError(d.error || "Failed to load");
+          setError(d.error || 'Failed to load');
         }
       })
-      .catch(() => setError("Network error"))
+      .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
   }, []);
 
   const fmt = (n: number) => n.toLocaleString();
 
   const cards = [
-    { label: "Assigned", value: kpis ? fmt(kpis.assigned) : "—" },
-    { label: "Active", value: kpis ? fmt(kpis.active) : "—" },
-    { label: "Due Soon", value: kpis ? fmt(kpis.dueSoon) : "—" },
-    { label: "QA Queue", value: kpis ? fmt(kpis.qaQueue) : "—" },
+    { label: 'Assigned', value: kpis ? fmt(kpis.assigned) : '—' },
+    { label: 'Active', value: kpis ? fmt(kpis.active) : '—' },
+    { label: 'Due Soon', value: kpis ? fmt(kpis.dueSoon) : '—' },
+    { label: 'QA Queue', value: kpis ? fmt(kpis.qaQueue) : '—' },
   ];
 
   const stageColor: Record<string, string> = {
-    Draft:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-    Review: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    Revisions:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-    Final:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    Draft: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    Review: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    Revisions: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+    Final: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   };
 
   return (
@@ -88,24 +85,19 @@ export default function ProductionPage() {
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">
             {queue.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-4 px-5 py-3"
-              >
+              <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                    {item.projectName || "Untitled"}
+                    {item.projectName || 'Untitled'}
                   </p>
-                  <p className="truncate text-xs text-[var(--text-muted)]">
-                    {item.clientName}
-                  </p>
+                  <p className="truncate text-xs text-[var(--text-muted)]">{item.clientName}</p>
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   {item.stage && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         stageColor[item.stage] ??
-                        "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                        'bg-[var(--surface-muted)] text-[var(--text-muted)]'
                       }`}
                     >
                       {item.stage}
@@ -126,14 +118,14 @@ export default function ProductionPage() {
       {/* Module Links */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: "Jobs", href: "/production/jobs", desc: "Active job queue." },
+          { title: 'Jobs', href: '/production/jobs', desc: 'Active job queue.' },
           {
-            title: "Workload",
-            href: "/production/workload",
-            desc: "Team capacity.",
+            title: 'Workload',
+            href: '/production/workload',
+            desc: 'Team capacity.',
           },
-          { title: "QA", href: "/production/qa", desc: "Quality review." },
-          { title: "Files", href: "/production/files", desc: "Deliverables." },
+          { title: 'QA', href: '/production/qa', desc: 'Quality review.' },
+          { title: 'Files', href: '/production/files', desc: 'Deliverables.' },
         ].map((i) => (
           <Link
             key={i.href}

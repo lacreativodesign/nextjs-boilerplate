@@ -41,13 +41,18 @@ export async function POST(req: NextRequest) {
     const payload: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
-    if (typeof body.allowPublicSignup === 'boolean') payload.allowPublicSignup = body.allowPublicSignup;
+    if (typeof body.allowPublicSignup === 'boolean')
+      payload.allowPublicSignup = body.allowPublicSignup;
     if (typeof body.maintenanceMode === 'boolean') payload.maintenanceMode = body.maintenanceMode;
-    if (typeof body.announcementEnabled === 'boolean') payload.announcementEnabled = body.announcementEnabled;
-    if (typeof body.maintenanceMessage === 'string') payload.maintenanceMessage = body.maintenanceMessage.trim();
-    if (typeof body.announcementMessage === 'string') payload.announcementMessage = body.announcementMessage.trim();
+    if (typeof body.announcementEnabled === 'boolean')
+      payload.announcementEnabled = body.announcementEnabled;
+    if (typeof body.maintenanceMessage === 'string')
+      payload.maintenanceMessage = body.maintenanceMessage.trim();
+    if (typeof body.announcementMessage === 'string')
+      payload.announcementMessage = body.announcementMessage.trim();
     if (typeof body.announcementType === 'string') payload.announcementType = body.announcementType;
-    if (typeof body.defaultTrialDays === 'number') payload.defaultTrialDays = Math.max(1, Math.min(90, body.defaultTrialDays));
+    if (typeof body.defaultTrialDays === 'number')
+      payload.defaultTrialDays = Math.max(1, Math.min(90, body.defaultTrialDays));
     if (typeof body.supportEmail === 'string') payload.supportEmail = body.supportEmail.trim();
     if (typeof body.platformName === 'string') payload.platformName = body.platformName.trim();
     await adminDb.collection('settings').doc('platform').set(payload, { merge: true });

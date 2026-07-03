@@ -67,6 +67,9 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, message: 'Billing address updated' });
   } catch (error) {
     console.error('[BILLING] Failed to update billing address', error);
-    return NextResponse.json({ ok: false, error: 'Unable to update billing address' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'Unable to update billing address' },
+      { status: 500 },
+    );
   }
 }

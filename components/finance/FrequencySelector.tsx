@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { RecurrenceFrequency } from "@/lib/finance/recurring";
+import { RecurrenceFrequency } from '@/lib/finance/recurring';
 
 interface FrequencySelectorProps {
   frequency: RecurrenceFrequency;
@@ -27,15 +27,18 @@ export function FrequencySelector({
   onDayOfWeekChange,
   onCustomDaysChange,
 }: FrequencySelectorProps) {
-  const showDayOfMonth = frequency === "monthly" || frequency === "quarterly" || frequency === "yearly";
-  const showDayOfWeek = frequency === "weekly";
-  const showCustomDays = frequency === "custom";
+  const showDayOfMonth =
+    frequency === 'monthly' || frequency === 'quarterly' || frequency === 'yearly';
+  const showDayOfWeek = frequency === 'weekly';
+  const showCustomDays = frequency === 'custom';
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Frequency</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Frequency
+          </label>
           <select
             value={frequency}
             onChange={(e) => onFrequencyChange(e.target.value as RecurrenceFrequency)}
@@ -50,9 +53,11 @@ export function FrequencySelector({
           </select>
         </div>
 
-        {frequency !== "custom" ? (
+        {frequency !== 'custom' ? (
           <div>
-            <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Every</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+              Every
+            </label>
             <input
               type="number"
               min="1"
@@ -66,14 +71,18 @@ export function FrequencySelector({
 
       {showDayOfMonth ? (
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Day of Month (1-31)</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Day of Month (1-31)
+          </label>
           <input
             type="number"
             min="1"
             max="31"
-            value={dayOfMonth ?? ""}
+            value={dayOfMonth ?? ''}
             placeholder="Leave empty for current day"
-            onChange={(e) => onDayOfMonthChange(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)}
+            onChange={(e) =>
+              onDayOfMonthChange(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)
+            }
             className="input"
           />
         </div>
@@ -81,10 +90,14 @@ export function FrequencySelector({
 
       {showDayOfWeek ? (
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Day of Week</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Day of Week
+          </label>
           <select
-            value={dayOfWeek !== undefined ? dayOfWeek : ""}
-            onChange={(e) => onDayOfWeekChange(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)}
+            value={dayOfWeek !== undefined ? dayOfWeek : ''}
+            onChange={(e) =>
+              onDayOfWeekChange(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)
+            }
             className="input"
           >
             <option value="">Any day</option>
@@ -101,13 +114,17 @@ export function FrequencySelector({
 
       {showCustomDays ? (
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Custom Days Interval</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Custom Days Interval
+          </label>
           <input
             type="number"
             min="1"
-            value={customDays ?? ""}
+            value={customDays ?? ''}
             placeholder="e.g. every 45 days"
-            onChange={(e) => onCustomDaysChange?.(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)}
+            onChange={(e) =>
+              onCustomDaysChange?.(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)
+            }
             className="input"
           />
         </div>

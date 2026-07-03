@@ -1,38 +1,42 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../../_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { checkRateLimit } from "@/lib/security";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, isAdminRole } from '../../_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { checkRateLimit } from '@/lib/security';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
     const current = await getCurrentUser();
-    if (!current || (!isAdminRole(current.role) && current.role !== "super_admin")) {
-      throw new AppError({ message: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
+    if (!current || (!isAdminRole(current.role) && current.role !== 'super_admin')) {
+      throw new AppError({ message: 'Unauthorized', code: 'UNAUTHORIZED', status: 401 });
     }
 
-    await checkRateLimit(req, "relaxed", current.uid);
+    await checkRateLimit(req, 'relaxed', current.uid);
 
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "500"), 500);
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '500'), 500);
 
     // Single-field where() needs no composite index — orderBy is done in JS below
     const snap = await adminDb
-      .collection("users")
-      .where("tenantId", "==", current.tenantId)
+      .collection('users')
+      .where('tenantId', '==', current.tenantId)
       .limit(limit)
       .get();
 
     const list = snap.docs
       .map((d) => ({ uid: d.id, ...d.data() }))
       .sort((a: any, b: any) => {
-        const aTime = typeof a.createdAt === "number" ? a.createdAt : (a.createdAt?.toMillis?.() ?? 0);
-        const bTime = typeof b.createdAt === "number" ? b.createdAt : (b.createdAt?.toMillis?.() ?? 0);
+        const aTime =
+          typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt?.toMillis?.() ?? 0);
+        const bTime =
+          typeof b.createdAt === 'number' ? b.createdAt : (b.createdAt?.toMillis?.() ?? 0);
         return bTime - aTime;
       });
 
-    const identifiers = list.map((user: any) => ({ uid: user.uid })).filter((item: any) => Boolean(item.uid));
+    const identifiers = list
+      .map((user: any) => ({ uid: user.uid }))
+      .filter((item: any) => Boolean(item.uid));
     const mfaMap = new Map<string, boolean>();
 
     if (identifiers.length) {
@@ -49,7 +53,7 @@ export async function GET(req: NextRequest) {
           });
         }
       } catch (mfaError) {
-        console.warn("MFA lookup failed, returning users without MFA data:", mfaError);
+        console.warn('MFA lookup failed, returning users without MFA data:', mfaError);
       }
     }
 
@@ -63,11 +67,11 @@ export async function GET(req: NextRequest) {
       pagination: { hasMore: false, nextCursor: null },
     });
   } catch (e) {
-    console.error("Error list users:", e);
+    console.error('Error list users:', e);
     const { status, body } = resolveErrorResponse(e, {
-      fallbackMessage: "Unable to list users.",
-      fallbackCode: "INTERNAL_SERVER_ERROR",
-      requestId: req.headers.get("x-request-id") || undefined,
+      fallbackMessage: 'Unable to list users.',
+      fallbackCode: 'INTERNAL_SERVER_ERROR',
+      requestId: req.headers.get('x-request-id') || undefined,
     });
     return NextResponse.json(body, { status });
   }

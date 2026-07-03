@@ -22,7 +22,10 @@ export async function POST() {
     const tenant = snap.data();
 
     if (!tenant?.stripeCustomerId) {
-      return NextResponse.json({ ok: false, error: 'No billing account found. Please subscribe to a plan first.' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'No billing account found. Please subscribe to a plan first.' },
+        { status: 400 },
+      );
     }
 
     const stripe = getStripeClient();
@@ -37,6 +40,9 @@ export async function POST() {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[BILLING] Portal session error:', message);
-    return NextResponse.json({ ok: false, error: 'Failed to open billing portal' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to open billing portal' },
+      { status: 500 },
+    );
   }
 }

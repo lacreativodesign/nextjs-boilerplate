@@ -1,48 +1,37 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
 export type NotificationType =
-  | "info"
-  | "success"
-  | "warning"
-  | "error"
-  | "action_required"
-  | "reminder";
+  'info' | 'success' | 'warning' | 'error' | 'action_required' | 'reminder';
 
 export type NotificationCategory =
-  | "system"
-  | "financial"
-  | "sales"
-  | "operations"
-  | "security"
-  | "team"
-  | "custom";
+  'system' | 'financial' | 'sales' | 'operations' | 'security' | 'team' | 'custom';
 
-export type NotificationChannel = "in_app" | "email" | "sms" | "webhook";
+export type NotificationChannel = 'in_app' | 'email' | 'sms' | 'webhook';
 
 export type UserNotificationEventType =
-  | "invoice_sent"
-  | "invoice_paid"
-  | "invoice_overdue"
-  | "task_assigned"
-  | "task_due_soon"
-  | "task_completed"
-  | "project_status_changed"
-  | "project_milestone_reached"
-  | "approval_pending"
-  | "approval_approved"
-  | "approval_rejected"
-  | "leave_request_submitted"
-  | "leave_request_approved"
-  | "system_maintenance"
-  | "system_updates";
+  | 'invoice_sent'
+  | 'invoice_paid'
+  | 'invoice_overdue'
+  | 'task_assigned'
+  | 'task_due_soon'
+  | 'task_completed'
+  | 'project_status_changed'
+  | 'project_milestone_reached'
+  | 'approval_pending'
+  | 'approval_approved'
+  | 'approval_rejected'
+  | 'leave_request_submitted'
+  | 'leave_request_approved'
+  | 'system_maintenance'
+  | 'system_updates';
 
-export type NotificationFrequency = "instant" | "hourly" | "daily" | "weekly";
+export type NotificationFrequency = 'instant' | 'hourly' | 'daily' | 'weekly';
 
 export type NotificationDeliveryStatus = {
-  inApp: "pending" | "delivered" | "failed";
-  email?: "pending" | "sent" | "delivered" | "failed";
-  sms?: "pending" | "sent" | "delivered" | "failed";
-  webhook?: "pending" | "sent" | "delivered" | "failed";
+  inApp: 'pending' | 'delivered' | 'failed';
+  email?: 'pending' | 'sent' | 'delivered' | 'failed';
+  sms?: 'pending' | 'sent' | 'delivered' | 'failed';
+  webhook?: 'pending' | 'sent' | 'delivered' | 'failed';
 };
 
 export interface Notification {
@@ -55,7 +44,7 @@ export interface Notification {
   message: string;
   actionUrl?: string;
   actionLabel?: string;
-  priority: "low" | "medium" | "high" | "urgent";
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   category: NotificationCategory;
   relatedResourceType?: string;
   relatedResourceId?: string;
@@ -83,7 +72,7 @@ export interface NotificationPreferences {
     [category in NotificationCategory]: {
       enabled: boolean;
       channels: NotificationChannel[];
-      minPriority?: "low" | "medium" | "high" | "urgent";
+      minPriority?: 'low' | 'medium' | 'high' | 'urgent';
     };
   };
   quietHours?: {
@@ -94,7 +83,7 @@ export interface NotificationPreferences {
   };
   emailDigest?: {
     enabled: boolean;
-    frequency: "daily" | "weekly";
+    frequency: 'daily' | 'weekly';
     time: string;
   };
   updatedAt: Timestamp;
@@ -102,7 +91,7 @@ export interface NotificationPreferences {
 
 export type NotificationEventPreference = {
   enabled: boolean;
-  channels: Array<Exclude<NotificationChannel, "webhook"> | "push">;
+  channels: Array<Exclude<NotificationChannel, 'webhook'> | 'push'>;
   frequency: NotificationFrequency;
 };
 
@@ -119,7 +108,7 @@ export type UserNotificationPreferences = {
   eventPreferences: Record<UserNotificationEventType, NotificationEventPreference>;
   digest: {
     enabled: boolean;
-    frequencies: Array<"daily" | "weekly">;
+    frequencies: Array<'daily' | 'weekly'>;
     dailySendTime: string;
     weeklySendDay: 0 | 1 | 2 | 3 | 4 | 5 | 6;
     weeklySendTime: string;
@@ -144,11 +133,11 @@ export type NotificationDigestItem = {
   message: string;
   actionUrl?: string;
   actionLabel?: string;
-  channels: Array<Exclude<NotificationChannel, "webhook"> | "push">;
+  channels: Array<Exclude<NotificationChannel, 'webhook'> | 'push'>;
   metadata?: Record<string, unknown>;
   createdAt: Timestamp;
   scheduledFor: Timestamp;
-  frequency: Extract<NotificationFrequency, "daily" | "weekly" | "hourly">;
+  frequency: Extract<NotificationFrequency, 'daily' | 'weekly' | 'hourly'>;
 };
 
 export interface NotificationTemplate {
@@ -173,7 +162,7 @@ export interface NotificationTemplate {
       message: string;
     };
   };
-  defaultPriority: "low" | "medium" | "high" | "urgent";
+  defaultPriority: 'low' | 'medium' | 'high' | 'urgent';
   defaultChannels: NotificationChannel[];
   createdAt: Timestamp;
   updatedAt: Timestamp;

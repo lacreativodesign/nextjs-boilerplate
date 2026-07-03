@@ -1,11 +1,11 @@
-import React from "react";
-import { LoadingSpinner } from "./LoadingSpinner";
+import React from 'react';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface PageLoaderProps {
   message?: string;
 }
 
-export function PageLoader({ message = "Loading..." }: PageLoaderProps) {
+export function PageLoader({ message = 'Loading...' }: PageLoaderProps) {
   return (
     <div className="flex min-h-[400px] items-center justify-center">
       <LoadingSpinner size="lg" label={message} />

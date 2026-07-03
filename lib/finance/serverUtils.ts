@@ -1,10 +1,10 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -14,7 +14,7 @@ export function parseNumber(value: any, fallback = 0) {
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: any, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
@@ -44,7 +44,7 @@ export async function createFinanceEvent({
   metadata?: Record<string, unknown>;
   tenantId?: string | null;
 }) {
-  await adminDb.collection("events").add({
+  await adminDb.collection('events').add({
     type,
     title,
     description,
@@ -74,13 +74,13 @@ export async function queueFinanceEmail({
   metadata?: Record<string, unknown>;
   tenantId?: string | null;
 }) {
-  await adminDb.collection("emails").add({
+  await adminDb.collection('emails').add({
     to,
     template,
     subject,
     data: data || {},
     metadata: metadata || {},
-    status: "pending",
+    status: 'pending',
     tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

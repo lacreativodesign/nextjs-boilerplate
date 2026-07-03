@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId } from "@/lib/tenant";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId } from '@/lib/tenant';
 import {
   createSalesEvent,
   getWatcherUserIds,
@@ -9,9 +9,9 @@ import {
   requireSalesWrite,
   serverTimestamp,
   userLabel,
-} from "../../_utils";
+} from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -21,29 +21,29 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const id = parseString(payload.id, "");
+    const id = parseString(payload.id, '');
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Campaign id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Campaign id is required.' }, { status: 400 });
     }
 
-    const docRef = adminDb.collection("campaigns").doc(id);
+    const docRef = adminDb.collection('campaigns').doc(id);
     const snapshot = await docRef.get();
     if (!snapshot.exists) {
-      return NextResponse.json({ ok: false, error: "Campaign not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Campaign not found.' }, { status: 404 });
     }
 
     const existing = snapshot.data() || {};
-    if (auth.user.role !== "super_admin" && docTenantId(existing) !== (auth.user.tenantId || "")) {
-      return NextResponse.json({ ok: false, error: "Campaign not found." }, { status: 404 });
+    if (auth.user.role !== 'super_admin' && docTenantId(existing) !== (auth.user.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Campaign not found.' }, { status: 404 });
     }
 
-    if (auth.user.role === "sales" && existing.createdBy !== auth.user.uid) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (auth.user.role === 'sales' && existing.createdBy !== auth.user.uid) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const name = parseString(payload.name, existing.name || "");
-    const channel = parseString(payload.channel, existing.channel || "");
-    const status = parseString(payload.status, existing.status || "Active");
+    const name = parseString(payload.name, existing.name || '');
+    const channel = parseString(payload.channel, existing.channel || '');
+    const status = parseString(payload.status, existing.status || 'Active');
 
     await docRef.set(
       {
@@ -54,14 +54,14 @@ export async function POST(req: Request) {
         updatedAt: serverTimestamp(),
         updatedBy: auth.user.uid,
       },
-      { merge: true }
+      { merge: true },
     );
 
     await createSalesEvent({
-      type: "campaign_updated",
-      title: "Campaign updated",
-      description: `${name || "Campaign"} updated`,
-      entityType: "campaign",
+      type: 'campaign_updated',
+      title: 'Campaign updated',
+      description: `${name || 'Campaign'} updated`,
+      entityType: 'campaign',
       entityId: id,
       createdByUid: auth.user.uid,
       createdByName: userLabel(auth.user),
@@ -70,17 +70,17 @@ export async function POST(req: Request) {
     const watchers = await getWatcherUserIds();
     await notifyUsers({
       userIds: watchers,
-      title: "Campaign updated",
-      body: `${name || "Campaign"} status changed to ${status}.`,
-      deepLink: "/sales/campaigns",
-      entityType: "campaign",
+      title: 'Campaign updated',
+      body: `${name || 'Campaign'} status changed to ${status}.`,
+      deepLink: '/sales/campaigns',
+      entityType: 'campaign',
       entityId: id,
       createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
     });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("sales campaigns update error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to update campaign." }, { status: 500 });
+    console.error('sales campaigns update error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to update campaign.' }, { status: 500 });
   }
 }

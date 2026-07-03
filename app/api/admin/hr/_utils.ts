@@ -1,15 +1,15 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, normalizeRole } from "../_utils";
-import { createNotification } from "@/lib/notifications";
-import { isPlanAccessError, requireModule } from "../../../lib/plan-enforcement";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, normalizeRole } from '../_utils';
+import { createNotification } from '@/lib/notifications';
+import { isPlanAccessError, requireModule } from '../../../lib/plan-enforcement';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export function toIso(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -19,12 +19,12 @@ export function serverTimestamp() {
 }
 
 export function isAdminLike(role?: string) {
-  const normalized = normalizeRole(role || "");
-  return normalized === "admin" || normalized === "super_admin";
+  const normalized = normalizeRole(role || '');
+  return normalized === 'admin' || normalized === 'super_admin';
 }
 
 export function isHrRole(role?: string) {
-  return normalizeRole(role || "") === "hr";
+  return normalizeRole(role || '') === 'hr';
 }
 
 export function canAccessHr(role?: string) {
@@ -33,15 +33,15 @@ export function canAccessHr(role?: string) {
 
 export async function requireHrAccess() {
   const me = await getCurrentUser();
-  if (!me) return { ok: false as const, status: 401, error: "Unauthorized" };
-  if (!canAccessHr(me.role)) return { ok: false as const, status: 403, error: "Forbidden" };
+  if (!me) return { ok: false as const, status: 401, error: 'Unauthorized' };
+  if (!canAccessHr(me.role)) return { ok: false as const, status: 403, error: 'Forbidden' };
   try {
-    await requireModule(me.tenantId, "hr", { role: me.role });
+    await requireModule(me.tenantId, 'hr', { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };
     }
-    return { ok: false as const, status: 500, error: "Unable to validate plan access." };
+    return { ok: false as const, status: 500, error: 'Unable to validate plan access.' };
   }
   return { ok: true as const, user: me };
 }
@@ -65,7 +65,7 @@ export async function createHrEvent({
   createdByName?: string;
   metadata?: Record<string, unknown>;
 }) {
-  await adminDb.collection("events").add({
+  await adminDb.collection('events').add({
     type,
     title,
     description,
@@ -96,19 +96,19 @@ export async function createHrNotification({
   deepLink?: string;
   createdBy?: { uid?: string; name?: string };
 }) {
-  const allowedTypes = ["info", "warning", "success", "system"];
+  const allowedTypes = ['info', 'warning', 'success', 'system'];
   const normalizedType = allowedTypes.includes(type)
-    ? (type as "info" | "warning" | "success" | "system")
-    : type.includes("completed")
-    ? "success"
-    : "info";
+    ? (type as 'info' | 'warning' | 'success' | 'system')
+    : type.includes('completed')
+      ? 'success'
+      : 'info';
 
   await createNotification({
     toUserId: userId,
     title,
     body: message,
     type: normalizedType,
-    entityType: "hr",
+    entityType: 'hr',
     entityId: entityId || null,
     deepLink: deepLink || null,
     createdBy: createdBy || null,
@@ -128,13 +128,13 @@ export async function queueHrEmail({
   data?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }) {
-  await adminDb.collection("emails").add({
+  await adminDb.collection('emails').add({
     to,
     subject,
     template,
     data: data || {},
     metadata: metadata || {},
-    status: "pending",
+    status: 'pending',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

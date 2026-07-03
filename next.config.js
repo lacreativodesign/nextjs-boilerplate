@@ -40,12 +40,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: [
-      'lodash-es',
-      'recharts',
-      'lucide-react',
-      '@heroicons/react',
-    ],
+    optimizePackageImports: ['lodash-es', 'recharts', 'lucide-react', '@heroicons/react'],
     instrumentationHook: true,
   },
   async headers() {
@@ -96,12 +91,8 @@ const sentryWebpackPluginOptions = {
   disableLogger: true,
 };
 
-module.exports = withSentryConfig(
-  withBundleAnalyzer(nextConfig),
-  sentryWebpackPluginOptions,
-  {
-    hideSourceMaps: true,
-    disableLogger: true,
-    tunnelRoute: '/monitoring',
-  },
-);
+module.exports = withSentryConfig(withBundleAnalyzer(nextConfig), sentryWebpackPluginOptions, {
+  hideSourceMaps: true,
+  disableLogger: true,
+  tunnelRoute: '/monitoring',
+});

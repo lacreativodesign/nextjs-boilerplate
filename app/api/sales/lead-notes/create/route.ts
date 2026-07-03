@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logEvent } from "@/lib/audit";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { parseString, requireSalesWrite, serverTimestamp, userLabel } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logEvent } from '@/lib/audit';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { parseString, requireSalesWrite, serverTimestamp, userLabel } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -14,35 +14,42 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const leadId = parseString(body.leadId, "");
-    const noteBody = parseString(body.body, "").trim();
+    const leadId = parseString(body.leadId, '');
+    const noteBody = parseString(body.body, '').trim();
     if (!leadId || !noteBody) {
-      return NextResponse.json({ ok: false, error: "Lead and note body are required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Lead and note body are required.' },
+        { status: 400 },
+      );
     }
 
-    const leadSnap = await adminDb.collection("leads").doc(leadId).get();
+    const leadSnap = await adminDb.collection('leads').doc(leadId).get();
     if (!leadSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Lead not found.' }, { status: 404 });
     }
     const lead = leadSnap.data() || {};
     if (!auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
     const tenantId = normalizeTenantId(auth.user.tenantId);
     if (docTenantId(lead) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
-    if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid && lead.ownerUid !== auth.user.uid) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (
+      auth.user.role === 'sales' &&
+      lead.ownerId !== auth.user.uid &&
+      lead.ownerUid !== auth.user.uid
+    ) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const ref = adminDb.collection("leadNotes").doc();
+    const ref = adminDb.collection('leadNotes').doc();
     await ref.set({
       id: ref.id,
       tenantId,
       leadId,
       authorUserId: auth.user.uid,
-      authorRole: auth.user.role || "",
+      authorRole: auth.user.role || '',
       authorName: userLabel(auth.user),
       body: noteBody,
       createdAt: serverTimestamp(),
@@ -50,10 +57,10 @@ export async function POST(req: Request) {
 
     await logEvent({
       tenantId,
-      type: "lead.note_added",
-      title: "Lead note added",
+      type: 'lead.note_added',
+      title: 'Lead note added',
       description: `Note added to lead ${leadId}.`,
-      entityType: "lead",
+      entityType: 'lead',
       entityId: leadId,
       actor: { uid: auth.user.uid, name: userLabel(auth.user) },
       metadata: { noteId: ref.id },
@@ -61,7 +68,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err) {
-    console.error("lead notes create error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to save note." }, { status: 500 });
+    console.error('lead notes create error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to save note.' }, { status: 500 });
   }
 }

@@ -1,8 +1,14 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createSalesEvent, parseNumber, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  createSalesEvent,
+  parseNumber,
+  parseString,
+  requireAdmin,
+  serverTimestamp,
+} from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -12,13 +18,13 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const name = parseString(payload.name, "");
-    const channel = parseString(payload.channel, "");
+    const name = parseString(payload.name, '');
+    const channel = parseString(payload.channel, '');
     const leadsCount = parseNumber(payload.leadsCount, 0);
     const dealsCount = parseNumber(payload.dealsCount, 0);
     const revenueUsd = parseNumber(payload.revenueUsd, 0);
 
-    const docRef = await adminDb.collection("campaigns").add({
+    const docRef = await adminDb.collection('campaigns').add({
       name,
       channel,
       leadsCount,
@@ -32,19 +38,19 @@ export async function POST(req: Request) {
     });
 
     await createSalesEvent({
-      type: "campaign_created",
-      title: "Campaign created",
-      description: `${name || "Campaign"} created`,
-      entityType: "campaign",
+      type: 'campaign_created',
+      title: 'Campaign created',
+      description: `${name || 'Campaign'} created`,
+      entityType: 'campaign',
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: auth.user.name || auth.user.fullName || '',
       tenantId: auth.user.tenantId,
     });
 
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (err: any) {
-    console.error("sales campaigns create error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to create campaign." }, { status: 500 });
+    console.error('sales campaigns create error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to create campaign.' }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export async function logActivity({
   tenantId,
@@ -16,7 +16,7 @@ export async function logActivity({
   details?: any;
 }) {
   try {
-    await adminDb.collection("activity_logs").add({
+    await adminDb.collection('activity_logs').add({
       tenantId,
       actorUid,
       actorRole,
@@ -26,6 +26,6 @@ export async function logActivity({
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("Activity log failed:", e);
+    console.error('Activity log failed:', e);
   }
 }

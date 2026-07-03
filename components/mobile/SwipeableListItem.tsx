@@ -1,8 +1,14 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
+import { useRef, useState } from 'react';
 
-export default function SwipeableListItem({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
+export default function SwipeableListItem({
+  children,
+  onDelete,
+}: {
+  children: React.ReactNode;
+  onDelete: () => void;
+}) {
   const startX = useRef<number | null>(null);
   const [offset, setOffset] = useState(0);
 
@@ -27,9 +33,19 @@ export default function SwipeableListItem({ children, onDelete }: { children: Re
   };
 
   return (
-    <div className="relative overflow-hidden" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <div className="absolute inset-y-0 right-0 flex w-24 items-center justify-center bg-red-500 text-sm font-semibold text-white">Delete</div>
-      <div style={{ transform: `translateX(${offset}px)` }} className="relative bg-[var(--surface-card)] transition-transform duration-150">
+    <div
+      className="relative overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <div className="absolute inset-y-0 right-0 flex w-24 items-center justify-center bg-red-500 text-sm font-semibold text-white">
+        Delete
+      </div>
+      <div
+        style={{ transform: `translateX(${offset}px)` }}
+        className="relative bg-[var(--surface-card)] transition-transform duration-150"
+      >
         {children}
       </div>
     </div>

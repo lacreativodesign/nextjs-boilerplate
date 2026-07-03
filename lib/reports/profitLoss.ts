@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export interface ProfitLossReport {
   period: { start: string; end: string };
@@ -15,7 +15,7 @@ export interface ProfitLossReport {
 }
 
 function toAmount(value: unknown): number {
-  const amount = typeof value === "number" ? value : Number(value ?? 0);
+  const amount = typeof value === 'number' ? value : Number(value ?? 0);
   return Number.isFinite(amount) ? amount : 0;
 }
 
@@ -28,12 +28,17 @@ function parseDateValue(value: unknown): Date | null {
     return Number.isNaN(value.getTime()) ? null : value;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  if (typeof value === "object" && value && "toDate" in value && typeof value.toDate === "function") {
+  if (
+    typeof value === 'object' &&
+    value &&
+    'toDate' in value &&
+    typeof value.toDate === 'function'
+  ) {
     const parsed = value.toDate();
     return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
   }
@@ -44,23 +49,31 @@ function parseDateValue(value: unknown): Date | null {
 export async function generateProfitLoss(
   tenantId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<ProfitLossReport> {
   if (!tenantId) {
-    throw new Error("tenantId is required");
+    throw new Error('tenantId is required');
   }
 
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    throw new Error("Invalid reporting period");
+    throw new Error('Invalid reporting period');
   }
 
   if (startDate > endDate) {
-    throw new Error("startDate must be on or before endDate");
+    throw new Error('startDate must be on or before endDate');
   }
 
   const [invoiceSnapshot, expenseSnapshot] = await Promise.all([
-    adminDb.collection("invoices").where("tenantId", "==", tenantId).where("status", "==", "paid").get(),
-    adminDb.collection("expenses").where("tenantId", "==", tenantId).where("isDeleted", "==", false).get(),
+    adminDb
+      .collection('invoices')
+      .where('tenantId', '==', tenantId)
+      .where('status', '==', 'paid')
+      .get(),
+    adminDb
+      .collection('expenses')
+      .where('tenantId', '==', tenantId)
+      .where('isDeleted', '==', false)
+      .get(),
   ]);
 
   let revenue = 0;
@@ -81,7 +94,7 @@ export async function generateProfitLoss(
       return;
     }
 
-    const category = String(expense.category || "Uncategorized");
+    const category = String(expense.category || 'Uncategorized');
     const amount = toAmount(expense.amount ?? expense.amountPkr);
     expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
   });
@@ -96,7 +109,7 @@ export async function generateProfitLoss(
     },
     revenue: {
       total: revenue,
-      breakdown: [{ category: "Sales", amount: revenue }],
+      breakdown: [{ category: 'Sales', amount: revenue }],
     },
     expenses: {
       total: totalExpenses,

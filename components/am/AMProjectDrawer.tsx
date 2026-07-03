@@ -1,15 +1,21 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import MasterSelect from "@/components/ui/MasterSelect";
-import { getFirebaseStorage } from "@/lib/firebaseClient";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import MasterSelect from '@/components/ui/MasterSelect';
+import { getFirebaseStorage } from '@/lib/firebaseClient';
+import { apiFetch } from '@/lib/api/client';
 
-const FILE_CATEGORIES = ["Draft", "Revision", "Final"] as const;
-const STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
-const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
-const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"] as const;
+const FILE_CATEGORIES = ['Draft', 'Revision', 'Final'] as const;
+const STAGES = ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'] as const;
+const CHANGE_REQUEST_TYPES = [
+  'Scope Change',
+  'Revision',
+  'New Feature',
+  'Bug Fix',
+  'Other',
+] as const;
+const CHANGE_REQUEST_PRIORITIES = ['Low', 'Medium', 'High'] as const;
 
 type Stage = (typeof STAGES)[number];
 
@@ -76,21 +82,21 @@ type Props = {
 };
 
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString();
 }
 
 function fmtDateTime(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function buildSafeName(name: string) {
-  return name.replace(/\s+/g, "_");
+  return name.replace(/\s+/g, '_');
 }
 
 export default function AMProjectDrawer({ open, project, onClose, onProjectUpdated }: Props) {
@@ -101,13 +107,13 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
   const [loadingPanel, setLoadingPanel] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [selectedStage, setSelectedStage] = useState<string>("");
-  const [stageNote, setStageNote] = useState("");
+  const [selectedStage, setSelectedStage] = useState<string>('');
+  const [stageNote, setStageNote] = useState('');
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
-  const [messageBody, setMessageBody] = useState("");
+  const [messageBody, setMessageBody] = useState('');
   const [crOpen, setCrOpen] = useState(false);
-  const [crTitle, setCrTitle] = useState("");
-  const [crDescription, setCrDescription] = useState("");
+  const [crTitle, setCrTitle] = useState('');
+  const [crDescription, setCrDescription] = useState('');
   const [crType, setCrType] = useState<string>(CHANGE_REQUEST_TYPES[0]);
   const [crPriority, setCrPriority] = useState<string>(CHANGE_REQUEST_PRIORITIES[1]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -123,10 +129,10 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionError(null);
     Promise.all([
       apiFetch(`/api/am/files/list?projectId=${project.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       })
         .then(async (res) => {
-          if (!res.ok) throw new Error("Unable to load files.");
+          if (!res.ok) throw new Error('Unable to load files.');
           return (await res.json()) as { ok: boolean; files: FileRecord[] };
         })
         .then((payload) => setFiles(payload.files || []))
@@ -135,10 +141,10 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           setFiles([]);
         }),
       apiFetch(`/api/am/change-requests/list?projectId=${project.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       })
         .then(async (res) => {
-          if (!res.ok) throw new Error("Unable to load change requests.");
+          if (!res.ok) throw new Error('Unable to load change requests.');
           return (await res.json()) as { ok: boolean; changeRequests: ChangeRequestRecord[] };
         })
         .then((payload) => setChangeRequests(payload.changeRequests || []))
@@ -147,10 +153,10 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           setChangeRequests([]);
         }),
       apiFetch(`/api/am/messages/list?projectId=${project.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       })
         .then(async (res) => {
-          if (!res.ok) throw new Error("Unable to load messages.");
+          if (!res.ok) throw new Error('Unable to load messages.');
           return (await res.json()) as { ok: boolean; messages: MessageRecord[] };
         })
         .then((payload) => setMessages(payload.messages || []))
@@ -164,13 +170,15 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
   useEffect(() => {
     if (open) {
       setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
     }
   }, [open, messages]);
 
   const latestFiles = useMemo(() => {
-    return files.filter((file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as any));
+    return files.filter(
+      (file) => file.isLatest !== false && FILE_CATEGORIES.includes(file.category as any),
+    );
   }, [files]);
 
   const groupedFiles = useMemo(() => {
@@ -184,20 +192,20 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     return STAGES.map((stage) => ({ value: stage, label: stage }));
   }, []);
 
-  const canDirectMove = activeProject?.stage === "Kickoff";
+  const canDirectMove = activeProject?.stage === 'Kickoff';
 
   const headerStyle: React.CSSProperties = {
     fontSize: 18,
     fontWeight: 700,
-    color: "var(--text-primary)",
+    color: 'var(--text-primary)',
   };
 
   const cardStyle: React.CSSProperties = {
     borderRadius: 16,
-    border: "1px solid var(--border-subtle)",
+    border: '1px solid var(--border-subtle)',
     padding: 16,
-    background: "var(--surface-card)",
-    boxShadow: "var(--shadow-lg)",
+    background: 'var(--surface-card)',
+    boxShadow: 'var(--shadow-lg)',
   };
 
   const handleUploadClick = (category: string) => {
@@ -220,9 +228,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await apiFetch("/api/am/files/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/am/files/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: fileId,
           projectId: activeProject.id,
@@ -237,21 +245,21 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
 
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to upload file.");
+        throw new Error(payload?.error || 'Unable to upload file.');
       }
 
       const listRes = await apiFetch(`/api/am/files/list?projectId=${activeProject.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       });
       const listPayload = await listRes.json();
       setFiles(listPayload.files || []);
     } catch (err: any) {
       console.error(err);
-      setActionError(err?.message || "Unable to upload file.");
+      setActionError(err?.message || 'Unable to upload file.');
     } finally {
       setActionLoading(false);
       setUploadingCategory(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -261,9 +269,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionError(null);
 
     try {
-      const res = await apiFetch("/api/am/projects/request-stage-move", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/am/projects/request-stage-move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: activeProject.id,
           requestedStage: selectedStage,
@@ -272,13 +280,13 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to request stage move.");
+        throw new Error(payload?.error || 'Unable to request stage move.');
       }
-      setStageNote("");
-      setSelectedStage("");
+      setStageNote('');
+      setSelectedStage('');
     } catch (err: any) {
       console.error(err);
-      setActionError(err?.message || "Unable to request stage move.");
+      setActionError(err?.message || 'Unable to request stage move.');
     } finally {
       setActionLoading(false);
     }
@@ -289,27 +297,27 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await apiFetch("/api/am/projects/move-stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/am/projects/move-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: activeProject.id,
-          toStage: "Draft",
+          toStage: 'Draft',
           note: stageNote,
         }),
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to move stage.");
+        throw new Error(payload?.error || 'Unable to move stage.');
       }
       const updated = payload.project as AMProject;
       setActiveProject(updated);
       onProjectUpdated?.(updated);
-      setStageNote("");
-      setSelectedStage("");
+      setStageNote('');
+      setSelectedStage('');
     } catch (err: any) {
       console.error(err);
-      setActionError(err?.message || "Unable to move stage.");
+      setActionError(err?.message || 'Unable to move stage.');
     } finally {
       setActionLoading(false);
     }
@@ -320,9 +328,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await apiFetch("/api/am/messages/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/am/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: activeProject.id,
           body: messageBody.trim(),
@@ -330,17 +338,17 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to send message.");
+        throw new Error(payload?.error || 'Unable to send message.');
       }
-      setMessageBody("");
+      setMessageBody('');
       const listRes = await apiFetch(`/api/am/messages/list?projectId=${activeProject.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       });
       const listPayload = await listRes.json();
       setMessages(listPayload.messages || []);
     } catch (err: any) {
       console.error(err);
-      setActionError(err?.message || "Unable to send message.");
+      setActionError(err?.message || 'Unable to send message.');
     } finally {
       setActionLoading(false);
     }
@@ -351,9 +359,9 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await apiFetch("/api/am/change-requests/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/am/change-requests/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: activeProject.id,
           type: crType,
@@ -364,19 +372,19 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) {
-        throw new Error(payload?.error || "Unable to create change request.");
+        throw new Error(payload?.error || 'Unable to create change request.');
       }
-      setCrTitle("");
-      setCrDescription("");
+      setCrTitle('');
+      setCrDescription('');
       setCrOpen(false);
       const listRes = await apiFetch(`/api/am/change-requests/list?projectId=${activeProject.id}`, {
-        cache: "no-store",
+        cache: 'no-store',
       });
       const listPayload = await listRes.json();
       setChangeRequests(listPayload.changeRequests || []);
     } catch (err: any) {
       console.error(err);
-      setActionError(err?.message || "Unable to create change request.");
+      setActionError(err?.message || 'Unable to create change request.');
     } finally {
       setActionLoading(false);
     }
@@ -392,52 +400,59 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
             <div className="drawer-title">{activeProject.projectName}</div>
             <div className="drawer-subtitle">{activeProject.clientName}</div>
           </div>
-          <button className="btn ghost" onClick={onClose} style={{ height: 34, borderRadius: 999, fontWeight: 400 }}>
+          <button
+            className="btn ghost"
+            onClick={onClose}
+            style={{ height: 34, borderRadius: 999, fontWeight: 400 }}
+          >
             Close
           </button>
         </div>
 
         {actionError && (
-          <div className="card" style={{ marginTop: 16, padding: 12, borderRadius: 12, borderColor: "var(--danger)" }}>
-            <span style={{ color: "var(--danger)", fontSize: 13 }}>{actionError}</span>
+          <div
+            className="card"
+            style={{ marginTop: 16, padding: 12, borderRadius: 12, borderColor: 'var(--danger)' }}
+          >
+            <span style={{ color: 'var(--danger)', fontSize: 13 }}>{actionError}</span>
           </div>
         )}
 
         <div className="grid gap-4 lg:grid-cols-2" style={{ marginTop: 18 }}>
           <div style={cardStyle}>
             <div style={headerStyle}>Project Summary</div>
-            <div style={{ marginTop: 12, display: "grid", gap: 8, fontSize: 13 }}>
+            <div style={{ marginTop: 12, display: 'grid', gap: 8, fontSize: 13 }}>
               <div>
                 <strong>Stage:</strong> {activeProject.stage}
               </div>
               <div>
-                <strong>Priority:</strong> {activeProject.priority || "Normal"}
+                <strong>Priority:</strong> {activeProject.priority || 'Normal'}
               </div>
               <div>
-                <strong>Health:</strong> {activeProject.health || "On Track"}
+                <strong>Health:</strong> {activeProject.health || 'On Track'}
               </div>
               <div>
                 <strong>Due Date:</strong> {fmtDate(activeProject.dueDate)}
               </div>
               <div>
-                <strong>Assigned AM:</strong> {activeProject.ownerAmName || "Unassigned"}
+                <strong>Assigned AM:</strong> {activeProject.ownerAmName || 'Unassigned'}
               </div>
               <div>
-                <strong>Assigned Production:</strong> {activeProject.productionName || "Unassigned"}
+                <strong>Assigned Production:</strong> {activeProject.productionName || 'Unassigned'}
               </div>
             </div>
           </div>
 
           <div style={cardStyle}>
             <div style={headerStyle}>Stage & Delivery Controls</div>
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 AM can request stage moves. Kickoff → Draft can be moved directly.
               </div>
               <MasterSelect
                 value={selectedStage}
                 onChange={(value) => setSelectedStage(value)}
-                options={[{ value: "", label: "Request stage move" }, ...stageOptions]}
+                options={[{ value: '', label: 'Request stage move' }, ...stageOptions]}
               />
               <textarea
                 className="input"
@@ -447,7 +462,11 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                 rows={2}
               />
               <div className="flex flex-wrap gap-2">
-                <button className="btn ghost" onClick={handleRequestStageMove} disabled={!selectedStage || actionLoading}>
+                <button
+                  className="btn ghost"
+                  onClick={handleRequestStageMove}
+                  disabled={!selectedStage || actionLoading}
+                >
                   Request stage move
                 </button>
                 {canDirectMove && (
@@ -459,15 +478,17 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
             </div>
             <div style={{ marginTop: 16 }}>
               <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Stage History</div>
-              <div style={{ maxHeight: 160, overflowY: "auto", display: "grid", gap: 8 }}>
+              <div style={{ maxHeight: 160, overflowY: 'auto', display: 'grid', gap: 8 }}>
                 {(activeProject.stageHistory || []).length === 0 && (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No stage history yet.</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    No stage history yet.
+                  </div>
                 )}
                 {(activeProject.stageHistory || []).map((entry, idx) => (
                   <div key={`${entry.at || idx}`} style={{ fontSize: 12 }}>
-                    <strong>{entry.from || "—"}</strong> → <strong>{entry.to || "—"}</strong>
-                    <div style={{ color: "var(--text-muted)" }}>
-                      {entry.byName || "Unknown"} · {fmtDateTime(entry.at)}
+                    <strong>{entry.from || '—'}</strong> → <strong>{entry.to || '—'}</strong>
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      {entry.byName || 'Unknown'} · {fmtDateTime(entry.at)}
                     </div>
                   </div>
                 ))}
@@ -483,28 +504,28 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
               style={{
                 marginTop: 12,
                 height: 260,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 10,
                 paddingRight: 6,
               }}
             >
               {messages.length === 0 && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No messages yet.</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No messages yet.</div>
               )}
               {messages.map((message) => {
-                const isMe = message.senderRole === "account_manager";
+                const isMe = message.senderRole === 'account_manager';
                 return (
                   <div
                     key={message.id}
                     style={{
-                      alignSelf: isMe ? "flex-end" : "flex-start",
-                      maxWidth: "80%",
-                      background: isMe ? "rgba(37,99,235,0.18)" : "rgba(148,163,184,0.18)",
-                      color: "var(--text-primary)",
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      maxWidth: '80%',
+                      background: isMe ? 'rgba(37,99,235,0.18)' : 'rgba(148,163,184,0.18)',
+                      color: 'var(--text-primary)',
                       borderRadius: 18,
-                      padding: "10px 14px",
+                      padding: '10px 14px',
                       fontSize: 13,
                       lineHeight: 1.4,
                     }}
@@ -513,20 +534,26 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                       {message.senderName || message.senderRole}
                     </div>
                     {message.body}
-                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 6 }}>{fmtDateTime(message.createdAt)}</div>
+                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 6 }}>
+                      {fmtDateTime(message.createdAt)}
+                    </div>
                   </div>
                 );
               })}
               <div ref={chatEndRef} />
             </div>
-            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <input
                 className="input"
                 placeholder="Type a message..."
                 value={messageBody}
                 onChange={(event) => setMessageBody(event.target.value)}
               />
-              <button className="btn" onClick={handleSendMessage} disabled={actionLoading || !messageBody.trim()}>
+              <button
+                className="btn"
+                onClick={handleSendMessage}
+                disabled={actionLoading || !messageBody.trim()}
+              >
                 Send
               </button>
             </div>
@@ -535,9 +562,13 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           <div style={cardStyle}>
             <div style={headerStyle}>Files</div>
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
-            <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
               {groupedFiles.map((group) => (
-                <div key={group.category} className="card" style={{ padding: 12, borderRadius: 12 }}>
+                <div
+                  key={group.category}
+                  className="card"
+                  style={{ padding: 12, borderRadius: 12 }}
+                >
                   <div className="flex items-center justify-between">
                     <div style={{ fontWeight: 600 }}>{group.category}</div>
                     <button
@@ -548,19 +579,21 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                       Upload
                     </button>
                   </div>
-                  <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12 }}>
-                    {group.items.length === 0 && <div style={{ color: "var(--text-muted)" }}>No files yet.</div>}
+                  <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12 }}>
+                    {group.items.length === 0 && (
+                      <div style={{ color: 'var(--text-muted)' }}>No files yet.</div>
+                    )}
                     {group.items.map((file) => (
                       <a
                         key={file.id}
                         href={file.downloadUrl}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ color: "var(--erp-blue)", textDecoration: "none" }}
+                        style={{ color: 'var(--erp-blue)', textDecoration: 'none' }}
                       >
                         {file.fileName}
                         <div style={{ fontSize: 11, opacity: 0.7 }}>
-                          {file.uploadedByName || "Unknown"} · {fmtDateTime(file.uploadedAt)}
+                          {file.uploadedByName || 'Unknown'} · {fmtDateTime(file.uploadedAt)}
                         </div>
                       </a>
                     ))}
@@ -575,15 +608,17 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           <div className="flex items-center justify-between">
             <div style={headerStyle}>Change Requests</div>
             <button className="btn ghost" onClick={() => setCrOpen((prev) => !prev)}>
-              {crOpen ? "Close" : "Create CR"}
+              {crOpen ? 'Close' : 'Create CR'}
             </button>
           </div>
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            {changeRequests.length === 0 && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No CRs yet.</div>}
+          <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+            {changeRequests.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No CRs yet.</div>
+            )}
             {changeRequests.map((item) => (
               <div key={item.id} className="card" style={{ padding: 12, borderRadius: 12 }}>
                 <div style={{ fontWeight: 600 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   {item.status} · {fmtDateTime(item.createdAt)}
                 </div>
               </div>
@@ -591,7 +626,7 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
           </div>
           {crOpen && (
             <div style={{ marginTop: 16 }} className="card">
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: 'grid', gap: 10 }}>
                 <MasterSelect
                   value={crType}
                   onChange={(value) => setCrType(value)}
@@ -615,7 +650,11 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
                   onChange={(event) => setCrDescription(event.target.value)}
                   rows={4}
                 />
-                <button className="btn" onClick={handleCreateChangeRequest} disabled={actionLoading}>
+                <button
+                  className="btn"
+                  onClick={handleCreateChangeRequest}
+                  disabled={actionLoading}
+                >
                   Submit change request
                 </button>
               </div>

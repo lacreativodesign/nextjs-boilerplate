@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSalesManager, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSalesManager, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -12,9 +12,9 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("leads")
-      .where("tenantId", "==", auth.user.tenantId || "")
-      .where("isDeleted", "==", false)
+      .collection('leads')
+      .where('tenantId', '==', auth.user.tenantId || '')
+      .where('isDeleted', '==', false)
       .limit(500)
       .get();
 
@@ -22,11 +22,11 @@ export async function GET() {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        name: String(data.companyName || data.name || ""),
-        email: String(data.contactEmail || data.email || ""),
-        phone: String(data.contactPhone || data.phone || ""),
-        source: String(data.source || ""),
-        stage: String(data.stage || "New Lead"),
+        name: String(data.companyName || data.name || ''),
+        email: String(data.contactEmail || data.email || ''),
+        phone: String(data.contactPhone || data.phone || ''),
+        source: String(data.source || ''),
+        stage: String(data.stage || 'New Lead'),
         ownerId: data.ownerId || null,
         ownerName: data.ownerName || null,
         createdAt: toISO(data.createdAt),
@@ -37,7 +37,7 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, leads });
   } catch (err: any) {
-    console.error("sales manager leads list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
+    console.error('sales manager leads list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load leads.' }, { status: 500 });
   }
 }

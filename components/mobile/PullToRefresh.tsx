@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
+import { useRef, useState } from 'react';
 
 export default function PullToRefresh({ children }: { children: React.ReactNode }) {
   const [pullDistance, setPullDistance] = useState(0);
@@ -36,7 +36,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
       <div className="pointer-events-none fixed inset-x-0 top-[var(--header-height)] z-30 flex justify-center md:hidden">
         {pullDistance > 0 ? (
           <div className="rounded-full bg-[var(--surface-card)] px-3 py-1 text-xs text-[var(--text-muted)] shadow-[var(--shadow-sm)]">
-            {refreshing ? "Refreshing..." : "Pull to refresh"}
+            {refreshing ? 'Refreshing...' : 'Pull to refresh'}
           </div>
         ) : null}
       </div>

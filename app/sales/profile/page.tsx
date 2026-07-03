@@ -1,42 +1,42 @@
-"use client";
+'use client';
 
-import { OptimizedImage } from "@/components/OptimizedImage";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { OptimizedImage } from '@/components/OptimizedImage';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   EmailAuthProvider,
   getMultiFactorResolver,
   reauthenticateWithCredential,
   updatePassword,
-} from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import MFASetup from "@/components/auth/MFASetup";
-import PasswordStrengthMeter from "@/components/auth/PasswordStrengthMeter";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebaseClient";
-import { validatePasswordStrength } from "@/lib/auth/passwordPolicy";
-import { isMFAEnabled, unenrollMFA, verifyMFASignIn } from "@/lib/auth/mfa";
-import { apiFetch } from "@/lib/api/client";
+} from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import MFASetup from '@/components/auth/MFASetup';
+import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter';
+import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebaseClient';
+import { validatePasswordStrength } from '@/lib/auth/passwordPolicy';
+import { isMFAEnabled, unenrollMFA, verifyMFASignIn } from '@/lib/auth/mfa';
+import { apiFetch } from '@/lib/api/client';
 
 export default function SalesProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordMfaCode, setPasswordMfaCode] = useState("");
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMfaCode, setPasswordMfaCode] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const [displayName, setDisplayName] = useState("User");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Sales Executive");
-  const [department, setDepartment] = useState("Sales");
+  const [displayName, setDisplayName] = useState('User');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('Sales Executive');
+  const [department, setDepartment] = useState('Sales');
 
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaUpdatedAt, setMfaUpdatedAt] = useState<string | null>(null);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
-  const [mfaDisablePassword, setMfaDisablePassword] = useState("");
-  const [mfaDisableCode, setMfaDisableCode] = useState("");
+  const [mfaDisablePassword, setMfaDisablePassword] = useState('');
+  const [mfaDisableCode, setMfaDisableCode] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
 
@@ -50,15 +50,15 @@ export default function SalesProfilePage() {
         if (!user) return;
 
         const db = await getFirebaseDb();
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await getDoc(doc(db, 'users', user.uid));
         const data = snap.exists() ? snap.data() : {};
 
         if (!active) return;
 
-        setDisplayName((data?.name as string) || user.displayName || "User");
-        setEmail((data?.email as string) || user.email || "");
-        setRole((data?.role as string) || "Sales Executive");
-        setDepartment((data?.department as string) || "Sales");
+        setDisplayName((data?.name as string) || user.displayName || 'User');
+        setEmail((data?.email as string) || user.email || '');
+        setRole((data?.role as string) || 'Sales Executive');
+        setDepartment((data?.department as string) || 'Sales');
         setMfaEnabled(isMFAEnabled(user));
 
         const mfaUpdated = data?.mfaUpdatedAt?.toDate?.() || data?.mfaUpdatedAt || null;
@@ -66,7 +66,7 @@ export default function SalesProfilePage() {
           setMfaUpdatedAt(new Date(mfaUpdated).toLocaleString());
         }
       } catch (err) {
-        console.error("Failed to load profile", err);
+        console.error('Failed to load profile', err);
       }
     }
 
@@ -79,13 +79,13 @@ export default function SalesProfilePage() {
   const initials = useMemo(
     () =>
       displayName
-        .split(" ")
+        .split(' ')
         .filter(Boolean)
         .slice(0, 2)
         .map((part) => part[0])
-        .join("")
+        .join('')
         .toUpperCase(),
-    [displayName]
+    [displayName],
   );
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +94,7 @@ export default function SalesProfilePage() {
 
     const url = URL.createObjectURL(file);
     setAvatarPreview(url);
-    setMessage("Profile picture updated locally. Save to persist in storage.");
+    setMessage('Profile picture updated locally. Save to persist in storage.');
     setError(null);
   };
 
@@ -104,12 +104,12 @@ export default function SalesProfilePage() {
     setError(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Please fill in all password fields.");
+      setError('Please fill in all password fields.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+      setError('New password and confirmation do not match.');
       return;
     }
 
@@ -124,16 +124,16 @@ export default function SalesProfilePage() {
       const auth = await getFirebaseAuth();
       const user = auth.currentUser;
       if (!user || !user.email) {
-        throw new Error("You must be signed in to update your password.");
+        throw new Error('You must be signed in to update your password.');
       }
 
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       try {
         await reauthenticateWithCredential(user, credential);
       } catch (err: any) {
-        if (err?.code === "auth/multi-factor-auth-required") {
+        if (err?.code === 'auth/multi-factor-auth-required') {
           if (!passwordMfaCode) {
-            throw new Error("Enter your MFA code to confirm the password change.");
+            throw new Error('Enter your MFA code to confirm the password change.');
           }
           const resolver = getMultiFactorResolver(auth, err);
           await verifyMFASignIn(resolver, passwordMfaCode);
@@ -144,18 +144,18 @@ export default function SalesProfilePage() {
 
       await updatePassword(user, newPassword);
 
-      await apiFetch("/api/auth/sessions/invalidate-all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/auth/sessions/invalidate-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      setMessage("Password updated successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordMfaCode("");
+      setMessage('Password updated successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordMfaCode('');
     } catch (err: any) {
-      setError(err?.message || "Failed to update password.");
+      setError(err?.message || 'Failed to update password.');
     } finally {
       setPasswordLoading(false);
     }
@@ -163,7 +163,7 @@ export default function SalesProfilePage() {
 
   const handleDisableMfa = async () => {
     if (!mfaDisablePassword || !mfaDisableCode) {
-      setMfaError("Enter your password and MFA code to disable MFA.");
+      setMfaError('Enter your password and MFA code to disable MFA.');
       return;
     }
 
@@ -174,14 +174,14 @@ export default function SalesProfilePage() {
       const auth = await getFirebaseAuth();
       const user = auth.currentUser;
       if (!user || !user.email) {
-        throw new Error("You must be signed in to disable MFA.");
+        throw new Error('You must be signed in to disable MFA.');
       }
 
       const credential = EmailAuthProvider.credential(user.email, mfaDisablePassword);
       try {
         await reauthenticateWithCredential(user, credential);
       } catch (err: any) {
-        if (err?.code === "auth/multi-factor-auth-required") {
+        if (err?.code === 'auth/multi-factor-auth-required') {
           const resolver = getMultiFactorResolver(auth, err);
           await verifyMFASignIn(resolver, mfaDisableCode);
         } else {
@@ -194,11 +194,11 @@ export default function SalesProfilePage() {
       setMfaEnabled(false);
       setMfaUpdatedAt(new Date().toLocaleString());
       setShowMfaSetup(false);
-      setMfaDisablePassword("");
-      setMfaDisableCode("");
-      setMessage("MFA has been disabled for your account.");
+      setMfaDisablePassword('');
+      setMfaDisableCode('');
+      setMessage('MFA has been disabled for your account.');
     } catch (err: any) {
-      setMfaError(err?.message || "Failed to disable MFA.");
+      setMfaError(err?.message || 'Failed to disable MFA.');
     } finally {
       setMfaLoading(false);
     }
@@ -209,7 +209,9 @@ export default function SalesProfilePage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Sales Profile</h1>
-          <p className="page-subtitle">Review your account details and keep contact information current.</p>
+          <p className="page-subtitle">
+            Review your account details and keep contact information current.
+          </p>
         </div>
       </div>
 
@@ -217,8 +219,8 @@ export default function SalesProfilePage() {
         <div
           className={`rounded-lg px-4 py-3 text-sm ${
             error
-              ? "bg-red-50 text-red-700 border border-red-200"
-              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
           }`}
         >
           {error || message}
@@ -300,10 +302,13 @@ export default function SalesProfilePage() {
 
           <div className="space-y-2">
             <label className="inline-block">
-              <span className="btn">
-                Choose Image
-              </span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              <span className="btn">Choose Image</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </label>
             <p className="helper-text">JPG or PNG, max 2 MB recommended.</p>
           </div>
@@ -320,10 +325,12 @@ export default function SalesProfilePage() {
           </div>
           <span
             className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              mfaEnabled ? "bg-emerald-500/20 text-emerald-400 dark:text-emerald-300" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+              mfaEnabled
+                ? 'bg-emerald-500/20 text-emerald-400 dark:text-emerald-300'
+                : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
             }`}
           >
-            {mfaEnabled ? "Enabled" : "Disabled"}
+            {mfaEnabled ? 'Enabled' : 'Disabled'}
           </span>
         </div>
 
@@ -355,7 +362,7 @@ export default function SalesProfilePage() {
             </div>
             {mfaError ? <div className="text-sm text-red-500">{mfaError}</div> : null}
             <button type="button" className="btn" onClick={handleDisableMfa} disabled={mfaLoading}>
-              {mfaLoading ? "Disabling…" : "Disable MFA"}
+              {mfaLoading ? 'Disabling…' : 'Disable MFA'}
             </button>
           </div>
         ) : showMfaSetup ? (
@@ -434,7 +441,7 @@ export default function SalesProfilePage() {
           <div className="flex items-center justify-between">
             <span className="helper-text">Password updates take effect immediately.</span>
             <button type="submit" className="btn subtle" disabled={passwordLoading}>
-              {passwordLoading ? "Updating…" : "Update Password"}
+              {passwordLoading ? 'Updating…' : 'Update Password'}
             </button>
           </div>
         </form>

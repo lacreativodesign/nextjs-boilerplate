@@ -1,4 +1,4 @@
-declare module "@upstash/redis" {
+declare module '@upstash/redis' {
   export class Redis {
     constructor(options: { url: string; token: string });
     get<T>(key: string): Promise<T | null>;

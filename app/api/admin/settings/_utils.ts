@@ -1,20 +1,27 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
-import { createNotification } from "@/lib/notifications";
-import { getCurrentUser, isAdminRole, isSuperAdmin } from "../_utils";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
+import { createNotification } from '@/lib/notifications';
+import { getCurrentUser, isAdminRole, isSuperAdmin } from '../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-export const WORKFLOW_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
+export const WORKFLOW_STAGES = [
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
+] as const;
 export const SALES_PIPELINE_STAGES = [
-  "New Lead",
-  "Contacted",
-  "Qualified",
-  "Proposal Sent",
-  "Negotiation",
-  "Closed Won",
-  "Closed Lost",
+  'New Lead',
+  'Contacted',
+  'Qualified',
+  'Proposal Sent',
+  'Negotiation',
+  'Closed Won',
+  'Closed Lost',
 ] as const;
 
 export const DEFAULT_WORKFLOW_SETTINGS = {
@@ -32,7 +39,7 @@ export const DEFAULT_WORKFLOW_SETTINGS = {
 };
 
 export const DEFAULT_FINANCE_SETTINGS = {
-  invoicePrefix: "",
+  invoicePrefix: '',
   invoiceCounter: 0,
   paymentMethods: [] as string[],
   arBuckets: [30, 60, 90],
@@ -41,48 +48,51 @@ export const DEFAULT_FINANCE_SETTINGS = {
   fxPkrPerUsd: 280,
   lateFeesSettings: {
     enabled: true,
-    type: "percentage" as const,
+    type: 'percentage' as const,
     value: 5,
     gracePeriodDays: 3,
   },
 };
 
 export function parseLateFeesSettings(value: any) {
-  const source = typeof value === "object" && value ? value : {};
-  const type = source.type === "fixed" ? "fixed" : "percentage";
+  const source = typeof value === 'object' && value ? value : {};
+  const type = source.type === 'fixed' ? 'fixed' : 'percentage';
   return {
     enabled: parseBoolean(source.enabled, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.enabled),
     type,
     value: Math.max(0, parseNumber(source.value, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.value)),
     gracePeriodDays: Math.max(
       0,
-      parseNumber(source.gracePeriodDays, DEFAULT_FINANCE_SETTINGS.lateFeesSettings.gracePeriodDays)
+      parseNumber(
+        source.gracePeriodDays,
+        DEFAULT_FINANCE_SETTINGS.lateFeesSettings.gracePeriodDays,
+      ),
     ),
   };
 }
 
 export const DEFAULT_SYSTEM_SETTINGS = {
-  companyName: "",
-  timezone: "",
-  dateFormat: "",
+  companyName: '',
+  timezone: '',
+  dateFormat: '',
   workingDays: [] as string[],
-  workingHours: { start: "", end: "" },
-  revenueCurrency: "USD",
-  expenseCurrency: "PKR",
+  workingHours: { start: '', end: '' },
+  revenueCurrency: 'USD',
+  expenseCurrency: 'PKR',
   fiscalMonthStart: 1,
 };
 
 export const DEFAULT_NOTIFICATIONS_SETTINGS = {
   enableInApp: true,
   enableEmail: false,
-  senderName: "",
-  replyToEmail: "",
+  senderName: '',
+  replyToEmail: '',
   eventToggles: {} as Record<string, boolean>,
 };
 
 export const DEFAULT_SECURITY_SETTINGS = {
   sessionTimeoutMinutes: 60,
-  passwordPolicy: "Minimum 8 characters, 1 uppercase letter, 1 number.",
+  passwordPolicy: 'Minimum 8 characters, 1 uppercase letter, 1 number.',
   activityRetentionDays: 90,
   forceLogoutAll: false,
 };
@@ -93,8 +103,8 @@ export function serverTimestamp() {
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -104,7 +114,7 @@ export function parseNumber(value: any, fallback = 0) {
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: any, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
@@ -116,9 +126,7 @@ export function parseBoolean(value: any, fallback = false) {
 
 export function parseStringArray(value: any) {
   if (!Array.isArray(value)) return [] as string[];
-  return value
-    .map((item) => String(item || "").trim())
-    .filter((item) => item.length > 0);
+  return value.map((item) => String(item || '').trim()).filter((item) => item.length > 0);
 }
 
 export function parseNumberArray(value: any, fallback: number[] = []) {
@@ -130,35 +138,40 @@ export function parseNumberArray(value: any, fallback: number[] = []) {
 export async function requireAdmin() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isAdminRole(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
 
 export function canEditSection(role: string, section: string) {
   if (isSuperAdmin(role)) return true;
-  if (role.toLowerCase() === "admin") {
-    return ["system", "workflows", "sales", "finance", "notifications"].includes(section);
+  if (role.toLowerCase() === 'admin') {
+    return ['system', 'workflows', 'sales', 'finance', 'notifications'].includes(section);
   }
   return false;
 }
 
 export async function getWorkflowSettings() {
-  const snap = await adminDb.collection("settings").doc("workflows").get();
+  const snap = await adminDb.collection('settings').doc('workflows').get();
   const data = snap.exists ? snap.data() : {};
   const slaDaysPerStage =
-    typeof data?.slaDaysPerStage === "object" && data?.slaDaysPerStage
-      ? Object.fromEntries(Object.entries(data.slaDaysPerStage).map(([key, value]) => [key, parseNumber(value, 0)]))
+    typeof data?.slaDaysPerStage === 'object' && data?.slaDaysPerStage
+      ? Object.fromEntries(
+          Object.entries(data.slaDaysPerStage).map(([key, value]) => [key, parseNumber(value, 0)]),
+        )
       : {};
 
   return {
     projectStages: DEFAULT_WORKFLOW_SETTINGS.projectStages,
     slaDaysPerStage: { ...DEFAULT_WORKFLOW_SETTINGS.slaDaysPerStage, ...slaDaysPerStage },
     atRiskAfterDays: parseNumber(data?.atRiskAfterDays, DEFAULT_WORKFLOW_SETTINGS.atRiskAfterDays),
-    overdueAfterDays: parseNumber(data?.overdueAfterDays, DEFAULT_WORKFLOW_SETTINGS.overdueAfterDays),
+    overdueAfterDays: parseNumber(
+      data?.overdueAfterDays,
+      DEFAULT_WORKFLOW_SETTINGS.overdueAfterDays,
+    ),
     updatedAt: toISO(data?.updatedAt),
     updatedBy: data?.updatedBy || null,
   };
@@ -167,10 +180,10 @@ export async function getWorkflowSettings() {
 export async function getFinanceSettings(tenantId?: string) {
   // Tenant-scoped doc with read-only fallback to the legacy global doc.
   let snap = tenantId
-    ? await adminDb.collection("settings").doc(`${tenantId}_finance`).get()
+    ? await adminDb.collection('settings').doc(`${tenantId}_finance`).get()
     : null;
   if (!snap || !snap.exists) {
-    snap = await adminDb.collection("settings").doc("finance").get();
+    snap = await adminDb.collection('settings').doc('finance').get();
   }
   const data = snap.exists ? snap.data() : {};
   return {
@@ -178,7 +191,10 @@ export async function getFinanceSettings(tenantId?: string) {
     invoiceCounter: parseNumber(data?.invoiceCounter, DEFAULT_FINANCE_SETTINGS.invoiceCounter),
     paymentMethods: parseStringArray(data?.paymentMethods),
     arBuckets: parseNumberArray(data?.arBuckets, DEFAULT_FINANCE_SETTINGS.arBuckets),
-    payrollApprovalRequired: parseBoolean(data?.payrollApprovalRequired, DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired),
+    payrollApprovalRequired: parseBoolean(
+      data?.payrollApprovalRequired,
+      DEFAULT_FINANCE_SETTINGS.payrollApprovalRequired,
+    ),
     lockPastMonths: parseBoolean(data?.lockPastMonths, DEFAULT_FINANCE_SETTINGS.lockPastMonths),
     fxPkrPerUsd: parseNumber(data?.fxPkrPerUsd, DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd),
     lateFeesSettings: parseLateFeesSettings(data?.lateFeesSettings),
@@ -188,11 +204,13 @@ export async function getFinanceSettings(tenantId?: string) {
 }
 
 export async function getNotificationSettings() {
-  const snap = await adminDb.collection("settings").doc("notifications").get();
+  const snap = await adminDb.collection('settings').doc('notifications').get();
   const data = snap.exists ? snap.data() : {};
   const eventToggles =
-    typeof data?.eventToggles === "object" && data?.eventToggles
-      ? Object.fromEntries(Object.entries(data.eventToggles).map(([key, value]) => [key, Boolean(value)]))
+    typeof data?.eventToggles === 'object' && data?.eventToggles
+      ? Object.fromEntries(
+          Object.entries(data.eventToggles).map(([key, value]) => [key, Boolean(value)]),
+        )
       : {};
   return {
     enableInApp: parseBoolean(data?.enableInApp, DEFAULT_NOTIFICATIONS_SETTINGS.enableInApp),
@@ -203,19 +221,23 @@ export async function getNotificationSettings() {
   };
 }
 
-export function computeHealth(dueDate: string | null, atRiskAfterDays: number, overdueAfterDays: number) {
-  if (!dueDate) return "On Track" as const;
+export function computeHealth(
+  dueDate: string | null,
+  atRiskAfterDays: number,
+  overdueAfterDays: number,
+) {
+  if (!dueDate) return 'On Track' as const;
   const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track" as const;
+  if (Number.isNaN(due.getTime())) return 'On Track' as const;
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = due.getTime() - startOfToday.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays < -Math.max(overdueAfterDays, 0)) return "Overdue" as const;
-  if (diffDays <= Math.max(atRiskAfterDays, 0)) return "At Risk" as const;
-  return "On Track" as const;
+  if (diffDays < -Math.max(overdueAfterDays, 0)) return 'Overdue' as const;
+  if (diffDays <= Math.max(atRiskAfterDays, 0)) return 'At Risk' as const;
+  return 'On Track' as const;
 }
 
 export async function logSettingsChange({
@@ -229,8 +251,8 @@ export async function logSettingsChange({
   summary: string;
   notificationsEnabled?: boolean;
 }) {
-  await adminDb.collection("admin_activity").add({
-    action: "settings.update",
+  await adminDb.collection('admin_activity').add({
+    action: 'settings.update',
     section,
     summary,
     performedBy: user.uid,
@@ -239,11 +261,11 @@ export async function logSettingsChange({
     tenantId: user.tenantId || DEFAULT_TENANT_ID,
   });
 
-  await adminDb.collection("events").add({
-    type: "settings.update",
+  await adminDb.collection('events').add({
+    type: 'settings.update',
     title: `Settings updated: ${section}`,
     description: summary,
-    entityType: "settings",
+    entityType: 'settings',
     entityId: section,
     metadata: { section },
     createdByUid: user.uid,
@@ -254,14 +276,16 @@ export async function logSettingsChange({
   });
 
   const notifications =
-    typeof notificationsEnabled === "boolean" ? notificationsEnabled : (await getNotificationSettings()).enableInApp;
+    typeof notificationsEnabled === 'boolean'
+      ? notificationsEnabled
+      : (await getNotificationSettings()).enableInApp;
 
   if (notifications) {
     await createNotification({
       toUserId: user.uid,
-      title: "System settings updated",
+      title: 'System settings updated',
       body: summary,
-      type: "system",
+      type: 'system',
       entityType: null,
       entityId: section,
       createdBy: { uid: user.uid, name: user.name || user.email || null },

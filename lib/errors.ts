@@ -1,14 +1,14 @@
 export type ErrorCode =
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "VALIDATION_ERROR"
-  | "RATE_LIMITED"
-  | "SUBSCRIPTION_LOCKED"
-  | "SUBSCRIPTION_READ_ONLY"
-  | "TENANT_SUSPENDED"
-  | "INTERNAL_SERVER_ERROR";
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'VALIDATION_ERROR'
+  | 'RATE_LIMITED'
+  | 'SUBSCRIPTION_LOCKED'
+  | 'SUBSCRIPTION_READ_ONLY'
+  | 'TENANT_SUSPENDED'
+  | 'INTERNAL_SERVER_ERROR';
 
 export type ErrorResponse = {
   ok: false;
@@ -59,7 +59,7 @@ export class AppError extends Error {
     context?: Record<string, unknown>;
   }) {
     super(message);
-    this.name = "AppError";
+    this.name = 'AppError';
     this.code = code;
     this.status = status;
     this.expose = expose;
@@ -82,22 +82,22 @@ export function createCorrelationId() {
 
 export function resolveErrorResponse(
   error: unknown,
-  options: ErrorResponseOptions = {}
+  options: ErrorResponseOptions = {},
 ): { status: number; body: ErrorResponse; headers: Record<string, string> } {
-  const fallbackMessage = options.fallbackMessage || "Server error";
-  const fallbackCode = options.fallbackCode || "INTERNAL_SERVER_ERROR";
+  const fallbackMessage = options.fallbackMessage || 'Server error';
+  const fallbackCode = options.fallbackCode || 'INTERNAL_SERVER_ERROR';
   const fallbackStatus = options.fallbackStatus || 500;
   const requestId = options.requestId;
   const correlationId = options.correlationId || createCorrelationId();
   const context = options.context;
 
   const headers: Record<string, string> = {
-    "x-correlation-id": correlationId,
+    'x-correlation-id': correlationId,
   };
 
   if (isAppError(error)) {
-    if (error.code === "RATE_LIMITED" && error.retryAfterSeconds) {
-      headers["retry-after"] = String(error.retryAfterSeconds);
+    if (error.code === 'RATE_LIMITED' && error.retryAfterSeconds) {
+      headers['retry-after'] = String(error.retryAfterSeconds);
     }
 
     const message = error.expose ? error.message : fallbackMessage;

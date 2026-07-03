@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type UserRecord = {
   id: string;
@@ -22,19 +22,19 @@ type TenantOption = {
 export default function SuperAdminUsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [tenants, setTenants] = useState<TenantOption[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [form, setForm] = useState({
-    displayName: "",
-    email: "",
-    role: "admin",
-    tenantId: "",
+    displayName: '',
+    email: '',
+    role: 'admin',
+    tenantId: '',
   });
   const [saving, setSaving] = useState(false);
 
   const loadData = async () => {
     const [usersRes, tenantsRes] = await Promise.all([
-      apiFetch("/api/super_admin/users", { cache: "no-store" }),
-      apiFetch("/api/super_admin/tenants", { cache: "no-store" }),
+      apiFetch('/api/super_admin/users', { cache: 'no-store' }),
+      apiFetch('/api/super_admin/tenants', { cache: 'no-store' }),
     ]);
     const usersJson = await usersRes.json().catch(() => null);
     const tenantsJson = await tenantsRes.json().catch(() => null);
@@ -45,7 +45,7 @@ export default function SuperAdminUsersPage() {
         (tenantsJson.tenants || []).map((tenant: any) => ({
           id: tenant.id,
           name: tenant.name || tenant.slug || tenant.id,
-        }))
+        })),
       );
       if (!form.tenantId && tenantsJson.tenants?.length) {
         setForm((prev) => ({ ...prev, tenantId: tenantsJson.tenants[0].id }));
@@ -59,25 +59,20 @@ export default function SuperAdminUsersPage() {
 
   const filtered = useMemo(
     () =>
-      smartMatch(users, query, (user) => [
-        user.displayName,
-        user.email,
-        user.role,
-        user.tenantId,
-      ]),
-    [users, query]
+      smartMatch(users, query, (user) => [user.displayName, user.email, user.role, user.tenantId]),
+    [users, query],
   );
 
   const handleCreate = async () => {
     if (!form.displayName || !form.email || !form.tenantId) return;
     setSaving(true);
     try {
-      await apiFetch("/api/super_admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/super_admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      setForm({ displayName: "", email: "", role: "admin", tenantId: form.tenantId });
+      setForm({ displayName: '', email: '', role: 'admin', tenantId: form.tenantId });
       await loadData();
     } finally {
       setSaving(false);
@@ -139,7 +134,7 @@ export default function SuperAdminUsersPage() {
             onClick={handleCreate}
             disabled={saving}
           >
-            {saving ? "Saving..." : "Create User"}
+            {saving ? 'Saving...' : 'Create User'}
           </button>
         </div>
       </div>
@@ -179,9 +174,9 @@ export default function SuperAdminUsersPage() {
                   <td className="px-4 py-3 text-right">
                     <span
                       className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                        user.status === "active"
-                          ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]"
-                          : "bg-red-500/10 text-red-400"
+                        user.status === 'active'
+                          ? 'bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]'
+                          : 'bg-red-500/10 text-red-400'
                       }`}
                     >
                       {user.status}

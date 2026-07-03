@@ -1,8 +1,8 @@
-import crypto from "crypto";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { sendEmail } from "@/lib/email/email-service";
-import { sendSMS } from "@/lib/sms/sms-service";
+import crypto from 'crypto';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { sendEmail } from '@/lib/email/email-service';
+import { sendSMS } from '@/lib/sms/sms-service';
 import {
   Notification,
   NotificationCategory,
@@ -10,17 +10,17 @@ import {
   NotificationPreferences,
   NotificationTemplate,
   NotificationType,
-} from "@/types/notifications";
+} from '@/types/notifications';
 
-const PRIORITY_LEVELS = ["low", "medium", "high", "urgent"] as const;
+const PRIORITY_LEVELS = ['low', 'medium', 'high', 'urgent'] as const;
 const DEFAULT_CATEGORIES: NotificationCategory[] = [
-  "system",
-  "financial",
-  "sales",
-  "operations",
-  "security",
-  "team",
-  "custom",
+  'system',
+  'financial',
+  'sales',
+  'operations',
+  'security',
+  'team',
+  'custom',
 ];
 
 export class NotificationService {
@@ -32,7 +32,7 @@ export class NotificationService {
     title: string;
     message: string;
     category: NotificationCategory;
-    priority?: "low" | "medium" | "high" | "urgent";
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
     actionUrl?: string;
     actionLabel?: string;
     channels?: NotificationChannel[];
@@ -41,13 +41,14 @@ export class NotificationService {
     metadata?: Record<string, any>;
   }): Promise<string> {
     const preferences = await this.getUserPreferences(params.userId, params.tenantId);
-    const priority = params.priority || "medium";
-    const channels = params.channels || this.getDefaultChannels(preferences, params.category, priority);
+    const priority = params.priority || 'medium';
+    const channels =
+      params.channels || this.getDefaultChannels(preferences, params.category, priority);
 
     const isQuiet = this.isQuietHours(preferences);
-    const shouldDelay = isQuiet && priority !== "urgent";
+    const shouldDelay = isQuiet && priority !== 'urgent';
 
-    const baseNotification: Omit<Notification, "id"> = {
+    const baseNotification: Omit<Notification, 'id'> = {
       tenantId: params.tenantId,
       userId: params.userId,
       userEmail: params.userEmail,
@@ -62,15 +63,15 @@ export class NotificationService {
       relatedResourceId: params.relatedResourceId,
       channels,
       deliveryStatus: {
-        inApp: "pending",
+        inApp: 'pending',
       },
       isRead: false,
-      isArchived: channels.includes("in_app") ? false : true,
+      isArchived: channels.includes('in_app') ? false : true,
       metadata: params.metadata,
       createdAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("notifications").add(baseNotification);
+    const docRef = await adminDb.collection('notifications').add(baseNotification);
 
     if (shouldDelay) {
       await this.queueForLater(docRef.id, baseNotification, channels, preferences);
@@ -90,9 +91,9 @@ export class NotificationService {
     actionUrl?: string;
   }): Promise<string> {
     const templateDoc = await adminDb
-      .collection("notification_templates")
-      .where("tenantId", "==", params.tenantId)
-      .where("key", "==", params.templateKey)
+      .collection('notification_templates')
+      .where('tenantId', '==', params.tenantId)
+      .where('key', '==', params.templateKey)
       .limit(1)
       .get();
 
@@ -108,7 +109,7 @@ export class NotificationService {
       tenantId: params.tenantId,
       userId: params.userId,
       userEmail: params.userEmail,
-      type: "info",
+      type: 'info',
       title,
       message,
       category: template.category,
@@ -120,7 +121,7 @@ export class NotificationService {
   }
 
   static async markAsRead(notificationId: string): Promise<void> {
-    await adminDb.collection("notifications").doc(notificationId).update({
+    await adminDb.collection('notifications').doc(notificationId).update({
       isRead: true,
       readAt: Timestamp.now(),
     });
@@ -128,10 +129,10 @@ export class NotificationService {
 
   static async markAllAsRead(userId: string, tenantId: string): Promise<number> {
     const snapshot = await adminDb
-      .collection("notifications")
-      .where("tenantId", "==", tenantId)
-      .where("userId", "==", userId)
-      .where("isRead", "==", false)
+      .collection('notifications')
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', userId)
+      .where('isRead', '==', false)
       .get();
 
     if (snapshot.empty) return 0;
@@ -150,11 +151,11 @@ export class NotificationService {
 
   static async getUnreadCount(userId: string, tenantId: string): Promise<number> {
     const snapshot = await adminDb
-      .collection("notifications")
-      .where("tenantId", "==", tenantId)
-      .where("userId", "==", userId)
-      .where("isRead", "==", false)
-      .where("isArchived", "==", false)
+      .collection('notifications')
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', userId)
+      .where('isRead', '==', false)
+      .where('isArchived', '==', false)
       .count()
       .get();
 
@@ -166,15 +167,15 @@ export class NotificationService {
     if (this.isQuietHours(preferences)) return;
 
     const base = adminDb
-      .collection("notifications")
-      .where("tenantId", "==", tenantId)
-      .where("userId", "==", userId)
-      .where("isArchived", "==", false);
+      .collection('notifications')
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', userId)
+      .where('isArchived', '==', false);
 
     const snapshots = await Promise.all([
-      base.where("deliveryStatus.email", "==", "pending").get(),
-      base.where("deliveryStatus.sms", "==", "pending").get(),
-      base.where("deliveryStatus.webhook", "==", "pending").get(),
+      base.where('deliveryStatus.email', '==', 'pending').get(),
+      base.where('deliveryStatus.sms', '==', 'pending').get(),
+      base.where('deliveryStatus.webhook', '==', 'pending').get(),
     ]);
 
     const map = new Map<string, Notification>();
@@ -190,14 +191,17 @@ export class NotificationService {
   }
 
   static getDefaultPreferences(userId: string, tenantId: string): NotificationPreferences {
-    const categorySettings = DEFAULT_CATEGORIES.reduce((acc, category) => {
-      acc[category] = {
-        enabled: true,
-        channels: ["in_app", "email"],
-        minPriority: "low",
-      };
-      return acc;
-    }, {} as NotificationPreferences["categorySettings"]);
+    const categorySettings = DEFAULT_CATEGORIES.reduce(
+      (acc, category) => {
+        acc[category] = {
+          enabled: true,
+          channels: ['in_app', 'email'],
+          minPriority: 'low',
+        };
+        return acc;
+      },
+      {} as NotificationPreferences['categorySettings'],
+    );
 
     return {
       id: userId,
@@ -211,14 +215,14 @@ export class NotificationService {
       categorySettings,
       quietHours: {
         enabled: false,
-        start: "22:00",
-        end: "08:00",
-        timezone: "UTC",
+        start: '22:00',
+        end: '08:00',
+        timezone: 'UTC',
       },
       emailDigest: {
         enabled: false,
-        frequency: "daily",
-        time: "09:00",
+        frequency: 'daily',
+        time: '09:00',
       },
       updatedAt: Timestamp.now(),
     };
@@ -226,13 +230,13 @@ export class NotificationService {
 
   private static async deliverToChannels(
     notificationId: string,
-    notification: Omit<Notification, "id">,
-    channels: NotificationChannel[]
+    notification: Omit<Notification, 'id'>,
+    channels: NotificationChannel[],
   ) {
     const deliveryStatus = { ...notification.deliveryStatus };
-    deliveryStatus.inApp = "delivered";
+    deliveryStatus.inApp = 'delivered';
 
-    if (channels.includes("email")) {
+    if (channels.includes('email')) {
       try {
         await sendEmail({
           to: notification.userEmail,
@@ -240,16 +244,16 @@ export class NotificationService {
           html: this.buildEmailHtml(notification),
           text: notification.message,
         });
-        deliveryStatus.email = "sent";
+        deliveryStatus.email = 'sent';
       } catch (error) {
-        console.error("Email delivery failed:", error);
-        deliveryStatus.email = "failed";
+        console.error('Email delivery failed:', error);
+        deliveryStatus.email = 'failed';
       }
     }
 
-    if (channels.includes("sms")) {
+    if (channels.includes('sms')) {
       try {
-        const userDoc = await adminDb.collection("users").doc(notification.userId).get();
+        const userDoc = await adminDb.collection('users').doc(notification.userId).get();
         const phone = userDoc.data()?.phone;
 
         if (phone) {
@@ -257,34 +261,37 @@ export class NotificationService {
             to: phone,
             message: `${notification.title}\n${notification.message}`,
           });
-          deliveryStatus.sms = "sent";
+          deliveryStatus.sms = 'sent';
         }
       } catch (error) {
-        console.error("SMS delivery failed:", error);
-        deliveryStatus.sms = "failed";
+        console.error('SMS delivery failed:', error);
+        deliveryStatus.sms = 'failed';
       }
     }
 
-    if (channels.includes("webhook")) {
+    if (channels.includes('webhook')) {
       try {
         await this.sendWebhooks(notificationId, notification);
-        deliveryStatus.webhook = "sent";
+        deliveryStatus.webhook = 'sent';
       } catch (error) {
-        console.error("Webhook delivery failed:", error);
-        deliveryStatus.webhook = "failed";
+        console.error('Webhook delivery failed:', error);
+        deliveryStatus.webhook = 'failed';
       }
     }
 
-    await adminDb.collection("notifications").doc(notificationId).update({
+    await adminDb.collection('notifications').doc(notificationId).update({
       deliveryStatus,
     });
   }
 
-  private static async sendWebhooks(notificationId: string, notification: Omit<Notification, "id">) {
+  private static async sendWebhooks(
+    notificationId: string,
+    notification: Omit<Notification, 'id'>,
+  ) {
     const snapshot = await adminDb
-      .collection("notification_webhooks")
-      .where("tenantId", "==", notification.tenantId)
-      .where("enabled", "==", true)
+      .collection('notification_webhooks')
+      .where('tenantId', '==', notification.tenantId)
+      .where('enabled', '==', true)
       .get();
 
     if (snapshot.empty) return;
@@ -305,21 +312,21 @@ export class NotificationService {
     await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data() || {};
-        const url = String(data.url || "");
+        const url = String(data.url || '');
         const enabled = Boolean(data.enabled);
         const eventTypes = Array.isArray(data.eventTypes) ? data.eventTypes : null;
         if (!url || !enabled) return;
         if (eventTypes && !eventTypes.includes(notification.type)) return;
 
-        const secret = String(data.secret || "");
-        const signature = secret ? cryptoSign(payload, secret) : "";
+        const secret = String(data.secret || '');
+        const signature = secret ? cryptoSign(payload, secret) : '';
 
         const response = await fetch(url, {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "X-Notification-Id": notificationId,
-            ...(signature ? { "X-Notification-Signature": signature } : {}),
+            'Content-Type': 'application/json',
+            'X-Notification-Id': notificationId,
+            ...(signature ? { 'X-Notification-Signature': signature } : {}),
           },
           body: JSON.stringify(payload),
         });
@@ -328,15 +335,15 @@ export class NotificationService {
           const responseBody = await response.text();
           throw new Error(`Webhook failed: ${response.status} ${responseBody}`);
         }
-      })
+      }),
     );
   }
 
   private static async getUserPreferences(
     userId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<NotificationPreferences> {
-    const doc = await adminDb.collection("notification_preferences").doc(userId).get();
+    const doc = await adminDb.collection('notification_preferences').doc(userId).get();
 
     if (!doc.exists) {
       return this.getDefaultPreferences(userId, tenantId);
@@ -353,25 +360,25 @@ export class NotificationService {
   private static getDefaultChannels(
     preferences: NotificationPreferences,
     category: NotificationCategory,
-    priority: string
+    priority: string,
   ): NotificationChannel[] {
     const categorySettings = preferences.categorySettings[category];
     if (!categorySettings || !categorySettings.enabled) {
-      return preferences.channels.inApp ? ["in_app"] : [];
+      return preferences.channels.inApp ? ['in_app'] : [];
     }
 
     if (categorySettings.minPriority) {
       const minIndex = PRIORITY_LEVELS.indexOf(categorySettings.minPriority);
       const currentIndex = PRIORITY_LEVELS.indexOf(priority as (typeof PRIORITY_LEVELS)[number]);
       if (currentIndex < minIndex) {
-        return preferences.channels.inApp ? ["in_app"] : [];
+        return preferences.channels.inApp ? ['in_app'] : [];
       }
     }
 
     const channels = new Set<NotificationChannel>(categorySettings.channels || []);
-    if (preferences.channels.inApp) channels.add("in_app");
-    if (!preferences.channels.email) channels.delete("email");
-    if (!preferences.channels.sms) channels.delete("sms");
+    if (preferences.channels.inApp) channels.add('in_app');
+    if (!preferences.channels.email) channels.delete('email');
+    if (!preferences.channels.sms) channels.delete('sms');
 
     return Array.from(channels);
   }
@@ -382,23 +389,23 @@ export class NotificationService {
     }
 
     const { start, end, timezone } = preferences.quietHours;
-    const [startHour, startMinute] = start.split(":").map(Number);
-    const [endHour, endMinute] = end.split(":").map(Number);
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [endHour, endMinute] = end.split(':').map(Number);
 
     if ([startHour, startMinute, endHour, endMinute].some((val) => Number.isNaN(val))) {
       return false;
     }
 
     const now = new Date();
-    const parts = new Intl.DateTimeFormat("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
       timeZone: timezone,
     }).formatToParts(now);
 
-    const currentHour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
-    const currentMinute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+    const currentHour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
+    const currentMinute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
     const currentMinutes = currentHour * 60 + currentMinute;
 
     const startMinutes = startHour * 60 + startMinute;
@@ -417,31 +424,32 @@ export class NotificationService {
     if (!preferences.quietHours?.enabled) return null;
 
     const { start, end, timezone } = preferences.quietHours;
-    const [startHour, startMinute] = start.split(":").map(Number);
-    const [endHour, endMinute] = end.split(":").map(Number);
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [endHour, endMinute] = end.split(':').map(Number);
 
     if ([startHour, startMinute, endHour, endMinute].some((val) => Number.isNaN(val))) {
       return null;
     }
 
     const now = new Date();
-    const parts = new Intl.DateTimeFormat("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
       timeZone: timezone,
     }).formatToParts(now);
 
-    const currentHour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
-    const currentMinute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+    const currentHour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
+    const currentMinute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
     const currentMinutes = currentHour * 60 + currentMinute;
 
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
 
-    const isQuiet = startMinutes < endMinutes
-      ? currentMinutes >= startMinutes && currentMinutes < endMinutes
-      : currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    const isQuiet =
+      startMinutes < endMinutes
+        ? currentMinutes >= startMinutes && currentMinutes < endMinutes
+        : currentMinutes >= startMinutes || currentMinutes < endMinutes;
 
     if (!isQuiet) return null;
 
@@ -456,7 +464,7 @@ export class NotificationService {
     });
   }
 
-  private static buildEmailHtml(notification: Omit<Notification, "id">): string {
+  private static buildEmailHtml(notification: Omit<Notification, 'id'>): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -489,11 +497,11 @@ export class NotificationService {
                   ? `
                 <div class="action">
                   <a href="${notification.actionUrl}" class="button">
-                    ${notification.actionLabel || "View Details"}
+                    ${notification.actionLabel || 'View Details'}
                   </a>
                 </div>
               `
-                  : ""
+                  : ''
               }
             </div>
           </div>
@@ -504,46 +512,49 @@ export class NotificationService {
 
   private static async queueForLater(
     notificationId: string,
-    notification: Omit<Notification, "id">,
+    notification: Omit<Notification, 'id'>,
     channels: NotificationChannel[],
-    preferences: NotificationPreferences
+    preferences: NotificationPreferences,
   ) {
     const deliveryStatus = { ...notification.deliveryStatus };
-    deliveryStatus.inApp = "delivered";
+    deliveryStatus.inApp = 'delivered';
 
-    if (channels.includes("email")) {
-      deliveryStatus.email = "pending";
+    if (channels.includes('email')) {
+      deliveryStatus.email = 'pending';
     }
 
-    if (channels.includes("sms")) {
-      deliveryStatus.sms = "pending";
+    if (channels.includes('sms')) {
+      deliveryStatus.sms = 'pending';
     }
 
-    if (channels.includes("webhook")) {
-      deliveryStatus.webhook = "pending";
+    if (channels.includes('webhook')) {
+      deliveryStatus.webhook = 'pending';
     }
 
     const nextAttemptAt = this.getNextQuietHoursEnd(preferences);
 
-    await adminDb.collection("notifications").doc(notificationId).update({
-      deliveryStatus,
-      metadata: {
-        ...notification.metadata,
-        queuedForDelivery: true,
-        nextAttemptAt: nextAttemptAt || null,
-      },
-    });
+    await adminDb
+      .collection('notifications')
+      .doc(notificationId)
+      .update({
+        deliveryStatus,
+        metadata: {
+          ...notification.metadata,
+          queuedForDelivery: true,
+          nextAttemptAt: nextAttemptAt || null,
+        },
+      });
   }
 }
 
 function cryptoSign(payload: Record<string, unknown>, secret: string) {
   const serialized = JSON.stringify(payload);
-  return crypto.createHmac("sha256", secret).update(serialized).digest("hex");
+  return crypto.createHmac('sha256', secret).update(serialized).digest('hex');
 }
 
 function toIsoTimestamp(value: any) {
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();

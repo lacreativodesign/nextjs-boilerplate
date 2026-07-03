@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { InviteUserDialog } from "@/components/users/InviteUserDialog";
-import { UserCard, type UserCardData } from "@/components/users/UserCard";
+import { useEffect, useState } from 'react';
+import { InviteUserDialog } from '@/components/users/InviteUserDialog';
+import { UserCard, type UserCardData } from '@/components/users/UserCard';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserCardData[]>([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,19 +15,19 @@ export default function UsersPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (filter !== "all") {
-        params.append("status", filter);
+      if (filter !== 'all') {
+        params.append('status', filter);
       }
 
       const response = await fetch(`/api/users?${params.toString()}`);
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data?.error || "Unable to load users");
+        throw new Error(data?.error || 'Unable to load users');
       }
       const data = await response.json();
       setUsers(data.users || []);
     } catch (err: any) {
-      setError(err?.message || "Unable to load users");
+      setError(err?.message || 'Unable to load users');
     } finally {
       setIsLoading(false);
     }
@@ -51,17 +51,17 @@ export default function UsersPage() {
 
       <div className="flex gap-2 mb-6 border-b">
         {[
-          { key: "all", label: "All" },
-          { key: "active", label: "Active" },
-          { key: "inactive", label: "Inactive" },
+          { key: 'all', label: 'All' },
+          { key: 'active', label: 'Active' },
+          { key: 'inactive', label: 'Inactive' },
         ].map((status) => (
           <button
             key={status.key}
             onClick={() => setFilter(status.key)}
             className={`px-4 py-2 font-medium ${
               filter === status.key
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {status.label}

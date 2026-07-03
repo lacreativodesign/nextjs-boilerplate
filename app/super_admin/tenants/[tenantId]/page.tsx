@@ -1,24 +1,27 @@
-"use client";
+'use client';
 
-import { OptimizedImage } from "@/components/OptimizedImage";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { getFirebaseStorage } from "@/lib/firebaseClient";
-import { MAX_IMAGE_UPLOAD_SIZE_BYTES, optimizeImageForUpload } from "@/lib/images/client-image-optimizer";
-import { apiFetch } from "@/lib/api/client";
+import { OptimizedImage } from '@/components/OptimizedImage';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getFirebaseStorage } from '@/lib/firebaseClient';
+import {
+  MAX_IMAGE_UPLOAD_SIZE_BYTES,
+  optimizeImageForUpload,
+} from '@/lib/images/client-image-optimizer';
+import { apiFetch } from '@/lib/api/client';
 
 type Tenant = {
   id: string;
   name: string;
   slug: string;
-  status: "active" | "suspended";
+  status: 'active' | 'suspended';
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   modulesEnabled: Record<string, boolean>;
   rolesEnabled: Record<string, boolean>;
-  plan?: "starter" | "pro" | "enterprise";
+  plan?: 'starter' | 'pro' | 'enterprise';
   modules?: Record<string, boolean>;
-  planSetBy?: { uid: string; role: "super_admin" } | null;
+  planSetBy?: { uid: string; role: 'super_admin' } | null;
   planUpdatedAt?: string | null;
   stripeConnectAccountId?: string | null;
   stripeConnectStatus?: string | null;
@@ -28,58 +31,62 @@ type Tenant = {
 };
 
 const moduleGroups: Record<string, Array<{ key: string; label: string }>> = {
-  "Core Modules": [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "clients", label: "Clients" },
-    { key: "sales", label: "Sales" },
-    { key: "finance", label: "Finance" },
-    { key: "hr", label: "Human Resources" },
-    { key: "production", label: "Production" },
-    { key: "admin", label: "Admin" },
-    { key: "notifications", label: "Notifications" },
+  'Core Modules': [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'clients', label: 'Clients' },
+    { key: 'sales', label: 'Sales' },
+    { key: 'finance', label: 'Finance' },
+    { key: 'hr', label: 'Human Resources' },
+    { key: 'production', label: 'Production' },
+    { key: 'admin', label: 'Admin' },
+    { key: 'notifications', label: 'Notifications' },
   ],
-  "Add-on Modules": [
-    { key: "projects", label: "Projects" },
-    { key: "reports", label: "Reports" },
-    { key: "crm", label: "CRM" },
-    { key: "inventory", label: "Inventory" },
-    { key: "approvals", label: "Approvals" },
-    { key: "billing", label: "Billing" },
-    { key: "support", label: "Support" },
+  'Add-on Modules': [
+    { key: 'projects', label: 'Projects' },
+    { key: 'reports', label: 'Reports' },
+    { key: 'crm', label: 'CRM' },
+    { key: 'inventory', label: 'Inventory' },
+    { key: 'approvals', label: 'Approvals' },
+    { key: 'billing', label: 'Billing' },
+    { key: 'support', label: 'Support' },
   ],
 };
 
 const roleList: Array<{ key: string; label: string }> = [
-  { key: "admin", label: "Admin" },
-  { key: "sales_manager", label: "Sales Manager" },
-  { key: "sales", label: "Sales" },
-  { key: "am_manager", label: "Account Manager (Head)" },
-  { key: "am", label: "Account Manager" },
-  { key: "production_manager", label: "Production Manager" },
-  { key: "production", label: "Production" },
-  { key: "finance", label: "Finance" },
-  { key: "hr", label: "HR" },
-  { key: "client", label: "Client Portal" },
+  { key: 'admin', label: 'Admin' },
+  { key: 'sales_manager', label: 'Sales Manager' },
+  { key: 'sales', label: 'Sales' },
+  { key: 'am_manager', label: 'Account Manager (Head)' },
+  { key: 'am', label: 'Account Manager' },
+  { key: 'production_manager', label: 'Production Manager' },
+  { key: 'production', label: 'Production' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'hr', label: 'HR' },
+  { key: 'client', label: 'Client Portal' },
 ];
 
 const planModules = [
-  { key: "crm", label: "CRM" },
-  { key: "projects", label: "Projects" },
-  { key: "approvals", label: "Approvals" },
-  { key: "notifications", label: "Notifications" },
-  { key: "finance", label: "Finance" },
-  { key: "hr", label: "HR" },
-  { key: "reports", label: "Reports" },
-  { key: "client_stripe_connect", label: "Client Stripe Connect" },
+  { key: 'crm', label: 'CRM' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'approvals', label: 'Approvals' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'hr', label: 'HR' },
+  { key: 'reports', label: 'Reports' },
+  { key: 'client_stripe_connect', label: 'Client Stripe Connect' },
 ];
 
 export default function TenantDetailPage() {
   const params = useParams();
-  const tenantId = String(params?.tenantId || "");
+  const tenantId = String(params?.tenantId || '');
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [brandName, setBrandName] = useState("");
+  const [brandName, setBrandName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoMetadata, setLogoMetadata] = useState<{ width: number; height: number; format: string } | null>(null);
+  const [logoMetadata, setLogoMetadata] = useState<{
+    width: number;
+    height: number;
+    format: string;
+  } | null>(null);
   const [savingBrand, setSavingBrand] = useState(false);
   const [impersonating, setImpersonating] = useState(false);
 
@@ -87,13 +94,12 @@ export default function TenantDetailPage() {
     if (!tenantId) return;
     setImpersonating(true);
     try {
-      const res = await apiFetch(
-        `/api/super_admin/tenants/${tenantId}/impersonate`,
-        { method: "POST" }
-      );
+      const res = await apiFetch(`/api/super_admin/tenants/${tenantId}/impersonate`, {
+        method: 'POST',
+      });
       const json = await res.json().catch(() => null);
       if (!json?.ok || !json?.customToken) {
-        alert(json?.error || "Failed to start impersonation");
+        alert(json?.error || 'Failed to start impersonation');
         return;
       }
       const qs = new URLSearchParams({
@@ -101,9 +107,9 @@ export default function TenantDetailPage() {
         tenantId,
         tenantName: json.tenantName || tenantId,
       });
-      window.open(`/impersonate?${qs.toString()}`, "_blank");
+      window.open(`/impersonate?${qs.toString()}`, '_blank');
     } catch {
-      alert("Failed to start impersonation session");
+      alert('Failed to start impersonation session');
     } finally {
       setImpersonating(false);
     }
@@ -113,17 +119,17 @@ export default function TenantDetailPage() {
   const [savingStatus, setSavingStatus] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingPlanModules, setSavingPlanModules] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"starter" | "pro" | "enterprise">("pro");
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'pro' | 'enterprise'>('pro');
   const [rolesEnabled, setRolesEnabled] = useState<Record<string, boolean>>({});
 
   const loadTenant = async () => {
     const res = await apiFetch(`/api/super_admin/tenants/${tenantId}`, {
-      cache: "no-store",
+      cache: 'no-store',
     });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
       setTenant({ ...json.tenant, rolesEnabled: json.tenant?.rolesEnabled || {} });
-      setBrandName(json.tenant?.brand?.name || json.tenant?.name || "");
+      setBrandName(json.tenant?.brand?.name || json.tenant?.name || '');
       if (json.tenant?.plan) {
         setSelectedPlan(json.tenant.plan);
       }
@@ -165,8 +171,8 @@ export default function TenantDetailPage() {
       }
 
       await apiFetch(`/api/super_admin/tenants/${tenant.id}/branding`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: brandName.trim() || tenant.name,
           logoUrl,
@@ -184,8 +190,8 @@ export default function TenantDetailPage() {
     setSavingModules(true);
     try {
       await apiFetch(`/api/super_admin/tenants/${tenant.id}/modules`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modulesEnabled: nextModules }),
       });
       await loadTenant();
@@ -200,27 +206,27 @@ export default function TenantDetailPage() {
 
     try {
       const res = await apiFetch(`/api/super_admin/tenants/${tenant.id}/roles`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rolesEnabled: roles }),
       });
       const json = await res.json().catch(() => null);
       if (json?.ok) {
         setTenant((prev) => (prev ? { ...prev, rolesEnabled: json.rolesEnabled || roles } : prev));
-        alert("Role settings updated.");
+        alert('Role settings updated.');
       }
     } finally {
       setSavingRoles(false);
     }
   };
 
-  const updateStatus = async (status: "active" | "suspended") => {
+  const updateStatus = async (status: 'active' | 'suspended') => {
     if (!tenant) return;
     setSavingStatus(true);
     try {
       await apiFetch(`/api/super_admin/tenants/${tenant.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       await loadTenant();
@@ -229,13 +235,13 @@ export default function TenantDetailPage() {
     }
   };
 
-  const updatePlan = async (nextPlan: "starter" | "pro" | "enterprise") => {
+  const updatePlan = async (nextPlan: 'starter' | 'pro' | 'enterprise') => {
     if (!tenant) return;
     setSavingPlan(true);
     try {
       await apiFetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: nextPlan }),
       });
       await loadTenant();
@@ -249,8 +255,8 @@ export default function TenantDetailPage() {
     setSavingPlanModules(true);
     try {
       await apiFetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modules: nextModules }),
       });
       await loadTenant();
@@ -274,7 +280,7 @@ export default function TenantDetailPage() {
           <select
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
             value={tenant.status}
-            onChange={(e) => updateStatus(e.target.value === "suspended" ? "suspended" : "active")}
+            onChange={(e) => updateStatus(e.target.value === 'suspended' ? 'suspended' : 'active')}
             disabled={savingStatus}
           >
             <option value="active">Active</option>
@@ -286,14 +292,14 @@ export default function TenantDetailPage() {
             disabled={impersonating}
             className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
             style={{
-              background: "linear-gradient(135deg,#b45309,#d97706)",
+              background: 'linear-gradient(135deg,#b45309,#d97706)',
               opacity: impersonating ? 0.7 : 1,
-              cursor: impersonating ? "not-allowed" : "pointer",
-              border: "none",
-              boxShadow: "0 2px 6px rgba(180,83,9,0.3)",
+              cursor: impersonating ? 'not-allowed' : 'pointer',
+              border: 'none',
+              boxShadow: '0 2px 6px rgba(180,83,9,0.3)',
             }}
           >
-            👁️ {impersonating ? "Opening..." : "Login as Tenant"}
+            👁️ {impersonating ? 'Opening...' : 'Login as Tenant'}
           </button>
         </div>
       </div>
@@ -302,7 +308,9 @@ export default function TenantDetailPage() {
         <div className="card p-6 space-y-4">
           <div>
             <h3 className="section-title">Branding</h3>
-            <p className="section-subtitle">Super Admin only. Logo updates propagate to all dashboards.</p>
+            <p className="section-subtitle">
+              Super Admin only. Logo updates propagate to all dashboards.
+            </p>
           </div>
           <div className="flex flex-wrap gap-4">
             <div className="w-full md:w-[240px] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
@@ -343,8 +351,8 @@ export default function TenantDetailPage() {
                   }
 
                   if (next.size > MAX_IMAGE_UPLOAD_SIZE_BYTES) {
-                    alert("Logo file exceeds 5MB limit.");
-                    e.currentTarget.value = "";
+                    alert('Logo file exceeds 5MB limit.');
+                    e.currentTarget.value = '';
                     setLogoFile(null);
                     setLogoMetadata(null);
                     return;
@@ -359,20 +367,24 @@ export default function TenantDetailPage() {
                       format: optimized.metadata.format,
                     });
                   } catch (error: any) {
-                    alert(error?.message || "Unable to process logo image.");
-                    e.currentTarget.value = "";
+                    alert(error?.message || 'Unable to process logo image.');
+                    e.currentTarget.value = '';
                     setLogoFile(null);
                     setLogoMetadata(null);
                   }
                 }}
               />
-              {logoMetadata ? <p className="text-xs text-[var(--text-muted)]">Optimized logo: {logoMetadata.width}×{logoMetadata.height} ({logoMetadata.format})</p> : null}
+              {logoMetadata ? (
+                <p className="text-xs text-[var(--text-muted)]">
+                  Optimized logo: {logoMetadata.width}×{logoMetadata.height} ({logoMetadata.format})
+                </p>
+              ) : null}
               <button
                 className="rounded-xl bg-[var(--erp-blue)] px-4 py-2 text-sm font-semibold text-white"
                 onClick={updateBranding}
                 disabled={savingBrand}
               >
-                {savingBrand ? "Saving..." : "Save Branding"}
+                {savingBrand ? 'Saving...' : 'Save Branding'}
               </button>
             </div>
           </div>
@@ -408,7 +420,7 @@ export default function TenantDetailPage() {
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
                 <span className="text-[var(--text-muted)]">Status</span>
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
-                  {tenant.stripeConnectStatus || "active"}
+                  {tenant.stripeConnectStatus || 'active'}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
@@ -420,15 +432,15 @@ export default function TenantDetailPage() {
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
                 <span className="text-[var(--text-muted)]">Email</span>
-                <span>{tenant.stripeConnectEmail || "-"}</span>
+                <span>{tenant.stripeConnectEmail || '-'}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
                 <span className="text-[var(--text-muted)]">Charges Enabled</span>
-                <span>{tenant.stripeConnectChargesEnabled ? "Yes" : "No"}</span>
+                <span>{tenant.stripeConnectChargesEnabled ? 'Yes' : 'No'}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
                 <span className="text-[var(--text-muted)]">Payouts Enabled</span>
-                <span>{tenant.stripeConnectPayoutsEnabled ? "Yes" : "No"}</span>
+                <span>{tenant.stripeConnectPayoutsEnabled ? 'Yes' : 'No'}</span>
               </div>
             </div>
           ) : (
@@ -458,7 +470,9 @@ export default function TenantDetailPage() {
                       checked={moduleState[module.key] !== false}
                       onChange={(e) => {
                         const nextModules = { ...moduleState, [module.key]: e.target.checked };
-                        setTenant((prev) => (prev ? { ...prev, modulesEnabled: nextModules } : prev));
+                        setTenant((prev) =>
+                          prev ? { ...prev, modulesEnabled: nextModules } : prev,
+                        );
                       }}
                     />
                   </label>
@@ -474,7 +488,7 @@ export default function TenantDetailPage() {
             onClick={() => updateModules(moduleState)}
             disabled={savingModules}
           >
-            {savingModules ? "Saving..." : "Save Modules"}
+            {savingModules ? 'Saving...' : 'Save Modules'}
           </button>
         </div>
       </div>
@@ -482,7 +496,9 @@ export default function TenantDetailPage() {
       <div className="card p-6 space-y-4">
         <div>
           <h3 className="section-title">Role Access</h3>
-          <p className="section-subtitle">Enable or disable roles for this tenant. Disabled roles cannot be assigned to users.</p>
+          <p className="section-subtitle">
+            Enable or disable roles for this tenant. Disabled roles cannot be assigned to users.
+          </p>
         </div>
 
         <div className="rounded-2xl border border-[var(--border-subtle)] p-4">
@@ -511,7 +527,7 @@ export default function TenantDetailPage() {
             onClick={() => updateRoles(rolesEnabled)}
             disabled={savingRoles}
           >
-            {savingRoles ? "Saving..." : "Save Role Settings"}
+            {savingRoles ? 'Saving...' : 'Save Role Settings'}
           </button>
         </div>
       </div>
@@ -519,16 +535,20 @@ export default function TenantDetailPage() {
       <div className="card p-6 space-y-4">
         <div>
           <h3 className="section-title">Plan & SaaS Modules</h3>
-          <p className="section-subtitle">Control subscription tier defaults and override per-module access.</p>
+          <p className="section-subtitle">
+            Control subscription tier defaults and override per-module access.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Plan</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+              Plan
+            </label>
             <select
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
               value={selectedPlan}
-              onChange={(e) => setSelectedPlan(e.target.value as "starter" | "pro" | "enterprise")}
+              onChange={(e) => setSelectedPlan(e.target.value as 'starter' | 'pro' | 'enterprise')}
               disabled={savingPlan}
             >
               <option value="starter">Starter</option>
@@ -541,7 +561,7 @@ export default function TenantDetailPage() {
             onClick={() => updatePlan(selectedPlan)}
             disabled={savingPlan}
           >
-            {savingPlan ? "Saving..." : "Update Plan"}
+            {savingPlan ? 'Saving...' : 'Update Plan'}
           </button>
         </div>
 
@@ -570,7 +590,7 @@ export default function TenantDetailPage() {
             onClick={() => updatePlanModules(planModuleState)}
             disabled={savingPlanModules}
           >
-            {savingPlanModules ? "Saving..." : "Save Plan Modules"}
+            {savingPlanModules ? 'Saving...' : 'Save Plan Modules'}
           </button>
         </div>
       </div>

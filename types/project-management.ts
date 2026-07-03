@@ -1,20 +1,21 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
-export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled" | "archived";
+export type ProjectStatus =
+  'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled' | 'archived';
 
 export type ProjectCategory =
-  | "internal"
-  | "client_project"
-  | "product_development"
-  | "marketing"
-  | "sales"
-  | "operations"
-  | "other";
+  | 'internal'
+  | 'client_project'
+  | 'product_development'
+  | 'marketing'
+  | 'sales'
+  | 'operations'
+  | 'other';
 
 export interface ProjectLink {
   title: string;
   url: string;
-  type: "figma" | "github" | "drive" | "other";
+  type: 'figma' | 'github' | 'drive' | 'other';
 }
 
 export interface Project {
@@ -35,12 +36,12 @@ export interface Project {
   endDate?: Timestamp;
   estimatedHours?: number;
   status: ProjectStatus;
-  priority: "low" | "medium" | "high" | "critical";
+  priority: 'low' | 'medium' | 'high' | 'critical';
   progress: number;
   managerId: string;
   managerName: string;
   teamMemberIds: string[];
-  visibility: "private" | "team" | "organization";
+  visibility: 'private' | 'team' | 'organization';
   totalTasks: number;
   completedTasks: number;
   totalHoursLogged: number;
@@ -59,7 +60,8 @@ export interface Project {
   completedAt?: Timestamp;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "in_review" | "blocked" | "completed" | "cancelled";
+export type TaskStatus =
+  'todo' | 'in_progress' | 'in_review' | 'blocked' | 'completed' | 'cancelled';
 
 export interface TaskChecklistItem {
   id: string;
@@ -76,7 +78,7 @@ export interface Task {
   description?: string;
   code?: string;
   status: TaskStatus;
-  priority: "low" | "medium" | "high" | "urgent";
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   assignedToName?: string;
   assignedBy: string;
@@ -112,7 +114,7 @@ export interface Milestone {
   name: string;
   description?: string;
   dueDate: Timestamp;
-  status: "upcoming" | "in_progress" | "completed" | "overdue";
+  status: 'upcoming' | 'in_progress' | 'completed' | 'overdue';
   progress: number;
   taskIds: string[];
   totalTasks: number;
@@ -156,7 +158,7 @@ export interface TaskComment {
   authorAvatar?: string;
   content: string;
   attachments?: string[];
-  type: "comment" | "status_change" | "assignment" | "mention";
+  type: 'comment' | 'status_change' | 'assignment' | 'mention';
   metadata?: Record<string, any>;
   mentions: string[];
   createdAt: Timestamp;

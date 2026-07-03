@@ -111,7 +111,9 @@ async function main() {
   }
 
   if (blocked.length) {
-    throw new Error(`License compliance failed for ${blocked.length} packages:\n${blocked.join('\n')}`);
+    throw new Error(
+      `License compliance failed for ${blocked.length} packages:\n${blocked.join('\n')}`,
+    );
   }
 
   process.stdout.write(`License compliance passed for ${packages.size} packages.\n`);

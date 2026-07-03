@@ -1,11 +1,11 @@
-import { AppError } from "@/lib/errors";
+import { AppError } from '@/lib/errors';
 
-export type RateLimitTier = "strict" | "standard" | "relaxed" | "upload";
+export type RateLimitTier = 'strict' | 'standard' | 'relaxed' | 'upload';
 
 type TierConfig = {
   limit: number;
   windowSeconds: number;
-  scope: "ip" | "user" | "ip_and_user";
+  scope: 'ip' | 'user' | 'ip_and_user';
 };
 
 type CounterResult = {
@@ -21,14 +21,14 @@ type RateLimitContext = {
   retryAfterSeconds: number;
 };
 
-const DEFAULT_IP = "127.0.0.1";
+const DEFAULT_IP = '127.0.0.1';
 const FALLBACK_TTL_SECONDS = 60;
 
 const TIER_CONFIG: Record<RateLimitTier, TierConfig> = {
-  strict: { limit: 8, windowSeconds: 60, scope: "ip_and_user" },
-  standard: { limit: 120, windowSeconds: 60, scope: "ip_and_user" },
-  relaxed: { limit: 240, windowSeconds: 60, scope: "ip_and_user" },
-  upload: { limit: 30, windowSeconds: 60, scope: "user" },
+  strict: { limit: 8, windowSeconds: 60, scope: 'ip_and_user' },
+  standard: { limit: 120, windowSeconds: 60, scope: 'ip_and_user' },
+  relaxed: { limit: 240, windowSeconds: 60, scope: 'ip_and_user' },
+  upload: { limit: 30, windowSeconds: 60, scope: 'user' },
 };
 
 const inMemoryStore = new Map<string, { count: number; resetAtMs: number }>();
@@ -46,7 +46,7 @@ function getUpstashConfig() {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (!url || !token) return null;
-  return { url: url.replace(/\/$/, ""), token };
+  return { url: url.replace(/\/$/, ''), token };
 }
 
 async function incrementCounterRedis(key: string, windowSeconds: number): Promise<CounterResult> {
@@ -56,17 +56,17 @@ async function incrementCounterRedis(key: string, windowSeconds: number): Promis
   }
 
   const response = await fetch(`${upstash.url}/pipeline`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${upstash.token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify([
-      ["INCR", key],
-      ["EXPIRE", key, String(windowSeconds), "NX"],
-      ["TTL", key],
+      ['INCR', key],
+      ['EXPIRE', key, String(windowSeconds), 'NX'],
+      ['TTL', key],
     ]),
-    cache: "no-store",
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -103,32 +103,33 @@ function incrementCounterMemory(key: string, windowSeconds: number): CounterResu
 
 function isSafeMethod(method: string) {
   const normalized = method.toUpperCase();
-  return normalized === "GET" || normalized === "HEAD" || normalized === "OPTIONS";
+  return normalized === 'GET' || normalized === 'HEAD' || normalized === 'OPTIONS';
 }
 
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
+  const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
-    const ip = forwarded.split(",")[0]?.trim();
+    const ip = forwarded.split(',')[0]?.trim();
     if (ip) return ip;
   }
 
-  const realIp = req.headers.get("x-real-ip")
-    || req.headers.get("cf-connecting-ip")
-    || req.headers.get("x-vercel-forwarded-for");
+  const realIp =
+    req.headers.get('x-real-ip') ||
+    req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-vercel-forwarded-for');
 
   return realIp?.trim() || DEFAULT_IP;
 }
 
 function resolveRateLimitKey(req: Request, tier: RateLimitTier, identifier?: string): string {
   const ip = getClientIp(req);
-  const cleanIdentifier = identifier?.trim() || "";
+  const cleanIdentifier = identifier?.trim() || '';
   const config = TIER_CONFIG[tier];
 
-  if (config.scope === "ip") {
+  if (config.scope === 'ip') {
     return `${tier}:ip:${toHashedKey(ip)}`;
   }
-  if (config.scope === "user") {
+  if (config.scope === 'user') {
     // Do NOT trust an inbound x-user-id header — it is client-spoofable and would let a caller share
     // or evade another user's rate-limit bucket. Callers that want per-user limiting must pass an
     // explicit server-derived identifier; otherwise fall back to the (non-spoofable) client IP.
@@ -138,11 +139,17 @@ function resolveRateLimitKey(req: Request, tier: RateLimitTier, identifier?: str
 
   const composite = cleanIdentifier
     ? `${ip}:${cleanIdentifier}`
-    : `${ip}:${req.headers.get("user-agent") || "unknown"}`;
+    : `${ip}:${req.headers.get('user-agent') || 'unknown'}`;
   return `${tier}:combo:${toHashedKey(composite)}`;
 }
 
-function buildRateLimitContext(req: Request, tier: RateLimitTier, count: number, ttlSeconds: number, identifier?: string): RateLimitContext {
+function buildRateLimitContext(
+  req: Request,
+  tier: RateLimitTier,
+  count: number,
+  ttlSeconds: number,
+  identifier?: string,
+): RateLimitContext {
   const limit = TIER_CONFIG[tier].limit;
   const remaining = Math.max(0, limit - count);
   const retryAfterSeconds = count > limit ? ttlSeconds : 0;
@@ -156,18 +163,25 @@ function buildRateLimitContext(req: Request, tier: RateLimitTier, count: number,
   };
 }
 
-export function applyRateLimitHeaders(headers: Headers, context: Pick<RateLimitContext, "limit" | "remaining" | "resetSeconds" | "retryAfterSeconds">) {
-  headers.set("X-RateLimit-Limit", String(context.limit));
-  headers.set("X-RateLimit-Remaining", String(context.remaining));
-  headers.set("X-RateLimit-Reset", String(context.resetSeconds));
-  headers.set("RateLimit-Policy", `${context.limit};w=${context.resetSeconds}`);
+export function applyRateLimitHeaders(
+  headers: Headers,
+  context: Pick<RateLimitContext, 'limit' | 'remaining' | 'resetSeconds' | 'retryAfterSeconds'>,
+) {
+  headers.set('X-RateLimit-Limit', String(context.limit));
+  headers.set('X-RateLimit-Remaining', String(context.remaining));
+  headers.set('X-RateLimit-Reset', String(context.resetSeconds));
+  headers.set('RateLimit-Policy', `${context.limit};w=${context.resetSeconds}`);
   if (context.retryAfterSeconds > 0) {
-    headers.set("Retry-After", String(context.retryAfterSeconds));
+    headers.set('Retry-After', String(context.retryAfterSeconds));
   }
 }
 
-export async function checkRateLimit(req: Request, tier: RateLimitTier, identifier?: string): Promise<RateLimitContext> {
-  if (isSafeMethod(req.method) && tier !== "strict") {
+export async function checkRateLimit(
+  req: Request,
+  tier: RateLimitTier,
+  identifier?: string,
+): Promise<RateLimitContext> {
+  if (isSafeMethod(req.method) && tier !== 'strict') {
     const tierConfig = TIER_CONFIG[tier];
     const key = resolveRateLimitKey(req, tier, identifier);
     return {
@@ -186,8 +200,8 @@ export async function checkRateLimit(req: Request, tier: RateLimitTier, identifi
 
   if (counter.count > config.limit) {
     throw new AppError({
-      message: "Rate limit exceeded. Please retry later.",
-      code: "RATE_LIMITED",
+      message: 'Rate limit exceeded. Please retry later.',
+      code: 'RATE_LIMITED',
       status: 429,
       details: {
         retryAfterMs: context.retryAfterSeconds * 1000,

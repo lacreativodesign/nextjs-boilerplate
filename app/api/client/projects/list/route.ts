@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireClient, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireClient, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type ProjectDoc = {
   projectName?: string;
@@ -19,19 +19,19 @@ type ProjectDoc = {
   clientApprovedAt?: any;
 };
 
-function computeHealth(dueDate: string | null): "Overdue" | "At Risk" | "On Track" {
-  if (!dueDate) return "On Track";
+function computeHealth(dueDate: string | null): 'Overdue' | 'At Risk' | 'On Track' {
+  if (!dueDate) return 'On Track';
   const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
+  if (Number.isNaN(due.getTime())) return 'On Track';
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = due.getTime() - startOfToday.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) return "Overdue";
-  if (diffDays <= 7) return "At Risk";
-  return "On Track";
+  if (diffDays < 0) return 'Overdue';
+  if (diffDays <= 7) return 'At Risk';
+  return 'On Track';
 }
 
 export async function GET() {
@@ -42,11 +42,11 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("projects")
-      .where("clientId", "==", auth.clientId)
-      .where("tenantId", "==", auth.tenantId)
-      .where("isDeleted", "==", false)
-      .orderBy("updatedAt", "desc")
+      .collection('projects')
+      .where('clientId', '==', auth.clientId)
+      .where('tenantId', '==', auth.tenantId)
+      .where('isDeleted', '==', false)
+      .orderBy('updatedAt', 'desc')
       .limit(500)
       .get();
 
@@ -55,29 +55,29 @@ export async function GET() {
       const dueDate = toISO(data.dueDate);
       return {
         id: doc.id,
-        projectName: data.projectName || "",
-        projectType: data.projectType || "",
-        stage: data.stage || "Inquiry",
+        projectName: data.projectName || '',
+        projectType: data.projectType || '',
+        stage: data.stage || 'Inquiry',
         dueDate,
         health: data.health || computeHealth(dueDate),
         updatedAt: toISO(data.updatedAt),
-        clientId: data.clientId || "",
-        clientName: data.clientName || "",
+        clientId: data.clientId || '',
+        clientName: data.clientName || '',
         projectCode: data.projectCode || null,
-        clientApprovalStatus: data.clientApprovalStatus || "pending",
+        clientApprovalStatus: data.clientApprovalStatus || 'pending',
         clientApprovedAt: toISO(data.clientApprovedAt),
       };
     });
 
     return NextResponse.json({ ok: true, projects });
   } catch (err: any) {
-    console.error("client/projects list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('client/projects list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load projects.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load projects.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

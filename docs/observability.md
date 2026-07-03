@@ -7,6 +7,7 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 ### `notifications` (in-app delivery)
 
 **Document fields**
+
 - `id` (string): Document ID.
 - `tenantId` (string | null): Tenant scope for delivery, used to filter in-app notifications.
 - `recipientUid` (string): User ID that receives the notification.
@@ -30,6 +31,7 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 ### `auditLogs` (legacy critical actions)
 
 **Document fields**
+
 - `id` (string): Document ID.
 - `tenantId` (string | null): Tenant scope (null for platform-level).
 - `actorUserId` (string | null)
@@ -44,6 +46,7 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 ### `audit_logs` (compliance-grade audit trail)
 
 **Document fields**
+
 - `id` (string): Document ID.
 - `tenantId` (string): Tenant scope.
 - `userId` (string)
@@ -60,6 +63,7 @@ This document outlines the core Firestore collections and helper APIs for Bizost
 - `createdAt` (timestamp)
 
 **Composite indexes**
+
 - `tenantId` + `timestamp` (desc)
 - `tenantId` + `userId` + `timestamp` (desc)
 - `tenantId` + `resource` + `timestamp` (desc)
@@ -73,10 +77,12 @@ Used for tenant activity pages (non-critical timeline events). This is distinct 
 ## Helper APIs
 
 ### Notifications
+
 - `createNotifications` (server): Fan-out to explicit recipients.
 - `createRoleNotifications` (server): Fan-out to all users in a role (optionally across tenants) while preserving a target tenant scope.
 
 ### Audit Logs
+
 - `writeAuditLog` (server): Appends to `auditLogs` for critical, traceable actions.
 
 ## Extension Points

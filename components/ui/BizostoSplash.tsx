@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type Props = {
   onDone: () => void;
@@ -83,13 +83,17 @@ export default function BizostoSplash({ onDone, duration = 2000 }: Props) {
         .biz-dot:nth-child(3) { animation: biz-dot 1.1s ease-in-out 1.2s  infinite; }
       `}</style>
       <div className="biz-overlay">
-        <div className="biz-logo"><span className="biz-letter">B</span></div>
+        <div className="biz-logo">
+          <span className="biz-letter">B</span>
+        </div>
         <span className="biz-name">Bizosto</span>
         <div className="biz-dots">
-          <div className="biz-dot" /><div className="biz-dot" /><div className="biz-dot" />
+          <div className="biz-dot" />
+          <div className="biz-dot" />
+          <div className="biz-dot" />
         </div>
       </div>
     </>,
-    document.body
+    document.body,
   );
 }

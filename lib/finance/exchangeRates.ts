@@ -1,27 +1,32 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import { AppError } from "@/lib/errors";
-import { CurrencyCode, getCurrency } from "./currencies";
-import { QUERY_CACHE_TTL_MS, isCacheFresh } from "@/lib/cache/query-client";
-import { CACHE_TTL_SECONDS, cacheKeys, getCached, setCached } from "@/lib/cache/redis-client";
+import { adminDb } from '@/lib/firebaseAdmin';
+import { AppError } from '@/lib/errors';
+import { CurrencyCode, getCurrency } from './currencies';
+import { QUERY_CACHE_TTL_MS, isCacheFresh } from '@/lib/cache/query-client';
+import { CACHE_TTL_SECONDS, cacheKeys, getCached, setCached } from '@/lib/cache/redis-client';
 
 const CACHE_DURATION_HOURS = 1;
-const API_BASE_URL = process.env.EXCHANGE_RATE_API_URL || "https://v6.exchangerate-api.com/v6";
+const API_BASE_URL = process.env.EXCHANGE_RATE_API_URL || 'https://v6.exchangerate-api.com/v6';
 const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
 
-const inMemoryExchangeRateCache = new Map<string, { rates: Record<string, number>; updatedAt: number }>();
+const inMemoryExchangeRateCache = new Map<
+  string,
+  { rates: Record<string, number>; updatedAt: number }
+>();
 
 interface ExchangeRateResponse {
-  result: "success" | "error";
+  result: 'success' | 'error';
   base_code: string;
   conversion_rates: Record<string, number>;
   time_last_update_unix: number;
 }
 
-async function fetchExchangeRatesFromAPI(baseCurrency: CurrencyCode = "USD"): Promise<Record<string, number>> {
+async function fetchExchangeRatesFromAPI(
+  baseCurrency: CurrencyCode = 'USD',
+): Promise<Record<string, number>> {
   if (!API_KEY) {
     throw new AppError({
-      message: "Exchange rate API key not configured",
-      code: "INTERNAL_SERVER_ERROR",
+      message: 'Exchange rate API key not configured',
+      code: 'INTERNAL_SERVER_ERROR',
       status: 500,
     });
   }
@@ -29,7 +34,7 @@ async function fetchExchangeRatesFromAPI(baseCurrency: CurrencyCode = "USD"): Pr
   const url = `${API_BASE_URL}/${API_KEY}/latest/${baseCurrency}`;
 
   try {
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await fetch(url, { cache: 'no-store' });
 
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status}`);
@@ -37,27 +42,29 @@ async function fetchExchangeRatesFromAPI(baseCurrency: CurrencyCode = "USD"): Pr
 
     const data: ExchangeRateResponse = await response.json();
 
-    if (data.result !== "success") {
-      throw new Error("API returned error result");
+    if (data.result !== 'success') {
+      throw new Error('API returned error result');
     }
 
     return data.conversion_rates;
   } catch (error) {
-    console.error("Failed to fetch exchange rates from API:", error);
+    console.error('Failed to fetch exchange rates from API:', error);
     throw new AppError({
-      message: "Failed to fetch exchange rates",
-      code: "INTERNAL_SERVER_ERROR",
+      message: 'Failed to fetch exchange rates',
+      code: 'INTERNAL_SERVER_ERROR',
       status: 500,
     });
   }
 }
 
-export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Promise<Record<string, number>> {
+export async function getExchangeRates(
+  baseCurrency: CurrencyCode = 'USD',
+): Promise<Record<string, number>> {
   const cacheKey = `exchange_rates_${baseCurrency}`;
   const redisKey = cacheKeys.exchangeRates(baseCurrency);
   const memoryCache = inMemoryExchangeRateCache.get(cacheKey);
 
-  if (memoryCache && isCacheFresh(memoryCache.updatedAt, "exchangeRates")) {
+  if (memoryCache && isCacheFresh(memoryCache.updatedAt, 'exchangeRates')) {
     return memoryCache.rates;
   }
 
@@ -68,41 +75,44 @@ export async function getExchangeRates(baseCurrency: CurrencyCode = "USD"): Prom
   }
 
   try {
-    const cacheDoc = await adminDb.collection("system").doc(cacheKey).get();
+    const cacheDoc = await adminDb.collection('system').doc(cacheKey).get();
 
     if (cacheDoc.exists) {
       const cacheData = cacheDoc.data();
       const cacheAge = Date.now() - Number(cacheData?.timestamp || 0);
-      const cacheMaxAge = Math.min(CACHE_DURATION_HOURS * 60 * 60 * 1000, QUERY_CACHE_TTL_MS.exchangeRates);
+      const cacheMaxAge = Math.min(
+        CACHE_DURATION_HOURS * 60 * 60 * 1000,
+        QUERY_CACHE_TTL_MS.exchangeRates,
+      );
 
       if (cacheAge < cacheMaxAge && cacheData?.rates) {
         const rates = cacheData.rates as Record<string, number>;
         inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
-        await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
+        await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ['exchange-rates']);
         return rates;
       }
     }
 
     const rates = await fetchExchangeRatesFromAPI(baseCurrency);
 
-    await adminDb.collection("system").doc(cacheKey).set({
+    await adminDb.collection('system').doc(cacheKey).set({
       rates,
       baseCurrency,
       timestamp: Date.now(),
       updatedAt: new Date(),
     });
     inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
-    await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
+    await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ['exchange-rates']);
 
     return rates;
   } catch (error) {
-    console.error("Error getting exchange rates:", error);
+    console.error('Error getting exchange rates:', error);
 
-    const cacheDoc = await adminDb.collection("system").doc(cacheKey).get();
+    const cacheDoc = await adminDb.collection('system').doc(cacheKey).get();
     if (cacheDoc.exists) {
       const rates = (cacheDoc.data()?.rates || {}) as Record<string, number>;
       inMemoryExchangeRateCache.set(cacheKey, { rates, updatedAt: Date.now() });
-      await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ["exchange-rates"]);
+      await setCached(redisKey, rates, CACHE_TTL_SECONDS.exchangeRates, ['exchange-rates']);
       return rates;
     }
 
@@ -124,7 +134,7 @@ export async function getExchangeRate(from: CurrencyCode, to: CurrencyCode): Pro
   if (!rate) {
     throw new AppError({
       message: `Exchange rate not available for ${from} to ${to}`,
-      code: "NOT_FOUND",
+      code: 'NOT_FOUND',
       status: 404,
     });
   }
@@ -135,7 +145,7 @@ export async function getExchangeRate(from: CurrencyCode, to: CurrencyCode): Pro
 export async function convertCurrency(
   amount: number,
   from: CurrencyCode,
-  to: CurrencyCode
+  to: CurrencyCode,
 ): Promise<{ amount: number; rate: number; convertedAmount: number }> {
   const rate = await getExchangeRate(from, to);
   const convertedAmount = amount * rate;
@@ -153,9 +163,9 @@ export async function storeHistoricalRate(
   from: CurrencyCode,
   to: CurrencyCode,
   rate: number,
-  tenantId: string
+  tenantId: string,
 ): Promise<void> {
-  await adminDb.collection("exchange_rate_history").add({
+  await adminDb.collection('exchange_rate_history').add({
     from,
     to,
     rate,

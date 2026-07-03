@@ -1,9 +1,9 @@
 // app/api/me/route.ts
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-import { getUserProfile } from "@/lib/serverAuth";
-import { getCurrentUser } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import { getUserProfile } from '@/lib/serverAuth';
+import { getCurrentUser } from '@/app/api/admin/_utils';
 
 export async function GET() {
   const current = await getCurrentUser();

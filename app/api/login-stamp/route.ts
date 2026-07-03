@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { verifySession } from "@/lib/serverAuth";
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { verifySession } from '@/lib/serverAuth';
 
 export async function POST(req: Request) {
   try {
@@ -15,22 +15,22 @@ export async function POST(req: Request) {
     const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 
     await adminDb
-      .collection("attendance")
+      .collection('attendance')
       .doc(uid)
       .set(
         {
           logs: admin.firestore.FieldValue.arrayUnion({
-            type: "login",
+            type: 'login',
             timestamp: now.toISOString(),
             date: dateKey,
           }),
         },
-        { merge: true }
+        { merge: true },
       );
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Login stamp error:", err);
+    console.error('Login stamp error:', err);
     return NextResponse.json({ success: false });
   }
 }

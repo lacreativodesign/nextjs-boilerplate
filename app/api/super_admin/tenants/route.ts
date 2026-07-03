@@ -1,36 +1,40 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import * as admin from "firebase-admin";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { requireSuperAdmin } from "../_utils";
-import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "@/lib/tenant/constants";
-import { writeAuditLog } from "@/lib/tenant/audit";
-import { queueEmailEvent } from "@/lib/emailEvents";
-import { normalizePlan, resolvePlanModules, resolveTenantModules } from "@/app/lib/plan-enforcement";
-import { ensureStripeCustomer } from "@/lib/billing/stripe-subscription";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { requireSuperAdmin } from '../_utils';
+import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from '@/lib/tenant/constants';
+import { writeAuditLog } from '@/lib/tenant/audit';
+import { queueEmailEvent } from '@/lib/emailEvents';
+import {
+  normalizePlan,
+  resolvePlanModules,
+  resolveTenantModules,
+} from '@/app/lib/plan-enforcement';
+import { ensureStripeCustomer } from '@/lib/billing/stripe-subscription';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function slugify(value: string) {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
     .slice(0, 64);
 }
 
 export async function GET(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
-    const snap = await adminDb.collection("tenants").orderBy("createdAt", "desc").get();
+    const snap = await adminDb.collection('tenants').orderBy('createdAt', 'desc').get();
     const tenants = snap.docs.map((doc) => {
       const data = doc.data() || {};
       const plan = normalizePlan(data.plan);
       return {
         id: doc.id,
-        name: data.name || "",
-        slug: data.slug || "",
-        status: data.status || "active",
+        name: data.name || '',
+        slug: data.slug || '',
+        status: data.status || 'active',
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
         rolesEnabled: data.rolesEnabled || DEFAULT_ROLES,
@@ -44,14 +48,14 @@ export async function GET(req: NextRequest) {
         updatedAt: data.updatedAt || null,
         lastActiveAt: data.lastActiveAt || null,
         trialEndsAt: data.trialEndsAt || null,
-        subscriptionState: data.subscriptionState || "active",
+        subscriptionState: data.subscriptionState || 'active',
       };
     });
 
     return NextResponse.json({ ok: true, tenants });
   } catch (err: any) {
-    const message = err?.message || "Server error";
-    const status = message === "Forbidden" ? 403 : 500;
+    const message = err?.message || 'Server error';
+    const status = message === 'Forbidden' ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
 }
@@ -60,25 +64,27 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireSuperAdmin(req);
     const body = await req.json().catch(() => ({}));
-    const name = String(body?.name || "").trim();
-    const slugInput = String(body?.slug || "").trim();
-    const createAdminEmail = String(body?.createAdminEmail || "").trim().toLowerCase();
+    const name = String(body?.name || '').trim();
+    const slugInput = String(body?.slug || '').trim();
+    const createAdminEmail = String(body?.createAdminEmail || '')
+      .trim()
+      .toLowerCase();
     const modulesEnabled = body?.modulesEnabled || DEFAULT_MODULES;
     const plan = normalizePlan(body?.plan);
     const modules = resolvePlanModules(plan, body?.modules);
 
     if (!name) {
-      return NextResponse.json({ ok: false, error: "Tenant name is required" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Tenant name is required' }, { status: 400 });
     }
 
     const slug = slugify(slugInput || name);
-    const tenantRef = adminDb.collection("tenants").doc();
+    const tenantRef = adminDb.collection('tenants').doc();
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     const payload = {
       name,
       slug,
-      status: "active",
+      status: 'active',
       brand: {
         ...DEFAULT_TENANT_BRAND,
         name,
@@ -92,7 +98,7 @@ export async function POST(req: NextRequest) {
       },
       plan,
       modules,
-      planSetBy: { uid: user.uid, role: "super_admin" },
+      planSetBy: { uid: user.uid, role: 'super_admin' },
       planUpdatedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -113,32 +119,35 @@ export async function POST(req: NextRequest) {
     if (createAdminEmail) {
       const authUser = await adminAuth.createUser({
         email: createAdminEmail,
-        displayName: createAdminEmail.split("@")[0],
+        displayName: createAdminEmail.split('@')[0],
       });
       createdUserId = authUser.uid;
-      await adminDb.collection("users").doc(authUser.uid).set(
-        {
-          email: createAdminEmail,
-          displayName: createAdminEmail.split("@")[0],
-          role: "admin",
-          tenantId: tenantRef.id,
-          status: "active",
-          createdAt: now,
-          updatedAt: now,
-        },
-        { merge: true }
-      );
+      await adminDb
+        .collection('users')
+        .doc(authUser.uid)
+        .set(
+          {
+            email: createAdminEmail,
+            displayName: createAdminEmail.split('@')[0],
+            role: 'admin',
+            tenantId: tenantRef.id,
+            status: 'active',
+            createdAt: now,
+            updatedAt: now,
+          },
+          { merge: true },
+        );
 
       await queueEmailEvent({
-        templateId: "account_activation",
+        templateId: 'account_activation',
         to: createAdminEmail,
         data: {
           tenantId: tenantRef.id,
           tenantName: name,
-          role: "admin",
+          role: 'admin',
         },
         metadata: {
-          source: "super_admin_tenant_create",
+          source: 'super_admin_tenant_create',
         },
       });
     }
@@ -146,15 +155,15 @@ export async function POST(req: NextRequest) {
     await writeAuditLog({
       tenantId: null,
       actorUserId: user.uid,
-      actionType: "tenant_created",
-      entityType: "tenant",
+      actionType: 'tenant_created',
+      entityType: 'tenant',
       entityId: tenantRef.id,
       metadata: { name, slug, createdUserId },
     });
 
     return NextResponse.json({ ok: true, tenantId: tenantRef.id, createdUserId });
   } catch (err: any) {
-    const message = err?.message || "Server error";
+    const message = err?.message || 'Server error';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

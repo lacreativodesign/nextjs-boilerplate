@@ -1,14 +1,21 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireHrAccess } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireHrAccess } from '../../_utils';
 
 export async function GET() {
   const access = await requireHrAccess();
-  if (!access.ok) return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+  if (!access.ok)
+    return NextResponse.json({ success: false, error: access.error }, { status: access.status });
 
   try {
-    const usersSnap = await adminDb.collection("users").where("tenantId", "==", access.user.tenantId).get();
-    const attendanceSnap = await adminDb.collection("attendance").where("tenantId", "==", access.user.tenantId).get();
+    const usersSnap = await adminDb
+      .collection('users')
+      .where('tenantId', '==', access.user.tenantId)
+      .get();
+    const attendanceSnap = await adminDb
+      .collection('attendance')
+      .where('tenantId', '==', access.user.tenantId)
+      .get();
 
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -25,9 +32,7 @@ export async function GET() {
       const user = userDoc.data();
       const logs = attendanceMap[userDoc.id] || [];
 
-      const loggedToday = logs.some(
-        (log) => new Date(log.timestamp) >= todayStart
-      );
+      const loggedToday = logs.some((log) => new Date(log.timestamp) >= todayStart);
 
       if (!loggedToday) {
         const lastLog = logs.length ? logs[0].timestamp : null;
@@ -47,10 +52,10 @@ export async function GET() {
       absentees,
     });
   } catch (e) {
-    console.error("Absentees error:", e);
+    console.error('Absentees error:', e);
     return NextResponse.json(
-      { success: false, error: "Failed to load absentees." },
-      { status: 500 }
+      { success: false, error: 'Failed to load absentees.' },
+      { status: 500 },
     );
   }
-          }
+}

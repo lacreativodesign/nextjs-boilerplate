@@ -1,5 +1,5 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import * as admin from "firebase-admin";
+import { adminDb } from '@/lib/firebaseAdmin';
+import * as admin from 'firebase-admin';
 
 export type SecurityEvent = {
   type: string;
@@ -17,14 +17,14 @@ export type AuditAction = {
   resourceId?: string | null;
   actorUid?: string | null;
   tenantId?: string | null;
-  status?: "success" | "failure";
+  status?: 'success' | 'failure';
   metadata?: Record<string, unknown>;
 };
 
 export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
-  console.log("[SECURITY]", JSON.stringify(event));
+  console.log('[SECURITY]', JSON.stringify(event));
   try {
-    adminDb.collection("security_events").add({
+    adminDb.collection('security_events').add({
       ...event,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -34,9 +34,9 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
 }
 
 export async function logAuditTrail(action: AuditAction): Promise<void> {
-  console.log("[AUDIT]", JSON.stringify(action));
+  console.log('[AUDIT]', JSON.stringify(action));
   try {
-    adminDb.collection("audit_trail").add({
+    adminDb.collection('audit_trail').add({
       ...action,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });

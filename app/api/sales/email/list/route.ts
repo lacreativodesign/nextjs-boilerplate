@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { parseString, requireSalesRead, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { parseString, requireSalesRead, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
@@ -12,36 +12,36 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const leadId = parseString(searchParams.get("leadId"), "");
+    const leadId = parseString(searchParams.get('leadId'), '');
 
     if (leadId) {
-      const leadSnap = await adminDb.collection("leads").doc(leadId).get();
+      const leadSnap = await adminDb.collection('leads').doc(leadId).get();
       if (!leadSnap.exists) {
-        return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
+        return NextResponse.json({ ok: false, error: 'Lead not found.' }, { status: 404 });
       }
       const lead = leadSnap.data() || {};
-      if ((lead.tenantId || "") !== auth.user.tenantId && auth.user.role !== "super_admin") {
-        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      if ((lead.tenantId || '') !== auth.user.tenantId && auth.user.role !== 'super_admin') {
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
-      if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid) {
-        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      if (auth.user.role === 'sales' && lead.ownerId !== auth.user.uid) {
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
     }
 
     let query: FirebaseFirestore.Query = adminDb
-      .collection("emails")
-      .where("tenantId", "==", auth.user.tenantId || "")
-      .where("mailboxUserId", "==", auth.user.uid)
-      .orderBy("createdAt", "desc")
+      .collection('emails')
+      .where('tenantId', '==', auth.user.tenantId || '')
+      .where('mailboxUserId', '==', auth.user.uid)
+      .orderBy('createdAt', 'desc')
       .limit(200);
 
     if (leadId) {
       query = adminDb
-        .collection("emails")
-        .where("tenantId", "==", auth.user.tenantId || "")
-        .where("mailboxUserId", "==", auth.user.uid)
-        .where("leadId", "==", leadId)
-        .orderBy("createdAt", "desc")
+        .collection('emails')
+        .where('tenantId', '==', auth.user.tenantId || '')
+        .where('mailboxUserId', '==', auth.user.uid)
+        .where('leadId', '==', leadId)
+        .orderBy('createdAt', 'desc')
         .limit(200);
     }
 
@@ -50,16 +50,16 @@ export async function GET(req: Request) {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        subject: String(data.subject || ""),
+        subject: String(data.subject || ''),
         from: data.from || [],
         to: data.to || [],
         cc: data.cc || [],
-        direction: String(data.direction || ""),
-        bodyText: String(data.bodyText || ""),
+        direction: String(data.direction || ''),
+        bodyText: String(data.bodyText || ''),
         bodyHtml: data.bodyHtml || null,
-        threadKey: String(data.threadKey || ""),
+        threadKey: String(data.threadKey || ''),
         isRead: Boolean(data.isRead),
-        status: String(data.status || ""),
+        status: String(data.status || ''),
         createdAt: toISO(data.createdAt),
         receivedAt: toISO(data.receivedAt),
       };
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, emails });
   } catch (err) {
-    console.error("sales email list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load emails." }, { status: 500 });
+    console.error('sales email list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load emails.' }, { status: 500 });
   }
 }

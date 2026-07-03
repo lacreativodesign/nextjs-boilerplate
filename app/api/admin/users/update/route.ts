@@ -1,92 +1,101 @@
-import { NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
-import { getCurrentUser } from "../_utils";
-import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
-import { eligibleManagerRolesFor } from "@/lib/hierarchy";
+import { NextResponse } from 'next/server';
+import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { getCurrentUser } from '../_utils';
+import { logEvent } from '@/lib/audit';
+import { assertPermission, Permission } from '../../../../lib/permissions';
+import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function isAdminLike(role: string) {
-  const r = String(role || "").toLowerCase();
-  return r === "super_admin" || r === "admin";
+  const r = String(role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin';
 }
 
 function canEditUsers(role: string) {
-  const r = String(role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "hr";
+  const r = String(role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin' || r === 'hr';
 }
 
 export async function POST(req: Request) {
   try {
     const current = await getCurrentUser();
-    if (!current) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    if (!current) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
-    const requesterRole = String(current.role || "").toLowerCase();
+    const requesterRole = String(current.role || '').toLowerCase();
     if (!canEditUsers(requesterRole)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     try {
       assertPermission(requesterRole, Permission.ManageUsers);
     } catch {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
 
-    const uid = String(body?.uid || "").trim();
-    const name = String(body?.name || "").trim();
-    const requestedEmail = String(body?.email || "").trim();
-    const requestedRole = String(body?.role || "").trim();
-    const requestedDepartment = String(body?.department || "").trim();
+    const uid = String(body?.uid || '').trim();
+    const name = String(body?.name || '').trim();
+    const requestedEmail = String(body?.email || '').trim();
+    const requestedRole = String(body?.role || '').trim();
+    const requestedDepartment = String(body?.department || '').trim();
 
     if (!uid || !name) {
-      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
     // Pull existing doc to enforce email restriction and preserve untouched fields
-    const snap = await adminDb.collection("users").doc(uid).get();
-    if (!snap.exists) return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+    const snap = await adminDb.collection('users').doc(uid).get();
+    if (!snap.exists)
+      return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
 
     const existing = snap.data() || {};
-    const isSuperAdmin = requesterRole === "super_admin";
-    if (!isSuperAdmin && String(existing.tenantId || "") !== String(current.tenantId || "")) {
-      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+    const isSuperAdmin = requesterRole === 'super_admin';
+    if (!isSuperAdmin && String(existing.tenantId || '') !== String(current.tenantId || '')) {
+      return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
-    const existingEmail = String(existing?.email || "").trim();
-    const existingRole = String(existing?.role || "").trim().toLowerCase();
-    const existingDepartment = String(existing?.department || "").trim();
+    const existingEmail = String(existing?.email || '').trim();
+    const existingRole = String(existing?.role || '')
+      .trim()
+      .toLowerCase();
+    const existingDepartment = String(existing?.department || '').trim();
 
     const email = requestedEmail || existingEmail;
-    const role = (requestedRole || existingRole || "").toLowerCase();
+    const role = (requestedRole || existingRole || '').toLowerCase();
     const department = requestedDepartment || existingDepartment;
 
     if (requestedRole && role !== existingRole) {
       try {
         assertPermission(requesterRole, Permission.ManageRoles);
       } catch {
-        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
     }
 
     if (!email || !role || !department) {
-      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
     // ✅ Only admin/super_admin can change email
     const wantsEmailChange = existingEmail && existingEmail.toLowerCase() !== email.toLowerCase();
     if (wantsEmailChange && !isAdminLike(requesterRole)) {
-      return NextResponse.json({ ok: false, error: "Only Admin / Super Admin can change email." }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'Only Admin / Super Admin can change email.' },
+        { status: 403 },
+      );
     }
 
     // ✅ Admin cannot edit super_admin or assign super_admin role
-    const targetIsSuper = existingRole === "super_admin";
-    const assignsSuper = role === "super_admin";
-    const isSuperAdminRequester = requesterRole === "super_admin";
+    const targetIsSuper = existingRole === 'super_admin';
+    const assignsSuper = role === 'super_admin';
+    const isSuperAdminRequester = requesterRole === 'super_admin';
 
     if (!isSuperAdminRequester && (targetIsSuper || assignsSuper)) {
-      return NextResponse.json({ ok: false, error: "Admins/HR cannot modify or assign super_admin role." }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'Admins/HR cannot modify or assign super_admin role.' },
+        { status: 403 },
+      );
     }
 
     // if admin changes email -> update Auth email too
@@ -94,38 +103,47 @@ export async function POST(req: Request) {
       await adminAuth.updateUser(uid, { email });
     }
 
-    const normalizeString = (incoming: any, existingValue: any = "") =>
-      incoming !== undefined ? String(incoming || "").trim() : String(existingValue || "").trim();
+    const normalizeString = (incoming: any, existingValue: any = '') =>
+      incoming !== undefined ? String(incoming || '').trim() : String(existingValue || '').trim();
 
     const normalizeDate = (incoming: any, existingValue: any = null) =>
-      incoming !== undefined ? incoming ?? null : existingValue ?? null;
+      incoming !== undefined ? (incoming ?? null) : (existingValue ?? null);
 
     const normalizeNumber = (incoming: any, existingValue: any = null) => {
       if (incoming === undefined) return existingValue ?? null;
-      if (incoming === null || incoming === "") return null;
+      if (incoming === null || incoming === '') return null;
       const num = Number(incoming);
-      return Number.isFinite(num) ? num : existingValue ?? null;
+      return Number.isFinite(num) ? num : (existingValue ?? null);
     };
 
     // managerId: validate if a new value is being set, otherwise preserve existing
-    let managerId: string = String(existing.managerId || "");
+    let managerId: string = String(existing.managerId || '');
     let managerExplicitlySet = false;
-    if (body?.managerId !== undefined && String(body.managerId || "").trim() !== "") {
+    if (body?.managerId !== undefined && String(body.managerId || '').trim() !== '') {
       const mid = String(body.managerId).trim();
-      const managerSnap = await adminDb.collection("users").doc(mid).get();
+      const managerSnap = await adminDb.collection('users').doc(mid).get();
       if (!managerSnap.exists) {
-        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: 'Invalid manager selection.' },
+          { status: 400 },
+        );
       }
       const managerData = managerSnap.data() || {};
       const tenantMatch = isSuperAdminRequester
         ? true
-        : String(managerData.tenantId || "") === String(current.tenantId || "");
+        : String(managerData.tenantId || '') === String(current.tenantId || '');
       if (!tenantMatch) {
-        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: 'Invalid manager selection.' },
+          { status: 400 },
+        );
       }
       const eligibleRoles = eligibleManagerRolesFor(role);
-      if (!eligibleRoles.includes(String(managerData.role || ""))) {
-        return NextResponse.json({ ok: false, error: "Invalid manager selection." }, { status: 400 });
+      if (!eligibleRoles.includes(String(managerData.role || ''))) {
+        return NextResponse.json(
+          { ok: false, error: 'Invalid manager selection.' },
+          { status: 400 },
+        );
       }
       managerId = mid;
       managerExplicitlySet = true;
@@ -138,22 +156,22 @@ export async function POST(req: Request) {
       const eligibleForNewRole = eligibleManagerRolesFor(role);
       if (eligibleForNewRole.length === 0) {
         // User is now admin/super_admin — top of hierarchy, no manager
-        managerId = "";
+        managerId = '';
       } else if (managerId) {
-        const managerCheckSnap = await adminDb.collection("users").doc(managerId).get();
+        const managerCheckSnap = await adminDb.collection('users').doc(managerId).get();
         const managerRole = managerCheckSnap.exists
-          ? String((managerCheckSnap.data() || {}).role || "")
-          : "";
+          ? String((managerCheckSnap.data() || {}).role || '')
+          : '';
         if (!managerCheckSnap.exists || !eligibleForNewRole.includes(managerRole)) {
           // Old manager is no longer valid for new role — reset to tenant admin
-          const targetTenantId = String(existing.tenantId || "");
+          const targetTenantId = String(existing.tenantId || '');
           const adminSnap = await adminDb
-            .collection("users")
-            .where("tenantId", "==", targetTenantId)
-            .where("role", "==", "admin")
+            .collection('users')
+            .where('tenantId', '==', targetTenantId)
+            .where('role', '==', 'admin')
             .limit(1)
             .get();
-          managerId = adminSnap.empty ? "" : adminSnap.docs[0].id;
+          managerId = adminSnap.empty ? '' : adminSnap.docs[0].id;
         }
       }
     }
@@ -166,7 +184,7 @@ export async function POST(req: Request) {
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
 
-      status: normalizeString(body?.status || existing?.status || "active").toLowerCase(),
+      status: normalizeString(body?.status || existing?.status || 'active').toLowerCase(),
       role,
       managerId,
       department,
@@ -184,7 +202,7 @@ export async function POST(req: Request) {
     };
 
     const changes = Object.entries(updateData)
-      .filter(([field]) => field !== "updatedAt")
+      .filter(([field]) => field !== 'updatedAt')
       .filter(([field, value]) => value !== (existing as Record<string, unknown>)[field])
       .map(([field, value]) => ({
         field,
@@ -192,44 +210,44 @@ export async function POST(req: Request) {
         newValue: value,
       }));
 
-    await adminDb.collection("users").doc(uid).update(updateData);
+    await adminDb.collection('users').doc(uid).update(updateData);
 
     if (changes.length) {
       try {
         await logEvent({
-          type: "user.updated",
-          title: "User updated",
+          type: 'user.updated',
+          title: 'User updated',
           description: `${name} profile updated.`,
-          entityType: "user",
+          entityType: 'user',
           entityId: uid,
-          actor: { uid: current.uid, name: current.name || current.email || "" },
+          actor: { uid: current.uid, name: current.name || current.email || '' },
           audit: {
-            action: "update",
-            resource: "user",
+            action: 'update',
+            resource: 'user',
             changes,
           },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
     }
 
     if (requestedRole && role !== existingRole) {
       try {
         await logEvent({
-          type: "user.role_changed",
-          title: "Role updated",
+          type: 'user.role_changed',
+          title: 'Role updated',
           description: `${name} role changed to ${role}.`,
-          entityType: "user",
+          entityType: 'user',
           entityId: uid,
-          actor: { uid: current.uid, name: current.name || current.email || "" },
+          actor: { uid: current.uid, name: current.name || current.email || '' },
           metadata: { from: existingRole, to: role },
           audit: {
-            action: "role_changed",
-            resource: "user",
+            action: 'role_changed',
+            resource: 'user',
             changes: [
               {
-                field: "role",
+                field: 'role',
                 oldValue: existingRole,
                 newValue: role,
               },
@@ -237,13 +255,13 @@ export async function POST(req: Request) {
           },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("UPDATE USER ERROR:", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('UPDATE USER ERROR:', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

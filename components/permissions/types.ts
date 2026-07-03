@@ -1,4 +1,4 @@
-import type { PermissionSet, RoleDocument } from "@/lib/permissions/types";
+import type { PermissionSet, RoleDocument } from '@/lib/permissions/types';
 
 export type RoleFormState = {
   name: string;
@@ -7,4 +7,7 @@ export type RoleFormState = {
   permissions: PermissionSet[];
 };
 
-export type PermissionsUiRole = Pick<RoleDocument, "id" | "name" | "description" | "parentRoleId" | "permissions">;
+export type PermissionsUiRole = Pick<
+  RoleDocument,
+  'id' | 'name' | 'description' | 'parentRoleId' | 'permissions'
+>;

@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useState } from "react";
-import { X } from "lucide-react";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
-import { getSubscriptionBannerCopy, isNonActiveSubscription } from "@/lib/subscription";
-import { Skeleton } from "@/components/ui/Skeleton";
+import Link from 'next/link';
+import { useState } from 'react';
+import { X } from 'lucide-react';
+import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { getSubscriptionBannerCopy, isNonActiveSubscription } from '@/lib/subscription';
+import { Skeleton } from '@/components/ui/Skeleton';
 
-const BILLING_PATH = "/billing";
+const BILLING_PATH = '/billing';
 
 export default function SubscriptionBanner() {
   const { data, loading } = useTenantContext();
@@ -27,11 +27,11 @@ export default function SubscriptionBanner() {
     );
   }
 
-  const subscriptionState = data?.tenant?.subscriptionState || "active";
-  const role = data?.user?.role || "";
+  const subscriptionState = data?.tenant?.subscriptionState || 'active';
+  const role = data?.user?.role || '';
 
   // super_admin never sees subscription/trial banners
-  if (role === "super_admin") {
+  if (role === 'super_admin') {
     return null;
   }
 
@@ -77,8 +77,8 @@ export default function SubscriptionBanner() {
       : null;
     const message =
       daysLeft !== null
-        ? `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left — upgrade anytime to keep your data flowing.`
-        : "Upgrade anytime to keep your data flowing.";
+        ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left — upgrade anytime to keep your data flowing.`
+        : 'Upgrade anytime to keep your data flowing.';
 
     return (
       <div className="sticky top-0 z-30 w-full border-b border-blue-200 bg-blue-50 text-blue-900">

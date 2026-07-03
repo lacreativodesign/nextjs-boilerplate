@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { CheckCircle, Circle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { CheckCircle, Circle } from 'lucide-react';
 
 type ChecklistStep = {
   id: string;
@@ -20,9 +20,9 @@ export function ProgressChecklist() {
   useEffect(() => {
     const controller = new AbortController();
 
-    void fetch("/api/onboarding/progress", {
-      cache: "no-store",
-      credentials: "include",
+    void fetch('/api/onboarding/progress', {
+      cache: 'no-store',
+      credentials: 'include',
       signal: controller.signal,
     })
       .then((response) => (response.ok ? response.json() : null))
@@ -52,13 +52,22 @@ export function ProgressChecklist() {
       <div className="space-y-3">
         {checklist.steps.map((step) => (
           <div key={step.id} className="flex items-center gap-3">
-            {step.completed ? <CheckCircle className="text-green-600" size={20} /> : <Circle className="text-[var(--text-soft)]" size={20} />}
-            <span className={step.completed ? "text-[var(--text-muted)] line-through" : ""}>{step.title}</span>
+            {step.completed ? (
+              <CheckCircle className="text-green-600" size={20} />
+            ) : (
+              <Circle className="text-[var(--text-soft)]" size={20} />
+            )}
+            <span className={step.completed ? 'text-[var(--text-muted)] line-through' : ''}>
+              {step.title}
+            </span>
           </div>
         ))}
       </div>
       <div className="mt-4 h-2 rounded-full bg-[var(--surface-muted)]">
-        <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${checklist.progress}%` }} />
+        <div
+          className="h-2 rounded-full bg-blue-600 transition-all"
+          style={{ width: `${checklist.progress}%` }}
+        />
       </div>
     </div>
   );

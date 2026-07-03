@@ -53,7 +53,15 @@ export async function POST(req: Request) {
       managerId: body?.managerId,
     });
 
-    const { email, displayName, role, tenantId, phone, department, managerId: rawManagerId } = validatedData;
+    const {
+      email,
+      displayName,
+      role,
+      tenantId,
+      phone,
+      department,
+      managerId: rawManagerId,
+    } = validatedData;
 
     const {
       password,
@@ -73,8 +81,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (role === "super_admin" && currentRole !== "super_admin") {
-      return NextResponse.json({ ok: false, error: "Cannot create super_admin accounts" }, { status: 403 });
+    if (role === 'super_admin' && currentRole !== 'super_admin') {
+      return NextResponse.json(
+        { ok: false, error: 'Cannot create super_admin accounts' },
+        { status: 403 },
+      );
     }
 
     if (!canManageRole(role)) {
@@ -90,7 +101,7 @@ export async function POST(req: Request) {
     if (!isRoleEnabled(rolesEnabled, targetRole)) {
       return NextResponse.json(
         { error: 'This role is not enabled for your workspace. Contact your administrator.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -231,12 +242,14 @@ export async function POST(req: Request) {
     });
 
     // Notify tenant admins of new team member — non-blocking
-    getUsersByRoles(['admin'], tenantId).then((admins) => {
-      return Promise.all(admins.map((admin) =>
-        sendEmail({
-          to: admin.email || '',
-          subject: `👤 New team member added — ${displayName || email}`,
-          html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+    getUsersByRoles(['admin'], tenantId)
+      .then((admins) => {
+        return Promise.all(
+          admins.map((admin) =>
+            sendEmail({
+              to: admin.email || '',
+              subject: `👤 New team member added — ${displayName || email}`,
+              html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#F8FAFC;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -258,9 +271,11 @@ export async function POST(req: Request) {
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
-        }).catch(() => {})
-      ));
-    }).catch((err) => console.error('[USER_CREATE] Failed to notify admins', err));
+            }).catch(() => {}),
+          ),
+        );
+      })
+      .catch((err) => console.error('[USER_CREATE] Failed to notify admins', err));
 
     // 10) Respond
     return NextResponse.json({
@@ -272,11 +287,15 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('Error create user:', err);
-    return NextResponse.json({
-      error: err?.code === "auth/email-already-exists"
-        ? "This email address is already registered in the system."
-        : err?.message || "Failed to create user",
-    }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          err?.code === 'auth/email-already-exists'
+            ? 'This email address is already registered in the system.'
+            : err?.message || 'Failed to create user',
+      },
+      { status: 400 },
+    );
   }
 }
 

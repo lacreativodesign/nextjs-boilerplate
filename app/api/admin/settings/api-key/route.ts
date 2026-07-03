@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import crypto from "crypto";
-import { FieldValue } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, logSettingsChange } from "../_utils";
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { FieldValue } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, logSettingsChange } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /** Returns whether an API key is currently configured for this tenant. Never returns the key. */
 export async function GET() {
@@ -15,13 +15,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(auth.user.tenantId).get();
     const hasApiKey = Boolean(tenantSnap.data()?.apiKeyHash);
 
     return NextResponse.json({ ok: true, hasApiKey });
   } catch (err) {
-    console.error("settings/api-key GET error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/api-key GET error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -36,24 +36,24 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const plaintext = crypto.randomBytes(32).toString("hex");
-    const keyHash = crypto.createHash("sha256").update(plaintext).digest("hex");
+    const plaintext = crypto.randomBytes(32).toString('hex');
+    const keyHash = crypto.createHash('sha256').update(plaintext).digest('hex');
 
     await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(auth.user.tenantId)
       .set({ apiKeyHash: keyHash }, { merge: true });
 
     await logSettingsChange({
       user: auth.user,
-      section: "api-key",
-      summary: "Ingest API key rotated.",
+      section: 'api-key',
+      summary: 'Ingest API key rotated.',
     });
 
     return NextResponse.json({ ok: true, apiKey: plaintext });
   } catch (err) {
-    console.error("settings/api-key POST error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/api-key POST error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -66,19 +66,19 @@ export async function DELETE() {
     }
 
     await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(auth.user.tenantId)
       .update({ apiKeyHash: FieldValue.delete() });
 
     await logSettingsChange({
       user: auth.user,
-      section: "api-key",
-      summary: "Ingest API key revoked.",
+      section: 'api-key',
+      summary: 'Ingest API key revoked.',
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("settings/api-key DELETE error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/api-key DELETE error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

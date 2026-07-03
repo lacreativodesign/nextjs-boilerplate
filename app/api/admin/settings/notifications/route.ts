@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   DEFAULT_NOTIFICATIONS_SETTINGS,
   canEditSection,
@@ -9,13 +9,13 @@ import {
   serverTimestamp,
   toISO,
   logSettingsChange,
-} from "../_utils";
+} from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function normalizeEventToggles(input: any) {
-  if (typeof input !== "object" || !input) return {} as Record<string, boolean>;
+  if (typeof input !== 'object' || !input) return {} as Record<string, boolean>;
   return Object.fromEntries(Object.entries(input).map(([key, value]) => [key, Boolean(value)]));
 }
 
@@ -26,7 +26,10 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc(`${auth.user.tenantId}_notifications`).get();
+    const snap = await adminDb
+      .collection('settings')
+      .doc(`${auth.user.tenantId}_notifications`)
+      .get();
     const data = snap.exists ? snap.data() : {};
     const eventToggles = normalizeEventToggles(data?.eventToggles);
 
@@ -43,12 +46,12 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       settings,
-      canEdit: canEditSection(auth.user.role, "notifications"),
+      canEdit: canEditSection(auth.user.role, 'notifications'),
       role: auth.user.role,
     });
   } catch (err) {
-    console.error("settings/notifications get error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/notifications get error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -59,8 +62,8 @@ export async function PUT(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    if (!canEditSection(auth.user.role, "notifications")) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!canEditSection(auth.user.role, 'notifications')) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -75,18 +78,21 @@ export async function PUT(req: Request) {
       updatedBy: auth.user.uid,
     };
 
-    await adminDb.collection("settings").doc(`${auth.user.tenantId}_notifications`).set(payload, { merge: true });
+    await adminDb
+      .collection('settings')
+      .doc(`${auth.user.tenantId}_notifications`)
+      .set(payload, { merge: true });
 
     await logSettingsChange({
       user: auth.user,
-      section: "notifications",
-      summary: "Notification settings updated.",
+      section: 'notifications',
+      summary: 'Notification settings updated.',
       notificationsEnabled: payload.enableInApp,
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("settings/notifications update error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/notifications update error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

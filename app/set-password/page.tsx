@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { apiFetch } from "@/lib/api/client";
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 
 export default function SetPasswordPage() {
   return (
@@ -10,14 +10,14 @@ export default function SetPasswordPage() {
       fallback={
         <div
           style={{
-            minHeight: "100vh",
-            backgroundColor: "#f9fafb",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+            minHeight: '100vh',
+            backgroundColor: '#f9fafb',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
             padding: 20,
-            fontFamily: "Inter, sans-serif",
-            color: "#6b7280",
+            fontFamily: 'Inter, sans-serif',
+            color: '#6b7280',
             fontSize: 14,
           }}
         >
@@ -32,61 +32,61 @@ export default function SetPasswordPage() {
 
 function SetPasswordForm() {
   const searchParams = useSearchParams();
-  const token = useMemo(() => searchParams.get("token") || "", [searchParams]);
+  const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
 
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!success) return;
     const timer = window.setTimeout(() => {
-      window.location.href = "/login";
+      window.location.href = '/login';
     }, 1800);
     return () => window.clearTimeout(timer);
   }, [success]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!token) {
-      setError("Missing or invalid token.");
+      setError('Missing or invalid token.');
       return;
     }
 
     if (!password || !confirm) {
-      setError("Please enter and confirm your new password.");
+      setError('Please enter and confirm your new password.');
       return;
     }
 
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await apiFetch("/api/auth/consume-set-password-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/auth/consume-set-password-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       });
 
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Unable to set password.");
+        throw new Error(json?.error || 'Unable to set password.');
       }
 
       setSuccess(true);
-      setPassword("");
-      setConfirm("");
+      setPassword('');
+      setConfirm('');
     } catch (err: any) {
-      setError(err?.message || "Unable to set password.");
+      setError(err?.message || 'Unable to set password.');
     } finally {
       setLoading(false);
     }
@@ -95,45 +95,45 @@ function SetPasswordForm() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        backgroundColor: "#f9fafb",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
+        minHeight: '100vh',
+        backgroundColor: '#f9fafb',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         padding: 20,
-        fontFamily: "Inter, sans-serif",
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       <div
         style={{
           width: 420,
-          background: "white",
+          background: 'white',
           borderRadius: 16,
-          padding: "32px 28px",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+          padding: '32px 28px',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         }}
       >
         <h1
           style={{
-            textAlign: "center",
+            textAlign: 'center',
             fontSize: 22,
             fontWeight: 700,
             marginBottom: 12,
-            color: "#111827",
+            color: '#111827',
           }}
         >
           Set Your Password
         </h1>
-        <p style={{ textAlign: "center", fontSize: 14, color: "#6b7280", marginBottom: 20 }}>
+        <p style={{ textAlign: 'center', fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
           Use the link from your email to create your dashboard password.
         </p>
 
         {error && (
           <div
             style={{
-              background: "#fee2e2",
-              color: "#b91c1c",
+              background: '#fee2e2',
+              color: '#b91c1c',
               padding: 10,
               borderRadius: 8,
               marginBottom: 16,
@@ -147,8 +147,8 @@ function SetPasswordForm() {
         {success ? (
           <div
             style={{
-              background: "#dcfce7",
-              color: "#166534",
+              background: '#dcfce7',
+              color: '#166534',
               padding: 12,
               borderRadius: 8,
               fontSize: 14,
@@ -164,10 +164,10 @@ function SetPasswordForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={{
-                width: "100%",
-                padding: "12px 14px",
+                width: '100%',
+                padding: '12px 14px',
                 borderRadius: 8,
-                border: "1px solid #d1d5db",
+                border: '1px solid #d1d5db',
                 marginBottom: 14,
               }}
               required
@@ -179,10 +179,10 @@ function SetPasswordForm() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               style={{
-                width: "100%",
-                padding: "12px 14px",
+                width: '100%',
+                padding: '12px 14px',
                 borderRadius: 8,
-                border: "1px solid #d1d5db",
+                border: '1px solid #d1d5db',
                 marginBottom: 18,
               }}
               required
@@ -192,18 +192,18 @@ function SetPasswordForm() {
               type="submit"
               disabled={loading}
               style={{
-                width: "100%",
-                padding: "12px 14px",
+                width: '100%',
+                padding: '12px 14px',
                 borderRadius: 8,
-                border: "none",
-                background: "#2563eb",
-                color: "white",
+                border: 'none',
+                background: '#2563eb',
+                color: 'white',
                 fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "Saving..." : "Set Password"}
+              {loading ? 'Saving...' : 'Set Password'}
             </button>
           </form>
         )}

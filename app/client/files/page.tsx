@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { getFirebaseStorage } from "@/lib/firebaseClient";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getFirebaseStorage } from '@/lib/firebaseClient';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type FileRecord = {
   id: string;
@@ -20,17 +20,16 @@ type FileRecord = {
 
 type ProjectOption = { value: string; label: string };
 
-
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString();
 }
 
 function fmtBytes(bytes = 0) {
-  if (!bytes) return "0 KB";
-  const units = ["B", "KB", "MB", "GB"];
+  if (!bytes) return '0 KB';
+  const units = ['B', 'KB', 'MB', 'GB'];
   const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   return `${(bytes / Math.pow(1024, index)).toFixed(1)} ${units[index]}`;
 }
@@ -39,29 +38,29 @@ export default function ClientFilesPage() {
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
-  const [uploadProjectId, setUploadProjectId] = useState("");
+  const [uploadProjectId, setUploadProjectId] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
@@ -69,12 +68,12 @@ export default function ClientFilesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/client/files/list", { cache: "no-store" });
+      const res = await apiFetch('/api/client/files/list', { cache: 'no-store' });
       const payload = await res.json();
-      if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load files.");
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error || 'Unable to load files.');
       setFiles(payload.files || []);
     } catch (err: any) {
-      setError(err?.message || "Unable to load files.");
+      setError(err?.message || 'Unable to load files.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +86,7 @@ export default function ClientFilesPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const res = await apiFetch("/api/client/projects/list", { cache: "no-store" });
+        const res = await apiFetch('/api/client/projects/list', { cache: 'no-store' });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) return;
         const options = (payload.projects || []).map((project: any) => ({
@@ -103,9 +102,8 @@ export default function ClientFilesPage() {
   }, []);
 
   const filtered = useMemo(
-    () =>
-      smartMatch(files, search, (file) => [file.fileName, file.projectName, file.category]),
-    [files, search]
+    () => smartMatch(files, search, (file) => [file.fileName, file.projectName, file.category]),
+    [files, search],
   );
 
   const handleUpload = async () => {
@@ -115,14 +113,14 @@ export default function ClientFilesPage() {
     try {
       const storage = await getFirebaseStorage();
       const fileId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const storagePath = `client-files/${uploadProjectId}/${fileId}_${file.name.replace(/\s+/g, "_")}`;
+      const storagePath = `client-files/${uploadProjectId}/${fileId}_${file.name.replace(/\s+/g, '_')}`;
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      const res = await apiFetch("/api/client/files/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/client/files/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: uploadProjectId,
           fileName: file.name,
@@ -133,9 +131,9 @@ export default function ClientFilesPage() {
         }),
       });
       const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload?.error || "Unable to upload file.");
+      if (!res.ok || !payload.ok) throw new Error(payload?.error || 'Unable to upload file.');
       setUploadOpen(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = '';
       await loadFiles();
     } catch (err) {
       console.error(err);
@@ -179,29 +177,38 @@ export default function ClientFilesPage() {
         ) : filtered.length === 0 ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">No files found.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: 'auto' }}>
             <table style={{ minWidth: 860 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle}>File Name</th>
                   <th style={headerCellStyle}>Project</th>
                   <th style={headerCellStyle}>Category</th>
-                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Size</th>
-                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Uploaded</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Action</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'right' }}>Size</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'right' }}>Uploaded</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((file) => {
                   return (
-                    <tr key={file.id} >
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{file.fileName}</td>
-                      <td style={cellStyle}>{file.projectName || "-"}</td>
+                    <tr key={file.id}>
+                      <td style={{ ...cellStyle, whiteSpace: 'normal' }}>{file.fileName}</td>
+                      <td style={cellStyle}>{file.projectName || '-'}</td>
                       <td style={cellStyle}>{file.category}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtBytes(file.size || 0)}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(file.uploadedAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <a className="btn ghost" href={file.downloadUrl || "#"} target="_blank" rel="noreferrer">
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>
+                        {fmtBytes(file.size || 0)}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>
+                        {fmtDate(file.uploadedAt)}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'center' }}>
+                        <a
+                          className="btn ghost"
+                          href={file.downloadUrl || '#'}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           Download
                         </a>
                       </td>
@@ -216,13 +223,22 @@ export default function ClientFilesPage() {
 
       {uploadOpen && (
         <div className="drawer-overlay" onClick={() => setUploadOpen(false)}>
-          <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div
+            className="drawer-panel drawer-panel--md"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>Upload Client File</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>Share briefs, assets, or reference files with your team.</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  Share briefs, assets, or reference files with your team.
+                </div>
               </div>
-              <button className="btn ghost" onClick={() => setUploadOpen(false)} style={{ height: 34, borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                onClick={() => setUploadOpen(false)}
+                style={{ height: 34, borderRadius: 999 }}
+              >
                 Close
               </button>
             </div>
@@ -230,8 +246,14 @@ export default function ClientFilesPage() {
             <div style={{ height: 16 }} />
 
             <div className="card p-4">
-              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Project</div>
-              <select className="input mt-2" value={uploadProjectId} onChange={(e) => setUploadProjectId(e.target.value)}>
+              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                Project
+              </div>
+              <select
+                className="input mt-2"
+                value={uploadProjectId}
+                onChange={(e) => setUploadProjectId(e.target.value)}
+              >
                 <option value="">Select project</option>
                 {projectOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -240,12 +262,18 @@ export default function ClientFilesPage() {
                 ))}
               </select>
 
-              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)] mt-4">File</div>
+              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)] mt-4">
+                File
+              </div>
               <input className="input mt-2" type="file" ref={fileInputRef} />
 
               <div className="flex justify-end mt-4">
-                <button className="btn" onClick={handleUpload} disabled={actionLoading || !uploadProjectId}>
-                  {actionLoading ? "Uploading..." : "Upload"}
+                <button
+                  className="btn"
+                  onClick={handleUpload}
+                  disabled={actionLoading || !uploadProjectId}
+                >
+                  {actionLoading ? 'Uploading...' : 'Upload'}
                 </button>
               </div>
             </div>

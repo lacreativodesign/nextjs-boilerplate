@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import clsx from "clsx";
-import { LogOut } from "lucide-react";
-import NotificationBell from "@/components/notifications/NotificationBell";
+import clsx from 'clsx';
+import { LogOut } from 'lucide-react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 type SidebarFooterProps = {
   collapsed: boolean;
@@ -15,11 +15,11 @@ type SidebarFooterProps = {
 
 const getInitials = (value: string) =>
   value
-    .split(" ")
+    .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0])
-    .join("")
+    .join('')
     .toUpperCase();
 
 export default function SidebarFooter({
@@ -30,13 +30,13 @@ export default function SidebarFooter({
   notificationsEnabled = true,
   onLogout,
 }: SidebarFooterProps) {
-  const displayName = name || email || "User";
-  const initialsSource = displayName.includes("@") ? displayName.split("@")[0] : displayName;
+  const displayName = name || email || 'User';
+  const initialsSource = displayName.includes('@') ? displayName.split('@')[0] : displayName;
   const initials = getInitials(initialsSource);
-  const roleLabel = role || "Member";
+  const roleLabel = role || 'Member';
 
   return (
-    <div className={clsx("sidebar-footer", collapsed && "sidebar-footer--collapsed")}>
+    <div className={clsx('sidebar-footer', collapsed && 'sidebar-footer--collapsed')}>
       {collapsed ? (
         <div className="sidebar-avatar sidebar-avatar--collapsed">{initials}</div>
       ) : (
@@ -49,12 +49,12 @@ export default function SidebarFooter({
         </div>
       )}
 
-      <div className={clsx("sidebar-actions", collapsed && "sidebar-actions--collapsed")}>
+      <div className={clsx('sidebar-actions', collapsed && 'sidebar-actions--collapsed')}>
         <NotificationBell enabled={notificationsEnabled} />
         <button
           type="button"
           onClick={onLogout}
-          className={clsx("sidebar-action", collapsed && "sidebar-action--icon")}
+          className={clsx('sidebar-action', collapsed && 'sidebar-action--icon')}
           aria-label="Logout"
         >
           <LogOut size={16} />

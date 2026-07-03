@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole } from "../../../_utils";
-import { segmentDefaults, slugify } from "@/lib/segments";
+import { NextResponse } from 'next/server';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { getCurrentUser, isAdminRole } from '../../../_utils';
+import { segmentDefaults, slugify } from '@/lib/segments';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type SegmentDoc = {
   type: string;
@@ -17,8 +17,8 @@ type SegmentDoc = {
 };
 
 async function seedDefaults(tenantId: string, createdBy?: string | null) {
-  const ref = db.collection("clientSegments");
-  const existing = await ref.where("tenantId", "==", tenantId).limit(1).get();
+  const ref = db.collection('clientSegments');
+  const existing = await ref.where('tenantId', '==', tenantId).limit(1).get();
   if (!existing.empty) return false;
 
   const now = new Date().toISOString();
@@ -48,13 +48,13 @@ async function seedDefaults(tenantId: string, createdBy?: string | null) {
 
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
   const canAdmin = isAdminRole(me.role);
 
   try {
     const seeded = await seedDefaults(me.tenantId, me.uid);
-    const snap = await db.collection("clientSegments").where("tenantId", "==", me.tenantId).get();
+    const snap = await db.collection('clientSegments').where('tenantId', '==', me.tenantId).get();
 
     const segments = snap.docs
       .map((doc) => {
@@ -74,6 +74,9 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, segments, seeded, role: me.role, canAdmin });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to load segments" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Failed to load segments' },
+      { status: 500 },
+    );
   }
 }

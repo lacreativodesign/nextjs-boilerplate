@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
   limit,
@@ -9,46 +9,54 @@ import {
   query,
   where,
   type DocumentData,
-} from "firebase/firestore";
-import { getFirebaseDb } from "@/lib/firebaseClient";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
-import { apiFetch } from "@/lib/api/client";
-import type { Notification } from "@/types/notifications";
+} from 'firebase/firestore';
+import { getFirebaseDb } from '@/lib/firebaseClient';
+import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { apiFetch } from '@/lib/api/client';
+import type { Notification } from '@/types/notifications';
 
-type NotificationItem = Omit<Notification, "createdAt" | "readAt" | "archivedAt"> & {
+type NotificationItem = Omit<Notification, 'createdAt' | 'readAt' | 'archivedAt'> & {
   createdAt?: string | Date;
   readAt?: string | Date;
   archivedAt?: string | Date;
 };
 
-const VALID_TYPES = new Set(["info", "success", "warning", "error", "action_required", "reminder"]);
-const VALID_CATEGORIES = new Set(["system", "financial", "sales", "operations", "security", "team", "custom"]);
-const VALID_PRIORITIES = new Set(["low", "medium", "high", "urgent"]);
+const VALID_TYPES = new Set(['info', 'success', 'warning', 'error', 'action_required', 'reminder']);
+const VALID_CATEGORIES = new Set([
+  'system',
+  'financial',
+  'sales',
+  'operations',
+  'security',
+  'team',
+  'custom',
+]);
+const VALID_PRIORITIES = new Set(['low', 'medium', 'high', 'urgent']);
 
 function toNotificationItem(data: DocumentData, id: string): NotificationItem {
-  const rawType = String(data.type || "");
-  const type = VALID_TYPES.has(rawType) ? (rawType as NotificationItem["type"]) : "info";
-  const category = VALID_CATEGORIES.has(String(data.category || ""))
-    ? (String(data.category) as NotificationItem["category"])
-    : "system";
-  const priority = VALID_PRIORITIES.has(String(data.priority || ""))
-    ? (String(data.priority) as NotificationItem["priority"])
-    : "medium";
+  const rawType = String(data.type || '');
+  const type = VALID_TYPES.has(rawType) ? (rawType as NotificationItem['type']) : 'info';
+  const category = VALID_CATEGORIES.has(String(data.category || ''))
+    ? (String(data.category) as NotificationItem['category'])
+    : 'system';
+  const priority = VALID_PRIORITIES.has(String(data.priority || ''))
+    ? (String(data.priority) as NotificationItem['priority'])
+    : 'medium';
 
   return {
     id,
-    tenantId: String(data.tenantId || ""),
-    userId: String(data.userId || data.recipientUid || data.toUserId || data.toUid || ""),
-    userEmail: String(data.userEmail || ""),
+    tenantId: String(data.tenantId || ''),
+    userId: String(data.userId || data.recipientUid || data.toUserId || data.toUid || ''),
+    userEmail: String(data.userEmail || ''),
     type,
-    title: String(data.title || ""),
-    message: String(data.message || data.body || ""),
+    title: String(data.title || ''),
+    message: String(data.message || data.body || ''),
     priority,
     category,
     isRead: Boolean(data.isRead ?? data.read ?? false),
     isArchived: Boolean(data.isArchived ?? false),
-    channels: Array.isArray(data.channels) ? data.channels : ["in_app"],
-    deliveryStatus: data.deliveryStatus ?? { inApp: "delivered" as const },
+    channels: Array.isArray(data.channels) ? data.channels : ['in_app'],
+    deliveryStatus: data.deliveryStatus ?? { inApp: 'delivered' as const },
     actionUrl: data.actionUrl ? String(data.actionUrl) : undefined,
     actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
     relatedResourceType: data.entityType ? String(data.entityType) : undefined,
@@ -61,9 +69,9 @@ function toNotificationItem(data: DocumentData, id: string): NotificationItem {
 }
 
 function formatTimestamp(value?: string | Date) {
-  if (!value) return "";
+  if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleString();
 }
 
@@ -72,7 +80,7 @@ export function NotificationCenter() {
   const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   useEffect(() => {
     if (!ctx?.user?.uid || !ctx?.user?.tenantId) return;
@@ -82,29 +90,31 @@ export function NotificationCenter() {
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
-    getFirebaseDb().then((db) => {
-      if (cancelled) return;
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", uid),
-        where("tenantId", "==", tenantId),
-        orderBy("createdAt", "desc"),
-        limit(20)
-      );
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const items = snapshot.docs.map((doc) => toNotificationItem(doc.data(), doc.id));
-          setAllNotifications(items);
-          setUnreadCount(items.filter((n) => !n.isRead).length);
-        },
-        (error) => {
-          console.error("Notifications listener error:", error);
-        }
-      );
-    }).catch((error) => {
-      console.error("Notifications listener error:", error);
-    });
+    getFirebaseDb()
+      .then((db) => {
+        if (cancelled) return;
+        const q = query(
+          collection(db, 'notifications'),
+          where('userId', '==', uid),
+          where('tenantId', '==', tenantId),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        );
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            const items = snapshot.docs.map((doc) => toNotificationItem(doc.data(), doc.id));
+            setAllNotifications(items);
+            setUnreadCount(items.filter((n) => !n.isRead).length);
+          },
+          (error) => {
+            console.error('Notifications listener error:', error);
+          },
+        );
+      })
+      .catch((error) => {
+        console.error('Notifications listener error:', error);
+      });
 
     return () => {
       cancelled = true;
@@ -113,18 +123,18 @@ export function NotificationCenter() {
   }, [ctx?.user?.uid, ctx?.user?.tenantId]);
 
   const notifications = useMemo(
-    () => (filter === "unread" ? allNotifications.filter((n) => !n.isRead) : allNotifications),
-    [allNotifications, filter]
+    () => (filter === 'unread' ? allNotifications.filter((n) => !n.isRead) : allNotifications),
+    [allNotifications, filter],
   );
 
   const markAsRead = async (id: string) => {
-    await apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
+    await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
     setAllNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
 
   const markAllAsRead = async () => {
-    await apiFetch("/api/notifications/mark-all-read", { method: "POST" });
+    await apiFetch('/api/notifications/mark-all-read', { method: 'POST' });
     setAllNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
@@ -146,7 +156,7 @@ export function NotificationCenter() {
         </svg>
         {unreadCount > 0 && (
           <span className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
@@ -163,17 +173,21 @@ export function NotificationCenter() {
 
             <div className="mt-2 flex gap-2">
               <button
-                onClick={() => setFilter("all")}
+                onClick={() => setFilter('all')}
                 className={`rounded px-3 py-1 ${
-                  filter === "all" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                  filter === 'all'
+                    ? 'bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]'
+                    : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
                 }`}
               >
                 All
               </button>
               <button
-                onClick={() => setFilter("unread")}
+                onClick={() => setFilter('unread')}
                 className={`rounded px-3 py-1 ${
-                  filter === "unread" ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                  filter === 'unread'
+                    ? 'bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]'
+                    : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
                 }`}
               >
                 Unread ({unreadCount})
@@ -190,25 +204,31 @@ export function NotificationCenter() {
                   key={notification.id}
                   onClick={() => !notification.isRead && markAsRead(notification.id)}
                   className={`cursor-pointer border-b border-[var(--border-subtle)] p-4 hover:bg-[var(--table-row-hover)] ${
-                    !notification.isRead ? "bg-blue-50" : ""
+                    !notification.isRead ? 'bg-blue-50' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-medium">{notification.title}</h4>
-                      <p className="mt-1 text-sm text-[var(--text-muted)]">{notification.message}</p>
+                      <p className="mt-1 text-sm text-[var(--text-muted)]">
+                        {notification.message}
+                      </p>
                       {notification.actionUrl && (
                         <a
                           href={notification.actionUrl}
                           className="mt-2 inline-block text-sm text-blue-600 hover:underline"
                         >
-                          {notification.actionLabel || "View"}
+                          {notification.actionLabel || 'View'}
                         </a>
                       )}
                     </div>
-                    {!notification.isRead && <span className="ml-2 h-2 w-2 rounded-full bg-blue-600" />}
+                    {!notification.isRead && (
+                      <span className="ml-2 h-2 w-2 rounded-full bg-blue-600" />
+                    )}
                   </div>
-                  <p className="mt-2 text-xs text-[var(--text-soft)]">{formatTimestamp(notification.createdAt)}</p>
+                  <p className="mt-2 text-xs text-[var(--text-soft)]">
+                    {formatTimestamp(notification.createdAt)}
+                  </p>
                 </div>
               ))
             )}

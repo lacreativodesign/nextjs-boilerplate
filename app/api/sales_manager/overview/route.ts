@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireSalesManager, toISO } from "../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { requireSalesManager, toISO } from '../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
@@ -28,11 +28,20 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const [leadsSnap, dealsSnap, eventsSnap] = await Promise.all([
-      queryWithTenant(adminDb.collection("leads").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("deals").where("isDeleted", "==", false).limit(500), tenantId),
       queryWithTenant(
-        adminDb.collection("events").where("entityType", "in", ["lead", "deal", "follow_up"]).limit(200),
-        tenantId
+        adminDb.collection('leads').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('deals').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb
+          .collection('events')
+          .where('entityType', 'in', ['lead', 'deal', 'follow_up'])
+          .limit(200),
+        tenantId,
       ),
     ]);
 
@@ -50,11 +59,18 @@ export async function GET() {
       return created >= thirtyDaysAgo;
     }).length;
 
-    const qualifiedLeads = leads.filter((lead: any) => String(lead.stage || "").toLowerCase() === "qualified").length;
+    const qualifiedLeads = leads.filter(
+      (lead: any) => String(lead.stage || '').toLowerCase() === 'qualified',
+    ).length;
 
-    const activeDeals = deals.filter((deal: any) => !String(deal.stage || "").toLowerCase().includes("closed")).length;
+    const activeDeals = deals.filter(
+      (deal: any) =>
+        !String(deal.stage || '')
+          .toLowerCase()
+          .includes('closed'),
+    ).length;
 
-    const closedWonDeals = deals.filter((deal: any) => String(deal.stage || "") === "Closed Won");
+    const closedWonDeals = deals.filter((deal: any) => String(deal.stage || '') === 'Closed Won');
     const closedWonMonth = closedWonDeals.filter((deal: any) => {
       const closedAt = toISO(deal.closedWonAt || deal.updatedAt || deal.createdAt);
       if (!closedAt) return false;
@@ -64,7 +80,7 @@ export async function GET() {
 
     const revenueClosed = closedWonMonth.reduce(
       (sum: number, deal: any) => sum + Number(deal.finalPriceUsd || deal.valueUsd || 0),
-      0
+      0,
     );
 
     const dealsCreatedMtd = deals.filter((deal: any) => {
@@ -75,16 +91,17 @@ export async function GET() {
     }).length;
 
     const discountPending = deals.filter(
-      (deal: any) => String(deal.discountStatus || "").toLowerCase() === "pending"
+      (deal: any) => String(deal.discountStatus || '').toLowerCase() === 'pending',
     );
     const discountDeals = deals.filter((deal: any) => Number(deal.discountPct || 0) > 0);
     const avgDiscountPct = discountDeals.length
-      ? discountDeals.reduce((sum: number, deal: any) => sum + Number(deal.discountPct || 0), 0) / discountDeals.length
+      ? discountDeals.reduce((sum: number, deal: any) => sum + Number(deal.discountPct || 0), 0) /
+        discountDeals.length
       : 0;
 
     const stageMap = new Map<string, { stage: string; count: number; value: number }>();
     deals.forEach((deal: any) => {
-      const stage = String(deal.stage || "New Lead");
+      const stage = String(deal.stage || 'New Lead');
       const entry = stageMap.get(stage) || { stage, count: 0, value: 0 };
       entry.count += 1;
       entry.value += Number(deal.valueUsd || 0);
@@ -93,11 +110,17 @@ export async function GET() {
 
     const ownerMap = new Map<
       string,
-      { ownerName: string; wonRevenue: number; wonCount: number; discountSum: number; discountCount: number }
+      {
+        ownerName: string;
+        wonRevenue: number;
+        wonCount: number;
+        discountSum: number;
+        discountCount: number;
+      }
     >();
     deals.forEach((deal: any) => {
-      if (String(deal.stage || "") !== "Closed Won") return;
-      const ownerName = String(deal.ownerName || "Unassigned");
+      if (String(deal.stage || '') !== 'Closed Won') return;
+      const ownerName = String(deal.ownerName || 'Unassigned');
       const entry = ownerMap.get(ownerName) || {
         ownerName,
         wonRevenue: 0,
@@ -130,12 +153,12 @@ export async function GET() {
         const data = doc.data() || {};
         return {
           id: doc.id,
-          title: String(data.title || "Sales update"),
-          description: String(data.description || ""),
+          title: String(data.title || 'Sales update'),
+          description: String(data.description || ''),
           createdAt: toISO(data.createdAt),
         };
       })
-      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
       .slice(0, 6);
 
     return NextResponse.json({
@@ -155,13 +178,13 @@ export async function GET() {
       recentActivity,
     });
   } catch (err: any) {
-    console.error("sales manager overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('sales manager overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

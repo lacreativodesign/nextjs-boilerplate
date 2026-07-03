@@ -1,21 +1,21 @@
-export type RetentionAction = "delete" | "archive";
+export type RetentionAction = 'delete' | 'archive';
 
 export type ComplianceEntityType =
-  | "audit_logs"
-  | "invoices"
-  | "expenses"
-  | "projects"
-  | "tasks"
-  | "documents"
-  | "users"
-  | "notifications"
-  | "custom";
+  | 'audit_logs'
+  | 'invoices'
+  | 'expenses'
+  | 'projects'
+  | 'tasks'
+  | 'documents'
+  | 'users'
+  | 'notifications'
+  | 'custom';
 
-export type ComplianceReportType = "summary" | "gdpr" | "retention" | "audit";
+export type ComplianceReportType = 'summary' | 'gdpr' | 'retention' | 'audit';
 
-export type ComplianceReportStatus = "pending" | "completed" | "failed";
+export type ComplianceReportStatus = 'pending' | 'completed' | 'failed';
 
-export type RequestStatus = "pending" | "processing" | "completed" | "failed";
+export type RequestStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface DataRetentionPolicy {
   id: string;
@@ -50,7 +50,7 @@ export interface DataExportRequest {
   tenantId: string;
   requestedBy: string;
   subjectUserId: string;
-  format: "json" | "csv";
+  format: 'json' | 'csv';
   status: RequestStatus;
   requestedAt: string;
   completedAt?: string;
@@ -63,7 +63,7 @@ export interface DataDeletionRequest {
   tenantId: string;
   requestedBy: string;
   subjectUserId: string;
-  mode: "anonymize" | "delete";
+  mode: 'anonymize' | 'delete';
   status: RequestStatus;
   requestedAt: string;
   completedAt?: string;
@@ -74,10 +74,10 @@ export interface ConsentRecord {
   id: string;
   tenantId: string;
   userId: string;
-  consentType: "terms" | "privacy" | "marketing" | "data_processing";
+  consentType: 'terms' | 'privacy' | 'marketing' | 'data_processing';
   granted: boolean;
   version: string;
-  source: "web" | "mobile" | "api" | "admin";
+  source: 'web' | 'mobile' | 'api' | 'admin';
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { FileUploader } from "@/components/files/FileUploader";
-import { FolderTreeNavigation } from "@/components/files/FolderTreeNavigation";
-import { FileBrowser } from "@/components/files/FileBrowser";
-import { FilePreviewModal } from "@/components/files/FilePreviewModal";
-import { VersionHistoryViewer } from "@/components/files/VersionHistoryViewer";
-import { TagManager } from "@/components/files/TagManager";
-import { ShareLinkGenerator } from "@/components/files/ShareLinkGenerator";
-import { PermissionSelector } from "@/components/files/PermissionSelector";
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { FileUploader } from '@/components/files/FileUploader';
+import { FolderTreeNavigation } from '@/components/files/FolderTreeNavigation';
+import { FileBrowser } from '@/components/files/FileBrowser';
+import { FilePreviewModal } from '@/components/files/FilePreviewModal';
+import { VersionHistoryViewer } from '@/components/files/VersionHistoryViewer';
+import { TagManager } from '@/components/files/TagManager';
+import { ShareLinkGenerator } from '@/components/files/ShareLinkGenerator';
+import { PermissionSelector } from '@/components/files/PermissionSelector';
 
 type FileRecord = {
   id: string;
@@ -27,13 +27,13 @@ export default function DocumentsPage() {
   const [selectedFile, setSelectedFile] = useState<FileRecord | undefined>();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [versionFileId, setVersionFileId] = useState<string | null>(null);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "team" | "public">("private");
+  const [newFolderName, setNewFolderName] = useState('');
+  const [visibility, setVisibility] = useState<'private' | 'team' | 'public'>('private');
 
   const loadFiles = async () => {
     const params = new URLSearchParams();
-    if (folderId) params.set("folderId", folderId);
-    const res = await apiFetch(`/api/files?${params.toString()}`, { cache: "no-store" });
+    if (folderId) params.set('folderId', folderId);
+    const res = await apiFetch(`/api/files?${params.toString()}`, { cache: 'no-store' });
     const payload = await res.json();
     setFiles(payload.files || []);
   };
@@ -44,9 +44,9 @@ export default function DocumentsPage() {
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    const res = await apiFetch("/api/folders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await apiFetch('/api/folders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: newFolderName,
         parentFolderId: folderId,
@@ -55,7 +55,7 @@ export default function DocumentsPage() {
     });
 
     if (res.ok) {
-      setNewFolderName("");
+      setNewFolderName('');
     }
   };
 
@@ -72,9 +72,16 @@ export default function DocumentsPage() {
 
           <div className="card space-y-3">
             <h3 className="text-sm font-semibold">Create folder</h3>
-            <input className="input" placeholder="Folder name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} />
+            <input
+              className="input"
+              placeholder="Folder name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+            />
             <PermissionSelector value={visibility} onChange={setVisibility} />
-            <button className="btn" onClick={createFolder}>Create</button>
+            <button className="btn" onClick={createFolder}>
+              Create
+            </button>
           </div>
         </div>
 
@@ -98,7 +105,9 @@ export default function DocumentsPage() {
             </div>
           ) : null}
 
-          {versionFileId ? <VersionHistoryViewer fileId={versionFileId} onRestored={loadFiles} /> : null}
+          {versionFileId ? (
+            <VersionHistoryViewer fileId={versionFileId} onRestored={loadFiles} />
+          ) : null}
         </div>
       </div>
 

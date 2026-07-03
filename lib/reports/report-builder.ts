@@ -1,6 +1,6 @@
-import admin from "firebase-admin";
-import type { Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
+import admin from 'firebase-admin';
+import type { Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
 import type {
   Aggregation,
   DataSource,
@@ -9,7 +9,7 @@ import type {
   ReportFilter,
   ReportFormat,
   ReportSort,
-} from "@/types/reports";
+} from '@/types/reports';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 1000;
@@ -32,31 +32,34 @@ type CustomReportResult = {
 
 export class ReportBuilderService {
   private static readonly COLLECTION_MAP: Record<DataSource, string> = {
-    invoices: "invoices",
-    payments: "payments",
-    expenses: "expenses",
-    customers: "customers",
-    products: "products",
-    users: "users",
-    audit_logs: "audit_logs",
-    projects: "projects",
-    deals: "deals",
-    leads: "leads",
-    opportunities: "deals",
-    time_entries: "time_entries",
-    budget_lines: "budget_lines",
-    custom: "",
+    invoices: 'invoices',
+    payments: 'payments',
+    expenses: 'expenses',
+    customers: 'customers',
+    products: 'products',
+    users: 'users',
+    audit_logs: 'audit_logs',
+    projects: 'projects',
+    deals: 'deals',
+    leads: 'leads',
+    opportunities: 'deals',
+    time_entries: 'time_entries',
+    budget_lines: 'budget_lines',
+    custom: '',
   };
 
   static getAvailableDataSources() {
-    return Object.keys(this.COLLECTION_MAP).filter((source) => source !== "custom") as DataSource[];
+    return Object.keys(this.COLLECTION_MAP).filter((source) => source !== 'custom') as DataSource[];
   }
 
-  static async discoverFields(tenantId: string, dataSource: DataSource): Promise<ReportFieldSelection[]> {
+  static async discoverFields(
+    tenantId: string,
+    dataSource: DataSource,
+  ): Promise<ReportFieldSelection[]> {
     const collection = this.resolveCollection(dataSource);
     const snapshot = await adminDb
       .collection(collection)
-      .where("tenantId", "==", tenantId)
+      .where('tenantId', '==', tenantId)
       .limit(10)
       .get();
 
@@ -83,7 +86,7 @@ export class ReportBuilderService {
     const page = Math.max(1, params.page || 1);
 
     const collection = this.resolveCollection(params.report.dataSource);
-    let query: Query = adminDb.collection(collection).where("tenantId", "==", params.tenantId);
+    let query: Query = adminDb.collection(collection).where('tenantId', '==', params.tenantId);
 
     const mergedFilters = [...(params.report.filters || []), ...(params.runtimeFilters || [])];
     const { firestoreFilters, clientFilters } = this.partitionFilters(mergedFilters);
@@ -94,13 +97,21 @@ export class ReportBuilderService {
 
     query = this.applySorting(query, params.report.sorts);
 
-    const shouldAggregate = Boolean(params.report.groupBy?.length || params.report.aggregations?.length);
+    const shouldAggregate = Boolean(
+      params.report.groupBy?.length || params.report.aggregations?.length,
+    );
 
     if (shouldAggregate) {
       const allData = await this.fetchAllPages(query);
-      const filtered = clientFilters.length ? allData.filter((row) => this.matchesFilters(row, clientFilters)) : allData;
+      const filtered = clientFilters.length
+        ? allData.filter((row) => this.matchesFilters(row, clientFilters))
+        : allData;
       const projected = this.selectFields(filtered, params.report.fields);
-      const aggregated = this.applyAggregations(projected, params.report.groupBy, params.report.aggregations);
+      const aggregated = this.applyAggregations(
+        projected,
+        params.report.groupBy,
+        params.report.aggregations,
+      );
       const paged = this.paginateRows(aggregated, page, pageSize);
 
       return {
@@ -113,7 +124,9 @@ export class ReportBuilderService {
     }
 
     const allRows = await this.fetchAllPages(query);
-    const filteredRows = clientFilters.length ? allRows.filter((row) => this.matchesFilters(row, clientFilters)) : allRows;
+    const filteredRows = clientFilters.length
+      ? allRows.filter((row) => this.matchesFilters(row, clientFilters))
+      : allRows;
     const selectedRows = this.selectFields(filteredRows, params.report.fields);
     const paged = this.paginateRows(selectedRows, page, pageSize);
 
@@ -128,14 +141,14 @@ export class ReportBuilderService {
 
   static async exportRows(rows: Record<string, unknown>[], format: ReportFormat) {
     switch (format) {
-      case "csv":
+      case 'csv':
         return this.toCsv(rows);
-      case "xlsx":
+      case 'xlsx':
         return this.toXlsxXml(rows);
-      case "pdf":
+      case 'pdf':
         return this.toPdfLikeText(rows);
       default:
-        return "";
+        return '';
     }
   }
 
@@ -186,10 +199,10 @@ export class ReportBuilderService {
   }
 
   private static isFirestoreCompatible(filter: ReportFilter) {
-    if (["startsWith", "endsWith", "contains", "notContains"].includes(filter.operator)) {
+    if (['startsWith', 'endsWith', 'contains', 'notContains'].includes(filter.operator)) {
       return false;
     }
-    if (filter.operator === "between") {
+    if (filter.operator === 'between') {
       return Array.isArray(filter.value) && filter.value.length === 2;
     }
     return true;
@@ -199,31 +212,37 @@ export class ReportBuilderService {
     const normalizedValue = this.normalizeFilterValue(filter.value);
 
     switch (filter.operator) {
-      case "equals":
-        return query.where(filter.field, "==", normalizedValue);
-      case "notEquals":
-        return query.where(filter.field, "!=", normalizedValue);
-      case "greaterThan":
-        return query.where(filter.field, ">", normalizedValue);
-      case "greaterThanOrEqual":
-        return query.where(filter.field, ">=", normalizedValue);
-      case "lessThan":
-        return query.where(filter.field, "<", normalizedValue);
-      case "lessThanOrEqual":
-        return query.where(filter.field, "<=", normalizedValue);
-      case "between":
+      case 'equals':
+        return query.where(filter.field, '==', normalizedValue);
+      case 'notEquals':
+        return query.where(filter.field, '!=', normalizedValue);
+      case 'greaterThan':
+        return query.where(filter.field, '>', normalizedValue);
+      case 'greaterThanOrEqual':
+        return query.where(filter.field, '>=', normalizedValue);
+      case 'lessThan':
+        return query.where(filter.field, '<', normalizedValue);
+      case 'lessThanOrEqual':
+        return query.where(filter.field, '<=', normalizedValue);
+      case 'between':
         if (Array.isArray(normalizedValue) && normalizedValue.length === 2) {
-          return query.where(filter.field, ">=", normalizedValue[0]).where(filter.field, "<=", normalizedValue[1]);
+          return query
+            .where(filter.field, '>=', normalizedValue[0])
+            .where(filter.field, '<=', normalizedValue[1]);
         }
         return query;
-      case "in":
-        return Array.isArray(normalizedValue) ? query.where(filter.field, "in", normalizedValue) : query;
-      case "notIn":
-        return Array.isArray(normalizedValue) ? query.where(filter.field, "not-in", normalizedValue) : query;
-      case "isNull":
-        return query.where(filter.field, "==", null);
-      case "isNotNull":
-        return query.where(filter.field, "!=", null);
+      case 'in':
+        return Array.isArray(normalizedValue)
+          ? query.where(filter.field, 'in', normalizedValue)
+          : query;
+      case 'notIn':
+        return Array.isArray(normalizedValue)
+          ? query.where(filter.field, 'not-in', normalizedValue)
+          : query;
+      case 'isNull':
+        return query.where(filter.field, '==', null);
+      case 'isNotNull':
+        return query.where(filter.field, '!=', null);
       default:
         return query;
     }
@@ -231,7 +250,7 @@ export class ReportBuilderService {
 
   private static applySorting(query: Query, sorts?: ReportSort[]) {
     if (!sorts?.length) {
-      return query.orderBy("createdAt", "desc");
+      return query.orderBy('createdAt', 'desc');
     }
 
     let nextQuery = query;
@@ -256,7 +275,11 @@ export class ReportBuilderService {
     });
   }
 
-  private static applyAggregations(rows: Record<string, unknown>[], groupBy?: string[], aggregations?: Aggregation[]) {
+  private static applyAggregations(
+    rows: Record<string, unknown>[],
+    groupBy?: string[],
+    aggregations?: Aggregation[],
+  ) {
     if (!aggregations?.length) {
       return rows;
     }
@@ -264,7 +287,8 @@ export class ReportBuilderService {
     if (!groupBy?.length) {
       const summary: Record<string, unknown> = {};
       for (const aggregation of aggregations) {
-        summary[aggregation.alias || `${aggregation.function}_${aggregation.field}`] = this.calculateAggregation(rows, aggregation);
+        summary[aggregation.alias || `${aggregation.function}_${aggregation.field}`] =
+          this.calculateAggregation(rows, aggregation);
       }
       return [summary];
     }
@@ -272,7 +296,9 @@ export class ReportBuilderService {
     const groups = new Map<string, Record<string, unknown>[]>();
 
     for (const row of rows) {
-      const groupKey = groupBy.map((field) => String(this.getFieldValue(row, field) ?? "")).join("||");
+      const groupKey = groupBy
+        .map((field) => String(this.getFieldValue(row, field) ?? ''))
+        .join('||');
       if (!groups.has(groupKey)) {
         groups.set(groupKey, []);
       }
@@ -282,13 +308,14 @@ export class ReportBuilderService {
     const output: Record<string, unknown>[] = [];
     groups.forEach((groupRows, key) => {
       const row: Record<string, unknown> = {};
-      const groupValues = key.split("||");
+      const groupValues = key.split('||');
       groupBy.forEach((field, index) => {
         row[field] = groupValues[index];
       });
 
       for (const aggregation of aggregations) {
-        row[aggregation.alias || `${aggregation.function}_${aggregation.field}`] = this.calculateAggregation(groupRows, aggregation);
+        row[aggregation.alias || `${aggregation.function}_${aggregation.field}`] =
+          this.calculateAggregation(groupRows, aggregation);
       }
 
       output.push(row);
@@ -298,18 +325,20 @@ export class ReportBuilderService {
   }
 
   private static calculateAggregation(rows: Record<string, unknown>[], aggregation: Aggregation) {
-    const values = rows.map((row) => this.toNumber(this.getFieldValue(row, aggregation.field))).filter((v) => !Number.isNaN(v));
+    const values = rows
+      .map((row) => this.toNumber(this.getFieldValue(row, aggregation.field)))
+      .filter((v) => !Number.isNaN(v));
 
     switch (aggregation.function) {
-      case "sum":
+      case 'sum':
         return values.reduce((sum, value) => sum + value, 0);
-      case "avg":
+      case 'avg':
         return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
-      case "count":
+      case 'count':
         return rows.length;
-      case "min":
+      case 'min':
         return values.length ? Math.min(...values) : 0;
-      case "max":
+      case 'max':
         return values.length ? Math.max(...values) : 0;
       default:
         return 0;
@@ -334,42 +363,45 @@ export class ReportBuilderService {
     const expected = this.normalizeFilterValue(filter.value);
 
     switch (filter.operator) {
-      case "equals":
+      case 'equals':
         return value === expected;
-      case "notEquals":
+      case 'notEquals':
         return value !== expected;
-      case "contains":
+      case 'contains':
         return this.containsValue(value, expected);
-      case "notContains":
+      case 'notContains':
         return !this.containsValue(value, expected);
-      case "startsWith":
-        return typeof value === "string" && typeof expected === "string"
+      case 'startsWith':
+        return typeof value === 'string' && typeof expected === 'string'
           ? value.toLowerCase().startsWith(expected.toLowerCase())
           : false;
-      case "endsWith":
-        return typeof value === "string" && typeof expected === "string"
+      case 'endsWith':
+        return typeof value === 'string' && typeof expected === 'string'
           ? value.toLowerCase().endsWith(expected.toLowerCase())
           : false;
-      case "greaterThan":
+      case 'greaterThan':
         return this.toNumber(value) > this.toNumber(expected);
-      case "greaterThanOrEqual":
+      case 'greaterThanOrEqual':
         return this.toNumber(value) >= this.toNumber(expected);
-      case "lessThan":
+      case 'lessThan':
         return this.toNumber(value) < this.toNumber(expected);
-      case "lessThanOrEqual":
+      case 'lessThanOrEqual':
         return this.toNumber(value) <= this.toNumber(expected);
-      case "between":
+      case 'between':
         if (Array.isArray(expected) && expected.length === 2) {
-          return this.toNumber(value) >= this.toNumber(expected[0]) && this.toNumber(value) <= this.toNumber(expected[1]);
+          return (
+            this.toNumber(value) >= this.toNumber(expected[0]) &&
+            this.toNumber(value) <= this.toNumber(expected[1])
+          );
         }
         return false;
-      case "in":
+      case 'in':
         return Array.isArray(expected) ? expected.includes(value) : false;
-      case "notIn":
+      case 'notIn':
         return Array.isArray(expected) ? !expected.includes(value) : false;
-      case "isNull":
+      case 'isNull':
         return value == null;
-      case "isNotNull":
+      case 'isNotNull':
         return value != null;
       default:
         return true;
@@ -377,9 +409,9 @@ export class ReportBuilderService {
   }
 
   private static normalizeFilterValue(value: unknown) {
-    if (typeof value === "string" && value.includes(",")) {
+    if (typeof value === 'string' && value.includes(',')) {
       return value
-        .split(",")
+        .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean);
     }
@@ -387,12 +419,12 @@ export class ReportBuilderService {
   }
 
   private static getFieldValue(item: Record<string, unknown>, field: string) {
-    if (!field.includes(".")) {
+    if (!field.includes('.')) {
       return item[field];
     }
 
-    return field.split(".").reduce<unknown>((acc, key) => {
-      if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
+    return field.split('.').reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
         return (acc as Record<string, unknown>)[key];
       }
       return undefined;
@@ -403,7 +435,7 @@ export class ReportBuilderService {
     if (Array.isArray(fieldValue)) {
       return fieldValue.includes(expected);
     }
-    if (typeof fieldValue === "string" && typeof expected === "string") {
+    if (typeof fieldValue === 'string' && typeof expected === 'string') {
       return fieldValue.toLowerCase().includes(expected.toLowerCase());
     }
     return false;
@@ -414,28 +446,31 @@ export class ReportBuilderService {
     return Number.isNaN(n) ? 0 : n;
   }
 
-  private static inferType(value: unknown): ReportFieldSelection["type"] {
-    if (value == null) return "string";
-    if (value instanceof Date || typeof (value as any)?.toDate === "function") return "date";
-    if (Array.isArray(value)) return "array";
+  private static inferType(value: unknown): ReportFieldSelection['type'] {
+    if (value == null) return 'string';
+    if (value instanceof Date || typeof (value as any)?.toDate === 'function') return 'date';
+    if (Array.isArray(value)) return 'array';
     const t = typeof value;
-    if (t === "number") return "number";
-    if (t === "boolean") return "boolean";
-    if (t === "object") return "object";
-    return "string";
+    if (t === 'number') return 'number';
+    if (t === 'boolean') return 'boolean';
+    if (t === 'object') return 'object';
+    return 'string';
   }
 
-  private static flattenRecord(record: Record<string, unknown>, prefix = ""): Array<[string, unknown]> {
+  private static flattenRecord(
+    record: Record<string, unknown>,
+    prefix = '',
+  ): Array<[string, unknown]> {
     const entries: Array<[string, unknown]> = [];
 
     Object.entries(record).forEach(([key, value]) => {
       const path = prefix ? `${prefix}.${key}` : key;
       if (
-        value
-        && typeof value === "object"
-        && !Array.isArray(value)
-        && !(value instanceof Date)
-        && typeof (value as any)?.toDate !== "function"
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        typeof (value as any)?.toDate !== 'function'
       ) {
         entries.push(...this.flattenRecord(value as Record<string, unknown>, path));
       } else {
@@ -447,23 +482,30 @@ export class ReportBuilderService {
   }
 
   private static toCsv(rows: Record<string, unknown>[]) {
-    if (!rows.length) return "";
+    if (!rows.length) return '';
     const headers = Object.keys(rows[0]);
-    const lines = rows.map((row) => headers.map((header) => this.escapeCell(row[header])).join(","));
-    return [headers.join(","), ...lines].join("\n");
+    const lines = rows.map((row) =>
+      headers.map((header) => this.escapeCell(row[header])).join(','),
+    );
+    return [headers.join(','), ...lines].join('\n');
   }
 
   private static toXlsxXml(rows: Record<string, unknown>[]) {
     const headers = rows.length ? Object.keys(rows[0]) : [];
-    const headerCells = headers.map((header) => `<Cell><Data ss:Type=\"String\">${this.escapeXml(header)}</Data></Cell>`).join("");
+    const headerCells = headers
+      .map((header) => `<Cell><Data ss:Type=\"String\">${this.escapeXml(header)}</Data></Cell>`)
+      .join('');
     const bodyRows = rows
       .map((row) => {
         const cells = headers
-          .map((header) => `<Cell><Data ss:Type=\"String\">${this.escapeXml(String(row[header] ?? ""))}</Data></Cell>`)
-          .join("");
+          .map(
+            (header) =>
+              `<Cell><Data ss:Type=\"String\">${this.escapeXml(String(row[header] ?? ''))}</Data></Cell>`,
+          )
+          .join('');
         return `<Row>${cells}</Row>`;
       })
-      .join("");
+      .join('');
 
     return `<?xml version="1.0"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
@@ -478,7 +520,7 @@ export class ReportBuilderService {
 
   private static toPdfLikeText(rows: Record<string, unknown>[]) {
     const now = new Date().toISOString();
-    return [`Report export generated at ${now}`, "", this.toCsv(rows)].join("\n");
+    return [`Report export generated at ${now}`, '', this.toCsv(rows)].join('\n');
   }
 
   private static escapeCell(value: unknown) {
@@ -487,12 +529,12 @@ export class ReportBuilderService {
   }
 
   private static toDisplayValue(value: unknown) {
-    if (value == null) return "";
+    if (value == null) return '';
     if (value instanceof Date) return value.toISOString();
-    if (typeof (value as any)?.toDate === "function") {
+    if (typeof (value as any)?.toDate === 'function') {
       return (value as any).toDate().toISOString();
     }
-    if (typeof value === "object") {
+    if (typeof value === 'object') {
       return JSON.stringify(value);
     }
     return String(value);
@@ -500,32 +542,32 @@ export class ReportBuilderService {
 
   private static escapeXml(value: string) {
     return value
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&apos;");
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
   }
 
-  static computeNextRunAt(schedule: Report["schedule"]) {
+  static computeNextRunAt(schedule: Report['schedule']) {
     if (!schedule) {
-      throw new Error("Schedule is required");
+      throw new Error('Schedule is required');
     }
 
     const now = new Date();
-    const [hourStr, minuteStr] = schedule.time.split(":");
-    const hour = Number(hourStr || "0");
-    const minute = Number(minuteStr || "0");
+    const [hourStr, minuteStr] = schedule.time.split(':');
+    const hour = Number(hourStr || '0');
+    const minute = Number(minuteStr || '0');
 
     const next = new Date(now);
     next.setSeconds(0, 0);
     next.setHours(hour, minute, 0, 0);
 
-    if (schedule.frequency === "daily") {
+    if (schedule.frequency === 'daily') {
       if (next <= now) {
         next.setDate(next.getDate() + 1);
       }
-    } else if (schedule.frequency === "weekly") {
+    } else if (schedule.frequency === 'weekly') {
       const targetDay = schedule.dayOfWeek ?? 1;
       const delta = (targetDay - next.getDay() + 7) % 7;
       next.setDate(next.getDate() + delta);

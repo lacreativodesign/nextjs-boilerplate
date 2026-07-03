@@ -1,57 +1,47 @@
-"use client";
+'use client';
 
-import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import MasterSelect from "@/components/ui/MasterSelect";
-import LoadingButton from "@/components/ui/LoadingButton";
-import {
-  formatDate,
-  formatDateTime,
-  formatUsd,
-  } from "@/components/finance/financeUtils";
-import type { InvoiceLineItem, InvoiceRecord } from "@/lib/finance/types";
-import { CurrencyCode } from "@/lib/finance/currencies";
-import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
-import { CurrencyDisplay } from "@/components/finance/CurrencyDisplay";
-import { CurrencySelector } from "@/components/finance/CurrencySelector";
-import { InvoiceDownloadButton } from "@/components/finance/InvoiceDownloadButton";
-import { TaxRateSelector } from "@/components/finance/TaxRateSelector";
-import { calculateTax } from "@/lib/tax/calculator";
-import { toastError, toastPromise, toastWarning } from "@/lib/toast";
-import { TableSkeleton } from "@/components/ui/Skeleton";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
-import { apiFetch } from "@/lib/api/client";
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import MasterSelect from '@/components/ui/MasterSelect';
+import LoadingButton from '@/components/ui/LoadingButton';
+import { formatDate, formatDateTime, formatUsd } from '@/components/finance/financeUtils';
+import type { InvoiceLineItem, InvoiceRecord } from '@/lib/finance/types';
+import { CurrencyCode } from '@/lib/finance/currencies';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency/currencyConverter';
+import { CurrencyDisplay } from '@/components/finance/CurrencyDisplay';
+import { CurrencySelector } from '@/components/finance/CurrencySelector';
+import { InvoiceDownloadButton } from '@/components/finance/InvoiceDownloadButton';
+import { TaxRateSelector } from '@/components/finance/TaxRateSelector';
+import { calculateTax } from '@/lib/tax/calculator';
+import { toastError, toastPromise, toastWarning } from '@/lib/toast';
+import { TableSkeleton } from '@/components/ui/Skeleton';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
+import { apiFetch } from '@/lib/api/client';
 
-const STATUS_OPTIONS = [
-  "",
-  "Draft",
-  "Sent",
-  "Partially Paid",
-  "Paid",
-  "Overdue",
-  "Void",
-].map((status) => ({ label: status || "All Statuses", value: status }));
+const STATUS_OPTIONS = ['', 'Draft', 'Sent', 'Partially Paid', 'Paid', 'Overdue', 'Void'].map(
+  (status) => ({ label: status || 'All Statuses', value: status }),
+);
 
 const DUE_OPTIONS = [
-  { label: "All Due Dates", value: "" },
-  { label: "Overdue", value: "overdue" },
-  { label: "Due in 7 days", value: "due_7" },
-  { label: "Due in 30 days", value: "due_30" },
+  { label: 'All Due Dates', value: '' },
+  { label: 'Overdue', value: 'overdue' },
+  { label: 'Due in 7 days', value: 'due_7' },
+  { label: 'Due in 30 days', value: 'due_30' },
 ];
 
 type ClientOption = { id: string; companyName: string };
 
-type SortKey = "orderId" | "clientName" | "amountTotalUsd" | "dueDate" | "updatedAt" | "status";
+type SortKey = 'orderId' | 'clientName' | 'amountTotalUsd' | 'dueDate' | 'updatedAt' | 'status';
 
-type SortDir = "asc" | "desc";
+type SortDir = 'asc' | 'desc';
 
 type CurrentUser = { uid: string; role: string; name?: string };
 
 type ErrorState = { title: string; message: string };
 
 const getCurrencySymbol = (code?: string) => {
-  return SUPPORTED_CURRENCIES.find((currency) => currency.code === code)?.symbol || code || "USD";
+  return SUPPORTED_CURRENCIES.find((currency) => currency.code === code)?.symbol || code || 'USD';
 };
 
 export default function FinanceInvoicesPage() {
@@ -69,12 +59,12 @@ function FinanceInvoicesContent() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dueFilter, setDueFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dueFilter, setDueFilter] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -85,19 +75,19 @@ function FinanceInvoicesContent() {
     try {
       setError(null);
       setLoading(true);
-      const res = await apiFetch("/api/admin/finance/invoices/list", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/finance/invoices/list', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load invoices.");
+        throw new Error(data?.error || 'Unable to load invoices.');
       }
       setInvoices(data.invoices || []);
       setCurrentUser(data.currentUser || null);
     } catch (err: any) {
-      console.error("Invoices load error", err);
-      toastError("Unable to load invoices. Please try again in a moment.");
+      console.error('Invoices load error', err);
+      toastError('Unable to load invoices. Please try again in a moment.');
       setError({
-        title: "Unable to load invoices",
-        message: "Please try again in a moment.",
+        title: 'Unable to load invoices',
+        message: 'Please try again in a moment.',
       });
     } finally {
       setLoading(false);
@@ -106,22 +96,22 @@ function FinanceInvoicesContent() {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await apiFetch("/api/admin/clients/list", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/clients/list', { cache: 'no-store' });
       const data = await res.json();
       if (res.ok && data.ok) {
         setClients(data.clients || []);
       }
     } catch (err) {
-      console.error("Failed to load clients", err);
-      toastWarning("Unable to load clients. Refresh the page or try again shortly.");
+      console.error('Failed to load clients', err);
+      toastWarning('Unable to load clients. Refresh the page or try again shortly.');
     }
   }, []);
 
   const handleResetFilters = useCallback(() => {
-    setQuery("");
-    setStatusFilter("");
-    setDueFilter("");
-    setClientFilter("");
+    setQuery('');
+    setStatusFilter('');
+    setDueFilter('');
+    setClientFilter('');
   }, []);
 
   useEffect(() => {
@@ -130,14 +120,14 @@ function FinanceInvoicesContent() {
   }, [loadInvoices, loadClients]);
 
   useEffect(() => {
-    if (searchParams.get("create") === "true") {
+    if (searchParams.get('create') === 'true') {
       setCreateOpen(true);
     }
   }, [searchParams]);
 
   const canAdmin = useMemo(() => {
-    const role = (currentUser?.role || "").toLowerCase();
-    return role === "admin" || role === "super_admin";
+    const role = (currentUser?.role || '').toLowerCase();
+    return role === 'admin' || role === 'super_admin';
   }, [currentUser?.role]);
 
   const filteredInvoices = useMemo(() => {
@@ -151,9 +141,9 @@ function FinanceInvoicesContent() {
         const due = invoice.dueDate ? new Date(invoice.dueDate) : null;
         if (!due || Number.isNaN(due.getTime())) return false;
         const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        if (dueFilter === "overdue" && diffDays >= 0) return false;
-        if (dueFilter === "due_7" && (diffDays < 0 || diffDays > 7)) return false;
-        if (dueFilter === "due_30" && (diffDays < 0 || diffDays > 30)) return false;
+        if (dueFilter === 'overdue' && diffDays >= 0) return false;
+        if (dueFilter === 'due_7' && (diffDays < 0 || diffDays > 7)) return false;
+        if (dueFilter === 'due_30' && (diffDays < 0 || diffDays > 30)) return false;
       }
 
       return true;
@@ -165,21 +155,23 @@ function FinanceInvoicesContent() {
   const sortedInvoices = useMemo(() => {
     const list = [...filteredInvoices];
     list.sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      if (sortKey === "amountTotalUsd") return (a.amountTotalUsd - b.amountTotalUsd) * dir;
-      if (sortKey === "dueDate") return String(a.dueDate || "").localeCompare(String(b.dueDate || "")) * dir;
-      if (sortKey === "updatedAt") return String(a.updatedAt || "").localeCompare(String(b.updatedAt || "")) * dir;
-      return String(a[sortKey] || "").localeCompare(String(b[sortKey] || "")) * dir;
+      const dir = sortDir === 'asc' ? 1 : -1;
+      if (sortKey === 'amountTotalUsd') return (a.amountTotalUsd - b.amountTotalUsd) * dir;
+      if (sortKey === 'dueDate')
+        return String(a.dueDate || '').localeCompare(String(b.dueDate || '')) * dir;
+      if (sortKey === 'updatedAt')
+        return String(a.updatedAt || '').localeCompare(String(b.updatedAt || '')) * dir;
+      return String(a[sortKey] || '').localeCompare(String(b[sortKey] || '')) * dir;
     });
     return list;
   }, [filteredInvoices, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(key);
-      setSortDir("asc");
+      setSortDir('asc');
     }
   };
 
@@ -196,13 +188,13 @@ function FinanceInvoicesContent() {
   useEffect(() => {
     if (!drawerOpen && !createOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         closeDrawer();
         setCreateOpen(false);
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [drawerOpen, createOpen]);
 
   const handleMarkPaid = async (invoice: InvoiceRecord) => {
@@ -210,27 +202,27 @@ function FinanceInvoicesContent() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        apiFetch("/api/admin/finance/invoices/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: invoice.id, action: "mark_paid" }),
+        apiFetch('/api/admin/finance/invoices/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: invoice.id, action: 'mark_paid' }),
         }).then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.ok) {
-            throw new Error(data?.error || "Unable to mark paid.");
+            throw new Error(data?.error || 'Unable to mark paid.');
           }
           return data;
         }),
         {
-          loading: "Updating invoice...",
-          success: "Invoice marked as paid.",
-          error: (err) => err?.message || "Unable to mark invoice paid.",
-        }
+          loading: 'Updating invoice...',
+          success: 'Invoice marked as paid.',
+          error: (err) => err?.message || 'Unable to mark invoice paid.',
+        },
       );
       await loadInvoices();
     } catch (err) {
-      console.error("Mark paid error", err);
-      setError({ title: "Unable to mark paid", message: "Please try again." });
+      console.error('Mark paid error', err);
+      setError({ title: 'Unable to mark paid', message: 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -240,27 +232,27 @@ function FinanceInvoicesContent() {
     try {
       setActionLoading(invoice.id);
       await toastPromise(
-        apiFetch("/api/admin/finance/invoices/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: invoice.id, action: "send" }),
+        apiFetch('/api/admin/finance/invoices/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: invoice.id, action: 'send' }),
         }).then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.ok) {
-            throw new Error(data?.error || "Unable to send invoice.");
+            throw new Error(data?.error || 'Unable to send invoice.');
           }
           return data;
         }),
         {
-          loading: "Sending invoice...",
-          success: "Invoice sent successfully.",
-          error: (err) => err?.message || "Unable to send invoice.",
-        }
+          loading: 'Sending invoice...',
+          success: 'Invoice sent successfully.',
+          error: (err) => err?.message || 'Unable to send invoice.',
+        },
       );
       await loadInvoices();
     } catch (err) {
-      console.error("Send invoice error", err);
-      setError({ title: "Unable to send invoice", message: "Please try again." });
+      console.error('Send invoice error', err);
+      setError({ title: 'Unable to send invoice', message: 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -278,7 +270,7 @@ function FinanceInvoicesContent() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 style={{ fontSize: 20, fontWeight: 700 }}>Invoices</h3>
-          <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
             USD invoicing with live Firestore sync.
           </p>
         </div>
@@ -291,59 +283,93 @@ function FinanceInvoicesContent() {
 
       <div className="mt-4 flex flex-wrap gap-3">
         <SmartSearchBar value={query} onChange={setQuery} placeholder="Search invoices…" />
-        <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
-        <MasterSelect value={dueFilter} onChange={(value) => setDueFilter(value)} options={DUE_OPTIONS} />
+        <MasterSelect
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value)}
+          options={STATUS_OPTIONS}
+        />
+        <MasterSelect
+          value={dueFilter}
+          onChange={(value) => setDueFilter(value)}
+          options={DUE_OPTIONS}
+        />
         <MasterSelect
           value={clientFilter}
           onChange={(value) => setClientFilter(value)}
-          options={[{ label: "All Clients", value: "" }, ...clients.map((c) => ({ label: c.companyName, value: c.id }))]}
+          options={[
+            { label: 'All Clients', value: '' },
+            ...clients.map((c) => ({ label: c.companyName, value: c.id })),
+          ]}
         />
         <button
           type="button"
           className="btn"
           onClick={handleResetFilters}
-          style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
+          style={{ borderRadius: 999, padding: '10px 16px', fontWeight: 500 }}
         >
           Reset Filters
         </button>
       </div>
 
       <div className="table-shell">
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 960 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("orderId")} className="table-sort">
-                    Invoice/Order {sortKey === "orderId" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort('orderId')}
+                    className="table-sort"
+                  >
+                    Invoice/Order {sortKey === 'orderId' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("clientName")} className="table-sort">
-                    Client {sortKey === "clientName" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort('clientName')}
+                    className="table-sort"
+                  >
+                    Client {sortKey === 'clientName' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("amountTotalUsd")} className="table-sort">
-                    Total (USD) {sortKey === "amountTotalUsd" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort('amountTotalUsd')}
+                    className="table-sort"
+                  >
+                    Total (USD){' '}
+                    {sortKey === 'amountTotalUsd' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("dueDate")} className="table-sort">
-                    Due Date {sortKey === "dueDate" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort('dueDate')}
+                    className="table-sort"
+                  >
+                    Due Date {sortKey === 'dueDate' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("updatedAt")} className="table-sort">
-                    Updated {sortKey === "updatedAt" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort('updatedAt')}
+                    className="table-sort"
+                  >
+                    Updated {sortKey === 'updatedAt' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort("status")} className="table-sort">
-                    Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('status')} className="table-sort">
+                    Status {sortKey === 'status' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -355,7 +381,7 @@ function FinanceInvoicesContent() {
                 </tr>
               ) : sortedInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: 40 }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
                     No invoices found.
                   </td>
                 </tr>
@@ -363,33 +389,53 @@ function FinanceInvoicesContent() {
                 sortedInvoices.map((invoice) => {
                   return (
                     <tr key={invoice.id}>
-                      <td style={{ padding: "14px 16px", textAlign: "left" }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'left' }}>
                         <div style={{ fontWeight: 600 }}>{invoice.orderId || invoice.id}</div>
                         <div style={{ fontSize: 12, opacity: 0.65 }}>{invoice.clientId}</div>
                       </td>
-                      <td style={{ padding: "14px 16px", textAlign: "left" }}>{invoice.clientName}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}><span>{getCurrencySymbol(invoice.currency)}{Number(invoice.amountTotal || invoice.amountTotalUsd || 0).toFixed(2)}</span></td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(invoice.dueDate)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{formatDate(invoice.updatedAt)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>{renderStatus(invoice.status)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'left' }}>
+                        {invoice.clientName}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <span>
+                          {getCurrencySymbol(invoice.currency)}
+                          {Number(invoice.amountTotal || invoice.amountTotalUsd || 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {formatDate(invoice.dueDate)}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {formatDate(invoice.updatedAt)}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {renderStatus(invoice.status)}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            justifyContent: 'center',
+                            flexWrap: 'wrap',
+                          }}
+                        >
                           <button
                             type="button"
                             className="btn ghost"
                             onClick={() => openDrawer(invoice)}
-                            style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
                           >
                             View
                           </button>
-                          {canAdmin && invoice.status !== "Paid" && (
+                          {canAdmin && invoice.status !== 'Paid' && (
                             <LoadingButton
                               type="button"
                               className="btn"
                               onClick={() => handleMarkPaid(invoice)}
                               loading={actionLoading === invoice.id}
                               loadingText="Updating"
-                              style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                              style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
                             >
                               Mark Paid
                             </LoadingButton>
@@ -408,7 +454,7 @@ function FinanceInvoicesContent() {
       {drawerOpen && selectedInvoice && (
         <InvoiceDrawer
           invoice={selectedInvoice}
-                    canAdmin={canAdmin}
+          canAdmin={canAdmin}
           onClose={closeDrawer}
           onSend={handleSendInvoice}
           onMarkPaid={handleMarkPaid}
@@ -418,7 +464,7 @@ function FinanceInvoicesContent() {
 
       {createOpen && (
         <CreateInvoiceDrawer
-                    clients={clients}
+          clients={clients}
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
             setCreateOpen(false);
@@ -432,21 +478,32 @@ function FinanceInvoicesContent() {
   );
 }
 
-
 function renderStatus(status: string) {
-  const base = "inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold min-w-[80px]";
-  const t = (status || "").toLowerCase();
-  if (t.includes("paid") || t.includes("completed") || t.includes("approved") || t.includes("active"))
+  const base =
+    'inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold min-w-[80px]';
+  const t = (status || '').toLowerCase();
+  if (
+    t.includes('paid') ||
+    t.includes('completed') ||
+    t.includes('approved') ||
+    t.includes('active')
+  )
     return <span className={`${base} bg-green-500/10 text-green-600`}>{status}</span>;
-  if (t.includes("overdue") || t.includes("failed") || t.includes("rejected") || t.includes("void"))
+  if (t.includes('overdue') || t.includes('failed') || t.includes('rejected') || t.includes('void'))
     return <span className={`${base} bg-red-500/10 text-red-500`}>{status}</span>;
-  if (t.includes("pending") || t.includes("draft") || t.includes("processing") || t.includes("sent"))
+  if (
+    t.includes('pending') ||
+    t.includes('draft') ||
+    t.includes('processing') ||
+    t.includes('sent')
+  )
     return <span className={`${base} bg-amber-500/10 text-amber-600`}>{status}</span>;
-  if (t.includes("partial"))
+  if (t.includes('partial'))
     return <span className={`${base} bg-purple-500/10 text-purple-600`}>{status}</span>;
-  return <span className={`${base} bg-[var(--surface-muted)] text-[var(--text-muted)]`}>{status}</span>;
+  return (
+    <span className={`${base} bg-[var(--surface-muted)] text-[var(--text-muted)]`}>{status}</span>
+  );
 }
-
 
 function InvoiceDrawer({
   invoice,
@@ -470,30 +527,30 @@ function InvoiceDrawer({
   return (
     <div
       style={{
-        position: "fixed",
+        position: 'fixed',
         inset: 0,
         zIndex: 60,
-        background: "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
       }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           right: 0,
-          width: "min(480px, 94vw)",
-          height: "100%",
+          width: 'min(480px, 94vw)',
+          height: '100%',
           padding: 18,
-          background: "var(--card-bg)",
-          borderLeft: "1px solid var(--border-subtle)",
-          overflowY: "auto",
+          background: 'var(--card-bg)',
+          borderLeft: '1px solid var(--border-subtle)',
+          overflowY: 'auto',
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>{invoice.orderId || invoice.id}</div>
             <div style={{ opacity: 0.7, fontSize: 12 }}>{invoice.clientName}</div>
@@ -507,7 +564,7 @@ function InvoiceDrawer({
 
         <div className="card" style={{ padding: 16, borderRadius: 14 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Invoice Summary</div>
-          <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
+          <div style={{ display: 'grid', gap: 8, fontSize: 14 }}>
             <Row label="Status" value={invoice.status} />
             <Row label="Issued" value={formatDate(invoice.issuedAt)} />
             <Row label="Due" value={formatDate(invoice.dueDate)} />
@@ -526,20 +583,47 @@ function InvoiceDrawer({
               invoice.lineItems.map((item, idx) => (
                 <div
                   key={`${item.name}-${idx}`}
-                  style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}
+                  style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}
                 >
                   <span>
                     {item.name} × {item.qty}
                   </span>
-                  <span>{getCurrencySymbol(invoice.currency)}{(item.qty * item.unitPriceUsd).toFixed(2)}</span>
+                  <span>
+                    {getCurrencySymbol(invoice.currency)}
+                    {(item.qty * item.unitPriceUsd).toFixed(2)}
+                  </span>
                 </div>
               ))
             )}
           </div>
           <div style={{ height: 10 }} />
-          <Row label="Subtotal" value={<span>{getCurrencySymbol(invoice.currency)}{subtotal.toFixed(2)}</span>} />
-          <Row label="Tax" value={<span>{getCurrencySymbol(invoice.currency)}{tax.toFixed(2)}</span>} />
-          <Row label="Total" value={<span>{getCurrencySymbol(invoice.currency)}{total.toFixed(2)}</span>} />
+          <Row
+            label="Subtotal"
+            value={
+              <span>
+                {getCurrencySymbol(invoice.currency)}
+                {subtotal.toFixed(2)}
+              </span>
+            }
+          />
+          <Row
+            label="Tax"
+            value={
+              <span>
+                {getCurrencySymbol(invoice.currency)}
+                {tax.toFixed(2)}
+              </span>
+            }
+          />
+          <Row
+            label="Total"
+            value={
+              <span>
+                {getCurrencySymbol(invoice.currency)}
+                {total.toFixed(2)}
+              </span>
+            }
+          />
         </div>
 
         {invoice.notes && (
@@ -553,7 +637,7 @@ function InvoiceDrawer({
         )}
 
         <div style={{ height: 18 }} />
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <LoadingButton
             className="btn"
             onClick={() => onSend(invoice)}
@@ -563,8 +647,11 @@ function InvoiceDrawer({
           >
             Send Invoice
           </LoadingButton>
-          <InvoiceDownloadButton invoiceId={invoice.id} invoiceNumber={invoice.orderId || invoice.id} />
-          {canAdmin && invoice.status !== "Paid" && (
+          <InvoiceDownloadButton
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.orderId || invoice.id}
+          />
+          {canAdmin && invoice.status !== 'Paid' && (
             <LoadingButton
               className="btn"
               onClick={() => onMarkPaid(invoice)}
@@ -594,21 +681,30 @@ function CreateInvoiceDrawer({
   submitting: boolean;
   setSubmitting: (value: boolean) => void;
 }) {
-  const [clientId, setClientId] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [clientId, setClientId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [notes, setNotes] = useState('');
   const [applyTax, setApplyTax] = useState(false);
   const [taxRateId, setTaxRateId] = useState<string | null>(null);
-  const [selectedTaxRate, setSelectedTaxRate] = useState<{ id: string; name: string; rate: number; inclusive: boolean } | null>(null);
+  const [selectedTaxRate, setSelectedTaxRate] = useState<{
+    id: string;
+    name: string;
+    rate: number;
+    inclusive: boolean;
+  } | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
-    { name: "", qty: 1, unitPriceUsd: 0 },
+    { name: '', qty: 1, unitPriceUsd: 0 },
   ]);
   const [error, setError] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [currency, setCurrency] = useState<CurrencyCode>('USD');
 
   const taxPreview = calculateTax(
-    lineItems.map((item) => ({ description: item.name || "Item", quantity: item.qty, unitPrice: item.unitPriceUsd })),
+    lineItems.map((item) => ({
+      description: item.name || 'Item',
+      quantity: item.qty,
+      unitPrice: item.unitPriceUsd,
+    })),
     applyTax && selectedTaxRate ? [selectedTaxRate] : [],
     { roundToTwoDecimals: true },
   );
@@ -617,29 +713,32 @@ function CreateInvoiceDrawer({
   const total = taxPreview.total;
 
   const clientOptions = useMemo(
-    () => [{ label: "Select Client", value: "" }, ...clients.map((c) => ({ label: c.companyName, value: c.id }))],
-    [clients]
+    () => [
+      { label: 'Select Client', value: '' },
+      ...clients.map((c) => ({ label: c.companyName, value: c.id })),
+    ],
+    [clients],
   );
 
   const updateClient = (value: string) => {
     setClientId(value);
     const found = clients.find((c) => c.id === value);
-    setClientName(found?.companyName || "");
+    setClientName(found?.companyName || '');
   };
 
   const updateLineItem = (idx: number, field: keyof InvoiceLineItem, value: string) => {
     setLineItems((prev) =>
       prev.map((item, index) => {
         if (index !== idx) return item;
-        if (field === "name") return { ...item, name: value };
-        if (field === "qty") return { ...item, qty: Number(value || 0) };
+        if (field === 'name') return { ...item, name: value };
+        if (field === 'qty') return { ...item, qty: Number(value || 0) };
         return { ...item, unitPriceUsd: Number(value || 0) };
-      })
+      }),
     );
   };
 
   const addLineItem = () => {
-    setLineItems((prev) => [...prev, { name: "", qty: 1, unitPriceUsd: 0 }]);
+    setLineItems((prev) => [...prev, { name: '', qty: 1, unitPriceUsd: 0 }]);
   };
 
   const removeLineItem = (idx: number) => {
@@ -651,9 +750,9 @@ function CreateInvoiceDrawer({
       setError(null);
       setSubmitting(true);
       await toastPromise(
-        apiFetch("/api/admin/finance/invoices/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        apiFetch('/api/admin/finance/invoices/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             clientId,
             clientName,
@@ -666,20 +765,20 @@ function CreateInvoiceDrawer({
         }).then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.ok) {
-            throw new Error(data?.error || "Unable to create invoice.");
+            throw new Error(data?.error || 'Unable to create invoice.');
           }
           return data;
         }),
         {
-          loading: "Creating invoice...",
-          success: "Invoice created successfully.",
-          error: (err) => err?.message || "Unable to create invoice.",
-        }
+          loading: 'Creating invoice...',
+          success: 'Invoice created successfully.',
+          error: (err) => err?.message || 'Unable to create invoice.',
+        },
       );
       onCreated();
     } catch (err: any) {
-      console.error("Create invoice error", err);
-      setError("Unable to create invoice. Please check the form.");
+      console.error('Create invoice error', err);
+      setError('Unable to create invoice. Please check the form.');
     } finally {
       setSubmitting(false);
     }
@@ -688,33 +787,35 @@ function CreateInvoiceDrawer({
   return (
     <div
       style={{
-        position: "fixed",
+        position: 'fixed',
         inset: 0,
         zIndex: 60,
-        background: "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
       }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           right: 0,
-          width: "min(520px, 96vw)",
-          height: "100%",
+          width: 'min(520px, 96vw)',
+          height: '100%',
           padding: 18,
-          background: "var(--card-bg)",
-          borderLeft: "1px solid var(--border-subtle)",
-          overflowY: "auto",
+          background: 'var(--card-bg)',
+          borderLeft: '1px solid var(--border-subtle)',
+          overflowY: 'auto',
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>Create Invoice</div>
-            <div style={{ opacity: 0.7, fontSize: 12 }}>Multi-currency billing for international clients.</div>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Multi-currency billing for international clients.
+            </div>
           </div>
           <button className="btn ghost" onClick={onClose} style={{ height: 34, borderRadius: 999 }}>
             Close
@@ -730,9 +831,18 @@ function CreateInvoiceDrawer({
         )}
 
         <div className="space-y-3">
-          <MasterSelect value={clientId} onChange={(value) => updateClient(value)} options={clientOptions} />
+          <MasterSelect
+            value={clientId}
+            onChange={(value) => updateClient(value)}
+            options={clientOptions}
+          />
           <CurrencySelector value={currency} onChange={setCurrency} className="mb-2" />
-          <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <input
+            className="input"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
           <textarea
             className="input"
             rows={3}
@@ -753,14 +863,14 @@ function CreateInvoiceDrawer({
                   className="input md:col-span-2"
                   placeholder="Item name"
                   value={item.name}
-                  onChange={(e) => updateLineItem(idx, "name", e.target.value)}
+                  onChange={(e) => updateLineItem(idx, 'name', e.target.value)}
                 />
                 <input
                   className="input"
                   type="number"
                   min={1}
                   value={item.qty}
-                  onChange={(e) => updateLineItem(idx, "qty", e.target.value)}
+                  onChange={(e) => updateLineItem(idx, 'qty', e.target.value)}
                 />
                 <div className="space-y-1">
                   <input
@@ -768,13 +878,22 @@ function CreateInvoiceDrawer({
                     type="number"
                     min={0}
                     value={item.unitPriceUsd}
-                    onChange={(e) => updateLineItem(idx, "unitPriceUsd", e.target.value)}
+                    onChange={(e) => updateLineItem(idx, 'unitPriceUsd', e.target.value)}
                   />
-                  <CurrencyDisplay amount={item.unitPriceUsd} currency={currency} className="text-xs opacity-70" showCode />
+                  <CurrencyDisplay
+                    amount={item.unitPriceUsd}
+                    currency={currency}
+                    className="text-xs opacity-70"
+                    showCode
+                  />
                 </div>
                 <div className="flex items-center justify-end">
                   {lineItems.length > 1 && (
-                    <button className="btn ghost" onClick={() => removeLineItem(idx)} style={{ borderRadius: 999 }}>
+                    <button
+                      className="btn ghost"
+                      onClick={() => removeLineItem(idx)}
+                      style={{ borderRadius: 999 }}
+                    >
                       Remove
                     </button>
                   )}
@@ -792,10 +911,23 @@ function CreateInvoiceDrawer({
 
         <div className="card" style={{ padding: 16, borderRadius: 14 }}>
           <div className="space-y-2">
-            <Row label="Subtotal" value={<CurrencyDisplay amount={subtotal} currency={currency} />} />
+            <Row
+              label="Subtotal"
+              value={<CurrencyDisplay amount={subtotal} currency={currency} />}
+            />
             <div className="space-y-2">
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" checked={applyTax} onChange={(e) => { setApplyTax(e.target.checked); if (!e.target.checked) { setTaxRateId(null); setSelectedTaxRate(null); } }} />
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={applyTax}
+                  onChange={(e) => {
+                    setApplyTax(e.target.checked);
+                    if (!e.target.checked) {
+                      setTaxRateId(null);
+                      setSelectedTaxRate(null);
+                    }
+                  }}
+                />
                 Apply Tax
               </label>
               {applyTax ? (
@@ -803,17 +935,30 @@ function CreateInvoiceDrawer({
                   value={taxRateId}
                   onChange={async (value) => {
                     setTaxRateId(value);
-                    if (!value) { setSelectedTaxRate(null); return; }
-                    const res = await apiFetch(`/api/finance/tax-rates/${value}`, { cache: "no-store" });
+                    if (!value) {
+                      setSelectedTaxRate(null);
+                      return;
+                    }
+                    const res = await apiFetch(`/api/finance/tax-rates/${value}`, {
+                      cache: 'no-store',
+                    });
                     const data = await res.json().catch(() => null);
                     if (res.ok && data?.ok && data.taxRate) {
-                      setSelectedTaxRate({ id: data.taxRate.id, name: data.taxRate.name, rate: Number(data.taxRate.rate || 0), inclusive: Boolean(data.taxRate.inclusive) });
+                      setSelectedTaxRate({
+                        id: data.taxRate.id,
+                        name: data.taxRate.name,
+                        rate: Number(data.taxRate.rate || 0),
+                        inclusive: Boolean(data.taxRate.inclusive),
+                      });
                     }
                   }}
                 />
               ) : null}
             </div>
-            <Row label={selectedTaxRate ? `Tax (${selectedTaxRate.rate}%):` : `Tax (${currency})`} value={<CurrencyDisplay amount={taxAmount} currency={currency} />} />
+            <Row
+              label={selectedTaxRate ? `Tax (${selectedTaxRate.rate}%):` : `Tax (${currency})`}
+              value={<CurrencyDisplay amount={taxAmount} currency={currency} />}
+            />
             <Row label="Total" value={<CurrencyDisplay amount={total} currency={currency} />} />
           </div>
         </div>
@@ -825,7 +970,7 @@ function CreateInvoiceDrawer({
           onClick={handleSubmit}
           loading={submitting}
           loadingText="Creating…"
-          style={{ borderRadius: 999, width: "100%" }}
+          style={{ borderRadius: 999, width: '100%' }}
         >
           Create Invoice
         </LoadingButton>
@@ -836,7 +981,7 @@ function CreateInvoiceDrawer({
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
       <span style={{ opacity: 0.7 }}>{label}</span>
       <span style={{ fontWeight: 600 }}>{value}</span>
     </div>

@@ -1,11 +1,15 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getValidGoogleAccessToken } from "@/lib/integrations/google-auth";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getValidGoogleAccessToken } from '@/lib/integrations/google-auth';
 
-const GMAIL_API = "https://gmail.googleapis.com/gmail/v1";
+const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1';
 
 function toBase64Url(input: string) {
-  return Buffer.from(input, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return Buffer.from(input, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
 function buildRawEmail(params: {
@@ -20,27 +24,27 @@ function buildRawEmail(params: {
 }) {
   const boundaryMixed = `mix_${Date.now()}`;
   const boundaryAlt = `alt_${Date.now()}`;
-  const htmlBody = `${params.html}${params.trackingPixelUrl ? `<img src=\"${params.trackingPixelUrl}\" alt=\"\" width=\"1\" height=\"1\" style=\"display:none;\" />` : ""}`;
+  const htmlBody = `${params.html}${params.trackingPixelUrl ? `<img src=\"${params.trackingPixelUrl}\" alt=\"\" width=\"1\" height=\"1\" style=\"display:none;\" />` : ''}`;
 
   const headers = [
     `From: ${params.from}`,
-    `To: ${params.to.join(", ")}`,
+    `To: ${params.to.join(', ')}`,
     `Subject: ${params.subject}`,
-    "MIME-Version: 1.0",
+    'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary=${boundaryMixed}`,
   ];
 
   const parts = [
     `--${boundaryMixed}`,
     `Content-Type: multipart/alternative; boundary=${boundaryAlt}`,
-    "",
+    '',
     `--${boundaryAlt}`,
-    "Content-Type: text/plain; charset=UTF-8",
-    "",
-    params.text || params.html.replace(/<[^>]+>/g, " "),
+    'Content-Type: text/plain; charset=UTF-8',
+    '',
+    params.text || params.html.replace(/<[^>]+>/g, ' '),
     `--${boundaryAlt}`,
-    "Content-Type: text/html; charset=UTF-8",
-    "",
+    'Content-Type: text/html; charset=UTF-8',
+    '',
     htmlBody,
     `--${boundaryAlt}--`,
   ];
@@ -50,14 +54,14 @@ function buildRawEmail(params: {
       `--${boundaryMixed}`,
       `Content-Type: ${attachment.mimeType}; name=\"${attachment.filename}\"`,
       `Content-Disposition: attachment; filename=\"${attachment.filename}\"`,
-      "Content-Transfer-Encoding: base64",
-      "",
-      attachment.base64Content
+      'Content-Transfer-Encoding: base64',
+      '',
+      attachment.base64Content,
     );
   }
 
-  parts.push(`--${boundaryMixed}--`, "");
-  return toBase64Url(`${headers.join("\r\n")}\r\n\r\n${parts.join("\r\n")}`);
+  parts.push(`--${boundaryMixed}--`, '');
+  return toBase64Url(`${headers.join('\r\n')}\r\n\r\n${parts.join('\r\n')}`);
 }
 
 async function gmailRequest<T>(tenantId: string, path: string, init: RequestInit = {}) {
@@ -66,13 +70,13 @@ async function gmailRequest<T>(tenantId: string, path: string, init: RequestInit
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(init.headers || {}),
     },
-    cache: "no-store",
+    cache: 'no-store',
   });
   const data = (await response.json().catch(() => ({}))) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(data?.error?.message || "Gmail request failed.");
+  if (!response.ok) throw new Error(data?.error?.message || 'Gmail request failed.');
   return data;
 }
 
@@ -89,11 +93,17 @@ export async function sendEmailViaGmail(params: {
   trackOpens?: boolean;
 }) {
   const trackingRef = params.trackOpens
-    ? adminDb.collection("tenants").doc(params.tenantId).collection("integrations").doc("googleWorkspace").collection("gmailTracking").doc()
+    ? adminDb
+        .collection('tenants')
+        .doc(params.tenantId)
+        .collection('integrations')
+        .doc('googleWorkspace')
+        .collection('gmailTracking')
+        .doc()
     : null;
 
   const trackingPixelUrl = trackingRef
-    ? `${(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "")}/api/integrations/google/gmail/open/${trackingRef.id}`
+    ? `${(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/integrations/google/gmail/open/${trackingRef.id}`
     : undefined;
 
   const raw = buildRawEmail({
@@ -107,10 +117,14 @@ export async function sendEmailViaGmail(params: {
     trackingPixelUrl,
   });
 
-  const sent = await gmailRequest<{ id: string; threadId: string; labelIds?: string[] }>(params.tenantId, "/users/me/messages/send", {
-    method: "POST",
-    body: JSON.stringify({ raw, threadId: params.threadId || undefined }),
-  });
+  const sent = await gmailRequest<{ id: string; threadId: string; labelIds?: string[] }>(
+    params.tenantId,
+    '/users/me/messages/send',
+    {
+      method: 'POST',
+      body: JSON.stringify({ raw, threadId: params.threadId || undefined }),
+    },
+  );
 
   if (trackingRef) {
     await trackingRef.set({
@@ -132,7 +146,11 @@ export async function sendEmailViaGmail(params: {
 }
 
 export async function markTrackingOpen(trackingId: string) {
-  const query = await adminDb.collectionGroup("gmailTracking").where("trackingId", "==", trackingId).limit(1).get();
+  const query = await adminDb
+    .collectionGroup('gmailTracking')
+    .where('trackingId', '==', trackingId)
+    .limit(1)
+    .get();
   if (query.empty) return false;
   await query.docs[0].ref.set(
     {
@@ -140,7 +158,7 @@ export async function markTrackingOpen(trackingId: string) {
       openedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastOpenAt: admin.firestore.FieldValue.serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
   return true;
 }

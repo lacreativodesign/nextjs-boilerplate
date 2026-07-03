@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { SettingsAlert } from "../_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { SettingsAlert } from '../_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
 type FinanceSettings = {
   invoicePrefix: string;
@@ -14,7 +14,7 @@ type FinanceSettings = {
   fxPkrPerUsd: number;
   lateFeesSettings: {
     enabled: boolean;
-    type: "percentage" | "fixed";
+    type: 'percentage' | 'fixed';
     value: number;
     gracePeriodDays: number;
   };
@@ -23,7 +23,7 @@ type FinanceSettings = {
 };
 
 const DEFAULT_SETTINGS: FinanceSettings = {
-  invoicePrefix: "",
+  invoicePrefix: '',
   invoiceCounter: 0,
   paymentMethods: [],
   arBuckets: [30, 60, 90],
@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS: FinanceSettings = {
   fxPkrPerUsd: 280,
   lateFeesSettings: {
     enabled: true,
-    type: "percentage",
+    type: 'percentage',
     value: 5,
     gracePeriodDays: 3,
   },
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: FinanceSettings = {
 
 export default function FinanceSettingsPage() {
   const [settings, setSettings] = useState<FinanceSettings>(DEFAULT_SETTINGS);
-  const [methodInput, setMethodInput] = useState("");
+  const [methodInput, setMethodInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,18 +52,18 @@ export default function FinanceSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await apiFetch("/api/admin/settings/finance", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/settings/finance', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have access to finance settings.");
-        if (res.status === 401) throw new Error("Please sign in again to continue.");
-        throw new Error(data?.error || "Unable to load settings.");
+        if (res.status === 403) throw new Error('You do not have access to finance settings.');
+        if (res.status === 401) throw new Error('Please sign in again to continue.');
+        throw new Error(data?.error || 'Unable to load settings.');
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
     } catch (err: any) {
-      console.error("finance settings load error", err);
-      setError(err.message || "Unable to load finance settings.");
+      console.error('finance settings load error', err);
+      setError(err.message || 'Unable to load finance settings.');
     } finally {
       setLoading(false);
     }
@@ -78,13 +78,18 @@ export default function FinanceSettingsPage() {
     if (!trimmed) return;
     setSettings((prev) => ({
       ...prev,
-      paymentMethods: prev.paymentMethods.includes(trimmed) ? prev.paymentMethods : [...prev.paymentMethods, trimmed],
+      paymentMethods: prev.paymentMethods.includes(trimmed)
+        ? prev.paymentMethods
+        : [...prev.paymentMethods, trimmed],
     }));
-    setMethodInput("");
+    setMethodInput('');
   };
 
   const removeMethod = (method: string) => {
-    setSettings((prev) => ({ ...prev, paymentMethods: prev.paymentMethods.filter((item) => item !== method) }));
+    setSettings((prev) => ({
+      ...prev,
+      paymentMethods: prev.paymentMethods.filter((item) => item !== method),
+    }));
   };
 
   const updateBucket = (index: number, value: string) => {
@@ -100,21 +105,22 @@ export default function FinanceSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await apiFetch("/api/admin/settings/finance", {
-        method: "PUT",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/settings/finance', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have permission to edit finance settings.");
-        throw new Error(data?.error || "Unable to save settings.");
+        if (res.status === 403)
+          throw new Error('You do not have permission to edit finance settings.');
+        throw new Error(data?.error || 'Unable to save settings.');
       }
-      setSuccess("Finance settings updated.");
+      setSuccess('Finance settings updated.');
     } catch (err: any) {
-      console.error("finance settings save error", err);
-      setError(err.message || "Unable to save finance settings.");
+      console.error('finance settings save error', err);
+      setError(err.message || 'Unable to save finance settings.');
     } finally {
       setSaving(false);
     }
@@ -132,19 +138,26 @@ export default function FinanceSettingsPage() {
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 
       {!canEdit && !loading && (
-        <SettingsAlert tone="info">Admins and Super Admins can edit finance settings. You have view-only access.</SettingsAlert>
+        <SettingsAlert tone="info">
+          Admins and Super Admins can edit finance settings. You have view-only access.
+        </SettingsAlert>
       )}
 
       <section className="card" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Finance Controls</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
               Invoice numbering, payment methods, AR buckets, and approvals.
             </p>
           </div>
-          <button className="btn" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
-            {saving ? "Saving..." : "Save Changes"}
+          <button
+            className="btn"
+            onClick={handleSave}
+            disabled={disabled}
+            style={{ borderRadius: 999 }}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
@@ -166,7 +179,9 @@ export default function FinanceSettingsPage() {
               type="number"
               min={0}
               value={settings.invoiceCounter}
-              onChange={(e) => setSettings((prev) => ({ ...prev, invoiceCounter: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, invoiceCounter: Number(e.target.value) }))
+              }
               disabled={disabled}
             />
           </label>
@@ -180,9 +195,11 @@ export default function FinanceSettingsPage() {
               type="number"
               min={1}
               value={settings.fxPkrPerUsd}
-              onChange={(e) => setSettings((prev) => ({ ...prev, fxPkrPerUsd: Number(e.target.value) }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, fxPkrPerUsd: Number(e.target.value) }))
+              }
               disabled={disabled}
-              style={{ appearance: "textfield" }}
+              style={{ appearance: 'textfield' }}
             />
             <span className="text-xs text-[var(--text-muted)]">
               Used to normalize PKR expenses into USD for Profit reporting.
@@ -193,15 +210,21 @@ export default function FinanceSettingsPage() {
             <div style={{ fontWeight: 700 }}>Payment Methods</div>
             <div className="flex flex-wrap gap-2">
               {settings.paymentMethods.length === 0 && (
-                <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>No payment methods configured.</div>
+                <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+                  No payment methods configured.
+                </div>
               )}
               {settings.paymentMethods.map((method) => (
-                <span key={method} className="card" style={{ padding: "6px 10px", borderRadius: 999 }}>
+                <span
+                  key={method}
+                  className="card"
+                  style={{ padding: '6px 10px', borderRadius: 999 }}
+                >
                   {method}
                   {!disabled && (
                     <button
                       className="btn ghost"
-                      style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 999 }}
+                      style={{ marginLeft: 8, padding: '2px 8px', borderRadius: 999 }}
                       onClick={() => removeMethod(method)}
                     >
                       Remove
@@ -217,7 +240,13 @@ export default function FinanceSettingsPage() {
                 onChange={(e) => setMethodInput(e.target.value)}
                 disabled={disabled}
               />
-              <button className="btn ghost" type="button" onClick={addMethod} disabled={disabled} style={{ borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={addMethod}
+                disabled={disabled}
+                style={{ borderRadius: 999 }}
+              >
                 Add
               </button>
             </div>
@@ -247,7 +276,9 @@ export default function FinanceSettingsPage() {
             <input
               type="checkbox"
               checked={settings.payrollApprovalRequired}
-              onChange={(e) => setSettings((prev) => ({ ...prev, payrollApprovalRequired: e.target.checked }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, payrollApprovalRequired: e.target.checked }))
+              }
               disabled={disabled}
             />
             <span>Payroll approval required</span>
@@ -256,7 +287,9 @@ export default function FinanceSettingsPage() {
             <input
               type="checkbox"
               checked={settings.lockPastMonths}
-              onChange={(e) => setSettings((prev) => ({ ...prev, lockPastMonths: e.target.checked }))}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, lockPastMonths: e.target.checked }))
+              }
               disabled={disabled}
             />
             <span>Lock edits for past months</span>
@@ -298,7 +331,7 @@ export default function FinanceSettingsPage() {
                       ...prev,
                       lateFeesSettings: {
                         ...prev.lateFeesSettings,
-                        type: e.target.value === "fixed" ? "fixed" : "percentage",
+                        type: e.target.value === 'fixed' ? 'fixed' : 'percentage',
                       },
                     }))
                   }
@@ -311,7 +344,8 @@ export default function FinanceSettingsPage() {
 
               <label className="space-y-2">
                 <span style={{ fontSize: 13, fontWeight: 600 }}>
-                  Late Fee {settings.lateFeesSettings.type === "percentage" ? "Percentage" : "Amount (USD)"}
+                  Late Fee{' '}
+                  {settings.lateFeesSettings.type === 'percentage' ? 'Percentage' : 'Amount (USD)'}
                 </span>
                 <input
                   className="input"

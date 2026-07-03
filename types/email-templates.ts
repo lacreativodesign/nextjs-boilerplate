@@ -1,4 +1,9 @@
-export const EMAIL_TEMPLATE_CATEGORIES = ["invoice", "notification", "marketing", "workflow"] as const;
+export const EMAIL_TEMPLATE_CATEGORIES = [
+  'invoice',
+  'notification',
+  'marketing',
+  'workflow',
+] as const;
 
 export type EmailTemplateCategory = (typeof EMAIL_TEMPLATE_CATEGORIES)[number];
 
@@ -43,7 +48,7 @@ export type EmailTemplateVersionRecord = {
 export type EmailTemplateUsageRecord = {
   templateId: string;
   tenantId: string;
-  channel: "preview" | "test_send" | "runtime";
+  channel: 'preview' | 'test_send' | 'runtime';
   locale: string;
   renderedSubject: string;
   renderedHtml: string;

@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
-type Provider = "google" | "microsoft";
+type Provider = 'google' | 'microsoft';
 
 export default function UserSsoStatusIndicator() {
   const [providers, setProviders] = useState<string[]>([]);
-  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || "bizosto";
+  const tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'bizosto';
 
   useEffect(() => {
     let active = true;
-    fetch("/api/auth/sso/status", { credentials: "include", cache: "no-store" })
+    fetch('/api/auth/sso/status', { credentials: 'include', cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (!active || !data?.ok) return;
@@ -24,13 +24,14 @@ export default function UserSsoStatusIndicator() {
   }, []);
 
   const availableToLink = useMemo(
-    () => (["google", "microsoft"] as Provider[]).filter((provider) => !providers.includes(provider)),
-    [providers]
+    () =>
+      (['google', 'microsoft'] as Provider[]).filter((provider) => !providers.includes(provider)),
+    [providers],
   );
 
   return (
     <div className="space-y-2 text-xs text-[var(--sidebar-text)]">
-      <div>SSO: {providers.length ? providers.join(", ") : "Not linked"}</div>
+      <div>SSO: {providers.length ? providers.join(', ') : 'Not linked'}</div>
       <div className="flex flex-wrap gap-2">
         {availableToLink.map((provider) => (
           <a

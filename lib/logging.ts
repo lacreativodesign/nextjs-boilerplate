@@ -1,4 +1,4 @@
-import { AppError, isAppError } from "@/lib/errors";
+import { AppError, isAppError } from '@/lib/errors';
 
 export type LogContext = {
   requestId?: string;
@@ -32,7 +32,12 @@ export function serializeError(error: unknown) {
   return { message: String(error) };
 }
 
-function emit(level: "debug" | "info" | "warn" | "error", message: string, context: LogContext = {}, error?: unknown) {
+function emit(
+  level: 'debug' | 'info' | 'warn' | 'error',
+  message: string,
+  context: LogContext = {},
+  error?: unknown,
+) {
   const payload = {
     level,
     message,
@@ -42,15 +47,15 @@ function emit(level: "debug" | "info" | "warn" | "error", message: string, conte
   };
 
   const logLine = JSON.stringify(payload);
-  if (level === "error") {
+  if (level === 'error') {
     console.error(logLine);
     return;
   }
-  if (level === "warn") {
+  if (level === 'warn') {
     console.warn(logLine);
     return;
   }
-  if (level === "debug") {
+  if (level === 'debug') {
     console.debug(logLine);
     return;
   }
@@ -58,17 +63,17 @@ function emit(level: "debug" | "info" | "warn" | "error", message: string, conte
 }
 
 export function logDebug(message: string, context: LogContext = {}) {
-  emit("debug", message, context);
+  emit('debug', message, context);
 }
 
 export function logInfo(message: string, context: LogContext = {}) {
-  emit("info", message, context);
+  emit('info', message, context);
 }
 
 export function logWarn(message: string, context: LogContext = {}) {
-  emit("warn", message, context);
+  emit('warn', message, context);
 }
 
 export function logError(error: unknown, context: LogContext = {}) {
-  emit("error", "application_error", context, error);
+  emit('error', 'application_error', context, error);
 }

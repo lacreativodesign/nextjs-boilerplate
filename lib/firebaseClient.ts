@@ -1,8 +1,8 @@
 // lib/firebaseClient.ts
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence, type Auth } from "firebase/auth";
-import { getFirestore, doc, getDoc, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
+import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 type FirebaseClientConfig = {
   apiKey: string;
@@ -13,20 +13,20 @@ type FirebaseClientConfig = {
   appId: string;
 };
 
-const isBrowser = typeof window !== "undefined";
+const isBrowser = typeof window !== 'undefined';
 
 let configPromise: Promise<FirebaseClientConfig> | null = null;
 async function fetchFirebaseConfig(): Promise<FirebaseClientConfig> {
   if (!isBrowser) {
-    throw new Error("Firebase client is only available in the browser.");
+    throw new Error('Firebase client is only available in the browser.');
   }
 
   if (!configPromise) {
-    configPromise = fetch("/api/public/firebase-config", { cache: "no-store" })
+    configPromise = fetch('/api/public/firebase-config', { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) {
           const payload = await res.json().catch(() => null);
-          throw new Error(payload?.error || "Unable to load Firebase client configuration.");
+          throw new Error(payload?.error || 'Unable to load Firebase client configuration.');
         }
         return (await res.json()) as FirebaseClientConfig;
       })
@@ -49,7 +49,7 @@ type FirebaseClients = {
 let clientsPromise: Promise<FirebaseClients> | null = null;
 async function ensureFirebaseClients(): Promise<FirebaseClients> {
   if (!isBrowser) {
-    throw new Error("Firebase client is only available in the browser.");
+    throw new Error('Firebase client is only available in the browser.');
   }
 
   if (!clientsPromise) {
@@ -60,7 +60,7 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (err) {
-        console.error("Failed to set auth persistence:", err);
+        console.error('Failed to set auth persistence:', err);
       }
       return {
         app,
@@ -77,10 +77,9 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
   return clientsPromise;
 }
 
-
 export function getFirebaseApp(): FirebaseApp {
   if (!isBrowser) {
-    throw new Error("Firebase client is only available in the browser.");
+    throw new Error('Firebase client is only available in the browser.');
   }
   if (getApps().length) {
     return getApp();
@@ -94,7 +93,7 @@ export function getFirebaseApp(): FirebaseApp {
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
   if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
-    throw new Error("Firebase public config is incomplete for realtime features.");
+    throw new Error('Firebase public config is incomplete for realtime features.');
   }
 
   return initializeApp({ apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId });
@@ -126,19 +125,19 @@ export async function waitForFirebase(): Promise<void> {
 export async function fetchUserRole(uid: string): Promise<string | null> {
   try {
     const db = await getFirebaseDb();
-    const ref = doc(db, "users", uid);
+    const ref = doc(db, 'users', uid);
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
 
     const data = snap.data() as any;
-    const role = (data.role || "")
+    const role = (data.role || '')
       .toString()
       .toLowerCase()
-      .replace(/-/g, "_")
-      .replace(/^account_manager$/, "am");
+      .replace(/-/g, '_')
+      .replace(/^account_manager$/, 'am');
     return role || null;
   } catch (err) {
-    console.error("fetchUserRole ERROR:", err);
+    console.error('fetchUserRole ERROR:', err);
     return null;
   }
 }

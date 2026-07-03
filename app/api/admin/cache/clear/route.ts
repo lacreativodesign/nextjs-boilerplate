@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { invalidateByPrefix, invalidateTag } from "@/lib/cache/redis-client";
-import { resolveErrorResponse } from "@/lib/errors";
-import { logError } from "@/lib/logging";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { invalidateByPrefix, invalidateTag } from '@/lib/cache/redis-client';
+import { resolveErrorResponse } from '@/lib/errors';
+import { logError } from '@/lib/logging';
 
 const clearCacheSchema = z.object({
   tenantId: z.string().min(1).optional(),
@@ -48,13 +48,13 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { ok: false, error: "Provide one of: tag, prefix, or tenantId." },
-      { status: 400 }
+      { ok: false, error: 'Provide one of: tag, prefix, or tenantId.' },
+      { status: 400 },
     );
   } catch (err) {
-    logError(err, { route: "POST /api/admin/cache/clear" });
+    logError(err, { route: 'POST /api/admin/cache/clear' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to clear cache.",
+      fallbackMessage: 'Failed to clear cache.',
     });
     return NextResponse.json(body, { status });
   }

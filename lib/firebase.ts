@@ -1,9 +1,9 @@
 // lib/firebase.ts
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth as getAuthFromFirebase, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth as getAuthFromFirebase, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
-const isBrowser = typeof window !== "undefined";
+const isBrowser = typeof window !== 'undefined';
 
 function createThrowingProxy<T>(message: string): T {
   return new Proxy(
@@ -15,7 +15,7 @@ function createThrowingProxy<T>(message: string): T {
       apply() {
         throw new Error(message);
       },
-    }
+    },
   ) as unknown as T;
 }
 
@@ -30,12 +30,12 @@ function getConfig() {
   } = process.env;
 
   const missing = [
-    ["NEXT_PUBLIC_FB_API_KEY", NEXT_PUBLIC_FB_API_KEY],
-    ["NEXT_PUBLIC_FB_AUTH_DOMAIN", NEXT_PUBLIC_FB_AUTH_DOMAIN],
-    ["NEXT_PUBLIC_FB_PROJECT_ID", NEXT_PUBLIC_FB_PROJECT_ID],
-    ["NEXT_PUBLIC_FB_STORAGE", NEXT_PUBLIC_FB_STORAGE],
-    ["NEXT_PUBLIC_FB_SENDER_ID", NEXT_PUBLIC_FB_SENDER_ID],
-    ["NEXT_PUBLIC_FB_APP_ID", NEXT_PUBLIC_FB_APP_ID],
+    ['NEXT_PUBLIC_FB_API_KEY', NEXT_PUBLIC_FB_API_KEY],
+    ['NEXT_PUBLIC_FB_AUTH_DOMAIN', NEXT_PUBLIC_FB_AUTH_DOMAIN],
+    ['NEXT_PUBLIC_FB_PROJECT_ID', NEXT_PUBLIC_FB_PROJECT_ID],
+    ['NEXT_PUBLIC_FB_STORAGE', NEXT_PUBLIC_FB_STORAGE],
+    ['NEXT_PUBLIC_FB_SENDER_ID', NEXT_PUBLIC_FB_SENDER_ID],
+    ['NEXT_PUBLIC_FB_APP_ID', NEXT_PUBLIC_FB_APP_ID],
   ].filter(([, v]) => !v);
 
   if (missing.length) {
@@ -67,7 +67,9 @@ function getFirebaseApp(): FirebaseApp | null {
 export function getAuthClient(): Auth {
   const app = getFirebaseApp();
   if (!app) {
-    return createThrowingProxy<Auth>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
+    return createThrowingProxy<Auth>(
+      'Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.',
+    );
   }
   return getAuthFromFirebase(app);
 }
@@ -75,7 +77,9 @@ export function getAuthClient(): Auth {
 export function getDbClient(): Firestore {
   const app = getFirebaseApp();
   if (!app) {
-    return createThrowingProxy<Firestore>("Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.");
+    return createThrowingProxy<Firestore>(
+      'Firebase client is not configured. Set NEXT_PUBLIC_FB_* env vars.',
+    );
   }
   return getFirestore(app);
 }

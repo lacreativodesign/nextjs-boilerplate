@@ -1,16 +1,14 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { SESSION_CONFIG } from "@/lib/auth/sessionConfig";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { SESSION_CONFIG } from '@/lib/auth/sessionConfig';
 
 const WARNING_WINDOW_MS = 5 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useSessionTimeout() {
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(
-    Math.ceil(SESSION_CONFIG.idleTimeout / 1000)
-  );
+  const [timeRemaining, setTimeRemaining] = useState(Math.ceil(SESSION_CONFIG.idleTimeout / 1000));
 
   const lastActivityRef = useRef<number>(Date.now());
   const lastRefreshRef = useRef<number>(0);
@@ -18,25 +16,25 @@ export function useSessionTimeout() {
 
   const refreshSession = useCallback(async () => {
     try {
-      await fetch("/api/auth/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+      await fetch('/api/auth/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
     } catch (error) {
-      console.error("Failed to refresh session", error);
+      console.error('Failed to refresh session', error);
     }
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
     } finally {
-      window.location.href = "/login";
+      window.location.href = '/login';
     }
   }, []);
 
@@ -56,7 +54,13 @@ export function useSessionTimeout() {
       }
     };
 
-    const events: Array<keyof WindowEventMap> = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    const events: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+    ];
     events.forEach((event) => window.addEventListener(event, markActivity, { passive: true }));
 
     return () => {

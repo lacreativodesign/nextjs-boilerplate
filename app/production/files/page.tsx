@@ -1,38 +1,38 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Upload, FileText } from "lucide-react";
+import { useState } from 'react';
+import { Upload, FileText } from 'lucide-react';
 
 export default function ProductionFilesPage() {
-  const tabs = ["Draft", "Revision", "Final"] as const;
-  const [active, setActive] = useState<typeof tabs[number]>("Draft");
+  const tabs = ['Draft', 'Revision', 'Final'] as const;
+  const [active, setActive] = useState<(typeof tabs)[number]>('Draft');
 
   const sampleFiles = {
     Draft: [
       {
-        id: "F-001",
-        project: "Corporate Website Redesign",
-        fileName: "homepage-v1.fig",
-        uploadedBy: "Sarah Johnson (AM)",
-        date: "2025-02-12",
+        id: 'F-001',
+        project: 'Corporate Website Redesign',
+        fileName: 'homepage-v1.fig',
+        uploadedBy: 'Sarah Johnson (AM)',
+        date: '2025-02-12',
       },
     ],
     Revision: [
       {
-        id: "F-002",
-        project: "Brand Identity Kit",
-        fileName: "logo-update-rev2.ai",
-        uploadedBy: "David Wilson (AM)",
-        date: "2025-02-14",
+        id: 'F-002',
+        project: 'Brand Identity Kit',
+        fileName: 'logo-update-rev2.ai',
+        uploadedBy: 'David Wilson (AM)',
+        date: '2025-02-14',
       },
     ],
     Final: [
       {
-        id: "F-003",
-        project: "Social Media Creatives",
-        fileName: "final-creatives.zip",
-        uploadedBy: "Emily Carter (AM)",
-        date: "2025-02-08",
+        id: 'F-003',
+        project: 'Social Media Creatives',
+        fileName: 'final-creatives.zip',
+        uploadedBy: 'Emily Carter (AM)',
+        date: '2025-02-08',
       },
     ],
   };
@@ -46,7 +46,7 @@ export default function ProductionFilesPage() {
           <button
             key={tab}
             onClick={() => setActive(tab)}
-            className={`tab-pill ${active === tab ? "active" : ""}`}
+            className={`tab-pill ${active === tab ? 'active' : ''}`}
           >
             {tab}
           </button>
@@ -93,7 +93,6 @@ export default function ProductionFilesPage() {
           </div>
         ))}
       </div>
-
     </div>
   );
 }

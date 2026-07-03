@@ -59,32 +59,34 @@ export default function ActivityPage() {
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
-    getFirebaseDb().then((db) => {
-      if (cancelled) return;
-      const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc'), limit(itemLimit)];
-      if (category !== 'all') constraints.unshift(where('category', '==', category));
-      if (actorUid !== 'all') constraints.unshift(where('actor.uid', '==', actorUid));
+    getFirebaseDb()
+      .then((db) => {
+        if (cancelled) return;
+        const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc'), limit(itemLimit)];
+        if (category !== 'all') constraints.unshift(where('category', '==', category));
+        if (actorUid !== 'all') constraints.unshift(where('actor.uid', '==', actorUid));
 
-      const activityQuery = query(
-        collection(db, 'tenants', tenantId, 'activity_feed'),
-        ...constraints,
-      );
+        const activityQuery = query(
+          collection(db, 'tenants', tenantId, 'activity_feed'),
+          ...constraints,
+        );
 
-      unsubscribe = onSnapshot(
-        activityQuery,
-        (snapshot) => {
-          setActivities(snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id)));
-          setListLoading(false);
-        },
-        () => {
-          setActivities([]);
-          setListLoading(false);
-        },
-      );
-    }).catch(() => {
-      setActivities([]);
-      setListLoading(false);
-    });
+        unsubscribe = onSnapshot(
+          activityQuery,
+          (snapshot) => {
+            setActivities(snapshot.docs.map((doc) => normalizeActivity(doc.data(), doc.id)));
+            setListLoading(false);
+          },
+          () => {
+            setActivities([]);
+            setListLoading(false);
+          },
+        );
+      })
+      .catch(() => {
+        setActivities([]);
+        setListLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -152,7 +154,9 @@ export default function ActivityPage() {
           {activities.length ? (
             activities.map((activity) => <ActivityItem key={activity.id} activity={activity} />)
           ) : (
-            <p className="text-sm text-[var(--text-muted)]">No activity found for current filters.</p>
+            <p className="text-sm text-[var(--text-muted)]">
+              No activity found for current filters.
+            </p>
           )}
         </div>
       ) : null}

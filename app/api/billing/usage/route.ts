@@ -1,16 +1,21 @@
-import { NextResponse } from "next/server";
-import { enforceUsageLimit, getUsageByTenant, recordUsage, type UsageMetric } from "@/lib/billing/stripe-subscription";
-import { currentPeriodKey, requireBillingAccess } from "../_utils";
+import { NextResponse } from 'next/server';
+import {
+  enforceUsageLimit,
+  getUsageByTenant,
+  recordUsage,
+  type UsageMetric,
+} from '@/lib/billing/stripe-subscription';
+import { currentPeriodKey, requireBillingAccess } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function normalizeMetric(value: unknown): UsageMetric {
-  const metric = String(value || "").toLowerCase();
-  if (metric === "api_calls" || metric === "storage" || metric === "users") {
+  const metric = String(value || '').toLowerCase();
+  if (metric === 'api_calls' || metric === 'storage' || metric === 'users') {
     return metric;
   }
-  throw new Error("Invalid metric");
+  throw new Error('Invalid metric');
 }
 
 export async function GET(req: Request) {
@@ -21,12 +26,15 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const period = (searchParams.get("period") || currentPeriodKey()).trim();
+    const period = (searchParams.get('period') || currentPeriodKey()).trim();
     const usage = await getUsageByTenant(auth.user.tenantId, period);
 
     return NextResponse.json({ ok: true, period, usage });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to fetch usage" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to fetch usage' },
+      { status: 500 },
+    );
   }
 }
 
@@ -53,13 +61,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Plan limit exceeded",
+          error: 'Plan limit exceeded',
           limit: enforcement.limit,
           used: enforcement.used,
           metric,
           upgradeRequired: true,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -68,11 +76,20 @@ export async function POST(req: Request) {
       metric,
       quantity,
       period,
-      source: String(body?.source || "api"),
+      source: String(body?.source || 'api'),
     });
 
-    return NextResponse.json({ ok: true, warning: enforcement.warning, metric, limit: enforcement.limit, used: enforcement.used });
+    return NextResponse.json({
+      ok: true,
+      warning: enforcement.warning,
+      metric,
+      limit: enforcement.limit,
+      used: enforcement.used,
+    });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to record usage" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to record usage' },
+      { status: 500 },
+    );
   }
 }

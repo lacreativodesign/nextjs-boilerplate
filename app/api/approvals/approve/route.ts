@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logEvent } from "@/lib/audit";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { createNotification, type NotificationEntityType } from "@/lib/notifications";
-import { getCurrentUser, normalizeRole } from "../../admin/_utils";
-import { requireApprovalsModule } from "../_utils";
+import { NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logEvent } from '@/lib/audit';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { createNotification, type NotificationEntityType } from '@/lib/notifications';
+import { getCurrentUser, normalizeRole } from '../../admin/_utils';
+import { requireApprovalsModule } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const APPROVAL_TYPES = ["discount", "change_request", "production_override"] as const;
+const APPROVAL_TYPES = ['discount', 'change_request', 'production_override'] as const;
 
 type ApprovalType = (typeof APPROVAL_TYPES)[number];
 
@@ -25,33 +25,33 @@ type ApprovalDoc = {
   approvalChain?: Array<{
     role?: string;
     uid?: string;
-    decision?: "approved" | "rejected";
+    decision?: 'approved' | 'rejected';
     note?: string;
     decidedAt?: any;
   }>;
 };
 
 function parseString(value: any) {
-  if (value === null || value === undefined) return "";
+  if (value === null || value === undefined) return '';
   return String(value).trim();
 }
 
 function requiredRoleForType(type: ApprovalType) {
   switch (type) {
-    case "discount":
-      return "sales_manager";
-    case "change_request":
-      return "am_manager";
-    case "production_override":
-      return "production_manager";
+    case 'discount':
+      return 'sales_manager';
+    case 'change_request':
+      return 'am_manager';
+    case 'production_override':
+      return 'production_manager';
     default:
-      return "";
+      return '';
   }
 }
 
 function canApprove(type: ApprovalType, role: string) {
   const normalized = normalizeRole(role);
-  if (normalized === "admin" || normalized === "super_admin") return true;
+  if (normalized === 'admin' || normalized === 'super_admin') return true;
   return normalized === requiredRoleForType(type);
 }
 
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -67,13 +67,13 @@ export async function POST(req: Request) {
     const note = parseString(body?.note);
 
     if (!approvalId) {
-      return NextResponse.json({ ok: false, error: "Missing approval id." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing approval id.' }, { status: 400 });
     }
 
-    const approvalRef = adminDb.collection("approvals").doc(approvalId);
+    const approvalRef = adminDb.collection('approvals').doc(approvalId);
     const approvalSnap = await approvalRef.get();
     if (!approvalSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Approval not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Approval not found.' }, { status: 404 });
     }
 
     const approval = approvalSnap.data() as ApprovalDoc;
@@ -82,44 +82,55 @@ export async function POST(req: Request) {
     const tenantId = normalizeTenantId(approval.tenantId || me.tenantId);
     const moduleAccess = await requireApprovalsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
-      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+      return NextResponse.json(
+        { ok: false, error: moduleAccess.error },
+        { status: moduleAccess.status },
+      );
     }
 
     if (!type || !APPROVAL_TYPES.includes(type)) {
-      return NextResponse.json({ ok: false, error: "Unsupported approval type." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Unsupported approval type.' }, { status: 400 });
     }
     if (!entityId) {
-      return NextResponse.json({ ok: false, error: "Approval missing entity id." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Approval missing entity id.' },
+        { status: 400 },
+      );
     }
 
     if (normalizeTenantId(me.tenantId) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    if (approval.status !== "pending") {
-      return NextResponse.json({ ok: true, status: "already_processed" });
+    if (approval.status !== 'pending') {
+      return NextResponse.json({ ok: true, status: 'already_processed' });
     }
 
     if (approval.requestedBy?.uid && approval.requestedBy.uid === me.uid) {
-      return NextResponse.json({ ok: false, error: "Requester cannot approve their own request." }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'Requester cannot approve their own request.' },
+        { status: 403 },
+      );
     }
 
     if (!canApprove(type, me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const normalizedRole = normalizeRole(me.role || "");
+    const normalizedRole = normalizeRole(me.role || '');
     const approvalChain = Array.isArray(approval.approvalChain) ? [...approval.approvalChain] : [];
     const requiredRole = requiredRoleForType(type);
     const decisionEntry = {
       role: requiredRole,
       uid: me.uid,
-      decision: "approved" as const,
+      decision: 'approved' as const,
       note: note || undefined,
       decidedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const chainIndex = approvalChain.findIndex((entry) => entry?.role === requiredRole && !entry?.decision);
+    const chainIndex = approvalChain.findIndex(
+      (entry) => entry?.role === requiredRole && !entry?.decision,
+    );
     if (chainIndex >= 0) {
       approvalChain[chainIndex] = { ...approvalChain[chainIndex], ...decisionEntry };
     } else {
@@ -127,21 +138,24 @@ export async function POST(req: Request) {
     }
 
     const requestedData = approval.requestedData || {};
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = me.name || me.fullName || me.displayName || '';
     const changeRequestId = parseString(requestedData.changeRequestId);
 
-    if (type === "change_request" && !changeRequestId) {
-      return NextResponse.json({ ok: false, error: "Approval missing change request id." }, { status: 400 });
+    if (type === 'change_request' && !changeRequestId) {
+      return NextResponse.json(
+        { ok: false, error: 'Approval missing change request id.' },
+        { status: 400 },
+      );
     }
 
     let alreadyProcessed = false;
     await adminDb.runTransaction(async (tx) => {
       const approvalTxSnap = await tx.get(approvalRef);
       if (!approvalTxSnap.exists) {
-        throw new Error("Approval not found");
+        throw new Error('Approval not found');
       }
       const approvalTxData = approvalTxSnap.data() || {};
-      if (String(approvalTxData.status || "") !== "pending") {
+      if (String(approvalTxData.status || '') !== 'pending') {
         alreadyProcessed = true;
         return;
       }
@@ -149,121 +163,124 @@ export async function POST(req: Request) {
       tx.set(
         approvalRef,
         {
-          status: "approved",
+          status: 'approved',
           approvalChain,
           finalDecisionBy: { uid: me.uid, role: normalizedRole },
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
 
-      if (type === "discount") {
-        const dealRef = adminDb.collection("deals").doc(entityId);
+      if (type === 'discount') {
+        const dealRef = adminDb.collection('deals').doc(entityId);
         const dealSnap = await tx.get(dealRef);
         if (!dealSnap.exists) {
-          throw new Error("Deal not found");
+          throw new Error('Deal not found');
         }
         const dealData = dealSnap.data() || {};
         if (docTenantId(dealData) !== tenantId) {
-          throw new Error("Forbidden");
+          throw new Error('Forbidden');
         }
         tx.set(
           dealRef,
           {
             discountApproved: true,
-            discountStatus: "approved",
+            discountStatus: 'approved',
             discountApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
             discountApprovedByUid: me.uid,
             discountApprovedByName: actorName,
             discountApprovedPct: requestedData.discountPct ?? dealData.discountPct ?? 0,
             discountApprovedUsd: requestedData.discountUsd ?? dealData.discountUsd ?? 0,
-            discountApprovedFinalPriceUsd: requestedData.finalPriceUsd ?? dealData.finalPriceUsd ?? dealData.valueUsd ?? 0,
+            discountApprovedFinalPriceUsd:
+              requestedData.finalPriceUsd ?? dealData.finalPriceUsd ?? dealData.valueUsd ?? 0,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
         );
       }
 
-      if (type === "change_request") {
-        const changeRef = adminDb.collection("changeRequests").doc(changeRequestId);
+      if (type === 'change_request') {
+        const changeRef = adminDb.collection('changeRequests').doc(changeRequestId);
         const changeSnap = await tx.get(changeRef);
         if (!changeSnap.exists) {
-          throw new Error("Change request not found");
+          throw new Error('Change request not found');
         }
         const changeData = changeSnap.data() || {};
         if (docTenantId(changeData) !== tenantId) {
-          throw new Error("Forbidden");
+          throw new Error('Forbidden');
         }
-        const statusHistory = Array.isArray(changeData.statusHistory) ? [...changeData.statusHistory] : [];
+        const statusHistory = Array.isArray(changeData.statusHistory)
+          ? [...changeData.statusHistory]
+          : [];
         statusHistory.push({
-          from: changeData.status || "Submitted",
-          to: "Approved",
+          from: changeData.status || 'Submitted',
+          to: 'Approved',
           byUid: me.uid,
           byRole: normalizedRole,
           at: admin.firestore.Timestamp.now(),
-          note: note || "Manager approval granted",
+          note: note || 'Manager approval granted',
         });
         tx.set(
           changeRef,
           {
-            status: "Approved",
-            approvalStatus: "approved",
+            status: 'Approved',
+            approvalStatus: 'approved',
             approvedAt: admin.firestore.FieldValue.serverTimestamp(),
             approvedByUid: me.uid,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             statusHistory,
             tenantId,
           },
-          { merge: true }
+          { merge: true },
         );
       }
 
-      if (type === "production_override") {
-        const projectRef = adminDb.collection("projects").doc(entityId);
+      if (type === 'production_override') {
+        const projectRef = adminDb.collection('projects').doc(entityId);
         const projectSnap = await tx.get(projectRef);
         if (!projectSnap.exists) {
-          throw new Error("Project not found");
+          throw new Error('Project not found');
         }
         const projectData = projectSnap.data() || {};
         if (docTenantId(projectData) !== tenantId) {
-          throw new Error("Forbidden");
+          throw new Error('Forbidden');
         }
         tx.set(
           projectRef,
           {
-            productionOverrideStatus: "approved",
+            productionOverrideStatus: 'approved',
             productionOverrideApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
             productionOverrideApprovedByUid: me.uid,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             tenantId,
           },
-          { merge: true }
+          { merge: true },
         );
       }
     });
 
     if (alreadyProcessed) {
-      return NextResponse.json({ ok: true, status: "already_processed" });
+      return NextResponse.json({ ok: true, status: 'already_processed' });
     }
 
     const before =
-      type === "discount"
-        ? { discountStatus: "pending", discountPct: requestedData.discountPct ?? null }
-        : type === "change_request"
-        ? { approvalStatus: "pending", status: requestedData.status || "Submitted" }
-        : { productionOverrideStatus: "pending" };
+      type === 'discount'
+        ? { discountStatus: 'pending', discountPct: requestedData.discountPct ?? null }
+        : type === 'change_request'
+          ? { approvalStatus: 'pending', status: requestedData.status || 'Submitted' }
+          : { productionOverrideStatus: 'pending' };
     const after =
-      type === "discount"
-        ? { discountStatus: "approved", discountApprovedPct: requestedData.discountPct ?? null }
-        : type === "change_request"
-        ? { approvalStatus: "approved", status: "Approved" }
-        : { productionOverrideStatus: "approved" };
+      type === 'discount'
+        ? { discountStatus: 'approved', discountApprovedPct: requestedData.discountPct ?? null }
+        : type === 'change_request'
+          ? { approvalStatus: 'approved', status: 'Approved' }
+          : { productionOverrideStatus: 'approved' };
 
     await logEvent({
       tenantId,
       type: `${type}.approval.approved`,
-      title: "Approval granted",
-      description: `Approval granted for ${approval.entityType || "entity"} ${approval.entityId || ""}.`,
+      title: 'Approval granted',
+      description: `Approval granted for ${approval.entityType || 'entity'} ${approval.entityId || ''}.`,
       entityType: approval.entityType || null,
       entityId: approval.entityId || null,
       actor: { uid: me.uid, name: actorName },
@@ -281,9 +298,9 @@ export async function POST(req: Request) {
         recipientUid: approval.requestedBy.uid,
         recipientRole: approval.requestedBy.role || null,
         tenantId,
-        type: "approval_decision",
-        title: "Approval approved",
-        message: `${approval.entityType || "Request"} ${approval.entityId || ""} was approved.`,
+        type: 'approval_decision',
+        title: 'Approval approved',
+        message: `${approval.entityType || 'Request'} ${approval.entityId || ''} was approved.`,
         entityType: (approval.entityType || null) as NotificationEntityType | null,
         entityId: approval.entityId || null,
         createdBy: { uid: me.uid, name: actorName },
@@ -292,9 +309,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("approvals/approve error:", err);
-    const message = String(err?.message || "Unable to approve.");
-    const status = message.toLowerCase().includes("forbidden") ? 403 : message.toLowerCase().includes("not found") ? 404 : 500;
+    console.error('approvals/approve error:', err);
+    const message = String(err?.message || 'Unable to approve.');
+    const status = message.toLowerCase().includes('forbidden')
+      ? 403
+      : message.toLowerCase().includes('not found')
+        ? 404
+        : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

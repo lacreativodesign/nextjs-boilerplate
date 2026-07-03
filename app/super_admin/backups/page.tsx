@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { RotateCcw } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 
 type BackupRow = {
   id: string;
@@ -29,24 +29,28 @@ export default function SuperAdminBackupsPage() {
       setError(null);
 
       try {
-        const response = await apiFetch("/api/backup/list", { cache: "no-store" });
-        const payload = (await response.json()) as { ok: boolean; backups?: BackupRow[]; error?: string };
+        const response = await apiFetch('/api/backup/list', { cache: 'no-store' });
+        const payload = (await response.json()) as {
+          ok: boolean;
+          backups?: BackupRow[];
+          error?: string;
+        };
 
         if (!response.ok || !payload.ok) {
-          throw new Error(payload.error || "Failed to load backups");
+          throw new Error(payload.error || 'Failed to load backups');
         }
 
         if (active) {
           setBackups(payload.backups || []);
         }
       } catch (err: any) {
-        const msg = err?.message || "";
+        const msg = err?.message || '';
         const friendly =
-          msg.includes("Session expired") || msg.includes("Unauthorized")
-            ? "Your session has expired. Please refresh the page and log in again."
-            : msg.includes("Forbidden")
-            ? "You do not have permission to view backups."
-            : "Unable to load backups. Please try again.";
+          msg.includes('Session expired') || msg.includes('Unauthorized')
+            ? 'Your session has expired. Please refresh the page and log in again.'
+            : msg.includes('Forbidden')
+              ? 'You do not have permission to view backups.'
+              : 'Unable to load backups. Please try again.';
         if (active) {
           setError(friendly);
         }
@@ -65,7 +69,9 @@ export default function SuperAdminBackupsPage() {
   }, []);
 
   const handleRestore = async (backupId: string) => {
-    const confirmed = window.confirm("Restore this backup? This action will overwrite tenant collection data.");
+    const confirmed = window.confirm(
+      'Restore this backup? This action will overwrite tenant collection data.',
+    );
     if (!confirmed) {
       return;
     }
@@ -73,10 +79,10 @@ export default function SuperAdminBackupsPage() {
     setRestoringBackupId(backupId);
 
     try {
-      const response = await apiFetch("/api/backup/restore", {
-        method: "POST",
+      const response = await apiFetch('/api/backup/restore', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ backupId }),
       });
@@ -84,12 +90,12 @@ export default function SuperAdminBackupsPage() {
       const payload = (await response.json()) as { ok: boolean; error?: string };
 
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || "Restore failed");
+        throw new Error(payload.error || 'Restore failed');
       }
 
-      window.alert("Backup restore started successfully.");
+      window.alert('Backup restore started successfully.');
     } catch (err: any) {
-      window.alert(err?.message || "Restore failed");
+      window.alert(err?.message || 'Restore failed');
     } finally {
       setRestoringBackupId(null);
     }
@@ -141,14 +147,18 @@ export default function SuperAdminBackupsPage() {
                   <td className="px-4 py-3 text-[var(--text-muted)]">
                     {backup.timestamp?.seconds
                       ? new Date(backup.timestamp.seconds * 1000).toLocaleString()
-                      : "Unknown"}
+                      : 'Unknown'}
                   </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)]">{backup.collections?.length || 0} collections</td>
+                  <td className="px-4 py-3 text-[var(--text-muted)]">
+                    {backup.collections?.length || 0} collections
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span>{backup.status || "unknown"}</span>
+                      <span>{backup.status || 'unknown'}</span>
                       {backup.restoreStatus ? (
-                        <span className="text-xs text-[var(--text-muted)]">Restore: {backup.restoreStatus}</span>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          Restore: {backup.restoreStatus}
+                        </span>
                       ) : null}
                     </div>
                   </td>
@@ -160,7 +170,7 @@ export default function SuperAdminBackupsPage() {
                       className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold transition hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <RotateCcw size={14} />
-                      {restoringBackupId === backup.id ? "Restoring..." : "Restore"}
+                      {restoringBackupId === backup.id ? 'Restoring...' : 'Restore'}
                     </button>
                   </td>
                 </tr>

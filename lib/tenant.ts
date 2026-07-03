@@ -1,4 +1,4 @@
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
 
 export { DEFAULT_TENANT_ID };
 

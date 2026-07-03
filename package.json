@@ -13,8 +13,8 @@
     "test:smoke": "playwright test e2e/smoke",
     "analyze": "ANALYZE=true next build",
     "typecheck": "tsc --noEmit",
-    "format": "npx prettier --write .",
-    "format:check": "npx prettier --check .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "docs:api": "node scripts/generate-openapi.mjs",
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
@@ -88,6 +88,7 @@
     "jest-fixed-jsdom": "^0.0.11",
     "msw": "^2.7.0",
     "postcss": "8.4.38",
+    "prettier": "3.9.4",
     "tailwindcss": "3.4.10",
     "typescript": "5.5.4"
   },

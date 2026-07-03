@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { ImportTemplate } from "@/types/import-export";
+import type { ImportTemplate } from '@/types/import-export';
 
 type Props = {
   templates: ImportTemplate[];
@@ -14,7 +14,7 @@ export default function ImportTemplateSelector({ templates, selectedTemplateId, 
       <label className="mb-2 block text-sm font-semibold">Import template</label>
       <select
         className="w-full rounded border p-2 text-sm"
-        value={selectedTemplateId || ""}
+        value={selectedTemplateId || ''}
         onChange={(event) => onSelect(event.target.value || null)}
       >
         <option value="">No template</option>

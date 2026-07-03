@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   getCurrentUser,
   isAccountManager,
@@ -7,12 +7,20 @@ import {
   isProduction,
   isSalesManager,
   normalizeRole,
-} from "../../_utils";
+} from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const LOCKED_STAGES = ["Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
-const LEGACY_STAGE = "Inquiry";
+const LOCKED_STAGES = [
+  'Deposit',
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
+] as const;
+const LEGACY_STAGE = 'Inquiry';
 
 type ProjectDoc = {
   projectCode?: string | null;
@@ -43,25 +51,25 @@ type ProjectDoc = {
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-function computeHealth(dueDate: string | null, stage?: string): "Overdue" | "At Risk" | "On Track" {
-  if (stage === "Delivered") return "On Track";
-  if (!dueDate) return "On Track";
+function computeHealth(dueDate: string | null, stage?: string): 'Overdue' | 'At Risk' | 'On Track' {
+  if (stage === 'Delivered') return 'On Track';
+  if (!dueDate) return 'On Track';
   const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
+  if (Number.isNaN(due.getTime())) return 'On Track';
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = due.getTime() - startOfToday.getTime();
 
-  if (diffMs < 0) return "Overdue";
-  if (diffMs <= 48 * 60 * 60 * 1000) return "At Risk";
-  return "On Track";
+  if (diffMs < 0) return 'Overdue';
+  if (diffMs <= 48 * 60 * 60 * 1000) return 'At Risk';
+  return 'On Track';
 }
 
 function normalizeStage(stage?: string | null) {
@@ -80,57 +88,61 @@ function normalizeStageTimestamps(map?: Record<string, any> | null) {
   }, {});
 }
 
-function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
+function normalizeStageHistory(history?: ProjectDoc['stageHistory']) {
   if (!Array.isArray(history)) return [];
   return history
     .map((entry) => ({
-      from: entry?.from || "",
-      to: entry?.to || "",
-      byUid: entry?.byUid || "",
-      byName: entry?.byName || "",
+      from: entry?.from || '',
+      to: entry?.to || '',
+      byUid: entry?.byUid || '',
+      byName: entry?.byName || '',
       at: toISO(entry?.at),
     }))
     .filter((entry) => entry.to || entry.from);
 }
 
 function canViewPipeline(role: string) {
-  return isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role) || isProduction(role);
+  return (
+    isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role) || isProduction(role)
+  );
 }
 
 export async function GET(req: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const role = normalizeRole(me.role);
     if (!canViewPipeline(role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
-    const q = String(searchParams.get("q") || "").trim().toLowerCase();
-    const owner = String(searchParams.get("owner") || "").trim();
-    const production = String(searchParams.get("production") || "").trim();
-    const priority = String(searchParams.get("priority") || "").trim();
-    const healthFilter = String(searchParams.get("health") || "").trim();
-    const dueStart = String(searchParams.get("dueStart") || "").trim();
-    const dueEnd = String(searchParams.get("dueEnd") || "").trim();
+    const q = String(searchParams.get('q') || '')
+      .trim()
+      .toLowerCase();
+    const owner = String(searchParams.get('owner') || '').trim();
+    const production = String(searchParams.get('production') || '').trim();
+    const priority = String(searchParams.get('priority') || '').trim();
+    const healthFilter = String(searchParams.get('health') || '').trim();
+    const dueStart = String(searchParams.get('dueStart') || '').trim();
+    const dueEnd = String(searchParams.get('dueEnd') || '').trim();
 
     const baseQuery: FirebaseFirestore.Query = adminDb
-      .collection("projects")
-      .where("tenantId", "==", me.tenantId)
-      .where("isDeleted", "==", false);
+      .collection('projects')
+      .where('tenantId', '==', me.tenantId)
+      .where('isDeleted', '==', false);
     let queries: FirebaseFirestore.Query[] = [baseQuery];
 
     if (isAccountManager(role)) {
       queries = [
-        baseQuery.where("ownerAmUid", "==", me.uid),
-        baseQuery.where("ownerAmUid", "==", null).where("createdByUid", "==", me.uid),
+        baseQuery.where('ownerAmUid', '==', me.uid),
+        baseQuery.where('ownerAmUid', '==', null).where('createdByUid', '==', me.uid),
       ];
     } else if (isProduction(role)) {
-      queries = [baseQuery.where("productionUid", "==", me.uid)];
+      queries = [baseQuery.where('productionUid', '==', me.uid)];
     }
 
     const snaps = await Promise.all(queries.map((query) => query.limit(500).get()));
@@ -149,15 +161,15 @@ export async function GET(req: Request) {
       return {
         id,
         projectCode: data.projectCode || null,
-        projectName: data.projectName || "",
-        clientId: data.clientId || "",
-        clientName: data.clientName || "",
-        projectType: data.projectType || "",
+        projectName: data.projectName || '',
+        clientId: data.clientId || '',
+        clientName: data.clientName || '',
+        projectType: data.projectType || '',
         stage: stageValue,
-        priority: data.priority || "Normal",
+        priority: data.priority || 'Normal',
         health,
-        createdByUid: data.createdByUid || "",
-        createdByName: data.createdByName || "",
+        createdByUid: data.createdByUid || '',
+        createdByName: data.createdByName || '',
         ownerAmUid: data.ownerAmUid ?? null,
         ownerAmName: data.ownerAmName ?? null,
         productionUid: data.productionUid ?? null,
@@ -171,12 +183,12 @@ export async function GET(req: Request) {
         stageTimestamps: normalizeStageTimestamps(data.stageTimestamps),
         totalPaidUsd: Number(data.totalPaidUsd || 0),
         outstandingUsd: Number(data.outstandingUsd || 0),
-        internalNotes: data.internalNotes || "",
+        internalNotes: data.internalNotes || '',
       };
     });
 
     if (owner) {
-      if (owner === "unassigned") {
+      if (owner === 'unassigned') {
         projects = projects.filter((project) => !project.ownerAmUid);
       } else {
         projects = projects.filter((project) => project.ownerAmUid === owner);
@@ -184,7 +196,7 @@ export async function GET(req: Request) {
     }
 
     if (production) {
-      if (production === "unassigned") {
+      if (production === 'unassigned') {
         projects = projects.filter((project) => !project.productionUid);
       } else {
         projects = projects.filter((project) => project.productionUid === production);
@@ -197,9 +209,15 @@ export async function GET(req: Request) {
 
     if (q) {
       projects = projects.filter((project) => {
-        const hay = [project.projectName, project.clientName, project.projectType, project.stage, project.priority]
+        const hay = [
+          project.projectName,
+          project.clientName,
+          project.projectType,
+          project.stage,
+          project.priority,
+        ]
           .filter(Boolean)
-          .join(" ")
+          .join(' ')
           .toLowerCase();
         return hay.includes(q);
       });
@@ -227,12 +245,12 @@ export async function GET(req: Request) {
       });
     }
 
-    projects.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+    projects.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
 
     const counts = projects.reduce<Record<string, number>>((acc, project) => {
       const stageKey = LOCKED_STAGES.includes(project.stage as (typeof LOCKED_STAGES)[number])
         ? project.stage
-        : "Legacy";
+        : 'Legacy';
       acc[stageKey] = (acc[stageKey] || 0) + 1;
       return acc;
     }, {});
@@ -244,20 +262,22 @@ export async function GET(req: Request) {
       currentUser: {
         uid: me.uid,
         role: me.role,
-        name: me.name || me.fullName || me.displayName || "",
+        name: me.name || me.fullName || me.displayName || '',
       },
     });
   } catch (err: any) {
-    console.error("projects/pipeline error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('projects/pipeline error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load pipeline right now.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load pipeline right now.';
     return NextResponse.json(
-      { ok: false, error: safeMessage, code: isIndexError ? "missing_index" : "unknown_error" },
-      { status: 500 }
+      { ok: false, error: safeMessage, code: isIndexError ? 'missing_index' : 'unknown_error' },
+      { status: 500 },
     );
   }
 }

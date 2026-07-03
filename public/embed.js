@@ -2,32 +2,31 @@
    Paste this script into any website to automatically
    capture form submissions as leads in Bizosto CRM. */
 (function () {
-  "use strict";
+  'use strict';
 
   var script =
     document.currentScript ||
-    document.querySelector("script[data-bizosto-key]") ||
-    document.querySelector("script[data-key]");
+    document.querySelector('script[data-bizosto-key]') ||
+    document.querySelector('script[data-key]');
 
   var key =
-    (script && script.getAttribute("data-key")) ||
-    (script && script.getAttribute("data-bizosto-key"));
+    (script && script.getAttribute('data-key')) ||
+    (script && script.getAttribute('data-bizosto-key'));
 
   if (!key) {
     console.warn(
-      "[Bizosto Embed] No embed key found. " +
-      "Add data-key=\"YOUR_KEY\" to your script tag."
+      '[Bizosto Embed] No embed key found. ' + 'Add data-key="YOUR_KEY" to your script tag.',
     );
     return;
   }
 
-  var ENDPOINT = "https://app.bizosto.com/api/embed/leads";
+  var ENDPOINT = 'https://app.bizosto.com/api/embed/leads';
 
-  var NAME_FIELDS    = ["full_name","fullname","your-name","first_name","name","fname"];
-  var EMAIL_FIELDS   = ["your-email","email_address","email","e-mail"];
-  var PHONE_FIELDS   = ["telephone","mobile","phone","tel","phone_number"];
-  var COMPANY_FIELDS = ["organization","company_name","business","company","firm"];
-  var MESSAGE_FIELDS = ["description","comments","message","notes","inquiry","enquiry"];
+  var NAME_FIELDS = ['full_name', 'fullname', 'your-name', 'first_name', 'name', 'fname'];
+  var EMAIL_FIELDS = ['your-email', 'email_address', 'email', 'e-mail'];
+  var PHONE_FIELDS = ['telephone', 'mobile', 'phone', 'tel', 'phone_number'];
+  var COMPANY_FIELDS = ['organization', 'company_name', 'business', 'company', 'firm'];
+  var MESSAGE_FIELDS = ['description', 'comments', 'message', 'notes', 'inquiry', 'enquiry'];
 
   function matchField(fieldName, patterns) {
     var lower = fieldName.toLowerCase();
@@ -41,21 +40,21 @@
     if (!data.email) return;
     try {
       fetch(ENDPOINT, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "x-embed-key": key,
+          'Content-Type': 'application/json',
+          'x-embed-key': key,
         },
         body: JSON.stringify({
-          name:    data.name    || "Unknown",
-          email:   data.email,
-          phone:   data.phone   || undefined,
+          name: data.name || 'Unknown',
+          email: data.email,
+          phone: data.phone || undefined,
           company: data.company || undefined,
-          message: data.message || ("Embed lead from " + window.location.href),
-          source:  "Embed",
-          page:    window.location.href,
+          message: data.message || 'Embed lead from ' + window.location.href,
+          source: 'Embed',
+          page: window.location.href,
           meta: {
-            referrer:  document.referrer  || undefined,
+            referrer: document.referrer || undefined,
             userAgent: navigator.userAgent,
           },
         }),
@@ -67,20 +66,20 @@
     if (form.__bizostoAttached) return;
     form.__bizostoAttached = true;
 
-    form.addEventListener("submit", function () {
-      var result = { name: "", email: "", phone: "", company: "", message: "" };
+    form.addEventListener('submit', function () {
+      var result = { name: '', email: '', phone: '', company: '', message: '' };
 
       try {
-        var inputs = form.querySelectorAll("input, select, textarea");
+        var inputs = form.querySelectorAll('input, select, textarea');
         for (var i = 0; i < inputs.length; i++) {
-          var el   = inputs[i];
-          var name = el.name || el.id || "";
-          var val  = (el.value || "").trim();
+          var el = inputs[i];
+          var name = el.name || el.id || '';
+          var val = (el.value || '').trim();
           if (!val || !name) continue;
 
-          if (!result.email   && matchField(name, EMAIL_FIELDS))   result.email   = val.toLowerCase();
-          else if (!result.name    && matchField(name, NAME_FIELDS))    result.name    = val;
-          else if (!result.phone   && matchField(name, PHONE_FIELDS))   result.phone   = val;
+          if (!result.email && matchField(name, EMAIL_FIELDS)) result.email = val.toLowerCase();
+          else if (!result.name && matchField(name, NAME_FIELDS)) result.name = val;
+          else if (!result.phone && matchField(name, PHONE_FIELDS)) result.phone = val;
           else if (!result.company && matchField(name, COMPANY_FIELDS)) result.company = val;
           else if (!result.message && matchField(name, MESSAGE_FIELDS)) result.message = val;
         }
@@ -91,14 +90,14 @@
   }
 
   function scanForms() {
-    var forms = document.querySelectorAll("form");
+    var forms = document.querySelectorAll('form');
     for (var i = 0; i < forms.length; i++) {
       attachToForm(forms[i]);
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scanForms);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scanForms);
   } else {
     scanForms();
   }
@@ -109,9 +108,9 @@
     });
     observer.observe(document.body || document.documentElement, {
       childList: true,
-      subtree:   true,
+      subtree: true,
     });
   }
 
-  console.info("[Bizosto Embed] Loaded. Watching for form submissions.");
+  console.info('[Bizosto Embed] Loaded. Watching for form submissions.');
 })();

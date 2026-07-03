@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { SettingsAlert } from "../../_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useCallback, useEffect, useState } from 'react';
+import { SettingsAlert } from '../../_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
 type Audience = { id: string; name: string; memberCount: number };
 
@@ -18,7 +18,7 @@ type Connection = {
   };
   stats?: {
     lastSyncFinishedAt: string | null;
-    lastSyncStatus: "idle" | "running" | "success" | "error";
+    lastSyncStatus: 'idle' | 'running' | 'success' | 'error';
     lastSyncError: string | null;
     lastSyncedCount: number;
     lastUnsubscribedCount: number;
@@ -32,24 +32,24 @@ export default function MailchimpIntegrationPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
-  const [segmentType, setSegmentType] = useState("");
-  const [segmentStatus, setSegmentStatus] = useState("");
-  const [segmentTags, setSegmentTags] = useState("");
-  const [tagMappingText, setTagMappingText] = useState("{}");
+  const [apiKey, setApiKey] = useState('');
+  const [segmentType, setSegmentType] = useState('');
+  const [segmentStatus, setSegmentStatus] = useState('');
+  const [segmentTags, setSegmentTags] = useState('');
+  const [tagMappingText, setTagMappingText] = useState('{}');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/integrations/mailchimp/audiences", { cache: "no-store" });
+      const res = await apiFetch('/api/integrations/mailchimp/audiences', { cache: 'no-store' });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to load Mailchimp state.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to load Mailchimp state.');
       setConnection(data.connection || null);
       setAudiences(data.audiences || []);
       setTagMappingText(JSON.stringify(data.connection?.settings?.tagMapping || {}, null, 2));
     } catch (err: any) {
-      setError(err.message || "Unable to load Mailchimp integration state.");
+      setError(err.message || 'Unable to load Mailchimp integration state.');
     } finally {
       setLoading(false);
     }
@@ -63,16 +63,17 @@ export default function MailchimpIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await apiFetch("/api/integrations/mailchimp/oauth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: true, returnTo: "/admin/settings/integrations/mailchimp" }),
+      const res = await apiFetch('/api/integrations/mailchimp/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: true, returnTo: '/admin/settings/integrations/mailchimp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok || !data?.authorizeUrl) throw new Error(data?.error || "Unable to start Mailchimp OAuth.");
+      if (!res.ok || !data?.ok || !data?.authorizeUrl)
+        throw new Error(data?.error || 'Unable to start Mailchimp OAuth.');
       window.location.href = data.authorizeUrl;
     } catch (err: any) {
-      setError(err.message || "Unable to connect Mailchimp.");
+      setError(err.message || 'Unable to connect Mailchimp.');
       setSaving(false);
     }
   };
@@ -81,18 +82,18 @@ export default function MailchimpIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await apiFetch("/api/integrations/mailchimp/oauth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/integrations/mailchimp/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to save API key.");
-      setSuccess("Mailchimp API key saved.");
-      setApiKey("");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to save API key.');
+      setSuccess('Mailchimp API key saved.');
+      setApiKey('');
       await load();
     } catch (err: any) {
-      setError(err.message || "Unable to save API key.");
+      setError(err.message || 'Unable to save API key.');
     } finally {
       setSaving(false);
     }
@@ -102,10 +103,10 @@ export default function MailchimpIntegrationPage() {
     try {
       setSaving(true);
       setError(null);
-      const parsed = JSON.parse(tagMappingText || "{}");
-      const res = await apiFetch("/api/integrations/mailchimp/audiences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const parsed = JSON.parse(tagMappingText || '{}');
+      const res = await apiFetch('/api/integrations/mailchimp/audiences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           autoSyncEnabled: Boolean(connection?.settings?.autoSyncEnabled),
           defaultAudienceId: connection?.settings?.defaultAudienceId || null,
@@ -113,35 +114,35 @@ export default function MailchimpIntegrationPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to save settings.");
-      setSuccess("Mailchimp sync settings saved.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to save settings.');
+      setSuccess('Mailchimp sync settings saved.');
       await load();
     } catch (err: any) {
-      setError(err.message || "Unable to save settings. Tag mapping must be valid JSON.");
+      setError(err.message || 'Unable to save settings. Tag mapping must be valid JSON.');
     } finally {
       setSaving(false);
     }
   };
 
-  const runSync = async (mode: "one_time" | "segment") => {
+  const runSync = async (mode: 'one_time' | 'segment') => {
     try {
       setSaving(true);
       setError(null);
       const filter =
-        mode === "segment"
+        mode === 'segment'
           ? {
               type: segmentType || undefined,
               status: segmentStatus || undefined,
               tags: segmentTags
-                .split(",")
+                .split(',')
                 .map((item) => item.trim())
                 .filter(Boolean),
             }
           : undefined;
 
-      const res = await apiFetch("/api/integrations/mailchimp/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/integrations/mailchimp/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode,
           audienceId: connection?.settings?.defaultAudienceId || undefined,
@@ -149,13 +150,13 @@ export default function MailchimpIntegrationPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Sync failed.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Sync failed.');
       setSuccess(
-        `Sync complete. Synced ${data.result?.synced || 0} clients; unsubscribed respected for ${data.result?.unsubscribed || 0} clients.`
+        `Sync complete. Synced ${data.result?.synced || 0} clients; unsubscribed respected for ${data.result?.unsubscribed || 0} clients.`,
       );
       await load();
     } catch (err: any) {
-      setError(err.message || "Unable to run sync.");
+      setError(err.message || 'Unable to run sync.');
     } finally {
       setSaving(false);
     }
@@ -170,10 +171,17 @@ export default function MailchimpIntegrationPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Mailchimp Email Marketing Sync</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>OAuth/API key connection, audience mapping, auto-sync, and segment sync.</p>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+              OAuth/API key connection, audience mapping, auto-sync, and segment sync.
+            </p>
           </div>
-          <button className="btn subtle" type="button" onClick={startOauth} disabled={saving || loading}>
-            {connection?.connected ? "Reconnect Mailchimp" : "Connect Mailchimp"}
+          <button
+            className="btn subtle"
+            type="button"
+            onClick={startOauth}
+            disabled={saving || loading}
+          >
+            {connection?.connected ? 'Reconnect Mailchimp' : 'Connect Mailchimp'}
           </button>
         </div>
 
@@ -181,15 +189,32 @@ export default function MailchimpIntegrationPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Status</div>
-            <div style={{ fontWeight: 700, marginTop: 4 }}>{connection?.connected ? "Connected" : "Not connected"}</div>
-            <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>{connection?.accountName || connection?.accountEmail || "No Mailchimp account linked"}</div>
-            <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>Data Center: {connection?.dc || "-"}</div>
+            <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>Status</div>
+            <div style={{ fontWeight: 700, marginTop: 4 }}>
+              {connection?.connected ? 'Connected' : 'Not connected'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--sidebar-text)', marginTop: 6 }}>
+              {connection?.accountName || connection?.accountEmail || 'No Mailchimp account linked'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--sidebar-text)', marginTop: 6 }}>
+              Data Center: {connection?.dc || '-'}
+            </div>
           </div>
           <div className="card" style={{ padding: 16, borderRadius: 14 }}>
             <label className="block text-sm">Mailchimp API Key</label>
-            <input className="input mt-2" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="xxxxxxxx-us1" type="password" />
-            <button className="btn ghost mt-3" type="button" disabled={saving || !apiKey.trim()} onClick={saveApiKey}>
+            <input
+              className="input mt-2"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="xxxxxxxx-us1"
+              type="password"
+            />
+            <button
+              className="btn ghost mt-3"
+              type="button"
+              disabled={saving || !apiKey.trim()}
+              onClick={saveApiKey}
+            >
               Save API Key
             </button>
           </div>
@@ -203,7 +228,7 @@ export default function MailchimpIntegrationPage() {
         <label className="block text-sm">Default Audience</label>
         <select
           className="input mt-2"
-          value={connection?.settings?.defaultAudienceId || ""}
+          value={connection?.settings?.defaultAudienceId || ''}
           onChange={(e) =>
             setConnection((prev) =>
               prev
@@ -215,7 +240,7 @@ export default function MailchimpIntegrationPage() {
                       defaultAudienceId: e.target.value || null,
                     },
                   }
-                : prev
+                : prev,
             )
           }
           disabled={loading || saving || !connection?.connected}
@@ -244,17 +269,29 @@ export default function MailchimpIntegrationPage() {
                         tagMapping: prev.settings?.tagMapping || {},
                       },
                     }
-                  : prev
+                  : prev,
               )
             }
           />
           <span>Enable auto-sync for newly created clients</span>
         </label>
 
-        <label className="block text-sm mt-3">Tag Mapping (JSON: Bizosto tag → Mailchimp tags[])</label>
-        <textarea className="input mt-2" rows={8} value={tagMappingText} onChange={(e) => setTagMappingText(e.target.value)} />
+        <label className="block text-sm mt-3">
+          Tag Mapping (JSON: Bizosto tag → Mailchimp tags[])
+        </label>
+        <textarea
+          className="input mt-2"
+          rows={8}
+          value={tagMappingText}
+          onChange={(e) => setTagMappingText(e.target.value)}
+        />
 
-        <button className="btn ghost mt-3" type="button" disabled={saving || loading || !connection?.connected} onClick={saveSettings}>
+        <button
+          className="btn ghost mt-3"
+          type="button"
+          disabled={saving || loading || !connection?.connected}
+          onClick={saveSettings}
+        >
           Save Sync Settings
         </button>
       </section>
@@ -264,31 +301,61 @@ export default function MailchimpIntegrationPage() {
         <div className="settings-divider" />
 
         <div className="flex flex-wrap gap-2">
-          <button className="btn subtle" type="button" onClick={() => runSync("one_time")} disabled={saving || loading || !connection?.connected}>
+          <button
+            className="btn subtle"
+            type="button"
+            onClick={() => runSync('one_time')}
+            disabled={saving || loading || !connection?.connected}
+          >
             One-time Sync (All Clients)
           </button>
-          <button className="btn ghost" type="button" onClick={() => runSync("segment")} disabled={saving || loading || !connection?.connected}>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => runSync('segment')}
+            disabled={saving || loading || !connection?.connected}
+          >
             Segment Sync
           </button>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3 mt-3">
-          <input className="input" placeholder="Segment type (customer/lead)" value={segmentType} onChange={(e) => setSegmentType(e.target.value)} />
-          <input className="input" placeholder="Segment status (new/won)" value={segmentStatus} onChange={(e) => setSegmentStatus(e.target.value)} />
-          <input className="input" placeholder="Segment tags comma-separated" value={segmentTags} onChange={(e) => setSegmentTags(e.target.value)} />
+          <input
+            className="input"
+            placeholder="Segment type (customer/lead)"
+            value={segmentType}
+            onChange={(e) => setSegmentType(e.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="Segment status (new/won)"
+            value={segmentStatus}
+            onChange={(e) => setSegmentStatus(e.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="Segment tags comma-separated"
+            value={segmentTags}
+            onChange={(e) => setSegmentTags(e.target.value)}
+          />
         </div>
 
         <div className="card mt-3" style={{ padding: 16, borderRadius: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>Last Sync Status</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{connection?.stats?.lastSyncStatus || "idle"}</div>
-          <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>
-            Last finished: {connection?.stats?.lastSyncFinishedAt || "-"}
+          <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>Last Sync Status</div>
+          <div style={{ fontWeight: 700, marginTop: 4 }}>
+            {connection?.stats?.lastSyncStatus || 'idle'}
           </div>
-          <div style={{ fontSize: 12, color: "var(--sidebar-text)", marginTop: 6 }}>
-            Last synced contacts: {connection?.stats?.lastSyncedCount || 0}; unsubscribed respected: {connection?.stats?.lastUnsubscribedCount || 0}
+          <div style={{ fontSize: 12, color: 'var(--sidebar-text)', marginTop: 6 }}>
+            Last finished: {connection?.stats?.lastSyncFinishedAt || '-'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--sidebar-text)', marginTop: 6 }}>
+            Last synced contacts: {connection?.stats?.lastSyncedCount || 0}; unsubscribed respected:{' '}
+            {connection?.stats?.lastUnsubscribedCount || 0}
           </div>
           {connection?.stats?.lastSyncError ? (
-            <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{connection.stats.lastSyncError}</div>
+            <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>
+              {connection.stats.lastSyncError}
+            </div>
           ) : null}
         </div>
       </section>

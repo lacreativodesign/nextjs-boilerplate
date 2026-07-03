@@ -1,9 +1,9 @@
-export type BillingCycle = "monthly" | "annual";
+export type BillingCycle = 'monthly' | 'annual';
 
-export type CurrencyCode = "USD" | "EUR" | "GBP";
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP';
 
 export interface PricingPlan {
-  name: "Starter" | "Pro" | "Enterprise";
+  name: 'Starter' | 'Pro' | 'Enterprise';
   price: {
     monthly: number;
     annual: number;

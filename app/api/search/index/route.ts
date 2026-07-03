@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { indexDocument } from "@/lib/search/global-search";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { indexDocument } from '@/lib/search/global-search';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const bodySchema = z.object({
   id: z.string().optional(),
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId || !session.uid) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const payload = bodySchema.parse(await request.json());
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, id });
   } catch (error) {
-    console.error("Index document error", error);
-    return NextResponse.json({ error: "Failed to index document" }, { status: 500 });
+    console.error('Index document error', error);
+    return NextResponse.json({ error: 'Failed to index document' }, { status: 500 });
   }
 }

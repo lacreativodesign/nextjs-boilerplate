@@ -24,13 +24,14 @@ export async function GET() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     const httpsEnabled = appUrl.startsWith('https://');
 
-    const score = Math.round(
-      ((configured / total) * 60 +
-        (httpsEnabled ? 20 : 0) +
-        (process.env.NEXT_PUBLIC_SENTRY_DSN ? 10 : 0) +
-        (process.env.STRIPE_WEBHOOK_SECRET ? 10 : 0)) *
-        100
-    ) / 100;
+    const score =
+      Math.round(
+        ((configured / total) * 60 +
+          (httpsEnabled ? 20 : 0) +
+          (process.env.NEXT_PUBLIC_SENTRY_DSN ? 10 : 0) +
+          (process.env.STRIPE_WEBHOOK_SECRET ? 10 : 0)) *
+          100,
+      ) / 100;
 
     return NextResponse.json({
       ok: true,

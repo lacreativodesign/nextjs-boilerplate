@@ -2,8 +2,8 @@ export interface TaxRate {
   id: string;
   name: string;
   rate: number;
-  type: "simple" | "compound";
-  applies_to: "subtotal" | "subtotal_plus_other_taxes";
+  type: 'simple' | 'compound';
+  applies_to: 'subtotal' | 'subtotal_plus_other_taxes';
   enabled: boolean;
   description?: string;
 }
@@ -29,8 +29,8 @@ export class TaxCalculator {
     let runningTotal = subtotal;
     const taxDetails: Array<{ name: string; rate: number; amount: number }> = [];
 
-    const simpleTaxes = this.taxRates.filter((tax) => tax.type === "simple");
-    const compoundTaxes = this.taxRates.filter((tax) => tax.type === "compound");
+    const simpleTaxes = this.taxRates.filter((tax) => tax.type === 'simple');
+    const compoundTaxes = this.taxRates.filter((tax) => tax.type === 'compound');
 
     for (const tax of simpleTaxes) {
       const amount = (subtotal * tax.rate) / 100;
@@ -44,7 +44,7 @@ export class TaxCalculator {
     }
 
     for (const tax of compoundTaxes) {
-      const baseAmount = tax.applies_to === "subtotal" ? subtotal : runningTotal;
+      const baseAmount = tax.applies_to === 'subtotal' ? subtotal : runningTotal;
       const amount = (baseAmount * tax.rate) / 100;
       const roundedAmount = Number(amount.toFixed(2));
       taxDetails.push({
@@ -118,6 +118,6 @@ export class TaxCalculator {
       WY: 4.0,
     };
 
-    return stateTaxRates[String(state || "").toUpperCase()] || 0;
+    return stateTaxRates[String(state || '').toUpperCase()] || 0;
   }
 }

@@ -1,20 +1,24 @@
 export type DashboardWidgetType =
-  | "revenue_chart"
-  | "invoice_status"
-  | "task_summary"
-  | "top_clients"
-  | "recent_activity"
-  | "time_tracking"
-  | "leave_calendar"
-  | "project_status";
+  | 'revenue_chart'
+  | 'invoice_status'
+  | 'task_summary'
+  | 'top_clients'
+  | 'recent_activity'
+  | 'time_tracking'
+  | 'leave_calendar'
+  | 'project_status';
 
 export type DashboardWidgetTemplateId =
-  | "revenue-overview"
-  | "finance-health"
-  | "execution-overview"
-  | "team-ops";
+  'revenue-overview' | 'finance-health' | 'execution-overview' | 'team-ops';
 
-export type WidgetSize = { w: number; h: number; minW?: number; minH?: number; maxW?: number; maxH?: number };
+export type WidgetSize = {
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+};
 
 export type DashboardWidget = {
   id: string;
@@ -58,7 +62,15 @@ export type WidgetTemplate = {
   id: DashboardWidgetTemplateId;
   name: string;
   description: string;
-  widgets: Array<{ type: DashboardWidgetType; x: number; y: number; w?: number; h?: number; title?: string; config?: Record<string, unknown> }>;
+  widgets: Array<{
+    type: DashboardWidgetType;
+    x: number;
+    y: number;
+    w?: number;
+    h?: number;
+    title?: string;
+    config?: Record<string, unknown>;
+  }>;
 };
 
 export type WidgetDataEnvelope = {

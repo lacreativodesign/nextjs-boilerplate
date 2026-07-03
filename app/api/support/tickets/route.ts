@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminRole } from "@/app/api/admin/_utils";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { normalizeTenantId } from "@/lib/tenant";
-import { Resend } from "resend";
+import { NextResponse } from 'next/server';
+import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { normalizeTenantId } from '@/lib/tenant';
+import { Resend } from 'resend';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-type TicketPriority = "low" | "medium" | "high" | "urgent";
-type TicketCategory = "bug" | "feature" | "question" | "billing";
+type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+type TicketCategory = 'bug' | 'feature' | 'question' | 'billing';
 
 type AiAnalysis = {
   category: TicketCategory;
@@ -23,7 +23,12 @@ type AiAnalysis = {
 function toIso(value: unknown): string | null {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === "object" && value !== null && "toDate" in value && typeof (value as any).toDate === "function") {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toDate' in value &&
+    typeof (value as any).toDate === 'function'
+  ) {
     const date = (value as any).toDate();
     return date instanceof Date ? date.toISOString() : null;
   }
@@ -31,13 +36,14 @@ function toIso(value: unknown): string | null {
 }
 
 function parsePriority(value: unknown): TicketPriority {
-  if (value === "low" || value === "medium" || value === "high" || value === "urgent") return value;
-  return "medium";
+  if (value === 'low' || value === 'medium' || value === 'high' || value === 'urgent') return value;
+  return 'medium';
 }
 
 function parseCategory(value: unknown): TicketCategory {
-  if (value === "bug" || value === "feature" || value === "question" || value === "billing") return value;
-  return "question";
+  if (value === 'bug' || value === 'feature' || value === 'question' || value === 'billing')
+    return value;
+  return 'question';
 }
 
 async function classifyWithAI(
@@ -50,19 +56,19 @@ async function classifyWithAI(
   if (!apiKey) return null;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
         messages: [
           {
-            role: "user",
+            role: 'user',
             content: `You are a SaaS support AI for Bizosto. Analyze this bug report and respond ONLY with a JSON object, no markdown, no explanation.
 
 Title: ${title}
@@ -86,8 +92,8 @@ Respond with exactly this JSON structure:
 
     if (!res.ok) return null;
     const data = await res.json();
-    const text = data?.content?.[0]?.text || "";
-    const clean = text.replace(/```json|```/g, "").trim();
+    const text = data?.content?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean) as AiAnalysis;
   } catch {
     return null;
@@ -110,20 +116,20 @@ async function notifySuperAdmin(
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const from = process.env.ONBOARDING_FROM_EMAIL || "Bizosto <welcome@bizosto.com>";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.bizosto.com";
-  const superAdminEmail = "admin@bizosto.com";
+  const from = process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <welcome@bizosto.com>';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
+  const superAdminEmail = 'admin@bizosto.com';
 
   const resend = new Resend(apiKey);
 
   const priorityColor: Record<string, string> = {
-    urgent: "#dc2626",
-    high: "#ea580c",
-    medium: "#d97706",
-    low: "#16a34a",
+    urgent: '#dc2626',
+    high: '#ea580c',
+    medium: '#d97706',
+    low: '#16a34a',
   };
 
-  const pColor = priorityColor[ai?.priority || "medium"] || "#d97706";
+  const pColor = priorityColor[ai?.priority || 'medium'] || '#d97706';
 
   const aiSection = ai
     ? `
@@ -133,7 +139,7 @@ async function notifySuperAdmin(
         <p style="margin:0 0 6px"><strong>Suggested Fix:</strong> ${ai.suggestedFix}</p>
         ${ai.manualWorkRequired ? `<p style="margin:0;color:#dc2626"><strong>⚠ Manual Action Required:</strong> ${ai.manualWorkRequired}</p>` : '<p style="margin:0;color:#16a34a"><strong>✓ No manual action required</strong></p>'}
       </div>`
-    : "";
+    : '';
 
   await resend.emails.send({
     from,
@@ -149,10 +155,10 @@ async function notifySuperAdmin(
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
             <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280;width:140px">Ticket</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${ticket.ticketNumber}</td></tr>
             <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Tenant</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${ticket.tenantId}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Reporter</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.reporterName || "Anonymous"}${ticket.reporterEmail ? ` &lt;${ticket.reporterEmail}&gt;` : ""}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Priority</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:${pColor}">${(ai?.priority || "medium").toUpperCase()}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Page</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.pageUrl || "Not provided"}</td></tr>
-            <tr><td style="padding:10px 0;font-size:14px;color:#6b7280">Screenshot</td><td style="padding:10px 0;font-size:14px">${ticket.hasScreenshot ? "✓ Attached in ticket" : "None"}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Reporter</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.reporterName || 'Anonymous'}${ticket.reporterEmail ? ` &lt;${ticket.reporterEmail}&gt;` : ''}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Priority</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:${pColor}">${(ai?.priority || 'medium').toUpperCase()}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Page</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.pageUrl || 'Not provided'}</td></tr>
+            <tr><td style="padding:10px 0;font-size:14px;color:#6b7280">Screenshot</td><td style="padding:10px 0;font-size:14px">${ticket.hasScreenshot ? '✓ Attached in ticket' : 'None'}</td></tr>
           </table>
 
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:20px">
@@ -174,16 +180,16 @@ export async function GET() {
   try {
     const current = await getCurrentUser();
     if (!current || !isAdminRole(current.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = normalizeTenantId(current.tenantId);
 
     const tickets = await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(tenantId)
-      .collection("support_tickets")
-      .orderBy("createdAt", "desc")
+      .collection('support_tickets')
+      .orderBy('createdAt', 'desc')
       .get();
 
     return NextResponse.json({
@@ -198,8 +204,8 @@ export async function GET() {
       }),
     });
   } catch (error) {
-    console.error("SUPPORT_TICKETS_GET_ERROR", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error('SUPPORT_TICKETS_GET_ERROR', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -207,22 +213,23 @@ export async function POST(req: Request) {
   try {
     const current = await getCurrentUser();
     if (!current || !isAdminRole(current.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = normalizeTenantId(current.tenantId);
-    const data = await req.json().catch(() => null) as Record<string, unknown> | null;
+    const data = (await req.json().catch(() => null)) as Record<string, unknown> | null;
 
-    const title = typeof data?.title === "string" ? data.title.trim() : "";
-    const description = typeof data?.description === "string" ? data.description.trim() : "";
-    const pageUrl = typeof data?.pageUrl === "string" ? data.pageUrl.trim() : "";
-    const reporterName = typeof data?.reporterName === "string" ? data.reporterName.trim() : null;
-    const reporterEmail = typeof data?.reporterEmail === "string" ? data.reporterEmail.trim() : null;
-    const screenshot = typeof data?.screenshot === "string" ? data.screenshot : null;
-    const screenshotName = typeof data?.screenshotName === "string" ? data.screenshotName : null;
+    const title = typeof data?.title === 'string' ? data.title.trim() : '';
+    const description = typeof data?.description === 'string' ? data.description.trim() : '';
+    const pageUrl = typeof data?.pageUrl === 'string' ? data.pageUrl.trim() : '';
+    const reporterName = typeof data?.reporterName === 'string' ? data.reporterName.trim() : null;
+    const reporterEmail =
+      typeof data?.reporterEmail === 'string' ? data.reporterEmail.trim() : null;
+    const screenshot = typeof data?.screenshot === 'string' ? data.screenshot : null;
+    const screenshotName = typeof data?.screenshotName === 'string' ? data.screenshotName : null;
 
     if (title.length < 3 || description.length < 10) {
-      return NextResponse.json({ error: "Title and description are required." }, { status: 400 });
+      return NextResponse.json({ error: 'Title and description are required.' }, { status: 400 });
     }
 
     // Run AI classification in parallel with ticket creation prep
@@ -230,14 +237,14 @@ export async function POST(req: Request) {
 
     const now = new Date();
     const ticketCollection = adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(tenantId)
-      .collection("support_tickets");
+      .collection('support_tickets');
     const counterRef = adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(tenantId)
-      .collection("support_meta")
-      .doc("ticket_counter");
+      .collection('support_meta')
+      .doc('ticket_counter');
     const newTicketRef = ticketCollection.doc();
 
     const ai = await aiPromise;
@@ -246,7 +253,7 @@ export async function POST(req: Request) {
       const counterSnap = await tx.get(counterRef);
       const lastNumber = counterSnap.exists ? Number(counterSnap.data()?.lastNumber || 0) : 0;
       const nextNumber = Number.isFinite(lastNumber) ? lastNumber + 1 : 1;
-      const ticketNumber = `TKT-${String(nextNumber).padStart(4, "0")}`;
+      const ticketNumber = `TKT-${String(nextNumber).padStart(4, '0')}`;
 
       const payload = {
         ticketNumber,
@@ -258,12 +265,12 @@ export async function POST(req: Request) {
         screenshot: screenshot || null,
         screenshotName: screenshotName || null,
         hasScreenshot: Boolean(screenshot),
-        status: "open" as TicketStatus,
+        status: 'open' as TicketStatus,
         priority: ai?.priority || parsePriority(data?.priority),
         category: ai?.category || parseCategory(data?.category),
         tags: Array.isArray(data?.tags)
           ? (data.tags as unknown[])
-              .filter((tag): tag is string => typeof tag === "string")
+              .filter((tag): tag is string => typeof tag === 'string')
               .map((tag) => tag.trim().toLowerCase())
               .filter(Boolean)
               .slice(0, 10)
@@ -271,8 +278,11 @@ export async function POST(req: Request) {
         aiAnalysis: ai || null,
         createdBy: {
           uid: current.uid,
-          name: typeof current.name === "string" && current.name.trim() ? current.name.trim() : "Unknown",
-          email: typeof current.email === "string" ? current.email : "",
+          name:
+            typeof current.name === 'string' && current.name.trim()
+              ? current.name.trim()
+              : 'Unknown',
+          email: typeof current.email === 'string' ? current.email : '',
         },
         assignedTo: null,
         createdAt: now,
@@ -298,7 +308,7 @@ export async function POST(req: Request) {
         hasScreenshot: Boolean(screenshot),
       },
       ai,
-    ).catch((err) => console.error("SUPPORT_NOTIFY_SUPER_ADMIN_ERROR", err));
+    ).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
 
     return NextResponse.json({
       ...result,
@@ -306,7 +316,7 @@ export async function POST(req: Request) {
       updatedAt: result.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error("SUPPORT_TICKETS_POST_ERROR", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error('SUPPORT_TICKETS_POST_ERROR', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

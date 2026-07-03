@@ -1,15 +1,20 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, createNotificationEvent, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
-import { getCurrentUser, isAdminOrSuper, isSalesManager } from "../admin/_utils";
-import { isPlanAccessError, requireModule } from "../../lib/plan-enforcement";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  createNotification,
+  createNotificationEvent,
+  getUserIdsByRoles,
+  type NotificationEntityType,
+} from '@/lib/notifications';
+import { getCurrentUser, isAdminOrSuper, isSalesManager } from '../admin/_utils';
+import { isPlanAccessError, requireModule } from '../../lib/plan-enforcement';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -19,7 +24,7 @@ export function parseNumber(value: any, fallback = 0) {
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: any, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
@@ -40,10 +45,10 @@ export function arrayUnion(value: unknown) {
 export async function requireSalesManager() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!isSalesManager(me.role) && !isAdminOrSuper(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
@@ -54,12 +59,12 @@ export async function requireSalesReportsAccess() {
     return auth;
   }
   try {
-    await requireModule(auth.user.tenantId, "reports", { role: auth.user.role });
+    await requireModule(auth.user.tenantId, 'reports', { role: auth.user.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return { ok: false as const, status: err.status, error: err.message };
     }
-    return { ok: false as const, status: 500, error: "Unable to validate plan access." };
+    return { ok: false as const, status: 500, error: 'Unable to validate plan access.' };
   }
   return auth;
 }
@@ -124,25 +129,25 @@ export async function notifyUsers({
         toUserId: uid,
         title,
         body,
-        type: "info",
-        entityType: (entityType || "lead") as NotificationEntityType,
+        type: 'info',
+        entityType: (entityType || 'lead') as NotificationEntityType,
         entityId: entityId || null,
         deepLink: deepLink || null,
         createdBy: createdBy || null,
         tenantId: tenantId || null,
-      })
-    )
+      }),
+    ),
   );
 }
 
 export async function getAdminUserIds(tenantId?: string | null) {
-  const ids = await getUserIdsByRoles(["admin", "super_admin"], tenantId);
+  const ids = await getUserIdsByRoles(['admin', 'super_admin'], tenantId);
   return ids;
 }
 
 export async function getSalesSettings(tenantId?: string | null) {
-  const settingsDocId = tenantId || "sales";
-  const snap = await adminDb.collection("settings").doc(settingsDocId).get();
+  const settingsDocId = tenantId || 'sales';
+  const snap = await adminDb.collection('settings').doc(settingsDocId).get();
   const data = snap.exists ? snap.data() : {};
   return {
     discountApprovalThresholdPct: parseNumber(data?.discountApprovalThresholdPct, 0),
@@ -150,10 +155,10 @@ export async function getSalesSettings(tenantId?: string | null) {
 }
 
 export function normalizeStage(stage?: string) {
-  return parseString(stage, "").trim();
+  return parseString(stage, '').trim();
 }
 
 export function isClosedStage(stage?: string) {
-  const token = String(stage || "").toLowerCase();
-  return token.includes("closed");
+  const token = String(stage || '').toLowerCase();
+  return token.includes('closed');
 }

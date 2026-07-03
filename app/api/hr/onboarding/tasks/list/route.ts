@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireHrAccess, toIso } from "../../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireHrAccess, toIso } from '../../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
@@ -12,11 +12,18 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const userId = String(searchParams.get("userId") || "").trim();
+    const userId = String(searchParams.get('userId') || '').trim();
 
     const query = userId
-      ? adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).where("userId", "==", userId).limit(500)
-      : adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).limit(500);
+      ? adminDb
+          .collection('onboardingTasks')
+          .where('tenantId', '==', access.user.tenantId)
+          .where('userId', '==', userId)
+          .limit(500)
+      : adminDb
+          .collection('onboardingTasks')
+          .where('tenantId', '==', access.user.tenantId)
+          .limit(500);
 
     const snap = await query.get();
     const tasks = snap.docs.map((doc) => {
@@ -31,7 +38,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, tasks });
   } catch (err) {
-    console.error("HR onboarding tasks list error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR onboarding tasks list error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

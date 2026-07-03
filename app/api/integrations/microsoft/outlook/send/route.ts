@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
-import { requireAdmin } from "@/app/api/admin/settings/_utils";
-import { sendEmailViaOutlook } from "@/lib/integrations/outlook";
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/settings/_utils';
+import { sendEmailViaOutlook } from '@/lib/integrations/outlook';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const auth = await requireAdmin();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const body = (await request.json().catch(() => ({}))) as {
       to?: unknown;
@@ -22,7 +23,10 @@ export async function POST(request: Request) {
     };
 
     if (!Array.isArray(body.to) || !body.subject || !body.html) {
-      return NextResponse.json({ ok: false, error: "to[], subject and html are required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'to[], subject and html are required.' },
+        { status: 400 },
+      );
     }
 
     const sent = await sendEmailViaOutlook({
@@ -38,16 +42,16 @@ export async function POST(request: Request) {
       trackOpens: Boolean(body.trackOpens),
       attachments: Array.isArray(body.attachments)
         ? body.attachments.map((attachment) => ({
-            filename: String(attachment.filename || "attachment"),
-            mimeType: String(attachment.mimeType || "application/octet-stream"),
-            base64Content: String(attachment.base64Content || ""),
+            filename: String(attachment.filename || 'attachment'),
+            mimeType: String(attachment.mimeType || 'application/octet-stream'),
+            base64Content: String(attachment.base64Content || ''),
           }))
         : undefined,
     });
 
     return NextResponse.json({ ok: true, message: sent });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to send Outlook email.";
+    const message = error instanceof Error ? error.message : 'Failed to send Outlook email.';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

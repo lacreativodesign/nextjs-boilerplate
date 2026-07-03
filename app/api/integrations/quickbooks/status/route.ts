@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { getQuickBooksIntegration, updateQuickBooksSettings } from "@/lib/integrations/quickbooks";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getQuickBooksIntegration, updateQuickBooksSettings } from '@/lib/integrations/quickbooks';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
@@ -26,8 +26,11 @@ export async function GET() {
       },
     });
   } catch (error: any) {
-    console.error("quickbooks/status error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load QuickBooks status." }, { status: 500 });
+    console.error('quickbooks/status error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to load QuickBooks status.' },
+      { status: 500 },
+    );
   }
 }
 
@@ -42,7 +45,10 @@ export async function PUT(request: NextRequest) {
     const settings = await updateQuickBooksSettings(auth.user.tenantId, auth.user.uid, body || {});
     return NextResponse.json({ ok: true, settings });
   } catch (error: any) {
-    console.error("quickbooks/status PUT error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to update settings." }, { status: 500 });
+    console.error('quickbooks/status PUT error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to update settings.' },
+      { status: 500 },
+    );
   }
 }

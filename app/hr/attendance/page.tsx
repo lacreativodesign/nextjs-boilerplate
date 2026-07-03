@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import dayjs from "dayjs";
+import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 
 export default function AttendanceDashboard() {
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -9,8 +9,8 @@ export default function AttendanceDashboard() {
   const [month, setMonth] = useState(dayjs());
   const [employees, setEmployees] = useState<any[]>([]);
 
-  const start = month.startOf("month");
-  const end = month.endOf("month");
+  const start = month.startOf('month');
+  const end = month.endOf('month');
   const daysInMonth = end.date();
 
   useEffect(() => {
@@ -20,9 +20,7 @@ export default function AttendanceDashboard() {
   async function fetchData() {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/hr/attendance?month=${month.format("YYYY-MM")}`
-      );
+      const res = await fetch(`/api/hr/attendance?month=${month.format('YYYY-MM')}`);
       const data = await res.json();
 
       if (data.success) {
@@ -36,22 +34,18 @@ export default function AttendanceDashboard() {
   }
 
   function getDayAttendance(empId: string, day: number) {
-    const dateStr = month.date(day).format("YYYY-MM-DD");
+    const dateStr = month.date(day).format('YYYY-MM-DD');
 
-    const logs = attendance.filter(
-      (a) => a.userId === empId && a.date === dateStr
-    );
+    const logs = attendance.filter((a) => a.userId === empId && a.date === dateStr);
 
     if (logs.length === 0) return null;
 
-    const login = logs.find((l) => l.type === "login");
-    const logout = logs.find((l) => l.type === "logout");
+    const login = logs.find((l) => l.type === 'login');
+    const logout = logs.find((l) => l.type === 'logout');
 
     let total = 0;
     if (login && logout) {
-      total =
-        new Date(logout.timestamp).getTime() -
-        new Date(login.timestamp).getTime();
+      total = new Date(logout.timestamp).getTime() - new Date(login.timestamp).getTime();
     }
 
     const hrs = (total / (1000 * 60 * 60)).toFixed(1);
@@ -73,42 +67,37 @@ export default function AttendanceDashboard() {
       <div
         style={{
           marginBottom: 30,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "var(--surface-card)",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'var(--surface-card)',
           padding: 20,
           borderRadius: 10,
-          border: "1px solid var(--border-subtle)",
+          border: '1px solid var(--border-subtle)',
         }}
       >
-        <h2 style={{ fontSize: 24, fontWeight: 700 }}>
-          Attendance — {month.format("MMMM YYYY")}
-        </h2>
+        <h2 style={{ fontSize: 24, fontWeight: 700 }}>Attendance — {month.format('MMMM YYYY')}</h2>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setMonth(month.subtract(1, "month"))}
-            style={btn}
-          >
+          <button onClick={() => setMonth(month.subtract(1, 'month'))} style={btn}>
             Prev
           </button>
           <button onClick={() => setMonth(dayjs())} style={btn}>
             Today
           </button>
-          <button
-            onClick={() => setMonth(month.add(1, "month"))}
-            style={btn}
-          >
+          <button onClick={() => setMonth(month.add(1, 'month'))} style={btn}>
             Next
           </button>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="w-full overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-card)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "var(--surface-muted)" }}>
+      <div
+        className="w-full overflow-x-auto rounded-xl"
+        style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-card)' }}
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'var(--surface-muted)' }}>
             <tr>
               <th style={th}>Employee</th>
               {Array.from({ length: daysInMonth }).map((_, i) => (
@@ -127,24 +116,23 @@ export default function AttendanceDashboard() {
                 {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
                   const info = getDayAttendance(emp.id, dayIndex + 1);
                   const isWeekend =
-                    month.date(dayIndex + 1).day() === 0 ||
-                    month.date(dayIndex + 1).day() === 6;
+                    month.date(dayIndex + 1).day() === 0 || month.date(dayIndex + 1).day() === 6;
 
-                  let bg = "var(--surface-card)";
-                  let text = "var(--text-primary)";
+                  let bg = 'var(--surface-card)';
+                  let text = 'var(--text-primary)';
 
                   if (isWeekend) {
-                    bg = "var(--surface-muted)";
+                    bg = 'var(--surface-muted)';
                   }
 
                   if (info?.hrs) {
-                    bg = "var(--status-success-bg, #dcfce7)"; // green
-                    text = "var(--status-success-text, #166534)";
+                    bg = 'var(--status-success-bg, #dcfce7)'; // green
+                    text = 'var(--status-success-text, #166534)';
                   }
 
                   return (
                     <td key={dayIndex} style={{ ...td, background: bg, color: text }}>
-                      {info?.hrs || ""}
+                      {info?.hrs || ''}
                     </td>
                   );
                 })}
@@ -158,34 +146,34 @@ export default function AttendanceDashboard() {
 }
 
 const btn = {
-  padding: "8px 16px",
-  background: "var(--erp-blue)",
-  color: "var(--text-on-inverse, #fff)",
-  border: "none",
+  padding: '8px 16px',
+  background: 'var(--erp-blue)',
+  color: 'var(--text-on-inverse, #fff)',
+  border: 'none',
   borderRadius: 8,
-  cursor: "pointer",
+  cursor: 'pointer',
 };
 
 const th = {
   padding: 10,
   fontSize: 13,
-  minWidth: "80px",
+  minWidth: '80px',
   fontWeight: 600,
-  borderBottom: "1px solid var(--border-subtle)",
-  whiteSpace: "nowrap" as const,
+  borderBottom: '1px solid var(--border-subtle)',
+  whiteSpace: 'nowrap' as const,
 };
 
 const td = {
   padding: 10,
   fontSize: 13,
-  textAlign: "center" as const,
-  borderBottom: "1px solid var(--border-subtle)",
+  textAlign: 'center' as const,
+  borderBottom: '1px solid var(--border-subtle)',
 };
 
 const tdLabel = {
   padding: 10,
   fontSize: 14,
   fontWeight: 600,
-  borderBottom: "1px solid var(--border-subtle)",
-  whiteSpace: "nowrap" as const,
+  borderBottom: '1px solid var(--border-subtle)',
+  whiteSpace: 'nowrap' as const,
 };

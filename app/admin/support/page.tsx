@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { CreateTicketModal } from "@/components/support/CreateTicketModal";
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { CreateTicketModal } from '@/components/support/CreateTicketModal';
 
-type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-type TicketPriority = "low" | "medium" | "high" | "urgent";
+type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 type TicketRow = {
   id: string;
@@ -21,16 +21,17 @@ type TicketRow = {
 };
 
 function badgeClass(value: TicketStatus | TicketPriority) {
-  if (value === "urgent" || value === "high") return "bg-red-100 text-red-700";
-  if (value === "in_progress" || value === "medium") return "bg-amber-100 text-amber-800";
-  if (value === "resolved" || value === "closed" || value === "low") return "bg-emerald-100 text-emerald-800";
-  return "bg-blue-100 text-blue-800";
+  if (value === 'urgent' || value === 'high') return 'bg-red-100 text-red-700';
+  if (value === 'in_progress' || value === 'medium') return 'bg-amber-100 text-amber-800';
+  if (value === 'resolved' || value === 'closed' || value === 'low')
+    return 'bg-emerald-100 text-emerald-800';
+  return 'bg-blue-100 text-blue-800';
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "-";
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString();
 }
 
@@ -45,7 +46,7 @@ export default function SupportTicketsPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/support/tickets", { cache: "no-store" });
+      const response = await fetch('/api/support/tickets', { cache: 'no-store' });
       const body = (await response.json().catch(() => null)) as
         | {
             tickets?: TicketRow[];
@@ -58,7 +59,7 @@ export default function SupportTicketsPage() {
         if (body && !Array.isArray(body) && body.error) {
           setError(body.error);
         } else {
-          setError("Failed to load support tickets.");
+          setError('Failed to load support tickets.');
         }
         setTickets([]);
         return;
@@ -70,7 +71,7 @@ export default function SupportTicketsPage() {
         setTickets(body?.tickets || []);
       }
     } catch {
-      setError("Failed to load support tickets.");
+      setError('Failed to load support tickets.');
       setTickets([]);
     } finally {
       setLoading(false);
@@ -119,23 +120,34 @@ export default function SupportTicketsPage() {
             {tickets.map((ticket) => (
               <tr key={ticket.id} className="hover:bg-[var(--table-row-hover)]">
                 <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
-                  <Link href={`/admin/support/${ticket.id}`} className="text-blue-700 hover:underline">
+                  <Link
+                    href={`/admin/support/${ticket.id}`}
+                    className="text-blue-700 hover:underline"
+                  >
                     {ticket.ticketNumber}
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-[var(--text-muted)]">{ticket.title}</td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${badgeClass(ticket.status)}`}>
+                  <span
+                    className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${badgeClass(ticket.status)}`}
+                  >
                     {ticket.status}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${badgeClass(ticket.priority)}`}>
+                  <span
+                    className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${badgeClass(ticket.priority)}`}
+                  >
                     {ticket.priority}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(ticket.createdAt)}</td>
-                <td className="px-4 py-3 text-[var(--text-muted)]">{ticket.assignedTo?.name || "Unassigned"}</td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">
+                  {formatDate(ticket.createdAt)}
+                </td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">
+                  {ticket.assignedTo?.name || 'Unassigned'}
+                </td>
               </tr>
             ))}
           </tbody>

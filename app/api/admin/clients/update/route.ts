@@ -1,32 +1,37 @@
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { createClientInvite } from "@/lib/clientInvites";
-import { createProjectFromDeal } from "@/lib/projects";
-import { generateNextOrderId } from "@/lib/orderIds";
-import { logEvent } from "@/lib/audit";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { createNotification, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
-import { getCurrentUser } from "../../_utils";
-import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
-import { assertPermission, Permission } from "../../../../lib/permissions";
-import { getClientIp } from "@/lib/security";
-import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { createClientInvite } from '@/lib/clientInvites';
+import { createProjectFromDeal } from '@/lib/projects';
+import { generateNextOrderId } from '@/lib/orderIds';
+import { logEvent } from '@/lib/audit';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import {
+  createNotification,
+  createNotifications,
+  getUserIdsByRoles,
+  getUsersByRoles,
+} from '@/lib/notifications';
+import { getCurrentUser } from '../../_utils';
+import { normalizeOptionalSlug, normalizeSlugArray, slugify } from '@/lib/segments';
+import { assertPermission, Permission } from '../../../../lib/permissions';
+import { getClientIp } from '@/lib/security';
+import { dispatchWebhookEvent } from '@/lib/webhooks/webhook-delivery';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function canEditClient(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "sales_manager";
+  const r = (role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin' || r === 'sales_manager';
 }
 
 function canMarkPaid(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin";
+  const r = (role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin';
 }
 
 function cleanString(v: any) {
-  return String(v ?? "").trim();
+  return String(v ?? '').trim();
 }
 
 function normalizeEmail(v: any) {
@@ -34,33 +39,51 @@ function normalizeEmail(v: any) {
 }
 
 function toNumber(v: any) {
-  const n = Number(String(v ?? "").replace(/,/g, "").trim());
+  const n = Number(
+    String(v ?? '')
+      .replace(/,/g, '')
+      .trim(),
+  );
   return Number.isFinite(n) ? n : 0;
 }
 
-function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid" | null {
+function canonicalPaymentStatus(input: any): 'Unpaid' | 'Partially Paid' | 'Paid' | null {
   if (input === undefined || input === null) return null;
-  const s = String(input ?? "").trim().toLowerCase();
-  if (s === "paid") return "Paid";
-  if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
-  if (s === "unpaid") return "Unpaid";
+  const s = String(input ?? '')
+    .trim()
+    .toLowerCase();
+  if (s === 'paid') return 'Paid';
+  if (s === 'partially paid' || s === 'partial' || s === 'partially_paid' || s === 'partiallypaid')
+    return 'Partially Paid';
+  if (s === 'unpaid') return 'Unpaid';
   return null; // ignore unknown
 }
 
 function isPaidLike(v: string | undefined | null) {
-  const s = String(v ?? "").trim().toLowerCase();
-  return s === "paid" || s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid";
+  const s = String(v ?? '')
+    .trim()
+    .toLowerCase();
+  return (
+    s === 'paid' ||
+    s === 'partially paid' ||
+    s === 'partial' ||
+    s === 'partially_paid' ||
+    s === 'partiallypaid'
+  );
 }
 
-function normalizeExistingStatus(v: any): "Unpaid" | "Partially Paid" | "Paid" {
-  const s = String(v ?? "").trim().toLowerCase();
-  if (s === "paid") return "Paid";
-  if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
-  return "Unpaid";
+function normalizeExistingStatus(v: any): 'Unpaid' | 'Partially Paid' | 'Paid' {
+  const s = String(v ?? '')
+    .trim()
+    .toLowerCase();
+  if (s === 'paid') return 'Paid';
+  if (s === 'partially paid' || s === 'partial' || s === 'partially_paid' || s === 'partiallypaid')
+    return 'Partially Paid';
+  return 'Unpaid';
 }
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
@@ -75,16 +98,17 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 
 async function handleUpdate(req: Request) {
   const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  if (!canEditClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!canEditClient(me.role))
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   try {
     assertPermission(me.role, Permission.EditClients);
   } catch {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
-  const rawTenantId = String(me.tenantId || "").trim();
+  const rawTenantId = String(me.tenantId || '').trim();
   if (!rawTenantId) {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const tenantId = normalizeTenantId(rawTenantId);
 
@@ -96,18 +120,20 @@ async function handleUpdate(req: Request) {
   }
 
   const id = cleanString(body?.id || body?.clientId);
-  if (!id) return NextResponse.json({ ok: false, error: "Client id is required" }, { status: 400 });
+  if (!id) return NextResponse.json({ ok: false, error: 'Client id is required' }, { status: 400 });
 
   try {
-    const ref = db.collection("clients").doc(id);
+    const ref = db.collection('clients').doc(id);
     const snap = await ref.get();
-    if (!snap.exists) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+    if (!snap.exists)
+      return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
 
     const existing = (snap.data() || {}) as any;
     if (docTenantId(existing) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
-    if (existing?.deletedAt) return NextResponse.json({ ok: false, error: "Client not found" }, { status: 404 });
+    if (existing?.deletedAt)
+      return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
 
     const existingPayment = normalizeExistingStatus(existing?.paymentStatus);
     const existingOrderId = cleanString(existing?.orderId);
@@ -121,12 +147,18 @@ async function handleUpdate(req: Request) {
     // Primary email is immutable to preserve 1 email per account
     const incomingEmail = cleanString(body?.primaryContactEmail);
     if (incomingEmail && incomingEmail.toLowerCase() !== existingEmailLower) {
-      return NextResponse.json({ ok: false, error: "Primary contact email cannot be changed" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Primary contact email cannot be changed' },
+        { status: 400 },
+      );
     }
 
     // If they are trying to set paid/partial, only admin/super_admin can do it.
     if (requestedPayment && wantsPaidLike && !canMarkPaid(me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden: only Admin can mark paid" }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'Forbidden: only Admin can mark paid' },
+        { status: 403 },
+      );
     }
 
     // Build safe update payload (only known fields)
@@ -148,34 +180,44 @@ async function handleUpdate(req: Request) {
     }
 
     // Contact
-    if (body?.primaryContactName !== undefined) updateData.primaryContactName = cleanString(body.primaryContactName);
-    if (body?.primaryContactTitle !== undefined) updateData.primaryContactTitle = cleanString(body.primaryContactTitle);
+    if (body?.primaryContactName !== undefined)
+      updateData.primaryContactName = cleanString(body.primaryContactName);
+    if (body?.primaryContactTitle !== undefined)
+      updateData.primaryContactTitle = cleanString(body.primaryContactTitle);
     if (body?.primaryContactEmail !== undefined) {
       updateData.primaryContactEmail = existingEmail;
       updateData.primaryContactEmailLower = existingEmailLower;
     }
-    if (body?.primaryContactPhone !== undefined) updateData.primaryContactPhone = cleanString(body.primaryContactPhone);
+    if (body?.primaryContactPhone !== undefined)
+      updateData.primaryContactPhone = cleanString(body.primaryContactPhone);
 
     // Lifecycle
     if (body?.salesStage !== undefined) updateData.salesStage = cleanString(body.salesStage);
     if (requestedPayment) updateData.paymentStatus = requestedPayment;
-    if (body?.retainerStatus !== undefined) updateData.retainerStatus = cleanString(body.retainerStatus);
+    if (body?.retainerStatus !== undefined)
+      updateData.retainerStatus = cleanString(body.retainerStatus);
 
     // Ownership
     if (body?.salesOwner !== undefined) updateData.salesOwner = cleanString(body.salesOwner);
-    if (body?.accountManager !== undefined) updateData.accountManager = cleanString(body.accountManager);
-    if (body?.productionOwner !== undefined) updateData.productionOwner = cleanString(body.productionOwner);
+    if (body?.accountManager !== undefined)
+      updateData.accountManager = cleanString(body.accountManager);
+    if (body?.productionOwner !== undefined)
+      updateData.productionOwner = cleanString(body.productionOwner);
 
     // Finance
-    if (body?.totalContractValueUsd !== undefined) updateData.totalContractValueUsd = toNumber(body.totalContractValueUsd);
+    if (body?.totalContractValueUsd !== undefined)
+      updateData.totalContractValueUsd = toNumber(body.totalContractValueUsd);
     if (body?.totalPaidUsd !== undefined) updateData.totalPaidUsd = toNumber(body.totalPaidUsd);
-    if (body?.openBalanceUsd !== undefined) updateData.openBalanceUsd = toNumber(body.openBalanceUsd);
+    if (body?.openBalanceUsd !== undefined)
+      updateData.openBalanceUsd = toNumber(body.openBalanceUsd);
 
-    if (body?.segmentServices !== undefined) updateData.segmentServices = normalizeSlugArray(body.segmentServices);
+    if (body?.segmentServices !== undefined)
+      updateData.segmentServices = normalizeSlugArray(body.segmentServices);
     if (body?.segmentBusinessType !== undefined) {
       updateData.segmentBusinessType = normalizeOptionalSlug(body.segmentBusinessType);
     }
-    if (body?.segmentIndustry !== undefined) updateData.segmentIndustry = normalizeOptionalSlug(body.segmentIndustry);
+    if (body?.segmentIndustry !== undefined)
+      updateData.segmentIndustry = normalizeOptionalSlug(body.segmentIndustry);
     if (body?.segmentGeo !== undefined) {
       updateData.segmentGeo = normalizeOptionalSlug(body.segmentGeo);
     } else if (body?.country !== undefined) {
@@ -189,7 +231,8 @@ async function handleUpdate(req: Request) {
     // Also: if already paid but missing orderId (edge case), generate it when admin hits update again.
     const becomesPaidNow = requestedPayment ? isPaidLike(requestedPayment) : false;
     const shouldGenerateOrderId =
-      (becomesPaidNow && !existingOrderId) || (wasPaidLike && !existingOrderId && requestedPayment === null);
+      (becomesPaidNow && !existingOrderId) ||
+      (wasPaidLike && !existingOrderId && requestedPayment === null);
 
     let newOrderId: string | null = null;
     if (shouldGenerateOrderId && canMarkPaid(me.role)) {
@@ -203,7 +246,7 @@ async function handleUpdate(req: Request) {
     updateData.lastActivity = now;
 
     const changes = Object.entries(updateData)
-      .filter(([field]) => !["updatedAt", "lastActivity"].includes(field))
+      .filter(([field]) => !['updatedAt', 'lastActivity'].includes(field))
       .filter(([field, value]) => value !== (existing as Record<string, unknown>)[field])
       .map(([field, value]) => ({
         field,
@@ -217,33 +260,33 @@ async function handleUpdate(req: Request) {
       try {
         await logEvent({
           tenantId,
-          type: "client.updated",
-          title: "Client updated",
-          description: `${existing.companyName || "Client"} updated.`,
-          entityType: "client",
+          type: 'client.updated',
+          title: 'Client updated',
+          description: `${existing.companyName || 'Client'} updated.`,
+          entityType: 'client',
           entityId: id,
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: me.name || me.fullName || '' },
           metadata: {
             ip: getClientIp(req),
-            userAgent: req.headers.get("user-agent") || "",
+            userAgent: req.headers.get('user-agent') || '',
           },
           audit: {
-            action: "update",
-            resource: "customer",
+            action: 'update',
+            resource: 'customer',
             resourceId: id,
             changes,
           },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
     }
 
-    const becomesPaid = requestedPayment === "Paid" && existingPayment !== "Paid";
+    const becomesPaid = requestedPayment === 'Paid' && existingPayment !== 'Paid';
     if (becomesPaid) {
       const dealDocs = await queryWithTenant(
-        db.collection("deals").where("clientId", "==", id).orderBy("createdAt", "desc").limit(1),
-        tenantId
+        db.collection('deals').where('clientId', '==', id).orderBy('createdAt', 'desc').limit(1),
+        tenantId,
       );
       const dealDoc = dealDocs[0] || null;
       const dealData = dealDoc?.data() || {};
@@ -258,33 +301,33 @@ async function handleUpdate(req: Request) {
           tenantId,
           deal: { id: dealDoc.id, ...dealData },
           client: { id, ...existing, ...updateData },
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: me.name || me.fullName || '' },
         });
 
         await logEvent({
           tenantId,
-          type: "deal.paid_marked",
-          title: "Deal marked paid",
-          description: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
-          entityType: "deal",
+          type: 'deal.paid_marked',
+          title: 'Deal marked paid',
+          description: `${dealData.dealName || dealData.leadName || 'Deal'} marked paid.`,
+          entityType: 'deal',
           entityId: dealDoc.id,
-          actor: { uid: me.uid, name: me.name || me.fullName || "" },
+          actor: { uid: me.uid, name: me.name || me.fullName || '' },
         });
 
-        const recipients = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
-        const assignedAmUid = String(dealData.ownerId || dealData.ownerUid || "");
+        const recipients = await getUsersByRoles(['admin', 'super_admin', 'finance'], tenantId);
+        const assignedAmUid = String(dealData.ownerId || dealData.ownerUid || '');
         if (assignedAmUid) {
-          recipients.push({ uid: assignedAmUid, role: "am", tenantId, email: "" });
+          recipients.push({ uid: assignedAmUid, role: 'am', tenantId, email: '' });
         }
         await createNotifications({
           recipients,
           tenantId,
-          type: "deal_paid",
-          title: "Deal marked paid",
-          message: `${dealData.dealName || dealData.leadName || "Deal"} marked paid.`,
-          entityType: "deal",
+          type: 'deal_paid',
+          title: 'Deal marked paid',
+          message: `${dealData.dealName || dealData.leadName || 'Deal'} marked paid.`,
+          entityType: 'deal',
           entityId: dealDoc.id,
-          createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
+          createdBy: { uid: me.uid, name: me.name || me.fullName || '' },
         });
       }
 
@@ -302,23 +345,23 @@ async function handleUpdate(req: Request) {
             portalInviteSentAt: now,
             updatedAt: now,
           },
-          { merge: true }
+          { merge: true },
         );
 
-        const notifyIds = await getUserIdsByRoles(["admin", "super_admin", "am_manager"], tenantId);
+        const notifyIds = await getUserIdsByRoles(['admin', 'super_admin', 'am_manager'], tenantId);
         await Promise.all(
           notifyIds.map((uid) =>
             createNotification({
               toUserId: uid,
-              title: "Client portal invite queued",
+              title: 'Client portal invite queued',
               body: `${email} will receive a portal activation email.`,
-              entityType: "client",
+              entityType: 'client',
               entityId: id,
-              deepLink: "/admin/clients",
+              deepLink: '/admin/clients',
               tenantId,
-              createdBy: { uid: me.uid, name: me.name || me.fullName || "" },
-            })
-          )
+              createdBy: { uid: me.uid, name: me.name || me.fullName || '' },
+            }),
+          ),
         );
       }
     }
@@ -326,24 +369,27 @@ async function handleUpdate(req: Request) {
     try {
       await dispatchWebhookEvent({
         tenantId,
-        event: "client.updated",
-        entityType: "client",
+        event: 'client.updated',
+        entityType: 'client',
         entityId: id,
         payload: {
           clientId: id,
-          companyName: String(updateData.companyName || existing.companyName || ""),
+          companyName: String(updateData.companyName || existing.companyName || ''),
           changes,
-          orderId: newOrderId || existingOrderId || "",
+          orderId: newOrderId || existingOrderId || '',
         },
         actor: { uid: me.uid, email: me.email || null, role: me.role || null },
       });
     } catch (webhookError) {
-      console.error("client.updated webhook dispatch error:", webhookError);
+      console.error('client.updated webhook dispatch error:', webhookError);
     }
 
-    return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || "" });
+    return NextResponse.json({ ok: true, id, orderId: newOrderId || existingOrderId || '' });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message ?? "Failed to update client" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? 'Failed to update client' },
+      { status: 500 },
+    );
   }
 }
 

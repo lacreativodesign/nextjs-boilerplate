@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type ClientRecord = {
   id: string;
@@ -23,11 +23,10 @@ type ClientsPayload = {
   error?: string;
 };
 
-
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString();
 }
 
@@ -35,35 +34,35 @@ export default function AMClientsPage() {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ClientRecord | null>(null);
 
   const tableShellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
-    border: "1px solid var(--border-subtle)",
-    background: "var(--surface-card)",
-    boxShadow: "var(--shadow-md)",
+    border: '1px solid var(--border-subtle)',
+    background: 'var(--surface-card)',
+    boxShadow: 'var(--shadow-md)',
   };
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
@@ -73,15 +72,18 @@ export default function AMClientsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/am/clients/list", { credentials: "include", cache: "no-store" });
+        const res = await fetch('/api/am/clients/list', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const payload = (await res.json()) as ClientsPayload;
         if (!res.ok || !payload.ok) {
-          throw new Error(payload?.error || "Unable to load clients.");
+          throw new Error(payload?.error || 'Unable to load clients.');
         }
         if (active) setClients(payload.clients || []);
       } catch (err: any) {
         console.error(err);
-        if (active) setError(err?.message || "Unable to load clients.");
+        if (active) setError(err?.message || 'Unable to load clients.');
       } finally {
         if (active) setLoading(false);
       }
@@ -100,7 +102,7 @@ export default function AMClientsPage() {
         client.primaryContactEmail,
         client.primaryContactPhone,
       ]),
-    [clients, search]
+    [clients, search],
   );
 
   const openDrawer = (client: ClientRecord) => {
@@ -121,7 +123,10 @@ export default function AMClientsPage() {
       </div>
 
       <div style={tableShellStyle}>
-        <div className="flex flex-wrap items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+        <div
+          className="flex flex-wrap items-center justify-between gap-3"
+          style={{ marginBottom: 12 }}
+        >
           <div style={{ fontSize: 18, fontWeight: 700 }}>Client Directory</div>
           <button className="btn ghost" onClick={() => window.location.reload()}>
             Refresh
@@ -133,39 +138,46 @@ export default function AMClientsPage() {
       </div>
 
       {error && (
-        <div className="card" style={{ padding: 12, borderRadius: 12, borderColor: "var(--danger)" }}>
-          <span style={{ color: "var(--danger)", fontSize: 13 }}>{error}</span>
+        <div
+          className="card"
+          style={{ padding: 12, borderRadius: 12, borderColor: 'var(--danger)' }}
+        >
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</span>
         </div>
       )}
 
       <div style={tableShellStyle}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
                 <th style={headerCellStyle}>Client</th>
                 <th style={headerCellStyle}>Primary Contact</th>
-                <th style={{ ...headerCellStyle, textAlign: "center" }}>Projects</th>
-                <th style={{ ...headerCellStyle, textAlign: "center" }}>Last Activity</th>
-                <th style={{ ...headerCellStyle, textAlign: "center" }}>Actions</th>
+                <th style={{ ...headerCellStyle, textAlign: 'center' }}>Projects</th>
+                <th style={{ ...headerCellStyle, textAlign: 'center' }}>Last Activity</th>
+                <th style={{ ...headerCellStyle, textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((client) => (
                 <tr key={client.id}>
-                  <td style={{ ...cellStyle, textAlign: "left" }}>
+                  <td style={{ ...cellStyle, textAlign: 'left' }}>
                     {client.companyName}
                     <div style={{ fontSize: 12, opacity: 0.7 }}>
-                      {client.industry || "—"} · {client.country || "—"}
+                      {client.industry || '—'} · {client.country || '—'}
                     </div>
                   </td>
-                  <td style={{ ...cellStyle, textAlign: "left" }}>
-                    {client.primaryContactName || "—"}
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{client.primaryContactEmail || ""}</div>
+                  <td style={{ ...cellStyle, textAlign: 'left' }}>
+                    {client.primaryContactName || '—'}
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                      {client.primaryContactEmail || ''}
+                    </div>
                   </td>
-                  <td style={{ ...cellStyle, textAlign: "center" }}>{client.totalProjects || 0}</td>
-                  <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(client.lastActivity)}</td>
-                  <td style={{ ...cellStyle, textAlign: "center" }}>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>{client.totalProjects || 0}</td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    {fmtDate(client.lastActivity)}
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
                     <button className="btn ghost" onClick={() => openDrawer(client)}>
                       View
                     </button>
@@ -174,14 +186,20 @@ export default function AMClientsPage() {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
+                  <td
+                    colSpan={5}
+                    style={{ ...cellStyle, textAlign: 'center', padding: '24px 16px' }}
+                  >
                     No clients found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={5} style={{ ...cellStyle, textAlign: "center", padding: "24px 16px" }}>
+                  <td
+                    colSpan={5}
+                    style={{ ...cellStyle, textAlign: 'center', padding: '24px 16px' }}
+                  >
                     Loading clients...
                   </td>
                 </tr>
@@ -193,31 +211,34 @@ export default function AMClientsPage() {
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
-          <div className="drawer-panel drawer-panel--sm" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="drawer-panel drawer-panel--sm"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-title">{selected.companyName}</div>
             <div className="drawer-subtitle">Client Profile (Read-only)</div>
-            <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
+            <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
               <div>
-                <strong>Primary Contact:</strong> {selected.primaryContactName || "—"}
+                <strong>Primary Contact:</strong> {selected.primaryContactName || '—'}
               </div>
               <div>
-                <strong>Email:</strong> {selected.primaryContactEmail || "—"}
+                <strong>Email:</strong> {selected.primaryContactEmail || '—'}
               </div>
               <div>
-                <strong>Phone:</strong> {selected.primaryContactPhone || "—"}
+                <strong>Phone:</strong> {selected.primaryContactPhone || '—'}
               </div>
               <div>
-                <strong>Timezone:</strong> {selected.timezone || "—"}
+                <strong>Timezone:</strong> {selected.timezone || '—'}
               </div>
               <div>
-                <strong>Industry:</strong> {selected.industry || "—"}
+                <strong>Industry:</strong> {selected.industry || '—'}
               </div>
               <div>
-                <strong>Country:</strong> {selected.country || "—"}
+                <strong>Country:</strong> {selected.country || '—'}
               </div>
             </div>
             <div style={{ marginTop: 18 }}>
-              <button className="btn ghost" onClick={closeDrawer} style={{ width: "100%" }}>
+              <button className="btn ghost" onClick={closeDrawer} style={{ width: '100%' }}>
                 Close
               </button>
             </div>

@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createFinanceEvent, requireFinance, serverTimestamp } from "../../_utils";
-import { createNotification, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
-import { sendEmail } from "@/lib/email/email-service";
-import { writeAuditLog } from "@/lib/tenant/audit";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createFinanceEvent, requireFinance, serverTimestamp } from '../../_utils';
+import { createNotification, getUserIdsByRoles, getUsersByRoles } from '@/lib/notifications';
+import { sendEmail } from '@/lib/email/email-service';
+import { writeAuditLog } from '@/lib/tenant/audit';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -15,30 +15,34 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const month = String(body?.month || "").trim();
+    const month = String(body?.month || '').trim();
     if (!month) {
-      return NextResponse.json({ ok: false, error: "Month is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Month is required.' }, { status: 400 });
     }
 
     const [tenantSnap, existingSnap] = await Promise.all([
-      adminDb.collection("tenants").doc(auth.user.tenantId).get(),
-      adminDb.collection("payroll")
-        .where("tenantId", "==", auth.user.tenantId)
-        .where("isDeleted", "==", false)
-        .limit(500).get(),
+      adminDb.collection('tenants').doc(auth.user.tenantId).get(),
+      adminDb
+        .collection('payroll')
+        .where('tenantId', '==', auth.user.tenantId)
+        .where('isDeleted', '==', false)
+        .limit(500)
+        .get(),
     ]);
-    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || "USD").trim() || "USD";
+    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || 'USD').trim() || 'USD';
     const existingUserIds = new Set(
       existingSnap.docs
         .map((doc) => doc.data() || {})
-        .filter((row) => String(row.month || "") === month)
-        .map((row) => String(row.userId || ""))
+        .filter((row) => String(row.month || '') === month)
+        .map((row) => String(row.userId || '')),
     );
 
-    const usersSnap = await adminDb.collection("users")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("isDeleted", "==", false)
-      .limit(500).get();
+    const usersSnap = await adminDb
+      .collection('users')
+      .where('tenantId', '==', auth.user.tenantId)
+      .where('isDeleted', '==', false)
+      .limit(500)
+      .get();
     const batch = adminDb.batch();
     let created = 0;
 
@@ -48,17 +52,17 @@ export async function POST(req: Request) {
       if (!salary || Number.isNaN(salary)) return;
       if (existingUserIds.has(doc.id)) return;
 
-      const ref = adminDb.collection("payroll").doc();
+      const ref = adminDb.collection('payroll').doc();
       batch.set(ref, {
         userId: doc.id,
-        userName: data.name || data.fullName || data.displayName || "",
-        role: data.role || "",
+        userName: data.name || data.fullName || data.displayName || '',
+        role: data.role || '',
         currency: tenantCurrency,
         baseSalaryPkr: salary,
         commissionPkr: null,
         commissionUsd: null,
         month,
-        status: "Draft",
+        status: 'Draft',
         paidAt: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -73,38 +77,41 @@ export async function POST(req: Request) {
       await writeAuditLog({
         tenantId: auth.user.tenantId || null,
         actorUserId: auth.user.uid,
-        actorName: auth.user.name || auth.user.email || "",
+        actorName: auth.user.name || auth.user.email || '',
         actorRole: auth.user.role,
-        actionType: "payroll.run",
-        entityType: "payroll",
+        actionType: 'payroll.run',
+        entityType: 'payroll',
         entityId: month,
         metadata: { month, rowsCreated: created, tenantId: auth.user.tenantId },
       }).catch(() => undefined);
     }
 
-    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-    const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"], auth.user.tenantId || null);
+    const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
+    const financeIds = await getUserIdsByRoles(
+      ['finance', 'admin', 'super_admin'],
+      auth.user.tenantId || null,
+    );
     await Promise.all(
       financeIds.map((uid) =>
         createNotification({
           toUserId: uid,
-          title: "Payroll run created",
+          title: 'Payroll run created',
           body: `Payroll run for ${month} created (${created} entries).`,
-          type: "info",
-          entityType: "payroll",
+          type: 'info',
+          entityType: 'payroll',
           entityId: null,
-          deepLink: "/finance/payroll",
+          deepLink: '/finance/payroll',
           createdBy: { uid: auth.user.uid, name: actorName },
           tenantId: auth.user.tenantId || null,
-        })
-      )
+        }),
+      ),
     );
 
     await createFinanceEvent({
-      type: "finance.payroll_run",
-      title: "Payroll run created",
+      type: 'finance.payroll_run',
+      title: 'Payroll run created',
       description: `Payroll run for ${month} created (${created} entries).`,
-      entityType: "payroll",
+      entityType: 'payroll',
       entityId: undefined,
       createdByUid: auth.user.uid,
       createdByName: actorName,
@@ -112,12 +119,14 @@ export async function POST(req: Request) {
     });
 
     // Email finance + admin about payroll run — non-blocking
-    getUsersByRoles(["finance", "admin"], auth.user.tenantId || "").then((recipients) => {
-      return Promise.all(recipients.map((recipient) =>
-        sendEmail({
-          to: recipient.email || "",
-          subject: `💰 Payroll run created — ${month}`,
-          html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+    getUsersByRoles(['finance', 'admin'], auth.user.tenantId || '')
+      .then((recipients) => {
+        return Promise.all(
+          recipients.map((recipient) =>
+            sendEmail({
+              to: recipient.email || '',
+              subject: `💰 Payroll run created — ${month}`,
+              html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#F8FAFC;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -132,25 +141,27 @@ export async function POST(req: Request) {
 <table width="100%" cellpadding="10" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:8px;margin:16px 0;">
 <tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Month</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${month}</td></tr>
 <tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Entries created</td><td style="font-weight:700;color:#012167;text-align:right;border-bottom:1px solid #F1F5F9;">${created}</td></tr>
-<tr><td style="color:#64748B;font-size:13px;">Run by</td><td style="font-weight:600;color:#1E293B;text-align:right;">${actorName || "Finance"}</td></tr>
+<tr><td style="color:#64748B;font-size:13px;">Run by</td><td style="font-weight:600;color:#1E293B;text-align:right;">${actorName || 'Finance'}</td></tr>
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/finance/payroll" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Review Payroll →</a></p>
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
-        }).catch(() => {})
-      ));
-    }).catch((err) => console.error("[PAYROLL_RUN] Failed to email finance", err));
+            }).catch(() => {}),
+          ),
+        );
+      })
+      .catch((err) => console.error('[PAYROLL_RUN] Failed to email finance', err));
 
     return NextResponse.json({ ok: true, created });
   } catch (err: any) {
-    console.error("finance/payroll run error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/payroll run error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to run payroll.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to run payroll.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

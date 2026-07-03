@@ -1,24 +1,31 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { getPermissionTemplateByKey } from "@/lib/permissions/templates";
-import { assignRolesToUser, invalidateUserPermissionCache } from "@/lib/permissions/permission-engine";
-import type { RoleDocument } from "@/lib/permissions/types";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getPermissionTemplateByKey } from '@/lib/permissions/templates';
+import {
+  assignRolesToUser,
+  invalidateUserPermissionCache,
+} from '@/lib/permissions/permission-engine';
+import type { RoleDocument } from '@/lib/permissions/types';
 
 export async function POST(request: Request) {
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = (await request.json()) as { templateKey?: string; roleName?: string; userId?: string };
-    const template = getPermissionTemplateByKey(body.templateKey || "");
+    const body = (await request.json()) as {
+      templateKey?: string;
+      roleName?: string;
+      userId?: string;
+    };
+    const template = getPermissionTemplateByKey(body.templateKey || '');
 
     if (!template) {
-      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
     const now = Date.now();
-    const roleRef = adminDb.collection("permission_roles").doc();
+    const roleRef = adminDb.collection('permission_roles').doc();
     const role: RoleDocument = {
       id: roleRef.id,
       tenantId: auth.user.tenantId,
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ role }, { status: 201 });
   } catch (error) {
-    console.error("Apply template error", error);
-    return NextResponse.json({ error: "Failed to apply template" }, { status: 500 });
+    console.error('Apply template error', error);
+    return NextResponse.json({ error: 'Failed to apply template' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 interface TaxRate {
   id: string;
@@ -25,16 +25,16 @@ export function TaxRateSelector({ value, onChange, disabled, className }: TaxRat
   useEffect(() => {
     const fetchTaxRates = async () => {
       try {
-        const response = await fetch("/api/finance/tax-rates/list?active=true", {
-          method: "GET",
-          cache: "no-store",
+        const response = await fetch('/api/finance/tax-rates/list?active=true', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const data = (await response.json()) as { ok?: boolean; taxRates?: TaxRate[] };
         if (data.ok && Array.isArray(data.taxRates)) {
           setTaxRates(data.taxRates);
         }
       } catch (error) {
-        console.error("Failed to fetch tax rates:", error);
+        console.error('Failed to fetch tax rates:', error);
       } finally {
         setLoading(false);
       }
@@ -45,12 +45,15 @@ export function TaxRateSelector({ value, onChange, disabled, className }: TaxRat
 
   return (
     <div className={className}>
-      <label htmlFor="tax-rate" className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+      <label
+        htmlFor="tax-rate"
+        className="mb-1 block text-sm font-medium text-[var(--text-primary)]"
+      >
         Tax Rate
       </label>
       <select
         id="tax-rate"
-        value={value || ""}
+        value={value || ''}
         onChange={(e) => onChange(e.target.value || null)}
         disabled={disabled || loading}
         className="input"
@@ -59,7 +62,7 @@ export function TaxRateSelector({ value, onChange, disabled, className }: TaxRat
         {taxRates.map((rate) => (
           <option key={rate.id} value={rate.id}>
             {rate.name} ({rate.rate}%) - {rate.country}
-            {rate.region ? ` / ${rate.region}` : ""}
+            {rate.region ? ` / ${rate.region}` : ''}
           </option>
         ))}
       </select>

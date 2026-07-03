@@ -1,24 +1,28 @@
-import { NextResponse } from "next/server";
-import { requireAdmin } from "@/app/api/admin/settings/_utils";
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/settings/_utils';
 import {
   importExternalCalendars,
   importGoogleCalendarEvents,
   upsertBizostoEventToGoogleCalendar,
-} from "@/lib/integrations/google-calendar";
+} from '@/lib/integrations/google-calendar';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const auth = await requireAdmin();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const body = await request.json().catch(() => ({}));
-    const action = String(body?.action || "sync_bizosto_to_google");
+    const action = String(body?.action || 'sync_bizosto_to_google');
 
-    if (action === "sync_bizosto_to_google") {
+    if (action === 'sync_bizosto_to_google') {
       if (!Array.isArray(body?.events)) {
-        return NextResponse.json({ ok: false, error: "events array is required." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: 'events array is required.' },
+          { status: 400 },
+        );
       }
       const results = [];
       for (const event of body.events) {
@@ -28,13 +32,16 @@ export async function POST(request: Request) {
           includeMeetLink: Boolean(body.includeMeetLinks),
           event: {
             bizostoEventId: String(event.bizostoEventId),
-            summary: String(event.summary || ""),
+            summary: String(event.summary || ''),
             description: event.description ? String(event.description) : undefined,
             start: String(event.start),
             end: String(event.end),
             timezone: event.timezone ? String(event.timezone) : undefined,
             attendees: Array.isArray(event.attendees)
-              ? event.attendees.map((attendee: any) => ({ email: String(attendee.email), displayName: attendee.displayName }))
+              ? event.attendees.map((attendee: any) => ({
+                  email: String(attendee.email),
+                  displayName: attendee.displayName,
+                }))
               : undefined,
             location: event.location ? String(event.location) : undefined,
           },
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, action, results });
     }
 
-    if (action === "sync_google_to_bizosto") {
+    if (action === 'sync_google_to_bizosto') {
       const imported = await importGoogleCalendarEvents({
         tenantId: auth.user.tenantId,
         calendarId: body.calendarId,
@@ -55,13 +62,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, action, ...imported });
     }
 
-    if (action === "import_external_calendars") {
+    if (action === 'import_external_calendars') {
       const calendars = await importExternalCalendars(auth.user.tenantId);
       return NextResponse.json({ ok: true, action, calendars: calendars.items || [] });
     }
 
-    return NextResponse.json({ ok: false, error: "Unsupported calendar sync action." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: 'Unsupported calendar sync action.' },
+      { status: 400 },
+    );
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Calendar sync failed." }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Calendar sync failed.' },
+      { status: 500 },
+    );
   }
 }

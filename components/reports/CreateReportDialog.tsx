@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import { Dialog } from "@headlessui/react";
-import { useMemo, useState } from "react";
-import type { Aggregation, ReportFilter, ReportSchedule } from "@/types/reports";
-import { apiFetch } from "@/lib/api/client";
+import { Dialog } from '@headlessui/react';
+import { useMemo, useState } from 'react';
+import type { Aggregation, ReportFilter, ReportSchedule } from '@/types/reports';
+import { apiFetch } from '@/lib/api/client';
 
 const DATA_SOURCES = [
-  "invoices",
-  "payments",
-  "expenses",
-  "customers",
-  "products",
-  "users",
-  "audit_logs",
-  "projects",
-  "deals",
-  "leads",
-  "opportunities",
+  'invoices',
+  'payments',
+  'expenses',
+  'customers',
+  'products',
+  'users',
+  'audit_logs',
+  'projects',
+  'deals',
+  'leads',
+  'opportunities',
 ];
 
-const CHART_TYPES = ["line", "bar", "pie", "area", "scatter", "table", "metric"] as const;
+const CHART_TYPES = ['line', 'bar', 'pie', 'area', 'scatter', 'table', 'metric'] as const;
 
-const CATEGORY_OPTIONS = ["financial", "sales", "operations", "inventory", "hr", "custom"] as const;
+const CATEGORY_OPTIONS = ['financial', 'sales', 'operations', 'inventory', 'hr', 'custom'] as const;
 
 type FilterRow = ReportFilter & { id: string };
 
@@ -31,32 +31,34 @@ type DragItem = {
 };
 
 const defaultSchedule: ReportSchedule = {
-  frequency: "weekly",
+  frequency: 'weekly',
   dayOfWeek: 1,
-  time: "09:00",
-  timezone: "UTC",
+  time: '09:00',
+  timezone: 'UTC',
   enabled: true,
 };
 
 export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<(typeof CATEGORY_OPTIONS)[number]>("financial");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<(typeof CATEGORY_OPTIONS)[number]>('financial');
   const [dataSource, setDataSource] = useState(DATA_SOURCES[0]);
-  const [chartType, setChartType] = useState<(typeof CHART_TYPES)[number]>("bar");
-  const [xAxis, setXAxis] = useState("createdAt");
-  const [yAxis, setYAxis] = useState<string[]>(["total"]);
+  const [chartType, setChartType] = useState<(typeof CHART_TYPES)[number]>('bar');
+  const [xAxis, setXAxis] = useState('createdAt');
+  const [yAxis, setYAxis] = useState<string[]>(['total']);
   const [groupByItems, setGroupByItems] = useState<DragItem[]>([]);
-  const [groupByInput, setGroupByInput] = useState("");
+  const [groupByInput, setGroupByInput] = useState('');
   const [aggregations, setAggregations] = useState<Aggregation[]>([]);
-  const [filters, setFilters] = useState<FilterRow[]>([{ id: "1", field: "", operator: "equals", value: "" }]);
+  const [filters, setFilters] = useState<FilterRow[]>([
+    { id: '1', field: '', operator: 'equals', value: '' },
+  ]);
   const [isPublic, setIsPublic] = useState(false);
-  const [sharedWith, setSharedWith] = useState("");
+  const [sharedWith, setSharedWith] = useState('');
   const [isScheduled, setIsScheduled] = useState(false);
   const [schedule, setSchedule] = useState<ReportSchedule>(defaultSchedule);
-  const [recipients, setRecipients] = useState("");
+  const [recipients, setRecipients] = useState('');
 
   const isValid = useMemo(() => {
     if (!name.trim()) return false;
@@ -66,22 +68,22 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
   }, [name, dataSource, isScheduled, recipients, schedule]);
 
   const reset = () => {
-    setName("");
-    setDescription("");
-    setCategory("financial");
+    setName('');
+    setDescription('');
+    setCategory('financial');
     setDataSource(DATA_SOURCES[0]);
-    setChartType("bar");
-    setXAxis("createdAt");
-    setYAxis(["total"]);
+    setChartType('bar');
+    setXAxis('createdAt');
+    setYAxis(['total']);
     setGroupByItems([]);
-    setGroupByInput("");
+    setGroupByInput('');
     setAggregations([]);
-    setFilters([{ id: "1", field: "", operator: "equals", value: "" }]);
+    setFilters([{ id: '1', field: '', operator: 'equals', value: '' }]);
     setIsPublic(false);
-    setSharedWith("");
+    setSharedWith('');
     setIsScheduled(false);
     setSchedule(defaultSchedule);
-    setRecipients("");
+    setRecipients('');
   };
 
   const closeDialog = () => {
@@ -111,11 +113,13 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
   };
 
   const addAggregation = () => {
-    setAggregations((prev) => [...prev, { field: "", function: "sum", alias: "" }]);
+    setAggregations((prev) => [...prev, { field: '', function: 'sum', alias: '' }]);
   };
 
   const updateAggregation = (index: number, key: keyof Aggregation, value: string) => {
-    setAggregations((prev) => prev.map((agg, idx) => (idx === index ? { ...agg, [key]: value } : agg)));
+    setAggregations((prev) =>
+      prev.map((agg, idx) => (idx === index ? { ...agg, [key]: value } : agg)),
+    );
   };
 
   const removeAggregation = (index: number) => {
@@ -123,16 +127,25 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
   };
 
   const updateFilter = (id: string, key: keyof ReportFilter, value: unknown) => {
-    setFilters((prev) => prev.map((filter) => (filter.id === id ? { ...filter, [key]: value } : filter)));
+    setFilters((prev) =>
+      prev.map((filter) => (filter.id === id ? { ...filter, [key]: value } : filter)),
+    );
   };
 
   const addFilter = () => {
-    setFilters((prev) => [...prev, { id: Date.now().toString(), field: "", operator: "equals", value: "" }]);
+    setFilters((prev) => [
+      ...prev,
+      { id: Date.now().toString(), field: '', operator: 'equals', value: '' },
+    ]);
   };
 
   const removeFilter = (id: string) => {
     const next = filters.filter((filter) => filter.id !== id);
-    setFilters(next.length ? next : [{ id: Date.now().toString(), field: "", operator: "equals", value: "" }]);
+    setFilters(
+      next.length
+        ? next
+        : [{ id: Date.now().toString(), field: '', operator: 'equals', value: '' }],
+    );
   };
 
   const handleSubmit = async () => {
@@ -154,22 +167,22 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
       },
       isPublic,
       sharedWith: sharedWith
-        .split(",")
+        .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
       isScheduled,
       schedule: isScheduled ? schedule : undefined,
       recipients: isScheduled
         ? recipients
-            .split(",")
+            .split(',')
             .map((entry) => entry.trim())
             .filter(Boolean)
         : undefined,
     };
 
-    const response = await apiFetch("/api/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await apiFetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -177,7 +190,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
 
     if (!response.ok) {
       const error = await response.json();
-      window.alert(error.error || "Unable to create report");
+      window.alert(error.error || 'Unable to create report');
       return;
     }
 
@@ -187,11 +200,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn"
-      >
+      <button type="button" onClick={() => setOpen(true)} className="btn">
         New Report
       </button>
 
@@ -210,7 +219,9 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
               <div className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Name</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Name
+                    </label>
                     <input
                       value={name}
                       onChange={(event) => setName(event.target.value)}
@@ -219,10 +230,14 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Category</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Category
+                    </label>
                     <select
                       value={category}
-                      onChange={(event) => setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])}
+                      onChange={(event) =>
+                        setCategory(event.target.value as (typeof CATEGORY_OPTIONS)[number])
+                      }
                       className="input"
                     >
                       {CATEGORY_OPTIONS.map((option) => (
@@ -235,7 +250,9 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Description</label>
+                  <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                    Description
+                  </label>
                   <textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -246,7 +263,9 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Data Source</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Data Source
+                    </label>
                     <select
                       value={dataSource}
                       onChange={(event) => setDataSource(event.target.value)}
@@ -260,10 +279,14 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Chart Type</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Chart Type
+                    </label>
                     <select
                       value={chartType}
-                      onChange={(event) => setChartType(event.target.value as (typeof CHART_TYPES)[number])}
+                      onChange={(event) =>
+                        setChartType(event.target.value as (typeof CHART_TYPES)[number])
+                      }
                       className="input"
                     >
                       {CHART_TYPES.map((type) => (
@@ -277,7 +300,9 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">X-Axis</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      X-Axis
+                    </label>
                     <input
                       value={xAxis}
                       onChange={(event) => setXAxis(event.target.value)}
@@ -286,10 +311,19 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Y-Axis (comma separated)</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Y-Axis (comma separated)
+                    </label>
                     <input
-                      value={yAxis.join(",")}
-                      onChange={(event) => setYAxis(event.target.value.split(",").map((v) => v.trim()).filter(Boolean))}
+                      value={yAxis.join(',')}
+                      onChange={(event) =>
+                        setYAxis(
+                          event.target.value
+                            .split(',')
+                            .map((v) => v.trim())
+                            .filter(Boolean),
+                        )
+                      }
                       className="input"
                       placeholder="revenue"
                     />
@@ -299,8 +333,12 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Group By</div>
-                      <p className="text-xs text-[var(--text-muted)]">Drag items to reorder grouping priority.</p>
+                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                        Group By
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Drag items to reorder grouping priority.
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -310,10 +348,10 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         className="input"
                         placeholder="Field"
                         onKeyDown={(event) => {
-                          if (event.key === "Enter") {
+                          if (event.key === 'Enter') {
                             event.preventDefault();
                             addGroupBy(groupByInput);
-                            setGroupByInput("");
+                            setGroupByInput('');
                           }
                         }}
                       />
@@ -321,7 +359,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         type="button"
                         onClick={() => {
                           addGroupBy(groupByInput);
-                          setGroupByInput("");
+                          setGroupByInput('');
                         }}
                         className="btn subtle"
                       >
@@ -337,11 +375,11 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         <div
                           key={item.id}
                           draggable
-                          onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)}
+                          onDragStart={(event) => event.dataTransfer.setData('text/plain', item.id)}
                           onDragOver={(event) => event.preventDefault()}
                           onDrop={(event) => {
                             event.preventDefault();
-                            const sourceId = event.dataTransfer.getData("text/plain");
+                            const sourceId = event.dataTransfer.getData('text/plain');
                             updateGroupByOrder(sourceId, item.id);
                           }}
                           className="flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
@@ -363,14 +401,14 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Aggregations</div>
-                      <p className="text-xs text-[var(--text-muted)]">Add aggregation functions for metrics.</p>
+                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                        Aggregations
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Add aggregation functions for metrics.
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={addAggregation}
-                      className="btn subtle"
-                    >
+                    <button type="button" onClick={addAggregation} className="btn subtle">
                       + Add
                     </button>
                   </div>
@@ -379,27 +417,36 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                   ) : (
                     <div className="space-y-2">
                       {aggregations.map((agg, index) => (
-                        <div key={`${agg.field}-${index}`} className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr_auto]">
+                        <div
+                          key={`${agg.field}-${index}`}
+                          className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr_auto]"
+                        >
                           <input
                             value={agg.field}
-                            onChange={(event) => updateAggregation(index, "field", event.target.value)}
+                            onChange={(event) =>
+                              updateAggregation(index, 'field', event.target.value)
+                            }
                             className="input"
                             placeholder="Field"
                           />
                           <select
                             value={agg.function}
-                            onChange={(event) => updateAggregation(index, "function", event.target.value)}
+                            onChange={(event) =>
+                              updateAggregation(index, 'function', event.target.value)
+                            }
                             className="input"
                           >
-                            {"sum,avg,count,min,max".split(",").map((fn) => (
+                            {'sum,avg,count,min,max'.split(',').map((fn) => (
                               <option key={fn} value={fn}>
                                 {fn}
                               </option>
                             ))}
                           </select>
                           <input
-                            value={agg.alias || ""}
-                            onChange={(event) => updateAggregation(index, "alias", event.target.value)}
+                            value={agg.alias || ''}
+                            onChange={(event) =>
+                              updateAggregation(index, 'alias', event.target.value)
+                            }
                             className="input"
                             placeholder="Alias"
                           />
@@ -419,14 +466,14 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Filters</div>
-                      <p className="text-xs text-[var(--text-muted)]">Define base filters for the report.</p>
+                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                        Filters
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Define base filters for the report.
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={addFilter}
-                      className="btn subtle"
-                    >
+                    <button type="button" onClick={addFilter} className="btn subtle">
                       + Add Filter
                     </button>
                   </div>
@@ -434,31 +481,33 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <div key={filter.id} className="grid gap-2 md:grid-cols-[1.2fr_1fr_1.5fr_auto]">
                       <input
                         value={filter.field}
-                        onChange={(event) => updateFilter(filter.id, "field", event.target.value)}
+                        onChange={(event) => updateFilter(filter.id, 'field', event.target.value)}
                         className="input"
                         placeholder="Field"
                       />
                       <select
                         value={filter.operator}
-                        onChange={(event) => updateFilter(filter.id, "operator", event.target.value)}
+                        onChange={(event) =>
+                          updateFilter(filter.id, 'operator', event.target.value)
+                        }
                         className="input"
                       >
                         {[
-                          "equals",
-                          "notEquals",
-                          "contains",
-                          "notContains",
-                          "startsWith",
-                          "endsWith",
-                          "greaterThan",
-                          "greaterThanOrEqual",
-                          "lessThan",
-                          "lessThanOrEqual",
-                          "between",
-                          "in",
-                          "notIn",
-                          "isNull",
-                          "isNotNull",
+                          'equals',
+                          'notEquals',
+                          'contains',
+                          'notContains',
+                          'startsWith',
+                          'endsWith',
+                          'greaterThan',
+                          'greaterThanOrEqual',
+                          'lessThan',
+                          'lessThanOrEqual',
+                          'between',
+                          'in',
+                          'notIn',
+                          'isNull',
+                          'isNotNull',
                         ].map((op) => (
                           <option key={op} value={op}>
                             {op}
@@ -466,11 +515,11 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         ))}
                       </select>
                       <input
-                        value={String(filter.value ?? "")}
-                        onChange={(event) => updateFilter(filter.id, "value", event.target.value)}
+                        value={String(filter.value ?? '')}
+                        onChange={(event) => updateFilter(filter.id, 'value', event.target.value)}
                         className="input"
                         placeholder="Value"
-                        disabled={filter.operator === "isNull" || filter.operator === "isNotNull"}
+                        disabled={filter.operator === 'isNull' || filter.operator === 'isNotNull'}
                       />
                       <button
                         type="button"
@@ -486,13 +535,21 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
 
               <div className="space-y-5">
                 <div className="card p-4">
-                  <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Visibility</div>
+                  <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                    Visibility
+                  </div>
                   <label className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                    <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(event) => setIsPublic(event.target.checked)}
+                    />
                     Public (all users in tenant)
                   </label>
                   <div className="mt-3 space-y-2">
-                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Share with users</label>
+                    <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Share with users
+                    </label>
                     <input
                       value={sharedWith}
                       onChange={(event) => setSharedWith(event.target.value)}
@@ -505,8 +562,12 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 <div className="card p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Scheduling</div>
-                      <p className="text-xs text-[var(--text-muted)]">Email reports on a cadence.</p>
+                      <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                        Scheduling
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Email reports on a cadence.
+                      </p>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
                       <input
@@ -522,11 +583,16 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                     <div className="mt-4 space-y-3">
                       <div className="grid gap-2 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Frequency</label>
+                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                            Frequency
+                          </label>
                           <select
                             value={schedule.frequency}
                             onChange={(event) =>
-                              setSchedule((prev) => ({ ...prev, frequency: event.target.value as ReportSchedule["frequency"] }))
+                              setSchedule((prev) => ({
+                                ...prev,
+                                frequency: event.target.value as ReportSchedule['frequency'],
+                              }))
                             }
                             className="input"
                           >
@@ -536,32 +602,43 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Time</label>
+                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                            Time
+                          </label>
                           <input
                             type="time"
                             value={schedule.time}
-                            onChange={(event) => setSchedule((prev) => ({ ...prev, time: event.target.value }))}
+                            onChange={(event) =>
+                              setSchedule((prev) => ({ ...prev, time: event.target.value }))
+                            }
                             className="input"
                           />
                         </div>
                       </div>
 
-                      {schedule.frequency === "weekly" ? (
+                      {schedule.frequency === 'weekly' ? (
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Day of week</label>
+                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                            Day of week
+                          </label>
                           <select
                             value={schedule.dayOfWeek}
-                            onChange={(event) => setSchedule((prev) => ({ ...prev, dayOfWeek: Number(event.target.value) }))}
+                            onChange={(event) =>
+                              setSchedule((prev) => ({
+                                ...prev,
+                                dayOfWeek: Number(event.target.value),
+                              }))
+                            }
                             className="input"
                           >
                             {[
-                              "Sunday",
-                              "Monday",
-                              "Tuesday",
-                              "Wednesday",
-                              "Thursday",
-                              "Friday",
-                              "Saturday",
+                              'Sunday',
+                              'Monday',
+                              'Tuesday',
+                              'Wednesday',
+                              'Thursday',
+                              'Friday',
+                              'Saturday',
                             ].map((label, index) => (
                               <option key={label} value={index}>
                                 {label}
@@ -571,32 +648,45 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                         </div>
                       ) : null}
 
-                      {schedule.frequency === "monthly" ? (
+                      {schedule.frequency === 'monthly' ? (
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Day of month</label>
+                          <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                            Day of month
+                          </label>
                           <input
                             type="number"
                             min={1}
                             max={31}
                             value={schedule.dayOfMonth || 1}
-                            onChange={(event) => setSchedule((prev) => ({ ...prev, dayOfMonth: Number(event.target.value) }))}
+                            onChange={(event) =>
+                              setSchedule((prev) => ({
+                                ...prev,
+                                dayOfMonth: Number(event.target.value),
+                              }))
+                            }
                             className="input"
                           />
                         </div>
                       ) : null}
 
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Timezone</label>
+                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                          Timezone
+                        </label>
                         <input
                           value={schedule.timezone}
-                          onChange={(event) => setSchedule((prev) => ({ ...prev, timezone: event.target.value }))}
+                          onChange={(event) =>
+                            setSchedule((prev) => ({ ...prev, timezone: event.target.value }))
+                          }
                           className="input"
                           placeholder="UTC"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">Recipients</label>
+                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                          Recipients
+                        </label>
                         <input
                           value={recipients}
                           onChange={(event) => setRecipients(event.target.value)}
@@ -611,11 +701,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeDialog}
-                className="btn ghost"
-              >
+              <button type="button" onClick={closeDialog} className="btn ghost">
                 Cancel
               </button>
               <button
@@ -624,7 +710,7 @@ export function CreateReportDialog({ onSuccess }: { onSuccess: () => void }) {
                 onClick={handleSubmit}
                 className="btn"
               >
-                {loading ? "Creating..." : "Create Report"}
+                {loading ? 'Creating...' : 'Create Report'}
               </button>
             </div>
           </Dialog.Panel>

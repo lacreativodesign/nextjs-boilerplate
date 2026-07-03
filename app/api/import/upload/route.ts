@@ -1,41 +1,49 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { BulkImportService } from "@/lib/import/bulk-import";
-import { validateFile } from "@/lib/files/validation";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { BulkImportService } from '@/lib/import/bulk-import';
+import { validateFile } from '@/lib/files/validation';
 
 const bodySchema = z.object({
-  entity: z.enum(["clients", "invoices", "products", "employees", "projects", "tasks", "time_entries"]),
+  entity: z.enum([
+    'clients',
+    'invoices',
+    'products',
+    'employees',
+    'projects',
+    'tasks',
+    'time_entries',
+  ]),
   mappings: z
     .array(
       z.object({
         sourceColumn: z.string().min(1),
         destinationField: z.string().min(1),
         required: z.boolean().optional(),
-        transform: z.enum(["string", "number", "boolean", "date"]).optional(),
-      })
+        transform: z.enum(['string', 'number', 'boolean', 'date']).optional(),
+      }),
     )
     .default([]),
   templateId: z.string().optional().nullable(),
 });
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const me = await getCurrentUser();
-    if (!me?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!me?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const formData = await request.formData();
-    const file = formData.get("file");
+    const file = formData.get('file');
     const payload = bodySchema.parse({
-      entity: formData.get("entity"),
-      mappings: JSON.parse(String(formData.get("mappings") || "[]")),
-      templateId: formData.get("templateId") ? String(formData.get("templateId")) : null,
+      entity: formData.get('entity'),
+      mappings: JSON.parse(String(formData.get('mappings') || '[]')),
+      templateId: formData.get('templateId') ? String(formData.get('templateId')) : null,
     });
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "file is required" }, { status: 400 });
+      return NextResponse.json({ error: 'file is required' }, { status: 400 });
     }
 
     const fileValidation = validateFile(file.name, file.size);
@@ -57,7 +65,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, jobId });
   } catch (error) {
-    console.error("Import upload error", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 400 });
+    console.error('Import upload error', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Upload failed' },
+      { status: 400 },
+    );
   }
 }

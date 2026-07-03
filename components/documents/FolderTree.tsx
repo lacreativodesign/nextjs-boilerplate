@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import type { Folder } from "@/types/documents";
+import { useEffect, useState } from 'react';
+import type { Folder } from '@/types/documents';
 
 function FolderNode({
   folder,
@@ -23,7 +23,7 @@ function FolderNode({
       const data = await response.json();
       setChildren(data.folders || []);
     } catch (error) {
-      console.error("Failed to load folders", error);
+      console.error('Failed to load folders', error);
     } finally {
       setLoading(false);
     }
@@ -43,14 +43,14 @@ function FolderNode({
           type="button"
           onClick={toggleExpanded}
           className="text-xs text-[var(--text-muted)]"
-          aria-label={expanded ? "Collapse folder" : "Expand folder"}
+          aria-label={expanded ? 'Collapse folder' : 'Expand folder'}
         >
-          {expanded ? "▾" : "▸"}
+          {expanded ? '▾' : '▸'}
         </button>
         <button
           type="button"
           onClick={() => onFolderSelect(folder.id)}
-          className={`text-sm ${currentFolder === folder.id ? "font-semibold text-[var(--erp-blue)]" : "text-[var(--text-primary)]"}`}
+          className={`text-sm ${currentFolder === folder.id ? 'font-semibold text-[var(--erp-blue)]' : 'text-[var(--text-primary)]'}`}
         >
           {folder.name}
         </button>
@@ -87,11 +87,11 @@ export function FolderTree({
   useEffect(() => {
     const loadRoots = async () => {
       try {
-        const response = await fetch("/api/folders");
+        const response = await fetch('/api/folders');
         const data = await response.json();
         setFolders(data.folders || []);
       } catch (error) {
-        console.error("Failed to load root folders", error);
+        console.error('Failed to load root folders', error);
       }
     };
 
@@ -103,7 +103,7 @@ export function FolderTree({
       <button
         type="button"
         onClick={() => onFolderSelect(null)}
-        className={`text-sm ${currentFolder === null ? "font-semibold text-[var(--erp-blue)]" : "text-[var(--text-primary)]"}`}
+        className={`text-sm ${currentFolder === null ? 'font-semibold text-[var(--erp-blue)]' : 'text-[var(--text-primary)]'}`}
       >
         All Documents
       </button>

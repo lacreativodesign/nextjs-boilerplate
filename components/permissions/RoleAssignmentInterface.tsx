@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 type UserRecord = { id: string; email?: string; name?: string };
 type RoleRecord = { id: string; name: string };

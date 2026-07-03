@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
 type WorkloadResponse = {
   ok: boolean;
@@ -9,7 +9,7 @@ type WorkloadResponse = {
   workloads: Array<{
     resourceId: string;
     resourceName: string;
-    resourceType: "employee" | "equipment" | "material";
+    resourceType: 'employee' | 'equipment' | 'material';
     totalCapacityHours: number;
     totalAllocatedHours: number;
     utilizationPercent: number;
@@ -81,27 +81,30 @@ export default function ProductionResourcesPage() {
       try {
         setLoading(true);
         const [workloadRes, utilizationRes] = await Promise.all([
-          fetch("/api/production/resources/workload", { cache: "no-store" }),
-          fetch("/api/production/resources/utilization?period=weekly", { cache: "no-store" }),
+          fetch('/api/production/resources/workload', { cache: 'no-store' }),
+          fetch('/api/production/resources/utilization?period=weekly', { cache: 'no-store' }),
         ]);
 
-        const [workloadJson, utilizationJson] = await Promise.all([workloadRes.json(), utilizationRes.json()]);
+        const [workloadJson, utilizationJson] = await Promise.all([
+          workloadRes.json(),
+          utilizationRes.json(),
+        ]);
 
         if (!active) return;
 
         if (!workloadRes.ok || !workloadJson.ok) {
-          throw new Error(workloadJson?.error || "Unable to load workload");
+          throw new Error(workloadJson?.error || 'Unable to load workload');
         }
 
         if (!utilizationRes.ok || !utilizationJson.ok) {
-          throw new Error(utilizationJson?.error || "Unable to load utilization");
+          throw new Error(utilizationJson?.error || 'Unable to load utilization');
         }
 
         setWorkload(workloadJson);
         setUtilization(utilizationJson);
       } catch (err: any) {
         if (!active) return;
-        setError(err?.message || "Unable to load resource planning data.");
+        setError(err?.message || 'Unable to load resource planning data.');
       } finally {
         if (active) setLoading(false);
       }
@@ -138,7 +141,10 @@ export default function ProductionResourcesPage() {
   for (const row of workload.workloads) {
     for (const assignment of row.assignments) {
       const key = assignment.taskId || assignment.id;
-      const existing = taskRows.get(key) || { taskName: assignment.taskName || key, byResource: new Map() };
+      const existing = taskRows.get(key) || {
+        taskName: assignment.taskName || key,
+        byResource: new Map(),
+      };
       existing.byResource.set(row.resourceId, assignment.allocationHoursPerDay);
       taskRows.set(key, existing);
     }
@@ -153,29 +159,41 @@ export default function ProductionResourcesPage() {
       <section className="kpis">
         <div className="card kpi-card">
           <p className="helper-text mb-1">Total resources</p>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.resources}</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">
+            {utilization.summary.resources}
+          </p>
         </div>
         <div className="card kpi-card">
           <p className="helper-text mb-1">Capacity hours</p>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.totalCapacityHours.toFixed(1)}</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">
+            {utilization.summary.totalCapacityHours.toFixed(1)}
+          </p>
         </div>
         <div className="card kpi-card">
           <p className="helper-text mb-1">Allocated hours</p>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.totalAllocatedHours.toFixed(1)}</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">
+            {utilization.summary.totalAllocatedHours.toFixed(1)}
+          </p>
         </div>
         <div className="card kpi-card">
           <p className="helper-text mb-1">Utilization</p>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{utilization.summary.utilizationPercent.toFixed(1)}%</p>
+          <p className="text-3xl font-bold text-[var(--text-primary)]">
+            {utilization.summary.utilizationPercent.toFixed(1)}%
+          </p>
           <p className="helper-text">{utilization.summary.targetBand}</p>
         </div>
       </section>
 
       {workload.warnings.length > 0 && (
-        <section className="card" style={{ borderColor: "#f59e0b" }}>
+        <section className="card" style={{ borderColor: '#f59e0b' }}>
           <h3 className="section-title mb-3">Over-allocation warnings (&gt;8h/day)</h3>
           {workload.warnings.map((warning) => (
-            <div key={`${warning.resourceId}_${warning.date}`} style={{ fontSize: 13, marginBottom: 6 }}>
-              {warning.resourceName} on {warning.date}: {warning.allocatedHours.toFixed(1)}h allocated ({warning.overflowHours.toFixed(1)}h over)
+            <div
+              key={`${warning.resourceId}_${warning.date}`}
+              style={{ fontSize: 13, marginBottom: 6 }}
+            >
+              {warning.resourceName} on {warning.date}: {warning.allocatedHours.toFixed(1)}h
+              allocated ({warning.overflowHours.toFixed(1)}h over)
             </div>
           ))}
         </section>
@@ -183,11 +201,11 @@ export default function ProductionResourcesPage() {
 
       <section className="card">
         <h3 className="section-title mb-4">Resource workload chart (stacked weekly bars)</h3>
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10 }}>
           {workload.workloads.map((row) => (
             <div key={row.resourceId}>
               <div style={{ fontSize: 13, marginBottom: 6 }}>{row.resourceName}</div>
-              <div style={{ display: "flex", gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4 }}>
                 {weekLabels.map((weekLabel, index) => {
                   const weekDays = row.days.slice(index * 7, index * 7 + 7);
                   const allocated = weekDays.reduce((sum, day) => sum + day.allocatedHours, 0);
@@ -195,9 +213,26 @@ export default function ProductionResourcesPage() {
                   const ratio = (allocated / capacity) * 100;
                   const pct = Math.min(100, ratio);
                   return (
-                    <div key={weekLabel} style={{ flex: 1 }} title={`${weekLabel}: ${allocated.toFixed(1)}h/${capacity.toFixed(1)}h`}>
-                      <div style={{ height: 16, background: "#1f2937", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: ratio > 100 ? "#ef4444" : "#3b82f6" }} />
+                    <div
+                      key={weekLabel}
+                      style={{ flex: 1 }}
+                      title={`${weekLabel}: ${allocated.toFixed(1)}h/${capacity.toFixed(1)}h`}
+                    >
+                      <div
+                        style={{
+                          height: 16,
+                          background: '#1f2937',
+                          borderRadius: 4,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${pct}%`,
+                            height: '100%',
+                            background: ratio > 100 ? '#ef4444' : '#3b82f6',
+                          }}
+                        />
                       </div>
                     </div>
                   );
@@ -210,13 +245,28 @@ export default function ProductionResourcesPage() {
 
       <section className="card">
         <h3 className="section-title mb-4">Resource allocation grid (task × resource)</h3>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid var(--border-color)" }}>Task</th>
+                <th
+                  style={{
+                    textAlign: 'left',
+                    padding: 8,
+                    borderBottom: '1px solid var(--border-color)',
+                  }}
+                >
+                  Task
+                </th>
                 {workload.workloads.map((row) => (
-                  <th key={row.resourceId} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid var(--border-color)" }}>
+                  <th
+                    key={row.resourceId}
+                    style={{
+                      textAlign: 'left',
+                      padding: 8,
+                      borderBottom: '1px solid var(--border-color)',
+                    }}
+                  >
                     {row.resourceName}
                   </th>
                 ))}
@@ -225,9 +275,14 @@ export default function ProductionResourcesPage() {
             <tbody>
               {Array.from(taskRows.entries()).map(([taskId, task]) => (
                 <tr key={taskId}>
-                  <td style={{ padding: 8, borderBottom: "1px solid var(--border-color)" }}>{task.taskName}</td>
+                  <td style={{ padding: 8, borderBottom: '1px solid var(--border-color)' }}>
+                    {task.taskName}
+                  </td>
                   {workload.workloads.map((row) => (
-                    <td key={row.resourceId} style={{ padding: 8, borderBottom: "1px solid var(--border-color)" }}>
+                    <td
+                      key={row.resourceId}
+                      style={{ padding: 8, borderBottom: '1px solid var(--border-color)' }}
+                    >
                       {(task.byResource.get(row.resourceId) || 0).toFixed(1)}h/day
                     </td>
                   ))}
@@ -240,13 +295,28 @@ export default function ProductionResourcesPage() {
 
       <section className="card">
         <h3 className="section-title mb-4">Capacity heatmap</h3>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: 6, borderBottom: "1px solid var(--border-color)" }}>Resource</th>
+                <th
+                  style={{
+                    textAlign: 'left',
+                    padding: 6,
+                    borderBottom: '1px solid var(--border-color)',
+                  }}
+                >
+                  Resource
+                </th>
                 {workload.workloads[0]?.days.map((day) => (
-                  <th key={day.date} style={{ textAlign: "left", padding: 6, borderBottom: "1px solid var(--border-color)" }}>
+                  <th
+                    key={day.date}
+                    style={{
+                      textAlign: 'left',
+                      padding: 6,
+                      borderBottom: '1px solid var(--border-color)',
+                    }}
+                  >
                     {day.date.slice(5)}
                   </th>
                 ))}
@@ -255,19 +325,29 @@ export default function ProductionResourcesPage() {
             <tbody>
               {workload.workloads.map((row) => (
                 <tr key={row.resourceId}>
-                  <td style={{ padding: 6, borderBottom: "1px solid var(--border-color)" }}>{row.resourceName}</td>
+                  <td style={{ padding: 6, borderBottom: '1px solid var(--border-color)' }}>
+                    {row.resourceName}
+                  </td>
                   {row.days.map((day) => {
-                    const bg = day.utilizationPercent <= 70 ? "#16a34a" : day.utilizationPercent <= 90 ? "#eab308" : "#dc2626";
+                    const bg =
+                      day.utilizationPercent <= 70
+                        ? '#16a34a'
+                        : day.utilizationPercent <= 90
+                          ? '#eab308'
+                          : '#dc2626';
                     return (
-                      <td key={day.date} style={{ padding: 6, borderBottom: "1px solid var(--border-color)" }}>
+                      <td
+                        key={day.date}
+                        style={{ padding: 6, borderBottom: '1px solid var(--border-color)' }}
+                      >
                         <span
                           style={{
-                            display: "inline-block",
+                            display: 'inline-block',
                             minWidth: 42,
-                            textAlign: "center",
+                            textAlign: 'center',
                             borderRadius: 4,
                             background: bg,
-                            color: "white",
+                            color: 'white',
                           }}
                         >
                           {day.utilizationPercent.toFixed(0)}%
@@ -287,7 +367,8 @@ export default function ProductionResourcesPage() {
           <h3 className="section-title mb-4">Resource leveling suggestions</h3>
           {workload.levelingSuggestions.map((suggestion, idx) => (
             <div key={idx} style={{ marginBottom: 8, fontSize: 13 }}>
-              {suggestion.date}: move {suggestion.transferableHours.toFixed(1)}h from {suggestion.sourceResourceName} to {suggestion.targetResourceName}.
+              {suggestion.date}: move {suggestion.transferableHours.toFixed(1)}h from{' '}
+              {suggestion.sourceResourceName} to {suggestion.targetResourceName}.
             </div>
           ))}
         </section>

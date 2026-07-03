@@ -1,25 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toastError } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toastError } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 
 type ProjectStage =
-  | "Inquiry"
-  | "Deposit"
-  | "Kickoff"
-  | "Draft"
-  | "Review"
-  | "Revisions"
-  | "Final"
-  | "Delivered";
+  'Inquiry' | 'Deposit' | 'Kickoff' | 'Draft' | 'Review' | 'Revisions' | 'Final' | 'Delivered';
 
-type ProjectType = "Website" | "Branding" | "SEO" | "Social" | "Video" | "Other";
+type ProjectType = 'Website' | 'Branding' | 'SEO' | 'Social' | 'Video' | 'Other';
 
-type ProjectPriority = "Low" | "Normal" | "High" | "Urgent";
+type ProjectPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
 
-type ProjectHealth = "On Track" | "At Risk" | "Overdue";
+type ProjectHealth = 'On Track' | 'At Risk' | 'Overdue';
 
 type ProjectRecord = {
   id: string;
@@ -75,79 +68,112 @@ type FilterOption = {
 };
 
 type SortKey =
-  | "projectName"
-  | "clientName"
-  | "projectType"
-  | "stage"
-  | "priority"
-  | "dueDate"
-  | "health"
-  | "updatedAt";
+  | 'projectName'
+  | 'clientName'
+  | 'projectType'
+  | 'stage'
+  | 'priority'
+  | 'dueDate'
+  | 'health'
+  | 'updatedAt';
 
-type SortDir = "asc" | "desc";
+type SortDir = 'asc' | 'desc';
 
-const PROJECT_TYPES: ProjectType[] = ["Website", "Branding", "SEO", "Social", "Video", "Other"];
+const PROJECT_TYPES: ProjectType[] = ['Website', 'Branding', 'SEO', 'Social', 'Video', 'Other'];
 const PIPELINE_STAGES: ProjectStage[] = [
-  "Inquiry",
-  "Deposit",
-  "Kickoff",
-  "Draft",
-  "Review",
-  "Revisions",
-  "Final",
-  "Delivered",
+  'Inquiry',
+  'Deposit',
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
 ];
-const CREATE_PIPELINE_STAGES: ProjectStage[] = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
-const PRIORITIES: ProjectPriority[] = ["Low", "Normal", "High", "Urgent"];
+const CREATE_PIPELINE_STAGES: ProjectStage[] = [
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
+];
+const PRIORITIES: ProjectPriority[] = ['Low', 'Normal', 'High', 'Urgent'];
 
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function toInputDate(iso?: string | null) {
-  if (!iso) return "";
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 10);
 }
 
 function computeHealth(dueDate?: string | null): ProjectHealth {
-  if (!dueDate) return "On Track";
+  if (!dueDate) return 'On Track';
   const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
+  if (Number.isNaN(due.getTime())) return 'On Track';
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = due.getTime() - startOfToday.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return "Overdue";
-  if (diffDays <= 7) return "At Risk";
-  return "On Track";
+  if (diffDays < 0) return 'Overdue';
+  if (diffDays <= 7) return 'At Risk';
+  return 'On Track';
 }
 
 function getBadgeClass(value: string): string {
-  const t = (value || "").toLowerCase();
-  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
-  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
-  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
-  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
-  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
+  const t = (value || '').toLowerCase();
+  if (
+    t.includes('high') ||
+    t.includes('critical') ||
+    t.includes('overdue') ||
+    t.includes('rejected') ||
+    t.includes('failed') ||
+    t.includes('cancelled') ||
+    t.includes('canceled')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500';
+  if (
+    t.includes('medium') ||
+    t.includes('pending') ||
+    t.includes('review') ||
+    t.includes('draft') ||
+    t.includes('waiting')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600';
+  if (
+    t.includes('low') ||
+    t.includes('completed') ||
+    t.includes('approved') ||
+    t.includes('active') ||
+    t.includes('done')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600';
+  if (
+    t.includes('progress') ||
+    t.includes('open') ||
+    t.includes('new') ||
+    t.includes('design') ||
+    t.includes('dev')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]';
+  return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]';
 }
 
 function canCreate(role?: string) {
-  const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "am";
+  const r = (role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin' || r === 'sales_manager' || r === 'am';
 }
 
 function isAdmin(role?: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin";
+  const r = (role || '').toLowerCase();
+  return r === 'admin' || r === 'super_admin';
 }
 
 export default function AllProjectsPage() {
@@ -157,14 +183,14 @@ export default function AllProjectsPage() {
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("");
+  const [query, setQuery] = useState('');
+  const [stageFilter, setStageFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
 
-  const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ProjectRecord | null>(null);
@@ -178,38 +204,38 @@ export default function AllProjectsPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
 
   const [createForm, setCreateForm] = useState({
-    projectName: "",
-    clientId: "",
-    projectType: "Website",
-    stage: "Kickoff",
-    dueDate: "",
-    ownerAmUid: "",
-    priority: "Normal",
+    projectName: '',
+    clientId: '',
+    projectType: 'Website',
+    stage: 'Kickoff',
+    dueDate: '',
+    ownerAmUid: '',
+    priority: 'Normal',
   });
 
   const [editForm, setEditForm] = useState({
-    projectName: "",
-    projectType: "Website",
-    stage: "Inquiry",
-    priority: "Normal",
-    ownerAmUid: "",
-    productionUid: "",
-    startDate: "",
-    dueDate: "",
-    internalNotes: "",
+    projectName: '',
+    projectType: 'Website',
+    stage: 'Inquiry',
+    priority: 'Normal',
+    ownerAmUid: '',
+    productionUid: '',
+    startDate: '',
+    dueDate: '',
+    internalNotes: '',
   });
 
   const ownerOptions = useMemo(() => {
-    const ams = users.filter((u) => (u.role || "").toLowerCase() === "am");
+    const ams = users.filter((u) => (u.role || '').toLowerCase() === 'am');
     if (ams.length) return ams;
-    if (currentUser?.role?.toLowerCase() === "am") {
+    if (currentUser?.role?.toLowerCase() === 'am') {
       return [{ uid: currentUser.uid, name: currentUser.name, role: currentUser.role }];
     }
     return [];
   }, [users, currentUser]);
 
   const productionOptions = useMemo(() => {
-    const prod = users.filter((u) => (u.role || "").toLowerCase() === "production");
+    const prod = users.filter((u) => (u.role || '').toLowerCase() === 'production');
     return prod.length ? prod : users;
   }, [users]);
 
@@ -222,20 +248,20 @@ export default function AllProjectsPage() {
 
       try {
         const params = new URLSearchParams();
-        if (query.trim()) params.set("q", query.trim());
-        if (stageFilter) params.set("stage", stageFilter);
-        if (typeFilter) params.set("type", typeFilter);
-        if (priorityFilter) params.set("priority", priorityFilter);
+        if (query.trim()) params.set('q', query.trim());
+        if (stageFilter) params.set('stage', stageFilter);
+        if (typeFilter) params.set('type', typeFilter);
+        if (priorityFilter) params.set('priority', priorityFilter);
 
         const res = await apiFetch(`/api/admin/projects/list?${params.toString()}`, {
-          method: "GET",
-          cache: "no-store",
+          method: 'GET',
+          cache: 'no-store',
         });
 
         const json = await res.json().catch(() => ({}));
 
         if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || res.statusText || "Failed to load projects");
+          throw new Error(json?.error || res.statusText || 'Failed to load projects');
         }
 
         if (!alive) return;
@@ -243,10 +269,10 @@ export default function AllProjectsPage() {
         setCurrentUser(json?.currentUser || null);
       } catch (e: any) {
         if (!alive) return;
-        console.error("Failed to load projects:", e);
+        console.error('Failed to load projects:', e);
         setError({
-          title: "Projects can’t load yet",
-          message: e?.message || "Unable to load projects right now.",
+          title: 'Projects can’t load yet',
+          message: e?.message || 'Unable to load projects right now.',
         });
         setProjects([]);
       } finally {
@@ -270,21 +296,25 @@ export default function AllProjectsPage() {
 
     async function loadUsers() {
       try {
-        const res = await apiFetch("/api/admin/users/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
 
         const json = await res.json().catch(() => null);
         if (!res.ok) return;
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray((json as any)?.users)
+            ? (json as any).users
+            : [];
         if (!alive) return;
         setUsers(
           list.map((u) => ({
-            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || "",
-            name: u.name || u.fullName || u.displayName || u.email || "",
-            role: u.role || "",
-          }))
+            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || '',
+            name: u.name || u.fullName || u.displayName || u.email || '',
+            role: u.role || '',
+          })),
         );
       } catch {
         if (!alive) return;
@@ -303,9 +333,9 @@ export default function AllProjectsPage() {
 
     async function loadClients() {
       try {
-        const res = await apiFetch("/api/admin/clients/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/clients/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) return;
@@ -315,8 +345,8 @@ export default function AllProjectsPage() {
         setClients(
           list.map((client: any) => ({
             id: client.id,
-            companyName: client.companyName || client.name || "",
-          }))
+            companyName: client.companyName || client.name || '',
+          })),
         );
       } catch {
         if (!alive) return;
@@ -336,7 +366,7 @@ export default function AllProjectsPage() {
   const filtered = useMemo(() => {
     let list = [...projects];
     if (ownerFilter) {
-      if (ownerFilter === "unassigned") {
+      if (ownerFilter === 'unassigned') {
         list = list.filter((p) => !p.ownerAmUid);
       } else {
         list = list.filter((p) => p.ownerAmUid === ownerFilter);
@@ -353,28 +383,28 @@ export default function AllProjectsPage() {
   }, [filtered]);
 
   const sorted = useMemo(() => {
-    const dir = sortDir === "asc" ? 1 : -1;
+    const dir = sortDir === 'asc' ? 1 : -1;
 
     const getVal = (p: ProjectRecord) => {
       switch (sortKey) {
-        case "projectName":
-          return p.projectName || "";
-        case "clientName":
-          return p.clientName || "";
-        case "projectType":
-          return p.projectType || "";
-        case "stage":
-          return p.stage || "";
-        case "priority":
-          return p.priority || "";
-        case "dueDate":
-          return p.dueDate || "";
-        case "health":
-          return p.health || "";
-        case "updatedAt":
-          return p.updatedAt || "";
+        case 'projectName':
+          return p.projectName || '';
+        case 'clientName':
+          return p.clientName || '';
+        case 'projectType':
+          return p.projectType || '';
+        case 'stage':
+          return p.stage || '';
+        case 'priority':
+          return p.priority || '';
+        case 'dueDate':
+          return p.dueDate || '';
+        case 'health':
+          return p.health || '';
+        case 'updatedAt':
+          return p.updatedAt || '';
         default:
-          return "";
+          return '';
       }
     };
 
@@ -382,7 +412,7 @@ export default function AllProjectsPage() {
     arr.sort((a, b) => {
       const av = getVal(a);
       const bv = getVal(b);
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
     return arr;
@@ -392,51 +422,58 @@ export default function AllProjectsPage() {
     return sorted.reduce(
       (acc, project) => {
         acc.total += 1;
-        if (project.health === "Overdue") acc.overdue += 1;
-        if (project.health === "At Risk") acc.atRisk += 1;
-        if (project.health === "On Track") acc.onTrack += 1;
+        if (project.health === 'Overdue') acc.overdue += 1;
+        if (project.health === 'At Risk') acc.atRisk += 1;
+        if (project.health === 'On Track') acc.onTrack += 1;
         return acc;
       },
-      { total: 0, overdue: 0, atRisk: 0, onTrack: 0 }
+      { total: 0, overdue: 0, atRisk: 0, onTrack: 0 },
     );
   }, [sorted]);
 
   function toggleSort(key: SortKey) {
-    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else {
       setSortKey(key);
-      setSortDir(key === "updatedAt" ? "desc" : "asc");
+      setSortDir(key === 'updatedAt' ? 'desc' : 'asc');
     }
   }
 
-  const sortBadge = (key: SortKey) => (key !== sortKey ? "" : sortDir === "asc" ? "▲" : "▼");
+  const sortBadge = (key: SortKey) => (key !== sortKey ? '' : sortDir === 'asc' ? '▲' : '▼');
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    cursor: "pointer",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 900,
   };
 
   const headerLabel = (label: string, badge?: string) => (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <span>{label}</span>
-      <span style={{ width: 14, display: "inline-block", textAlign: "center", opacity: badge ? 1 : 0.35 }}>
-        {badge || "•"}
+      <span
+        style={{
+          width: 14,
+          display: 'inline-block',
+          textAlign: 'center',
+          opacity: badge ? 1 : 0.35,
+        }}
+      >
+        {badge || '•'}
       </span>
     </span>
   );
@@ -445,15 +482,15 @@ export default function AllProjectsPage() {
     setSelected(project);
     setDrawerOpen(true);
     setEditForm({
-      projectName: project.projectName || "",
-      projectType: (project.projectType as ProjectType) || "Website",
-      stage: (project.stage as ProjectStage) || "Inquiry",
-      priority: (project.priority as ProjectPriority) || "Normal",
-      ownerAmUid: project.ownerAmUid || "",
-      productionUid: project.productionUid || "",
+      projectName: project.projectName || '',
+      projectType: (project.projectType as ProjectType) || 'Website',
+      stage: (project.stage as ProjectStage) || 'Inquiry',
+      priority: (project.priority as ProjectPriority) || 'Normal',
+      ownerAmUid: project.ownerAmUid || '',
+      productionUid: project.productionUid || '',
       startDate: toInputDate(project.startDate),
       dueDate: toInputDate(project.dueDate),
-      internalNotes: project.internalNotes || "",
+      internalNotes: project.internalNotes || '',
     });
   }
 
@@ -469,30 +506,30 @@ export default function AllProjectsPage() {
   function closeCreate() {
     setCreateOpen(false);
     setCreateForm({
-      projectName: "",
-      clientId: "",
-      projectType: "Website",
-      stage: "Kickoff",
-      dueDate: "",
-      ownerAmUid: "",
-      priority: "Normal",
+      projectName: '',
+      clientId: '',
+      projectType: 'Website',
+      stage: 'Kickoff',
+      dueDate: '',
+      ownerAmUid: '',
+      priority: 'Normal',
     });
   }
 
   async function refreshList() {
     const params = new URLSearchParams();
-    if (query.trim()) params.set("q", query.trim());
-    if (stageFilter) params.set("stage", stageFilter);
-    if (typeFilter) params.set("type", typeFilter);
-    if (priorityFilter) params.set("priority", priorityFilter);
+    if (query.trim()) params.set('q', query.trim());
+    if (stageFilter) params.set('stage', stageFilter);
+    if (typeFilter) params.set('type', typeFilter);
+    if (priorityFilter) params.set('priority', priorityFilter);
 
     const res = await apiFetch(`/api/admin/projects/list?${params.toString()}`, {
-      method: "GET",
-      cache: "no-store",
+      method: 'GET',
+      cache: 'no-store',
     });
 
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to load projects");
+    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to load projects');
 
     setProjects(Array.isArray(json?.projects) ? json.projects : []);
     setCurrentUser(json?.currentUser || null);
@@ -503,9 +540,9 @@ export default function AllProjectsPage() {
 
     try {
       setCreateSaving(true);
-      const res = await apiFetch("/api/admin/projects/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/projects/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectName: createForm.projectName,
           clientId: createForm.clientId,
@@ -518,12 +555,12 @@ export default function AllProjectsPage() {
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to create project");
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to create project');
 
       await refreshList();
       closeCreate();
     } catch (e: any) {
-      toastError(e?.message || "Failed to create project");
+      toastError(e?.message || 'Failed to create project');
     } finally {
       setCreateSaving(false);
     }
@@ -534,9 +571,9 @@ export default function AllProjectsPage() {
 
     try {
       setSaving(true);
-      const res = await apiFetch("/api/admin/projects/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/projects/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: selected.id,
           projectName: editForm.projectName,
@@ -552,47 +589,49 @@ export default function AllProjectsPage() {
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to update project");
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to update project');
 
       await refreshList();
       closeDrawer();
     } catch (e: any) {
-      toastError(e?.message || "Failed to update project");
+      toastError(e?.message || 'Failed to update project');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    const confirmDelete = window.confirm("Delete this project? This will archive the record.");
+    const confirmDelete = window.confirm('Delete this project? This will archive the record.');
     if (!confirmDelete) return;
 
     try {
       setDeletingId(id);
-      const res = await apiFetch("/api/admin/projects/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/projects/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete project");
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to delete project');
 
       await refreshList();
       if (selected?.id === id) closeDrawer();
     } catch (e: any) {
-      toastError(e?.message || "Failed to delete project");
+      toastError(e?.message || 'Failed to delete project');
     } finally {
       setDeletingId((prev) => (prev === id ? null : prev));
     }
   }
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">All Projects</h1>
-          <div className="page-subtitle">Monitor delivery pipeline, ownership, and priority in one live workspace.</div>
+          <div className="page-subtitle">
+            Monitor delivery pipeline, ownership, and priority in one live workspace.
+          </div>
         </div>
 
         {canCreate(currentUser?.role) && (
@@ -600,7 +639,7 @@ export default function AllProjectsPage() {
             type="button"
             className="btn"
             onClick={openCreate}
-            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 500 }}
+            style={{ borderRadius: 999, padding: '10px 20px', fontWeight: 500 }}
           >
             + Create Project
           </button>
@@ -609,17 +648,20 @@ export default function AllProjectsPage() {
 
       <div className="kpis" style={{ marginTop: 20 }}>
         {[
-          { label: "Total Projects", value: visibleTotals.total },
-          { label: "Overdue", value: visibleTotals.overdue },
-          { label: "At Risk", value: visibleTotals.atRisk },
-          { label: "On Track", value: visibleTotals.onTrack },
+          { label: 'Total Projects', value: visibleTotals.total },
+          { label: 'Overdue', value: visibleTotals.overdue },
+          { label: 'At Risk', value: visibleTotals.atRisk },
+          { label: 'On Track', value: visibleTotals.onTrack },
         ].map((card) => (
-          <div
-            key={card.label}
-            className="card kpi-card"
-            style={{ padding: "16px 18px" }}
-          >
-            <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+          <div key={card.label} className="card kpi-card" style={{ padding: '16px 18px' }}>
+            <div
+              style={{
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                opacity: 0.65,
+              }}
+            >
               {card.label}
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{card.value}</div>
@@ -632,7 +674,7 @@ export default function AllProjectsPage() {
           value={query}
           onChange={setQuery}
           onSubmit={() => {
-            refreshList().catch((err) => console.error("Failed to load projects:", err));
+            refreshList().catch((err) => console.error('Failed to load projects:', err));
           }}
           placeholder="Search keyword"
         />
@@ -640,23 +682,26 @@ export default function AllProjectsPage() {
           value={stageFilter}
           onChange={setStageFilter}
           placeholder="All Stages"
-          
-          options={[{ value: "", label: "All Stages" }, ...PIPELINE_STAGES.map((stage) => ({ value: stage, label: stage }))]}
+          options={[
+            { value: '', label: 'All Stages' },
+            ...PIPELINE_STAGES.map((stage) => ({ value: stage, label: stage })),
+          ]}
         />
         <FilterSelect
           value={typeFilter}
           onChange={setTypeFilter}
           placeholder="All Types"
-          
-          options={[{ value: "", label: "All Types" }, ...PROJECT_TYPES.map((type) => ({ value: type, label: type }))]}
+          options={[
+            { value: '', label: 'All Types' },
+            ...PROJECT_TYPES.map((type) => ({ value: type, label: type })),
+          ]}
         />
         <FilterSelect
           value={priorityFilter}
           onChange={setPriorityFilter}
           placeholder="All Priorities"
-          
           options={[
-            { value: "", label: "All Priorities" },
+            { value: '', label: 'All Priorities' },
             ...PRIORITIES.map((priority) => ({ value: priority, label: priority })),
           ]}
         />
@@ -664,10 +709,9 @@ export default function AllProjectsPage() {
           value={ownerFilter}
           onChange={setOwnerFilter}
           placeholder="All Owners"
-          
           options={[
-            { value: "", label: "All Owners" },
-            { value: "unassigned", label: "Unassigned" },
+            { value: '', label: 'All Owners' },
+            { value: 'unassigned', label: 'Unassigned' },
             ...ownerOptions.map((owner) => ({ value: owner.uid, label: owner.name || owner.uid })),
           ]}
         />
@@ -678,8 +722,8 @@ export default function AllProjectsPage() {
           style={{
             marginTop: 14,
             fontSize: 12,
-            color: "var(--text-muted)",
-            textAlign: "right",
+            color: 'var(--text-muted)',
+            textAlign: 'right',
             paddingRight: 6,
           }}
         >
@@ -689,164 +733,206 @@ export default function AllProjectsPage() {
 
       <div className="table-shell">
         <div style={{ marginTop: 18 }}>
-        {loading ? (
-          <p style={{ padding: 16, fontSize: 14 }}>
-            Loading projects...
-          </p>
-        ) : error ? (
-          <div
-            className="card"
-            style={{
-              margin: 16,
-              padding: 16,
-              borderRadius: 16,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--danger-soft)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
-            </div>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => {
-                setLoading(true);
-                refreshList()
-                  .catch((retryError) => {
-                    console.error("Retry failed:", retryError);
-                    setError({
-                      title: "Projects can’t load yet",
-                      message: retryError?.message || "Unable to load projects right now.",
-                    });
-                  })
-                  .finally(() => setLoading(false));
+          {loading ? (
+            <p style={{ padding: 16, fontSize: 14 }}>Loading projects...</p>
+          ) : error ? (
+            <div
+              className="card"
+              style={{
+                margin: 16,
+                padding: 16,
+                borderRadius: 16,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--danger-soft)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
               }}
-              style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 500 }}
             >
-              Retry
-            </button>
-          </div>
-        ) : sorted.length === 0 ? (
-          <div
-            className="card"
-            style={{
-              margin: 16,
-              padding: 16,
-              borderRadius: 16,
-              fontSize: 14,
-            }}
-          >
-            No projects found.
-          </div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1120 }}>
-              <thead>
-                <tr>
-                  <th style={headerCellStyle} onClick={() => toggleSort("projectName")}>
-                    {headerLabel("Project", sortBadge("projectName"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("clientName")}>
-                    {headerLabel("Client", sortBadge("clientName"))}
-                  </th>
-                  <th style={headerCellStyle} onClick={() => toggleSort("projectType")}>
-                    {headerLabel("Type", sortBadge("projectType"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("stage")}>
-                    {headerLabel("Stage", sortBadge("stage"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("priority")}>
-                    {headerLabel("Priority", sortBadge("priority"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("dueDate")}>
-                    {headerLabel("Due Date", sortBadge("dueDate"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("health")}>
-                    {headerLabel("Health", sortBadge("health"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }} onClick={() => toggleSort("updatedAt")}>
-                    {headerLabel("Updated", sortBadge("updatedAt"))}
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>{headerLabel("Actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((project) => {
-                  return (
-                    <tr key={project.id} onClick={() => openDrawer(project)} style={{ cursor: "pointer" }}>
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{project.projectName || "-"}</td>
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{project.clientName || "-"}</td>
-                      <td style={cellStyle}>{project.projectType || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span className={getBadgeClass(project.stage || "")}>{project.stage || "-"}</span>
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span className={getBadgeClass(project.priority || "")}>{project.priority || "-"}</span>
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.dueDate)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <span className={getBadgeClass(project.health || "")}>{project.health || "-"}</span>
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(project.updatedAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDrawer(project);
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
+              </div>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => {
+                  setLoading(true);
+                  refreshList()
+                    .catch((retryError) => {
+                      console.error('Retry failed:', retryError);
+                      setError({
+                        title: 'Projects can’t load yet',
+                        message: retryError?.message || 'Unable to load projects right now.',
+                      });
+                    })
+                    .finally(() => setLoading(false));
+                }}
+                style={{ borderRadius: 999, padding: '8px 16px', fontWeight: 500 }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : sorted.length === 0 ? (
+            <div
+              className="card"
+              style={{
+                margin: 16,
+                padding: 16,
+                borderRadius: 16,
+                fontSize: 14,
+              }}
+            >
+              No projects found.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 1120 }}
+              >
+                <thead>
+                  <tr>
+                    <th style={headerCellStyle} onClick={() => toggleSort('projectName')}>
+                      {headerLabel('Project', sortBadge('projectName'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('clientName')}>
+                      {headerLabel('Client', sortBadge('clientName'))}
+                    </th>
+                    <th style={headerCellStyle} onClick={() => toggleSort('projectType')}>
+                      {headerLabel('Type', sortBadge('projectType'))}
+                    </th>
+                    <th
+                      style={{ ...headerCellStyle, textAlign: 'center' }}
+                      onClick={() => toggleSort('stage')}
+                    >
+                      {headerLabel('Stage', sortBadge('stage'))}
+                    </th>
+                    <th
+                      style={{ ...headerCellStyle, textAlign: 'center' }}
+                      onClick={() => toggleSort('priority')}
+                    >
+                      {headerLabel('Priority', sortBadge('priority'))}
+                    </th>
+                    <th
+                      style={{ ...headerCellStyle, textAlign: 'center' }}
+                      onClick={() => toggleSort('dueDate')}
+                    >
+                      {headerLabel('Due Date', sortBadge('dueDate'))}
+                    </th>
+                    <th
+                      style={{ ...headerCellStyle, textAlign: 'center' }}
+                      onClick={() => toggleSort('health')}
+                    >
+                      {headerLabel('Health', sortBadge('health'))}
+                    </th>
+                    <th
+                      style={{ ...headerCellStyle, textAlign: 'center' }}
+                      onClick={() => toggleSort('updatedAt')}
+                    >
+                      {headerLabel('Updated', sortBadge('updatedAt'))}
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center', cursor: 'default' }}>
+                      {headerLabel('Actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((project) => {
+                    return (
+                      <tr
+                        key={project.id}
+                        onClick={() => openDrawer(project)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td style={{ ...cellStyle, whiteSpace: 'normal' }}>
+                          {project.projectName || '-'}
+                        </td>
+                        <td style={{ ...cellStyle, whiteSpace: 'normal' }}>
+                          {project.clientName || '-'}
+                        </td>
+                        <td style={cellStyle}>{project.projectType || '-'}</td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <span className={getBadgeClass(project.stage || '')}>
+                            {project.stage || '-'}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <span className={getBadgeClass(project.priority || '')}>
+                            {project.priority || '-'}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          {fmtDate(project.dueDate)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <span className={getBadgeClass(project.health || '')}>
+                            {project.health || '-'}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          {fmtDate(project.updatedAt)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              justifyContent: 'center',
                             }}
-                            className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
                           >
-                            View / Edit
-                          </button>
-                          {isAdmin(currentUser?.role) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(project.id);
+                                openDrawer(project);
                               }}
                               className="btn ghost"
-                              style={{
-                                padding: "8px 14px",
-                                borderRadius: 999,
-                                fontWeight: 400,
-                                border: "1px solid rgba(239,68,68,0.35)",
-                                background: "var(--danger-soft)",
-                              }}
-                              disabled={deletingId === project.id}
+                              style={{ padding: '8px 14px', borderRadius: 999, fontWeight: 400 }}
                             >
-                              {deletingId === project.id ? "Deleting..." : "Delete"}
+                              View / Edit
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                            {isAdmin(currentUser?.role) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(project.id);
+                                }}
+                                className="btn ghost"
+                                style={{
+                                  padding: '8px 14px',
+                                  borderRadius: 999,
+                                  fontWeight: 400,
+                                  border: '1px solid rgba(239,68,68,0.35)',
+                                  background: 'var(--danger-soft)',
+                                }}
+                                disabled={deletingId === project.id}
+                              >
+                                {deletingId === project.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                   {selected.projectName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-muted)' }}>
                   {selected.clientName} · {selected.projectType}
                 </div>
               </div>
@@ -862,17 +948,19 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 16 }} />
 
-            <Section title="Project Details" >
-              <label style={{ display: "grid", gap: 6 }}>
+            <Section title="Project Details">
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Name</span>
                 <input
                   className="input"
                   value={editForm.projectName}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, projectName: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, projectName: e.target.value }))
+                  }
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Type</span>
                 <select
                   className="input"
@@ -889,12 +977,14 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Stage</span>
                 <select
                   className="input"
                   value={editForm.stage}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))
+                  }
                 >
                   {PIPELINE_STAGES.map((stage) => (
                     <option key={stage} value={stage}>
@@ -904,13 +994,16 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Priority</span>
                 <select
                   className="input"
                   value={editForm.priority}
                   onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, priority: e.target.value as ProjectPriority }))
+                    setEditForm((prev) => ({
+                      ...prev,
+                      priority: e.target.value as ProjectPriority,
+                    }))
                   }
                 >
                   {PRIORITIES.map((priority) => (
@@ -924,8 +1017,8 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Ownership & Dates" >
-              <label style={{ display: "grid", gap: 6 }}>
+            <Section title="Ownership & Dates">
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Owner (AM)</span>
                 <select
                   className="input"
@@ -941,12 +1034,14 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Production Owner</span>
                 <select
                   className="input"
                   value={editForm.productionUid}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, productionUid: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, productionUid: e.target.value }))
+                  }
                 >
                   <option value="">Unassigned</option>
                   {productionOptions.map((owner) => (
@@ -957,7 +1052,7 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Start Date</span>
                 <input
                   className="input"
@@ -967,7 +1062,7 @@ export default function AllProjectsPage() {
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Due Date</span>
                 <input
                   className="input"
@@ -980,28 +1075,30 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 12 }} />
 
-            <Section title="Internal Notes" >
+            <Section title="Internal Notes">
               <textarea
                 className="input"
-                style={{ minHeight: 120, resize: "vertical" }}
+                style={{ minHeight: 120, resize: 'vertical' }}
                 placeholder="Internal notes for the delivery team"
                 value={editForm.internalNotes}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, internalNotes: e.target.value }))
+                }
               />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="System" >
-              <InfoRow label="Project ID" value={selected.id}  />
-              <InfoRow label="Created By" value={selected.createdByName || "-"}  />
-              <InfoRow label="Updated" value={fmtDate(selected.updatedAt)}  />
-              <InfoRow label="Last Activity" value={fmtDate(selected.lastActivityAt)}  />
+            <Section title="System">
+              <InfoRow label="Project ID" value={selected.id} />
+              <InfoRow label="Created By" value={selected.createdByName || '-'} />
+              <InfoRow label="Updated" value={fmtDate(selected.updatedAt)} />
+              <InfoRow label="Last Activity" value={fmtDate(selected.lastActivityAt)} />
             </Section>
 
             <div style={{ height: 16 }} />
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
               {isAdmin(currentUser?.role) && (
                 <button
                   type="button"
@@ -1011,13 +1108,13 @@ export default function AllProjectsPage() {
                   style={{
                     borderRadius: 12,
                     fontWeight: 400,
-                    background: "var(--danger-soft)",
-                    border: "1px solid rgba(239,68,68,0.35)",
-                    color: "var(--text-primary)",
+                    background: 'var(--danger-soft)',
+                    border: '1px solid rgba(239,68,68,0.35)',
+                    color: 'var(--text-primary)',
                     opacity: deletingId === selected.id ? 0.7 : 1,
                   }}
                 >
-                  {deletingId === selected.id ? "Deleting..." : "Delete Project"}
+                  {deletingId === selected.id ? 'Deleting...' : 'Delete Project'}
                 </button>
               )}
               <button
@@ -1027,7 +1124,7 @@ export default function AllProjectsPage() {
                 onClick={handleUpdate}
                 style={{ borderRadius: 12, fontWeight: 400 }}
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -1037,12 +1134,12 @@ export default function AllProjectsPage() {
       {createOpen && (
         <div className="drawer-overlay" onClick={closeCreate}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                   Create Project
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-muted)' }}>
                   Add a new delivery project in seconds.
                 </div>
               </div>
@@ -1058,18 +1155,20 @@ export default function AllProjectsPage() {
 
             <div style={{ height: 16 }} />
 
-            <form onSubmit={handleCreateSubmit} style={{ display: "grid", gap: 12 }}>
-              <label style={{ display: "grid", gap: 6 }}>
+            <form onSubmit={handleCreateSubmit} style={{ display: 'grid', gap: 12 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Name</span>
                 <input
                   className="input"
                   value={createForm.projectName}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, projectName: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, projectName: e.target.value }))
+                  }
                   required
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Client</span>
                 <select
                   className="input"
@@ -1086,13 +1185,16 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Project Type</span>
                 <select
                   className="input"
                   value={createForm.projectType}
                   onChange={(e) =>
-                    setCreateForm((prev) => ({ ...prev, projectType: e.target.value as ProjectType }))
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      projectType: e.target.value as ProjectType,
+                    }))
                   }
                 >
                   {PROJECT_TYPES.map((type) => (
@@ -1103,12 +1205,14 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Stage</span>
                 <select
                   className="input"
                   value={createForm.stage}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, stage: e.target.value as ProjectStage }))
+                  }
                 >
                   {CREATE_PIPELINE_STAGES.map((stage) => (
                     <option key={stage} value={stage}>
@@ -1118,13 +1222,16 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Priority</span>
                 <select
                   className="input"
                   value={createForm.priority}
                   onChange={(e) =>
-                    setCreateForm((prev) => ({ ...prev, priority: e.target.value as ProjectPriority }))
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      priority: e.target.value as ProjectPriority,
+                    }))
                   }
                 >
                   {PRIORITIES.map((priority) => (
@@ -1135,7 +1242,7 @@ export default function AllProjectsPage() {
                 </select>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, opacity: 0.7 }}>Due Date</span>
                 <input
                   className="input"
@@ -1146,12 +1253,14 @@ export default function AllProjectsPage() {
               </label>
 
               {ownerOptions.length > 0 && (
-                <label style={{ display: "grid", gap: 6 }}>
+                <label style={{ display: 'grid', gap: 6 }}>
                   <span style={{ fontSize: 12, opacity: 0.7 }}>Owner (AM)</span>
                   <select
                     className="input"
                     value={createForm.ownerAmUid}
-                    onChange={(e) => setCreateForm((prev) => ({ ...prev, ownerAmUid: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((prev) => ({ ...prev, ownerAmUid: e.target.value }))
+                    }
                   >
                     <option value="">Unassigned</option>
                     {ownerOptions.map((owner) => (
@@ -1163,12 +1272,24 @@ export default function AllProjectsPage() {
                 </label>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" className="btn ghost" onClick={closeCreate} style={{ borderRadius: 12 }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}
+              >
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={closeCreate}
+                  style={{ borderRadius: 12 }}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn" disabled={createSaving} style={{ borderRadius: 12 }}>
-                  {createSaving ? "Creating..." : "Create Project"}
+                <button
+                  type="submit"
+                  className="btn"
+                  disabled={createSaving}
+                  style={{ borderRadius: 12 }}
+                >
+                  {createSaving ? 'Creating...' : 'Create Project'}
                 </button>
               </div>
             </form>
@@ -1188,8 +1309,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         borderRadius: 14,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.06em', opacity: 0.75 }}>
+        {title}
+      </div>
+      <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>{children}</div>
     </div>
   );
 }
@@ -1200,14 +1323,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       style={{
         padding: 12,
         borderRadius: 12,
-        border: "1px solid var(--border-subtle)",
-        display: "flex",
-        justifyContent: "space-between",
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        justifyContent: 'space-between',
         gap: 12,
       }}
     >
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontWeight: 800, textAlign: 'right' }}>{value}</div>
     </div>
   );
 }
@@ -1234,8 +1357,8 @@ function FilterSelect({
       }
     }
 
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   const selected = options.find((option) => option.value === value);
@@ -1243,7 +1366,7 @@ function FilterSelect({
   const isPlaceholder = !value;
 
   return (
-    <div ref={wrapperRef} style={{ position: "relative" }}>
+    <div ref={wrapperRef} style={{ position: 'relative' }}>
       <button
         type="button"
         className="input"
@@ -1251,33 +1374,31 @@ function FilterSelect({
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
+          if (event.key === 'Escape') {
             setOpen(false);
           }
-          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+          if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
             event.preventDefault();
             setOpen(true);
           }
         }}
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 12,
-          textAlign: "left",
-          cursor: "pointer",
+          textAlign: 'left',
+          cursor: 'pointer',
         }}
       >
-        <span style={{ color: isPlaceholder ? "var(--text-muted)" : "inherit" }}>
-          {label}
-        </span>
+        <span style={{ color: isPlaceholder ? 'var(--text-muted)' : 'inherit' }}>{label}</span>
         <span
           aria-hidden
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-muted)",
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-muted)',
           }}
         >
           ▾
@@ -1289,21 +1410,21 @@ function FilterSelect({
           role="listbox"
           tabIndex={-1}
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
             left: 0,
-            width: "100%",
+            width: '100%',
             zIndex: 20,
             padding: 8,
             borderRadius: 12,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--surface-card)",
-            boxShadow: "var(--shadow-md)",
-            display: "grid",
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--surface-card)',
+            boxShadow: 'var(--shadow-md)',
+            display: 'grid',
             gap: 4,
           }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setOpen(false);
+            if (event.key === 'Escape') setOpen(false);
           }}
         >
           {options.map((option) => {
@@ -1319,20 +1440,22 @@ function FilterSelect({
                   setOpen(false);
                 }}
                 style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 10px",
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 10px',
                   borderRadius: 10,
-                  border: "none",
-                  background: active ? "var(--surface-muted)" : "transparent",
-                  color: "var(--text-primary)",
-                  cursor: "pointer",
+                  border: 'none',
+                  background: active ? 'var(--surface-muted)' : 'transparent',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = "var(--surface-muted)";
+                  event.currentTarget.style.background = 'var(--surface-muted)';
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = active ? "var(--surface-muted)" : "transparent";
+                  event.currentTarget.style.background = active
+                    ? 'var(--surface-muted)'
+                    : 'transparent';
                 }}
               >
                 {option.label}

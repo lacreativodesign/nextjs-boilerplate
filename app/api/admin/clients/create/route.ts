@@ -1,27 +1,27 @@
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { getCurrentUser } from "../../_utils";
-import { normalizeOptionalSlug, normalizeSlugArray, slugify } from "@/lib/segments";
-import { queueClientActivationInvite } from "@/lib/clientActivation";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { createClientSchema } from "@/lib/validations/client";
-import { validateRequest } from "@/lib/validations/validate";
-import { checkRateLimit, getClientIp } from "@/lib/security";
-import { logEvent } from "@/lib/audit";
-import { dispatchWebhookEvent } from "@/lib/webhooks/webhook-delivery";
-import { sendEmail } from "@/lib/email/email-service";
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { getCurrentUser } from '../../_utils';
+import { normalizeOptionalSlug, normalizeSlugArray, slugify } from '@/lib/segments';
+import { queueClientActivationInvite } from '@/lib/clientActivation';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { createClientSchema } from '@/lib/validations/client';
+import { validateRequest } from '@/lib/validations/validate';
+import { checkRateLimit, getClientIp } from '@/lib/security';
+import { logEvent } from '@/lib/audit';
+import { dispatchWebhookEvent } from '@/lib/webhooks/webhook-delivery';
+import { sendEmail } from '@/lib/email/email-service';
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function canCreateClient(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "super_admin" || r === "admin" || r === "sales_manager" || r === "sales";
+  const r = (role || '').toLowerCase();
+  return r === 'super_admin' || r === 'admin' || r === 'sales_manager' || r === 'sales';
 }
 
 function cleanString(v: any) {
-  return String(v ?? "").trim();
+  return String(v ?? '').trim();
 }
 
 function normalizeEmail(v: string) {
@@ -29,32 +29,40 @@ function normalizeEmail(v: string) {
 }
 
 function toNumber(v: any) {
-  const n = Number(String(v ?? "").replace(/,/g, "").trim());
+  const n = Number(
+    String(v ?? '')
+      .replace(/,/g, '')
+      .trim(),
+  );
   return Number.isFinite(n) ? n : 0;
 }
 
-function canonicalPaymentStatus(input: any): "Unpaid" | "Partially Paid" | "Paid" {
-  const s = String(input ?? "").trim().toLowerCase();
-  if (s === "paid") return "Paid";
-  if (s === "partially paid" || s === "partial" || s === "partially_paid" || s === "partiallypaid") return "Partially Paid";
-  return "Unpaid";
+function canonicalPaymentStatus(input: any): 'Unpaid' | 'Partially Paid' | 'Paid' {
+  const s = String(input ?? '')
+    .trim()
+    .toLowerCase();
+  if (s === 'paid') return 'Paid';
+  if (s === 'partially paid' || s === 'partial' || s === 'partially_paid' || s === 'partiallypaid')
+    return 'Partially Paid';
+  return 'Unpaid';
 }
 
 export async function POST(req: Request) {
   try {
     const me = await getCurrentUser();
-    if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    if (!canCreateClient(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    if (!canCreateClient(me.role))
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
 
-    await checkRateLimit(req, "standard", me.uid);
+    await checkRateLimit(req, 'standard', me.uid);
 
     let body: any = null;
     try {
       body = await req.json();
     } catch {
       throw new AppError({
-        message: "Invalid JSON body",
-        code: "VALIDATION_ERROR",
+        message: 'Invalid JSON body',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
@@ -67,29 +75,30 @@ export async function POST(req: Request) {
       address: body?.address,
       industry: body?.industry,
       website: body?.website,
-      tenantId: me.tenantId || "",
+      tenantId: me.tenantId || '',
     });
 
     const companyName = validatedData.companyName;
     const primaryContactName = validatedData.contactName;
     const primaryContactEmail = validatedData.email;
-    const primaryContactPhone = validatedData.phone || "";
+    const primaryContactPhone = validatedData.phone || '';
     const tenantId = validatedData.tenantId;
     const salesOwner = cleanString(body?.salesOwner);
     const primaryContactEmailLower = normalizeEmail(primaryContactEmail);
 
-    if (!salesOwner) return NextResponse.json({ ok: false, error: "Sales Owner is required" }, { status: 400 });
+    if (!salesOwner)
+      return NextResponse.json({ ok: false, error: 'Sales Owner is required' }, { status: 400 });
 
     // Enforce 1 email per account (ignore deleted clients)
     const existingByLower = await db
-      .collection("clients")
-      .where("primaryContactEmailLower", "==", primaryContactEmailLower)
+      .collection('clients')
+      .where('primaryContactEmailLower', '==', primaryContactEmailLower)
       .limit(1)
       .get();
 
     const existingByRaw = await db
-      .collection("clients")
-      .where("primaryContactEmail", "==", primaryContactEmail)
+      .collection('clients')
+      .where('primaryContactEmail', '==', primaryContactEmail)
       .limit(1)
       .get();
 
@@ -100,12 +109,15 @@ export async function POST(req: Request) {
       }) || null;
 
     if (duplicate) {
-      return NextResponse.json({ ok: false, error: "Primary contact email already exists" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Primary contact email already exists' },
+        { status: 400 },
+      );
     }
 
     // IMPORTANT: Order ID is ONLY for paid clients. So on create we DO NOT generate it.
     // Payment status defaults to Unpaid unless (optional) admin wants to create as paid via update flow.
-    const paymentStatus = "Unpaid" as const;
+    const paymentStatus = 'Unpaid' as const;
 
     const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -124,7 +136,10 @@ export async function POST(req: Request) {
       segmentServices: normalizeSlugArray(body?.segmentServices),
       segmentBusinessType: normalizeOptionalSlug(body?.segmentBusinessType),
       segmentIndustry: normalizeOptionalSlug(body?.segmentIndustry),
-      segmentGeo: body?.segmentGeo !== undefined ? normalizeOptionalSlug(body?.segmentGeo) : slugify(cleanString(body?.country)) || null,
+      segmentGeo:
+        body?.segmentGeo !== undefined
+          ? normalizeOptionalSlug(body?.segmentGeo)
+          : slugify(cleanString(body?.country)) || null,
 
       // Contact
       primaryContactName,
@@ -134,9 +149,9 @@ export async function POST(req: Request) {
       primaryContactPhone,
 
       // Lifecycle
-      salesStage: cleanString(body?.salesStage) || "New Lead",
+      salesStage: cleanString(body?.salesStage) || 'New Lead',
       paymentStatus,
-      retainerStatus: cleanString(body?.retainerStatus) || "None",
+      retainerStatus: cleanString(body?.retainerStatus) || 'None',
 
       // Ownership
       salesOwner,
@@ -149,10 +164,10 @@ export async function POST(req: Request) {
       openBalanceUsd: toNumber(body?.openBalanceUsd),
 
       // Notes
-      services: "",
+      services: '',
 
       // Paid account identifier (ONLY generated when paid/partially paid)
-      orderId: "",
+      orderId: '',
 
       // Timestamps
       createdAt: now,
@@ -166,11 +181,11 @@ export async function POST(req: Request) {
     // We keep this for clarity:
     void canonicalPaymentStatus(body?.paymentStatus);
 
-    const ref = await db.collection("clients").add(doc);
+    const ref = await db.collection('clients').add(doc);
 
     try {
       const changes = Object.entries(doc)
-        .filter(([field]) => !["createdAt", "updatedAt", "lastActivity"].includes(field))
+        .filter(([field]) => !['createdAt', 'updatedAt', 'lastActivity'].includes(field))
         .map(([field, value]) => ({
           field,
           oldValue: null,
@@ -178,25 +193,25 @@ export async function POST(req: Request) {
         }));
       await logEvent({
         tenantId,
-        type: "client.created",
-        title: "Client created",
+        type: 'client.created',
+        title: 'Client created',
         description: `${companyName} created.`,
-        entityType: "client",
+        entityType: 'client',
         entityId: ref.id,
-        actor: { uid: me.uid, name: me.name || me.fullName || "" },
+        actor: { uid: me.uid, name: me.name || me.fullName || '' },
         metadata: {
           ip: getClientIp(req),
-          userAgent: req.headers.get("user-agent") || "",
+          userAgent: req.headers.get('user-agent') || '',
         },
         audit: {
-          action: "create",
-          resource: "customer",
+          action: 'create',
+          resource: 'customer',
           resourceId: ref.id,
           changes,
         },
       });
     } catch (auditError) {
-      console.error("audit log error:", auditError);
+      console.error('audit log error:', auditError);
     }
 
     try {
@@ -208,17 +223,17 @@ export async function POST(req: Request) {
           companyName,
         },
         createdByUid: me.uid,
-        reason: "client_created",
+        reason: 'client_created',
       });
     } catch (inviteError) {
-      console.error("client activation invite error:", inviteError);
+      console.error('client activation invite error:', inviteError);
     }
 
     try {
       await dispatchWebhookEvent({
         tenantId,
-        event: "client.created",
-        entityType: "client",
+        event: 'client.created',
+        entityType: 'client',
         entityId: ref.id,
         payload: {
           clientId: ref.id,
@@ -230,25 +245,27 @@ export async function POST(req: Request) {
         actor: { uid: me.uid, email: me.email || null, role: me.role || null },
       });
     } catch (webhookError) {
-      console.error("client.created webhook dispatch error:", webhookError);
+      console.error('client.created webhook dispatch error:', webhookError);
     }
 
     // Notify admins of new client — non-blocking
-    getUsersByRoles(['admin'], tenantId).then(async (admins) => {
-      await createNotifications({
-        recipients: admins,
-        tenantId,
-        type: 'info',
-        title: 'New client added',
-        body: `${companyName} has been added as a client.`,
-        deepLink: '/clients',
-        entityType: 'lead',
-      });
-      return Promise.all(admins.map((admin) =>
-        sendEmail({
-          to: admin.email || '',
-          subject: `🤝 New client added — ${companyName}`,
-          html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+    getUsersByRoles(['admin'], tenantId)
+      .then(async (admins) => {
+        await createNotifications({
+          recipients: admins,
+          tenantId,
+          type: 'info',
+          title: 'New client added',
+          body: `${companyName} has been added as a client.`,
+          deepLink: '/clients',
+          entityType: 'lead',
+        });
+        return Promise.all(
+          admins.map((admin) =>
+            sendEmail({
+              to: admin.email || '',
+              subject: `🤝 New client added — ${companyName}`,
+              html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#F8FAFC;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -270,16 +287,18 @@ export async function POST(req: Request) {
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
-        }).catch(() => {})
-      ));
-    }).catch((err) => console.error('[CLIENT_CREATE] Failed to notify admins', err));
+            }).catch(() => {}),
+          ),
+        );
+      })
+      .catch((err) => console.error('[CLIENT_CREATE] Failed to notify admins', err));
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err: any) {
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to create client.",
-      fallbackCode: "INTERNAL_SERVER_ERROR",
-      requestId: req.headers.get("x-request-id") || undefined,
+      fallbackMessage: 'Failed to create client.',
+      fallbackCode: 'INTERNAL_SERVER_ERROR',
+      requestId: req.headers.get('x-request-id') || undefined,
     });
     return NextResponse.json(body, { status });
   }

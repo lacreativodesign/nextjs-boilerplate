@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin } from "../_utils";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
-import type { Budget, BudgetCategory, MonthlyBudget, YearComparison } from "@/lib/types/budget";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin } from '../_utils';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
+import type { Budget, BudgetCategory, MonthlyBudget, YearComparison } from '@/lib/types/budget';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type InvoiceDoc = {
   status?: string;
@@ -72,7 +72,7 @@ function normalizeCategory(category: Partial<BudgetCategory>, index: number): Bu
   return {
     id: String(category.id || `cat-${index + 1}`),
     name: String(category.name || `Category ${index + 1}`),
-    type: category.type === "revenue" ? "revenue" : "expense",
+    type: category.type === 'revenue' ? 'revenue' : 'expense',
     monthlyBudgets,
     totalBudget,
     totalActual,
@@ -83,19 +83,21 @@ function normalizeCategory(category: Partial<BudgetCategory>, index: number): Bu
 
 function normalizeBudget(id: string, tenantId: string, raw: RawBudgetDoc): Budget {
   const docScopedTenantId = normalizeTenantId(raw.tenantId || tenantId);
-  const categories = Array.isArray(raw.categories) ? raw.categories.map((c, index) => normalizeCategory(c, index)) : [];
+  const categories = Array.isArray(raw.categories)
+    ? raw.categories.map((c, index) => normalizeCategory(c, index))
+    : [];
   return {
     id,
     tenantId: docScopedTenantId,
-    name: String(raw.name || "Untitled budget"),
+    name: String(raw.name || 'Untitled budget'),
     description: raw.description ? String(raw.description) : undefined,
     fiscalYear: asNumber(raw.fiscalYear, new Date().getFullYear()),
-    currency: String(raw.currency || "USD"),
+    currency: String(raw.currency || 'USD'),
     categories,
-    status: raw.status === "active" || raw.status === "completed" ? raw.status : "draft",
+    status: raw.status === 'active' || raw.status === 'completed' ? raw.status : 'draft',
     createdAt: String(raw.createdAt || new Date().toISOString()),
     updatedAt: String(raw.updatedAt || new Date().toISOString()),
-    createdBy: String(raw.createdBy || ""),
+    createdBy: String(raw.createdBy || ''),
   };
 }
 
@@ -103,12 +105,15 @@ async function calculateActuals(tenantId: string, budget: Budget): Promise<Budge
   const year = budget.fiscalYear;
   const invoiceDocs = await queryWithTenant(
     adminDb
-      .collection("invoices")
-      .where("status", "in", ["Paid", "paid"])
-      .where("isDeleted", "==", false),
-    tenantId
+      .collection('invoices')
+      .where('status', 'in', ['Paid', 'paid'])
+      .where('isDeleted', '==', false),
+    tenantId,
   );
-  const expenseDocs = await queryWithTenant(adminDb.collection("expenses").where("isDeleted", "==", false), tenantId);
+  const expenseDocs = await queryWithTenant(
+    adminDb.collection('expenses').where('isDeleted', '==', false),
+    tenantId,
+  );
 
   const revenueByMonth = new Map<number, number>();
   const expenseByMonth = new Map<number, number>();
@@ -133,7 +138,7 @@ async function calculateActuals(tenantId: string, budget: Budget): Promise<Budge
 
   const categories = budget.categories.map((category) => {
     const monthlyBudgets = category.monthlyBudgets.map((monthly) => {
-      const actualByType = category.type === "revenue" ? revenueByMonth : expenseByMonth;
+      const actualByType = category.type === 'revenue' ? revenueByMonth : expenseByMonth;
       const actual = asNumber(actualByType.get(monthly.month), 0);
       return {
         ...monthly,
@@ -169,13 +174,19 @@ function createYearComparisons(budgets: Budget[], year: number): YearComparison[
   const previousYearBudgets = budgets.filter((budget) => budget.fiscalYear === year - 1);
 
   return currentYearBudgets.map((budget) => {
-    const previousYearBudget = previousYearBudgets.find((candidate) => candidate.name === budget.name);
-    const currentTotalBudget = budget.categories.reduce((sum, category) => sum + category.totalBudget, 0);
+    const previousYearBudget = previousYearBudgets.find(
+      (candidate) => candidate.name === budget.name,
+    );
+    const currentTotalBudget = budget.categories.reduce(
+      (sum, category) => sum + category.totalBudget,
+      0,
+    );
     const previousTotalBudget = previousYearBudget
       ? previousYearBudget.categories.reduce((sum, category) => sum + category.totalBudget, 0)
       : 0;
     const changeAmount = currentTotalBudget - previousTotalBudget;
-    const changePercentage = previousTotalBudget === 0 ? 0 : (changeAmount / previousTotalBudget) * 100;
+    const changePercentage =
+      previousTotalBudget === 0 ? 0 : (changeAmount / previousTotalBudget) * 100;
 
     return {
       currentYear: year,
@@ -197,37 +208,39 @@ export async function GET(request: NextRequest) {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const { searchParams } = new URL(request.url);
-    const yearParam = searchParams.get("year");
-    const budgetId = searchParams.get("budgetId");
+    const yearParam = searchParams.get('year');
+    const budgetId = searchParams.get('budgetId');
 
     const year = yearParam ? asNumber(yearParam, NaN) : null;
     if (yearParam && Number.isNaN(year as number)) {
-      return NextResponse.json({ ok: false, error: "Invalid year parameter." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid year parameter.' }, { status: 400 });
     }
 
     const docs = budgetId
-      ? [await adminDb.collection("budgets").doc(budgetId).get()].filter(
-          (doc) => doc.exists && docTenantId(doc.data()) === tenantId
+      ? [await adminDb.collection('budgets').doc(budgetId).get()].filter(
+          (doc) => doc.exists && docTenantId(doc.data()) === tenantId,
         )
-      : await queryWithTenant(adminDb.collection("budgets"), tenantId);
+      : await queryWithTenant(adminDb.collection('budgets'), tenantId);
 
     const normalized = docs
       .map((doc) => normalizeBudget(doc.id, tenantId, (doc.data() || {}) as RawBudgetDoc))
       .filter((budget) => budget.tenantId === tenantId)
       .filter((budget) => (year ? budget.fiscalYear === year : true));
 
-    const budgets = await Promise.all(normalized.map((budget) => calculateActuals(tenantId, budget)));
+    const budgets = await Promise.all(
+      normalized.map((budget) => calculateActuals(tenantId, budget)),
+    );
     const yearComparisons = year ? createYearComparisons(budgets, year) : [];
 
     return NextResponse.json({ ok: true, budgets, yearComparisons });
   } catch (error: any) {
-    console.error("finance/budgets get error:", error);
-    const rawMessage = String(error?.message || "");
+    console.error('finance/budgets get error:', error);
+    const rawMessage = String(error?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Failed to fetch budgets.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Failed to fetch budgets.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }
@@ -242,22 +255,27 @@ export async function POST(request: NextRequest) {
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const body = await request.json();
 
-    const name = String(body?.name || "").trim();
-    const description = String(body?.description || "").trim();
+    const name = String(body?.name || '').trim();
+    const description = String(body?.description || '').trim();
     const fiscalYear = asNumber(body?.fiscalYear, new Date().getFullYear());
-    const currency = String(body?.currency || "USD").trim().toUpperCase();
+    const currency = String(body?.currency || 'USD')
+      .trim()
+      .toUpperCase();
     const categoriesInput = Array.isArray(body?.categories) ? body.categories : [];
 
     if (!name) {
-      return NextResponse.json({ ok: false, error: "Budget name is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Budget name is required.' }, { status: 400 });
     }
 
     if (!Number.isInteger(fiscalYear) || fiscalYear < 2000 || fiscalYear > 3000) {
-      return NextResponse.json({ ok: false, error: "Fiscal year is invalid." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Fiscal year is invalid.' }, { status: 400 });
     }
 
     if (categoriesInput.length === 0) {
-      return NextResponse.json({ ok: false, error: "At least one category is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'At least one category is required.' },
+        { status: 400 },
+      );
     }
 
     const categories = categoriesInput.map((category: Partial<BudgetCategory>, index: number) =>
@@ -267,25 +285,25 @@ export async function POST(request: NextRequest) {
           id: category.id || crypto.randomUUID(),
           monthlyBudgets: normalizeMonthlyBudgets(category.monthlyBudgets || []),
         },
-        index
-      )
+        index,
+      ),
     );
 
     const now = new Date().toISOString();
-    const budgetPayload: Omit<Budget, "id"> = {
+    const budgetPayload: Omit<Budget, 'id'> = {
       tenantId,
       name,
       description: description || undefined,
       fiscalYear,
       currency,
       categories,
-      status: "draft",
+      status: 'draft',
       createdAt: now,
       updatedAt: now,
       createdBy: auth.user.uid,
     };
 
-    const ref = adminDb.collection("budgets").doc();
+    const ref = adminDb.collection('budgets').doc();
     await ref.set(budgetPayload);
 
     return NextResponse.json({
@@ -297,13 +315,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("finance/budgets create error:", error);
-    const rawMessage = String(error?.message || "");
+    console.error('finance/budgets create error:', error);
+    const rawMessage = String(error?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Failed to create budget.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Failed to create budget.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

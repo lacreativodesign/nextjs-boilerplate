@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireFinance, serverTimestamp } from "@/app/api/finance/_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
-import { invalidateTag } from "@/lib/cache/redis-client";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireFinance, serverTimestamp } from '@/app/api/finance/_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
+import { invalidateTag } from '@/lib/cache/redis-client';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const updateTaxRateSchema = z.object({
   taxRateId: z.string().min(1),
@@ -27,30 +27,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const body = await req.json();
     const validated = updateTaxRateSchema.parse(body);
 
-    const docRef = adminDb.collection("tax_rates").doc(validated.taxRateId);
+    const docRef = adminDb.collection('tax_rates').doc(validated.taxRateId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      throw new AppError({ message: "Tax rate not found", code: "NOT_FOUND", status: 404 });
+      throw new AppError({ message: 'Tax rate not found', code: 'NOT_FOUND', status: 404 });
     }
 
     const existing = docSnap.data();
     if (!existing || existing.tenantId !== auth.user.tenantId) {
-      throw new AppError({ message: "Forbidden", code: "FORBIDDEN", status: 403 });
+      throw new AppError({ message: 'Forbidden', code: 'FORBIDDEN', status: 403 });
     }
 
     if (validated.effectiveFrom && validated.effectiveTo) {
       const effectiveFrom = new Date(validated.effectiveFrom);
       const effectiveTo = new Date(validated.effectiveTo);
-      if (Number.isNaN(effectiveFrom.getTime()) || Number.isNaN(effectiveTo.getTime()) || effectiveFrom > effectiveTo) {
+      if (
+        Number.isNaN(effectiveFrom.getTime()) ||
+        Number.isNaN(effectiveTo.getTime()) ||
+        effectiveFrom > effectiveTo
+      ) {
         throw new AppError({
-          message: "effectiveFrom must be less than or equal to effectiveTo",
-          code: "VALIDATION_ERROR",
+          message: 'effectiveFrom must be less than or equal to effectiveTo',
+          code: 'VALIDATION_ERROR',
           status: 400,
         });
       }
@@ -58,9 +62,9 @@ export async function POST(req: Request) {
 
     if (validated.isDefault && !existing.isDefault) {
       const existingDefaults = await adminDb
-        .collection("tax_rates")
-        .where("tenantId", "==", auth.user.tenantId)
-        .where("isDefault", "==", true)
+        .collection('tax_rates')
+        .where('tenantId', '==', auth.user.tenantId)
+        .where('isDefault', '==', true)
         .get();
 
       const batch = adminDb.batch();
@@ -91,9 +95,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logError(err, { route: "POST /api/finance/tax-rates/update" });
+    logError(err, { route: 'POST /api/finance/tax-rates/update' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to update tax rate",
+      fallbackMessage: 'Failed to update tax rate',
     });
     return NextResponse.json(body, { status });
   }

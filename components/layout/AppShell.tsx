@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
-import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import ActivityFeedSidebar from "@/components/activity/ActivityFeedSidebar";
-import { useTenantContext, type TenantContextResponse } from "@/lib/tenant/useTenantContext";
-import { normalizeRole } from "@/lib/erpAccess";
-import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
-import { I18nProvider } from "@/components/i18n/I18nProvider";
-import { generateThemeCssVariables } from "@/lib/white-label/theme";
-import PullToRefresh from "@/components/mobile/PullToRefresh";
-import BugReportButton from "@/components/support/BugReportButton";
-import NotificationToast from "@/components/notifications/NotificationToast";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
-import { onAuthStateChanged } from "firebase/auth";
-import ImpersonationBanner from "@/components/super_admin/ImpersonationBanner";
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { SidebarProvider, useSidebar } from '@/lib/context/SidebarContext';
+import Header from '@/components/layout/Header';
+import Sidebar from '@/components/layout/Sidebar';
+import ActivityFeedSidebar from '@/components/activity/ActivityFeedSidebar';
+import { useTenantContext, type TenantContextResponse } from '@/lib/tenant/useTenantContext';
+import { normalizeRole } from '@/lib/erpAccess';
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+import { I18nProvider } from '@/components/i18n/I18nProvider';
+import { generateThemeCssVariables } from '@/lib/white-label/theme';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
+import BugReportButton from '@/components/support/BugReportButton';
+import NotificationToast from '@/components/notifications/NotificationToast';
+import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
+import { onAuthStateChanged } from 'firebase/auth';
+import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
 
-const GlobalSearchModal = dynamic(() => import("@/components/search/GlobalSearchModal"), {
+const GlobalSearchModal = dynamic(() => import('@/components/search/GlobalSearchModal'), {
   ssr: false,
   loading: () => null,
 });
@@ -37,41 +37,41 @@ function AppShellInner({
   const [activityOpen, setActivityOpen] = useState(false);
 
   const [clientRole, setClientRole] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem("bizosto_role") || null;
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem('bizosto_role') || null;
   });
   useEffect(() => {
     let cancelled = false;
-    getFirebaseAuth().then((auth) => {
-      const unsub = onAuthStateChanged(auth, async (user) => {
-        if (user && !cancelled) {
-          const role = await fetchUserRole(user.uid);
-          if (!cancelled) {
-            setClientRole(role);
-            if (role) window.localStorage.setItem("bizosto_role", role);
+    getFirebaseAuth()
+      .then((auth) => {
+        const unsub = onAuthStateChanged(auth, async (user) => {
+          if (user && !cancelled) {
+            const role = await fetchUserRole(user.uid);
+            if (!cancelled) {
+              setClientRole(role);
+              if (role) window.localStorage.setItem('bizosto_role', role);
+            }
           }
-        }
-      });
-      return () => { cancelled = true; unsub(); };
-    }).catch(() => {});
+        });
+        return () => {
+          cancelled = true;
+          unsub();
+        };
+      })
+      .catch(() => {});
   }, []);
 
-  const currentUser = useMemo(
-    () => {
-      const serverRole = normalizeRole(data?.user?.role || "");
-      const fallbackRole = normalizeRole(clientRole || "");
-      return {
-        name:
-          data?.user?.displayName ||
-          (data?.user?.email ? data.user.email.split("@")[0] : "User"),
-        email: data?.user?.email || "",
-        role: serverRole || fallbackRole || "admin",
-        avatarUrl: undefined,
-        displayName: data?.user?.displayName || null,
-      };
-    },
-    [data?.user?.displayName, data?.user?.email, data?.user?.role, clientRole],
-  );
+  const currentUser = useMemo(() => {
+    const serverRole = normalizeRole(data?.user?.role || '');
+    const fallbackRole = normalizeRole(clientRole || '');
+    return {
+      name: data?.user?.displayName || (data?.user?.email ? data.user.email.split('@')[0] : 'User'),
+      email: data?.user?.email || '',
+      role: serverRole || fallbackRole || 'admin',
+      avatarUrl: undefined,
+      displayName: data?.user?.displayName || null,
+    };
+  }, [data?.user?.displayName, data?.user?.email, data?.user?.role, clientRole]);
 
   useEffect(() => {
     const whiteLabel = data?.tenant?.whiteLabel;
@@ -85,7 +85,10 @@ function AppShellInner({
     Object.entries(variables).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
     });
-    document.documentElement.style.setProperty("--brand-font", `"${whiteLabel.fontFamily}", system-ui`);
+    document.documentElement.style.setProperty(
+      '--brand-font',
+      `"${whiteLabel.fontFamily}", system-ui`,
+    );
     document.body.style.fontFamily = `var(--brand-font)`;
   }, [data?.tenant?.whiteLabel]);
 
@@ -105,20 +108,20 @@ function AppShellInner({
         router.back();
       }
     };
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
     };
   }, [router]);
 
   useEffect(() => {
     const prefetchSearchModal = () => {
-      import("@/components/search/GlobalSearchModal");
+      import('@/components/search/GlobalSearchModal');
     };
-    if (typeof window === "undefined") return;
-    if ("requestIdleCallback" in window) {
+    if (typeof window === 'undefined') return;
+    if ('requestIdleCallback' in window) {
       const idleCallback = window.requestIdleCallback(prefetchSearchModal, { timeout: 1200 });
       return () => window.cancelIdleCallback(idleCallback);
     }
@@ -129,7 +132,7 @@ function AppShellInner({
   useKeyboardShortcuts({
     onToggleSidebar: toggleCollapse,
     onOpenSearch: () => {
-      window.dispatchEvent(new CustomEvent("bizosto:search-open"));
+      window.dispatchEvent(new CustomEvent('bizosto:search-open'));
     },
     onEscape: closeMobile,
   });
@@ -140,18 +143,20 @@ function AppShellInner({
         currentRole={currentUser.role}
         userName={currentUser.name}
         userEmail={currentUser.email}
-        tenantName={data?.tenant?.name || "Bizosto"}
+        tenantName={data?.tenant?.name || 'Bizosto'}
         brandTagline={data?.tenant?.whiteLabel?.tagline || undefined}
         tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || data?.tenant?.brand?.logoUrl || null}
         collapsed={isCollapsed}
-        tenantPlan={data?.tenant?.plan || "trial"}
+        tenantPlan={data?.tenant?.plan || 'trial'}
         tenantModules={data?.tenant?.modules || {}}
       />
 
       {/* Content always offset by sidebar */}
-      <div className={`transition-[margin] duration-300 ease-in-out flex min-h-screen flex-col ml-16 pt-[56px] ${
-        isCollapsed ? "md:ml-16" : "md:ml-[260px]"
-      }`}>
+      <div
+        className={`transition-[margin] duration-300 ease-in-out flex min-h-screen flex-col ml-16 pt-[56px] ${
+          isCollapsed ? 'md:ml-16' : 'md:ml-[260px]'
+        }`}
+      >
         <Header
           currentUser={currentUser}
           activityTrigger={
@@ -163,7 +168,9 @@ function AppShellInner({
         />
         <main className="flex-1 py-[var(--page-padding-y)]">
           <PullToRefresh>
-            <div className="page-frame" key={pathname}>{children}</div>
+            <div className="page-frame" key={pathname}>
+              {children}
+            </div>
           </PullToRefresh>
         </main>
       </div>
@@ -183,9 +190,7 @@ function AppShellWithI18n({ children }: { children: React.ReactNode }) {
       userId={data?.user?.uid}
       userLocale={data?.user?.locale || data?.user?.language || null}
     >
-      <AppShellInner data={data}>
-        {children}
-      </AppShellInner>
+      <AppShellInner data={data}>{children}</AppShellInner>
     </I18nProvider>
   );
 }

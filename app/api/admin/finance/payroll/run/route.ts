@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, serverTimestamp } from "../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, serverTimestamp } from '../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -16,23 +16,23 @@ export async function POST(req: Request) {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const body = await req.json();
-    const month = String(body?.month || "").trim();
+    const month = String(body?.month || '').trim();
     if (!month) {
-      return NextResponse.json({ ok: false, error: "Month is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Month is required.' }, { status: 400 });
     }
 
     const existingDocs = await queryWithTenant(
-      adminDb.collection("payroll").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('payroll').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
     const existingUserIds = new Set(
       existingDocs
         .map((doc) => doc.data() || {})
-        .filter((row) => String(row.month || "") === month)
-        .map((row) => String(row.userId || ""))
+        .filter((row) => String(row.month || '') === month)
+        .map((row) => String(row.userId || '')),
     );
 
-    const usersDocs = await queryWithTenant(adminDb.collection("users"), tenantId);
+    const usersDocs = await queryWithTenant(adminDb.collection('users'), tenantId);
     const batch = adminDb.batch();
     let created = 0;
 
@@ -42,17 +42,17 @@ export async function POST(req: Request) {
       if (!salary || Number.isNaN(salary)) return;
       if (existingUserIds.has(doc.id)) return;
 
-      const ref = adminDb.collection("payroll").doc();
+      const ref = adminDb.collection('payroll').doc();
       batch.set(ref, {
         userId: doc.id,
-        userName: data.name || data.fullName || data.displayName || "",
-        role: data.role || "",
-        currency: "PKR",
+        userName: data.name || data.fullName || data.displayName || '',
+        role: data.role || '',
+        currency: 'PKR',
         baseSalaryPkr: salary,
         commissionPkr: null,
         commissionUsd: null,
         month,
-        status: "Draft",
+        status: 'Draft',
         paidAt: null,
         tenantId,
         createdAt: serverTimestamp(),
@@ -67,28 +67,31 @@ export async function POST(req: Request) {
     }
 
     if (created > 0) {
-      const payrollNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], tenantId);
+      const payrollNotifyTargets = await getUsersByRoles(
+        ['admin', 'super_admin', 'finance'],
+        tenantId,
+      );
       await createNotifications({
         recipients: payrollNotifyTargets,
         tenantId,
-        type: "info",
-        title: "Payroll run completed",
-        message: `Payroll run for ${month} created ${created} entr${created === 1 ? "y" : "ies"}.`,
-        entityType: "payroll",
+        type: 'info',
+        title: 'Payroll run completed',
+        message: `Payroll run for ${month} created ${created} entr${created === 1 ? 'y' : 'ies'}.`,
+        entityType: 'payroll',
         entityId: month,
-        deepLink: "/admin/finance/payroll",
+        deepLink: '/admin/finance/payroll',
       });
     }
 
     return NextResponse.json({ ok: true, created });
   } catch (err: any) {
-    console.error("finance/payroll run error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/payroll run error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to run payroll.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to run payroll.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

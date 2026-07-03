@@ -81,9 +81,9 @@ function createYaml(endpoints) {
     'security:',
     '  - BearerAuth: []',
     'tags:',
-    "  - name: Auth",
-    "  - name: Tenant",
-    "  - name: Core",
+    '  - name: Auth',
+    '  - name: Tenant',
+    '  - name: Core',
     'paths:',
   ];
 
@@ -95,7 +95,9 @@ function createYaml(endpoints) {
       lines.push(`    ${methodKey}:`);
       lines.push(`      summary: ${method} ${endpoint.path}`);
       lines.push('      tags:');
-      lines.push(`        - ${endpoint.path.startsWith('/api/auth') ? 'Auth' : endpoint.path.startsWith('/api/tenant') ? 'Tenant' : 'Core'}`);
+      lines.push(
+        `        - ${endpoint.path.startsWith('/api/auth') ? 'Auth' : endpoint.path.startsWith('/api/tenant') ? 'Tenant' : 'Core'}`,
+      );
       lines.push('      responses:');
       lines.push("        '200':");
       lines.push('          description: Request completed successfully.');
@@ -138,7 +140,9 @@ async function main() {
   await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
   await fs.writeFile(OUTPUT_PATH, yaml, 'utf8');
 
-  process.stdout.write(`Generated OpenAPI spec with ${endpoints.length} endpoints at ${OUTPUT_PATH}\n`);
+  process.stdout.write(
+    `Generated OpenAPI spec with ${endpoints.length} endpoints at ${OUTPUT_PATH}\n`,
+  );
 }
 
 main().catch((error) => {

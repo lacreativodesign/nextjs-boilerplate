@@ -1,5 +1,5 @@
-"use client";
-import TeamList from "@/components/manager/TeamList";
+'use client';
+import TeamList from '@/components/manager/TeamList';
 
 export default function ProductionManagerTeamPage() {
   return (

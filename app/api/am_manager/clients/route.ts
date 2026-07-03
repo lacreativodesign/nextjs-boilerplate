@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getDirectReports } from "@/lib/team";
-import { requireAmManagerOrAdmin } from "../../admin/_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getDirectReports } from '@/lib/team';
+import { requireAmManagerOrAdmin } from '../../admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -14,13 +14,13 @@ export async function GET() {
     }
 
     if (!auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
 
     const team = await getDirectReports({
       tenantId: auth.user.tenantId,
       managerUid: auth.user.uid,
-      reportRole: "am",
+      reportRole: 'am',
     });
     const amUids = new Set(team.map((m) => m.uid));
 
@@ -29,8 +29,8 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("clients")
-      .where("tenantId", "==", auth.user.tenantId)
+      .collection('clients')
+      .where('tenantId', '==', auth.user.tenantId)
       .limit(500)
       .get();
 
@@ -59,8 +59,8 @@ export async function GET() {
 
         return {
           id: doc.id,
-          name: data.name || data.companyName || data.clientName || "",
-          email: data.email || "",
+          name: data.name || data.companyName || data.clientName || '',
+          email: data.email || '',
           owner,
         };
       })
@@ -68,7 +68,7 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, clients });
   } catch (err: any) {
-    console.error("am manager clients error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load clients." }, { status: 500 });
+    console.error('am manager clients error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load clients.' }, { status: 500 });
   }
 }

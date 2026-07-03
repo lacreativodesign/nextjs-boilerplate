@@ -1,26 +1,27 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, normalizeRole } from "../../../admin/_utils";
-import { createHrEvent, isAdminLike, isHrRole } from "../../_utils";
-import { logEvent } from "@/lib/audit";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, normalizeRole } from '../../../admin/_utils';
+import { createHrEvent, isAdminLike, isHrRole } from '../../_utils';
+import { logEvent } from '@/lib/audit';
+import { assertPermission, Permission } from '../../../../lib/permissions';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-function normalizeString(incoming: any, existingValue: any = "") {
-  if (incoming === undefined || incoming === null || incoming === "") return String(existingValue || "");
-  return String(incoming || "").trim();
+function normalizeString(incoming: any, existingValue: any = '') {
+  if (incoming === undefined || incoming === null || incoming === '')
+    return String(existingValue || '');
+  return String(incoming || '').trim();
 }
 
 function normalizeNumber(incoming: any, existingValue: any = null) {
-  if (incoming === undefined || incoming === "") return existingValue ?? null;
+  if (incoming === undefined || incoming === '') return existingValue ?? null;
   if (incoming === null) return null;
   const num = Number(incoming);
-  return Number.isFinite(num) ? num : existingValue ?? null;
+  return Number.isFinite(num) ? num : (existingValue ?? null);
 }
 
 function normalizeDate(incoming: any, existingValue: any = null) {
-  if (incoming === undefined || incoming === "") return existingValue ?? null;
+  if (incoming === undefined || incoming === '') return existingValue ?? null;
   if (incoming === null) return null;
   return incoming;
 }
@@ -28,55 +29,61 @@ function normalizeDate(incoming: any, existingValue: any = null) {
 export async function POST(req: Request) {
   try {
     const current = await getCurrentUser();
-    if (!current) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    if (!current) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
     const requesterRole = normalizeRole(current.role);
     if (!isAdminLike(requesterRole) && !isHrRole(requesterRole)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     try {
       assertPermission(requesterRole, Permission.ManageUsers);
     } catch {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
-    const uid = String(body?.uid || "").trim();
+    const uid = String(body?.uid || '').trim();
     if (!uid) {
-      return NextResponse.json({ ok: false, error: "Missing user id" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing user id' }, { status: 400 });
     }
 
-    const snap = await adminDb.collection("users").doc(uid).get();
+    const snap = await adminDb.collection('users').doc(uid).get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
     }
 
     const existing = snap.data() || {};
-    const existingRole = normalizeRole(existing?.role || "");
-    if (requesterRole !== "super_admin" && existing?.tenantId !== current.tenantId) {
-      return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+    const existingRole = normalizeRole(existing?.role || '');
+    if (requesterRole !== 'super_admin' && existing?.tenantId !== current.tenantId) {
+      return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
     }
 
-    if (requesterRole !== "super_admin" && existingRole === "super_admin") {
-      return NextResponse.json({ ok: false, error: "Cannot modify super admin accounts." }, { status: 403 });
+    if (requesterRole !== 'super_admin' && existingRole === 'super_admin') {
+      return NextResponse.json(
+        { ok: false, error: 'Cannot modify super admin accounts.' },
+        { status: 403 },
+      );
     }
 
-    const requestedRole = normalizeRole(body?.role || existingRole || "");
-    if (requesterRole !== "super_admin" && requestedRole === "super_admin") {
-      return NextResponse.json({ ok: false, error: "Cannot assign super admin role." }, { status: 403 });
+    const requestedRole = normalizeRole(body?.role || existingRole || '');
+    if (requesterRole !== 'super_admin' && requestedRole === 'super_admin') {
+      return NextResponse.json(
+        { ok: false, error: 'Cannot assign super admin role.' },
+        { status: 403 },
+      );
     }
 
     if (requestedRole && requestedRole !== existingRole) {
       try {
         assertPermission(requesterRole, Permission.ManageRoles);
       } catch {
-        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
     }
 
-    const email = String(existing?.email || "").trim();
-    const status = normalizeString(body?.status, existing?.status || "active").toLowerCase();
+    const email = String(existing?.email || '').trim();
+    const status = normalizeString(body?.status, existing?.status || 'active').toLowerCase();
 
     const updateData = {
       name: normalizeString(body?.name, existing?.name),
@@ -96,46 +103,46 @@ export async function POST(req: Request) {
     };
 
     if (!updateData.name || !updateData.role || !updateData.department || !updateData.email) {
-      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    await adminDb.collection("users").doc(uid).update(updateData);
+    await adminDb.collection('users').doc(uid).update(updateData);
 
     if (requestedRole && requestedRole !== existingRole) {
       await createHrEvent({
-        type: "hr.role_changed",
-        title: "Role updated",
+        type: 'hr.role_changed',
+        title: 'Role updated',
         description: `${updateData.name} role changed to ${requestedRole}.`,
-        entityType: "user",
+        entityType: 'user',
         entityId: uid,
         createdByUid: current.uid,
-        createdByName: current.name || current.email || "Admin",
+        createdByName: current.name || current.email || 'Admin',
         metadata: { from: existingRole, to: requestedRole },
       });
 
       try {
         await logEvent({
-          type: "user.role_changed",
-          title: "Role updated",
+          type: 'user.role_changed',
+          title: 'Role updated',
           description: `${updateData.name} role changed to ${requestedRole}.`,
-          entityType: "user",
+          entityType: 'user',
           entityId: uid,
-          actor: { uid: current.uid, name: current.name || current.email || "Admin" },
+          actor: { uid: current.uid, name: current.name || current.email || 'Admin' },
           metadata: { from: existingRole, to: requestedRole },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
     }
 
     await createHrEvent({
-      type: "hr.user_updated",
-      title: "User updated",
+      type: 'hr.user_updated',
+      title: 'User updated',
       description: `${updateData.name} profile updated.`,
-      entityType: "user",
+      entityType: 'user',
       entityId: uid,
       createdByUid: current.uid,
-      createdByName: current.name || current.email || "Admin",
+      createdByName: current.name || current.email || 'Admin',
     });
 
     return NextResponse.json({
@@ -148,7 +155,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error("HR employees update error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR employees update error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

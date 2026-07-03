@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { buildUserPermissionSnapshot } from "@/lib/permissions/permission-engine";
+import { NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { buildUserPermissionSnapshot } from '@/lib/permissions/permission-engine';
 
 export async function GET(_: Request, { params }: { params: { userId: string } }) {
   const auth = await requireAdminOrSuperAdmin();
@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: { params: { userId: string } }
     const permissions = await buildUserPermissionSnapshot(auth.user.tenantId, params.userId);
     return NextResponse.json(permissions);
   } catch (error) {
-    console.error("Get user permissions error", error);
-    return NextResponse.json({ error: "Failed to fetch user permissions" }, { status: 500 });
+    console.error('Get user permissions error', error);
+    return NextResponse.json({ error: 'Failed to fetch user permissions' }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type TimeEntry = {
   id: string;
@@ -14,7 +14,7 @@ type TimeEntry = {
   projectName: string | null;
   taskName: string | null;
   notes: string | null;
-  status: "running" | "completed";
+  status: 'running' | 'completed';
 };
 
 type Timesheet = {
@@ -26,7 +26,7 @@ type Timesheet = {
   billableMinutes: number;
   nonBillableMinutes: number;
   overtimeMinutes: number;
-  status: "draft" | "submitted" | "approved" | "rejected";
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
   rejectionReason: string | null;
 };
 
@@ -46,14 +46,16 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [runningEntryId, setRunningEntryId] = useState<string | null>(null);
-  const [manualStartAt, setManualStartAt] = useState(toLocalDateTimeInputValue(new Date(Date.now() - 60 * 60 * 1000)));
+  const [manualStartAt, setManualStartAt] = useState(
+    toLocalDateTimeInputValue(new Date(Date.now() - 60 * 60 * 1000)),
+  );
   const [manualEndAt, setManualEndAt] = useState(toLocalDateTimeInputValue(new Date()));
-  const [manualBreakMinutes, setManualBreakMinutes] = useState("30");
-  const [manualProject, setManualProject] = useState("");
-  const [manualTask, setManualTask] = useState("");
-  const [manualNotes, setManualNotes] = useState("");
+  const [manualBreakMinutes, setManualBreakMinutes] = useState('30');
+  const [manualProject, setManualProject] = useState('');
+  const [manualTask, setManualTask] = useState('');
+  const [manualNotes, setManualNotes] = useState('');
   const [manualBillable, setManualBillable] = useState(true);
-  const [clockOutBreakMinutes, setClockOutBreakMinutes] = useState("30");
+  const [clockOutBreakMinutes, setClockOutBreakMinutes] = useState('30');
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -61,28 +63,28 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     setError(null);
     try {
       const [entriesRes, sheetsRes] = await Promise.all([
-        apiFetch("/api/hr/time-entries"),
-        apiFetch("/api/hr/timesheets?mode=list&periodType=weekly"),
+        apiFetch('/api/hr/time-entries'),
+        apiFetch('/api/hr/timesheets?mode=list&periodType=weekly'),
       ]);
 
       const entriesData = await entriesRes.json();
       const sheetsData = await sheetsRes.json();
 
       if (!entriesData.ok) {
-        throw new Error(entriesData.error || "Failed to load entries");
+        throw new Error(entriesData.error || 'Failed to load entries');
       }
       if (!sheetsData.ok) {
-        throw new Error(sheetsData.error || "Failed to load timesheets");
+        throw new Error(sheetsData.error || 'Failed to load timesheets');
       }
 
       const loadedEntries = entriesData.entries as TimeEntry[];
       setEntries(loadedEntries);
       setTimesheets(sheetsData.timesheets as Timesheet[]);
 
-      const running = loadedEntries.find((entry) => entry.status === "running");
+      const running = loadedEntries.find((entry) => entry.status === 'running');
       setRunningEntryId(running?.id || null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load time tracking data");
+      setError(err instanceof Error ? err.message : 'Failed to load time tracking data');
     }
     setLoading(false);
   }, []);
@@ -102,11 +104,11 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   async function handleClockIn() {
     setError(null);
-    const res = await apiFetch("/api/hr/time-entries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await apiFetch('/api/hr/time-entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        source: "clock",
+        source: 'clock',
         startAt: new Date().toISOString(),
         billable: false,
       }),
@@ -114,7 +116,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Clock-in failed");
+      setError(data.error || 'Clock-in failed');
       return;
     }
 
@@ -125,14 +127,14 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     if (!runningEntryId) return;
     setError(null);
     const res = await apiFetch(`/api/hr/time-entries/${runningEntryId}/clock-out`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ breakMinutes: Number(clockOutBreakMinutes) || 0 }),
     });
 
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Clock-out failed");
+      setError(data.error || 'Clock-out failed');
       return;
     }
 
@@ -143,11 +145,11 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     event.preventDefault();
     setError(null);
 
-    const res = await apiFetch("/api/hr/time-entries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await apiFetch('/api/hr/time-entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        source: "manual",
+        source: 'manual',
         startAt: new Date(manualStartAt).toISOString(),
         endAt: new Date(manualEndAt).toISOString(),
         breakMinutes: Number(manualBreakMinutes) || 0,
@@ -160,20 +162,20 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Failed to save manual entry");
+      setError(data.error || 'Failed to save manual entry');
       return;
     }
 
-    setManualNotes("");
+    setManualNotes('');
     await reload();
   }
 
   async function handleGenerateWeeklyTimesheet() {
     setError(null);
-    const res = await apiFetch("/api/hr/timesheets?periodType=weekly&mode=generate");
+    const res = await apiFetch('/api/hr/timesheets?periodType=weekly&mode=generate');
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Failed to generate timesheet");
+      setError(data.error || 'Failed to generate timesheet');
       return;
     }
     await reload();
@@ -181,40 +183,46 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   async function handleSubmitTimesheet(timesheetId: string) {
     setError(null);
-    const res = await apiFetch(`/api/hr/timesheets/${timesheetId}/submit`, { method: "PUT" });
+    const res = await apiFetch(`/api/hr/timesheets/${timesheetId}/submit`, { method: 'PUT' });
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Submit failed");
+      setError(data.error || 'Submit failed');
       return;
     }
     await reload();
   }
 
   async function handleReviewTimesheet(timesheetId: string, approve: boolean) {
-    const reason = approve ? undefined : window.prompt("Rejection reason", "Missing details") || "Rejected by manager";
+    const reason = approve
+      ? undefined
+      : window.prompt('Rejection reason', 'Missing details') || 'Rejected by manager';
     setError(null);
     const res = await apiFetch(`/api/hr/timesheets/${timesheetId}/approve`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approve, rejectionReason: reason }),
     });
     const data = await res.json();
     if (!data.ok) {
-      setError(data.error || "Review failed");
+      setError(data.error || 'Review failed');
       return;
     }
     await reload();
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: 'grid', gap: 16 }}>
       <h1 style={{ fontSize: 24, fontWeight: 700 }}>Time Tracking & Timesheets</h1>
-      {error ? <div style={{ background: "#fee2e2", color: "#991b1b", padding: 12, borderRadius: 8 }}>{error}</div> : null}
+      {error ? (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8 }}>
+          {error}
+        </div>
+      ) : null}
 
       <section style={cardStyle}>
         <h2 style={titleStyle}>Clock Widget</h2>
-        <p>Current status: {runningEntryId ? "Running" : "Not clocked in"}</p>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <p>Current status: {runningEntryId ? 'Running' : 'Not clocked in'}</p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button style={buttonStyle} onClick={handleClockIn} disabled={Boolean(runningEntryId)}>
             Clock In
           </button>
@@ -223,50 +231,103 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
           </button>
           <label>
             Break minutes
-            <input value={clockOutBreakMinutes} onChange={(e) => setClockOutBreakMinutes(e.target.value)} type="number" min={0} max={240} style={inputStyle} />
+            <input
+              value={clockOutBreakMinutes}
+              onChange={(e) => setClockOutBreakMinutes(e.target.value)}
+              type="number"
+              min={0}
+              max={240}
+              style={inputStyle}
+            />
           </label>
         </div>
       </section>
 
       <section style={cardStyle}>
         <h2 style={titleStyle}>Manual Time Entry</h2>
-        <form onSubmit={handleManualEntry} style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+        <form
+          onSubmit={handleManualEntry}
+          style={{
+            display: 'grid',
+            gap: 10,
+            gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))',
+          }}
+        >
           <label>
             Start
-            <input type="datetime-local" value={manualStartAt} onChange={(e) => setManualStartAt(e.target.value)} required style={inputStyle} />
+            <input
+              type="datetime-local"
+              value={manualStartAt}
+              onChange={(e) => setManualStartAt(e.target.value)}
+              required
+              style={inputStyle}
+            />
           </label>
           <label>
             End
-            <input type="datetime-local" value={manualEndAt} onChange={(e) => setManualEndAt(e.target.value)} required style={inputStyle} />
+            <input
+              type="datetime-local"
+              value={manualEndAt}
+              onChange={(e) => setManualEndAt(e.target.value)}
+              required
+              style={inputStyle}
+            />
           </label>
           <label>
             Break minutes
-            <input type="number" min={0} max={240} value={manualBreakMinutes} onChange={(e) => setManualBreakMinutes(e.target.value)} style={inputStyle} />
+            <input
+              type="number"
+              min={0}
+              max={240}
+              value={manualBreakMinutes}
+              onChange={(e) => setManualBreakMinutes(e.target.value)}
+              style={inputStyle}
+            />
           </label>
           <label>
             Project
-            <input value={manualProject} onChange={(e) => setManualProject(e.target.value)} style={inputStyle} />
+            <input
+              value={manualProject}
+              onChange={(e) => setManualProject(e.target.value)}
+              style={inputStyle}
+            />
           </label>
           <label>
             Task
-            <input value={manualTask} onChange={(e) => setManualTask(e.target.value)} style={inputStyle} />
+            <input
+              value={manualTask}
+              onChange={(e) => setManualTask(e.target.value)}
+              style={inputStyle}
+            />
           </label>
           <label>
             Notes
-            <input value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} style={inputStyle} />
+            <input
+              value={manualNotes}
+              onChange={(e) => setManualNotes(e.target.value)}
+              style={inputStyle}
+            />
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input type="checkbox" checked={manualBillable} onChange={(e) => setManualBillable(e.target.checked)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={manualBillable}
+              onChange={(e) => setManualBillable(e.target.checked)}
+            />
             Billable
           </label>
-          <button type="submit" style={buttonStyle}>Save manual entry</button>
+          <button type="submit" style={buttonStyle}>
+            Save manual entry
+          </button>
         </form>
       </section>
 
       <section style={cardStyle}>
         <h2 style={titleStyle}>Weekly Timesheet</h2>
-        <button style={buttonStyle} onClick={handleGenerateWeeklyTimesheet}>Generate/Refresh Weekly Timesheet</button>
-        <table style={{ width: "100%", marginTop: 12, borderCollapse: "collapse" }}>
+        <button style={buttonStyle} onClick={handleGenerateWeeklyTimesheet}>
+          Generate/Refresh Weekly Timesheet
+        </button>
+        <table style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={thStyle}>Day</th>
@@ -288,7 +349,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
         <h2 style={titleStyle}>Time Entry History</h2>
         {loading ? <p>Loading...</p> : null}
         {!loading ? (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={thStyle}>Start</th>
@@ -303,11 +364,15 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td style={tdStyle}>{new Date(entry.startAt).toLocaleString()}</td>
-                  <td style={tdStyle}>{entry.endAt ? new Date(entry.endAt).toLocaleString() : "Running"}</td>
+                  <td style={tdStyle}>
+                    {entry.endAt ? new Date(entry.endAt).toLocaleString() : 'Running'}
+                  </td>
                   <td style={tdStyle}>{formatMinutes(entry.durationMinutes)}</td>
                   <td style={tdStyle}>{entry.breakMinutes}m</td>
-                  <td style={tdStyle}>{entry.billable ? "Yes" : "No"}</td>
-                  <td style={tdStyle}>{entry.projectName || "-"} / {entry.taskName || "-"}</td>
+                  <td style={tdStyle}>{entry.billable ? 'Yes' : 'No'}</td>
+                  <td style={tdStyle}>
+                    {entry.projectName || '-'} / {entry.taskName || '-'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -317,7 +382,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
       <section style={cardStyle}>
         <h2 style={titleStyle}>Manager Approval Dashboard</h2>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={thStyle}>Employee</th>
@@ -332,18 +397,35 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
             {timesheets.map((sheet) => (
               <tr key={sheet.id}>
                 <td style={tdStyle}>{sheet.userName}</td>
-                <td style={tdStyle}>{sheet.periodStart.slice(0, 10)} - {sheet.periodEnd.slice(0, 10)}</td>
-                <td style={tdStyle}>Total {formatMinutes(sheet.totalMinutes)} / Billable {formatMinutes(sheet.billableMinutes)}</td>
+                <td style={tdStyle}>
+                  {sheet.periodStart.slice(0, 10)} - {sheet.periodEnd.slice(0, 10)}
+                </td>
+                <td style={tdStyle}>
+                  Total {formatMinutes(sheet.totalMinutes)} / Billable{' '}
+                  {formatMinutes(sheet.billableMinutes)}
+                </td>
                 <td style={tdStyle}>{formatMinutes(sheet.overtimeMinutes)}</td>
                 <td style={tdStyle}>{sheet.status}</td>
                 <td style={tdStyle}>
-                  {sheet.status === "draft" || sheet.status === "rejected" ? (
-                    <button style={buttonStyle} onClick={() => handleSubmitTimesheet(sheet.id)}>Submit</button>
+                  {sheet.status === 'draft' || sheet.status === 'rejected' ? (
+                    <button style={buttonStyle} onClick={() => handleSubmitTimesheet(sheet.id)}>
+                      Submit
+                    </button>
                   ) : null}
-                  {canApprove && sheet.status === "submitted" ? (
+                  {canApprove && sheet.status === 'submitted' ? (
                     <>
-                      <button style={{ ...buttonStyle, marginLeft: 8 }} onClick={() => handleReviewTimesheet(sheet.id, true)}>Approve</button>
-                      <button style={{ ...buttonStyle, marginLeft: 8, background: "#b91c1c" }} onClick={() => handleReviewTimesheet(sheet.id, false)}>Reject</button>
+                      <button
+                        style={{ ...buttonStyle, marginLeft: 8 }}
+                        onClick={() => handleReviewTimesheet(sheet.id, true)}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        style={{ ...buttonStyle, marginLeft: 8, background: '#b91c1c' }}
+                        onClick={() => handleReviewTimesheet(sheet.id, false)}
+                      >
+                        Reject
+                      </button>
                     </>
                   ) : null}
                 </td>
@@ -356,23 +438,28 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
   );
 }
 
-const cardStyle: CSSProperties = { background: "#fff", borderRadius: 10, padding: 16, border: "1px solid #e5e7eb" };
+const cardStyle: CSSProperties = {
+  background: '#fff',
+  borderRadius: 10,
+  padding: 16,
+  border: '1px solid #e5e7eb',
+};
 const titleStyle: CSSProperties = { fontSize: 18, fontWeight: 700, marginBottom: 10 };
 const buttonStyle: CSSProperties = {
-  background: "#2563eb",
-  color: "#fff",
-  border: "none",
+  background: '#2563eb',
+  color: '#fff',
+  border: 'none',
   borderRadius: 8,
-  padding: "8px 12px",
-  cursor: "pointer",
+  padding: '8px 12px',
+  cursor: 'pointer',
 };
 const inputStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
+  border: '1px solid #cbd5e1',
   borderRadius: 8,
-  padding: "8px 10px",
-  display: "block",
+  padding: '8px 10px',
+  display: 'block',
   marginTop: 4,
-  width: "100%",
+  width: '100%',
 };
-const thStyle: CSSProperties = { textAlign: "left", padding: 8, borderBottom: "1px solid #e5e7eb" };
-const tdStyle: CSSProperties = { textAlign: "left", padding: 8, borderBottom: "1px solid #f1f5f9" };
+const thStyle: CSSProperties = { textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' };
+const tdStyle: CSSProperties = { textAlign: 'left', padding: 8, borderBottom: '1px solid #f1f5f9' };

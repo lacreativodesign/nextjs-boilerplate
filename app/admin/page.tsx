@@ -1,6 +1,6 @@
-"use client";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+'use client';
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type SalesKpis = {
   totalLeads: number;
@@ -28,16 +28,24 @@ type OverviewData = {
   topOwners: TopOwner[];
 };
 
-const COLOR_ACTIVE = "#10b981"; // green-ish
-const COLOR_LOCKED = "#ef4444"; // red
+const COLOR_ACTIVE = '#10b981'; // green-ish
+const COLOR_LOCKED = '#ef4444'; // red
 
-function StatCard({ label, value, sub, color }: {
-  label: string; value: string | number; sub: string; color?: string;
+function StatCard({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  color?: string;
 }) {
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-3xl font-bold" style={{ color: color || "var(--text-primary)" }}>
+      <p className="mt-2 text-3xl font-bold" style={{ color: color || 'var(--text-primary)' }}>
         {value}
       </p>
       <p className="mt-1 text-xs text-[var(--text-soft)]">{sub}</p>
@@ -46,9 +54,7 @@ function StatCard({ label, value, sub, color }: {
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return (
-    <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
-  );
+  return <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>;
 }
 
 function SkeletonGrid({ count = 3 }: { count?: number }) {
@@ -89,9 +95,9 @@ function ErrorLine({ message }: { message: string }) {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0);
 }
@@ -110,10 +116,10 @@ export default function AdminPage() {
 
     async function load() {
       try {
-        const res = await apiFetch("/api/admin/sales/overview", { cache: "no-store" });
+        const res = await apiFetch('/api/admin/sales/overview', { cache: 'no-store' });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok || !json?.kpis) {
-          throw new Error("Sales overview is temporarily unavailable.");
+          throw new Error('Sales overview is temporarily unavailable.');
         }
         if (active) {
           setData({
@@ -123,7 +129,7 @@ export default function AdminPage() {
           });
         }
       } catch {
-        if (active) setError("Sales overview is temporarily unavailable.");
+        if (active) setError('Sales overview is temporarily unavailable.');
       } finally {
         if (active) setLoading(false);
       }
@@ -171,16 +177,8 @@ export default function AdminPage() {
               sub="Deals won this month"
               color={COLOR_ACTIVE}
             />
-            <StatCard
-              label="Active Deals"
-              value={kpis.activeDeals}
-              sub="Deals not yet closed"
-            />
-            <StatCard
-              label="Total Leads"
-              value={kpis.totalLeads}
-              sub="Leads in the system"
-            />
+            <StatCard label="Active Deals" value={kpis.activeDeals} sub="Deals not yet closed" />
+            <StatCard label="Total Leads" value={kpis.totalLeads} sub="Leads in the system" />
             <StatCard
               label="Conversion Rate"
               value={formatPercent(kpis.conversionRate)}
@@ -211,14 +209,14 @@ export default function AdminPage() {
                       {stage.stage}
                     </span>
                     <span className="text-xs text-[var(--text-soft)]">
-                      {stage.count} {stage.count === 1 ? "deal" : "deals"} ·{" "}
+                      {stage.count} {stage.count === 1 ? 'deal' : 'deals'} ·{' '}
                       <span className="text-[var(--text-muted)]">{formatCurrency(value)}</span>
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded bg-[var(--border-subtle)]">
                     <div
                       className="h-full rounded"
-                      style={{ width: `${pct}%`, background: "var(--erp-blue)" }}
+                      style={{ width: `${pct}%`, background: 'var(--erp-blue)' }}
                     />
                   </div>
                 </div>
@@ -251,7 +249,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex shrink-0 items-baseline gap-3">
                   <span className="text-xs text-[var(--text-soft)]">
-                    {owner.deals} {owner.deals === 1 ? "deal" : "deals"}
+                    {owner.deals} {owner.deals === 1 ? 'deal' : 'deals'}
                   </span>
                   <span className="text-sm font-semibold text-[var(--text-primary)]">
                     {formatCurrency(owner.value)}

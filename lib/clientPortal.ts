@@ -1,7 +1,7 @@
-import crypto from "crypto";
-import * as admin from "firebase-admin";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
+import crypto from 'crypto';
+import * as admin from 'firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 
 type ClientData = {
   primaryContactEmail?: string;
@@ -20,11 +20,13 @@ type PortalInviteResult = {
 };
 
 function normalizeEmail(value: string | undefined) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function cleanString(value: string | undefined) {
-  return String(value || "").trim();
+  return String(value || '').trim();
 }
 
 export async function ensureClientPortalAccess({
@@ -40,7 +42,7 @@ export async function ensureClientPortalAccess({
 }): Promise<PortalInviteResult> {
   const email = normalizeEmail(clientData.primaryContactEmail);
   if (!email) {
-    throw new Error("Primary contact email is required for portal access.");
+    throw new Error('Primary contact email is required for portal access.');
   }
 
   let portalUserUid = cleanString(clientData.portalUserUid);
@@ -57,7 +59,7 @@ export async function ensureClientPortalAccess({
   if (portalUserUid) {
     const existingUser = await adminAuth.getUser(portalUserUid).catch(() => null);
     if (!existingUser) {
-      portalUserUid = "";
+      portalUserUid = '';
     }
   }
 
@@ -66,24 +68,24 @@ export async function ensureClientPortalAccess({
     if (!userRecord) {
       userRecord = await adminAuth.createUser({
         email,
-        password: crypto.randomBytes(16).toString("hex"),
+        password: crypto.randomBytes(16).toString('hex'),
         displayName: cleanString(clientData.primaryContactName || clientData.companyName || email),
       });
     }
     portalUserUid = userRecord.uid;
   }
 
-  await adminDb.collection("users").doc(portalUserUid).set(
+  await adminDb.collection('users').doc(portalUserUid).set(
     {
       uid: portalUserUid,
-      role: "client",
-      status: "active",
+      role: 'client',
+      status: 'active',
       clientId,
       email,
       updatedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   const tokenData = await createPasswordSetupToken({
@@ -94,12 +96,12 @@ export async function ensureClientPortalAccess({
 
   const emailResult = await sendSetPasswordEmail({ email, link: tokenData.link });
 
-  await adminDb.collection("clients").doc(clientId).set(
+  await adminDb.collection('clients').doc(clientId).set(
     {
       portalUserUid,
       portalInviteSentAt: admin.firestore.FieldValue.serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   return {

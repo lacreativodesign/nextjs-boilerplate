@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import { CurrencyCode, formatCurrency } from "@/lib/finance/currencies";
+import React from 'react';
+import { CurrencyCode, formatCurrency } from '@/lib/finance/currencies';
 
 interface CurrencyDisplayProps {
   amount: number;
@@ -10,7 +10,12 @@ interface CurrencyDisplayProps {
   showCode?: boolean;
 }
 
-export function CurrencyDisplay({ amount, currency, className, showCode = false }: CurrencyDisplayProps) {
+export function CurrencyDisplay({
+  amount,
+  currency,
+  className,
+  showCode = false,
+}: CurrencyDisplayProps) {
   const formatted = formatCurrency(amount, currency);
 
   return (

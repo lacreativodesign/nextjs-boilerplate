@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { enqueueJob, getJobMetrics, listJobs, processDueJobs } from "@/lib/jobs/job-queue";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { enqueueJob, getJobMetrics, listJobs, processDueJobs } from '@/lib/jobs/job-queue';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-const enqueueSchema = z.discriminatedUnion("type", [
+const enqueueSchema = z.discriminatedUnion('type', [
   z.object({
-    type: z.literal("email"),
+    type: z.literal('email'),
     payload: z.object({
       tenantId: z.string().min(1),
       subject: z.string().min(1),
@@ -18,7 +18,7 @@ const enqueueSchema = z.discriminatedUnion("type", [
     }),
   }),
   z.object({
-    type: z.literal("report_generation"),
+    type: z.literal('report_generation'),
     payload: z.object({
       tenantId: z.string().min(1),
       reportName: z.string().min(1),
@@ -29,29 +29,29 @@ const enqueueSchema = z.discriminatedUnion("type", [
     }),
   }),
   z.object({
-    type: z.literal("data_sync"),
+    type: z.literal('data_sync'),
     payload: z.object({
       tenantId: z.string().min(1),
-      provider: z.enum(["quickbooks", "xero"]),
+      provider: z.enum(['quickbooks', 'xero']),
       triggeredBy: z.string().optional(),
       forceInitial: z.boolean().optional(),
     }),
   }),
   z.object({
-    type: z.literal("file_processing"),
+    type: z.literal('file_processing'),
     payload: z.object({
       tenantId: z.string().min(1),
       filePath: z.string().min(1),
-      operation: z.enum(["extract_text", "generate_preview", "virus_scan"]),
+      operation: z.enum(['extract_text', 'generate_preview', 'virus_scan']),
       triggeredBy: z.string().optional(),
       metadata: z.record(z.unknown()).optional(),
     }),
   }),
   z.object({
-    type: z.literal("cleanup"),
+    type: z.literal('cleanup'),
     payload: z.object({
       tenantId: z.string().optional(),
-      scope: z.enum(["tenant", "global"]),
+      scope: z.enum(['tenant', 'global']),
       triggeredBy: z.string().optional(),
     }),
   }),
@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const status = request.nextUrl.searchParams.get("status") as "pending" | "processing" | "completed" | "failed" | null;
-  const limit = Number(request.nextUrl.searchParams.get("limit") || "100");
+  const status = request.nextUrl.searchParams.get('status') as
+    'pending' | 'processing' | 'completed' | 'failed' | null;
+  const limit = Number(request.nextUrl.searchParams.get('limit') || '100');
 
   const [jobs, metrics] = await Promise.all([
     listJobs({ status: status || undefined, limit: Number.isFinite(limit) ? limit : 100 }),

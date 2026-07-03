@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, toISO } from "../_utils";
-import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, toISO } from '../_utils';
+import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getMonthKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function getStartOfMonth(date: Date) {
@@ -35,11 +35,26 @@ export async function GET() {
     const startMs = startOfMonth.getTime();
 
     const [invoiceDocs, paymentDocs, payrollDocs, expenseDocs, eventDocs] = await Promise.all([
-      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("payroll").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("expenses").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("events").orderBy("createdAt", "desc").limit(20), tenantId),
+      queryWithTenant(
+        adminDb.collection('invoices').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('payments').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('payroll').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('expenses').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('events').orderBy('createdAt', 'desc').limit(20),
+        tenantId,
+      ),
     ]);
 
     const invoices = invoiceDocs.map((doc): Record<string, any> => ({ id: doc.id, ...doc.data() }));
@@ -49,14 +64,14 @@ export async function GET() {
 
     const totalRevenueMonth = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (status !== "paid") return sum;
+      if (status !== 'paid') return sum;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
     const paymentsReceivedMonth = payments.reduce((sum, payment) => {
-      if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
+      if (normalizePaymentStatus(payment.status) !== 'succeeded') return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
@@ -64,7 +79,7 @@ export async function GET() {
 
     const outstandingInvoices = invoices.reduce((sum, inv) => {
       const status = normalizeInvoiceStatus(inv.status);
-      if (["paid", "void"].includes(status)) return sum;
+      if (['paid', 'void'].includes(status)) return sum;
       return sum + Number(inv.amountTotalUsd || 0);
     }, 0);
 
@@ -72,7 +87,7 @@ export async function GET() {
     const agingBuckets = invoices.reduce(
       (acc, inv) => {
         const status = normalizeInvoiceStatus(inv.status);
-        if (["paid", "void"].includes(status)) return acc;
+        if (['paid', 'void'].includes(status)) return acc;
         const dueMs = toMillis(inv.dueDate);
         if (!dueMs) {
           acc.bucket0to30 += Number(inv.amountTotalUsd || 0);
@@ -86,12 +101,12 @@ export async function GET() {
         else acc.bucket90plus += value;
         return acc;
       },
-      { bucket0to30: 0, bucket31to60: 0, bucket61to90: 0, bucket90plus: 0 }
+      { bucket0to30: 0, bucket31to60: 0, bucket61to90: 0, bucket90plus: 0 },
     );
 
     const payrollDueMonth = payroll.reduce((sum, row) => {
-      if (String(row.status || "") === "Paid") return sum;
-      if (String(row.month || "") !== getMonthKey(now)) return sum;
+      if (String(row.status || '') === 'Paid') return sum;
+      if (String(row.month || '') !== getMonthKey(now)) return sum;
       return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
     }, 0);
 
@@ -109,7 +124,7 @@ export async function GET() {
     const revenueSeries = seriesMonths.map((key) => ({ label: key, invoices: 0, payments: 0 }));
 
     invoices.forEach((inv) => {
-      if (normalizeInvoiceStatus(inv.status) !== "paid") return;
+      if (normalizeInvoiceStatus(inv.status) !== 'paid') return;
       const paidMs = toMillis(inv.paidAt || inv.updatedAt || inv.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -119,7 +134,7 @@ export async function GET() {
     });
 
     payments.forEach((pay) => {
-      if (normalizePaymentStatus(pay.status) !== "succeeded") return;
+      if (normalizePaymentStatus(pay.status) !== 'succeeded') return;
       const paidMs = toMillis(pay.paidAt || pay.createdAt);
       if (!paidMs) return;
       const key = getMonthKey(new Date(paidMs));
@@ -132,24 +147,27 @@ export async function GET() {
     expenses.forEach((row) => {
       const expenseMs = toMillis(row.expenseDate || row.createdAt);
       if (!expenseMs || expenseMs < startMs) return;
-      const category = String(row.category || "Other");
+      const category = String(row.category || 'Other');
       expenseGroups.set(category, (expenseGroups.get(category) || 0) + Number(row.amountPkr || 0));
     });
 
-    const expenseBreakdown = Array.from(expenseGroups.entries()).map(([label, value]) => ({ label, value }));
+    const expenseBreakdown = Array.from(expenseGroups.entries()).map(([label, value]) => ({
+      label,
+      value,
+    }));
 
     const recentEvents = eventDocs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        type: String(data.type || ""),
-        title: String(data.title || ""),
-        description: String(data.description || ""),
-        entityType: data.entityType || "",
-        entityId: data.entityId || "",
+        type: String(data.type || ''),
+        title: String(data.title || ''),
+        description: String(data.description || ''),
+        entityType: data.entityType || '',
+        entityId: data.entityId || '',
         createdAt: toISO(data.createdAt),
-        createdByUid: data.createdByUid || "",
-        createdByName: data.createdByName || "",
+        createdByUid: data.createdByUid || '',
+        createdByName: data.createdByName || '',
       };
     });
 
@@ -172,13 +190,15 @@ export async function GET() {
       },
     });
   } catch (err: any) {
-    console.error("finance/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load finance overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load finance overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

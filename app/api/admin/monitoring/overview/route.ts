@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { getMonitoringDashboard } from "@/lib/monitoring/dashboard-service";
+import { NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getMonitoringDashboard } from '@/lib/monitoring/dashboard-service';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET() {
   const auth = await requireAdminOrSuperAdmin();
@@ -17,10 +17,10 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-        error: "Failed to load monitoring dashboard",
+        error: 'Failed to load monitoring dashboard',
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

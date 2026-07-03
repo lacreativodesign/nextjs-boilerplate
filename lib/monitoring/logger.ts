@@ -1,5 +1,5 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import type { MonitoringSeverity } from "@/lib/monitoring/types";
+import { adminDb } from '@/lib/firebaseAdmin';
+import type { MonitoringSeverity } from '@/lib/monitoring/types';
 
 type LogMetadata = Record<string, unknown>;
 
@@ -13,24 +13,24 @@ type StructuredLogInput = {
   metadata?: LogMetadata;
 };
 
-const LOG_COLLECTION = "system_logs";
+const LOG_COLLECTION = 'system_logs';
 const RETENTION_DAYS = 30;
 const LOG_RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const CLEANUP_SAMPLE_RATE = 0.01;
 
 function safeJsonLog(payload: StructuredLogInput & { timestamp: string }) {
   const encoded = JSON.stringify(payload);
-  if (payload.level === "error") {
+  if (payload.level === 'error') {
     console.error(encoded);
     return;
   }
 
-  if (payload.level === "warn") {
+  if (payload.level === 'warn') {
     console.warn(encoded);
     return;
   }
 
-  if (payload.level === "debug") {
+  if (payload.level === 'debug') {
     console.debug(encoded);
     return;
   }
@@ -46,7 +46,7 @@ async function maybeRunRetention() {
   const cutoff = new Date(Date.now() - LOG_RETENTION_MS).toISOString();
   const snapshot = await adminDb
     .collection(LOG_COLLECTION)
-    .where("timestamp", "<", cutoff)
+    .where('timestamp', '<', cutoff)
     .limit(200)
     .get();
 
@@ -74,9 +74,9 @@ export async function writeStructuredLog(input: StructuredLogInput) {
     await maybeRunRetention();
   } catch (error) {
     safeJsonLog({
-      level: "error",
-      message: "monitoring_log_persist_failed",
-      module: "monitoring",
+      level: 'error',
+      message: 'monitoring_log_persist_failed',
+      module: 'monitoring',
       metadata: {
         originalMessage: input.message,
         persistenceError: error instanceof Error ? error.message : String(error),
@@ -88,11 +88,11 @@ export async function writeStructuredLog(input: StructuredLogInput) {
 
 export const monitoringLogger = {
   debug: (message: string, module: string, metadata?: LogMetadata) =>
-    writeStructuredLog({ level: "debug", message, module, metadata }),
+    writeStructuredLog({ level: 'debug', message, module, metadata }),
   info: (message: string, module: string, metadata?: LogMetadata) =>
-    writeStructuredLog({ level: "info", message, module, metadata }),
+    writeStructuredLog({ level: 'info', message, module, metadata }),
   warn: (message: string, module: string, metadata?: LogMetadata) =>
-    writeStructuredLog({ level: "warn", message, module, metadata }),
+    writeStructuredLog({ level: 'warn', message, module, metadata }),
   error: (message: string, module: string, metadata?: LogMetadata) =>
-    writeStructuredLog({ level: "error", message, module, metadata }),
+    writeStructuredLog({ level: 'error', message, module, metadata }),
 };

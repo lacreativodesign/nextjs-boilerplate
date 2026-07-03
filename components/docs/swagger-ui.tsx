@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type SwaggerWindow = Window & {
   SwaggerUIBundle?: (args: {
@@ -30,15 +30,18 @@ export function SwaggerUi({ defaultVersion, versions }: SwaggerUiProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
 
-  const specUrl = useMemo(() => `/api/openapi?version=${encodeURIComponent(selectedVersion)}`, [selectedVersion]);
+  const specUrl = useMemo(
+    () => `/api/openapi?version=${encodeURIComponent(selectedVersion)}`,
+    [selectedVersion],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     const initSwagger = async () => {
       await loadStyles();
-      await loadScript("https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js");
-      await loadScript("https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js");
+      await loadScript('https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js');
+      await loadScript('https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js');
 
       if (cancelled || !mountRef.current) {
         return;
@@ -52,7 +55,7 @@ export function SwaggerUi({ defaultVersion, versions }: SwaggerUiProps) {
         presets: swaggerWindow.SwaggerUIStandalonePreset
           ? [swaggerWindow.SwaggerUIStandalonePreset]
           : undefined,
-        layout: "StandaloneLayout",
+        layout: 'StandaloneLayout',
       });
     };
 
@@ -86,15 +89,15 @@ export function SwaggerUi({ defaultVersion, versions }: SwaggerUiProps) {
 }
 
 async function loadStyles() {
-  const styleId = "swagger-ui-style";
+  const styleId = 'swagger-ui-style';
   if (document.getElementById(styleId)) {
     return;
   }
 
-  const link = document.createElement("link");
+  const link = document.createElement('link');
   link.id = styleId;
-  link.rel = "stylesheet";
-  link.href = "https://unpkg.com/swagger-ui-dist@5/swagger-ui.css";
+  link.rel = 'stylesheet';
+  link.href = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css';
   document.head.appendChild(link);
 }
 
@@ -104,7 +107,7 @@ async function loadScript(src: string) {
   }
 
   await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
+    const script = document.createElement('script');
     script.src = src;
     script.async = true;
     script.onload = () => resolve();

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { FieldAccess, PermissionSet } from "@/lib/permissions/types";
+import type { FieldAccess, PermissionSet } from '@/lib/permissions/types';
 
-const LEVELS: FieldAccess[] = ["hidden", "read", "write"];
+const LEVELS: FieldAccess[] = ['hidden', 'read', 'write'];
 
 type Props = {
   permissions: PermissionSet[];
@@ -23,18 +23,23 @@ export function FieldAccessToggles({ permissions, onChange }: Props) {
       <h3 className="mb-3 text-sm font-semibold">Field-level Access Toggles</h3>
       <div className="space-y-2">
         {permissions.map((permission, index) => (
-          <div key={`${permission.module}-${permission.entity}-${index}`} className="rounded border p-3">
+          <div
+            key={`${permission.module}-${permission.entity}-${index}`}
+            className="rounded border p-3"
+          >
             <div className="mb-2 text-xs font-semibold uppercase">
-              {permission.module || "module"} / {permission.entity || "entity"}
+              {permission.module || 'module'} / {permission.entity || 'entity'}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {["email", "internalNotes", "creditLimit"].map((field) => (
+              {['email', 'internalNotes', 'creditLimit'].map((field) => (
                 <div key={field} className="rounded border p-2">
                   <div className="mb-2 text-xs">{field}</div>
                   <select
                     className="input"
-                    value={permission.fields?.[field] || "write"}
-                    onChange={(event) => setFieldAccess(index, field, event.target.value as FieldAccess)}
+                    value={permission.fields?.[field] || 'write'}
+                    onChange={(event) =>
+                      setFieldAccess(index, field, event.target.value as FieldAccess)
+                    }
                   >
                     {LEVELS.map((level) => (
                       <option key={level} value={level}>

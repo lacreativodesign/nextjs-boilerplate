@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { showToast } from "@/lib/utils/toast";
+import React, { useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { showToast } from '@/lib/utils/toast';
 
 export default function AddEmployeePage() {
   const [loading, setLoading] = useState(false);
@@ -14,30 +14,30 @@ export default function AddEmployeePage() {
     const form = new FormData(e.currentTarget);
 
     const payload = {
-      name: form.get("name"),
-      email: form.get("email"),
-      role: form.get("role"),
-      department: form.get("department"),
-      status: form.get("status"),
+      name: form.get('name'),
+      email: form.get('email'),
+      role: form.get('role'),
+      department: form.get('department'),
+      status: form.get('status'),
     };
 
     try {
-      const res = await apiFetch("/api/hr/employees/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/hr/employees/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const json = await res.json();
 
       if (json.success) {
-        showToast.success("Employee created!");
-        window.location.href = "/hr/employees";
+        showToast.success('Employee created!');
+        window.location.href = '/hr/employees';
       } else {
-        showToast.error("Failed: " + (json.message || "Unknown error"));
+        showToast.error('Failed: ' + (json.message || 'Unknown error'));
       }
     } catch (err) {
-      showToast.error("Error creating employee.");
+      showToast.error('Error creating employee.');
     }
 
     setLoading(false);
@@ -45,11 +45,9 @@ export default function AddEmployeePage() {
 
   return (
     <div className="space-y-6">
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        Add New Employee
-      </h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Add New Employee</h2>
 
-      <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 30 }}>
+      <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 30 }}>
         Fill in the details below to create a new employee profile.
       </p>
 
@@ -58,18 +56,18 @@ export default function AddEmployeePage() {
         onSubmit={handleSubmit}
         style={{
           maxWidth: 700,
-          background: "var(--surface-card)",
+          background: 'var(--surface-card)',
           padding: 30,
           borderRadius: 12,
-          border: "1px solid var(--border-subtle)",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+          border: '1px solid var(--border-subtle)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
         }}
       >
         {/* Grid */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
             gap: 20,
             marginBottom: 25,
           }}
@@ -113,16 +111,16 @@ export default function AddEmployeePage() {
           type="submit"
           disabled={loading}
           style={{
-            padding: "12px 22px",
+            padding: '12px 22px',
             borderRadius: 8,
-            background: loading ? "var(--text-soft)" : "var(--erp-blue)",
-            color: "white",
-            border: "none",
+            background: loading ? 'var(--text-soft)' : 'var(--erp-blue)',
+            color: 'white',
+            border: 'none',
             fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
+            cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
-          {loading ? "Saving..." : "Create Employee"}
+          {loading ? 'Saving...' : 'Create Employee'}
         </button>
       </form>
     </div>
@@ -132,17 +130,17 @@ export default function AddEmployeePage() {
 const labelStyle = {
   fontSize: 12,
   fontWeight: 600,
-  color: "var(--text-muted)",
-  textTransform: "uppercase" as const,
+  color: 'var(--text-muted)',
+  textTransform: 'uppercase' as const,
   marginBottom: 6,
-  display: "block",
+  display: 'block',
 };
 
 const inputStyle = {
-  width: "100%",
-  padding: "10px 12px",
+  width: '100%',
+  padding: '10px 12px',
   borderRadius: 8,
-  border: "1px solid var(--input-border)",
+  border: '1px solid var(--input-border)',
   fontSize: 15,
-  outline: "none",
+  outline: 'none',
 };

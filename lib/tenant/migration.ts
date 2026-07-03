@@ -1,35 +1,35 @@
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
 
 const MIGRATION_COLLECTIONS = [
-  "users",
-  "clients",
-  "projects",
-  "files",
-  "changeRequests",
-  "change_requests",
-  "events",
-  "eventsQueue",
-  "notifications",
-  "emails",
-  "email_events",
-  "invoices",
-  "payments",
-  "expenses",
-  "payroll",
-  "leads",
-  "deals",
-  "sales_targets",
-  "activity_logs",
-  "employees",
-  "attendance",
-  "attendance_logs",
-  "onboardingTasks",
-  "onboardingTemplates",
-  "performanceReviews",
-  "employeeDocuments",
-  "hrSettings",
+  'users',
+  'clients',
+  'projects',
+  'files',
+  'changeRequests',
+  'change_requests',
+  'events',
+  'eventsQueue',
+  'notifications',
+  'emails',
+  'email_events',
+  'invoices',
+  'payments',
+  'expenses',
+  'payroll',
+  'leads',
+  'deals',
+  'sales_targets',
+  'activity_logs',
+  'employees',
+  'attendance',
+  'attendance_logs',
+  'onboardingTasks',
+  'onboardingTemplates',
+  'performanceReviews',
+  'employeeDocuments',
+  'hrSettings',
 ];
 
 export async function migrateMissingTenantIds(tenantId = DEFAULT_TENANT_ID) {
@@ -41,7 +41,10 @@ export async function migrateMissingTenantIds(tenantId = DEFAULT_TENANT_ID) {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let query = adminDb.collection(collectionName).orderBy(admin.firestore.FieldPath.documentId()).limit(300);
+      let query = adminDb
+        .collection(collectionName)
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(300);
       if (lastDoc) {
         query = query.startAfter(lastDoc);
       }
@@ -54,14 +57,14 @@ export async function migrateMissingTenantIds(tenantId = DEFAULT_TENANT_ID) {
 
       snap.docs.forEach((doc) => {
         const data = doc.data() || {};
-        if (data.tenantId === undefined || data.tenantId === null || data.tenantId === "") {
+        if (data.tenantId === undefined || data.tenantId === null || data.tenantId === '') {
           batch.set(
             doc.ref,
             {
               tenantId,
               updatedAt: now,
             },
-            { merge: true }
+            { merge: true },
           );
           hasUpdates = true;
           updatedCount += 1;

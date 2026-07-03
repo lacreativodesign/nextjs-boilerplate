@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 import {
   computeHealth,
   getMonthKey,
@@ -11,24 +11,26 @@ import {
   requireAdmin,
   toISO,
   toMillis,
-} from "../reports/_utils";
-import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from "../settings/_utils";
-import { normalizeInvoiceStatus, normalizePaymentStatus } from "@/lib/finance/status";
-import { getRedisClient } from "@/lib/cache/redis-client";
+} from '../reports/_utils';
+import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from '../settings/_utils';
+import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
+import { getRedisClient } from '@/lib/cache/redis-client';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const ACTIVITY_PREFIXES = ["finance.", "project.", "production.", "hr."];
+const ACTIVITY_PREFIXES = ['finance.', 'project.', 'production.', 'hr.'];
 
 function isClosedStatus(status: string) {
   const normalized = status.toLowerCase();
-  return ["completed", "rejected", "closed", "resolved", "done"].some((token) => normalized.includes(token));
+  return ['completed', 'rejected', 'closed', 'resolved', 'done'].some((token) =>
+    normalized.includes(token),
+  );
 }
 
 function isActiveUser(user: Record<string, any>) {
-  const status = String(user.status || "active").toLowerCase();
-  if (["inactive", "terminated", "disabled"].includes(status)) return false;
+  const status = String(user.status || 'active').toLowerCase();
+  if (['inactive', 'terminated', 'disabled'].includes(status)) return false;
   return !user.disabled;
 }
 
@@ -40,13 +42,13 @@ function hasSegmentCoverage(client: Record<string, any>) {
   const segmentServices = Array.isArray(client.segmentServices) ? client.segmentServices : [];
   return Boolean(
     segmentServices.length ||
-      client.segmentBusinessType ||
-      client.segmentIndustry ||
-      client.segmentGeo ||
-      client.businessType ||
-      client.industry ||
-      client.country ||
-      client.city
+    client.segmentBusinessType ||
+    client.segmentIndustry ||
+    client.segmentGeo ||
+    client.businessType ||
+    client.industry ||
+    client.country ||
+    client.city,
   );
 }
 
@@ -62,15 +64,20 @@ export async function GET() {
     if (cached) return NextResponse.json(JSON.parse(String(cached)));
 
     if (!auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const [settings, financeSettings] = await Promise.all([getReportSettings(), getFinanceSettings(tenantId)]);
+    const [settings, financeSettings] = await Promise.all([
+      getReportSettings(),
+      getFinanceSettings(tenantId),
+    ]);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
     const startYearMs = new Date(now.getFullYear(), 0, 1).getTime();
     const currentMonthKey = getMonthKey(now);
-    const fxPkrPerUsdRaw = Number(financeSettings.fxPkrPerUsd || DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd);
+    const fxPkrPerUsdRaw = Number(
+      financeSettings.fxPkrPerUsd || DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd,
+    );
     const fxPkrPerUsd = fxPkrPerUsdRaw > 0 ? fxPkrPerUsdRaw : DEFAULT_FINANCE_SETTINGS.fxPkrPerUsd;
 
     const [
@@ -85,36 +92,74 @@ export async function GET() {
       clientDocs,
       eventDocs,
     ] = await Promise.all([
-      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("invoices").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("payments").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("payroll").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("expenses").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("users").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("onboardingTasks").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("clients").where("isDeleted", "==", false).limit(500), tenantId),
-      queryWithTenant(adminDb.collection("events").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(
+        adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('changeRequests').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('invoices').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('payments').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('payroll').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('expenses').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('users').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('onboardingTasks').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('clients').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
+      queryWithTenant(
+        adminDb.collection('events').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
     ]);
 
     type DocRecord = { id: string } & Record<string, any>;
     const projects = projectDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
-    const changeRequests = changeRequestDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const changeRequests = changeRequestDocs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as DocRecord[];
     const invoices = invoiceDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const payments = paymentDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const payroll = payrollDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const expenses = expenseDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const users = userDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
-    const onboardingTasks = onboardingDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
+    const onboardingTasks = onboardingDocs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as DocRecord[];
     const clients = clientDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const events = eventDocs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[];
     const safeEvents =
       events.length > 0
         ? events
-        : (await queryWithTenant(adminDb.collection("events").limit(500), tenantId)).map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as DocRecord[];
+        : ((await queryWithTenant(adminDb.collection('events').limit(500), tenantId)).map(
+            (doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }),
+          ) as DocRecord[]);
 
     const matchesTenant = (doc: Record<string, any>) =>
       String(doc.tenantId || DEFAULT_TENANT_ID) === String(tenantId || DEFAULT_TENANT_ID);
@@ -132,23 +177,23 @@ export async function GET() {
 
     const paidInvoiceIds = new Set(
       scopedPayments
-        .filter((payment) => normalizePaymentStatus(payment.status) === "succeeded")
-        .map((payment) => String(payment.invoiceId || ""))
-        .filter(Boolean)
+        .filter((payment) => normalizePaymentStatus(payment.status) === 'succeeded')
+        .map((payment) => String(payment.invoiceId || ''))
+        .filter(Boolean),
     );
 
     const paymentsThisMonth = scopedPayments.reduce((sum, payment) => {
-      if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
+      if (normalizePaymentStatus(payment.status) !== 'succeeded') return sum;
       const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
       return sum + Number(payment.amountUsd || 0);
     }, 0);
 
     const invoiceFallbackRevenue = scopedInvoices.reduce((sum, invoice) => {
-      if (normalizeInvoiceStatus(invoice.status) !== "paid") return sum;
+      if (normalizeInvoiceStatus(invoice.status) !== 'paid') return sum;
       const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
       if (!paidMs || paidMs < startMs) return sum;
-      if (paidInvoiceIds.has(String(invoice.id || ""))) return sum;
+      if (paidInvoiceIds.has(String(invoice.id || ''))) return sum;
       return sum + Number(invoice.amountTotalUsd || 0);
     }, 0);
 
@@ -156,76 +201,86 @@ export async function GET() {
 
     const revenueYtdUsd =
       scopedPayments.reduce((sum, payment) => {
-        if (normalizePaymentStatus(payment.status) !== "succeeded") return sum;
+        if (normalizePaymentStatus(payment.status) !== 'succeeded') return sum;
         const paidMs = toMillis(payment.paidAt || payment.updatedAt || payment.createdAt);
         if (!paidMs || paidMs < startYearMs) return sum;
         return sum + Number(payment.amountUsd || 0);
       }, 0) +
       scopedInvoices.reduce((sum, invoice) => {
-        if (normalizeInvoiceStatus(invoice.status) !== "paid") return sum;
+        if (normalizeInvoiceStatus(invoice.status) !== 'paid') return sum;
         const paidMs = toMillis(invoice.paidAt || invoice.updatedAt || invoice.createdAt);
         if (!paidMs || paidMs < startYearMs) return sum;
-        if (paidInvoiceIds.has(String(invoice.id || ""))) return sum;
+        if (paidInvoiceIds.has(String(invoice.id || ''))) return sum;
         return sum + Number(invoice.amountTotalUsd || 0);
       }, 0);
 
     const outstandingArUsd = scopedInvoices.reduce((sum, invoice) => {
       const status = normalizeInvoiceStatus(invoice.status);
-      if (["paid", "void"].includes(status)) return sum;
+      if (['paid', 'void'].includes(status)) return sum;
       return sum + Number(invoice.amountTotalUsd || 0);
     }, 0);
 
-    const activeProjects = scopedProjects.filter((project) => String(project.stage || "").toLowerCase() !== "delivered").length;
+    const activeProjects = scopedProjects.filter(
+      (project) => String(project.stage || '').toLowerCase() !== 'delivered',
+    ).length;
     const overdueProjects = scopedProjects.filter((project) => {
-      const stage = String(project.stage || "").toLowerCase();
-      if (stage === "delivered") return false;
+      const stage = String(project.stage || '').toLowerCase();
+      if (stage === 'delivered') return false;
       const dueMs = toMillis(project.dueDate);
       return Boolean(dueMs && dueMs < now.getTime());
     }).length;
-    const qaQueue = scopedProjects.filter((project) => String(project.stage || "").toLowerCase() === "final").length;
+    const qaQueue = scopedProjects.filter(
+      (project) => String(project.stage || '').toLowerCase() === 'final',
+    ).length;
 
     const openChangeRequests = scopedChangeRequests.filter((req) => {
-      const status = String(req.status || "");
+      const status = String(req.status || '');
       if (!status) return true;
       return !isClosedStatus(status);
     }).length;
 
-    const workflowStages = Array.isArray(settings.projectStages) && settings.projectStages.length
-      ? settings.projectStages
-      : ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+    const workflowStages =
+      Array.isArray(settings.projectStages) && settings.projectStages.length
+        ? settings.projectStages
+        : ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'];
 
     const projectsByStage = workflowStages.map((stage) => ({
       stage,
-      count: scopedProjects.filter((project) => String(project.stage || "") === stage).length,
+      count: scopedProjects.filter((project) => String(project.stage || '') === stage).length,
     }));
 
     const openChangeRequestByProject = new Map<string, number>();
     scopedChangeRequests.forEach((req) => {
-      const status = String(req.status || "");
+      const status = String(req.status || '');
       if (status && isClosedStatus(status)) return;
-      const projectId = String(req.projectId || "");
+      const projectId = String(req.projectId || '');
       if (!projectId) return;
-      openChangeRequestByProject.set(projectId, (openChangeRequestByProject.get(projectId) || 0) + 1);
+      openChangeRequestByProject.set(
+        projectId,
+        (openChangeRequestByProject.get(projectId) || 0) + 1,
+      );
     });
 
     const atRiskBlocked = scopedProjects.reduce((count, project) => {
-      const health = String(project.health || "").toLowerCase();
+      const health = String(project.health || '').toLowerCase();
       if (health) {
-        if (health.includes("at risk") || health.includes("blocked") || health.includes("overdue")) return count + 1;
+        if (health.includes('at risk') || health.includes('blocked') || health.includes('overdue'))
+          return count + 1;
         return count;
       }
 
       const dueIso = toISO(project.dueDate);
       const computed = computeHealth(dueIso, settings.atRiskAfterDays, settings.overdueAfterDays);
-      const changeRequestsOpen = openChangeRequestByProject.get(String(project.id || "")) || 0;
-      if (computed === "Overdue" || computed === "At Risk" || changeRequestsOpen >= 2) return count + 1;
+      const changeRequestsOpen = openChangeRequestByProject.get(String(project.id || '')) || 0;
+      if (computed === 'Overdue' || computed === 'At Risk' || changeRequestsOpen >= 2)
+        return count + 1;
       return count;
     }, 0);
 
     const arAgingBuckets = scopedInvoices.reduce(
       (acc, invoice) => {
         const status = normalizeInvoiceStatus(invoice.status);
-        if (["paid", "void"].includes(status)) return acc;
+        if (['paid', 'void'].includes(status)) return acc;
         const dueMs = toMillis(invoice.dueDate);
         const value = Number(invoice.amountTotalUsd || 0);
         if (!dueMs) {
@@ -239,20 +294,20 @@ export async function GET() {
         else acc.bucket90plus += value;
         return acc;
       },
-      { bucket0to30: 0, bucket31to60: 0, bucket61to90: 0, bucket90plus: 0 }
+      { bucket0to30: 0, bucket31to60: 0, bucket61to90: 0, bucket90plus: 0 },
     );
 
     const payrollDuePkr = scopedPayroll.reduce((sum, row) => {
-      const status = String(row.status || "Draft");
-      if (!["Draft", "Approved"].includes(status)) return sum;
-      if (String(row.month || "") !== currentMonthKey) return sum;
+      const status = String(row.status || 'Draft');
+      if (!['Draft', 'Approved'].includes(status)) return sum;
+      if (String(row.month || '') !== currentMonthKey) return sum;
       return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
     }, 0);
 
     const payrollYtdPkr = scopedPayroll.reduce((sum, row) => {
-      const status = String(row.status || "Draft");
-      if (!["Draft", "Approved"].includes(status)) return sum;
-      const monthKey = String(row.month || "");
+      const status = String(row.status || 'Draft');
+      if (!['Draft', 'Approved'].includes(status)) return sum;
+      const monthKey = String(row.month || '');
       if (!monthKey.startsWith(`${now.getFullYear()}-`)) return sum;
       return sum + Number(row.baseSalaryPkr || 0) + Number(row.commissionPkr || 0);
     }, 0);
@@ -278,7 +333,9 @@ export async function GET() {
       : 0;
 
     const activeEmployees = scopedUsers.filter((user) => isActiveUser(user)).length;
-    const onboardingOpen = scopedOnboardingTasks.filter((task) => String(task.status || "").toLowerCase() !== "completed").length;
+    const onboardingOpen = scopedOnboardingTasks.filter(
+      (task) => String(task.status || '').toLowerCase() !== 'completed',
+    ).length;
     const newHires30 = scopedUsers.filter((user) => {
       const createdMs = toMillis(user.createdAt || user.joiningDate || user.updatedAt);
       if (!createdMs) return false;
@@ -287,15 +344,19 @@ export async function GET() {
 
     const totalClients = scopedClients.length;
     const keyAccounts = scopedClients.filter((client) => isKeyAccount(client)).length;
-    const segmentCoverageCount = scopedClients.filter((client) => hasSegmentCoverage(client)).length;
-    const segmentCoveragePct = totalClients ? Math.round((segmentCoverageCount / totalClients) * 100) : 0;
+    const segmentCoverageCount = scopedClients.filter((client) =>
+      hasSegmentCoverage(client),
+    ).length;
+    const segmentCoveragePct = totalClients
+      ? Math.round((segmentCoverageCount / totalClients) * 100)
+      : 0;
 
     const recentActivity = scopedEvents
       .map((event) => ({
         id: event.id,
-        type: String(event.type || ""),
-        summary: String(event.title || event.description || ""),
-        actor: String(event.createdByName || event.createdByUid || "System"),
+        type: String(event.type || ''),
+        summary: String(event.title || event.description || ''),
+        actor: String(event.createdByName || event.createdByUid || 'System'),
         createdAt: toISO(event.createdAt),
       }))
       .filter((event) => ACTIVITY_PREFIXES.some((prefix) => event.type.startsWith(prefix)))
@@ -334,10 +395,10 @@ export async function GET() {
       charts: {
         projectsByStage,
         arAging: [
-          { bucket: "0-30", amountUsd: arAgingBuckets.bucket0to30 },
-          { bucket: "31-60", amountUsd: arAgingBuckets.bucket31to60 },
-          { bucket: "61-90", amountUsd: arAgingBuckets.bucket61to90 },
-          { bucket: "90+", amountUsd: arAgingBuckets.bucket90plus },
+          { bucket: '0-30', amountUsd: arAgingBuckets.bucket0to30 },
+          { bucket: '31-60', amountUsd: arAgingBuckets.bucket31to60 },
+          { bucket: '61-90', amountUsd: arAgingBuckets.bucket61to90 },
+          { bucket: '90+', amountUsd: arAgingBuckets.bucket90plus },
         ],
       },
       tables: {
@@ -346,18 +407,22 @@ export async function GET() {
     };
 
     if (redis) {
-      await (redis as any).setex(cacheKey, 60, JSON.stringify(responsePayload)).catch(() => undefined);
+      await (redis as any)
+        .setex(cacheKey, 60, JSON.stringify(responsePayload))
+        .catch(() => undefined);
     }
 
     return NextResponse.json(responsePayload);
   } catch (err: any) {
-    console.error("admin/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('admin/overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load admin overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load admin overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

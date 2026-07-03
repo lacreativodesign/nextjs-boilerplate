@@ -1,4 +1,4 @@
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 export async function verifySession(sessionCookie: string) {
   const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
@@ -6,7 +6,7 @@ export async function verifySession(sessionCookie: string) {
 }
 
 export async function getUserProfile(uid: string) {
-  const snap = await adminDb.collection("users").doc(uid).get();
+  const snap = await adminDb.collection('users').doc(uid).get();
   if (!snap.exists) return null;
   return snap.data();
 }

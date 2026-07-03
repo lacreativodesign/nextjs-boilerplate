@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { getCurrentUser } from "../../admin/_utils";
-import { requireNotificationsModule } from "../_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { getCurrentUser } from '../../admin/_utils';
+import { requireNotificationsModule } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type NotificationRecord = {
   id: string;
@@ -26,21 +26,21 @@ type NotificationRecord = {
 function toDate(value: any): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value?.toDate === "function") return value.toDate();
+  if (typeof value?.toDate === 'function') return value.toDate();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): NotificationRecord {
   const data = doc.data() || {};
-  const rawType = String(data.type || "");
-  const type = rawType || "system";
+  const rawType = String(data.type || '');
+  const type = rawType || 'system';
   const createdAtDate = toDate(data.createdAt);
-  const message = String(data.message || data.body || "");
+  const message = String(data.message || data.body || '');
 
   return {
     id: doc.id,
-    title: String(data.title || ""),
+    title: String(data.title || ''),
     body: message,
     type,
     entityType: data.entityType ? String(data.entityType) : null,
@@ -49,41 +49,47 @@ function normalizeNotification(doc: FirebaseFirestore.QueryDocumentSnapshot): No
     isRead: Boolean(data.isRead ?? data.read ?? false),
     createdAt: createdAtDate ? createdAtDate.toISOString() : null,
     createdBy: (data.createdBy as Record<string, unknown>) || null,
-    priority: String(data.priority || "normal"),
+    priority: String(data.priority || 'normal'),
     metadata: (data.metadata as Record<string, unknown>) || null,
     createdAtMs: createdAtDate ? createdAtDate.getTime() : 0,
   };
 }
 
 function isApprovalNotification(item: NotificationRecord) {
-  const entityType = String(item.entityType || "").toLowerCase();
-  if (["approval", "change_request"].includes(entityType)) return true;
+  const entityType = String(item.entityType || '').toLowerCase();
+  if (['approval', 'change_request'].includes(entityType)) return true;
   const hay = `${item.title} ${item.body}`.toLowerCase();
-  return hay.includes("approval");
+  return hay.includes('approval');
 }
 
-async function getNotifications(uid: string, tenantId: string, filter: string, limit: number, cursor: string | null) {
+async function getNotifications(
+  uid: string,
+  tenantId: string,
+  filter: string,
+  limit: number,
+  cursor: string | null,
+) {
   const queries: FirebaseFirestore.Query[] = [];
-  const unreadOnly = filter === "unread";
+  const unreadOnly = filter === 'unread';
 
   let cursorDoc: FirebaseFirestore.DocumentSnapshot | null = null;
   if (cursor) {
-    cursorDoc = await adminDb.collection("notifications").doc(cursor).get();
+    cursorDoc = await adminDb.collection('notifications').doc(cursor).get();
   }
 
   const baseQueries = [
-    adminDb.collection("notifications").where("recipientUid", "==", uid),
-    adminDb.collection("notifications").where("toUserId", "==", uid),
-    adminDb.collection("notifications").where("toUid", "==", uid),
-    adminDb.collection("notifications").where("userId", "==", uid),
+    adminDb.collection('notifications').where('recipientUid', '==', uid),
+    adminDb.collection('notifications').where('toUserId', '==', uid),
+    adminDb.collection('notifications').where('toUid', '==', uid),
+    adminDb.collection('notifications').where('userId', '==', uid),
   ];
 
   baseQueries.forEach((base) => {
-    let scoped = base.where("tenantId", "==", tenantId);
+    let scoped = base.where('tenantId', '==', tenantId);
     if (unreadOnly) {
-      scoped = scoped.where("isRead", "==", false);
+      scoped = scoped.where('isRead', '==', false);
     }
-    let q = scoped.orderBy("createdAt", "desc").limit(limit + 1);
+    let q = scoped.orderBy('createdAt', 'desc').limit(limit + 1);
     if (cursorDoc?.exists) {
       q = q.startAfter(cursorDoc);
     }
@@ -102,7 +108,7 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
   });
 
   let merged = Array.from(map.values()).sort((a, b) => b.createdAtMs - a.createdAtMs);
-  if (filter === "approvals") {
+  if (filter === 'approvals') {
     merged = merged.filter((item) => isApprovalNotification(item));
   }
   // Return limit+1 so the caller can determine hasMore
@@ -112,14 +118,17 @@ async function getNotifications(uid: string, tenantId: string, filter: string, l
 async function getUnreadCount(uid: string, tenantId: string) {
   const queries: FirebaseFirestore.Query[] = [];
   const baseQueries = [
-    adminDb.collection("notifications").where("recipientUid", "==", uid).where("isRead", "==", false),
-    adminDb.collection("notifications").where("toUserId", "==", uid).where("isRead", "==", false),
-    adminDb.collection("notifications").where("toUid", "==", uid).where("isRead", "==", false),
-    adminDb.collection("notifications").where("userId", "==", uid).where("read", "==", false),
+    adminDb
+      .collection('notifications')
+      .where('recipientUid', '==', uid)
+      .where('isRead', '==', false),
+    adminDb.collection('notifications').where('toUserId', '==', uid).where('isRead', '==', false),
+    adminDb.collection('notifications').where('toUid', '==', uid).where('isRead', '==', false),
+    adminDb.collection('notifications').where('userId', '==', uid).where('read', '==', false),
   ];
 
   baseQueries.forEach((base) => {
-    queries.push(base.where("tenantId", "==", tenantId));
+    queries.push(base.where('tenantId', '==', tenantId));
   });
 
   const snapshots = await Promise.all(queries.map((query) => query.get()));
@@ -138,18 +147,23 @@ export async function GET(req: NextRequest) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const unreadOnly = req.nextUrl.searchParams.get("unreadOnly") === "true";
-    const filter = String(req.nextUrl.searchParams.get("filter") || (unreadOnly ? "unread" : "all"));
-    const limitRaw = Number(req.nextUrl.searchParams.get("limit") || 50);
+    const unreadOnly = req.nextUrl.searchParams.get('unreadOnly') === 'true';
+    const filter = String(
+      req.nextUrl.searchParams.get('filter') || (unreadOnly ? 'unread' : 'all'),
+    );
+    const limitRaw = Number(req.nextUrl.searchParams.get('limit') || 50);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 500) : 50;
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const cursor = req.nextUrl.searchParams.get('cursor');
     const tenantId = normalizeTenantId(me.tenantId);
     const moduleAccess = await requireNotificationsModule(tenantId, me.role);
     if (!moduleAccess.ok) {
-      return NextResponse.json({ ok: false, error: moduleAccess.error }, { status: moduleAccess.status });
+      return NextResponse.json(
+        { ok: false, error: moduleAccess.error },
+        { status: moduleAccess.status },
+      );
     }
     const [notificationsWithExtra, unreadCount] = await Promise.all([
       getNotifications(me.uid, tenantId, filter, limit, cursor),
@@ -158,7 +172,7 @@ export async function GET(req: NextRequest) {
 
     const hasMore = notificationsWithExtra.length > limit;
     const notifications = notificationsWithExtra.slice(0, limit);
-    const nextCursor = hasMore ? notifications[notifications.length - 1]?.id ?? null : null;
+    const nextCursor = hasMore ? (notifications[notifications.length - 1]?.id ?? null) : null;
 
     return NextResponse.json({
       ok: true,
@@ -167,13 +181,13 @@ export async function GET(req: NextRequest) {
       pagination: { hasMore, nextCursor },
     });
   } catch (err: any) {
-    console.error("notifications list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('notifications list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load notifications.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load notifications.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

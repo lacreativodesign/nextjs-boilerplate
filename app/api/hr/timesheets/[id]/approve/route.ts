@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
-import { TimeTrackingService } from "@/lib/hr/time-tracking";
-import { createNotification } from "@/lib/notifications";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireModule, isPlanAccessError } from '@/app/lib/plan-enforcement';
+import { TimeTrackingService } from '@/lib/hr/time-tracking';
+import { createNotification } from '@/lib/notifications';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const bodySchema = z.object({
   approve: z.boolean(),
@@ -16,16 +16,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId, 'hr', { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
       }
-      return NextResponse.json({ ok: false, error: "Unable to validate module access" }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: 'Unable to validate module access' },
+        { status: 500 },
+      );
     }
 
     const payload = bodySchema.parse(await request.json());
@@ -40,23 +43,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       rejectionReason: payload.rejectionReason,
     });
 
-    const timesheetOwnerId = (timesheet as any)?.userId ? String((timesheet as any).userId) : "";
+    const timesheetOwnerId = (timesheet as any)?.userId ? String((timesheet as any).userId) : '';
     if (timesheetOwnerId && timesheetOwnerId !== me.uid) {
       await createNotification({
         toUserId: timesheetOwnerId,
         tenantId: me.tenantId,
-        type: payload.approve ? "success" : "info",
-        title: payload.approve ? "Timesheet approved" : "Timesheet rejected",
-        message: payload.approve ? "Your timesheet was approved." : "Your timesheet was rejected.",
-        entityType: "hr",
+        type: payload.approve ? 'success' : 'info',
+        title: payload.approve ? 'Timesheet approved' : 'Timesheet rejected',
+        message: payload.approve ? 'Your timesheet was approved.' : 'Your timesheet was rejected.',
+        entityType: 'hr',
         entityId: id,
-        deepLink: "/hr",
+        deepLink: '/hr',
       });
     }
 
     return NextResponse.json({ ok: true, timesheet });
   } catch (err) {
-    console.error("HR approve timesheet error", err);
-    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Failed to review timesheet" }, { status: 400 });
+    console.error('HR approve timesheet error', err);
+    return NextResponse.json(
+      { ok: false, error: err instanceof Error ? err.message : 'Failed to review timesheet' },
+      { status: 400 },
+    );
   }
 }

@@ -1,29 +1,29 @@
-"use client";
-import { useRef, useState } from "react";
-import { Bug, X, CheckCircle, Camera, Loader2 } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
-import { apiFetch } from "@/lib/api/client";
+'use client';
+import { useRef, useState } from 'react';
+import { Bug, X, CheckCircle, Camera, Loader2 } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
+import { apiFetch } from '@/lib/api/client';
 
 export default function BugReportButton() {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [screenshotName, setScreenshotName] = useState<string>("");
+  const [screenshotName, setScreenshotName] = useState<string>('');
   const [capturing, setCapturing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    setName("");
-    setEmail("");
-    setDescription("");
+    setName('');
+    setEmail('');
+    setDescription('');
     setScreenshot(null);
-    setScreenshotName("");
-    setError("");
+    setScreenshotName('');
+    setError('');
     setSubmitted(false);
   };
 
@@ -34,11 +34,11 @@ export default function BugReportButton() {
 
   const captureScreen = async () => {
     setCapturing(true);
-    setError("");
+    setError('');
     try {
       // Use html2canvas-style approach via MediaDevices API
       const stream = await (navigator.mediaDevices as any).getDisplayMedia({
-        video: { mediaSource: "screen" },
+        video: { mediaSource: 'screen' },
       });
       const track = stream.getVideoTracks()[0];
       const imageCapture = new (window as any).ImageCapture(track);
@@ -46,17 +46,17 @@ export default function BugReportButton() {
       track.stop();
       stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
 
-      const canvas = document.createElement("canvas");
+      const canvas = document.createElement('canvas');
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext('2d');
       ctx?.drawImage(bitmap, 0, 0);
-      const dataUrl = canvas.toDataURL("image/png");
+      const dataUrl = canvas.toDataURL('image/png');
       setScreenshot(dataUrl);
-      setScreenshotName("screenshot.png");
+      setScreenshotName('screenshot.png');
     } catch {
       // User cancelled or browser doesn't support — fall back silently
-      setError("");
+      setError('');
     } finally {
       setCapturing(false);
     }
@@ -65,12 +65,12 @@ export default function BugReportButton() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please upload an image file.");
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file.');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be under 5MB.");
+      setError('Image must be under 5MB.');
       return;
     }
     const reader = new FileReader();
@@ -84,20 +84,20 @@ export default function BugReportButton() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) {
-      setError("Please describe the issue.");
+      setError('Please describe the issue.');
       return;
     }
     try {
       setSubmitting(true);
-      setError("");
+      setError('');
 
       const client = Sentry.getClient();
       if (client) {
         Sentry.captureMessage(`Bug Report: ${description.slice(0, 80)}`, {
-          level: "info",
+          level: 'info',
           extra: {
-            reporterName: name || "Anonymous",
-            reporterEmail: email || "Not provided",
+            reporterName: name || 'Anonymous',
+            reporterEmail: email || 'Not provided',
             description,
             url: window.location.href,
             userAgent: navigator.userAgent,
@@ -106,15 +106,15 @@ export default function BugReportButton() {
         });
       }
 
-      await apiFetch("/api/support/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: `Bug: ${description.slice(0, 60)}`,
           description,
-          priority: "medium",
-          category: "bug",
-          tags: ["bug-report"],
+          priority: 'medium',
+          category: 'bug',
+          tags: ['bug-report'],
           reporterName: name || null,
           reporterEmail: email || null,
           screenshot: screenshot || null,
@@ -125,7 +125,7 @@ export default function BugReportButton() {
 
       setSubmitted(true);
     } catch {
-      setError("Failed to submit. Please try again.");
+      setError('Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -233,7 +233,8 @@ export default function BugReportButton() {
                   {/* Screenshot section */}
                   <div>
                     <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
-                      Screenshot <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+                      Screenshot{' '}
+                      <span className="text-[var(--text-muted)] font-normal">(optional)</span>
                     </label>
 
                     {screenshot ? (
@@ -247,7 +248,7 @@ export default function BugReportButton() {
                           type="button"
                           onClick={() => {
                             setScreenshot(null);
-                            setScreenshotName("");
+                            setScreenshotName('');
                           }}
                           className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                         >
@@ -270,7 +271,7 @@ export default function BugReportButton() {
                           ) : (
                             <Camera className="h-3.5 w-3.5" />
                           )}
-                          {capturing ? "Capturing..." : "Capture Screen"}
+                          {capturing ? 'Capturing...' : 'Capture Screen'}
                         </button>
                         <button
                           type="button"
@@ -301,7 +302,7 @@ export default function BugReportButton() {
                       className="btn flex-1"
                       disabled={submitting || !description.trim()}
                     >
-                      {submitting ? "Sending..." : "Send Report"}
+                      {submitting ? 'Sending...' : 'Send Report'}
                     </button>
                   </div>
                 </form>

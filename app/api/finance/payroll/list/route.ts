@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireFinance, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireFinance, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type PayrollDoc = {
   userId?: string;
@@ -28,9 +28,9 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("payroll")
-      .where("tenantId", "==", auth.user.tenantId)
-      .where("isDeleted", "==", false)
+      .collection('payroll')
+      .where('tenantId', '==', auth.user.tenantId)
+      .where('isDeleted', '==', false)
       .limit(500)
       .get();
 
@@ -38,15 +38,15 @@ export async function GET() {
       const data = (doc.data() || {}) as PayrollDoc;
       return {
         id: doc.id,
-        userId: data.userId || "",
-        userName: data.userName || "",
-        role: data.role || "",
-        currency: data.currency || "USD",
+        userId: data.userId || '',
+        userName: data.userName || '',
+        role: data.role || '',
+        currency: data.currency || 'USD',
         baseSalaryPkr: Number(data.baseSalaryPkr || 0),
         commissionPkr: data.commissionPkr == null ? null : Number(data.commissionPkr || 0),
         commissionUsd: data.commissionUsd == null ? null : Number(data.commissionUsd || 0),
-        month: data.month || "",
-        status: data.status || "Draft",
+        month: data.month || '',
+        status: data.status || 'Draft',
         paidAt: toISO(data.paidAt),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
@@ -60,17 +60,17 @@ export async function GET() {
       currentUser: {
         uid: auth.user.uid,
         role: auth.user.role,
-        name: auth.user.name || auth.user.fullName || auth.user.displayName || "",
+        name: auth.user.name || auth.user.fullName || auth.user.displayName || '',
       },
     });
   } catch (err: any) {
-    console.error("finance/payroll list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/payroll list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load payroll.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load payroll.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

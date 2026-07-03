@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminRole, normalizeRole } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, isAdminRole, normalizeRole } from '@/app/api/admin/_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 type CreateTaxRateBody = {
   name?: string;
@@ -18,64 +18,76 @@ type CreateTaxRateBody = {
 const nowIso = () => new Date().toISOString();
 
 function canManageTax(role?: string | null) {
-  const normalized = normalizeRole(role || "");
-  return normalized === "finance" || isAdminRole(normalized);
+  const normalized = normalizeRole(role || '');
+  return normalized === 'finance' || isAdminRole(normalized);
 }
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
-    const tenantId = String(user.tenantId || "").trim();
-    if (!tenantId) return NextResponse.json({ ok: false, error: "Tenant context missing" }, { status: 400 });
+    const tenantId = String(user.tenantId || '').trim();
+    if (!tenantId)
+      return NextResponse.json({ ok: false, error: 'Tenant context missing' }, { status: 400 });
 
     const snapshot = await adminDb
-      .collection("tax_rates")
-      .where("tenantId", "==", tenantId)
-      .orderBy("isDefault", "desc")
-      .orderBy("createdAt", "asc")
+      .collection('tax_rates')
+      .where('tenantId', '==', tenantId)
+      .orderBy('isDefault', 'desc')
+      .orderBy('createdAt', 'asc')
       .get();
 
     type DocRecord = { id: string } & Record<string, any>;
-    const taxRates = (snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[])
-      .filter((item) => item.isDeleted !== true);
+    const taxRates = (
+      snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as DocRecord[]
+    ).filter((item) => item.isDeleted !== true);
 
     return NextResponse.json({ ok: true, taxRates });
   } catch (error) {
-    console.error("[TAX_RATES_GET]", error);
-    return NextResponse.json({ ok: false, error: "Failed to fetch tax rates" }, { status: 500 });
+    console.error('[TAX_RATES_GET]', error);
+    return NextResponse.json({ ok: false, error: 'Failed to fetch tax rates' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    if (!canManageTax(user.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    if (!canManageTax(user.role))
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
 
-    const tenantId = String(user.tenantId || "").trim();
-    if (!tenantId) return NextResponse.json({ ok: false, error: "Tenant context missing" }, { status: 400 });
+    const tenantId = String(user.tenantId || '').trim();
+    if (!tenantId)
+      return NextResponse.json({ ok: false, error: 'Tenant context missing' }, { status: 400 });
 
     const body = (await req.json().catch(() => ({}))) as CreateTaxRateBody;
-    const name = String(body.name || "").trim();
+    const name = String(body.name || '').trim();
     const rate = Number(body.rate);
-    const country = String(body.country || "").trim();
+    const country = String(body.country || '').trim();
 
     if (name.length < 2 || name.length > 50) {
-      return NextResponse.json({ ok: false, error: "name must be between 2 and 50 characters" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'name must be between 2 and 50 characters' },
+        { status: 400 },
+      );
     }
     if (!Number.isFinite(rate) || rate < 0 || rate >= 100) {
-      return NextResponse.json({ ok: false, error: "rate must be a number between 0 and 100" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'rate must be a number between 0 and 100' },
+        { status: 400 },
+      );
     }
     if (!country) {
-      return NextResponse.json({ ok: false, error: "country is required" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'country is required' }, { status: 400 });
     }
 
     const isDefault = Boolean(body.isDefault);
     if (isDefault) {
-      const existing = await adminDb.collection("tax_rates").where("tenantId", "==", tenantId).get();
+      const existing = await adminDb
+        .collection('tax_rates')
+        .where('tenantId', '==', tenantId)
+        .get();
       const batch = adminDb.batch();
       existing.docs.forEach((doc) => {
         if (doc.data().isDefault === true && doc.data().isDeleted !== true) {
@@ -85,7 +97,7 @@ export async function POST(req: Request) {
       await batch.commit();
     }
 
-    const docRef = adminDb.collection("tax_rates").doc();
+    const docRef = adminDb.collection('tax_rates').doc();
     const taxRate = {
       id: docRef.id,
       tenantId,
@@ -107,7 +119,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, taxRate });
   } catch (error) {
-    console.error("[TAX_RATES_POST]", error);
-    return NextResponse.json({ ok: false, error: "Failed to create tax rate" }, { status: 500 });
+    console.error('[TAX_RATES_POST]', error);
+    return NextResponse.json({ ok: false, error: 'Failed to create tax rate' }, { status: 500 });
   }
 }

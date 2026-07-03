@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { Report } from "@/types/reports";
+import type { Report } from '@/types/reports';
 
 export function ReportCard({ report, onRun }: { report: Report | any; onRun: () => void }) {
   return (
@@ -14,7 +14,7 @@ export function ReportCard({ report, onRun }: { report: Report | any; onRun: () 
             ) : null}
           </div>
           <span className="rounded-full bg-[var(--surface-muted)] px-2 py-1 text-xs font-medium text-[var(--text-muted)]">
-            {report.type === "preset" ? "Preset" : "Custom"}
+            {report.type === 'preset' ? 'Preset' : 'Custom'}
           </span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
@@ -31,11 +31,7 @@ export function ReportCard({ report, onRun }: { report: Report | any; onRun: () 
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onRun}
-        className="btn w-full"
-      >
+      <button type="button" onClick={onRun} className="btn w-full">
         View Report
       </button>
     </div>

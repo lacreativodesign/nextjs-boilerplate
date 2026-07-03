@@ -478,11 +478,7 @@ export default function AdvancedSearchBuilder() {
               value={saveName}
               onChange={(event) => setSaveName(event.target.value)}
             />
-            <button
-              type="button"
-              className="btn"
-              onClick={handleSave}
-            >
+            <button type="button" className="btn" onClick={handleSave}>
               Save search
             </button>
           </div>

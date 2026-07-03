@@ -1,10 +1,10 @@
-import Stripe from "stripe";
-import { getStripeClient } from "@/lib/payments/stripe";
+import Stripe from 'stripe';
+import { getStripeClient } from '@/lib/payments/stripe';
 
 function getConnectClientId(): string {
   const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
   if (!clientId) {
-    throw new Error("STRIPE_CONNECT_CLIENT_ID is not configured.");
+    throw new Error('STRIPE_CONNECT_CLIENT_ID is not configured.');
   }
   return clientId;
 }
@@ -12,21 +12,21 @@ function getConnectClientId(): string {
 function getAppUrl(): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not configured.");
+    throw new Error('NEXT_PUBLIC_APP_URL is not configured.');
   }
-  return appUrl.replace(/\/$/, "");
+  return appUrl.replace(/\/$/, '');
 }
 
 // `state` must be an unguessable, single-use nonce that the start route persists
 // server-side (mapped to tenantId/userId) and the callback validates + consumes.
 // Never encode tenantId/userId directly into state — that enables OAuth CSRF.
 export function getConnectAuthorizeUrl(state: string): string {
-  const authorizeUrl = new URL("https://connect.stripe.com/oauth/authorize");
-  authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("client_id", getConnectClientId());
-  authorizeUrl.searchParams.set("scope", "read_write");
-  authorizeUrl.searchParams.set("redirect_uri", `${getAppUrl()}/api/stripe/connect/callback`);
-  authorizeUrl.searchParams.set("state", state);
+  const authorizeUrl = new URL('https://connect.stripe.com/oauth/authorize');
+  authorizeUrl.searchParams.set('response_type', 'code');
+  authorizeUrl.searchParams.set('client_id', getConnectClientId());
+  authorizeUrl.searchParams.set('scope', 'read_write');
+  authorizeUrl.searchParams.set('redirect_uri', `${getAppUrl()}/api/stripe/connect/callback`);
+  authorizeUrl.searchParams.set('state', state);
   return authorizeUrl.toString();
 }
 
@@ -36,11 +36,11 @@ export async function exchangeConnectCode(
   const stripe = getStripeClient();
   const response = await stripe.oauth.token({
     code,
-    grant_type: "authorization_code",
+    grant_type: 'authorization_code',
   });
 
   if (!response.stripe_user_id || !response.access_token) {
-    throw new Error("Stripe OAuth response is missing account details.");
+    throw new Error('Stripe OAuth response is missing account details.');
   }
 
   return {
@@ -54,7 +54,7 @@ export async function getConnectAccount(accountId: string): Promise<Stripe.Accou
     const stripe = getStripeClient();
     return await stripe.accounts.retrieve(accountId);
   } catch (error) {
-    console.error("[STRIPE_CONNECT] Failed to retrieve account", { accountId, error });
+    console.error('[STRIPE_CONNECT] Failed to retrieve account', { accountId, error });
     return null;
   }
 }
@@ -67,7 +67,7 @@ export async function disconnectConnectAccount(accountId: string): Promise<void>
       stripe_user_id: accountId,
     });
   } catch (error) {
-    console.error("[STRIPE_CONNECT] Failed to deauthorize account", { accountId, error });
+    console.error('[STRIPE_CONNECT] Failed to deauthorize account', { accountId, error });
   }
 }
 
@@ -93,7 +93,7 @@ export async function createConnectCharge(params: {
       currency: params.currency,
       customer: params.customerId,
       payment_method: params.paymentMethodId,
-      confirmation_method: "automatic",
+      confirmation_method: 'automatic',
       confirm: true,
       description: params.description,
       metadata: params.metadata,
@@ -103,7 +103,7 @@ export async function createConnectCharge(params: {
       },
     });
   } catch (error) {
-    console.error("[STRIPE_CONNECT] Failed to create connect charge", {
+    console.error('[STRIPE_CONNECT] Failed to create connect charge', {
       connectedAccountId: params.connectedAccountId,
       amount: params.amount,
       error,

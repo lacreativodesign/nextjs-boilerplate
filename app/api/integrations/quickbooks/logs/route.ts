@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { getQuickBooksSyncLogs } from "@/lib/integrations/quickbooks";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getQuickBooksSyncLogs } from '@/lib/integrations/quickbooks';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,12 +11,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const limit = Number(request.nextUrl.searchParams.get("limit") || 50);
-    const logs = await getQuickBooksSyncLogs(auth.user.tenantId, Number.isFinite(limit) ? limit : 50);
+    const limit = Number(request.nextUrl.searchParams.get('limit') || 50);
+    const logs = await getQuickBooksSyncLogs(
+      auth.user.tenantId,
+      Number.isFinite(limit) ? limit : 50,
+    );
 
     return NextResponse.json({ ok: true, logs });
   } catch (error: any) {
-    console.error("quickbooks/logs error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to load QuickBooks logs." }, { status: 500 });
+    console.error('quickbooks/logs error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Unable to load QuickBooks logs.' },
+      { status: 500 },
+    );
   }
 }

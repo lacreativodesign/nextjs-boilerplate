@@ -12,13 +12,13 @@ import {
   markTaskProcessing,
   updateAgentTask,
   type AgentToolCall,
-} from "@/lib/ai/agent-task";
+} from '@/lib/ai/agent-task';
 import {
   toAnthropicTools,
   toOpenAITools,
   validateToolCall,
   TOOL_REGISTRY,
-} from "@/lib/ai/tool-registry";
+} from '@/lib/ai/tool-registry';
 
 export type SalesProposedAction = {
   id: string;
@@ -26,7 +26,7 @@ export type SalesProposedAction = {
   label: string;
   description: string;
   input: Record<string, unknown>;
-  status: "pending" | "approved" | "rejected" | "executed" | "failed";
+  status: 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
   executedAt?: string;
   error?: string;
 };
@@ -56,22 +56,26 @@ function makeActionId(): string {
 
 function buildSalesTools() {
   const readTools = TOOL_REGISTRY.filter(
-    (t) => t.access === "read_only" &&
-      ["coo", "admin", "sales"].some((a) => t.allowedAgents.includes(a))
+    (t) =>
+      t.access === 'read_only' &&
+      ['coo', 'admin', 'sales'].some((a) => t.allowedAgents.includes(a)),
   );
   const writeTools = TOOL_REGISTRY.filter(
-    (t) => t.access === "write" && t.allowedAgents.includes("sales")
+    (t) => t.access === 'write' && t.allowedAgents.includes('sales'),
   );
   return [...readTools, ...writeTools];
 }
 
 export async function runSalesAgent(taskId: string, tenantId: string): Promise<void> {
   const task = await getAgentTask(taskId);
-  if (!task) throw new Error("Task not found");
+  if (!task) throw new Error('Task not found');
 
   const keyConfig = await getTenantAIKey(tenantId);
   if (!keyConfig) {
-    await markTaskFailed(taskId, "No AI API key configured. Go to Settings → AI Workforce to add your key.");
+    await markTaskFailed(
+      taskId,
+      'No AI API key configured. Go to Settings → AI Workforce to add your key.',
+    );
     return;
   }
 
@@ -84,18 +88,18 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
   let outputTokens = 0;
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.bizosto.com";
-    const internalSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || "";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
+    const internalSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || '';
 
     const executeReadTool = async (
       toolName: string,
-      input: Record<string, unknown>
+      input: Record<string, unknown>,
     ): Promise<unknown> => {
       const res = await fetch(`${baseUrl}/api/ai/tools/read`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "x-internal-secret": internalSecret,
+          'Content-Type': 'application/json',
+          'x-internal-secret': internalSecret,
         },
         body: JSON.stringify({ tool: toolName, tenantId, input }),
       });
@@ -104,22 +108,19 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
       return json.result;
     };
 
-    const interceptWriteTool = (
-      toolName: string,
-      input: Record<string, unknown>
-    ): unknown => {
-      if (toolName === "update_lead_status") {
-        const leadId = String(input.leadId || "");
-        const stage = String(input.stage || "");
+    const interceptWriteTool = (toolName: string, input: Record<string, unknown>): unknown => {
+      if (toolName === 'update_lead_status') {
+        const leadId = String(input.leadId || '');
+        const stage = String(input.stage || '');
         const notes = input.notes ? String(input.notes) : undefined;
 
         const action: SalesProposedAction = {
           id: makeActionId(),
           toolName,
-          label: "Update Lead Stage",
-          description: `Move lead ${leadId} to "${stage}"${notes ? ` — ${notes}` : ""}`,
+          label: 'Update Lead Stage',
+          description: `Move lead ${leadId} to "${stage}"${notes ? ` — ${notes}` : ''}`,
           input: { leadId, stage, notes },
-          status: "pending",
+          status: 'pending',
         };
         proposedActions.push(action);
         return {
@@ -128,16 +129,16 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
           message: `Stage update for lead ${leadId} queued for human approval.`,
         };
       }
-      if (toolName === "create_lead") {
-        const name = String(input.name || "");
-        const email = String(input.email || "");
+      if (toolName === 'create_lead') {
+        const name = String(input.name || '');
+        const email = String(input.email || '');
         const action: SalesProposedAction = {
           id: makeActionId(),
           toolName,
-          label: "Create Lead",
+          label: 'Create Lead',
           description: `Create new lead: ${name} (${email})`,
           input,
-          status: "pending",
+          status: 'pending',
         };
         proposedActions.push(action);
         return {
@@ -151,30 +152,52 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
 
     let result: string;
 
-    if (keyConfig.provider === "anthropic") {
+    if (keyConfig.provider === 'anthropic') {
       result = await runAnthropicSalesLoop(
-        keyConfig.apiKey, task.prompt, tools,
-        toolCalls, proposedActions, executeReadTool, interceptWriteTool,
-        (i, o) => { inputTokens += i; outputTokens += o; }
+        keyConfig.apiKey,
+        task.prompt,
+        tools,
+        toolCalls,
+        proposedActions,
+        executeReadTool,
+        interceptWriteTool,
+        (i, o) => {
+          inputTokens += i;
+          outputTokens += o;
+        },
       );
     } else {
       result = await runOpenAISalesLoop(
-        keyConfig.apiKey, task.prompt, tools,
-        toolCalls, proposedActions, executeReadTool, interceptWriteTool,
-        (i, o) => { inputTokens += i; outputTokens += o; }
+        keyConfig.apiKey,
+        task.prompt,
+        tools,
+        toolCalls,
+        proposedActions,
+        executeReadTool,
+        interceptWriteTool,
+        (i, o) => {
+          inputTokens += i;
+          outputTokens += o;
+        },
       );
     }
 
-    await markTaskCompleted(taskId, result, toolCalls, { inputTokens, outputTokens }, keyConfig.provider);
+    await markTaskCompleted(
+      taskId,
+      result,
+      toolCalls,
+      { inputTokens, outputTokens },
+      keyConfig.provider,
+    );
 
     if (proposedActions.length > 0) {
       await updateAgentTask(taskId, {
         proposedActions,
-        status: "awaiting_approval",
+        status: 'awaiting_approval',
       } as any);
     }
   } catch (err: any) {
-    await markTaskFailed(taskId, err?.message || "Sales agent execution failed");
+    await markTaskFailed(taskId, err?.message || 'Sales agent execution failed');
   }
 }
 
@@ -186,21 +209,21 @@ async function runAnthropicSalesLoop(
   proposedActions: SalesProposedAction[],
   executeRead: (name: string, input: Record<string, unknown>) => Promise<unknown>,
   interceptWrite: (name: string, input: Record<string, unknown>) => unknown,
-  trackTokens: (i: number, o: number) => void
+  trackTokens: (i: number, o: number) => void,
 ): Promise<string> {
   const anthropicTools = toAnthropicTools(tools);
-  const messages: any[] = [{ role: "user", content: prompt }];
+  const messages: any[] = [{ role: 'user', content: prompt }];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: 'claude-sonnet-4-5',
         max_tokens: 2048,
         system: SALES_SYSTEM_PROMPT,
         tools: anthropicTools,
@@ -209,33 +232,33 @@ async function runAnthropicSalesLoop(
     });
 
     if (!res.ok) {
-      const t = await res.text().catch(() => "");
+      const t = await res.text().catch(() => '');
       throw new Error(`Anthropic API error ${res.status}: ${t.slice(0, 200)}`);
     }
 
     const data = await res.json();
     trackTokens(data.usage?.input_tokens || 0, data.usage?.output_tokens || 0);
-    messages.push({ role: "assistant", content: data.content });
+    messages.push({ role: 'assistant', content: data.content });
 
-    if (data.stop_reason === "end_turn") {
-      const textBlock = data.content.find((b: any) => b.type === "text");
+    if (data.stop_reason === 'end_turn') {
+      const textBlock = data.content.find((b: any) => b.type === 'text');
       if (textBlock?.text) return textBlock.text;
-      throw new Error("No text response from sales agent");
+      throw new Error('No text response from sales agent');
     }
 
-    if (data.stop_reason === "tool_use") {
-      const toolUseBlocks = data.content.filter((b: any) => b.type === "tool_use");
+    if (data.stop_reason === 'tool_use') {
+      const toolUseBlocks = data.content.filter((b: any) => b.type === 'tool_use');
       const toolResults: any[] = [];
 
       for (const block of toolUseBlocks) {
-        const validation = validateToolCall(block.name, "sales", "pro");
+        const validation = validateToolCall(block.name, 'sales', 'pro');
         let toolOutput: unknown;
 
         if (!validation.valid) {
           toolOutput = { error: validation.error };
         } else {
           const toolDef = TOOL_REGISTRY.find((t) => t.name === block.name);
-          if (toolDef?.access === "write") {
+          if (toolDef?.access === 'write') {
             toolOutput = interceptWrite(block.name, block.input || {});
           } else {
             toolOutput = await executeRead(block.name, block.input || {});
@@ -248,18 +271,18 @@ async function runAnthropicSalesLoop(
           }
         }
         toolResults.push({
-          type: "tool_result",
+          type: 'tool_result',
           tool_use_id: block.id,
           content: JSON.stringify(toolOutput),
         });
       }
-      messages.push({ role: "user", content: toolResults });
+      messages.push({ role: 'user', content: toolResults });
       continue;
     }
 
     throw new Error(`Unexpected stop_reason: ${data.stop_reason}`);
   }
-  throw new Error("Sales agent exceeded maximum iterations");
+  throw new Error('Sales agent exceeded maximum iterations');
 }
 
 async function runOpenAISalesLoop(
@@ -270,32 +293,32 @@ async function runOpenAISalesLoop(
   proposedActions: SalesProposedAction[],
   executeRead: (name: string, input: Record<string, unknown>) => Promise<unknown>,
   interceptWrite: (name: string, input: Record<string, unknown>) => unknown,
-  trackTokens: (i: number, o: number) => void
+  trackTokens: (i: number, o: number) => void,
 ): Promise<string> {
   const openaiTools = toOpenAITools(tools);
   const messages: any[] = [
-    { role: "system", content: SALES_SYSTEM_PROMPT },
-    { role: "user", content: prompt },
+    { role: 'system', content: SALES_SYSTEM_PROMPT },
+    { role: 'user', content: prompt },
   ];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: 'gpt-4o',
         max_tokens: 2048,
         tools: openaiTools,
-        tool_choice: "auto",
+        tool_choice: 'auto',
         messages,
       }),
     });
 
     if (!res.ok) {
-      const t = await res.text().catch(() => "");
+      const t = await res.text().catch(() => '');
       throw new Error(`OpenAI API error ${res.status}: ${t.slice(0, 200)}`);
     }
 
@@ -306,20 +329,20 @@ async function runOpenAISalesLoop(
     const message = choice?.message;
     messages.push(message);
 
-    if (choice?.finish_reason === "stop") return message?.content || "";
+    if (choice?.finish_reason === 'stop') return message?.content || '';
 
-    if (choice?.finish_reason === "tool_calls") {
+    if (choice?.finish_reason === 'tool_calls') {
       for (const tc of message?.tool_calls || []) {
         const toolName = tc.function?.name;
-        const toolInput = JSON.parse(tc.function?.arguments || "{}");
-        const validation = validateToolCall(toolName, "sales", "pro");
+        const toolInput = JSON.parse(tc.function?.arguments || '{}');
+        const validation = validateToolCall(toolName, 'sales', 'pro');
         let toolOutput: unknown;
 
         if (!validation.valid) {
           toolOutput = { error: validation.error };
         } else {
           const toolDef = TOOL_REGISTRY.find((t) => t.name === toolName);
-          if (toolDef?.access === "write") {
+          if (toolDef?.access === 'write') {
             toolOutput = interceptWrite(toolName, toolInput);
           } else {
             toolOutput = await executeRead(toolName, toolInput);
@@ -332,7 +355,7 @@ async function runOpenAISalesLoop(
           }
         }
         messages.push({
-          role: "tool",
+          role: 'tool',
           tool_call_id: tc.id,
           content: JSON.stringify(toolOutput),
         });
@@ -342,5 +365,5 @@ async function runOpenAISalesLoop(
 
     throw new Error(`Unexpected finish_reason: ${choice?.finish_reason}`);
   }
-  throw new Error("Sales agent exceeded maximum iterations");
+  throw new Error('Sales agent exceeded maximum iterations');
 }

@@ -1,45 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
-import { TimeTrackingService } from "@/lib/hr/time-tracking";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireModule, isPlanAccessError } from '@/app/lib/plan-enforcement';
+import { TimeTrackingService } from '@/lib/hr/time-tracking';
 
-export const runtime = "nodejs";
-
+export const runtime = 'nodejs';
 
 function canManageAll(role?: string) {
-  const normalized = (role || "").toLowerCase().replace(/-/g, "_");
-  return normalized === "admin" || normalized === "super_admin" || normalized === "hr";
+  const normalized = (role || '').toLowerCase().replace(/-/g, '_');
+  return normalized === 'admin' || normalized === 'super_admin' || normalized === 'hr';
 }
 
 const querySchema = z.object({
-  periodType: z.enum(["weekly", "bi_weekly", "monthly"]).default("weekly"),
+  periodType: z.enum(['weekly', 'bi_weekly', 'monthly']).default('weekly'),
   userId: z.string().optional(),
   userName: z.string().optional(),
   date: z.string().datetime().optional(),
-  status: z.enum(["draft", "submitted", "approved", "rejected"]).optional(),
-  mode: z.enum(["generate", "list"]).default("generate"),
+  status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
+  mode: z.enum(['generate', 'list']).default('generate'),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-      await requireModule(me.tenantId, "hr", { role: me.role });
+      await requireModule(me.tenantId, 'hr', { role: me.role });
     } catch (err) {
       if (isPlanAccessError(err)) {
         return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
       }
-      return NextResponse.json({ ok: false, error: "Unable to validate module access" }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: 'Unable to validate module access' },
+        { status: 500 },
+      );
     }
 
     const parsed = querySchema.parse(Object.fromEntries(request.nextUrl.searchParams.entries()));
 
-    if (parsed.mode === "list") {
+    if (parsed.mode === 'list') {
       const timesheets = await TimeTrackingService.listTimesheets({
         tenantId: me.tenantId,
         requesterUserId: me.uid,
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (parsed.userId && parsed.userId !== me.uid && !canManageAll(me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const timesheet = await TimeTrackingService.generateTimesheet({
@@ -64,7 +66,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, timesheet });
   } catch (err) {
-    console.error("HR timesheets error", err);
-    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Failed to process timesheet request" }, { status: 400 });
+    console.error('HR timesheets error', err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Failed to process timesheet request',
+      },
+      { status: 400 },
+    );
   }
 }

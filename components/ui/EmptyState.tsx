@@ -1,7 +1,13 @@
-import React from "react";
+import React from 'react';
 
 const defaultIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    className="h-10 w-10"
+  >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -19,12 +25,23 @@ export type EmptyStateProps = {
   action?: { label: string; onClick: () => void };
 };
 
-export default function EmptyState({ icon = defaultIcon, title, description, hint, compact, action }: EmptyStateProps) {
+export default function EmptyState({
+  icon = defaultIcon,
+  title,
+  description,
+  hint,
+  compact,
+  action,
+}: EmptyStateProps) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-center shadow-sm ${compact ? "px-4 py-6" : "px-6 py-10"}`}>
+    <div
+      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-center shadow-sm ${compact ? 'px-4 py-6' : 'px-6 py-10'}`}
+    >
       <div className="text-[var(--text-soft)]">{icon}</div>
       <div className="text-base font-semibold text-[var(--text-primary)]">{title}</div>
-      {description ? <p className="max-w-sm text-sm text-[var(--text-muted)]">{description}</p> : null}
+      {description ? (
+        <p className="max-w-sm text-sm text-[var(--text-muted)]">{description}</p>
+      ) : null}
       {hint ? <p className="max-w-sm text-xs text-[var(--text-soft)]">{hint}</p> : null}
       {action ? (
         <button type="button" className="btn mt-2" onClick={action.onClick}>

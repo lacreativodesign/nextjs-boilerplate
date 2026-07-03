@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import clsx from "clsx";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import clsx from 'clsx';
 
 type Tab = { label: string; path: string };
 
@@ -32,11 +32,7 @@ export default function ModuleSectionLayout({
         {tabs.map((t) => {
           const active = pathname === t.path;
           return (
-            <Link
-              key={t.path}
-              href={t.path}
-              className={clsx("tab-pill", active && "active")}
-            >
+            <Link key={t.path} href={t.path} className={clsx('tab-pill', active && 'active')}>
               {t.label}
             </Link>
           );

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 export function useSafeComponent(componentName: string) {
   const [error, setError] = useState<Error | null>(null);
@@ -11,8 +11,8 @@ export function useSafeComponent(componentName: string) {
       setError(event.error);
     };
 
-    window.addEventListener("error", errorHandler);
-    return () => window.removeEventListener("error", errorHandler);
+    window.addEventListener('error', errorHandler);
+    return () => window.removeEventListener('error', errorHandler);
   }, [componentName]);
 
   const clearError = () => setError(null);

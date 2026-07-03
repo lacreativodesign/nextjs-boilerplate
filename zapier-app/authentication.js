@@ -18,7 +18,13 @@ module.exports = {
   type: 'custom',
   test,
   fields: [
-    { key: 'base_url', label: 'Bizosto Base URL', type: 'string', required: true, helpText: 'https://yourdomain.com' },
+    {
+      key: 'base_url',
+      label: 'Bizosto Base URL',
+      type: 'string',
+      required: true,
+      helpText: 'https://yourdomain.com',
+    },
     { key: 'api_key', label: 'API Key', type: 'password', required: true },
   ],
   connectionLabel: '{{tenantId}}',
