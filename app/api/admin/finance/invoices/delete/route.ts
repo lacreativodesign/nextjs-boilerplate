@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            'Paid or partially paid invoices cannot be deleted. Void the invoice and issue a credit note instead.',
+            'Paid or partially paid invoices cannot be deleted. Void the invoice (a reason is required) instead.',
         },
         { status: 409 },
       );
