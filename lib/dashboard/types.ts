@@ -9,10 +9,7 @@ export type DashboardWidgetType =
   | 'project_status';
 
 export type DashboardWidgetTemplateId =
-  | 'revenue-overview'
-  | 'finance-health'
-  | 'execution-overview'
-  | 'team-ops';
+  'revenue-overview' | 'finance-health' | 'execution-overview' | 'team-ops';
 
 export type WidgetSize = {
   w: number;

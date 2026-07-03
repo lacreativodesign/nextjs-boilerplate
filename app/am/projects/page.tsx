@@ -11,13 +11,7 @@ const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'] as const;
 const HEALTH_OPTIONS = ['On Track', 'At Risk', 'Overdue'] as const;
 
 type SortKey =
-  | 'projectName'
-  | 'clientName'
-  | 'stage'
-  | 'priority'
-  | 'health'
-  | 'dueDate'
-  | 'updatedAt';
+  'projectName' | 'clientName' | 'stage' | 'priority' | 'health' | 'dueDate' | 'updatedAt';
 type SortDir = 'asc' | 'desc';
 
 type ProjectsPayload = {

@@ -13,8 +13,7 @@ type AISettings = {
 };
 
 type PageData =
-  | { planLocked: true; plan: string }
-  | { planLocked: false; plan: string; settings: AISettings };
+  { planLocked: true; plan: string } | { planLocked: false; plan: string; settings: AISettings };
 
 export default function AIWorkforceSettingsPage() {
   const [data, setData] = useState<PageData | null>(null);

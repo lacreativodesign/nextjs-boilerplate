@@ -3,14 +3,7 @@ import type { Timestamp } from 'firebase-admin/firestore';
 export type CustomerType = 'lead' | 'prospect' | 'customer' | 'partner';
 
 export type CustomerStatus =
-  | 'new'
-  | 'contacted'
-  | 'qualified'
-  | 'negotiation'
-  | 'won'
-  | 'lost'
-  | 'inactive'
-  | 'archived';
+  'new' | 'contacted' | 'qualified' | 'negotiation' | 'won' | 'lost' | 'inactive' | 'archived';
 
 export type CustomerPriority = 'low' | 'medium' | 'high' | 'hot';
 
@@ -138,14 +131,7 @@ export interface Pipeline {
 }
 
 export type ActivityType =
-  | 'call'
-  | 'email'
-  | 'meeting'
-  | 'task'
-  | 'demo'
-  | 'proposal'
-  | 'follow_up'
-  | 'note';
+  'call' | 'email' | 'meeting' | 'task' | 'demo' | 'proposal' | 'follow_up' | 'note';
 
 export interface Activity {
   id: string;

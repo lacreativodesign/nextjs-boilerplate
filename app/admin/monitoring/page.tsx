@@ -16,8 +16,7 @@ import {
 import type { MonitoringDashboardPayload } from '@/lib/monitoring/types';
 
 type MonitoringResponse =
-  | { ok: true; data: MonitoringDashboardPayload }
-  | { ok: false; error: string; details?: string };
+  { ok: true; data: MonitoringDashboardPayload } | { ok: false; error: string; details?: string };
 
 const POLL_INTERVAL_MS = 30_000;
 

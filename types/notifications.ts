@@ -1,21 +1,10 @@
 import type { Timestamp } from 'firebase-admin/firestore';
 
 export type NotificationType =
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error'
-  | 'action_required'
-  | 'reminder';
+  'info' | 'success' | 'warning' | 'error' | 'action_required' | 'reminder';
 
 export type NotificationCategory =
-  | 'system'
-  | 'financial'
-  | 'sales'
-  | 'operations'
-  | 'security'
-  | 'team'
-  | 'custom';
+  'system' | 'financial' | 'sales' | 'operations' | 'security' | 'team' | 'custom';
 
 export type NotificationChannel = 'in_app' | 'email' | 'sms' | 'webhook';
 

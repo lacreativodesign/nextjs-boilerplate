@@ -1,12 +1,7 @@
 import type { Timestamp } from 'firebase-admin/firestore';
 
 export type ProjectStatus =
-  | 'planning'
-  | 'active'
-  | 'on_hold'
-  | 'completed'
-  | 'cancelled'
-  | 'archived';
+  'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled' | 'archived';
 
 export type ProjectCategory =
   | 'internal'
@@ -66,12 +61,7 @@ export interface Project {
 }
 
 export type TaskStatus =
-  | 'todo'
-  | 'in_progress'
-  | 'in_review'
-  | 'blocked'
-  | 'completed'
-  | 'cancelled';
+  'todo' | 'in_progress' | 'in_review' | 'blocked' | 'completed' | 'cancelled';
 
 export interface TaskChecklistItem {
   id: string;

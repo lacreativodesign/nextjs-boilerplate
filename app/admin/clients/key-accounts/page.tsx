@@ -48,11 +48,7 @@ type ClientRecord = {
 const KEY_ACCOUNT_THRESHOLD = 1000;
 
 type SortKey =
-  | 'orderId'
-  | 'companyName'
-  | 'primaryContactName'
-  | 'primaryContactEmail'
-  | 'primaryContactPhone';
+  'orderId' | 'companyName' | 'primaryContactName' | 'primaryContactEmail' | 'primaryContactPhone';
 
 type SortDir = 'asc' | 'desc';
 

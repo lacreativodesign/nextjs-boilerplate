@@ -83,8 +83,7 @@ type RequestCookies =
 type RequestLike = {
   cookies?: RequestCookies;
   headers?:
-    | Record<string, string | string[] | undefined>
-    | { get?: (name: string) => string | null };
+    Record<string, string | string[] | undefined> | { get?: (name: string) => string | null };
   nextUrl?: { searchParams?: URLSearchParams };
   query?: Record<string, string | string[] | undefined>;
 };

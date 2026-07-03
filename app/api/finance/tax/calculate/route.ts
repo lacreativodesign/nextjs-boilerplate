@@ -78,9 +78,7 @@ export async function POST(req: Request) {
 
     if (!isExempt) {
       let taxRateDoc:
-        | FirebaseFirestore.QueryDocumentSnapshot
-        | FirebaseFirestore.DocumentSnapshot
-        | null = null;
+        FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot | null = null;
 
       if (validated.taxRateId) {
         const selectedRateDoc = await adminDb

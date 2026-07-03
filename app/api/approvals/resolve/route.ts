@@ -136,14 +136,12 @@ export async function POST(req: Request) {
     }
 
     if (kind === 'change_request') {
-      if (
-        !(
-          isAdminOrSuper(role) ||
-          isSalesManager(role) ||
-          isProductionManager(role) ||
-          isAmManager(role)
-        )
-      ) {
+      if (!(
+        isAdminOrSuper(role) ||
+        isSalesManager(role) ||
+        isProductionManager(role) ||
+        isAmManager(role)
+      )) {
         return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
 

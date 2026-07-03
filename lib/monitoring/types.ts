@@ -10,13 +10,7 @@ export type MonitoringMetricType =
   | 'web_vital';
 
 export type MonitoringModule =
-  | 'api'
-  | 'database'
-  | 'cache'
-  | 'auth'
-  | 'billing'
-  | 'frontend'
-  | 'unknown';
+  'api' | 'database' | 'cache' | 'auth' | 'billing' | 'frontend' | 'unknown';
 
 export type MetricIngestPayload = {
   type: MonitoringMetricType;

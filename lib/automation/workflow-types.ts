@@ -8,16 +8,7 @@ export type WorkflowTrigger =
   | { type: 'event'; event: WorkflowEventName; entity: string; field?: string };
 
 export type ConditionOperator =
-  | 'eq'
-  | 'neq'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte'
-  | 'contains'
-  | 'in'
-  | 'is_empty'
-  | 'not_empty';
+  'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'in' | 'is_empty' | 'not_empty';
 
 export type WorkflowCondition = {
   id: string;

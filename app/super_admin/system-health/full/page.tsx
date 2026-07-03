@@ -39,9 +39,7 @@ export default function SuperAdminFullSystemHealthPage() {
         credentials: 'include',
       });
       const payload = (await response.json().catch(() => null)) as
-        | HealthResponse
-        | { error?: string }
-        | null;
+        HealthResponse | { error?: string } | null;
 
       if (!response.ok || !payload || !('summary' in payload)) {
         const message =

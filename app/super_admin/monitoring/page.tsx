@@ -55,9 +55,7 @@ export default function SuperAdminMonitoringPage() {
       });
 
       const payload = (await response.json().catch(() => null)) as
-        | HealthResponse
-        | { error?: string }
-        | null;
+        HealthResponse | { error?: string } | null;
       if (!response.ok || !payload || !('checks' in payload)) {
         const message =
           payload && 'error' in payload && payload.error

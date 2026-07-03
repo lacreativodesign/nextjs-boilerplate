@@ -64,11 +64,7 @@ export async function GET(request: NextRequest) {
   }
 
   const status = request.nextUrl.searchParams.get('status') as
-    | 'pending'
-    | 'processing'
-    | 'completed'
-    | 'failed'
-    | null;
+    'pending' | 'processing' | 'completed' | 'failed' | null;
   const limit = Number(request.nextUrl.searchParams.get('limit') || '100');
 
   const [jobs, metrics] = await Promise.all([

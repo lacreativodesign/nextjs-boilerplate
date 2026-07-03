@@ -1,10 +1,5 @@
 export type RecurrenceFrequency =
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'quarterly'
-  | 'yearly'
-  | 'custom';
+  'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
 export type TemplateStatus = 'draft' | 'active' | 'paused' | 'cancelled';
 
 export interface RecurringInvoiceTemplate {

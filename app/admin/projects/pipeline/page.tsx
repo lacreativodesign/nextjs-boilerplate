@@ -6,14 +6,7 @@ import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 
 type ProjectStage =
-  | 'Inquiry'
-  | 'Deposit'
-  | 'Kickoff'
-  | 'Draft'
-  | 'Review'
-  | 'Revisions'
-  | 'Final'
-  | 'Delivered';
+  'Inquiry' | 'Deposit' | 'Kickoff' | 'Draft' | 'Review' | 'Revisions' | 'Final' | 'Delivered';
 
 type ProjectPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
 

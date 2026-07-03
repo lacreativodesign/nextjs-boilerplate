@@ -9,12 +9,7 @@ import { smartMatch } from '@/lib/search/smartMatch';
 type ChangeRequestType = 'Scope Change' | 'Revision' | 'New Feature' | 'Bug Fix' | 'Other';
 
 type ChangeRequestStatus =
-  | 'Submitted'
-  | 'In Review'
-  | 'Approved'
-  | 'In Progress'
-  | 'Completed'
-  | 'Rejected';
+  'Submitted' | 'In Review' | 'Approved' | 'In Progress' | 'Completed' | 'Rejected';
 
 type ChangeRequestPriority = 'Low' | 'Medium' | 'High';
 

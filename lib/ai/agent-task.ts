@@ -17,11 +17,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 export type AgentType = 'coo' | 'finance' | 'sales';
 
 export type AgentTaskStatus =
-  | 'queued'
-  | 'processing'
-  | 'completed'
-  | 'failed'
-  | 'awaiting_approval';
+  'queued' | 'processing' | 'completed' | 'failed' | 'awaiting_approval';
 
 export type AgentToolCall = {
   toolName: string;

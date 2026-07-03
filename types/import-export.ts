@@ -1,20 +1,8 @@
 export type ImportEntity =
-  | 'clients'
-  | 'invoices'
-  | 'products'
-  | 'employees'
-  | 'projects'
-  | 'tasks'
-  | 'time_entries';
+  'clients' | 'invoices' | 'products' | 'employees' | 'projects' | 'tasks' | 'time_entries';
 
 export type ImportJobStatus =
-  | 'uploaded'
-  | 'validating'
-  | 'validated'
-  | 'processing'
-  | 'completed'
-  | 'failed'
-  | 'rolled_back';
+  'uploaded' | 'validating' | 'validated' | 'processing' | 'completed' | 'failed' | 'rolled_back';
 
 export type ExportJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
 

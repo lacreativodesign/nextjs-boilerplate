@@ -131,11 +131,7 @@ export function getPasswordStrengthScore(password: string): {
 
   const raw = checks.filter(Boolean).length;
   const score = Math.min(4, Math.max(0, Math.round((raw / checks.length) * 4))) as
-    | 0
-    | 1
-    | 2
-    | 3
-    | 4;
+    0 | 1 | 2 | 3 | 4;
 
   const labelMap: Record<typeof score, 'Weak' | 'Fair' | 'Good' | 'Strong' | 'Very Strong'> = {
     0: 'Weak',

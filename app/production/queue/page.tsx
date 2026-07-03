@@ -19,13 +19,7 @@ type QueuePayload = {
 };
 
 type SortKey =
-  | 'projectName'
-  | 'clientName'
-  | 'stage'
-  | 'priority'
-  | 'health'
-  | 'dueDate'
-  | 'updatedAt';
+  'projectName' | 'clientName' | 'stage' | 'priority' | 'health' | 'dueDate' | 'updatedAt';
 
 type SortDir = 'asc' | 'desc';
 

@@ -59,12 +59,7 @@ type MailchimpMetadataResponse = {
 };
 
 type MailchimpMemberStatus =
-  | 'subscribed'
-  | 'unsubscribed'
-  | 'cleaned'
-  | 'pending'
-  | 'transactional'
-  | 'archived';
+  'subscribed' | 'unsubscribed' | 'cleaned' | 'pending' | 'transactional' | 'archived';
 
 export type MailchimpSyncFilter = {
   type?: string;
