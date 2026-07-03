@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +66,7 @@ export async function GET(req: NextRequest) {
         const data = doc.data() as ChangeRequestDoc;
         return {
           id: doc.id,
-          tenantId: data.tenantId || DEFAULT_TENANT_ID,
+          tenantId: data.tenantId || "",
           projectId: data.projectId || "",
           projectName: data.projectName || "",
           clientId: data.clientId || "",
@@ -86,7 +85,7 @@ export async function GET(req: NextRequest) {
           completedAt: toISO(data.completedAt),
         };
       })
-      .filter((item) => String((item as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((item) => String((item as Record<string, any>).tenantId || "") === tenantId);
 
     if (status && CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])) {
       changeRequests = changeRequests.filter((item) => item.status === status);

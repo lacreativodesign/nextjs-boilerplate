@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +42,7 @@ export async function GET() {
         const data = (doc.data() || {}) as PaymentDoc;
         return {
           id: doc.id,
-          tenantId: data.tenantId || DEFAULT_TENANT_ID,
+          tenantId: data.tenantId || "",
           amountUsd: Number(data.amountUsd || 0),
           status: String(data.status || "Pending"),
           method: String(data.method || "Other"),
@@ -53,7 +52,7 @@ export async function GET() {
           orderId: data.orderId || null,
         };
       })
-      .filter((payment) => String((payment as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((payment) => String((payment as Record<string, any>).tenantId || "") === tenantId);
 
     return NextResponse.json({ ok: true, payments });
   } catch (err: any) {

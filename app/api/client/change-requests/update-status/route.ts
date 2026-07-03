@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { logEvent } from "@/lib/audit";
 import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
 import { requireClient } from "../../_utils";
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
-    const docTenant = String(data.tenantId || DEFAULT_TENANT_ID);
+    const docTenant = String(data.tenantId || "");
     if (docTenant !== String(tenantId)) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
