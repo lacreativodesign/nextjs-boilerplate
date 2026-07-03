@@ -104,6 +104,12 @@ class MockCollectionRef extends MockQuery {
     const finalId = id ?? this.db.nextId();
     return new MockDocRef(this.db, this.collectionName, finalId);
   }
+
+  async add(data: FirestoreRecord) {
+    const ref = this.doc();
+    await ref.set(data);
+    return ref;
+  }
 }
 
 class MockBatch {

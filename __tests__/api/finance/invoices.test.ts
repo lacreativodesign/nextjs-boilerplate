@@ -19,7 +19,6 @@ jest.mock("@/lib/security", () => ({ checkRateLimit: jest.fn(async () => undefin
 jest.mock("@/lib/logging", () => ({ logError: jest.fn() }));
 jest.mock("@/lib/audit", () => ({ logEvent: jest.fn(async () => undefined) }));
 jest.mock("@/lib/notifications", () => ({ createNotification: jest.fn(), getUserIdsByRoles: jest.fn(async () => []) }));
-jest.mock("@/lib/permissions", () => ({ Permission: { MarkPaymentPaid: "MarkPaymentPaid", EditFinance: "EditFinance" }, assertPermission: jest.fn() }));
 jest.mock("@/app/api/admin/_utils", () => ({ normalizeRole: (r: string) => r }));
 jest.mock("@/lib/tenant", () => ({
   docTenantId: (doc: any) => doc?.tenantId,
@@ -56,11 +55,12 @@ describe("finance invoices API", () => {
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
+    // Tenant isolation: only tenant_a invoices may appear; tenant_b must be absent.
     expect(body.invoices).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "inv_tenant_a" }),
-        expect.objectContaining({ id: "inv_tenant_b" }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ id: "inv_tenant_a" })]),
+    );
+    expect(body.invoices).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "inv_tenant_b" })]),
     );
     expect(body.currentUser.uid).toBe("user_a");
   });

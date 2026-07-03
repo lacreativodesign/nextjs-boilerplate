@@ -43,32 +43,30 @@ describe('error handling and notifications', () => {
       expose: false,
     });
 
-    expect(resolveErrorResponse(appError, { fallbackMessage: 'Server error' })).toEqual({
-      status: 403,
-      body: {
-        ok: false,
-        error: 'Server error',
-        code: 'FORBIDDEN',
-        details: undefined,
-        requestId: undefined,
-      },
+    const resolved = resolveErrorResponse(appError, { fallbackMessage: 'Server error' });
+    expect(resolved.status).toBe(403);
+    expect(resolved.body).toMatchObject({
+      ok: false,
+      error: 'Server error',
+      message: 'Server error',
+      code: 'FORBIDDEN',
     });
+    expect(typeof resolved.body.correlationId).toBe('string');
+    expect(resolved.headers['x-correlation-id']).toBe(resolved.body.correlationId);
 
-    expect(
-      resolveErrorResponse(new Error('Boom'), {
-        exposeMessage: true,
-        fallbackCode: 'INTERNAL_SERVER_ERROR',
-        fallbackStatus: 500,
-      }),
-    ).toEqual({
-      status: 500,
-      body: {
-        ok: false,
-        error: 'Boom',
-        code: 'INTERNAL_SERVER_ERROR',
-        requestId: undefined,
-      },
+    const fallback = resolveErrorResponse(new Error('Boom'), {
+      exposeMessage: true,
+      fallbackCode: 'INTERNAL_SERVER_ERROR',
+      fallbackStatus: 500,
     });
+    expect(fallback.status).toBe(500);
+    expect(fallback.body).toMatchObject({
+      ok: false,
+      error: 'Boom',
+      message: 'Boom',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
+    expect(typeof fallback.body.correlationId).toBe('string');
   });
 
   it('logs structured errors', () => {
@@ -77,7 +75,9 @@ describe('error handling and notifications', () => {
     logError(new Error('Failure'), { route: '/api/test', tenantId: 'tenant-1' });
 
     expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy.mock.calls[0][0]).toMatchObject({
+    // logError emits a single JSON string line (structured logging contract).
+    const logged = JSON.parse(consoleSpy.mock.calls[0][0] as string);
+    expect(logged).toMatchObject({
       level: 'error',
       context: { route: '/api/test', tenantId: 'tenant-1' },
     });
