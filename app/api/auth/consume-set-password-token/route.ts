@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { getTokenCollection } from "@/lib/passwordSetup";
+import { getTokenCollection, hashSetPasswordToken } from "@/lib/passwordSetup";
+import { invalidateAllSessions } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing token or password" }, { status: 400 });
     }
 
-    const tokenRef = adminDb.collection(getTokenCollection()).doc(token);
+    const tokenRef = adminDb.collection(getTokenCollection()).doc(hashSetPasswordToken(token));
     const tokenSnap = await tokenRef.get();
 
     if (!tokenSnap.exists) {
@@ -37,6 +38,13 @@ export async function POST(req: Request) {
     }
 
     await adminAuth.updateUser(uid, { password });
+
+    // Kill every existing session the moment the password changes: internal session
+    // ledger (covers staff paths and client portal) plus Firebase refresh tokens.
+    // A stolen session must never survive a password reset. Ordering is deliberate:
+    // if either call throws, usedAt is not yet written, so the user can safely retry.
+    await invalidateAllSessions(uid);
+    await adminAuth.revokeRefreshTokens(uid);
 
     await tokenRef.update({
       usedAt: new Date().toISOString(),

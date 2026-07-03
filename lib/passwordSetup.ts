@@ -7,6 +7,10 @@ const TOKEN_COLLECTION = "password_setup_tokens";
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const DASHBOARD_URL = "https://app.bizosto.com";
 
+export function hashSetPasswordToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
 export function buildSetPasswordLink(token: string) {
   return `${DASHBOARD_URL}/set-password?token=${token}`;
 }
@@ -44,8 +48,10 @@ export async function createPasswordSetupToken({
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MS);
 
-  await adminDb.collection(TOKEN_COLLECTION).doc(token).set({
-    token,
+  // Store only a SHA-256 hash of the token as the document ID. The raw token exists
+  // solely in the emailed link, so Firestore reads, exports, and backups never expose
+  // a usable credential (same pattern as user_invitations.tokenHash).
+  await adminDb.collection(TOKEN_COLLECTION).doc(hashSetPasswordToken(token)).set({
     uid,
     email,
     createdAt: now.toISOString(),
@@ -64,9 +70,11 @@ export async function createPasswordSetupToken({
 export async function sendSetPasswordEmail({
   email,
   link,
+  isNewUser = true,
 }: {
   email: string;
   link: string;
+  isNewUser?: boolean;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -78,10 +86,10 @@ export async function sendSetPasswordEmail({
   const resend = new Resend(apiKey);
 
   await resend.emails.send({
-    from: "Bizosto <no-reply@bizosto.com>",
+    from: isNewUser ? "Bizosto <no-reply@bizosto.com>" : "Bizosto <support@bizosto.com>",
     to: email,
-    subject: setPasswordEmailSubject(true),
-    html: setPasswordEmailHtml({ email, setPasswordUrl: link, isNewUser: true }),
+    subject: setPasswordEmailSubject(isNewUser),
+    html: setPasswordEmailHtml({ email, setPasswordUrl: link, isNewUser }),
   });
 
   return { sent: true };

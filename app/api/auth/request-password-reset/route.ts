@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { passwordResetEmailHtml, passwordResetEmailSubject } from "@/lib/email/html-templates";
-
-const DASHBOARD_URL = "https://app.bizosto.com";
+import { createPasswordSetupToken, sendSetPasswordEmail } from "@/lib/passwordSetup";
 
 export const runtime = "nodejs";
 
+// Password reset now uses our own single-use, hashed, 24h set-password tokens instead
+// of Firebase's hosted reset link. Reason: the Firebase-hosted flow changes the
+// password without touching our internal session ledger, so existing sessions
+// survived a reset. Our flow ends at /api/auth/consume-set-password-token, which
+// revokes the ledger and Firebase refresh tokens atomically with the change.
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -16,28 +18,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Email is required." }, { status: 400 });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "Email service unavailable." }, { status: 500 });
-    }
-
+    // Enumeration-safe: identical response whether or not the account exists.
     const user = await adminAuth.getUserByEmail(email).catch(() => null);
     if (!user) {
       return NextResponse.json({ ok: true });
     }
 
-    const resetLink = await adminAuth.generatePasswordResetLink(email, {
-      url: `${DASHBOARD_URL}/login`,
+    const tokenData = await createPasswordSetupToken({
+      uid: user.uid,
+      email,
+      createdBy: null,
     });
 
-    const resend = new Resend(apiKey);
-
-    await resend.emails.send({
-      from: "Bizosto <support@bizosto.com>",
-      to: email,
-      subject: passwordResetEmailSubject(),
-      html: passwordResetEmailHtml({ name: email, resetUrl: resetLink, expiresIn: "1 hour" }),
-    });
+    await sendSetPasswordEmail({ email, link: tokenData.link, isNewUser: false });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
