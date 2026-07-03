@@ -21,6 +21,12 @@ jest.mock("@/lib/firebaseAdmin", () => ({
 jest.mock("@/lib/security", () => ({ checkRateLimit: jest.fn(async () => undefined) }));
 
 describe("auth mfa admin API", () => {
+  beforeAll(async () => {
+    // The MFA route is tenant-scoped and returns 404 unless the target user doc
+    // exists in the caller's tenant. Seed the user the tests operate on.
+    await db.collection("users").doc("u1").set({ tenantId: "tenant_a", isDeleted: false });
+  });
+
   it("returns mfa setup status", async () => {
     const route = await import("@/app/api/admin/users/[uid]/mfa/route");
     const res = await route.GET(jsonRequest("https://app.local/api/admin/users/u1/mfa") as any, { params: { uid: "u1" } });

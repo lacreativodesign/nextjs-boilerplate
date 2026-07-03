@@ -75,6 +75,9 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   "webhooks/stripe",
   "payments/webhooks",
   "stripe/checkout",
+  // Deprecated 410 stubs: return 410 unconditionally, no auth needed, no data access.
+  "billing/subscribe",
+  "billing/webhook",
 ]);
 
 function walk(dir: string): string[] {

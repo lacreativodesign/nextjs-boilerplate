@@ -6,24 +6,24 @@ describe('lib/billing/plans', () => {
       expect(plans.trial.price).toBe(0);
     });
 
-    it('starter plan has price of 99', () => {
-      expect(plans.starter.price).toBe(99);
+    it('starter plan has price of 79', () => {
+      expect(plans.starter.price).toBe(79);
     });
 
-    it('pro plan has price of 299', () => {
-      expect(plans.pro.price).toBe(299);
+    it('pro plan has price of 149', () => {
+      expect(plans.pro.price).toBe(149);
     });
 
-    it('enterprise plan has price of 799', () => {
-      expect(plans.enterprise.price).toBe(799);
+    it('enterprise plan has price of 299', () => {
+      expect(plans.enterprise.price).toBe(299);
     });
 
     it('starter plan limits 10 users', () => {
       expect(plans.starter.limits.users).toBe(10);
     });
 
-    it('pro plan limits 50 users', () => {
-      expect(plans.pro.limits.users).toBe(50);
+    it('pro plan limits 20 users', () => {
+      expect(plans.pro.limits.users).toBe(20);
     });
 
     it('enterprise plan has unlimited users (-1)', () => {
