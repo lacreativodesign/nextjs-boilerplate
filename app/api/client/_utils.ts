@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { validateSession } from "@/lib/auth/session";
 
 export type SessionUser = {
   uid: string;
@@ -62,6 +62,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const sessionCookie = cookieStore.get("lac_session")?.value;
     if (!sessionCookie) return null;
 
+    // Internal session ledger is canonical: logout, revoke-all, idle timeout, and
+    // concurrent-session limits must apply to client portal requests too.
+    const sessionStatus = await validateSession(sessionCookie);
+    if (!sessionStatus?.valid) return null;
+
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     const uid = decoded.uid;
 
@@ -69,16 +74,32 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     if (!userDoc.exists) return null;
 
     const data = userDoc.data() || {};
+
+    // Fail closed on account status: deactivated or soft-deleted accounts lose
+    // portal access on their next request.
+    const accountStatus = String(data.status || "active").toLowerCase();
+    const DEACTIVATED_STATUSES = ["inactive", "suspended", "disabled", "deactivated"];
+    if (data.isDeleted === true || DEACTIVATED_STATUSES.includes(accountStatus)) {
+      return null;
+    }
+
+    // Fail closed on tenant: never fall back to DEFAULT_TENANT_ID ("bizosto" is the
+    // live primary tenant). A user doc without a tenantId must be rejected, never
+    // silently scoped into the primary tenant's data.
+    const tenantId = typeof data.tenantId === "string" ? data.tenantId.trim() : "";
+    if (!tenantId) return null;
+
     const role = (data.role as string | undefined)?.toLowerCase() || "client";
     const clientId = await resolveClientId(uid, data);
-    const tenantId = (data.tenantId as string | undefined) || DEFAULT_TENANT_ID;
 
+    // Spread data FIRST so computed uid/role/clientId/tenantId always win over raw
+    // doc fields (previously ...data was last and could override them).
     return {
+      ...data,
       uid,
       role,
       clientId,
       tenantId,
-      ...data,
     } as SessionUser;
   } catch (err) {
     console.error("getSessionUser error:", err);

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
 import { toInvoiceStatusLabel } from "@/lib/finance/status";
 
@@ -46,7 +45,7 @@ export async function GET() {
         const data = (doc.data() || {}) as InvoiceDoc;
         return {
           id: doc.id,
-          tenantId: data.tenantId || DEFAULT_TENANT_ID,
+          tenantId: data.tenantId || "",
           orderId: data.orderId || "",
           status: toInvoiceStatusLabel(data.status),
           amountUsd: Number(data.amountTotalUsd || 0),
@@ -56,7 +55,7 @@ export async function GET() {
           paidAt: toISO(data.paidAt),
         };
       })
-      .filter((invoice) => String((invoice as Record<string, any>).tenantId || DEFAULT_TENANT_ID) === tenantId);
+      .filter((invoice) => String((invoice as Record<string, any>).tenantId || "") === tenantId);
 
     return NextResponse.json({ ok: true, invoices });
   } catch (err: any) {

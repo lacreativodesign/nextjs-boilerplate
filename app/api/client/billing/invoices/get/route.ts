@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
 import { requireClient, toISO } from "../../../_utils";
 import { toInvoiceStatusLabel } from "@/lib/finance/status";
 
@@ -43,7 +42,7 @@ export async function GET(req: NextRequest) {
     if (!tenantId) {
       return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
     }
-    if (String((data as Record<string, any>).tenantId || DEFAULT_TENANT_ID) !== tenantId) {
+    if (String((data as Record<string, any>).tenantId || "") !== tenantId) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
     if (String(data.clientId || "") !== auth.clientId) {
