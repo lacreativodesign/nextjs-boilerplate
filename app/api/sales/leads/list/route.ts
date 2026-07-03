@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { canWriteSales, isSales, requireSalesRead, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { canWriteSales, isSales, requireSalesRead, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type LeadDoc = {
   tenantId?: string;
@@ -38,7 +38,7 @@ type LeadDoc = {
 };
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
@@ -58,20 +58,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const role = auth.user.role || "";
+    const role = auth.user.role || '';
     const salesRep = isSales(role);
     if (!auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
     }
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const { searchParams } = new URL(req.url);
-    const cursor = String(searchParams.get("cursor") || "").trim();
-    const rawLimit = Number(searchParams.get("limit") || 50);
+    const cursor = String(searchParams.get('cursor') || '').trim();
+    const rawLimit = Number(searchParams.get('limit') || 50);
     const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, Math.floor(rawLimit))) : 50;
 
     let cursorDoc: FirebaseFirestore.DocumentSnapshot | null = null;
     if (cursor) {
-      const doc = await adminDb.collection("leads").doc(cursor).get();
+      const doc = await adminDb.collection('leads').doc(cursor).get();
       if (doc.exists) {
         cursorDoc = doc;
       }
@@ -86,25 +86,39 @@ export async function GET(req: Request) {
       ? await Promise.all([
           queryWithTenant(
             applyCursor(
-              adminDb.collection("leads").where("isDeleted", "==", false).where("ownerUid", "==", auth.user.uid)
+              adminDb
+                .collection('leads')
+                .where('isDeleted', '==', false)
+                .where('ownerUid', '==', auth.user.uid),
             ).limit(limit + 1),
-            tenantId
+            tenantId,
           ),
           queryWithTenant(
             applyCursor(
-              adminDb.collection("leads").where("isDeleted", "==", false).where("createdById", "==", auth.user.uid)
+              adminDb
+                .collection('leads')
+                .where('isDeleted', '==', false)
+                .where('createdById', '==', auth.user.uid),
             ).limit(limit + 1),
-            tenantId
+            tenantId,
           ),
           queryWithTenant(
-            applyCursor(adminDb.collection("leads").where("isDeleted", "==", false).where("ownerUid", "==", null)).limit(
-              limit + 1
-            ),
-            tenantId
+            applyCursor(
+              adminDb
+                .collection('leads')
+                .where('isDeleted', '==', false)
+                .where('ownerUid', '==', null),
+            ).limit(limit + 1),
+            tenantId,
           ),
         ])
       : await Promise.all([
-          queryWithTenant(applyCursor(adminDb.collection("leads").where("isDeleted", "==", false)).limit(limit + 1), tenantId),
+          queryWithTenant(
+            applyCursor(adminDb.collection('leads').where('isDeleted', '==', false)).limit(
+              limit + 1,
+            ),
+            tenantId,
+          ),
           Promise.resolve([]),
           Promise.resolve([]),
         ]);
@@ -116,21 +130,23 @@ export async function GET(req: Request) {
 
     const allLeads = Array.from(map.entries()).map(([id, data]) => ({
       id,
-      companyName: String(data.companyName || data.company || ""),
-      contactName: String(data.contactName || data.name || ""),
-      contactEmail: String(data.contactEmail || data.email || ""),
-      contactPhone: String(data.contactPhone || data.phone || ""),
-      disposition: String(data.disposition || ""),
+      companyName: String(data.companyName || data.company || ''),
+      contactName: String(data.contactName || data.name || ''),
+      contactEmail: String(data.contactEmail || data.email || ''),
+      contactPhone: String(data.contactPhone || data.phone || ''),
+      disposition: String(data.disposition || ''),
       expectedValueUsd: Number(data.expectedValueUsd || 0),
-      packageName: String(data.packageName || ""),
-      interestedServices: Array.isArray(data.interestedServices) ? data.interestedServices.map(String) : [],
+      packageName: String(data.packageName || ''),
+      interestedServices: Array.isArray(data.interestedServices)
+        ? data.interestedServices.map(String)
+        : [],
       probability: Number(data.probability || 0),
       lastContactedAt: toISO(data.lastContactedAt),
       nextFollowUpAt: toISO(data.nextFollowUpAt),
-      source: String(data.source || ""),
-      notes: String(data.notes || ""),
-      status: String(data.status || "new"),
-      stage: String(data.stage || ""),
+      source: String(data.source || ''),
+      notes: String(data.notes || ''),
+      status: String(data.status || 'new'),
+      stage: String(data.stage || ''),
       ownerId: data.ownerUid || data.ownerId || null,
       ownerName: data.ownerName || null,
       createdBy: data.createdBy || null,
@@ -156,7 +172,7 @@ export async function GET(req: Request) {
       canCreate: canWriteSales(role),
     });
   } catch (err: any) {
-    console.error("sales leads list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
+    console.error('sales leads list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load leads.' }, { status: 500 });
   }
 }

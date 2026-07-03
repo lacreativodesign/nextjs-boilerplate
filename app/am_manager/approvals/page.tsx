@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import ApprovalsPage from "@/components/approvals/ApprovalsPage";
+import ApprovalsPage from '@/components/approvals/ApprovalsPage';
 
 export default function AmManagerApprovalsPage() {
   return (

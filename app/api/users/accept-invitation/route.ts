@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { UserService } from "@/lib/users/user-service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { UserService } from '@/lib/users/user-service';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const acceptSchema = z.object({
   token: z.string().min(1),
@@ -23,10 +23,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ userId });
   } catch (error: any) {
-    console.error("Error accepting invitation:", error);
+    console.error('Error accepting invitation:', error);
     return NextResponse.json(
-      { error: error?.message || "Failed to accept invitation" },
-      { status: 500 }
+      { error: error?.message || 'Failed to accept invitation' },
+      { status: 500 },
     );
   }
 }

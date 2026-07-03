@@ -1,9 +1,9 @@
-import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebaseAdmin";
+import admin from 'firebase-admin';
+import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import { adminDb } from '@/lib/firebaseAdmin';
 
-type ReminderType = "upcoming" | "due_today" | "overdue_1week" | "overdue_1month";
+type ReminderType = 'upcoming' | 'due_today' | 'overdue_1week' | 'overdue_1month';
 
 type InvoiceRecord = {
   id: string;
@@ -12,7 +12,7 @@ type InvoiceRecord = {
   invoiceNumber: string;
   dueDate: string;
   total: number;
-  status: "draft" | "sent" | "paid" | "overdue" | string;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | string;
   lateFeeApplied?: boolean;
   lateFee?: number;
   reminderCount?: number;
@@ -21,7 +21,7 @@ type InvoiceRecord = {
 
 type LateFeesSettings = {
   enabled: boolean;
-  type: "percentage" | "fixed";
+  type: 'percentage' | 'fixed';
   value: number;
   gracePeriodDays: number;
 };
@@ -36,7 +36,7 @@ type ClientRecord = {
   name?: string;
 };
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -46,23 +46,26 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export async function GET(request: NextRequest) {
   try {
-    if (!CRON_SECRET || CRON_SECRET === "change-me-in-production") {
-      return NextResponse.json({ error: "Cron secret is not configured securely." }, { status: 500 });
+    if (!CRON_SECRET || CRON_SECRET === 'change-me-in-production') {
+      return NextResponse.json(
+        { error: 'Cron secret is not configured securely.' },
+        { status: 500 },
+      );
     }
 
-    const authHeader = request.headers.get("authorization");
+    const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log("[CRON] Starting invoice reminder job.");
+    console.log('[CRON] Starting invoice reminder job.');
     const results = await processInvoiceReminders();
 
     return NextResponse.json({ success: true, results }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[CRON] Invoice reminder job failed:", error);
-    return NextResponse.json({ error: "Reminder job failed", details: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[CRON] Invoice reminder job failed:', error);
+    return NextResponse.json({ error: 'Reminder job failed', details: message }, { status: 500 });
   }
 }
 
@@ -74,17 +77,17 @@ async function processInvoiceReminders() {
     errors: 0,
   };
 
-  const tenantsSnapshot = await adminDb.collection("tenants").get();
+  const tenantsSnapshot = await adminDb.collection('tenants').get();
 
   for (const tenantDoc of tenantsSnapshot.docs) {
     const tenantId = tenantDoc.id;
     const tenant = (tenantDoc.data() || {}) as TenantRecord;
 
     const invoicesSnapshot = await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(tenantId)
-      .collection("invoices")
-      .where("status", "in", ["sent", "overdue"])
+      .collection('invoices')
+      .where('status', 'in', ['sent', 'overdue'])
       .get();
 
     for (const invoiceDoc of invoicesSnapshot.docs) {
@@ -92,11 +95,11 @@ async function processInvoiceReminders() {
       const invoice: InvoiceRecord = {
         id: invoiceDoc.id,
         tenantId,
-        clientId: String(raw.clientId || ""),
+        clientId: String(raw.clientId || ''),
         invoiceNumber: String(raw.invoiceNumber || invoiceDoc.id),
-        dueDate: String(raw.dueDate || ""),
+        dueDate: String(raw.dueDate || ''),
         total: Number(raw.total || 0),
-        status: String(raw.status || "sent"),
+        status: String(raw.status || 'sent'),
         lateFeeApplied: Boolean(raw.lateFeeApplied),
         lateFee: Number(raw.lateFee || 0),
         reminderCount: Number(raw.reminderCount || 0),
@@ -128,9 +131,9 @@ async function processInvoiceReminders() {
           }
         }
 
-        if (isOverdue(invoice) && invoice.status !== "overdue") {
+        if (isOverdue(invoice) && invoice.status !== 'overdue') {
           await invoiceDoc.ref.update({
-            status: "overdue",
+            status: 'overdue',
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
           results.markedOverdue += 1;
@@ -154,14 +157,16 @@ function shouldSendReminder(invoice: InvoiceRecord): ReminderType | null {
 
   const lastReminder = invoice.lastReminderSent ? new Date(invoice.lastReminderSent) : null;
   if (lastReminder && !Number.isNaN(lastReminder.getTime())) {
-    const sinceLast = Math.floor((today.getTime() - startOfUtcDay(lastReminder).getTime()) / MS_PER_DAY);
+    const sinceLast = Math.floor(
+      (today.getTime() - startOfUtcDay(lastReminder).getTime()) / MS_PER_DAY,
+    );
     if (sinceLast < 1) return null;
   }
 
-  if (daysDiff === 3) return "upcoming";
-  if (daysDiff === 0) return "due_today";
-  if (daysDiff === -7) return "overdue_1week";
-  if (daysDiff === -30) return "overdue_1month";
+  if (daysDiff === 3) return 'upcoming';
+  if (daysDiff === 0) return 'due_today';
+  if (daysDiff === -7) return 'overdue_1week';
+  if (daysDiff === -30) return 'overdue_1month';
 
   return null;
 }
@@ -181,10 +186,10 @@ async function sendReminderEmail(
   tenantId: string,
   tenant: TenantRecord,
   invoice: InvoiceRecord,
-  reminderType: ReminderType
+  reminderType: ReminderType,
 ): Promise<boolean> {
   if (!resend) {
-    console.warn("[CRON] RESEND_API_KEY is missing; skipping reminder email send.");
+    console.warn('[CRON] RESEND_API_KEY is missing; skipping reminder email send.');
     return false;
   }
 
@@ -199,17 +204,18 @@ async function sendReminderEmail(
   };
 
   const messages: Record<ReminderType, string> = {
-    upcoming: "This is a friendly reminder that your invoice will be due in 3 days.",
-    due_today: "This invoice is due today. Please process payment at your earliest convenience.",
-    overdue_1week: "This invoice is now 7 days overdue. Please contact us if you have any questions.",
+    upcoming: 'This is a friendly reminder that your invoice will be due in 3 days.',
+    due_today: 'This invoice is due today. Please process payment at your earliest convenience.',
+    overdue_1week:
+      'This invoice is now 7 days overdue. Please contact us if you have any questions.',
     overdue_1month:
-      "This invoice is now 30 days overdue. Immediate payment is required to avoid further action.",
+      'This invoice is now 30 days overdue. Immediate payment is required to avoid further action.',
   };
 
   const total = Number.isFinite(invoice.total) ? invoice.total : 0;
 
   await resend.emails.send({
-    from: "Bizosto <invoices@bizosto.com>",
+    from: 'Bizosto <invoices@bizosto.com>',
     to: client.email,
     subject: subjects[reminderType],
     html: `
@@ -235,21 +241,28 @@ async function sendReminderEmail(
     `,
   });
 
-  console.log(`[EMAIL] Sent ${reminderType} reminder for invoice=${invoice.invoiceNumber} tenant=${tenantId}`);
+  console.log(
+    `[EMAIL] Sent ${reminderType} reminder for invoice=${invoice.invoiceNumber} tenant=${tenantId}`,
+  );
   return true;
 }
 
 async function getClient(tenantId: string, clientId: string): Promise<ClientRecord | null> {
-  const byIdSnap = await adminDb.collection("tenants").doc(tenantId).collection("clients").doc(clientId).get();
+  const byIdSnap = await adminDb
+    .collection('tenants')
+    .doc(tenantId)
+    .collection('clients')
+    .doc(clientId)
+    .get();
   if (byIdSnap.exists) {
     return (byIdSnap.data() || {}) as ClientRecord;
   }
 
   const byFieldSnap = await adminDb
-    .collection("tenants")
+    .collection('tenants')
     .doc(tenantId)
-    .collection("clients")
-    .where("id", "==", clientId)
+    .collection('clients')
+    .where('id', '==', clientId)
     .limit(1)
     .get();
 
@@ -257,10 +270,14 @@ async function getClient(tenantId: string, clientId: string): Promise<ClientReco
   return (byFieldSnap.docs[0].data() || {}) as ClientRecord;
 }
 
-async function applyLateFee(tenantId: string, invoice: InvoiceRecord, tenant: TenantRecord): Promise<boolean> {
+async function applyLateFee(
+  tenantId: string,
+  invoice: InvoiceRecord,
+  tenant: TenantRecord,
+): Promise<boolean> {
   const settings: LateFeesSettings = {
     enabled: Boolean(tenant.lateFeesSettings?.enabled ?? true),
-    type: tenant.lateFeesSettings?.type === "fixed" ? "fixed" : "percentage",
+    type: tenant.lateFeesSettings?.type === 'fixed' ? 'fixed' : 'percentage',
     value: Number(tenant.lateFeesSettings?.value ?? 5),
     gracePeriodDays: Math.max(0, Number(tenant.lateFeesSettings?.gracePeriodDays ?? 3)),
   };
@@ -275,25 +292,24 @@ async function applyLateFee(tenantId: string, invoice: InvoiceRecord, tenant: Te
   if (daysOverdue <= settings.gracePeriodDays) return false;
 
   const lateFeeRaw =
-    settings.type === "percentage" ? Number(invoice.total) * (settings.value / 100) : Number(settings.value);
+    settings.type === 'percentage'
+      ? Number(invoice.total) * (settings.value / 100)
+      : Number(settings.value);
   const lateFee = Number(Math.max(0, lateFeeRaw).toFixed(2));
   if (!Number.isFinite(lateFee) || lateFee <= 0) return false;
 
   const nextTotal = Number((Number(invoice.total) + lateFee).toFixed(2));
 
-  await adminDb
-    .collection("tenants")
-    .doc(tenantId)
-    .collection("invoices")
-    .doc(invoice.id)
-    .update({
-      lateFee,
-      lateFeeApplied: true,
-      lateFeeAppliedDate: new Date().toISOString(),
-      total: nextTotal,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+  await adminDb.collection('tenants').doc(tenantId).collection('invoices').doc(invoice.id).update({
+    lateFee,
+    lateFeeApplied: true,
+    lateFeeAppliedDate: new Date().toISOString(),
+    total: nextTotal,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
 
-  console.log(`[LATE_FEE] Applied $${lateFee.toFixed(2)} for invoice=${invoice.invoiceNumber} tenant=${tenantId}`);
+  console.log(
+    `[LATE_FEE] Applied $${lateFee.toFixed(2)} for invoice=${invoice.invoiceNumber} tenant=${tenantId}`,
+  );
   return true;
 }

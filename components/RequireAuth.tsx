@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
-import { onAuthStateChanged } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import type { Unsubscribe } from "firebase/auth";
-import SubscriptionBanner from "@/components/SubscriptionBanner";
-import { normalizeRole } from "@/lib/erpAccess";
-import SessionTimeoutModal from "@/components/auth/SessionTimeoutModal";
-import { useSessionTimeout } from "@/lib/hooks/useSessionTimeout";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import type { Unsubscribe } from 'firebase/auth';
+import SubscriptionBanner from '@/components/SubscriptionBanner';
+import { normalizeRole } from '@/lib/erpAccess';
+import SessionTimeoutModal from '@/components/auth/SessionTimeoutModal';
+import { useSessionTimeout } from '@/lib/hooks/useSessionTimeout';
 
 type Props = {
   allowed: string[];
@@ -19,27 +19,27 @@ function LoadingScreen() {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "var(--app-bg)",
-        gap: "16px",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'var(--app-bg)',
+        gap: '16px',
       }}
     >
       <div
         style={{
           width: 40,
           height: 40,
-          borderRadius: "50%",
-          border: "3px solid var(--border-subtle, #e5e7eb)",
-          borderTopColor: "var(--erp-blue, #3b82f6)",
-          animation: "spin 0.8s linear infinite",
+          borderRadius: '50%',
+          border: '3px solid var(--border-subtle, #e5e7eb)',
+          borderTopColor: 'var(--erp-blue, #3b82f6)',
+          animation: 'spin 0.8s linear infinite',
         }}
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <p style={{ color: "var(--text-muted, #6b7280)", fontSize: 14, margin: 0 }}>
+      <p style={{ color: 'var(--text-muted, #6b7280)', fontSize: 14, margin: 0 }}>
         Loading your workspace…
       </p>
     </div>
@@ -50,28 +50,28 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "var(--app-bg)",
-        gap: "16px",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'var(--app-bg)',
+        gap: '16px',
       }}
     >
-      <p style={{ color: "var(--text-primary, #111827)", fontSize: 16, margin: 0 }}>
+      <p style={{ color: 'var(--text-primary, #111827)', fontSize: 16, margin: 0 }}>
         We couldn&apos;t load your session.
       </p>
-      <div style={{ display: "flex", gap: "12px" }}>
+      <div style={{ display: 'flex', gap: '12px' }}>
         <button
           onClick={onRetry}
           style={{
-            padding: "8px 20px",
-            borderRadius: "8px",
-            border: "1px solid var(--input-border, #d1d5db)",
-            background: "transparent",
-            color: "var(--text-primary, #111827)",
-            cursor: "pointer",
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: '1px solid var(--input-border, #d1d5db)',
+            background: 'transparent',
+            color: 'var(--text-primary, #111827)',
+            cursor: 'pointer',
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -81,12 +81,12 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
         <button
           onClick={onSignIn}
           style={{
-            padding: "8px 20px",
-            borderRadius: "8px",
-            border: "none",
-            background: "var(--erp-blue, #3b82f6)",
-            color: "#fff",
-            cursor: "pointer",
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'var(--erp-blue, #3b82f6)',
+            color: '#fff',
+            cursor: 'pointer',
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -104,7 +104,10 @@ export default function RequireAuth({ allowed, children }: Props) {
   const [timedOut, setTimedOut] = useState(false);
   const redirectingRef = useRef(false);
   const router = useRouter();
-  const allowedRoles = useMemo(() => allowed.map((role) => normalizeRole(role)).filter(Boolean), [allowed]);
+  const allowedRoles = useMemo(
+    () => allowed.map((role) => normalizeRole(role)).filter(Boolean),
+    [allowed],
+  );
   const { showTimeoutWarning, timeRemaining, extendSession, logout } = useSessionTimeout();
 
   // Watchdog: show recovery if auth hasn't resolved within 8 s.
@@ -124,11 +127,11 @@ export default function RequireAuth({ allowed, children }: Props) {
         unsub = onAuthStateChanged(auth, async (user) => {
           if (!user) {
             try {
-              const res = await fetch("/api/tenant/context", { credentials: "include" });
+              const res = await fetch('/api/tenant/context', { credentials: 'include' });
               if (res.ok) {
                 const data = await res.json();
                 const role = normalizeRole(data?.user?.role);
-                if (role === "super_admin") {
+                if (role === 'super_admin') {
                   setOk(true);
                   setReady(true);
                   return;
@@ -139,7 +142,7 @@ export default function RequireAuth({ allowed, children }: Props) {
                   return;
                 }
                 redirectingRef.current = true;
-                router.replace(role ? "/unauthorized" : "/login");
+                router.replace(role ? '/unauthorized' : '/login');
                 setReady(true);
                 return;
               }
@@ -147,7 +150,7 @@ export default function RequireAuth({ allowed, children }: Props) {
               // network error — fall through to redirect
             }
             redirectingRef.current = true;
-            router.replace("/login");
+            router.replace('/login');
             setReady(true);
             return;
           }
@@ -155,7 +158,7 @@ export default function RequireAuth({ allowed, children }: Props) {
           const role = normalizeRole(await fetchUserRole(user.uid));
 
           // super_admin bypasses all route restrictions
-          if (role === "super_admin") {
+          if (role === 'super_admin') {
             setOk(true);
             setReady(true);
             return;
@@ -163,7 +166,7 @@ export default function RequireAuth({ allowed, children }: Props) {
 
           if (!role || !allowedRoles.includes(role)) {
             redirectingRef.current = true;
-            router.replace(role ? "/unauthorized" : "/login");
+            router.replace(role ? '/unauthorized' : '/login');
             setReady(true);
             return;
           }
@@ -173,9 +176,9 @@ export default function RequireAuth({ allowed, children }: Props) {
         });
       })
       .catch((err) => {
-        console.error("Failed to load Firebase auth", err);
+        console.error('Failed to load Firebase auth', err);
         redirectingRef.current = true;
-        router.replace("/login");
+        router.replace('/login');
         setReady(true);
       });
 
@@ -190,7 +193,7 @@ export default function RequireAuth({ allowed, children }: Props) {
       return (
         <RecoveryScreen
           onRetry={() => window.location.reload()}
-          onSignIn={() => router.replace("/login")}
+          onSignIn={() => router.replace('/login')}
         />
       );
     }
@@ -202,7 +205,7 @@ export default function RequireAuth({ allowed, children }: Props) {
       return (
         <RecoveryScreen
           onRetry={() => window.location.reload()}
-          onSignIn={() => router.replace("/login")}
+          onSignIn={() => router.replace('/login')}
         />
       );
     }

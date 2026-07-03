@@ -1,14 +1,14 @@
-import crypto from "crypto";
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { setPasswordEmailHtml, setPasswordEmailSubject } from "@/lib/email/html-templates";
+import crypto from 'crypto';
+import { Resend } from 'resend';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { setPasswordEmailHtml, setPasswordEmailSubject } from '@/lib/email/html-templates';
 
-const TOKEN_COLLECTION = "password_setup_tokens";
+const TOKEN_COLLECTION = 'password_setup_tokens';
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const DASHBOARD_URL = "https://app.bizosto.com";
+const DASHBOARD_URL = 'https://app.bizosto.com';
 
 export function hashSetPasswordToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export function buildSetPasswordLink(token: string) {
@@ -27,8 +27,8 @@ export async function createPasswordSetupToken({
   const now = new Date();
   const invalidationSnapshot = await adminDb
     .collection(TOKEN_COLLECTION)
-    .where("uid", "==", uid)
-    .where("usedAt", "==", null)
+    .where('uid', '==', uid)
+    .where('usedAt', '==', null)
     .get();
 
   if (!invalidationSnapshot.empty) {
@@ -39,26 +39,29 @@ export async function createPasswordSetupToken({
         usedAt: invalidatedAt,
         invalidatedAt,
         invalidatedBy: createdBy || null,
-        invalidationReason: "new_token_created",
+        invalidationReason: 'new_token_created',
       });
     });
     await batch.commit();
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MS);
 
   // Store only a SHA-256 hash of the token as the document ID. The raw token exists
   // solely in the emailed link, so Firestore reads, exports, and backups never expose
   // a usable credential (same pattern as user_invitations.tokenHash).
-  await adminDb.collection(TOKEN_COLLECTION).doc(hashSetPasswordToken(token)).set({
-    uid,
-    email,
-    createdAt: now.toISOString(),
-    expiresAt: expiresAt.toISOString(),
-    usedAt: null,
-    createdBy: createdBy || null,
-  });
+  await adminDb
+    .collection(TOKEN_COLLECTION)
+    .doc(hashSetPasswordToken(token))
+    .set({
+      uid,
+      email,
+      createdAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      usedAt: null,
+      createdBy: createdBy || null,
+    });
 
   return {
     token,
@@ -79,14 +82,14 @@ export async function sendSetPasswordEmail({
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.log("[set-password] Resend not configured. Link:", link);
-    return { sent: false, error: "RESEND_API_KEY missing", link };
+    console.log('[set-password] Resend not configured. Link:', link);
+    return { sent: false, error: 'RESEND_API_KEY missing', link };
   }
 
   const resend = new Resend(apiKey);
 
   await resend.emails.send({
-    from: isNewUser ? "Bizosto <no-reply@bizosto.com>" : "Bizosto <support@bizosto.com>",
+    from: isNewUser ? 'Bizosto <no-reply@bizosto.com>' : 'Bizosto <support@bizosto.com>',
     to: email,
     subject: setPasswordEmailSubject(isNewUser),
     html: setPasswordEmailHtml({ email, setPasswordUrl: link, isNewUser }),

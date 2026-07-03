@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireFinance, serverTimestamp } from "@/app/api/finance/_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireFinance, serverTimestamp } from '@/app/api/finance/_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const updateBudgetSchema = z.object({
   budgetId: z.string().min(1),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  status: z.enum(["draft", "active", "closed", "revised"]).optional(),
+  status: z.enum(['draft', 'active', 'closed', 'revised']).optional(),
   categories: z
     .array(
       z.object({
@@ -32,18 +32,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const body = await req.json();
     const validated = updateBudgetSchema.parse(body);
 
-    const docRef = adminDb.collection("budgets").doc(validated.budgetId);
+    const docRef = adminDb.collection('budgets').doc(validated.budgetId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
       throw new AppError({
-        message: "Budget not found",
-        code: "NOT_FOUND",
+        message: 'Budget not found',
+        code: 'NOT_FOUND',
         status: 404,
       });
     }
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
     const existing = docSnap.data();
     if (!existing || existing.tenantId !== auth.user.tenantId) {
       throw new AppError({
-        message: "Forbidden",
-        code: "FORBIDDEN",
+        message: 'Forbidden',
+        code: 'FORBIDDEN',
         status: 403,
       });
     }
@@ -80,9 +80,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logError(err, { route: "POST /api/finance/budgets/update" });
+    logError(err, { route: 'POST /api/finance/budgets/update' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to update budget",
+      fallbackMessage: 'Failed to update budget',
     });
     return NextResponse.json(body, { status });
   }

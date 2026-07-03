@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
-type JobStatus = "pending" | "processing" | "completed" | "failed";
+type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 type JobRecord = {
   id: string;
@@ -26,18 +26,18 @@ type JobsResponse = {
   error?: string;
 };
 
-const STATUS_OPTIONS: Array<{ label: string; value: "" | JobStatus }> = [
-  { label: "All", value: "" },
-  { label: "Pending", value: "pending" },
-  { label: "Processing", value: "processing" },
-  { label: "Completed", value: "completed" },
-  { label: "Failed", value: "failed" },
+const STATUS_OPTIONS: Array<{ label: string; value: '' | JobStatus }> = [
+  { label: 'All', value: '' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Processing', value: 'processing' },
+  { label: 'Completed', value: 'completed' },
+  { label: 'Failed', value: 'failed' },
 ];
 
 export default function AdminJobsPage() {
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [metrics, setMetrics] = useState({ pending: 0, processing: 0, completed: 0, failed: 0 });
-  const [status, setStatus] = useState<"" | JobStatus>("");
+  const [status, setStatus] = useState<'' | JobStatus>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -47,23 +47,23 @@ export default function AdminJobsPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (status) params.set("status", status);
-      params.set("limit", "200");
+      if (status) params.set('status', status);
+      params.set('limit', '200');
 
       const response = await apiFetch(`/api/admin/jobs?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
+        method: 'GET',
+        cache: 'no-store',
       });
 
       const json = (await response.json()) as JobsResponse;
       if (!response.ok || !json.ok) {
-        throw new Error(json.error || "Unable to load job dashboard.");
+        throw new Error(json.error || 'Unable to load job dashboard.');
       }
 
       setJobs(json.jobs || []);
       setMetrics(json.metrics);
     } catch (err: any) {
-      setError(err?.message || "Unable to load job dashboard.");
+      setError(err?.message || 'Unable to load job dashboard.');
     } finally {
       setLoading(false);
     }
@@ -75,22 +75,22 @@ export default function AdminJobsPage() {
     return () => clearInterval(id);
   }, [status]);
 
-  const failedJobs = useMemo(() => jobs.filter((job) => job.status === "failed"), [jobs]);
+  const failedJobs = useMemo(() => jobs.filter((job) => job.status === 'failed'), [jobs]);
 
   const retryJob = async (jobId: string) => {
     setRetrying(jobId);
     setError(null);
     try {
       const response = await apiFetch(`/api/admin/jobs/${jobId}/retry`, {
-        method: "POST",
+        method: 'POST',
       });
       const json = await response.json();
       if (!response.ok || !json.ok) {
-        throw new Error(json.error || "Retry failed.");
+        throw new Error(json.error || 'Retry failed.');
       }
       await loadJobs();
     } catch (err: any) {
-      setError(err?.message || "Retry failed.");
+      setError(err?.message || 'Retry failed.');
     } finally {
       setRetrying(null);
     }
@@ -100,11 +100,13 @@ export default function AdminJobsPage() {
     <div className="space-y-6">
       <section>
         <h1 style={{ fontSize: 24, fontWeight: 700 }}>Background Job Monitoring</h1>
-        <p style={{ fontSize: 14, opacity: 0.75 }}>Track queue throughput, failed jobs, retries, and execution history.</p>
+        <p style={{ fontSize: 14, opacity: 0.75 }}>
+          Track queue throughput, failed jobs, retries, and execution history.
+        </p>
       </section>
 
       {error && (
-        <div className="card" style={{ borderColor: "#f87171", color: "#fecaca" }}>
+        <div className="card" style={{ borderColor: '#f87171', color: '#fecaca' }}>
           {error}
         </div>
       )}
@@ -120,7 +122,11 @@ export default function AdminJobsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 style={{ fontSize: 18, fontWeight: 700 }}>Job History</h2>
           <div className="flex gap-2">
-            <select className="input" value={status} onChange={(event) => setStatus(event.target.value as "" | JobStatus)}>
+            <select
+              className="input"
+              value={status}
+              onChange={(event) => setStatus(event.target.value as '' | JobStatus)}
+            >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.label} value={option.value}>
                   {option.label}
@@ -128,15 +134,15 @@ export default function AdminJobsPage() {
               ))}
             </select>
             <button className="btn" type="button" onClick={loadJobs} disabled={loading}>
-              {loading ? "Refreshing..." : "Refresh"}
+              {loading ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: 'auto' }}>
           <table className="min-w-full text-sm">
             <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <th className="py-2 pr-3">Job ID</th>
                 <th className="py-2 pr-3">Type</th>
                 <th className="py-2 pr-3">Status</th>
@@ -147,8 +153,8 @@ export default function AdminJobsPage() {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td className="py-2 pr-3" style={{ fontFamily: "monospace" }}>
+                <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td className="py-2 pr-3" style={{ fontFamily: 'monospace' }}>
                     {job.id}
                   </td>
                   <td className="py-2 pr-3">{job.type}</td>
@@ -156,7 +162,9 @@ export default function AdminJobsPage() {
                   <td className="py-2 pr-3">
                     {job.attempts}/{job.maxAttempts}
                   </td>
-                  <td className="py-2 pr-3">{job.scheduledAt ? new Date(job.scheduledAt).toLocaleString() : "-"}</td>
+                  <td className="py-2 pr-3">
+                    {job.scheduledAt ? new Date(job.scheduledAt).toLocaleString() : '-'}
+                  </td>
                   <td className="py-2 pr-3">{new Date(job.updatedAt).toLocaleString()}</td>
                 </tr>
               ))}
@@ -179,13 +187,23 @@ export default function AdminJobsPage() {
         ) : (
           <div className="space-y-2">
             {failedJobs.map((job) => (
-              <div key={job.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-red-400/40 p-3">
+              <div
+                key={job.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded border border-red-400/40 p-3"
+              >
                 <div>
-                  <div style={{ fontFamily: "monospace", fontSize: 13 }}>{job.id}</div>
-                  <div style={{ fontSize: 13, opacity: 0.85 }}>{job.lastError || "Unknown error"}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 13 }}>{job.id}</div>
+                  <div style={{ fontSize: 13, opacity: 0.85 }}>
+                    {job.lastError || 'Unknown error'}
+                  </div>
                 </div>
-                <button className="btn" type="button" disabled={retrying === job.id} onClick={() => retryJob(job.id)}>
-                  {retrying === job.id ? "Retrying..." : "Retry"}
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={retrying === job.id}
+                  onClick={() => retryJob(job.id)}
+                >
+                  {retrying === job.id ? 'Retrying...' : 'Retry'}
                 </button>
               </div>
             ))}

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, toISO } from "../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, toISO } from '../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type ExpenseDoc = {
   category?: string;
@@ -27,17 +27,17 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 500);
+    const cursor = req.nextUrl.searchParams.get('cursor');
 
     let baseQuery: FirebaseFirestore.Query = adminDb
-      .collection("expenses")
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
+      .collection('expenses')
+      .where('isDeleted', '==', false)
+      .orderBy('createdAt', 'desc')
       .limit(limit + 1);
 
     if (cursor) {
-      const cursorDoc = await adminDb.collection("expenses").doc(cursor).get();
+      const cursorDoc = await adminDb.collection('expenses').doc(cursor).get();
       if (cursorDoc.exists && normalizeTenantId(cursorDoc.data()?.tenantId) === tenantId) {
         baseQuery = baseQuery.startAfter(cursorDoc);
       }
@@ -58,12 +58,12 @@ export async function GET(req: NextRequest) {
       const data = (doc.data() || {}) as ExpenseDoc;
       return {
         id: doc.id,
-        category: data.category || "",
-        vendor: data.vendor || "",
-        currency: data.currency || "PKR",
+        category: data.category || '',
+        vendor: data.vendor || '',
+        currency: data.currency || 'PKR',
         amountPkr: Number(data.amountPkr || 0),
         expenseDate: toISO(data.expenseDate),
-        status: data.status || "Recorded",
+        status: data.status || 'Recorded',
         notes: data.notes || null,
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
@@ -80,13 +80,13 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("finance/expenses list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/expenses list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load expenses.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load expenses.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

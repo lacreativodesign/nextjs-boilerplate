@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { SettingsAlert } from "../_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { SettingsAlert } from '../_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
 type NotificationSettings = {
   enableInApp: boolean;
@@ -17,14 +17,14 @@ type NotificationSettings = {
 const DEFAULT_SETTINGS: NotificationSettings = {
   enableInApp: true,
   enableEmail: false,
-  senderName: "",
-  replyToEmail: "",
+  senderName: '',
+  replyToEmail: '',
   eventToggles: {},
 };
 
 export default function NotificationSettingsPage() {
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
-  const [eventInput, setEventInput] = useState("");
+  const [eventInput, setEventInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,18 +36,18 @@ export default function NotificationSettingsPage() {
   const loadSettings = async () => {
     try {
       setError(null);
-      const res = await apiFetch("/api/admin/settings/notifications", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/settings/notifications', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have access to notification settings.");
-        if (res.status === 401) throw new Error("Please sign in again to continue.");
-        throw new Error(data?.error || "Unable to load settings.");
+        if (res.status === 403) throw new Error('You do not have access to notification settings.');
+        if (res.status === 401) throw new Error('Please sign in again to continue.');
+        throw new Error(data?.error || 'Unable to load settings.');
       }
       setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
       setCanEdit(Boolean(data.canEdit));
     } catch (err: any) {
-      console.error("notification settings load error", err);
-      setError(err.message || "Unable to load notification settings.");
+      console.error('notification settings load error', err);
+      setError(err.message || 'Unable to load notification settings.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export default function NotificationSettingsPage() {
       ...prev,
       eventToggles: { ...prev.eventToggles, [key]: true },
     }));
-    setEventInput("");
+    setEventInput('');
   };
 
   const removeEventToggle = (key: string) => {
@@ -80,27 +80,31 @@ export default function NotificationSettingsPage() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await apiFetch("/api/admin/settings/notifications", {
-        method: "PUT",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/settings/notifications', {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) throw new Error("You do not have permission to edit notification settings.");
-        throw new Error(data?.error || "Unable to save settings.");
+        if (res.status === 403)
+          throw new Error('You do not have permission to edit notification settings.');
+        throw new Error(data?.error || 'Unable to save settings.');
       }
-      setSuccess("Notification settings updated.");
+      setSuccess('Notification settings updated.');
     } catch (err: any) {
-      console.error("notification settings save error", err);
-      setError(err.message || "Unable to save notification settings.");
+      console.error('notification settings save error', err);
+      setError(err.message || 'Unable to save notification settings.');
     } finally {
       setSaving(false);
     }
   };
 
-  const eventKeys = useMemo(() => Object.keys(settings.eventToggles || {}), [settings.eventToggles]);
+  const eventKeys = useMemo(
+    () => Object.keys(settings.eventToggles || {}),
+    [settings.eventToggles],
+  );
 
   return (
     <div className="space-y-6">
@@ -108,19 +112,26 @@ export default function NotificationSettingsPage() {
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 
       {!canEdit && !loading && (
-        <SettingsAlert tone="info">Only Super Admins can edit notification settings. You have view-only access.</SettingsAlert>
+        <SettingsAlert tone="info">
+          Only Super Admins can edit notification settings. You have view-only access.
+        </SettingsAlert>
       )}
 
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Notifications & Email</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
               Toggle in-app alerts, email sending, and per-event switches.
             </p>
           </div>
-          <button className="btn subtle" onClick={handleSave} disabled={disabled} style={{ borderRadius: 999 }}>
-            {saving ? "Saving..." : "Save Changes"}
+          <button
+            className="btn subtle"
+            onClick={handleSave}
+            disabled={disabled}
+            style={{ borderRadius: 999 }}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
@@ -174,7 +185,9 @@ export default function NotificationSettingsPage() {
         <div className="mt-6">
           <div style={{ fontWeight: 700, marginBottom: 12 }}>Event Toggles</div>
           {eventKeys.length === 0 ? (
-            <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>No event toggles configured.</div>
+            <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+              No event toggles configured.
+            </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {eventKeys.map((key) => (
@@ -215,7 +228,13 @@ export default function NotificationSettingsPage() {
               onChange={(e) => setEventInput(e.target.value)}
               disabled={disabled}
             />
-            <button className="btn ghost" type="button" onClick={addEventToggle} disabled={disabled} style={{ borderRadius: 999 }}>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={addEventToggle}
+              disabled={disabled}
+              style={{ borderRadius: 999 }}
+            >
               Add
             </button>
           </div>

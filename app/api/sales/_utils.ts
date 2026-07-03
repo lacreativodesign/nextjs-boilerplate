@@ -1,14 +1,19 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, createNotificationEvent, getUserIdsByRoles, type NotificationEntityType } from "@/lib/notifications";
-import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from "../admin/_utils";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  createNotification,
+  createNotificationEvent,
+  getUserIdsByRoles,
+  type NotificationEntityType,
+} from '@/lib/notifications';
+import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from '../admin/_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -18,7 +23,7 @@ export function parseNumber(value: any, fallback = 0) {
   return Number.isNaN(num) ? fallback : num;
 }
 
-export function parseString(value: any, fallback = "") {
+export function parseString(value: any, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value);
 }
@@ -41,24 +46,24 @@ export function nowIso() {
 }
 
 export function isSales(role?: string) {
-  return normalizeRole(role) === "sales";
+  return normalizeRole(role) === 'sales';
 }
 
 export function canReadSales(role?: string) {
-  return isSales(role) || isSalesManager(role || "") || isAdminOrSuper(role || "");
+  return isSales(role) || isSalesManager(role || '') || isAdminOrSuper(role || '');
 }
 
 export function canWriteSales(role?: string) {
-  return isSales(role) || isSalesManager(role || "") || isAdminOrSuper(role || "");
+  return isSales(role) || isSalesManager(role || '') || isAdminOrSuper(role || '');
 }
 
 export async function requireSalesRead() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!canReadSales(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
@@ -66,17 +71,17 @@ export async function requireSalesRead() {
 export async function requireSalesWrite() {
   const me = await getCurrentUser();
   if (!me) {
-    return { ok: false as const, status: 401, error: "Unauthorized" };
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
   }
   if (!canWriteSales(me.role)) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const, status: 403, error: 'Forbidden' };
   }
   return { ok: true as const, user: me };
 }
 
 export function userLabel(user: Record<string, any> | null) {
-  if (!user) return "";
-  return String(user.name || user.fullName || user.email || "Sales");
+  if (!user) return '';
+  return String(user.name || user.fullName || user.email || 'Sales');
 }
 
 export async function createSalesEvent({
@@ -139,32 +144,32 @@ export async function notifyUsers({
         toUserId: uid,
         title,
         body,
-        type: "info",
-        entityType: (entityType || "lead") as NotificationEntityType,
+        type: 'info',
+        entityType: (entityType || 'lead') as NotificationEntityType,
         entityId: entityId || null,
         deepLink: deepLink || null,
         createdBy: createdBy || null,
         tenantId: tenantId || null,
-      })
-    )
+      }),
+    ),
   );
 }
 
 export async function getWatcherUserIds(tenantId?: string | null) {
-  const ids = await getUserIdsByRoles(["admin", "super_admin", "sales_manager"], tenantId);
+  const ids = await getUserIdsByRoles(['admin', 'super_admin', 'sales_manager'], tenantId);
   return ids;
 }
 
 export async function getUserNameById(uid?: string | null) {
-  if (!uid) return "";
-  const snap = await adminDb.collection("users").doc(uid).get();
-  if (!snap.exists) return "";
+  if (!uid) return '';
+  const snap = await adminDb.collection('users').doc(uid).get();
+  if (!snap.exists) return '';
   const data = snap.data() || {};
-  return String(data.name || data.fullName || data.email || "");
+  return String(data.name || data.fullName || data.email || '');
 }
 
 export async function getSalesSettings() {
-  const snap = await adminDb.collection("settings").doc("sales").get();
+  const snap = await adminDb.collection('settings').doc('sales').get();
   const data = snap.exists ? snap.data() : {};
   return {
     discountApprovalThresholdPct: parseNumber(data?.discountApprovalThresholdPct, 0),
@@ -172,14 +177,14 @@ export async function getSalesSettings() {
 }
 
 export function normalizeStage(stage?: string) {
-  const value = parseString(stage, "").trim();
+  const value = parseString(stage, '').trim();
   if (!value) return value;
   const lower = value.toLowerCase();
-  if (lower === "new") return "New Lead";
+  if (lower === 'new') return 'New Lead';
   return value;
 }
 
 export function isClosedStage(stage?: string) {
-  const token = String(stage || "").toLowerCase();
-  return token.includes("closed");
+  const token = String(stage || '').toLowerCase();
+  return token.includes('closed');
 }

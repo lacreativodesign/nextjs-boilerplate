@@ -1,17 +1,23 @@
-export const ACTIVITY_ACTION_TYPES = ["created", "updated", "deleted", "commented", "assigned"] as const;
+export const ACTIVITY_ACTION_TYPES = [
+  'created',
+  'updated',
+  'deleted',
+  'commented',
+  'assigned',
+] as const;
 
 export type ActivityActionType = (typeof ACTIVITY_ACTION_TYPES)[number];
 
 export type ActivityEntityType =
-  | "invoice"
-  | "client"
-  | "project"
-  | "task"
-  | "comment"
-  | "document"
-  | "user"
-  | "payment"
-  | "system";
+  | 'invoice'
+  | 'client'
+  | 'project'
+  | 'task'
+  | 'comment'
+  | 'document'
+  | 'user'
+  | 'payment'
+  | 'system';
 
 export interface ActivityActor {
   uid: string;

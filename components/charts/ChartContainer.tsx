@@ -1,43 +1,43 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { SkeletonChart } from "@/components/ui/Skeleton";
-import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
+import React, { useEffect, useState } from 'react';
+import { SkeletonChart } from '@/components/ui/Skeleton';
+import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 
 export const CHART_COLORS = [
-  "var(--chart-series-1)",
-  "var(--chart-series-2)",
-  "var(--chart-series-3)",
-  "var(--chart-series-4)",
-  "var(--chart-series-5)",
-  "var(--chart-series-6)",
+  'var(--chart-series-1)',
+  'var(--chart-series-2)',
+  'var(--chart-series-3)',
+  'var(--chart-series-4)',
+  'var(--chart-series-5)',
+  'var(--chart-series-6)',
 ];
 
 export const chartAxisProps = {
-  tick: { fill: "var(--text-muted)", fontSize: 11 },
-  tickLine: { stroke: "var(--border-subtle)" },
-  axisLine: { stroke: "var(--border-subtle)" },
+  tick: { fill: 'var(--text-muted)', fontSize: 11 },
+  tickLine: { stroke: 'var(--border-subtle)' },
+  axisLine: { stroke: 'var(--border-subtle)' },
 } as const;
 
 export const chartGridProps = {
-  stroke: "var(--border-subtle)",
-  strokeDasharray: "3 3",
+  stroke: 'var(--border-subtle)',
+  strokeDasharray: '3 3',
   opacity: 0.3,
 } as const;
 
 export const chartTooltipProps = {
   contentStyle: {
-    background: "var(--surface-elevated)",
-    border: "1px solid var(--border-subtle)",
+    background: 'var(--surface-elevated)',
+    border: '1px solid var(--border-subtle)',
     borderRadius: 10,
-    boxShadow: "var(--shadow-sm)",
-    color: "var(--text-primary)",
+    boxShadow: 'var(--shadow-sm)',
+    color: 'var(--text-primary)',
     fontSize: 12,
-    padding: "8px 10px",
+    padding: '8px 10px',
   },
-  labelStyle: { color: "var(--text-muted)", fontSize: 11, marginBottom: 4 },
-  itemStyle: { color: "var(--text-primary)", fontSize: 12 },
-  cursor: { stroke: "var(--border-strong)", strokeDasharray: "4 4" },
+  labelStyle: { color: 'var(--text-muted)', fontSize: 11, marginBottom: 4 },
+  itemStyle: { color: 'var(--text-primary)', fontSize: 12 },
+  cursor: { stroke: 'var(--border-strong)', strokeDasharray: '4 4' },
 } as const;
 
 export function useChartAnimation(duration = 800) {
@@ -51,16 +51,14 @@ export function useChartAnimation(duration = 800) {
   return {
     isAnimationActive,
     animationDuration: duration,
-    animationEasing: "ease-out" as const,
+    animationEasing: 'ease-out' as const,
   };
 }
 
 type ChartContainerProps = {
   title: string;
   description?: string;
-  children:
-    | React.ReactNode
-    | ((options: { legendVisible: boolean }) => React.ReactNode);
+  children: React.ReactNode | ((options: { legendVisible: boolean }) => React.ReactNode);
   showLegendToggle?: boolean;
   defaultLegendVisible?: boolean;
   isLoading?: boolean;
@@ -78,11 +76,11 @@ export function ChartContainer({
   isLoading = false,
   isEmpty = false,
   height = 240,
-  className = "",
+  className = '',
 }: ChartContainerProps) {
   const [legendVisible, setLegendVisible] = useState(defaultLegendVisible);
 
-  const content = typeof children === "function" ? children({ legendVisible }) : children;
+  const content = typeof children === 'function' ? children({ legendVisible }) : children;
 
   return (
     <ErrorBoundary fallbackComponent={ChartErrorFallback}>
@@ -91,7 +89,9 @@ export function ChartContainer({
           <div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
             {description && (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{description}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {description}
+              </div>
             )}
           </div>
           {showLegendToggle && (
@@ -100,22 +100,23 @@ export function ChartContainer({
               onClick={() => setLegendVisible((prev) => !prev)}
               className="btn"
               style={{
-                padding: "6px 12px",
+                padding: '6px 12px',
                 borderRadius: 999,
                 fontSize: 12,
-                background: "var(--surface-muted)",
+                background: 'var(--surface-muted)',
               }}
             >
-              {legendVisible ? "Hide legend" : "Show legend"}
+              {legendVisible ? 'Hide legend' : 'Show legend'}
             </button>
           )}
         </div>
-        <div style={{ marginTop: 16 }}>{isLoading || isEmpty ? <SkeletonChart height={height} /> : content}</div>
+        <div style={{ marginTop: 16 }}>
+          {isLoading || isEmpty ? <SkeletonChart height={height} /> : content}
+        </div>
       </div>
     </ErrorBoundary>
   );
 }
-
 
 function ChartErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
   return (

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { CardShell, MiniBarChart } from "@/app/admin/reports/_components/ReportsUI";
+import { useCallback, useEffect, useState } from 'react';
+import { CardShell, MiniBarChart } from '@/app/admin/reports/_components/ReportsUI';
 
 const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
@@ -21,14 +21,14 @@ export default function SalesManagerReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/sales_manager/reports/summary", { cache: "no-store" });
+      const res = await fetch('/api/sales_manager/reports/summary', { cache: 'no-store' });
       const json = (await res.json()) as ReportResponse;
       if (!res.ok || !json.ok) {
-        throw new Error(json?.ok ? "" : "Unable to load reports");
+        throw new Error(json?.ok ? '' : 'Unable to load reports');
       }
       setData(json);
     } catch (err: any) {
-      setError(err?.message || "Unable to load reports.");
+      setError(err?.message || 'Unable to load reports.');
       setData(null);
     } finally {
       setLoading(false);
@@ -41,22 +41,22 @@ export default function SalesManagerReportsPage() {
 
   const handleExport = async () => {
     try {
-      const res = await fetch("/api/sales_manager/reports/export", { cache: "no-store" });
-      if (!res.ok) throw new Error("Unable to export report.");
+      const res = await fetch('/api/sales_manager/reports/export', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Unable to export report.');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
-      link.download = "sales-manager-reports.csv";
+      link.download = 'sales-manager-reports.csv';
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export failed", err);
+      console.error('Export failed', err);
     }
   };
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div>
           <h1 className="page-title">Reports</h1>
@@ -75,9 +75,9 @@ export default function SalesManagerReportsPage() {
           style={{
             borderRadius: 14,
             padding: 16,
-            border: "1px solid rgba(239,68,68,0.35)",
-            background: "var(--danger-soft)",
-            color: "var(--danger)",
+            border: '1px solid rgba(239,68,68,0.35)',
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -90,7 +90,7 @@ export default function SalesManagerReportsPage() {
         className="grid"
         style={{
           marginTop: 10,
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
           gap: 16,
         }}
       >
@@ -110,16 +110,16 @@ export default function SalesManagerReportsPage() {
           {loading ? (
             <div style={{ fontSize: 13, opacity: 0.7 }}>Loading outcomes...</div>
           ) : data ? (
-            <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ display: 'grid', gap: 8, fontSize: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Closed Won</span>
                 <span style={{ fontWeight: 600 }}>{data.winLoss.won}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Closed Lost</span>
                 <span style={{ fontWeight: 600 }}>{data.winLoss.lost}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Win Rate</span>
                 <span style={{ fontWeight: 700 }}>{formatPercent(data.winLoss.ratio)}</span>
               </div>

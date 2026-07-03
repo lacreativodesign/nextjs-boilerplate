@@ -1,16 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 const BLOCKED_EXTENSIONS = [
-  { ext: ".exe", name: "malware.exe", mime: "application/octet-stream" },
-  { ext: ".bat", name: "script.bat", mime: "application/x-bat" },
-  { ext: ".sh", name: "script.sh", mime: "application/x-sh" },
+  { ext: '.exe', name: 'malware.exe', mime: 'application/octet-stream' },
+  { ext: '.bat', name: 'script.bat', mime: 'application/x-bat' },
+  { ext: '.sh', name: 'script.sh', mime: 'application/x-sh' },
 ];
 
 const UPLOAD_ENDPOINT = `${BASE_URL}/api/admin/upload`;
 
-test.describe("File upload validation", () => {
+test.describe('File upload validation', () => {
   for (const { ext, name, mime } of BLOCKED_EXTENSIONS) {
     test(`Upload of ${ext} file is rejected`, async ({ request }) => {
       const fileContent = Buffer.from(`fake content for ${ext} test`);
@@ -33,15 +33,15 @@ test.describe("File upload validation", () => {
     });
   }
 
-  test("Oversized file (>25MB) is rejected", async ({ request }) => {
+  test('Oversized file (>25MB) is rejected', async ({ request }) => {
     // Create a 26MB buffer
-    const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, "a");
+    const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, 'a');
 
     const response = await request.post(UPLOAD_ENDPOINT, {
       multipart: {
         file: {
-          name: "oversized.pdf",
-          mimeType: "application/pdf",
+          name: 'oversized.pdf',
+          mimeType: 'application/pdf',
           buffer: oversizedBuffer,
         },
       },

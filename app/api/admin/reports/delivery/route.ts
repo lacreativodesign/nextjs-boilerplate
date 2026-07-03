@@ -1,13 +1,27 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { computeHealth, getReportSettings, normalizeStage, requireReportsAccess, toISO } from "../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  computeHealth,
+  getReportSettings,
+  normalizeStage,
+  requireReportsAccess,
+  toISO,
+} from '../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const PIPELINE_STAGES = ["Deposit", "Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
+const PIPELINE_STAGES = [
+  'Deposit',
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
+];
 
 type StageHistoryEntry = {
   from?: string;
@@ -18,8 +32,8 @@ type StageHistoryEntry = {
 function normalizeStageHistory(history?: StageHistoryEntry[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
+    from: entry?.from || '',
+    to: entry?.to || '',
     at: toISO(entry?.at),
   }));
 }
@@ -46,17 +60,17 @@ export async function GET(req: Request) {
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
-    const dateFrom = parseDate(searchParams.get("dateFrom"));
-    const dateTo = parseDate(searchParams.get("dateTo"), true);
-    const stageFilter = String(searchParams.get("stage") || "");
-    const ownerId = String(searchParams.get("ownerId") || "");
-    const productionOwnerId = String(searchParams.get("productionOwnerId") || "");
-    const healthFilter = String(searchParams.get("health") || "");
-    const priorityFilter = String(searchParams.get("priority") || "");
+    const dateFrom = parseDate(searchParams.get('dateFrom'));
+    const dateTo = parseDate(searchParams.get('dateTo'), true);
+    const stageFilter = String(searchParams.get('stage') || '');
+    const ownerId = String(searchParams.get('ownerId') || '');
+    const productionOwnerId = String(searchParams.get('productionOwnerId') || '');
+    const healthFilter = String(searchParams.get('health') || '');
+    const priorityFilter = String(searchParams.get('priority') || '');
 
     const docs = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const projects = docs.map((doc) => {
@@ -64,18 +78,19 @@ export async function GET(req: Request) {
       const dueDate = toISO(data.dueDate);
       const updatedAt = toISO(data.updatedAt || data.createdAt);
       const stage = normalizeStage(data.stage);
-      const health = data.health || computeHealth(dueDate, settings.atRiskAfterDays, settings.overdueAfterDays);
+      const health =
+        data.health || computeHealth(dueDate, settings.atRiskAfterDays, settings.overdueAfterDays);
       const stageHistory = normalizeStageHistory(data.stageHistory);
-      const owner = data.ownerAmUid || data.ownerId || data.ownerUid || "";
-      const ownerName = data.ownerAmName || data.ownerName || "";
-      const productionOwner = data.productionUid || data.productionOwnerId || "";
-      const productionName = data.productionName || data.productionOwnerName || "";
+      const owner = data.ownerAmUid || data.ownerId || data.ownerUid || '';
+      const ownerName = data.ownerAmName || data.ownerName || '';
+      const productionOwner = data.productionUid || data.productionOwnerId || '';
+      const productionName = data.productionName || data.productionOwnerName || '';
       return {
         id: doc.id,
-        projectName: data.projectName || "",
-        clientName: data.clientName || "",
+        projectName: data.projectName || '',
+        clientName: data.clientName || '',
         stage,
-        priority: data.priority || "Normal",
+        priority: data.priority || 'Normal',
         health,
         ownerId: owner,
         ownerName,
@@ -110,7 +125,9 @@ export async function GET(req: Request) {
       const avgDays =
         items.reduce((sum, project) => {
           let anchor = project.createdAt;
-          const historyEntry = [...project.stageHistory].reverse().find((entry) => entry.to === stage);
+          const historyEntry = [...project.stageHistory]
+            .reverse()
+            .find((entry) => entry.to === stage);
           if (historyEntry?.at) anchor = historyEntry.at;
           const anchorMs = anchor ? new Date(anchor).getTime() : null;
           if (!anchorMs || Number.isNaN(anchorMs)) return sum;
@@ -132,38 +149,42 @@ export async function GET(req: Request) {
         }
         return acc;
       },
-      { onTime: 0, overdue: 0 }
+      { onTime: 0, overdue: 0 },
     );
 
     const eventDocs = await queryWithTenant(
-      adminDb.collection("events").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('events').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
     const safeEvents =
-      eventDocs.length > 0 ? eventDocs : await queryWithTenant(adminDb.collection("events").limit(500), tenantId);
+      eventDocs.length > 0
+        ? eventDocs
+        : await queryWithTenant(adminDb.collection('events').limit(500), tenantId);
     const qaEvents = safeEvents
       .map((doc) => doc.data() || {})
-      .filter((event) => ["project.qa_approved", "project.qa_rejected"].includes(String(event.type || "")));
+      .filter((event) =>
+        ['project.qa_approved', 'project.qa_rejected'].includes(String(event.type || '')),
+      );
 
     const qaPassFail =
       qaEvents.length > 0
         ? qaEvents.reduce(
             (acc, event) => {
-              const type = String(event.type || "");
-              if (type === "project.qa_approved") acc.pass += 1;
-              if (type === "project.qa_rejected") acc.fail += 1;
+              const type = String(event.type || '');
+              if (type === 'project.qa_approved') acc.pass += 1;
+              if (type === 'project.qa_rejected') acc.fail += 1;
               return acc;
             },
-            { pass: 0, fail: 0, queue: 0 }
+            { pass: 0, fail: 0, queue: 0 },
           )
         : {
             pass: 0,
             fail: 0,
-            queue: filtered.filter((project) => project.stage === "Final").length,
+            queue: filtered.filter((project) => project.stage === 'Final').length,
           };
 
     const riskProjects = filtered
-      .filter((project) => ["At Risk", "Overdue"].includes(project.health))
+      .filter((project) => ['At Risk', 'Overdue'].includes(project.health))
       .map((project) => {
         const dueMs = project.dueDate ? new Date(project.dueDate).getTime() : null;
         const daysLate = dueMs ? Math.ceil((Date.now() - dueMs) / (1000 * 60 * 60 * 24)) : 0;
@@ -181,13 +202,15 @@ export async function GET(req: Request) {
       atRiskProjects: riskProjects,
     });
   } catch (err: any) {
-    console.error("reports/delivery error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('reports/delivery error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load delivery reports.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load delivery reports.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

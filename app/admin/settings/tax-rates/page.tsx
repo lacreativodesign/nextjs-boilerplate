@@ -1,31 +1,31 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { TaxCalculator, TaxRate } from "@/lib/tax/taxCalculator";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { TaxCalculator, TaxRate } from '@/lib/tax/taxCalculator';
+import { apiFetch } from '@/lib/api/client';
 
 type NewRateState = {
   name: string;
   rate: number;
-  type: "simple" | "compound";
-  applies_to: "subtotal" | "subtotal_plus_other_taxes";
+  type: 'simple' | 'compound';
+  applies_to: 'subtotal' | 'subtotal_plus_other_taxes';
   enabled: boolean;
   description: string;
 };
 
 const DEFAULT_NEW_RATE: NewRateState = {
-  name: "",
+  name: '',
   rate: 0,
-  type: "simple",
-  applies_to: "subtotal",
+  type: 'simple',
+  applies_to: 'subtotal',
   enabled: true,
-  description: "",
+  description: '',
 };
 
 export default function TaxRatesPage() {
@@ -38,20 +38,20 @@ export default function TaxRatesPage() {
   const fetchTaxRates = async () => {
     try {
       setError(null);
-      const response = await apiFetch("/api/admin/finance/tax-rates", {
-        method: "GET",
-        cache: "no-store",
+      const response = await apiFetch('/api/admin/finance/tax-rates', {
+        method: 'GET',
+        cache: 'no-store',
       });
 
       const result = await response.json();
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Failed to fetch tax rates");
+        throw new Error(result?.error || 'Failed to fetch tax rates');
       }
 
       setTaxRates(Array.isArray(result.taxRates) ? (result.taxRates as TaxRate[]) : []);
     } catch (fetchError: any) {
-      console.error("tax rates fetch error", fetchError);
-      setError(fetchError?.message || "Failed to fetch tax rates");
+      console.error('tax rates fetch error', fetchError);
+      setError(fetchError?.message || 'Failed to fetch tax rates');
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ export default function TaxRatesPage() {
 
   const handleAddRate = async () => {
     if (!newRate.name.trim() || newRate.rate <= 0) {
-      setError("Tax name and a positive rate are required.");
+      setError('Tax name and a positive rate are required.');
       return;
     }
 
@@ -77,22 +77,22 @@ export default function TaxRatesPage() {
         description: newRate.description.trim() || undefined,
       };
 
-      const response = await apiFetch("/api/admin/finance/tax-rates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/admin/finance/tax-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Failed to create tax rate");
+        throw new Error(result?.error || 'Failed to create tax rate');
       }
 
       setTaxRates((prev) => [...prev, result.taxRate as TaxRate]);
       setNewRate(DEFAULT_NEW_RATE);
     } catch (saveError: any) {
-      console.error("tax rates create error", saveError);
-      setError(saveError?.message || "Failed to create tax rate");
+      console.error('tax rates create error', saveError);
+      setError(saveError?.message || 'Failed to create tax rate');
     } finally {
       setSaving(false);
     }
@@ -103,42 +103,44 @@ export default function TaxRatesPage() {
       setError(null);
       const nextEnabled = !taxRate.enabled;
 
-      const response = await apiFetch("/api/admin/finance/tax-rates", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/admin/finance/tax-rates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: taxRate.id, enabled: nextEnabled }),
       });
 
       const result = await response.json();
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Failed to update tax rate");
+        throw new Error(result?.error || 'Failed to update tax rate');
       }
 
-      setTaxRates((prev) => prev.map((item) => (item.id === taxRate.id ? { ...item, enabled: nextEnabled } : item)));
+      setTaxRates((prev) =>
+        prev.map((item) => (item.id === taxRate.id ? { ...item, enabled: nextEnabled } : item)),
+      );
     } catch (toggleError: any) {
-      console.error("tax rates toggle error", toggleError);
-      setError(toggleError?.message || "Failed to update tax rate");
+      console.error('tax rates toggle error', toggleError);
+      setError(toggleError?.message || 'Failed to update tax rate');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this tax rate?")) return;
+    if (!confirm('Delete this tax rate?')) return;
 
     try {
       setError(null);
       const response = await apiFetch(`/api/admin/finance/tax-rates?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
 
       const result = await response.json();
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Failed to delete tax rate");
+        throw new Error(result?.error || 'Failed to delete tax rate');
       }
 
       setTaxRates((prev) => prev.filter((rate) => rate.id !== id));
     } catch (deleteError: any) {
-      console.error("tax rates delete error", deleteError);
-      setError(deleteError?.message || "Failed to delete tax rate");
+      console.error('tax rates delete error', deleteError);
+      setError(deleteError?.message || 'Failed to delete tax rate');
     }
   };
 
@@ -185,8 +187,8 @@ export default function TaxRatesPage() {
                 onChange={(e) =>
                   setNewRate((prev) => ({
                     ...prev,
-                    type: e.target.value as NewRateState["type"],
-                    applies_to: e.target.value === "compound" ? prev.applies_to : "subtotal",
+                    type: e.target.value as NewRateState['type'],
+                    applies_to: e.target.value === 'compound' ? prev.applies_to : 'subtotal',
                   }))
                 }
               >
@@ -200,9 +202,12 @@ export default function TaxRatesPage() {
                 className="w-full rounded border p-2"
                 value={newRate.applies_to}
                 onChange={(e) =>
-                  setNewRate((prev) => ({ ...prev, applies_to: e.target.value as NewRateState["applies_to"] }))
+                  setNewRate((prev) => ({
+                    ...prev,
+                    applies_to: e.target.value as NewRateState['applies_to'],
+                  }))
                 }
-                disabled={newRate.type === "simple"}
+                disabled={newRate.type === 'simple'}
               >
                 <option value="subtotal">Subtotal</option>
                 <option value="subtotal_plus_other_taxes">Subtotal + other taxes</option>
@@ -219,7 +224,7 @@ export default function TaxRatesPage() {
             <div className="flex items-end">
               <Button onClick={handleAddRate} className="w-full" disabled={saving}>
                 <Plus className="mr-2 h-4 w-4" />
-                {saving ? "Saving..." : "Add Rate"}
+                {saving ? 'Saving...' : 'Add Rate'}
               </Button>
             </div>
           </div>
@@ -240,10 +245,12 @@ export default function TaxRatesPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold">{rate.name}</h3>
                     <p className="text-sm text-[var(--text-muted)]">
-                      {rate.rate}% • {rate.type === "simple" ? "Simple" : "Compound"} • {" "}
-                      {rate.applies_to === "subtotal" ? "Base: subtotal" : "Base: subtotal + tax"}
+                      {rate.rate}% • {rate.type === 'simple' ? 'Simple' : 'Compound'} •{' '}
+                      {rate.applies_to === 'subtotal' ? 'Base: subtotal' : 'Base: subtotal + tax'}
                     </p>
-                    {rate.description && <p className="text-xs text-[var(--text-muted)] mt-1">{rate.description}</p>}
+                    {rate.description && (
+                      <p className="text-xs text-[var(--text-muted)] mt-1">{rate.description}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     <Switch checked={rate.enabled} onCheckedChange={() => handleToggle(rate)} />
@@ -254,7 +261,9 @@ export default function TaxRatesPage() {
                 </div>
               ))}
 
-              {taxRates.length === 0 && <p className="py-8 text-center text-[var(--text-muted)]">No tax rates configured</p>}
+              {taxRates.length === 0 && (
+                <p className="py-8 text-center text-[var(--text-muted)]">No tax rates configured</p>
+              )}
             </div>
           )}
         </CardContent>

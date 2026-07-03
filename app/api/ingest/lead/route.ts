@@ -1,20 +1,20 @@
-import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, getUsersByRoles } from "@/lib/notifications";
-import { authenticateIngest } from "@/lib/ingest/auth";
+import { NextResponse } from 'next/server';
+import { FieldValue } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createNotification, getUsersByRoles } from '@/lib/notifications';
+import { authenticateIngest } from '@/lib/ingest/auth';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 const rateLimitState = new Map<string, { count: number; resetAt: number }>();
 
 function getClientIp(req: Request) {
-  const forwardedFor = req.headers.get("x-forwarded-for");
-  if (!forwardedFor) return "unknown";
-  return forwardedFor.split(",")[0]?.trim() || "unknown";
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  if (!forwardedFor) return 'unknown';
+  return forwardedFor.split(',')[0]?.trim() || 'unknown';
 }
 
 function checkRateLimit(key: string) {
@@ -39,29 +39,31 @@ function isValidEmail(email: string) {
 }
 
 function normalizeOptionalString(value: unknown) {
-  if (typeof value !== "string") return null;
+  if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
 }
 
 export async function POST(req: Request) {
   try {
-    const tenantId = req.headers.get("x-tenant-id")?.trim();
-    const apiKey = req.headers.get("x-api-key")?.trim();
+    const tenantId = req.headers.get('x-tenant-id')?.trim();
+    const apiKey = req.headers.get('x-api-key')?.trim();
 
     if (!tenantId || !apiKey) {
-      return NextResponse.json({ ok: false, error: "missing_auth_headers" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'missing_auth_headers' }, { status: 401 });
     }
 
     const rateKey = `${tenantId}:${getClientIp(req)}`;
     const rateLimit = checkRateLimit(rateKey);
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { ok: false, error: "rate_limited" },
+        { ok: false, error: 'rate_limited' },
         {
           status: 429,
-          headers: { "Retry-After": Math.ceil((rateLimit.resetAt! - Date.now()) / 1000).toString() },
-        }
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt! - Date.now()) / 1000).toString(),
+          },
+        },
       );
     }
 
@@ -69,28 +71,28 @@ export async function POST(req: Request) {
     try {
       body = (await req.json()) as Record<string, unknown>;
     } catch (error) {
-      console.error("Failed to parse lead ingest payload:", error);
-      return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+      console.error('Failed to parse lead ingest payload:', error);
+      return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
     }
 
-    const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
-    const email = typeof body.email === "string" ? body.email.trim() : "";
-    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : '';
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
 
     if (!fullName) {
-      return NextResponse.json({ ok: false, error: "full_name_required" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'full_name_required' }, { status: 400 });
     }
 
     if (!email) {
-      return NextResponse.json({ ok: false, error: "email_required" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'email_required' }, { status: 400 });
     }
 
     if (!isValidEmail(email)) {
-      return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'invalid_email' }, { status: 400 });
     }
 
     if (!message) {
-      return NextResponse.json({ ok: false, error: "message_required" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'message_required' }, { status: 400 });
     }
 
     const auth = await authenticateIngest(req);
@@ -98,10 +100,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const leadRef = adminDb.collection("leads").doc();
+    const leadRef = adminDb.collection('leads').doc();
 
-    const leadSource = "Website";
-    const status = "New";
+    const leadSource = 'Website';
+    const status = 'New';
 
     const leadData = {
       tenantId,
@@ -117,7 +119,7 @@ export async function POST(req: Request) {
       notes: message,
       source: leadSource,
       status,
-      stage: "New Lead",
+      stage: 'New Lead',
       isDeleted: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -125,31 +127,31 @@ export async function POST(req: Request) {
 
     await leadRef.set(leadData);
 
-    const recipients = await getUsersByRoles(["admin", "sales_manager"], tenantId);
+    const recipients = await getUsersByRoles(['admin', 'sales_manager'], tenantId);
     await Promise.all(
       recipients.map((recipient) => {
-        const role = String(recipient.role || "");
+        const role = String(recipient.role || '');
         const deepLink =
-          role === "admin" || role === "super_admin"
+          role === 'admin' || role === 'super_admin'
             ? `/admin/sales/leads?open=${leadRef.id}`
             : `/sales_manager/leads?open=${leadRef.id}`;
         return createNotification({
           recipientUid: recipient.uid,
           recipientRole: role,
           tenantId,
-          type: "new_lead",
-          title: "New website lead",
+          type: 'new_lead',
+          title: 'New website lead',
           message: `${fullName} submitted a demo request`,
-          entityType: "lead",
+          entityType: 'lead',
           entityId: leadRef.id,
           deepLink,
         });
-      })
+      }),
     );
 
     return NextResponse.json({ ok: true, leadId: leadRef.id }, { status: 200 });
   } catch (error) {
-    console.error("Lead ingest error:", error);
-    return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
+    console.error('Lead ingest error:', error);
+    return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 });
   }
 }

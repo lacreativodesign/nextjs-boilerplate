@@ -1,9 +1,11 @@
 # Database Schema (Firestore)
 
 ## Tenant isolation
+
 All collections storing tenant data include `tenantId` and are queried with tenant-scoped filters.
 
 ## Core collections
+
 - `users`
   - `uid` (string)
   - `tenantId` (string)
@@ -31,9 +33,11 @@ All collections storing tenant data include `tenantId` and are queried with tena
   - `createdAt` (timestamp)
 
 ## Index strategy
+
 Refer to `firestore.indexes.json` for explicit composite indexes required by analytics, reporting, and filtered searches.
 
 ## SSO collections
+
 - `tenants/{tenantId}/ssoConnections/{provider}`
   - `provider` ("google" | "microsoft" | "okta" | "auth0")
   - `enabled` (boolean)

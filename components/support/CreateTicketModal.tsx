@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from 'react';
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch } from '@/lib/api/client';
 
-type TicketPriority = "low" | "medium" | "high" | "urgent";
-type TicketCategory = "bug" | "feature" | "question" | "billing";
+type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+type TicketCategory = 'bug' | 'feature' | 'question' | 'billing';
 
 type CreateTicketPayload = {
   title: string;
@@ -22,16 +22,16 @@ type CreateTicketModalProps = {
 };
 
 const DEFAULT_FORM: CreateTicketPayload = {
-  title: "",
-  description: "",
-  priority: "medium",
-  category: "question",
+  title: '',
+  description: '',
+  priority: 'medium',
+  category: 'question',
   tags: [],
 };
 
 export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketModalProps) {
   const [formData, setFormData] = useState<CreateTicketPayload>(DEFAULT_FORM);
-  const [tagsInput, setTagsInput] = useState("");
+  const [tagsInput, setTagsInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +41,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
 
   const reset = () => {
     setFormData(DEFAULT_FORM);
-    setTagsInput("");
+    setTagsInput('');
     setError(null);
   };
 
@@ -53,14 +53,14 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
     setError(null);
 
     const tags = tagsInput
-      .split(",")
+      .split(',')
       .map((tag) => tag.trim().toLowerCase())
       .filter(Boolean);
 
     try {
-      const response = await apiFetch("/api/support/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           title: formData.title.trim(),
@@ -72,7 +72,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
 
       if (!response.ok) {
-        setError(body?.error || "Failed to create support ticket.");
+        setError(body?.error || 'Failed to create support ticket.');
         return;
       }
 
@@ -80,7 +80,7 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
       reset();
       onClose();
     } catch {
-      setError("Failed to create support ticket.");
+      setError('Failed to create support ticket.');
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +121,9 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               value={formData.priority}
-              onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as TicketPriority }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, priority: e.target.value as TicketPriority }))
+              }
               className="input w-full"
             >
               <option value="low">Low</option>
@@ -132,7 +134,9 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
 
             <select
               value={formData.category}
-              onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value as TicketCategory }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, category: e.target.value as TicketCategory }))
+              }
               className="input w-full"
             >
               <option value="bug">Bug</option>
@@ -157,14 +161,9 @@ export function CreateTicketModal({ isOpen, onClose, onCreated }: CreateTicketMo
               disabled={!canSubmit || submitting}
               className="btn mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Sending..." : "Send Bug Report"}
+              {submitting ? 'Sending...' : 'Send Bug Report'}
             </button>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={submitting}
-              className="btn ghost"
-            >
+            <button type="button" onClick={handleClose} disabled={submitting} className="btn ghost">
               Cancel
             </button>
           </div>

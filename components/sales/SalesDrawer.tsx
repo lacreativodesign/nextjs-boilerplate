@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 
 type SalesDrawerProps = {
   title: string;
@@ -10,11 +10,17 @@ type SalesDrawerProps = {
   actions?: React.ReactNode;
 };
 
-export default function SalesDrawer({ title, subtitle, onClose, children, actions }: SalesDrawerProps) {
+export default function SalesDrawer({
+  title,
+  subtitle,
+  onClose,
+  children,
+  actions,
+}: SalesDrawerProps) {
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div className="drawer-title">{title}</div>
             {subtitle && <div className="drawer-subtitle">{subtitle}</div>}
@@ -31,7 +37,7 @@ export default function SalesDrawer({ title, subtitle, onClose, children, action
         {actions && (
           <>
             <div style={{ height: 18 }} />
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>{actions}</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{actions}</div>
           </>
         )}
       </div>

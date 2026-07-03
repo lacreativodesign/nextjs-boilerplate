@@ -1,59 +1,59 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
-export type ReportCategory = "financial" | "sales" | "operations" | "inventory" | "hr" | "custom";
+export type ReportCategory = 'financial' | 'sales' | 'operations' | 'inventory' | 'hr' | 'custom';
 
-export type ReportType = "preset" | "custom";
+export type ReportType = 'preset' | 'custom';
 
 export type DataSource =
-  | "invoices"
-  | "payments"
-  | "expenses"
-  | "customers"
-  | "products"
-  | "users"
-  | "audit_logs"
-  | "projects"
-  | "deals"
-  | "leads"
-  | "opportunities"
-  | "time_entries"
-  | "budget_lines"
-  | "custom";
+  | 'invoices'
+  | 'payments'
+  | 'expenses'
+  | 'customers'
+  | 'products'
+  | 'users'
+  | 'audit_logs'
+  | 'projects'
+  | 'deals'
+  | 'leads'
+  | 'opportunities'
+  | 'time_entries'
+  | 'budget_lines'
+  | 'custom';
 
-export type ChartType = "line" | "bar" | "pie" | "area" | "scatter" | "table" | "metric";
+export type ChartType = 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'table' | 'metric';
 
-export type AggregationFunction = "sum" | "avg" | "count" | "min" | "max";
+export type AggregationFunction = 'sum' | 'avg' | 'count' | 'min' | 'max';
 
-export type ReportFormat = "pdf" | "csv" | "xlsx";
+export type ReportFormat = 'pdf' | 'csv' | 'xlsx';
 
 export interface ReportFieldSelection {
   field: string;
   label: string;
   alias?: string;
-  type?: "string" | "number" | "boolean" | "date" | "array" | "object";
+  type?: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
   selectedAt: number;
 }
 
 export interface ReportFilter {
   field: string;
   operator:
-    | "equals"
-    | "notEquals"
-    | "greaterThan"
-    | "greaterThanOrEqual"
-    | "lessThan"
-    | "lessThanOrEqual"
-    | "between"
-    | "in"
-    | "notIn"
-    | "contains"
-    | "notContains"
-    | "startsWith"
-    | "endsWith"
-    | "isNull"
-    | "isNotNull";
+    | 'equals'
+    | 'notEquals'
+    | 'greaterThan'
+    | 'greaterThanOrEqual'
+    | 'lessThan'
+    | 'lessThanOrEqual'
+    | 'between'
+    | 'in'
+    | 'notIn'
+    | 'contains'
+    | 'notContains'
+    | 'startsWith'
+    | 'endsWith'
+    | 'isNull'
+    | 'isNotNull';
   value: unknown;
-  logicalOperator?: "and" | "or";
+  logicalOperator?: 'and' | 'or';
 }
 
 export interface Aggregation {
@@ -64,11 +64,11 @@ export interface Aggregation {
 
 export interface ReportSort {
   field: string;
-  direction: "asc" | "desc";
+  direction: 'asc' | 'desc';
 }
 
 export interface ReportSchedule {
-  frequency: "daily" | "weekly" | "monthly";
+  frequency: 'daily' | 'weekly' | 'monthly';
   dayOfWeek?: number;
   dayOfMonth?: number;
   time: string;
@@ -124,7 +124,7 @@ export interface ReportExecution {
   executedBy: string;
   executedAt: Timestamp;
   duration: number;
-  status: "success" | "failed";
+  status: 'success' | 'failed';
   errorMessage?: string;
   rowCount: number;
   resultSize: number;

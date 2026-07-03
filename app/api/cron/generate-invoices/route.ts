@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { invoiceEmailHtml, invoiceEmailSubject } from "@/lib/email/html-templates";
-import admin from "firebase-admin";
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextRequest, NextResponse } from 'next/server';
+import { invoiceEmailHtml, invoiceEmailSubject } from '@/lib/email/html-templates';
+import admin from 'firebase-admin';
+import { Resend } from 'resend';
+import { adminDb } from '@/lib/firebaseAdmin';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 type RecurringTemplate = {
   isActive?: boolean;
@@ -33,19 +33,19 @@ const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export async function GET(request: NextRequest) {
   try {
-    if (!CRON_SECRET || CRON_SECRET === "change-me-in-production") {
+    if (!CRON_SECRET || CRON_SECRET === 'change-me-in-production') {
       return NextResponse.json(
-        { error: "Cron secret is not configured securely." },
-        { status: 500 }
+        { error: 'Cron secret is not configured securely.' },
+        { status: 500 },
       );
     }
 
-    const authHeader = request.headers.get("authorization");
+    const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log("[CRON] Starting recurring invoice generation.");
+    console.log('[CRON] Starting recurring invoice generation.');
     const results = await generateRecurringInvoices();
 
     return NextResponse.json(
@@ -54,17 +54,17 @@ export async function GET(request: NextRequest) {
         message: `Generated ${results.success} invoices, ${results.errors} failed, ${results.skipped} skipped`,
         details: results,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[CRON] Invoice generation failed:", error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[CRON] Invoice generation failed:', error);
     return NextResponse.json(
       {
-        error: "Invoice generation failed",
+        error: 'Invoice generation failed',
         details: message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -77,17 +77,17 @@ async function generateRecurringInvoices() {
     details: [] as Array<Record<string, unknown>>,
   };
 
-  const tenantsSnapshot = await adminDb.collection("tenants").get();
+  const tenantsSnapshot = await adminDb.collection('tenants').get();
 
   for (const tenantDoc of tenantsSnapshot.docs) {
     const tenantId = tenantDoc.id;
     console.log(`[CRON] Processing tenant ${tenantId}`);
 
     const templatesSnapshot = await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(tenantId)
-      .collection("recurringInvoiceTemplates")
-      .where("isActive", "==", true)
+      .collection('recurringInvoiceTemplates')
+      .where('isActive', '==', true)
       .get();
 
     for (const templateDoc of templatesSnapshot.docs) {
@@ -97,7 +97,12 @@ async function generateRecurringInvoices() {
       try {
         if (!isTemplateValid(template)) {
           results.skipped += 1;
-          results.details.push({ tenantId, templateId, status: "skipped", reason: "invalid_template" });
+          results.details.push({
+            tenantId,
+            templateId,
+            status: 'skipped',
+            reason: 'invalid_template',
+          });
           continue;
         }
 
@@ -112,7 +117,9 @@ async function generateRecurringInvoices() {
         if (clientEmail) {
           await sendInvoiceEmail(invoice, clientEmail);
         } else {
-          console.warn(`[EMAIL] Client email missing for tenant=${tenantId}, template=${templateId}`);
+          console.warn(
+            `[EMAIL] Client email missing for tenant=${tenantId}, template=${templateId}`,
+          );
         }
 
         await templateDoc.ref.update({
@@ -123,12 +130,12 @@ async function generateRecurringInvoices() {
         });
 
         results.success += 1;
-        results.details.push({ tenantId, templateId, invoiceId: invoice.id, status: "success" });
+        results.details.push({ tenantId, templateId, invoiceId: invoice.id, status: 'success' });
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = error instanceof Error ? error.message : 'Unknown error';
         console.error(`[CRON] Failed template ${templateId} for tenant ${tenantId}:`, error);
         results.errors += 1;
-        results.details.push({ tenantId, templateId, status: "error", error: message });
+        results.details.push({ tenantId, templateId, status: 'error', error: message });
       }
     }
   }
@@ -139,11 +146,11 @@ async function generateRecurringInvoices() {
 function isTemplateValid(template: Partial<RecurringTemplate>): template is RecurringTemplate {
   return Boolean(
     template &&
-      template.clientId &&
-      template.invoiceData &&
-      template.startDate &&
-      template.frequency &&
-      ["daily", "weekly", "monthly", "yearly"].includes(template.frequency)
+    template.clientId &&
+    template.invoiceData &&
+    template.startDate &&
+    template.frequency &&
+    ['daily', 'weekly', 'monthly', 'yearly'].includes(template.frequency),
   );
 }
 
@@ -158,7 +165,9 @@ function shouldGenerateInvoice(template: RecurringTemplate): boolean {
   if (now < startDate) return false;
   if (endDate && now > endDate) return false;
 
-  const nextGenerateDate = template.nextGenerateDate ? new Date(template.nextGenerateDate) : startDate;
+  const nextGenerateDate = template.nextGenerateDate
+    ? new Date(template.nextGenerateDate)
+    : startDate;
   if (Number.isNaN(nextGenerateDate.getTime())) return false;
 
   return now >= nextGenerateDate;
@@ -166,7 +175,7 @@ function shouldGenerateInvoice(template: RecurringTemplate): boolean {
 
 async function createInvoiceFromTemplate(
   tenantId: string,
-  template: RecurringTemplate
+  template: RecurringTemplate,
 ): Promise<GeneratedInvoice> {
   const now = new Date();
   const paymentTerms = Number(template.invoiceData.paymentTerms ?? 30);
@@ -179,13 +188,17 @@ async function createInvoiceFromTemplate(
     invoiceNumber,
     issueDate: now.toISOString(),
     dueDate: calculateDueDate(paymentTerms),
-    status: "sent",
-    generatedFrom: "recurring_template",
+    status: 'sent',
+    generatedFrom: 'recurring_template',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  const invoiceRef = await adminDb.collection("tenants").doc(tenantId).collection("invoices").add(invoiceData);
+  const invoiceRef = await adminDb
+    .collection('tenants')
+    .doc(tenantId)
+    .collection('invoices')
+    .add(invoiceData);
 
   return {
     id: invoiceRef.id,
@@ -197,10 +210,10 @@ async function createInvoiceFromTemplate(
 
 async function generateInvoiceNumber(tenantId: string): Promise<string> {
   const latestInvoiceSnapshot = await adminDb
-    .collection("tenants")
+    .collection('tenants')
     .doc(tenantId)
-    .collection("invoices")
-    .orderBy("createdAt", "desc")
+    .collection('invoices')
+    .orderBy('createdAt', 'desc')
     .limit(1)
     .get();
 
@@ -209,7 +222,7 @@ async function generateInvoiceNumber(tenantId: string): Promise<string> {
     return `INV-${currentYear}-0001`;
   }
 
-  const lastInvoiceNumber = String(latestInvoiceSnapshot.docs[0].data().invoiceNumber ?? "");
+  const lastInvoiceNumber = String(latestInvoiceSnapshot.docs[0].data().invoiceNumber ?? '');
   const sequenceMatch = lastInvoiceNumber.match(/INV-\d{4}-(\d+)$/);
 
   if (!sequenceMatch) {
@@ -217,7 +230,7 @@ async function generateInvoiceNumber(tenantId: string): Promise<string> {
   }
 
   const nextSequence = Number(sequenceMatch[1]) + 1;
-  return `INV-${currentYear}-${String(nextSequence).padStart(4, "0")}`;
+  return `INV-${currentYear}-${String(nextSequence).padStart(4, '0')}`;
 }
 
 function calculateDueDate(paymentTerms: number): string {
@@ -231,16 +244,16 @@ function calculateNextGenerateDate(frequency: RecurrenceFrequency, fromDate: Dat
   const next = new Date(fromDate);
 
   switch (frequency) {
-    case "daily":
+    case 'daily':
       next.setDate(next.getDate() + 1);
       break;
-    case "weekly":
+    case 'weekly':
       next.setDate(next.getDate() + 7);
       break;
-    case "monthly":
+    case 'monthly':
       next.setMonth(next.getMonth() + 1);
       break;
-    case "yearly":
+    case 'yearly':
       next.setFullYear(next.getFullYear() + 1);
       break;
   }
@@ -248,25 +261,28 @@ function calculateNextGenerateDate(frequency: RecurrenceFrequency, fromDate: Dat
   return next.toISOString();
 }
 
-async function resolveClientEmail(tenantId: string, template: RecurringTemplate): Promise<string | null> {
+async function resolveClientEmail(
+  tenantId: string,
+  template: RecurringTemplate,
+): Promise<string | null> {
   if (template.clientEmail) return template.clientEmail;
 
   const clientDoc = await adminDb
-    .collection("tenants")
+    .collection('tenants')
     .doc(tenantId)
-    .collection("clients")
+    .collection('clients')
     .doc(template.clientId)
     .get();
 
   if (!clientDoc.exists) return null;
 
   const email = clientDoc.data()?.email;
-  return typeof email === "string" && email.length > 0 ? email : null;
+  return typeof email === 'string' && email.length > 0 ? email : null;
 }
 
 async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) {
   if (!resend) {
-    console.warn("[EMAIL] RESEND_API_KEY is not configured. Skipping invoice email.");
+    console.warn('[EMAIL] RESEND_API_KEY is not configured. Skipping invoice email.');
     return;
   }
 
@@ -274,14 +290,18 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
     clientName: clientEmail,
     invoiceNumber: invoice.invoiceNumber,
     amount: invoice.total,
-    currency: "USD",
-    dueDate: new Date(invoice.dueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    currency: 'USD',
+    dueDate: new Date(invoice.dueDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
     viewUrl: `https://app.bizosto.com/client/invoices/${invoice.id}`,
   };
 
   try {
     await resend.emails.send({
-      from: "Bizosto <invoices@bizosto.com>",
+      from: 'Bizosto <invoices@bizosto.com>',
       to: clientEmail,
       subject: invoiceEmailSubject(invoiceData),
       html: invoiceEmailHtml(invoiceData),
@@ -289,6 +309,6 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
 
     console.log(`[EMAIL] Sent invoice ${invoice.invoiceNumber} to ${clientEmail}`);
   } catch (error) {
-    console.error("[EMAIL] Failed to send invoice email:", error);
+    console.error('[EMAIL] Failed to send invoice email:', error);
   }
 }

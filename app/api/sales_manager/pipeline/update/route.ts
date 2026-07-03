@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   arrayUnion,
   createSalesEvent,
@@ -7,18 +7,18 @@ import {
   parseString,
   requireSalesManager,
   serverTimestamp,
-} from "../../_utils";
+} from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const ALLOWED_STAGES = [
-  "New Lead",
-  "Contacted",
-  "Qualified",
-  "Proposal Sent",
-  "Negotiation",
-  "Closed Won",
-  "Closed Lost",
+  'New Lead',
+  'Contacted',
+  'Qualified',
+  'Proposal Sent',
+  'Negotiation',
+  'Closed Won',
+  'Closed Lost',
 ];
 
 export async function POST(req: Request) {
@@ -29,30 +29,33 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const id = parseString(payload.id, "");
-    const stage = parseString(payload.stage, "");
+    const id = parseString(payload.id, '');
+    const stage = parseString(payload.stage, '');
     if (!id || !stage) {
-      return NextResponse.json({ ok: false, error: "Missing deal update fields." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Missing deal update fields.' },
+        { status: 400 },
+      );
     }
 
     if (!ALLOWED_STAGES.includes(stage)) {
-      return NextResponse.json({ ok: false, error: "Invalid pipeline stage." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid pipeline stage.' }, { status: 400 });
     }
 
-    const dealRef = adminDb.collection("deals").doc(id);
-    let prevStage = "";
+    const dealRef = adminDb.collection('deals').doc(id);
+    let prevStage = '';
     let ownerId: string | null = null;
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
       if (!snap.exists) {
-        throw new Error("Deal not found");
+        throw new Error('Deal not found');
       }
       const data = snap.data() || {};
-      if (String(data.tenantId || "") !== auth.user.tenantId) {
-        throw new Error("Forbidden");
+      if (String(data.tenantId || '') !== auth.user.tenantId) {
+        throw new Error('Forbidden');
       }
-      prevStage = parseString(data.stage, "New Lead");
+      prevStage = parseString(data.stage, 'New Lead');
       if (prevStage === stage) return;
       ownerId = data.ownerId || null;
 
@@ -63,15 +66,15 @@ export async function POST(req: Request) {
           to: stage,
           changedAt: serverTimestamp(),
           changedByUid: auth.user.uid,
-          changedByName: auth.user.name || auth.user.fullName || "",
+          changedByName: auth.user.name || auth.user.fullName || '',
         }),
         updatedAt: serverTimestamp(),
       };
 
-      if (stage === "Closed Won") {
+      if (stage === 'Closed Won') {
         updates.closedWonAt = serverTimestamp();
       }
-      if (stage === "Closed Lost") {
+      if (stage === 'Closed Lost') {
         updates.closedLostAt = serverTimestamp();
       }
 
@@ -82,12 +85,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    const createdByName = auth.user.name || auth.user.fullName || "";
+    const createdByName = auth.user.name || auth.user.fullName || '';
     await createSalesEvent({
-      type: "deal_stage_change",
-      title: "Pipeline stage updated",
+      type: 'deal_stage_change',
+      title: 'Pipeline stage updated',
       description: `Deal ${id} moved to ${stage}`,
-      entityType: "deal",
+      entityType: 'deal',
       entityId: id,
       createdByUid: auth.user.uid,
       createdByName,
@@ -95,30 +98,30 @@ export async function POST(req: Request) {
     });
 
     await notifyUsers({
-      userIds: [auth.user.uid, ownerId || ""],
-      title: "Deal stage moved",
+      userIds: [auth.user.uid, ownerId || ''],
+      title: 'Deal stage moved',
       body: `Deal ${id} moved from ${prevStage} to ${stage}.`,
-      entityType: "deal",
+      entityType: 'deal',
       entityId: id,
-      deepLink: "/sales_manager/pipeline",
+      deepLink: '/sales_manager/pipeline',
       createdBy: { uid: auth.user.uid, name: createdByName },
     });
 
-    if (stage === "Closed Won" || stage === "Closed Lost") {
+    if (stage === 'Closed Won' || stage === 'Closed Lost') {
       await notifyUsers({
-        userIds: [auth.user.uid, ownerId || ""],
-        title: stage === "Closed Won" ? "Deal closed won" : "Deal closed lost",
+        userIds: [auth.user.uid, ownerId || ''],
+        title: stage === 'Closed Won' ? 'Deal closed won' : 'Deal closed lost',
         body: `Deal ${id} marked ${stage}.`,
-        entityType: "deal",
+        entityType: 'deal',
         entityId: id,
-        deepLink: "/sales_manager/deals",
+        deepLink: '/sales_manager/deals',
         createdBy: { uid: auth.user.uid, name: createdByName },
       });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("sales manager pipeline update error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to update pipeline." }, { status: 500 });
+    console.error('sales manager pipeline update error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to update pipeline.' }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client';
+import { useEffect, useState } from 'react';
 
 type TeamMember = {
   uid: string;
@@ -21,28 +21,28 @@ type TeamListProps = {
 
 const fmt = (n: number) => n.toLocaleString();
 const fmtCurrency = (n: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(n);
 
-export default function TeamList({ endpoint, title = "My Team" }: TeamListProps) {
+export default function TeamList({ endpoint, title = 'My Team' }: TeamListProps) {
   const [team, setTeam] = useState<TeamMember[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(endpoint, { credentials: "include" })
+    fetch(endpoint, { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
         if (d.ok) setTeam(Array.isArray(d.team) ? d.team : []);
-        else setError(d.error || "Failed to load");
+        else setError(d.error || 'Failed to load');
       })
       .catch(() => {
-        if (!cancelled) setError("Network error");
+        if (!cancelled) setError('Network error');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -54,20 +54,15 @@ export default function TeamList({ endpoint, title = "My Team" }: TeamListProps)
 
   // Feature-detect sales-only metric columns — only show them when at least
   // one member actually carries the field (am/production teams won't).
-  const showSalesMetrics =
-    !!team && team.some((m) => typeof m.leadsAssigned === "number");
+  const showSalesMetrics = !!team && team.some((m) => typeof m.leadsAssigned === 'number');
 
   return (
     <div className="card space-y-4">
       <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
 
-      {loading && (
-        <div className="text-[var(--text-muted)]">…</div>
-      )}
+      {loading && <div className="text-[var(--text-muted)]">…</div>}
 
-      {!loading && error && (
-        <div className="text-sm text-red-400">{error}</div>
-      )}
+      {!loading && error && <div className="text-sm text-red-400">{error}</div>}
 
       {!loading && !error && team && team.length === 0 && (
         <p className="helper-text">
@@ -101,8 +96,8 @@ export default function TeamList({ endpoint, title = "My Team" }: TeamListProps)
                     <td className="table-card-primary" data-label="Name">
                       {m.name}
                     </td>
-                    <td data-label="Email">{m.email || "—"}</td>
-                    <td data-label="Role">{m.role || "—"}</td>
+                    <td data-label="Email">{m.email || '—'}</td>
+                    <td data-label="Role">{m.role || '—'}</td>
                     {showSalesMetrics && (
                       <>
                         <td className="table-cell-right" data-label="Leads">

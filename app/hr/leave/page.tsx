@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import LeaveManagementDashboard from "@/components/hr/LeaveManagementDashboard";
+import LeaveManagementDashboard from '@/components/hr/LeaveManagementDashboard';
 
 export default function HrLeavePage() {
   return (

@@ -1,34 +1,34 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
 export default function SalesReportsPage() {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [dealType, setDealType] = useState("all");
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [dealType, setDealType] = useState('all');
 
   // Dummy deal data
   const deals = [
     {
-      id: "D001",
-      client: "John Carter",
+      id: 'D001',
+      client: 'John Carter',
       amount: 4500,
-      type: "website",
-      date: "2025-01-12",
+      type: 'website',
+      date: '2025-01-12',
     },
     {
-      id: "D002",
-      client: "Blue Sparrow LLC",
+      id: 'D002',
+      client: 'Blue Sparrow LLC',
       amount: 8000,
-      type: "branding",
-      date: "2025-01-15",
+      type: 'branding',
+      date: '2025-01-15',
     },
     {
-      id: "D003",
-      client: "Sarah Parker",
+      id: 'D003',
+      client: 'Sarah Parker',
       amount: 2000,
-      type: "smm",
-      date: "2025-01-20",
+      type: 'smm',
+      date: '2025-01-20',
     },
   ];
 
@@ -38,30 +38,23 @@ export default function SalesReportsPage() {
 
     if (startDate && dealDate < new Date(startDate)) return false;
     if (endDate && dealDate > new Date(endDate)) return false;
-    if (dealType !== "all" && deal.type !== dealType) return false;
+    if (dealType !== 'all' && deal.type !== dealType) return false;
 
     return true;
   });
 
   // Export CSV
   const exportCSV = () => {
-    const headers = ["ID", "Client", "Amount", "Type", "Date"];
-    const rows = filteredDeals.map((d) => [
-      d.id,
-      d.client,
-      d.amount,
-      d.type,
-      d.date,
-    ]);
+    const headers = ['ID', 'Client', 'Amount', 'Type', 'Date'];
+    const rows = filteredDeals.map((d) => [d.id, d.client, d.amount, d.type, d.date]);
 
     let csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers, ...rows].map((e) => e.join(",")).join("\n");
+      'data:text/csv;charset=utf-8,' + [headers, ...rows].map((e) => e.join(',')).join('\n');
 
     const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = encodedUri;
-    link.download = "sales_reports.csv";
+    link.download = 'sales_reports.csv';
     link.click();
   };
 
@@ -113,11 +106,21 @@ export default function SalesReportsPage() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-[var(--table-header-bg)]">
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">ID</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Client</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Type</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Date</th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                ID
+              </th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                Client
+              </th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                Amount
+              </th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                Type
+              </th>
+              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                Date
+              </th>
             </tr>
           </thead>
           <tbody>

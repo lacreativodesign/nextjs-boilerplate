@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { parseString, requireSalesRead, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { parseString, requireSalesRead, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
@@ -12,28 +12,28 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const leadId = parseString(searchParams.get("leadId"), "");
+    const leadId = parseString(searchParams.get('leadId'), '');
     if (!leadId) {
-      return NextResponse.json({ ok: false, error: "Lead id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Lead id is required.' }, { status: 400 });
     }
 
-    const leadSnap = await adminDb.collection("leads").doc(leadId).get();
+    const leadSnap = await adminDb.collection('leads').doc(leadId).get();
     if (!leadSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Lead not found.' }, { status: 404 });
     }
     const lead = leadSnap.data() || {};
-    if ((lead.tenantId || "") !== auth.user.tenantId && auth.user.role !== "super_admin") {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if ((lead.tenantId || '') !== auth.user.tenantId && auth.user.role !== 'super_admin') {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
-    if (auth.user.role === "sales" && lead.ownerId !== auth.user.uid) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (auth.user.role === 'sales' && lead.ownerId !== auth.user.uid) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const snap = await adminDb
-      .collection("paymentRequests")
-      .where("tenantId", "==", auth.user.tenantId || "")
-      .where("leadId", "==", leadId)
-      .orderBy("createdAt", "desc")
+      .collection('paymentRequests')
+      .where('tenantId', '==', auth.user.tenantId || '')
+      .where('leadId', '==', leadId)
+      .orderBy('createdAt', 'desc')
       .limit(100)
       .get();
 
@@ -42,10 +42,10 @@ export async function GET(req: Request) {
       return {
         id: doc.id,
         amountUsd: Number(data.amountUsd || 0),
-        currency: String(data.currency || "USD"),
-        status: String(data.status || "draft"),
+        currency: String(data.currency || 'USD'),
+        status: String(data.status || 'draft'),
         checkoutUrl: data.checkoutUrl || null,
-        paymentProvider: String(data.paymentProvider || "stripe"),
+        paymentProvider: String(data.paymentProvider || 'stripe'),
         createdAt: toISO(data.createdAt),
         updatedAt: toISO(data.updatedAt),
       };
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, requests });
   } catch (err) {
-    console.error("sales payment list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load payments." }, { status: 500 });
+    console.error('sales payment list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load payments.' }, { status: 500 });
   }
 }

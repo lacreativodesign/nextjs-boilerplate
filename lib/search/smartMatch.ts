@@ -10,7 +10,7 @@
 export function smartMatch<T>(
   items: T[],
   term: string,
-  fields: (item: T) => (string | number | null | undefined)[]
+  fields: (item: T) => (string | number | null | undefined)[],
 ): T[] {
   const needle = term.trim().toLowerCase();
   if (!needle) return items;
@@ -19,7 +19,7 @@ export function smartMatch<T>(
     fields(item).some((value) => {
       if (value === null || value === undefined) return false;
       return String(value).toLowerCase().includes(needle);
-    })
+    }),
   );
 }
 

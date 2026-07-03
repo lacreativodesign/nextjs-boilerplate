@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSuperAdmin } from "../_utils";
-import { getStripeClient } from "@/lib/payments/stripe";
-import { plans, type BillingPlanKey } from "@/lib/billing/plans";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSuperAdmin } from '../_utils';
+import { getStripeClient } from '@/lib/payments/stripe';
+import { plans, type BillingPlanKey } from '@/lib/billing/plans';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const CACHE_DOC_PATH = "cache/super_admin_payments";
+const CACHE_DOC_PATH = 'cache/super_admin_payments';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_TENANTS = 200;
 
@@ -46,11 +46,13 @@ type PaymentTenant = {
 };
 
 function normalizePlan(value: unknown): BillingPlanKey {
-  const plan = String(value || "").toLowerCase().trim();
-  if (plan === "trial" || plan === "starter" || plan === "pro" || plan === "enterprise") {
+  const plan = String(value || '')
+    .toLowerCase()
+    .trim();
+  if (plan === 'trial' || plan === 'starter' || plan === 'pro' || plan === 'enterprise') {
     return plan;
   }
-  return "trial";
+  return 'trial';
 }
 
 function toUsd(cents: unknown): number {
@@ -69,14 +71,14 @@ export async function GET(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
 
-    const refresh = req.nextUrl.searchParams.get("refresh") === "true";
+    const refresh = req.nextUrl.searchParams.get('refresh') === 'true';
     const cacheRef = adminDb.doc(CACHE_DOC_PATH);
 
     if (!refresh) {
       const cacheSnap = await cacheRef.get();
       if (cacheSnap.exists) {
-        const cachedAt = parseDate(cacheSnap.get("cachedAt"));
-        const data = String(cacheSnap.get("data") || "");
+        const cachedAt = parseDate(cacheSnap.get('cachedAt'));
+        const data = String(cacheSnap.get('data') || '');
         if (cachedAt && data && Date.now() - cachedAt.getTime() < CACHE_TTL_MS) {
           const parsed = JSON.parse(data);
           return NextResponse.json(parsed);
@@ -84,26 +86,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const tenantsSnap = await adminDb.collection("tenants").orderBy("createdAt", "desc").limit(MAX_TENANTS).get();
+    const tenantsSnap = await adminDb
+      .collection('tenants')
+      .orderBy('createdAt', 'desc')
+      .limit(MAX_TENANTS)
+      .get();
     const stripe = getStripeClient();
 
     const stripeTasks = tenantsSnap.docs.map(async (tenantDoc) => {
       const data = (tenantDoc.data() || {}) as TenantData;
-      const subscriptionId = String(data.stripeSubscriptionId || "").trim();
+      const subscriptionId = String(data.stripeSubscriptionId || '').trim();
       if (!subscriptionId) {
         return { tenantId: tenantDoc.id, customerId: null };
       }
 
       try {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ["latest_invoice", "customer"],
+          expand: ['latest_invoice', 'customer'],
         });
-        const customerId = typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer?.id || null;
+        const customerId =
+          typeof subscription.customer === 'string'
+            ? subscription.customer
+            : subscription.customer?.id || null;
         return { tenantId: tenantDoc.id, customerId };
       } catch (error) {
-        console.error("[super_admin/payments] Stripe subscription fetch failed", {
+        console.error('[super_admin/payments] Stripe subscription fetch failed', {
           tenantId: tenantDoc.id,
           subscriptionId,
           error,
@@ -115,7 +122,7 @@ export async function GET(req: NextRequest) {
     const stripeResults = await Promise.allSettled(stripeTasks);
     const stripeMap = new Map<string, { customerId: string | null }>();
     stripeResults.forEach((result) => {
-      if (result.status === "fulfilled") {
+      if (result.status === 'fulfilled') {
         stripeMap.set(result.value.tenantId, { customerId: result.value.customerId });
       }
     });
@@ -133,8 +140,8 @@ export async function GET(req: NextRequest) {
       .map((tenantDoc) => {
         const data = (tenantDoc.data() || {}) as TenantData;
         const plan = normalizePlan(data.plan);
-        const subscriptionState = String(data.subscriptionState || "trial").trim() || "trial";
-        const billingStatus = String(data.billingStatus || "none").trim() || "none";
+        const subscriptionState = String(data.subscriptionState || 'trial').trim() || 'trial';
+        const billingStatus = String(data.billingStatus || 'none').trim() || 'none';
         const tenantName = String(data.name || tenantDoc.id);
 
         byPlan[plan] = (byPlan[plan] || 0) + 1;
@@ -142,14 +149,14 @@ export async function GET(req: NextRequest) {
           byState[subscriptionState] = (byState[subscriptionState] || 0) + 1;
         }
 
-        if (subscriptionState === "active") {
+        if (subscriptionState === 'active') {
           mrr += plans[plan].price;
           totalActiveTenants += 1;
         }
-        if (plan === "trial") {
+        if (plan === 'trial') {
           totalTrialTenants += 1;
         }
-        if (subscriptionState === "soft_locked" || subscriptionState === "hard_locked") {
+        if (subscriptionState === 'soft_locked' || subscriptionState === 'hard_locked') {
           totalLockedTenants += 1;
         }
 
@@ -175,18 +182,18 @@ export async function GET(req: NextRequest) {
           stripeCustomerId,
           stripeSubscriptionId,
           trialEndsAt: data.trialEndsAt || null,
-          status: String(data.status || "active"),
+          status: String(data.status || 'active'),
         };
       })
       .filter((tenant) => {
         return Boolean(
           tenant.stripeSubscriptionId ||
-            tenant.stripeCustomerId ||
-            tenant.plan !== "trial" ||
-            tenant.lastPaymentAt ||
-            tenant.currentPeriodEnd ||
-            tenant.lastInvoiceTotal > 0 ||
-            tenant.lastInvoiceTax > 0,
+          tenant.stripeCustomerId ||
+          tenant.plan !== 'trial' ||
+          tenant.lastPaymentAt ||
+          tenant.currentPeriodEnd ||
+          tenant.lastInvoiceTotal > 0 ||
+          tenant.lastInvoiceTax > 0,
         );
       });
 
@@ -218,8 +225,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(payload);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Server error";
-    const status = message === "Forbidden" ? 403 : 500;
+    const message = err instanceof Error ? err.message : 'Server error';
+    const status = message === 'Forbidden' ? 403 : 500;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

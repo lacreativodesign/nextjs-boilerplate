@@ -1,41 +1,41 @@
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getStripeClient } from "@/lib/payments/stripe";
-import { calculatePlatformFee } from "@/lib/stripe/connect";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getStripeClient } from '@/lib/payments/stripe';
+import { calculatePlatformFee } from '@/lib/stripe/connect';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-type SummaryPeriod = "7d" | "30d" | "90d" | "12m";
+type SummaryPeriod = '7d' | '30d' | '90d' | '12m';
 
-const PERIODS: SummaryPeriod[] = ["7d", "30d", "90d", "12m"];
+const PERIODS: SummaryPeriod[] = ['7d', '30d', '90d', '12m'];
 
 function resolveStartDate(period: SummaryPeriod): Date {
   const now = new Date();
-  if (period === "7d") {
+  if (period === '7d') {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
   }
-  if (period === "30d") {
+  if (period === '30d') {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
   }
-  if (period === "90d") {
+  if (period === '90d') {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
   }
   return new Date(now.getFullYear(), now.getMonth() - 11, 1);
 }
 
 function formatGroupKey(date: Date, period: SummaryPeriod): string {
-  if (period === "7d" || period === "30d") {
+  if (period === '7d' || period === '30d') {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
@@ -44,7 +44,7 @@ function buildBuckets(period: SummaryPeriod, startDate: Date): string[] {
   const cursor = new Date(startDate);
   const now = new Date();
 
-  if (period === "7d" || period === "30d") {
+  if (period === '7d' || period === '30d') {
     while (cursor <= now) {
       points.push(formatGroupKey(cursor, period));
       cursor.setDate(cursor.getDate() + 1);
@@ -68,20 +68,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = String(auth.user.tenantId || "").trim();
+    const tenantId = String(auth.user.tenantId || '').trim();
     if (!tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing' }, { status: 400 });
     }
 
     const searchParams = new URL(request.url).searchParams;
-    const rawPeriod = searchParams.get("period");
+    const rawPeriod = searchParams.get('period');
     const period: SummaryPeriod = PERIODS.includes(rawPeriod as SummaryPeriod)
       ? (rawPeriod as SummaryPeriod)
-      : "30d";
+      : '30d';
 
-    const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantSnap.data() || {};
-    const stripeConnectAccountId = String(tenantData.stripeConnectAccountId || "").trim();
+    const stripeConnectAccountId = String(tenantData.stripeConnectAccountId || '').trim();
 
     if (!stripeConnectAccountId) {
       return NextResponse.json({
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     }
 
     for (const charge of chargesResponse.data as Stripe.Charge[]) {
-      if (charge.status !== "succeeded") {
+      if (charge.status !== 'succeeded') {
         continue;
       }
 
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
       totals,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unable to fetch revenue summary";
+    const message = error instanceof Error ? error.message : 'Unable to fetch revenue summary';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

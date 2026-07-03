@@ -34,7 +34,9 @@ function run(command, files) {
 function main() {
   const staged = getStagedFiles();
   const codeFiles = staged.filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file));
-  const formatFiles = staged.filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs|json|md|yml|yaml|css)$/.test(file));
+  const formatFiles = staged.filter((file) =>
+    /\.(ts|tsx|js|jsx|mjs|cjs|json|md|yml|yaml|css)$/.test(file),
+  );
 
   run('npx eslint --max-warnings=0', codeFiles);
   run('npx prettier --check', formatFiles);

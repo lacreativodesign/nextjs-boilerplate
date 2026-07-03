@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, toISO } from "../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, toISO } from '../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type LeadDoc = {
   name?: string;
@@ -27,17 +27,17 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 500);
+    const cursor = req.nextUrl.searchParams.get('cursor');
 
     let baseQuery: FirebaseFirestore.Query = adminDb
-      .collection("leads")
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
+      .collection('leads')
+      .where('isDeleted', '==', false)
+      .orderBy('createdAt', 'desc')
       .limit(limit + 1);
 
     if (cursor) {
-      const cursorDoc = await adminDb.collection("leads").doc(cursor).get();
+      const cursorDoc = await adminDb.collection('leads').doc(cursor).get();
       if (cursorDoc.exists && normalizeTenantId(cursorDoc.data()?.tenantId) === tenantId) {
         baseQuery = baseQuery.startAfter(cursorDoc);
       }
@@ -58,11 +58,11 @@ export async function GET(req: NextRequest) {
       const data = (doc.data() || {}) as LeadDoc;
       return {
         id: doc.id,
-        name: data.name || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        source: data.source || "",
-        stage: data.stage || "New",
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        source: data.source || '',
+        stage: data.stage || 'New',
         ownerId: data.ownerId || null,
         ownerName: data.ownerName || null,
         createdAt: toISO(data.createdAt),
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("sales leads list error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load leads." }, { status: 500 });
+    console.error('sales leads list error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load leads.' }, { status: 500 });
   }
 }

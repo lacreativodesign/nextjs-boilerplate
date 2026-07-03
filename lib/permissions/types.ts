@@ -1,8 +1,8 @@
-export const PERMISSION_ACTIONS = ["create", "read", "update", "delete", "export"] as const;
+export const PERMISSION_ACTIONS = ['create', 'read', 'update', 'delete', 'export'] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
-export const FIELD_ACCESS_LEVELS = ["hidden", "read", "write"] as const;
+export const FIELD_ACCESS_LEVELS = ['hidden', 'read', 'write'] as const;
 
 export type FieldAccess = (typeof FIELD_ACCESS_LEVELS)[number];
 
@@ -67,6 +67,6 @@ export type UserPermissionSnapshot = {
   tenantId: string;
   userId: string;
   roleIds: string[];
-  roles: Pick<RoleDocument, "id" | "name" | "description" | "parentRoleId">[];
+  roles: Pick<RoleDocument, 'id' | 'name' | 'description' | 'parentRoleId'>[];
   permissions: PermissionSet[];
 };

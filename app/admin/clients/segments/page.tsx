@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import type { SegmentDefinition, SegmentType } from "@/lib/segments";
-import { getValueBand, slugify, valueBands } from "@/lib/segments";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import type { SegmentDefinition, SegmentType } from '@/lib/segments';
+import { getValueBand, slugify, valueBands } from '@/lib/segments';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
+import { apiFetch } from '@/lib/api/client';
 
 const tabOptions: Array<{ label: string; value: SegmentType }> = [
-  { label: "Service", value: "service" },
-  { label: "Value", value: "value" },
-  { label: "Business Type", value: "business_type" },
-  { label: "Industry", value: "industry" },
-  { label: "Geo", value: "geo" },
+  { label: 'Service', value: 'service' },
+  { label: 'Value', value: 'value' },
+  { label: 'Business Type', value: 'business_type' },
+  { label: 'Industry', value: 'industry' },
+  { label: 'Geo', value: 'geo' },
 ];
 
 type ClientRecord = {
@@ -40,14 +40,14 @@ type SegmentRow = {
 };
 
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US");
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-US');
 }
 
 export default function ClientSegmentsPage() {
-  const [activeTab, setActiveTab] = useState<SegmentType>("service");
+  const [activeTab, setActiveTab] = useState<SegmentType>('service');
   const [segments, setSegments] = useState<SegmentDefinition[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,14 +56,15 @@ export default function ClientSegmentsPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<SegmentRow | null>(null);
-  const [clientSearch, setClientSearch] = useState("");
+  const [clientSearch, setClientSearch] = useState('');
   const [manageOpen, setManageOpen] = useState(false);
-  const [manageName, setManageName] = useState("");
+  const [manageName, setManageName] = useState('');
   const [manageActive, setManageActive] = useState(true);
   const [manageLoading, setManageLoading] = useState(false);
-  const [sortKey, setSortKey] = useState<"name" | "type" | "clients" | "status" | "updated">("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
+  const [sortKey, setSortKey] = useState<'name' | 'type' | 'clients' | 'status' | 'updated'>(
+    'name',
+  );
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     let alive = true;
@@ -74,13 +75,13 @@ export default function ClientSegmentsPage() {
 
       try {
         const [segmentsRes, clientsRes] = await Promise.all([
-          apiFetch("/api/admin/clients/segments/list", {
-            method: "GET",
-            cache: "no-store",
+          apiFetch('/api/admin/clients/segments/list', {
+            method: 'GET',
+            cache: 'no-store',
           }),
-          apiFetch("/api/admin/clients/list", {
-            method: "GET",
-            cache: "no-store",
+          apiFetch('/api/admin/clients/list', {
+            method: 'GET',
+            cache: 'no-store',
           }),
         ]);
 
@@ -88,10 +89,10 @@ export default function ClientSegmentsPage() {
         const clientsJson = await clientsRes.json().catch(() => ({}));
 
         if (!segmentsRes.ok || !segmentsJson?.ok) {
-          throw new Error(segmentsJson?.error || "Failed to load segments");
+          throw new Error(segmentsJson?.error || 'Failed to load segments');
         }
         if (!clientsRes.ok || !clientsJson?.ok) {
-          throw new Error(clientsJson?.error || "Failed to load clients");
+          throw new Error(clientsJson?.error || 'Failed to load clients');
         }
 
         if (!alive) return;
@@ -100,7 +101,7 @@ export default function ClientSegmentsPage() {
         setCanAdmin(Boolean(segmentsJson?.canAdmin));
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Failed to load client segments");
+        setError(err?.message || 'Failed to load client segments');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -124,7 +125,7 @@ export default function ClientSegmentsPage() {
 
   const normalizedClients = useMemo(() => {
     return (clients || []).map((client) => {
-      const geo = client.segmentGeo || slugify(client.country || "");
+      const geo = client.segmentGeo || slugify(client.country || '');
       return {
         ...client,
         segmentGeo: geo || null,
@@ -137,14 +138,16 @@ export default function ClientSegmentsPage() {
   const segmentRows = useMemo(() => {
     const rows: SegmentRow[] = [];
 
-    if (activeTab === "value") {
+    if (activeTab === 'value') {
       valueBands.forEach((band) => {
-        const count = normalizedClients.filter((client) => getValueBand(client.totalPaidUsd || 0).slug === band.slug).length;
+        const count = normalizedClients.filter(
+          (client) => getValueBand(client.totalPaidUsd || 0).slug === band.slug,
+        ).length;
         rows.push({
           id: `value-${band.slug}`,
           name: band.name,
           slug: band.slug,
-          type: "value",
+          type: 'value',
           isActive: true,
           updatedAt: null,
           createdAt: null,
@@ -158,10 +161,10 @@ export default function ClientSegmentsPage() {
     const list = segmentsByType[activeTab] || [];
     list.forEach((segment) => {
       const count = normalizedClients.filter((client) => {
-        if (activeTab === "service") return client.segmentServices?.includes(segment.slug);
-        if (activeTab === "business_type") return client.segmentBusinessType === segment.slug;
-        if (activeTab === "industry") return client.segmentIndustry === segment.slug;
-        if (activeTab === "geo") return client.segmentGeo === segment.slug;
+        if (activeTab === 'service') return client.segmentServices?.includes(segment.slug);
+        if (activeTab === 'business_type') return client.segmentBusinessType === segment.slug;
+        if (activeTab === 'industry') return client.segmentIndustry === segment.slug;
+        if (activeTab === 'geo') return client.segmentGeo === segment.slug;
         return false;
       }).length;
 
@@ -182,19 +185,19 @@ export default function ClientSegmentsPage() {
 
   const sortedSegmentRows = useMemo(() => {
     const rows = [...segmentRows];
-    const direction = sortDirection === "asc" ? 1 : -1;
+    const direction = sortDirection === 'asc' ? 1 : -1;
 
     const valueForRow = (row: SegmentRow) => {
       switch (sortKey) {
-        case "name":
+        case 'name':
           return row.name.toLowerCase();
-        case "type":
-          return (row.type === "business_type" ? "Business Type" : row.type).toLowerCase();
-        case "clients":
+        case 'type':
+          return (row.type === 'business_type' ? 'Business Type' : row.type).toLowerCase();
+        case 'clients':
           return row.clientCount;
-        case "status":
+        case 'status':
           return row.isActive ? 1 : 0;
-        case "updated": {
+        case 'updated': {
           const ts = row.updatedAt || row.createdAt;
           return ts ? new Date(ts).getTime() : 0;
         }
@@ -206,7 +209,7 @@ export default function ClientSegmentsPage() {
     rows.sort((a, b) => {
       const aVal = valueForRow(a);
       const bVal = valueForRow(b);
-      if (typeof aVal === "number" && typeof bVal === "number") {
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
         return (aVal - bVal) * direction;
       }
       return String(aVal).localeCompare(String(bVal)) * direction;
@@ -221,24 +224,24 @@ export default function ClientSegmentsPage() {
     const totalClients = normalizedClients.length || 0;
 
     const coveredClients = normalizedClients.filter((client) => {
-      if (activeTab === "service") return (client.segmentServices || []).length > 0;
-      if (activeTab === "business_type") return Boolean(client.segmentBusinessType);
-      if (activeTab === "industry") return Boolean(client.segmentIndustry);
-      if (activeTab === "geo") return Boolean(client.segmentGeo);
+      if (activeTab === 'service') return (client.segmentServices || []).length > 0;
+      if (activeTab === 'business_type') return Boolean(client.segmentBusinessType);
+      if (activeTab === 'industry') return Boolean(client.segmentIndustry);
+      if (activeTab === 'geo') return Boolean(client.segmentGeo);
       return true;
     }).length;
 
     const coveredPct = totalClients ? Math.round((coveredClients / totalClients) * 100) : 0;
     const topSegment = segmentRows.reduce(
       (top, row) => (row.clientCount > (top?.clientCount || 0) ? row : top),
-      null as SegmentRow | null
+      null as SegmentRow | null,
     );
 
     return {
       totalSegments,
       activeSegments,
       coveredPct,
-      topSegmentName: topSegment?.name || "-",
+      topSegmentName: topSegment?.name || '-',
     };
   }, [activeTab, normalizedClients, segmentRows]);
 
@@ -246,13 +249,16 @@ export default function ClientSegmentsPage() {
     if (!selectedSegment) return [];
 
     return normalizedClients.filter((client) => {
-      if (selectedSegment.type === "value") {
+      if (selectedSegment.type === 'value') {
         return getValueBand(client.totalPaidUsd || 0).slug === selectedSegment.slug;
       }
-      if (selectedSegment.type === "service") return client.segmentServices?.includes(selectedSegment.slug);
-      if (selectedSegment.type === "business_type") return client.segmentBusinessType === selectedSegment.slug;
-      if (selectedSegment.type === "industry") return client.segmentIndustry === selectedSegment.slug;
-      if (selectedSegment.type === "geo") return client.segmentGeo === selectedSegment.slug;
+      if (selectedSegment.type === 'service')
+        return client.segmentServices?.includes(selectedSegment.slug);
+      if (selectedSegment.type === 'business_type')
+        return client.segmentBusinessType === selectedSegment.slug;
+      if (selectedSegment.type === 'industry')
+        return client.segmentIndustry === selectedSegment.slug;
+      if (selectedSegment.type === 'geo') return client.segmentGeo === selectedSegment.slug;
       return false;
     });
   }, [normalizedClients, selectedSegment]);
@@ -264,50 +270,49 @@ export default function ClientSegmentsPage() {
         client.primaryContactName,
         client.primaryContactEmail,
       ]),
-    [clientSearch, drawerClients]
+    [clientSearch, drawerClients],
   );
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-muted)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
-
-  function toggleSort(nextKey: "name" | "type" | "clients" | "status" | "updated") {
+  function toggleSort(nextKey: 'name' | 'type' | 'clients' | 'status' | 'updated') {
     setSortKey((prevKey) => {
       if (prevKey === nextKey) {
-        setSortDirection((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
+        setSortDirection((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
         return prevKey;
       }
-      setSortDirection("asc");
+      setSortDirection('asc');
       return nextKey;
     });
   }
 
-  function sortIndicator(key: "name" | "type" | "clients" | "status" | "updated") {
+  function sortIndicator(key: 'name' | 'type' | 'clients' | 'status' | 'updated') {
     if (key !== sortKey) return null;
     return (
-      <span style={{ fontSize: 11, opacity: 0.8 }}>{sortDirection === "asc" ? "▲" : "▼"}</span>
+      <span style={{ fontSize: 11, opacity: 0.8 }}>{sortDirection === 'asc' ? '▲' : '▼'}</span>
     );
   }
 
   function openDrawer(row: SegmentRow) {
     setSelectedSegment(row);
-    setClientSearch("");
+    setClientSearch('');
     setDrawerOpen(true);
   }
 
@@ -328,9 +333,9 @@ export default function ClientSegmentsPage() {
     setManageLoading(true);
 
     try {
-      const res = await apiFetch("/api/admin/clients/segments/update", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const res = await apiFetch('/api/admin/clients/segments/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           id: selectedSegment.id,
           name: manageName.trim(),
@@ -340,24 +345,34 @@ export default function ClientSegmentsPage() {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Failed to update segment");
+        throw new Error(json?.error || 'Failed to update segment');
       }
 
       setSegments((prev) =>
         prev.map((segment) =>
           segment.id === selectedSegment.id
-            ? { ...segment, name: manageName.trim(), isActive: manageActive, updatedAt: new Date().toISOString() }
-            : segment
-        )
+            ? {
+                ...segment,
+                name: manageName.trim(),
+                isActive: manageActive,
+                updatedAt: new Date().toISOString(),
+              }
+            : segment,
+        ),
       );
       setSelectedSegment((prev) =>
         prev
-          ? { ...prev, name: manageName.trim(), isActive: manageActive, updatedAt: new Date().toISOString() }
-          : prev
+          ? {
+              ...prev,
+              name: manageName.trim(),
+              isActive: manageActive,
+              updatedAt: new Date().toISOString(),
+            }
+          : prev,
       );
       setManageOpen(false);
     } catch (err: any) {
-      alert(err?.message || "Failed to update segment");
+      alert(err?.message || 'Failed to update segment');
     } finally {
       setManageLoading(false);
     }
@@ -365,39 +380,39 @@ export default function ClientSegmentsPage() {
 
   async function handleDeleteSegment() {
     if (!selectedSegment) return;
-    const confirmed = window.confirm("Delete this segment? It will be deactivated.");
+    const confirmed = window.confirm('Delete this segment? It will be deactivated.');
     if (!confirmed) return;
 
     setManageLoading(true);
     try {
-      const res = await apiFetch("/api/admin/clients/segments/delete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const res = await apiFetch('/api/admin/clients/segments/delete', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: selectedSegment.id }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to delete segment");
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to delete segment');
 
       setSegments((prev) =>
         prev.map((segment) =>
           segment.id === selectedSegment.id
             ? { ...segment, isActive: false, updatedAt: new Date().toISOString() }
-            : segment
-        )
+            : segment,
+        ),
       );
       setSelectedSegment((prev) =>
-        prev ? { ...prev, isActive: false, updatedAt: new Date().toISOString() } : prev
+        prev ? { ...prev, isActive: false, updatedAt: new Date().toISOString() } : prev,
       );
       setManageOpen(false);
     } catch (err: any) {
-      alert(err?.message || "Failed to delete segment");
+      alert(err?.message || 'Failed to delete segment');
     } finally {
       setManageLoading(false);
     }
   }
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <h1 className="page-title">Client Segments</h1>
       <div className="page-subtitle" style={{ marginBottom: 18 }}>
         Manage segmentation definitions and track coverage across your client base.
@@ -409,7 +424,7 @@ export default function ClientSegmentsPage() {
           return (
             <button
               key={tab.value}
-              className={`tab-pill ${active ? "active" : ""}`}
+              className={`tab-pill ${active ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.value)}
             >
               {tab.label}
@@ -419,22 +434,24 @@ export default function ClientSegmentsPage() {
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">{error}</div>
+        <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
+          {error}
+        </div>
       ) : null}
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 20,
           marginBottom: 20,
         }}
       >
         {[
-          { label: "Total Segments", value: kpis.totalSegments },
-          { label: "Active Segments", value: kpis.activeSegments },
-          { label: "Clients Covered", value: `${kpis.coveredPct}%` },
-          { label: "Top Segment", value: kpis.topSegmentName },
+          { label: 'Total Segments', value: kpis.totalSegments },
+          { label: 'Active Segments', value: kpis.activeSegments },
+          { label: 'Clients Covered', value: `${kpis.coveredPct}%` },
+          { label: 'Top Segment', value: kpis.topSegmentName },
         ].map((card) => (
           <div
             key={card.label}
@@ -442,26 +459,26 @@ export default function ClientSegmentsPage() {
             style={{
               padding: 18,
               borderRadius: 16,
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-subtle)",
-              boxShadow: "var(--shadow-md)",
-              transition: "transform 160ms ease, box-shadow 160ms ease",
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-md)',
+              transition: 'transform 160ms ease, box-shadow 160ms ease',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-md)";
+              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+              (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)';
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-md)";
+              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+              (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)';
             }}
           >
             <div
               style={{
                 fontSize: 12,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "var(--text-muted)",
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
               }}
             >
               {card.label}
@@ -470,7 +487,7 @@ export default function ClientSegmentsPage() {
               style={{
                 fontSize: 22,
                 marginTop: 8,
-                color: "var(--text-primary)",
+                color: 'var(--text-primary)',
                 fontWeight: 700,
               }}
             >
@@ -482,86 +499,110 @@ export default function ClientSegmentsPage() {
 
       <div className="table-shell">
         <div>
-        {loading ? (
-          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
-            Loading segments...
-          </p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 960 }}>
-              <thead>
-                <tr>
-                  <th style={headerCellStyle}>
-                    <button type="button" className="table-sort" onClick={() => toggleSort("name")}>
-                      Segment Name {sortIndicator("name")}
-                    </button>
-                  </th>
-                  <th style={headerCellStyle}>
-                    <button type="button" className="table-sort" onClick={() => toggleSort("type")}>
-                      Type {sortIndicator("type")}
-                    </button>
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" className="table-sort" onClick={() => toggleSort("clients")}>
-                      Clients {sortIndicator("clients")}
-                    </button>
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" className="table-sort" onClick={() => toggleSort("status")}>
-                      Status {sortIndicator("status")}
-                    </button>
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>
-                    <button type="button" className="table-sort" onClick={() => toggleSort("updated")}>
-                      Updated {sortIndicator("updated")}
-                    </button>
-                  </th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSegmentRows.map((row) => {
-                  return (
-                    <tr key={row.id}>
-                      <td style={{ ...cellStyle, textAlign: "left" }}>{row.name}</td>
-                      <td style={{ ...cellStyle, textAlign: "left" }}>
-                        {row.type === "business_type" ? "Business Type" : row.type}
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.clientCount}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{row.isActive ? "Active" : "Inactive"}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{fmtDate(row.updatedAt || row.createdAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <button
-                          className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 400 }}
-                          onClick={() => openDrawer(row)}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {loading ? (
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading segments...</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 960 }}
+              >
+                <thead>
+                  <tr>
+                    <th style={headerCellStyle}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleSort('name')}
+                      >
+                        Segment Name {sortIndicator('name')}
+                      </button>
+                    </th>
+                    <th style={headerCellStyle}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleSort('type')}
+                      >
+                        Type {sortIndicator('type')}
+                      </button>
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleSort('clients')}
+                      >
+                        Clients {sortIndicator('clients')}
+                      </button>
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleSort('status')}
+                      >
+                        Status {sortIndicator('status')}
+                      </button>
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleSort('updated')}
+                      >
+                        Updated {sortIndicator('updated')}
+                      </button>
+                    </th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedSegmentRows.map((row) => {
+                    return (
+                      <tr key={row.id}>
+                        <td style={{ ...cellStyle, textAlign: 'left' }}>{row.name}</td>
+                        <td style={{ ...cellStyle, textAlign: 'left' }}>
+                          {row.type === 'business_type' ? 'Business Type' : row.type}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>{row.clientCount}</td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          {row.isActive ? 'Active' : 'Inactive'}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          {fmtDate(row.updatedAt || row.createdAt)}
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <button
+                            className="btn ghost"
+                            style={{ padding: '8px 14px', borderRadius: 999, fontWeight: 400 }}
+                            onClick={() => openDrawer(row)}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
       {drawerOpen && selectedSegment && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                   {selectedSegment.name}
                 </div>
                 <div
                   style={{
                     opacity: 0.75,
                     fontSize: 12,
-                    color: "var(--text-muted)",
+                    color: 'var(--text-muted)',
                   }}
                 >
                   {selectedSegment.type}
@@ -583,36 +624,36 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: "var(--surface-muted)",
-                border: "1px solid var(--border-subtle)",
+                background: 'var(--surface-muted)',
+                border: '1px solid var(--border-subtle)',
               }}
             >
               <div
                 style={{
                   fontSize: 12,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
                   opacity: 0.75,
-                  color: "var(--text-muted)",
+                  color: 'var(--text-muted)',
                 }}
               >
                 Segment Details
               </div>
-              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
                 {[
-                  { label: "Status", value: selectedSegment.isActive ? "Active" : "Inactive" },
-                  { label: "Slug", value: selectedSegment.slug },
-                  { label: "Created", value: fmtDate(selectedSegment.createdAt) },
-                  { label: "Updated", value: fmtDate(selectedSegment.updatedAt) },
+                  { label: 'Status', value: selectedSegment.isActive ? 'Active' : 'Inactive' },
+                  { label: 'Slug', value: selectedSegment.slug },
+                  { label: 'Created', value: fmtDate(selectedSegment.createdAt) },
+                  { label: 'Updated', value: fmtDate(selectedSegment.updatedAt) },
                 ].map((row) => (
                   <div
                     key={row.label}
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: "1px solid var(--border-subtle)",
-                      display: "flex",
-                      justifyContent: "space-between",
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
                       gap: 12,
                     }}
                   >
@@ -621,7 +662,7 @@ export default function ClientSegmentsPage() {
                         fontSize: 11,
                         opacity: 0.7,
                         fontWeight: 400,
-                        color: "var(--text-muted)",
+                        color: 'var(--text-muted)',
                       }}
                     >
                       {row.label}
@@ -629,8 +670,8 @@ export default function ClientSegmentsPage() {
                     <div
                       style={{
                         fontWeight: 400,
-                        textAlign: "right",
-                        color: "var(--text-primary)",
+                        textAlign: 'right',
+                        color: 'var(--text-primary)',
                       }}
                     >
                       {row.value}
@@ -646,17 +687,17 @@ export default function ClientSegmentsPage() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                background: "var(--surface-muted)",
-                border: "1px solid var(--border-subtle)",
+                background: 'var(--surface-muted)',
+                border: '1px solid var(--border-subtle)',
               }}
             >
               <div
                 style={{
                   fontSize: 12,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
                   opacity: 0.75,
-                  color: "var(--text-muted)",
+                  color: 'var(--text-muted)',
                 }}
               >
                 Clients in Segment
@@ -664,12 +705,12 @@ export default function ClientSegmentsPage() {
               <div style={{ marginTop: 10 }}>
                 <SmartSearchBar value={clientSearch} onChange={setClientSearch} />
               </div>
-              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                 {filteredDrawerClients.length === 0 ? (
                   <div
                     style={{
                       fontSize: 13,
-                      color: "var(--text-muted)",
+                      color: 'var(--text-muted)',
                     }}
                   >
                     No clients found.
@@ -681,9 +722,9 @@ export default function ClientSegmentsPage() {
                       style={{
                         padding: 10,
                         borderRadius: 12,
-                        border: "1px solid var(--border-subtle)",
-                        display: "flex",
-                        flexDirection: "column",
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 4,
                       }}
                     >
@@ -691,24 +732,24 @@ export default function ClientSegmentsPage() {
                         style={{
                           fontSize: 13,
                           fontWeight: 400,
-                          color: "var(--text-primary)",
+                          color: 'var(--text-primary)',
                         }}
                       >
-                        {client.companyName || "-"}
+                        {client.companyName || '-'}
                       </div>
                       <div
                         style={{
                           fontSize: 12,
-                          color: "var(--text-muted)",
+                          color: 'var(--text-muted)',
                         }}
                       >
-                        {client.primaryContactName || "-"} · {client.primaryContactEmail || "-"}
+                        {client.primaryContactName || '-'} · {client.primaryContactEmail || '-'}
                       </div>
                     </div>
                   ))
                 )}
                 {filteredDrawerClients.length > 10 ? (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     Showing 10 of {filteredDrawerClients.length} clients
                   </div>
                 ) : null}
@@ -717,7 +758,7 @@ export default function ClientSegmentsPage() {
 
             <div style={{ height: 14 }} />
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
                 className="btn"
@@ -738,12 +779,12 @@ export default function ClientSegmentsPage() {
       {manageOpen && selectedSegment && (
         <div
           style={{
-            position: "fixed",
+            position: 'fixed',
             inset: 0,
             zIndex: 60,
-            background: "rgba(0,0,0,0.45)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
           }}
           onClick={() => setManageOpen(false)}
         >
@@ -751,12 +792,12 @@ export default function ClientSegmentsPage() {
             onClick={(e) => e.stopPropagation()}
             style={{
               maxWidth: 420,
-              margin: "10vh auto",
-              background: "var(--surface-card)",
+              margin: '10vh auto',
+              background: 'var(--surface-card)',
               borderRadius: 16,
               padding: 18,
-              border: "1px solid var(--border-subtle)",
-              boxShadow: "var(--shadow-md)",
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-md)',
             }}
           >
             <div
@@ -764,33 +805,37 @@ export default function ClientSegmentsPage() {
                 fontSize: 18,
                 fontWeight: 600,
                 marginBottom: 12,
-                color: "var(--text-primary)",
+                color: 'var(--text-primary)',
               }}
             >
               Manage Segment
             </div>
 
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
               <div>
                 <div
                   style={{
                     fontSize: 12,
-                    color: "var(--text-muted)",
+                    color: 'var(--text-muted)',
                     marginBottom: 6,
                   }}
                 >
                   Segment Name
                 </div>
-                <input className="input" value={manageName} onChange={(e) => setManageName(e.target.value)} />
+                <input
+                  className="input"
+                  value={manageName}
+                  onChange={(e) => setManageName(e.target.value)}
+                />
               </div>
 
               <label
                 style={{
-                  display: "flex",
-                  alignItems: "center",
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 8,
                   fontSize: 13,
-                  color: "var(--text-muted)",
+                  color: 'var(--text-muted)',
                 }}
               >
                 <input
@@ -802,7 +847,9 @@ export default function ClientSegmentsPage() {
               </label>
             </div>
 
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <div
+              style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', gap: 8 }}
+            >
               <button
                 type="button"
                 className="btn ghost"
@@ -811,16 +858,16 @@ export default function ClientSegmentsPage() {
               >
                 Cancel
               </button>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
                   className="btn ghost"
                   style={{
                     borderRadius: 12,
                     fontWeight: 400,
-                    background: "rgba(239,68,68,0.12)",
-                    border: "1px solid rgba(239,68,68,0.35)",
-                    color: "rgba(15,23,42,0.86)",
+                    background: 'rgba(239,68,68,0.12)',
+                    border: '1px solid rgba(239,68,68,0.35)',
+                    color: 'rgba(15,23,42,0.86)',
                   }}
                   onClick={handleDeleteSegment}
                   disabled={manageLoading}
@@ -834,7 +881,7 @@ export default function ClientSegmentsPage() {
                   onClick={handleManageSave}
                   disabled={manageLoading}
                 >
-                  {manageLoading ? "Saving..." : "Save"}
+                  {manageLoading ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

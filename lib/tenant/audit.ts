@@ -1,5 +1,5 @@
-import * as admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 type AuditLogInput = {
   tenantId?: string | null;
@@ -22,7 +22,7 @@ export async function writeAuditLog({
   entityId,
   metadata = {},
 }: AuditLogInput) {
-  const ref = adminDb.collection("auditLogs").doc();
+  const ref = adminDb.collection('auditLogs').doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   await ref.set({

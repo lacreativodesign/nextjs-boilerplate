@@ -1,31 +1,31 @@
-"use client";
-import { useRouter } from "next/navigation";
+'use client';
+import { useRouter } from 'next/navigation';
 
 const REPORT_SECTIONS = [
   {
-    title: "Sales Reports",
-    href: "/reports/sales",
-    desc: "Leads converted, deals closed, revenue by rep.",
+    title: 'Sales Reports',
+    href: '/reports/sales',
+    desc: 'Leads converted, deals closed, revenue by rep.',
   },
   {
-    title: "Project Reports",
-    href: "/reports/projects",
-    desc: "Delivery timelines, milestones, change requests.",
+    title: 'Project Reports',
+    href: '/reports/projects',
+    desc: 'Delivery timelines, milestones, change requests.',
   },
   {
-    title: "Team Performance",
-    href: "/reports/team",
-    desc: "Attendance, KPIs, and performance reviews.",
+    title: 'Team Performance',
+    href: '/reports/team',
+    desc: 'Attendance, KPIs, and performance reviews.',
   },
   {
-    title: "Finance Reports",
-    href: "/reports/finance",
-    desc: "Revenue, outstanding invoices, payroll.",
+    title: 'Finance Reports',
+    href: '/reports/finance',
+    desc: 'Revenue, outstanding invoices, payroll.',
   },
   {
-    title: "🤖 AI Reports",
-    href: "/reports/ai",
-    desc: "Ask any question in plain English — get a chart or table powered by your live data.",
+    title: '🤖 AI Reports',
+    href: '/reports/ai',
+    desc: 'Ask any question in plain English — get a chart or table powered by your live data.',
   },
 ];
 

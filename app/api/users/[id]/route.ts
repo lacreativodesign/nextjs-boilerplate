@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import { z } from "zod";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { UserService } from "@/lib/users/user-service";
-import { getCurrentUser, normalizeRole } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import { z } from 'zod';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { UserService } from '@/lib/users/user-service';
+import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -30,7 +30,7 @@ const updateSchema = z.object({
       emailNotifications: z.boolean(),
       desktopNotifications: z.boolean(),
       weeklyDigest: z.boolean(),
-      theme: z.enum(["light", "dark", "auto"]).optional(),
+      theme: z.enum(['light', 'dark', 'auto']).optional(),
     })
     .optional(),
   skills: z.array(z.string().min(1)).optional(),
@@ -41,61 +41,66 @@ const updateSchema = z.object({
 
 function canManageUsers(role: string) {
   const normalized = normalizeRole(role);
-  return normalized === "admin" || normalized === "super_admin" || normalized === "owner" || normalized === "manager";
+  return (
+    normalized === 'admin' ||
+    normalized === 'super_admin' ||
+    normalized === 'owner' ||
+    normalized === 'manager'
+  );
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const data = updateSchema.parse(body);
 
     if (params.id !== me.uid && !canManageUsers(me.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const userDoc = await adminDb.collection("users").doc(params.id).get();
+    const userDoc = await adminDb.collection('users').doc(params.id).get();
     if (!userDoc.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const userData = userDoc.data() || {};
     if (userData.tenantId !== me.tenantId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const updates = {
       ...data,
-      "onboardingSteps.profileSetup": true,
+      'onboardingSteps.profileSetup': true,
     } as Record<string, any>;
 
     await UserService.updateUserProfile(params.id, updates);
 
     if (data.name) {
-      await adminDb.collection("users").doc(params.id).update({ name: data.name, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      await adminDb
+        .collection('users')
+        .doc(params.id)
+        .update({ name: data.name, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
 
     await UserService.logActivity({
       tenantId: me.tenantId,
       userId: me.uid,
-      type: "profile_update",
-      action: "updated user profile",
-      resourceType: "user_profile",
+      type: 'profile_update',
+      action: 'updated user profile',
+      resourceType: 'user_profile',
       resourceId: params.id,
       resourceName: data.name || userData.name || userData.email,
     });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Error updating user:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to update user" },
-      { status: 500 }
-    );
+    console.error('Error updating user:', error);
+    return NextResponse.json({ error: error?.message || 'Failed to update user' }, { status: 500 });
   }
 }
 
@@ -103,21 +108,21 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!canManageUsers(me.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const userDoc = await adminDb.collection("users").doc(params.id).get();
+    const userDoc = await adminDb.collection('users').doc(params.id).get();
     if (!userDoc.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const userData = userDoc.data() || {};
     if (userData.tenantId !== me.tenantId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await UserService.deactivateUser(params.id);
@@ -125,19 +130,19 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     await UserService.logActivity({
       tenantId: me.tenantId,
       userId: me.uid,
-      type: "settings_change",
-      action: "deactivated user",
-      resourceType: "user",
+      type: 'settings_change',
+      action: 'deactivated user',
+      resourceType: 'user',
       resourceId: params.id,
       resourceName: userData.name || userData.email,
     });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Error deactivating user:", error);
+    console.error('Error deactivating user:', error);
     return NextResponse.json(
-      { error: error?.message || "Failed to deactivate user" },
-      { status: 500 }
+      { error: error?.message || 'Failed to deactivate user' },
+      { status: 500 },
     );
   }
 }

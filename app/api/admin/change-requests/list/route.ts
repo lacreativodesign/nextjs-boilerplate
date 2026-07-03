@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   getCurrentUser,
   isAccountManager,
@@ -7,21 +7,27 @@ import {
   isProduction,
   isSalesManager,
   normalizeRole,
-} from "../../_utils";
+} from '../../_utils';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"] as const;
-const CHANGE_REQUEST_STATUSES = [
-  "Submitted",
-  "In Review",
-  "Approved",
-  "In Progress",
-  "Completed",
-  "Rejected",
+const CHANGE_REQUEST_TYPES = [
+  'Scope Change',
+  'Revision',
+  'New Feature',
+  'Bug Fix',
+  'Other',
 ] as const;
-const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"] as const;
+const CHANGE_REQUEST_STATUSES = [
+  'Submitted',
+  'In Review',
+  'Approved',
+  'In Progress',
+  'Completed',
+  'Rejected',
+] as const;
+const CHANGE_REQUEST_PRIORITIES = ['Low', 'Medium', 'High'] as const;
 
 type ChangeRequestDoc = {
   projectId?: string;
@@ -53,8 +59,8 @@ type ChangeRequestDoc = {
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
@@ -62,40 +68,50 @@ function toISO(value: any): string | null {
 function normalizeStatusHistory(history?: any[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byRole: entry?.byRole || "",
+    from: entry?.from || '',
+    to: entry?.to || '',
+    byUid: entry?.byUid || '',
+    byRole: entry?.byRole || '',
     at: toISO(entry?.at),
-    note: entry?.note || "",
+    note: entry?.note || '',
   }));
 }
 
 function requiresApproval(data: ChangeRequestDoc) {
-  const type = String(data.type || "");
-  const impactsScope = type === "Scope Change";
-  const impactsTimeline = typeof data.estimatedTimelineDays === "number" && data.estimatedTimelineDays > 0;
-  const impactsCost = typeof data.estimatedCost === "number" && data.estimatedCost > 0;
+  const type = String(data.type || '');
+  const impactsScope = type === 'Scope Change';
+  const impactsTimeline =
+    typeof data.estimatedTimelineDays === 'number' && data.estimatedTimelineDays > 0;
+  const impactsCost = typeof data.estimatedCost === 'number' && data.estimatedCost > 0;
   return impactsScope || impactsTimeline || impactsCost;
 }
 
 function canViewChangeRequests(role: string) {
-  return isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role) || isProduction(role);
+  return (
+    isAdminOrSuper(role) || isSalesManager(role) || isAccountManager(role) || isProduction(role)
+  );
 }
 
-async function getVisibleProjectIds(uid: string, role: string, tenantId: string): Promise<Set<string>> {
+async function getVisibleProjectIds(
+  uid: string,
+  role: string,
+  tenantId: string,
+): Promise<Set<string>> {
   const ids = new Set<string>();
 
   if (isAdminOrSuper(role) || isSalesManager(role)) {
     return ids;
   }
 
-  const baseQuery = adminDb.collection("projects").where("tenantId", "==", tenantId).where("isDeleted", "==", false);
+  const baseQuery = adminDb
+    .collection('projects')
+    .where('tenantId', '==', tenantId)
+    .where('isDeleted', '==', false);
 
   if (isAccountManager(role)) {
     const snaps = await Promise.all([
-      baseQuery.where("ownerAmUid", "==", uid).limit(500).get(),
-      baseQuery.where("ownerAmUid", "==", null).where("createdByUid", "==", uid).limit(500).get(),
+      baseQuery.where('ownerAmUid', '==', uid).limit(500).get(),
+      baseQuery.where('ownerAmUid', '==', null).where('createdByUid', '==', uid).limit(500).get(),
     ]);
 
     snaps.forEach((snap) => {
@@ -106,7 +122,7 @@ async function getVisibleProjectIds(uid: string, role: string, tenantId: string)
   }
 
   if (isProduction(role)) {
-    const snap = await baseQuery.where("productionUid", "==", uid).limit(500).get();
+    const snap = await baseQuery.where('productionUid', '==', uid).limit(500).get();
     snap.docs.forEach((doc) => ids.add(doc.id));
   }
 
@@ -117,40 +133,46 @@ export async function GET(req: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const role = normalizeRole(me.role);
     if (!canViewChangeRequests(role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
-    const projectId = String(searchParams.get("projectId") || "").trim();
-    const status = String(searchParams.get("status") || "").trim();
-    const type = String(searchParams.get("type") || "").trim();
-    const priority = String(searchParams.get("priority") || "").trim();
-    const assignedTo = String(searchParams.get("assignedTo") || "").trim();
-    const q = String(searchParams.get("q") || "").trim().toLowerCase();
+    const projectId = String(searchParams.get('projectId') || '').trim();
+    const status = String(searchParams.get('status') || '').trim();
+    const type = String(searchParams.get('type') || '').trim();
+    const priority = String(searchParams.get('priority') || '').trim();
+    const assignedTo = String(searchParams.get('assignedTo') || '').trim();
+    const q = String(searchParams.get('q') || '')
+      .trim()
+      .toLowerCase();
 
     const visibleProjectIds = await getVisibleProjectIds(me.uid, role, me.tenantId);
 
-    if ((isAccountManager(role) || isProduction(role)) && projectId && !visibleProjectIds.has(projectId)) {
+    if (
+      (isAccountManager(role) || isProduction(role)) &&
+      projectId &&
+      !visibleProjectIds.has(projectId)
+    ) {
       return NextResponse.json({
         ok: true,
         changeRequests: [],
         currentUser: {
           uid: me.uid,
           role: me.role,
-          name: me.name || me.fullName || me.displayName || "",
+          name: me.name || me.fullName || me.displayName || '',
         },
       });
     }
 
     const query: FirebaseFirestore.Query = adminDb
-      .collection("changeRequests")
-      .where("tenantId", "==", me.tenantId)
-      .where("isDeleted", "==", false);
+      .collection('changeRequests')
+      .where('tenantId', '==', me.tenantId)
+      .where('isDeleted', '==', false);
 
     const snap = await query.limit(500).get();
 
@@ -158,21 +180,22 @@ export async function GET(req: Request) {
       const data = doc.data() as ChangeRequestDoc;
       return {
         id: doc.id,
-        projectId: data.projectId || "",
-        projectName: data.projectName || "",
-        clientId: data.clientId || "",
-        clientName: data.clientName || "",
-        type: data.type || "Other",
-        title: data.title || "",
-        description: data.description || "",
-        status: data.status || "Submitted",
-        priority: data.priority || "Medium",
-        requestedByUid: data.requestedByUid || "",
-        requestedByRole: data.requestedByRole || "",
+        projectId: data.projectId || '',
+        projectName: data.projectName || '',
+        clientId: data.clientId || '',
+        clientName: data.clientName || '',
+        type: data.type || 'Other',
+        title: data.title || '',
+        description: data.description || '',
+        status: data.status || 'Submitted',
+        priority: data.priority || 'Medium',
+        requestedByUid: data.requestedByUid || '',
+        requestedByRole: data.requestedByRole || '',
         assignedToUid: data.assignedToUid ?? null,
         assignedToRole: data.assignedToRole ?? null,
-        estimatedCost: typeof data.estimatedCost === "number" ? data.estimatedCost : null,
-        estimatedTimelineDays: typeof data.estimatedTimelineDays === "number" ? data.estimatedTimelineDays : null,
+        estimatedCost: typeof data.estimatedCost === 'number' ? data.estimatedCost : null,
+        estimatedTimelineDays:
+          typeof data.estimatedTimelineDays === 'number' ? data.estimatedTimelineDays : null,
         approvalStatus: data.approvalStatus || null,
         approvalId: data.approvalId || null,
         requiresApproval: requiresApproval(data),
@@ -198,7 +221,10 @@ export async function GET(req: Request) {
       changeRequests = changeRequests.filter((item) => item.projectId === projectId);
     }
 
-    if (status && CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])) {
+    if (
+      status &&
+      CHANGE_REQUEST_STATUSES.includes(status as (typeof CHANGE_REQUEST_STATUSES)[number])
+    ) {
       changeRequests = changeRequests.filter((item) => item.status === status);
     }
 
@@ -206,7 +232,10 @@ export async function GET(req: Request) {
       changeRequests = changeRequests.filter((item) => item.type === type);
     }
 
-    if (priority && CHANGE_REQUEST_PRIORITIES.includes(priority as (typeof CHANGE_REQUEST_PRIORITIES)[number])) {
+    if (
+      priority &&
+      CHANGE_REQUEST_PRIORITIES.includes(priority as (typeof CHANGE_REQUEST_PRIORITIES)[number])
+    ) {
       changeRequests = changeRequests.filter((item) => item.priority === priority);
     }
 
@@ -218,7 +247,7 @@ export async function GET(req: Request) {
       changeRequests = changeRequests.filter((item) => {
         const hay = [item.title, item.description, item.projectName, item.clientName]
           .filter(Boolean)
-          .join(" ")
+          .join(' ')
           .toLowerCase();
         return hay.includes(q);
       });
@@ -236,20 +265,22 @@ export async function GET(req: Request) {
       currentUser: {
         uid: me.uid,
         role: me.role,
-        name: me.name || me.fullName || me.displayName || "",
+        name: me.name || me.fullName || me.displayName || '',
       },
     });
   } catch (err: any) {
-    console.error("change-requests/list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('change-requests/list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load change requests right now.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load change requests right now.';
     return NextResponse.json(
-      { ok: false, error: safeMessage, code: isIndexError ? "missing_index" : "unknown_error" },
-      { status: 500 }
+      { ok: false, error: safeMessage, code: isIndexError ? 'missing_index' : 'unknown_error' },
+      { status: 500 },
     );
   }
 }

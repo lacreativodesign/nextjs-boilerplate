@@ -1,6 +1,6 @@
-"use client";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+'use client';
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type PaymentsMetrics = {
   mrr: number;
@@ -28,17 +28,25 @@ type SystemHealthData = {
 
 // Subtle status color cues (also available as CSS vars in the theme, but
 // StatCard already takes inline color props, so we keep them inline here).
-const COLOR_ACTIVE = "#10b981"; // green-ish
-const COLOR_TRIAL = "#f59e0b"; // amber
-const COLOR_LOCKED = "#ef4444"; // red
+const COLOR_ACTIVE = '#10b981'; // green-ish
+const COLOR_TRIAL = '#f59e0b'; // amber
+const COLOR_LOCKED = '#ef4444'; // red
 
-function StatCard({ label, value, sub, color }: {
-  label: string; value: string | number; sub: string; color?: string;
+function StatCard({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  color?: string;
 }) {
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-3xl font-bold" style={{ color: color || "var(--text-primary)" }}>
+      <p className="mt-2 text-3xl font-bold" style={{ color: color || 'var(--text-primary)' }}>
         {value}
       </p>
       <p className="mt-1 text-xs text-[var(--text-soft)]">{sub}</p>
@@ -47,9 +55,7 @@ function StatCard({ label, value, sub, color }: {
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return (
-    <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
-  );
+  return <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>;
 }
 
 function SkeletonGrid({ count = 3 }: { count?: number }) {
@@ -80,40 +86,66 @@ function ErrorLine({ message }: { message: string }) {
 }
 
 const ACTION_LINKS = [
-  { title: "Tenant Management", href: "/super_admin/tenants",
-    desc: "View, create, and manage tenant workspaces." },
-  { title: "All Users", href: "/super_admin/users",
-    desc: "View every user across all tenants." },
-  { title: "System Health", href: "/super_admin/system-health/full",
-    desc: "Monitor Firebase, API, and service status." },
-  { title: "Error Monitoring", href: "/super_admin/monitoring",
-    desc: "Sentry integration status and error tracking dashboard." },
-  { title: "Audit Logs", href: "/super_admin/audit",
-    desc: "Review all platform activity and changes." },
-  { title: "Payment Terminal", href: "/super_admin/payments",
-    desc: "Subscription revenue, billing status, and transaction history." },
-  { title: "Tax Filing", href: "/super_admin/tax",
-    desc: "Platform tax collected, quarterly breakdown, and CSV export for LA CREATIVO GROUP LLC." },
-  { title: "Activity Feed", href: "/super_admin/activity",
-    desc: "Live stream of platform-wide events." },
-  { title: "Backups", href: "/super_admin/backups",
-    desc: "Manage data exports and backup schedules." },
-  { title: "Demo Environment", href: "/super_admin/demo",
-    desc: "Manage demo tenant and reset sample data for sales demos." },
+  {
+    title: 'Tenant Management',
+    href: '/super_admin/tenants',
+    desc: 'View, create, and manage tenant workspaces.',
+  },
+  { title: 'All Users', href: '/super_admin/users', desc: 'View every user across all tenants.' },
+  {
+    title: 'System Health',
+    href: '/super_admin/system-health/full',
+    desc: 'Monitor Firebase, API, and service status.',
+  },
+  {
+    title: 'Error Monitoring',
+    href: '/super_admin/monitoring',
+    desc: 'Sentry integration status and error tracking dashboard.',
+  },
+  {
+    title: 'Audit Logs',
+    href: '/super_admin/audit',
+    desc: 'Review all platform activity and changes.',
+  },
+  {
+    title: 'Payment Terminal',
+    href: '/super_admin/payments',
+    desc: 'Subscription revenue, billing status, and transaction history.',
+  },
+  {
+    title: 'Tax Filing',
+    href: '/super_admin/tax',
+    desc: 'Platform tax collected, quarterly breakdown, and CSV export for LA CREATIVO GROUP LLC.',
+  },
+  {
+    title: 'Activity Feed',
+    href: '/super_admin/activity',
+    desc: 'Live stream of platform-wide events.',
+  },
+  {
+    title: 'Backups',
+    href: '/super_admin/backups',
+    desc: 'Manage data exports and backup schedules.',
+  },
+  {
+    title: 'Demo Environment',
+    href: '/super_admin/demo',
+    desc: 'Manage demo tenant and reset sample data for sales demos.',
+  },
 ];
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0);
 }
 
 function planSummary(byPlan: Record<string, number>): string {
-  return ["trial", "starter", "pro", "enterprise"]
+  return ['trial', 'starter', 'pro', 'enterprise']
     .map((plan) => `${plan} ${byPlan?.[plan] ?? 0}`)
-    .join(" · ");
+    .join(' · ');
 }
 
 export default function SuperAdminPage() {
@@ -128,10 +160,10 @@ export default function SuperAdminPage() {
 
     async function loadPayments() {
       try {
-        const res = await apiFetch("/api/super_admin/payments", { cache: "no-store" });
+        const res = await apiFetch('/api/super_admin/payments', { cache: 'no-store' });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.metrics) {
-          throw new Error(json?.error || "Unable to load revenue data.");
+          throw new Error(json?.error || 'Unable to load revenue data.');
         }
         if (active) {
           setPayments({
@@ -141,19 +173,17 @@ export default function SuperAdminPage() {
         }
       } catch (err) {
         if (active) {
-          setPaymentsError(
-            err instanceof Error ? err.message : "Unable to load revenue data."
-          );
+          setPaymentsError(err instanceof Error ? err.message : 'Unable to load revenue data.');
         }
       }
     }
 
     async function loadHealth() {
       try {
-        const res = await apiFetch("/api/super_admin/system-health", { cache: "no-store" });
+        const res = await apiFetch('/api/super_admin/system-health', { cache: 'no-store' });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.notifications || !json?.emails) {
-          throw new Error(json?.error || "Unable to load system status.");
+          throw new Error(json?.error || 'Unable to load system status.');
         }
         if (active) {
           setHealth({
@@ -163,9 +193,7 @@ export default function SuperAdminPage() {
         }
       } catch (err) {
         if (active) {
-          setHealthError(
-            err instanceof Error ? err.message : "Unable to load system status."
-          );
+          setHealthError(err instanceof Error ? err.message : 'Unable to load system status.');
         }
       }
     }
@@ -209,7 +237,7 @@ export default function SuperAdminPage() {
             />
             <StatCard
               label="Plan Breakdown"
-              value={breakdown ? planSummary(breakdown.byPlan) : "—"}
+              value={breakdown ? planSummary(breakdown.byPlan) : '—'}
               sub="Tenants by plan"
             />
           </div>
@@ -249,9 +277,7 @@ export default function SuperAdminPage() {
             </div>
             {breakdown ? (
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-soft)]">
-                <span style={{ color: COLOR_ACTIVE }}>
-                  active {breakdown.byState?.active ?? 0}
-                </span>
+                <span style={{ color: COLOR_ACTIVE }}>active {breakdown.byState?.active ?? 0}</span>
                 <span>grace {breakdown.byState?.grace ?? 0}</span>
                 <span style={{ color: COLOR_TRIAL }}>
                   soft_locked {breakdown.byState?.soft_locked ?? 0}
@@ -280,7 +306,7 @@ export default function SuperAdminPage() {
               label="Unread Notifications"
               value={`${health.notifications.unread} / ${health.notifications.total}`}
               sub="Unread of total"
-              color={health.notifications.unread > 0 ? COLOR_TRIAL : "var(--text-primary)"}
+              color={health.notifications.unread > 0 ? COLOR_TRIAL : 'var(--text-primary)'}
             />
             <StatCard
               label="Email Delivery"
@@ -304,8 +330,10 @@ export default function SuperAdminPage() {
               bg-[var(--surface-card)] p-5
               hover:border-[var(--erp-blue)] transition-all group"
           >
-            <p className="font-semibold text-[var(--text-primary)]
-              group-hover:text-[var(--erp-blue)]">
+            <p
+              className="font-semibold text-[var(--text-primary)]
+              group-hover:text-[var(--erp-blue)]"
+            >
               {item.title}
             </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">{item.desc}</p>

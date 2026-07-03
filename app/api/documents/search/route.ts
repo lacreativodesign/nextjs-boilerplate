@@ -1,15 +1,15 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminOrSuper } from "@/app/api/admin/_utils";
-import { SearchService } from "@/lib/search/search-service";
-import { searchSchema, validateFilters, validateSortField } from "@/lib/search/search-api";
-import type { Document } from "@/types/documents";
-import type { SearchFilter } from "@/types/search";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
+import { SearchService } from '@/lib/search/search-service';
+import { searchSchema, validateFilters, validateSortField } from '@/lib/search/search-api';
+import type { Document } from '@/types/documents';
+import type { SearchFilter } from '@/types/search';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function hasDocumentAccess(document: Document, user: { uid: string; role: string }) {
-  if (document.visibility === "public" || document.visibility === "team") {
+  if (document.visibility === 'public' || document.visibility === 'team') {
     return true;
   }
   if (document.uploadedBy === user.uid) {
@@ -27,7 +27,7 @@ function hasDocumentAccess(document: Document, user: { uid: string; role: string
 export async function POST(request: NextRequest) {
   const session = await getCurrentUser();
   if (!session?.tenantId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await request.json();
@@ -38,7 +38,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: filterValidationError }, { status: 400 });
   }
 
-  const sortValidationError = validateSortField(params.sortBy, ["createdAt", "updatedAt", "originalFileName", "category"]);
+  const sortValidationError = validateSortField(params.sortBy, [
+    'createdAt',
+    'updatedAt',
+    'originalFileName',
+    'category',
+  ]);
   if (sortValidationError) {
     return NextResponse.json({ error: sortValidationError }, { status: 400 });
   }
@@ -50,20 +55,20 @@ export async function POST(request: NextRequest) {
   if (params.searchText) {
     const scanLimit = Math.min(params.page * params.limit * 5, 500);
     const rawResults = await SearchService.fullTextSearch({
-      collection: "documents",
+      collection: 'documents',
       tenantId: session.tenantId,
       searchText: params.searchText,
-      searchFields: ["fileName", "originalFileName", "title", "description"],
+      searchFields: ['fileName', 'originalFileName', 'title', 'description'],
       limit: scanLimit,
     });
 
     results = rawResults as Document[];
   } else if (params.filters && params.filters.length > 0) {
     const searchResult = await SearchService.search({
-      collection: "documents",
+      collection: 'documents',
       tenantId: session.tenantId,
       filters: params.filters as SearchFilter[],
-      sortBy: params.sortBy || "createdAt",
+      sortBy: params.sortBy || 'createdAt',
       sortOrder: params.sortOrder,
       limit: Math.min(params.limit * 5, 200),
       offset: 0,
@@ -71,14 +76,22 @@ export async function POST(request: NextRequest) {
 
     results = searchResult.results as Document[];
   } else {
-    const snapshot = await SearchService.buildQuery("documents", session.tenantId, [], params.sortBy || "createdAt", params.sortOrder)
+    const snapshot = await SearchService.buildQuery(
+      'documents',
+      session.tenantId,
+      [],
+      params.sortBy || 'createdAt',
+      params.sortOrder,
+    )
       .limit(Math.min(params.limit * 5, 200))
       .get();
 
-    results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Document));
+    results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Document);
   }
 
-  const filtered = results.filter((doc) => !doc.deletedAt).filter((doc) => hasDocumentAccess(doc, session));
+  const filtered = results
+    .filter((doc) => !doc.deletedAt)
+    .filter((doc) => hasDocumentAccess(doc, session));
   const total = filtered.length;
   const paged = filtered.slice(offset, offset + params.limit);
 

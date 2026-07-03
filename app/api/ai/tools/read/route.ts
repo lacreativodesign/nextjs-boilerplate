@@ -5,13 +5,13 @@
  * Only callable server-side by the agent runner — never from the browser.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function verifySecret(req: NextRequest): boolean {
-  const secret = req.headers.get("x-internal-secret");
+  const secret = req.headers.get('x-internal-secret');
   const expected = process.env.INTERNAL_REQUEST_SIGNING_SECRET;
   return Boolean(expected && secret && secret === expected);
 }
@@ -19,7 +19,7 @@ function verifySecret(req: NextRequest): boolean {
 function toISO(val: any): string | null {
   if (!val) return null;
   try {
-    if (typeof val?.toDate === "function") return val.toDate().toISOString();
+    if (typeof val?.toDate === 'function') return val.toDate().toISOString();
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d.toISOString();
   } catch {
@@ -29,35 +29,45 @@ function toISO(val: any): string | null {
 
 export async function POST(req: NextRequest) {
   if (!verifySecret(req)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({}));
   const { tool, tenantId, input = {} } = body;
 
   if (!tool || !tenantId) {
-    return NextResponse.json({ ok: false, error: "tool and tenantId required" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'tool and tenantId required' }, { status: 400 });
   }
 
   try {
     const result = await executeTool(tool, tenantId, input);
     return NextResponse.json({ ok: true, result });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Tool execution failed" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Tool execution failed' },
+      { status: 500 },
+    );
   }
 }
 
-async function executeTool(tool: string, tenantId: string, input: Record<string, any>): Promise<unknown> {
+async function executeTool(
+  tool: string,
+  tenantId: string,
+  input: Record<string, any>,
+): Promise<unknown> {
   const now = new Date();
 
   switch (tool) {
-
-    case "get_business_summary": {
+    case 'get_business_summary': {
       const [invoicesSnap, leadsSnap, projectsSnap, usersSnap] = await Promise.all([
-        adminDb.collection("invoices").where("tenantId", "==", tenantId).where("isPaid", "==", false).get(),
-        adminDb.collection("leads").where("tenantId", "==", tenantId).get(),
-        adminDb.collection("projects").where("tenantId", "==", tenantId).get(),
-        adminDb.collection("users").where("tenantId", "==", tenantId).get(),
+        adminDb
+          .collection('invoices')
+          .where('tenantId', '==', tenantId)
+          .where('isPaid', '==', false)
+          .get(),
+        adminDb.collection('leads').where('tenantId', '==', tenantId).get(),
+        adminDb.collection('projects').where('tenantId', '==', tenantId).get(),
+        adminDb.collection('users').where('tenantId', '==', tenantId).get(),
       ]);
 
       const overdueInvoices = invoicesSnap.docs.filter((doc) => {
@@ -67,9 +77,16 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
         return due < now;
       });
 
-      const totalOverdue = overdueInvoices.reduce((sum, doc) => sum + Number(doc.data()?.amountTotalUsd || 0), 0);
-      const openLeads = leadsSnap.docs.filter((d) => !["Won", "Lost"].includes(d.data()?.stage || "")).length;
-      const activeProjects = projectsSnap.docs.filter((d) => !["Completed", "Cancelled"].includes(d.data()?.stage || "")).length;
+      const totalOverdue = overdueInvoices.reduce(
+        (sum, doc) => sum + Number(doc.data()?.amountTotalUsd || 0),
+        0,
+      );
+      const openLeads = leadsSnap.docs.filter(
+        (d) => !['Won', 'Lost'].includes(d.data()?.stage || ''),
+      ).length;
+      const activeProjects = projectsSnap.docs.filter(
+        (d) => !['Completed', 'Cancelled'].includes(d.data()?.stage || ''),
+      ).length;
 
       return {
         totalUsers: usersSnap.size,
@@ -81,13 +98,13 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
       };
     }
 
-    case "get_overdue_invoices": {
+    case 'get_overdue_invoices': {
       const limit = Number(input.limit || 10);
       const snap = await adminDb
-        .collection("invoices")
-        .where("tenantId", "==", tenantId)
-        .where("isPaid", "==", false)
-        .orderBy("dueDate", "asc")
+        .collection('invoices')
+        .where('tenantId', '==', tenantId)
+        .where('isPaid', '==', false)
+        .orderBy('dueDate', 'asc')
         .limit(50)
         .get();
 
@@ -105,8 +122,8 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
           const daysOverdue = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
           return {
             id: doc.id,
-            orderId: d.orderId || "",
-            clientName: d.clientName || "Unknown",
+            orderId: d.orderId || '',
+            clientName: d.clientName || 'Unknown',
             amountUsd: Number(d.amountTotalUsd || 0),
             dueDate: toISO(d.dueDate),
             daysOverdue,
@@ -116,17 +133,17 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
       return { overdue, count: overdue.length };
     }
 
-    case "get_open_leads": {
+    case 'get_open_leads': {
       const limit = Number(input.limit || 20);
       const stage = input.stage || null;
 
-      let query = adminDb.collection("leads").where("tenantId", "==", tenantId);
+      let query = adminDb.collection('leads').where('tenantId', '==', tenantId);
       const snap = await query.limit(200).get();
 
-      const openStages = ["New", "Contacted", "Qualified", "Proposal", "Negotiation"];
+      const openStages = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation'];
       const leads = snap.docs
         .filter((doc) => {
-          const s = doc.data()?.stage || "New";
+          const s = doc.data()?.stage || 'New';
           if (stage) return s === stage;
           return openStages.includes(s);
         })
@@ -137,10 +154,10 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
           const daysOpen = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
           return {
             id: doc.id,
-            name: d.name || "",
-            stage: d.stage || "New",
-            source: d.source || "",
-            ownerName: d.ownerName || "Unassigned",
+            name: d.name || '',
+            stage: d.stage || 'New',
+            source: d.source || '',
+            ownerName: d.ownerName || 'Unassigned',
             daysOpen,
           };
         });
@@ -153,21 +170,21 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
       return { leads, byStage, totalOpen: leads.length };
     }
 
-    case "get_active_projects": {
+    case 'get_active_projects': {
       const limit = Number(input.limit || 20);
       const statusFilter = input.status || null;
 
       const snap = await adminDb
-        .collection("projects")
-        .where("tenantId", "==", tenantId)
+        .collection('projects')
+        .where('tenantId', '==', tenantId)
         .limit(200)
         .get();
 
-      const activeStages = ["Inquiry", "Proposal", "Active", "In Review", "On Hold"];
+      const activeStages = ['Inquiry', 'Proposal', 'Active', 'In Review', 'On Hold'];
       const projects = snap.docs
         .filter((doc) => {
-          const s = doc.data()?.stage || "";
-          if (statusFilter === "overdue") {
+          const s = doc.data()?.stage || '';
+          if (statusFilter === 'overdue') {
             const dd = doc.data()?.dueDate;
             if (!dd) return false;
             const due = dd?.toDate ? dd.toDate() : new Date(dd);
@@ -178,34 +195,42 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
         .slice(0, limit)
         .map((doc) => {
           const d = doc.data();
-          const due = d.dueDate?.toDate ? d.dueDate.toDate() : (d.dueDate ? new Date(d.dueDate) : null);
+          const due = d.dueDate?.toDate
+            ? d.dueDate.toDate()
+            : d.dueDate
+              ? new Date(d.dueDate)
+              : null;
           const isOverdue = due ? due < now : false;
           return {
             id: doc.id,
-            projectName: d.projectName || "",
-            clientName: d.clientName || "",
-            stage: d.stage || "",
-            health: d.health || "unknown",
-            ownerAmName: d.ownerAmName || "Unassigned",
+            projectName: d.projectName || '',
+            clientName: d.clientName || '',
+            stage: d.stage || '',
+            health: d.health || 'unknown',
+            ownerAmName: d.ownerAmName || 'Unassigned',
             dueDate: toISO(d.dueDate),
             isOverdue,
           };
         });
 
-      return { projects, totalActive: projects.length, overdueCount: projects.filter((p) => p.isOverdue).length };
+      return {
+        projects,
+        totalActive: projects.length,
+        overdueCount: projects.filter((p) => p.isOverdue).length,
+      };
     }
 
-    case "get_team_overview": {
-      const snap = await adminDb.collection("users").where("tenantId", "==", tenantId).get();
+    case 'get_team_overview': {
+      const snap = await adminDb.collection('users').where('tenantId', '==', tenantId).get();
 
       const byRole: Record<string, number> = {};
       let activeCount = 0;
 
       snap.docs.forEach((doc) => {
         const d = doc.data();
-        const role = d.role || "unknown";
+        const role = d.role || 'unknown';
         byRole[role] = (byRole[role] || 0) + 1;
-        if ((d.status || "active") === "active") activeCount++;
+        if ((d.status || 'active') === 'active') activeCount++;
       });
 
       return {
@@ -216,22 +241,22 @@ async function executeTool(tool: string, tenantId: string, input: Record<string,
       };
     }
 
-    case "get_recent_activity": {
+    case 'get_recent_activity': {
       const limit = Number(input.limit || 15);
       const snap = await adminDb
-        .collection("auditLogs")
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
+        .collection('auditLogs')
+        .where('tenantId', '==', tenantId)
+        .orderBy('createdAt', 'desc')
         .limit(limit)
         .get();
 
       const activity = snap.docs.map((doc) => {
         const d = doc.data();
         return {
-          actionType: d.actionType || "",
-          entityType: d.entityType || "",
-          entityId: d.entityId || "",
-          actorName: d.actorName || "System",
+          actionType: d.actionType || '',
+          entityType: d.entityType || '',
+          entityId: d.entityId || '',
+          actorName: d.actorName || 'System',
           createdAt: toISO(d.createdAt),
         };
       });

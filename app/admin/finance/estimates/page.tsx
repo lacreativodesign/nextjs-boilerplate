@@ -2,16 +2,14 @@ export default function FinanceEstimatesPage() {
   return (
     <div
       style={{
-        background: "var(--card-bg)",
-        border: "1px solid var(--border)",
+        background: 'var(--card-bg)',
+        border: '1px solid var(--border)',
         borderRadius: 10,
         padding: 20,
       }}
     >
-      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-        Estimates & Proposals
-      </h3>
-      <p style={{ fontSize: 14, color: "var(--sidebar-text)" }}>
+      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Estimates & Proposals</h3>
+      <p style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
         Placeholder for quotes that convert into invoices.
       </p>
     </div>

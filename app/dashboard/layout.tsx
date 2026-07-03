@@ -1,11 +1,11 @@
-"use client";
-import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
-import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+'use client';
+import RequireAuth from '@/components/RequireAuth';
+import AppShell from '@/components/layout/AppShell';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RequireAuth allowed={["admin", "super_admin"]}>
+    <RequireAuth allowed={['admin', 'super_admin']}>
       <ModuleErrorBoundary moduleName="Dashboard">
         <AppShell>{children}</AppShell>
       </ModuleErrorBoundary>

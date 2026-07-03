@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 type AuditLog = {
   id: string;
@@ -14,14 +14,17 @@ type AuditLog = {
 
 export default function SuperAdminAuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [tenantFilter, setTenantFilter] = useState("");
+  const [tenantFilter, setTenantFilter] = useState('');
 
   useEffect(() => {
     let active = true;
 
     async function load() {
-      const params = tenantFilter ? `?tenantId=${encodeURIComponent(tenantFilter)}` : "";
-      const res = await fetch(`/api/super_admin/audit${params}`, { cache: "no-store", credentials: "include" });
+      const params = tenantFilter ? `?tenantId=${encodeURIComponent(tenantFilter)}` : '';
+      const res = await fetch(`/api/super_admin/audit${params}`, {
+        cache: 'no-store',
+        credentials: 'include',
+      });
       const json = await res.json().catch(() => null);
       if (active && json?.ok) {
         setLogs(json.logs || []);
@@ -45,7 +48,9 @@ export default function SuperAdminAuditPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="section-title">Recent Activity</div>
-            <p className="section-subtitle">Shows changes to tenants, branding, users, and tenant switching.</p>
+            <p className="section-subtitle">
+              Shows changes to tenants, branding, users, and tenant switching.
+            </p>
           </div>
           <input
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
@@ -72,9 +77,13 @@ export default function SuperAdminAuditPage() {
                   <td className="px-4 py-3 text-sm">
                     {log.entityType} · {log.entityId}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{log.tenantId || "Platform"}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
+                    {log.tenantId || 'Platform'}
+                  </td>
                   <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{log.actorUserId}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{log.createdAt || "-"}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
+                    {log.createdAt || '-'}
+                  </td>
                 </tr>
               ))}
               {logs.length === 0 && (

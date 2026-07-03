@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { TaskBoard } from "@/components/projects/TaskBoard";
-import { TimeTracker } from "@/components/projects/TimeTracker";
+import { useEffect, useState } from 'react';
+import { TaskBoard } from '@/components/projects/TaskBoard';
+import { TimeTracker } from '@/components/projects/TimeTracker';
 
 type Project = {
   id: string;
@@ -16,7 +16,7 @@ type Project = {
 type Task = {
   id: string;
   title: string;
-  status: "todo" | "in_progress" | "in_review" | "blocked" | "completed" | "cancelled";
+  status: 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'completed' | 'cancelled';
   priority: string;
   assignedToName?: string;
 };
@@ -24,7 +24,7 @@ type Task = {
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [view, setView] = useState<"board" | "list">("board");
+  const [view, setView] = useState<'board' | 'list'>('board');
 
   const fetchProject = async () => {
     const response = await fetch(`/api/projects/${params.id}`);
@@ -59,20 +59,29 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div className="mb-6 flex gap-2">
-        <button onClick={() => setView("board")} className={`rounded-xl px-4 py-2 transition ${view === "board" ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}>
+        <button
+          onClick={() => setView('board')}
+          className={`rounded-xl px-4 py-2 transition ${view === 'board' ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-primary)]'}`}
+        >
           Board
         </button>
-        <button onClick={() => setView("list")} className={`rounded-xl px-4 py-2 transition ${view === "list" ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}>
+        <button
+          onClick={() => setView('list')}
+          className={`rounded-xl px-4 py-2 transition ${view === 'list' ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-primary)]'}`}
+        >
           List
         </button>
       </div>
 
-      {view === "board" ? (
+      {view === 'board' ? (
         <TaskBoard projectId={params.id} tasks={tasks} onUpdate={fetchTasks} />
       ) : (
         <div className="rounded border">
           {tasks.map((task) => (
-            <div key={task.id} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0">
+            <div
+              key={task.id}
+              className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0"
+            >
               <span>{task.title}</span>
               <span className="text-[var(--text-muted)]">{task.status}</span>
             </div>

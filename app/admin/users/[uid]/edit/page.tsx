@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { SkeletonForm } from "@/components/ui/Skeleton";
-import { fetchUserRole, getFirebaseAuth } from "@/lib/firebaseClient";
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { SkeletonForm } from '@/components/ui/Skeleton';
+import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
 import {
   INTERNAL_ROLE_OPTIONS,
   USER_DEPARTMENT_VALUES,
   type InternalRole,
   type UserDepartment,
   getDefaultDepartmentForRole,
-} from "@/lib/userOptions";
-import { onAuthStateChanged } from "firebase/auth";
-import type { Unsubscribe } from "firebase/auth";
-import { toastSuccess } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
+} from '@/lib/userOptions';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { Unsubscribe } from 'firebase/auth';
+import { toastSuccess } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
 
-type UserStatus = "active" | "disabled";
+type UserStatus = 'active' | 'disabled';
 
 type Role = InternalRole;
 type Department = UserDepartment;
@@ -48,14 +48,13 @@ type UserDoc = {
 
 type ManagerOption = { uid: string; name: string; email: string; role: string };
 
-
 function toInputDate(iso?: string | null) {
-  if (!iso) return "";
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return '';
   const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -67,8 +66,8 @@ function fromInputDate(v: string) {
 }
 
 function toNum(v: string) {
-  if (v === "") return null;
-  const n = Number(String(v || "").replace(/,/g, ""));
+  if (v === '') return null;
+  const n = Number(String(v || '').replace(/,/g, ''));
   return Number.isFinite(n) ? n : null;
 }
 
@@ -84,39 +83,39 @@ export default function EditUserPage() {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
   // form state
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [initialEmail, setInitialEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cnic, setCnic] = useState("");
-  const [dob, setDob] = useState("");
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [initialEmail, setInitialEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [cnic, setCnic] = useState('');
+  const [dob, setDob] = useState('');
 
-  const [status, setStatus] = useState<UserStatus>("active");
-  const [role, setRole] = useState<Role>("sales");
-  const [department, setDepartment] = useState<Department>("sales");
+  const [status, setStatus] = useState<UserStatus>('active');
+  const [role, setRole] = useState<Role>('sales');
+  const [department, setDepartment] = useState<Department>('sales');
 
-  const [designation, setDesignation] = useState("");
-  const [joiningDate, setJoiningDate] = useState("");
+  const [designation, setDesignation] = useState('');
+  const [joiningDate, setJoiningDate] = useState('');
 
-  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState("");
-  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState("");
-  const [commissionPct, setCommissionPct] = useState("");
+  const [monthlySalaryPkr, setMonthlySalaryPkr] = useState('');
+  const [monthlyTargetUsd, setMonthlyTargetUsd] = useState('');
+  const [commissionPct, setCommissionPct] = useState('');
 
-  const [managerId, setManagerId] = useState("");
+  const [managerId, setManagerId] = useState('');
   const [managers, setManagers] = useState<ManagerOption[]>([]);
 
-  const muted = "var(--text-muted)";
-  const titleCol = "var(--text-primary)";
+  const muted = 'var(--text-muted)';
+  const titleCol = 'var(--text-primary)';
 
   const headerStyle: React.CSSProperties = {
     fontSize: 34,
     fontWeight: 900,
-    margin: "0 0 8px 0",
+    margin: '0 0 8px 0',
     color: titleCol,
   };
 
   const subStyle: React.CSSProperties = {
-    margin: "0 0 18px 0",
+    margin: '0 0 18px 0',
     color: muted,
     fontSize: 14,
   };
@@ -124,9 +123,9 @@ export default function EditUserPage() {
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 18,
-    border: "1px solid var(--border-subtle)",
-    background: "var(--surface-card)",
-    boxShadow: "var(--shadow-md)",
+    border: '1px solid var(--border-subtle)',
+    background: 'var(--surface-card)',
+    boxShadow: 'var(--shadow-md)',
   };
 
   const roles: Role[] = [...INTERNAL_ROLE_OPTIONS];
@@ -137,7 +136,7 @@ export default function EditUserPage() {
     if (!role) return;
     let alive = true;
     apiFetch(`/api/admin/users/managers?role=${encodeURIComponent(role)}`, {
-      cache: "no-store",
+      cache: 'no-store',
     })
       .then((r) => r.json())
       .then((data) => {
@@ -145,7 +144,9 @@ export default function EditUserPage() {
         if (data.ok) setManagers(data.managers || []);
       })
       .catch(() => {});
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [role]);
 
   useEffect(() => {
@@ -165,7 +166,7 @@ export default function EditUserPage() {
         });
       })
       .catch((err) => {
-        console.error("Failed to load Firebase auth", err);
+        console.error('Failed to load Firebase auth', err);
         setCurrentRole(null);
       });
 
@@ -186,45 +187,46 @@ export default function EditUserPage() {
 
       try {
         const res = await apiFetch(`/api/admin/users/${uid}`, {
-          method: "GET",
-          cache: "no-store",
+          method: 'GET',
+          cache: 'no-store',
         });
 
         if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          throw new Error(t || "Failed to fetch user details.");
+          const t = await res.text().catch(() => '');
+          throw new Error(t || 'Failed to fetch user details.');
         }
 
         const data: UserDoc = await res.json();
 
         if (!alive) return;
 
-        setFullName(String(data?.name || ""));
-        const loadedEmail = String(data?.email || "");
+        setFullName(String(data?.name || ''));
+        const loadedEmail = String(data?.email || '');
         setEmail(loadedEmail);
         setInitialEmail(loadedEmail);
-        setPhone(String(data?.phone || ""));
-        setCnic(String(data?.cnic || ""));
+        setPhone(String(data?.phone || ''));
+        setCnic(String(data?.cnic || ''));
 
         setDob(toInputDate(data?.dob || null));
 
-        setStatus((String(data?.status || "active").toLowerCase() as UserStatus) || "active");
-        const rawRole = String(data?.role || "sales").toLowerCase();
-        const loadedRole = (rawRole || "sales") as Role;
-        const loadedDepartment = (String(data?.department || "sales").toLowerCase() as Department) || "sales";
+        setStatus((String(data?.status || 'active').toLowerCase() as UserStatus) || 'active');
+        const rawRole = String(data?.role || 'sales').toLowerCase();
+        const loadedRole = (rawRole || 'sales') as Role;
+        const loadedDepartment =
+          (String(data?.department || 'sales').toLowerCase() as Department) || 'sales';
         setRole(loadedRole);
         setDepartment(loadedDepartment);
 
-        setDesignation(String(data?.designation || ""));
+        setDesignation(String(data?.designation || ''));
         setJoiningDate(toInputDate(data?.joiningDate || null));
 
-        setMonthlySalaryPkr(data?.salary == null ? "" : String(Number(data.salary)));
-        setMonthlyTargetUsd(data?.monthlyTarget == null ? "" : String(Number(data.monthlyTarget)));
-        setCommissionPct(data?.commission == null ? "" : String(Number(data.commission)));
-        setManagerId(String(data?.managerId || ""));
+        setMonthlySalaryPkr(data?.salary == null ? '' : String(Number(data.salary)));
+        setMonthlyTargetUsd(data?.monthlyTarget == null ? '' : String(Number(data.monthlyTarget)));
+        setCommissionPct(data?.commission == null ? '' : String(Number(data.commission)));
+        setManagerId(String(data?.managerId || ''));
       } catch (e: unknown) {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : "Failed to fetch user details.");
+        setError(e instanceof Error ? e.message : 'Failed to fetch user details.');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -237,26 +239,26 @@ export default function EditUserPage() {
     };
   }, [uid]);
 
-  const isEmailLocked = currentRole === "hr";
+  const isEmailLocked = currentRole === 'hr';
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!uid) return setError("Missing user id.");
-    if (!fullName.trim()) return setError("Missing required fields: name");
+    if (!uid) return setError('Missing user id.');
+    if (!fullName.trim()) return setError('Missing required fields: name');
 
     const emailToSend = (isEmailLocked ? initialEmail : email).trim() || initialEmail.trim();
-    if (!emailToSend) return setError("Missing required fields: email");
-    if (!role.trim()) return setError("Missing required fields: role");
-    if (!department.trim()) return setError("Missing required fields: department");
+    if (!emailToSend) return setError('Missing required fields: email');
+    if (!role.trim()) return setError('Missing required fields: role');
+    if (!department.trim()) return setError('Missing required fields: department');
 
     setSaving(true);
 
     try {
-      const res = await apiFetch("/api/admin/users/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uid,
           name: fullName.trim(),
@@ -282,13 +284,13 @@ export default function EditUserPage() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Update failed.");
+        throw new Error(json?.error || 'Update failed.');
       }
 
-      toastSuccess("Saved successfully.");
-      setTimeout(() => router.push("/admin/users"), 800);
+      toastSuccess('Saved successfully.');
+      setTimeout(() => router.push('/admin/users'), 800);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Update failed.");
+      setError(e instanceof Error ? e.message : 'Update failed.');
     } finally {
       setSaving(false);
     }
@@ -296,27 +298,35 @@ export default function EditUserPage() {
 
   if (loading) {
     return (
-      <div style={{ width: "100%" }}>
+      <div style={{ width: '100%' }}>
         <SkeletonForm fields={8} />
       </div>
     );
   }
 
   return (
-    <div style={{ width: "100%" }}>
-      <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+    <div style={{ width: '100%' }}>
+      <Link
+        href="/admin/users"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block"
+      >
         ← Back to Users
       </Link>
       <h1 style={headerStyle}>Edit User</h1>
       <p style={subStyle}>Update profile, work details, and targets.</p>
 
       <form onSubmit={onSubmit} style={shellStyle}>
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <Section title="Personal Information">
             <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Full Name" required />
-                <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
+                <input
+                  className="input"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
+                />
               </div>
 
               <div style={colSpan(2)}>
@@ -332,22 +342,41 @@ export default function EditUserPage() {
 
               <div style={colSpan(1)}>
                 <Label text="Phone Number" />
-                <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 0000000" />
+                <input
+                  className="input"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+92 300 0000000"
+                />
               </div>
 
               <div style={colSpan(1)}>
                 <Label text="CNIC Number" />
-                <input className="input" value={cnic} onChange={(e) => setCnic(e.target.value)} placeholder="42101-1234567-1" />
+                <input
+                  className="input"
+                  value={cnic}
+                  onChange={(e) => setCnic(e.target.value)}
+                  placeholder="42101-1234567-1"
+                />
               </div>
 
               <div style={colSpan(2)}>
                 <Label text="Date of Birth (D.O.B.)" />
-                <input className="input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+                <input
+                  className="input"
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                />
               </div>
 
               <div style={colSpan(2)}>
                 <Label text="Status" />
-                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
+                <select
+                  className="input"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as UserStatus)}
+                >
                   <option value="active">Active</option>
                   <option value="disabled">Disabled</option>
                 </select>
@@ -365,7 +394,7 @@ export default function EditUserPage() {
                   onChange={(e) => {
                     const nextRole = e.target.value as Role;
                     setRole(nextRole);
-                    setManagerId("");
+                    setManagerId('');
                     setManagers([]);
                     const nextDepartment = getDefaultDepartmentForRole(nextRole);
                     if (nextDepartment) setDepartment(nextDepartment);
@@ -381,7 +410,11 @@ export default function EditUserPage() {
 
               <div style={colSpan(2)}>
                 <Label text="Department" />
-                <select className="input" value={department} onChange={(e) => setDepartment(e.target.value as Department)}>
+                <select
+                  className="input"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value as Department)}
+                >
                   {departments.map((d) => (
                     <option key={d} value={d}>
                       {d}
@@ -392,18 +425,32 @@ export default function EditUserPage() {
 
               <div style={colSpan(1)}>
                 <Label text="Designation / Title" />
-                <input className="input" value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. Senior Account Manager" />
+                <input
+                  className="input"
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  placeholder="e.g. Senior Account Manager"
+                />
               </div>
 
               <div style={colSpan(1)}>
                 <Label text="Joining Date" />
-                <input className="input" type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)} />
+                <input
+                  className="input"
+                  type="date"
+                  value={joiningDate}
+                  onChange={(e) => setJoiningDate(e.target.value)}
+                />
               </div>
 
               {managers.length > 0 && (
                 <div style={colSpan(2)}>
                   <Label text="Reports To" />
-                  <select className="input" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+                  <select
+                    className="input"
+                    value={managerId}
+                    onChange={(e) => setManagerId(e.target.value)}
+                  >
                     <option value="">Reports to CEO (Admin)</option>
                     {managers.map((m) => (
                       <option key={m.uid} value={m.uid}>
@@ -420,28 +467,51 @@ export default function EditUserPage() {
             <div style={grid6} className="grid6">
               <div style={colSpan(2)}>
                 <Label text="Monthly Salary (PKR)" />
-                <input className="input" value={monthlySalaryPkr} onChange={(e) => setMonthlySalaryPkr(e.target.value)} placeholder="e.g. 150000" />
+                <input
+                  className="input"
+                  value={monthlySalaryPkr}
+                  onChange={(e) => setMonthlySalaryPkr(e.target.value)}
+                  placeholder="e.g. 150000"
+                />
               </div>
 
               <div style={colSpan(2)}>
                 <Label text="Monthly Target (USD)" />
-                <input className="input" value={monthlyTargetUsd} onChange={(e) => setMonthlyTargetUsd(e.target.value)} placeholder="e.g. 5000" />
+                <input
+                  className="input"
+                  value={monthlyTargetUsd}
+                  onChange={(e) => setMonthlyTargetUsd(e.target.value)}
+                  placeholder="e.g. 5000"
+                />
               </div>
 
               <div style={colSpan(2)}>
                 <Label text="Commission (%)" />
-                <input className="input" value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} placeholder="e.g. 5" />
+                <input
+                  className="input"
+                  value={commissionPct}
+                  onChange={(e) => setCommissionPct(e.target.value)}
+                  placeholder="e.g. 5"
+                />
               </div>
             </div>
           </Section>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginTop: 6,
+            }}
+          >
             <div style={{ minHeight: 18, fontSize: 13 }}>
-              {error ? <span style={{ color: "#EF4444" }}>{error}</span> : null}
+              {error ? <span style={{ color: '#EF4444' }}>{error}</span> : null}
             </div>
 
             <button className="btn" type="submit" disabled={saving} style={{ borderRadius: 12 }}>
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -462,20 +532,19 @@ export default function EditUserPage() {
 }
 
 const grid6: React.CSSProperties = {
-  display: "grid",
+  display: 'grid',
   gap: 12,
-  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+  gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
 };
 
 const colSpan = (n: number): React.CSSProperties => ({ gridColumn: `span ${n} / span ${n}` });
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="card"
-      style={{ padding: 14, borderRadius: 16 }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
+    <div className="card" style={{ padding: 14, borderRadius: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.06em', opacity: 0.75 }}>
+        {title}
+      </div>
       <div style={{ marginTop: 10 }}>{children}</div>
     </div>
   );
@@ -485,18 +554,18 @@ function Label({ text, required }: { text: string; required?: boolean }) {
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
+        display: 'flex',
+        alignItems: 'center',
         gap: 6,
         fontSize: 11,
         fontWeight: 900,
-        letterSpacing: "0.06em",
+        letterSpacing: '0.06em',
         opacity: 0.75,
         marginBottom: 6,
       }}
     >
-      <span style={{ textTransform: "uppercase" }}>{text}</span>
-      {required ? <span style={{ color: "#EF4444" }}>*</span> : null}
+      <span style={{ textTransform: 'uppercase' }}>{text}</span>
+      {required ? <span style={{ color: '#EF4444' }}>*</span> : null}
     </div>
   );
 }

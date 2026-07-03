@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toastError } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toastError } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 
 type ProjectStage =
-  | "Inquiry"
-  | "Deposit"
-  | "Kickoff"
-  | "Draft"
-  | "Review"
-  | "Revisions"
-  | "Final"
-  | "Delivered";
+  | 'Inquiry'
+  | 'Deposit'
+  | 'Kickoff'
+  | 'Draft'
+  | 'Review'
+  | 'Revisions'
+  | 'Final'
+  | 'Delivered';
 
-type ProjectPriority = "Low" | "Normal" | "High" | "Urgent";
+type ProjectPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
 
-type ProjectHealth = "On Track" | "At Risk" | "Overdue";
+type ProjectHealth = 'On Track' | 'At Risk' | 'Overdue';
 
 type StageHistoryEntry = {
   from: string;
@@ -78,109 +78,142 @@ type ErrorState = {
 };
 
 const LOCKED_STAGES: ProjectStage[] = [
-  "Deposit",
-  "Kickoff",
-  "Draft",
-  "Review",
-  "Revisions",
-  "Final",
-  "Delivered",
+  'Deposit',
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
 ];
-const LEGACY_STAGE = "Legacy";
-const PRIORITIES: ProjectPriority[] = ["Low", "Normal", "High", "Urgent"];
-const HEALTH_OPTIONS: ProjectHealth[] = ["On Track", "At Risk", "Overdue"];
-const ACCOUNT_MANAGER_STAGES: ProjectStage[] = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"];
-const PRODUCTION_STAGES: ProjectStage[] = ["Draft", "Review", "Revisions", "Final"];
+const LEGACY_STAGE = 'Legacy';
+const PRIORITIES: ProjectPriority[] = ['Low', 'Normal', 'High', 'Urgent'];
+const HEALTH_OPTIONS: ProjectHealth[] = ['On Track', 'At Risk', 'Overdue'];
+const ACCOUNT_MANAGER_STAGES: ProjectStage[] = [
+  'Kickoff',
+  'Draft',
+  'Review',
+  'Revisions',
+  'Final',
+  'Delivered',
+];
+const PRODUCTION_STAGES: ProjectStage[] = ['Draft', 'Review', 'Revisions', 'Final'];
 
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function fmtDateTime(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
 function computeHealth(dueDate?: string | null, stage?: string): ProjectHealth {
-  if (stage === "Delivered") return "On Track";
-  if (!dueDate) return "On Track";
+  if (stage === 'Delivered') return 'On Track';
+  if (!dueDate) return 'On Track';
   const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return "On Track";
+  if (Number.isNaN(due.getTime())) return 'On Track';
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = due.getTime() - startOfToday.getTime();
-  if (diffMs < 0) return "Overdue";
-  if (diffMs <= 48 * 60 * 60 * 1000) return "At Risk";
-  return "On Track";
+  if (diffMs < 0) return 'Overdue';
+  if (diffMs <= 48 * 60 * 60 * 1000) return 'At Risk';
+  return 'On Track';
 }
 
 function getBadgeClass(value: string): string {
-  const t = (value || "").toLowerCase();
-  if (t.includes("high") || t.includes("critical") || t.includes("overdue") || t.includes("rejected") || t.includes("failed") || t.includes("cancelled") || t.includes("canceled"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500";
-  if (t.includes("medium") || t.includes("pending") || t.includes("review") || t.includes("draft") || t.includes("waiting"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600";
-  if (t.includes("low") || t.includes("completed") || t.includes("approved") || t.includes("active") || t.includes("done"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600";
-  if (t.includes("progress") || t.includes("open") || t.includes("new") || t.includes("design") || t.includes("dev"))
-    return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]";
-  return "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]";
+  const t = (value || '').toLowerCase();
+  if (
+    t.includes('high') ||
+    t.includes('critical') ||
+    t.includes('overdue') ||
+    t.includes('rejected') ||
+    t.includes('failed') ||
+    t.includes('cancelled') ||
+    t.includes('canceled')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-500/10 text-red-500';
+  if (
+    t.includes('medium') ||
+    t.includes('pending') ||
+    t.includes('review') ||
+    t.includes('draft') ||
+    t.includes('waiting')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/10 text-amber-600';
+  if (
+    t.includes('low') ||
+    t.includes('completed') ||
+    t.includes('approved') ||
+    t.includes('active') ||
+    t.includes('done')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-600';
+  if (
+    t.includes('progress') ||
+    t.includes('open') ||
+    t.includes('new') ||
+    t.includes('design') ||
+    t.includes('dev')
+  )
+    return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]';
+  return 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]';
 }
 
 function normalizeRole(role?: string) {
-  return (role || "").toLowerCase();
+  return (role || '').toLowerCase();
 }
 
 function canViewOwners(role?: string) {
   const r = normalizeRole(role);
-  return r === "admin" || r === "super_admin" || r === "sales_manager";
+  return r === 'admin' || r === 'super_admin' || r === 'sales_manager';
 }
 
 function canViewProduction(role?: string) {
   const r = normalizeRole(role);
-  return r === "admin" || r === "super_admin";
+  return r === 'admin' || r === 'super_admin';
 }
 
 function isAdmin(role?: string) {
   const r = normalizeRole(role);
-  return r === "admin" || r === "super_admin";
+  return r === 'admin' || r === 'super_admin';
 }
 
 function isSalesManager(role?: string) {
-  return normalizeRole(role) === "sales_manager";
+  return normalizeRole(role) === 'sales_manager';
 }
 
 function isAccountManager(role?: string) {
-  return normalizeRole(role) === "am";
+  return normalizeRole(role) === 'am';
 }
 
 function isProduction(role?: string) {
-  return normalizeRole(role) === "production";
+  return normalizeRole(role) === 'production';
 }
 
 function getAllowedStages(project: ProjectRecord, currentUser: CurrentUser | null) {
   if (!currentUser) return [] as ProjectStage[];
   const role = normalizeRole(currentUser.role);
-  const stage = project.stage || "Inquiry";
+  const stage = project.stage || 'Inquiry';
 
   if (isAdmin(role)) {
     return LOCKED_STAGES;
   }
 
   if (isSalesManager(role)) {
-    if (stage === "Deposit") return ["Kickoff"];
-    if (stage === "Inquiry") return ["Deposit"];
+    if (stage === 'Deposit') return ['Kickoff'];
+    if (stage === 'Inquiry') return ['Deposit'];
     return [];
   }
 
@@ -188,7 +221,8 @@ function getAllowedStages(project: ProjectRecord, currentUser: CurrentUser | nul
     const ownerUid = project.ownerAmUid || null;
     const createdByUid = project.createdByUid || null;
     const unassigned = !ownerUid;
-    const canAccess = ownerUid === currentUser.uid || (unassigned && createdByUid === currentUser.uid);
+    const canAccess =
+      ownerUid === currentUser.uid || (unassigned && createdByUid === currentUser.uid);
     if (!canAccess) return [];
     if (!ACCOUNT_MANAGER_STAGES.includes(stage as ProjectStage)) return [];
     return ACCOUNT_MANAGER_STAGES;
@@ -210,11 +244,11 @@ export default function DeliveryPipelinePage() {
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("");
-  const [productionFilter, setProductionFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [healthFilter, setHealthFilter] = useState("");
+  const [query, setQuery] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
+  const [productionFilter, setProductionFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [healthFilter, setHealthFilter] = useState('');
   const [onlyOverdue, setOnlyOverdue] = useState(false);
 
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -224,12 +258,12 @@ export default function DeliveryPipelinePage() {
   const [movingProjectId, setMovingProjectId] = useState<string | null>(null);
 
   const ownerOptions = useMemo(() => {
-    const ams = users.filter((u) => (u.role || "").toLowerCase() === "am");
+    const ams = users.filter((u) => (u.role || '').toLowerCase() === 'am');
     return ams.length ? ams : [];
   }, [users]);
 
   const productionOptions = useMemo(() => {
-    const prod = users.filter((u) => (u.role || "").toLowerCase() === "production");
+    const prod = users.filter((u) => (u.role || '').toLowerCase() === 'production');
     return prod.length ? prod : [];
   }, [users]);
 
@@ -239,33 +273,33 @@ export default function DeliveryPipelinePage() {
 
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query.trim());
-      if (ownerFilter) params.set("owner", ownerFilter);
-      if (productionFilter) params.set("production", productionFilter);
-      if (priorityFilter) params.set("priority", priorityFilter);
+      if (query.trim()) params.set('q', query.trim());
+      if (ownerFilter) params.set('owner', ownerFilter);
+      if (productionFilter) params.set('production', productionFilter);
+      if (priorityFilter) params.set('priority', priorityFilter);
       if (onlyOverdue) {
-        params.set("health", "Overdue");
+        params.set('health', 'Overdue');
       } else if (healthFilter) {
-        params.set("health", healthFilter);
+        params.set('health', healthFilter);
       }
 
       const res = await apiFetch(`/api/admin/projects/pipeline?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
+        method: 'GET',
+        cache: 'no-store',
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to load pipeline");
+        throw new Error(json?.error || res.statusText || 'Failed to load pipeline');
       }
 
       setProjects(Array.isArray(json?.projects) ? json.projects : []);
       setCurrentUser(json?.currentUser || null);
     } catch (e: any) {
-      console.error("Failed to load pipeline:", e);
+      console.error('Failed to load pipeline:', e);
       setError({
-        title: "Pipeline can’t load yet",
-        message: e?.message || "Unable to load pipeline right now.",
+        title: 'Pipeline can’t load yet',
+        message: e?.message || 'Unable to load pipeline right now.',
       });
       setProjects([]);
       setCurrentUser(null);
@@ -287,21 +321,25 @@ export default function DeliveryPipelinePage() {
 
     async function loadUsers() {
       try {
-        const res = await apiFetch("/api/admin/users/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/list', {
+          method: 'GET',
+          cache: 'no-store',
         });
 
         const json = await res.json().catch(() => null);
         if (!res.ok) return;
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray((json as any)?.users)
+            ? (json as any).users
+            : [];
         if (!alive) return;
         setUsers(
           list.map((u) => ({
-            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || "",
-            name: u.name || u.fullName || u.displayName || u.email || "",
-            role: u.role || "",
-          }))
+            uid: u.uid || u.id || u.docId || u.userId || u.firebaseUid || '',
+            name: u.name || u.fullName || u.displayName || u.email || '',
+            role: u.role || '',
+          })),
         );
       } catch {
         if (!alive) return;
@@ -335,7 +373,9 @@ export default function DeliveryPipelinePage() {
     };
 
     normalizedProjects.forEach((project) => {
-      const stage = LOCKED_STAGES.includes(project.stage as ProjectStage) ? project.stage : LEGACY_STAGE;
+      const stage = LOCKED_STAGES.includes(project.stage as ProjectStage)
+        ? project.stage
+        : LEGACY_STAGE;
       if (!groups[stage]) groups[stage] = [];
       groups[stage].push(project);
     });
@@ -350,26 +390,27 @@ export default function DeliveryPipelinePage() {
     return normalizedProjects.reduce(
       (acc, project) => {
         const health = project.health || computeHealth(project.dueDate, project.stage);
-        if (project.stage !== "Delivered") acc.totalActive += 1;
-        if (health === "Overdue") acc.overdue += 1;
-        if (health === "At Risk") acc.atRisk += 1;
-        if (project.stage === "Delivered") {
+        if (project.stage !== 'Delivered') acc.totalActive += 1;
+        if (health === 'Overdue') acc.overdue += 1;
+        if (health === 'At Risk') acc.atRisk += 1;
+        if (project.stage === 'Delivered') {
           const deliveredAt = project.stageTimestamps?.Delivered || project.updatedAt;
           if (deliveredAt) {
             const deliveredDate = new Date(deliveredAt);
-            if (!Number.isNaN(deliveredDate.getTime()) && deliveredDate >= weekAgo) acc.deliveredRecent += 1;
+            if (!Number.isNaN(deliveredDate.getTime()) && deliveredDate >= weekAgo)
+              acc.deliveredRecent += 1;
           }
         }
         return acc;
       },
-      { totalActive: 0, overdue: 0, atRisk: 0, deliveredRecent: 0 }
+      { totalActive: 0, overdue: 0, atRisk: 0, deliveredRecent: 0 },
     );
   }, [normalizedProjects]);
 
   const pipelineStages = useMemo(() => [LEGACY_STAGE, ...LOCKED_STAGES], []);
   const columnTemplate = useMemo(
     () => `repeat(${pipelineStages.length}, minmax(280px, 1fr))`,
-    [pipelineStages.length]
+    [pipelineStages.length],
   );
 
   function openDrawer(project: ProjectRecord) {
@@ -396,14 +437,14 @@ export default function DeliveryPipelinePage() {
               stage: toStage,
               lastActivityAt: new Date().toISOString(),
             }
-          : item
-      )
+          : item,
+      ),
     );
 
     try {
-      const res = await apiFetch("/api/admin/projects/move-stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/projects/move-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: project.id,
           toStage,
@@ -412,46 +453,55 @@ export default function DeliveryPipelinePage() {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Failed to move stage");
+        throw new Error(json?.error || 'Failed to move stage');
       }
 
       const updated = json?.project;
       if (updated?.id) {
-        setProjects((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+        setProjects((prev) =>
+          prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+        );
       }
 
       await fetchPipeline();
     } catch (e: any) {
-      console.error("Move stage failed:", e);
-      setProjects((prev) => prev.map((item) => (item.id === project.id ? { ...item, stage: prevStage } : item)));
-      toastError(e?.message || "Unable to move stage right now.");
+      console.error('Move stage failed:', e);
+      setProjects((prev) =>
+        prev.map((item) => (item.id === project.id ? { ...item, stage: prevStage } : item)),
+      );
+      toastError(e?.message || 'Unable to move stage right now.');
     } finally {
       setMovingProjectId(null);
     }
   }
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Delivery Pipeline</h1>
-          <div className="page-subtitle">Live pipeline view across every delivery stage with role-based controls.</div>
+          <div className="page-subtitle">
+            Live pipeline view across every delivery stage with role-based controls.
+          </div>
         </div>
       </div>
 
       <div className="kpis pipeline-kpis" style={{ marginTop: 20 }}>
         {[
-          { label: "Total Active", value: kpis.totalActive },
-          { label: "Overdue", value: kpis.overdue },
-          { label: "At Risk", value: kpis.atRisk },
-          { label: "Delivered (7d)", value: kpis.deliveredRecent },
+          { label: 'Total Active', value: kpis.totalActive },
+          { label: 'Overdue', value: kpis.overdue },
+          { label: 'At Risk', value: kpis.atRisk },
+          { label: 'Delivered (7d)', value: kpis.deliveredRecent },
         ].map((card) => (
-          <div
-            key={card.label}
-            className="card kpi-card"
-            style={{ padding: "16px 18px" }}
-          >
-            <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.65 }}>
+          <div key={card.label} className="card kpi-card" style={{ padding: '16px 18px' }}>
+            <div
+              style={{
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                opacity: 0.65,
+              }}
+            >
               {card.label}
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6 }}>{card.value}</div>
@@ -460,17 +510,24 @@ export default function DeliveryPipelinePage() {
       </div>
 
       <div className="card filter-bar filter-bar--search" style={{ marginTop: 20, padding: 14 }}>
-        <SmartSearchBar value={query} onChange={setQuery} onSubmit={fetchPipeline} placeholder="Search keyword" />
+        <SmartSearchBar
+          value={query}
+          onChange={setQuery}
+          onSubmit={fetchPipeline}
+          placeholder="Search keyword"
+        />
         {canViewOwners(currentUser?.role) && (
           <FilterSelect
             value={ownerFilter}
             onChange={setOwnerFilter}
             placeholder="Owner (AM)"
-            
             options={[
-              { value: "", label: "All Owners" },
-              { value: "unassigned", label: "Unassigned" },
-              ...ownerOptions.map((owner) => ({ value: owner.uid, label: owner.name || owner.uid })),
+              { value: '', label: 'All Owners' },
+              { value: 'unassigned', label: 'Unassigned' },
+              ...ownerOptions.map((owner) => ({
+                value: owner.uid,
+                label: owner.name || owner.uid,
+              })),
             ]}
           />
         )}
@@ -479,11 +536,13 @@ export default function DeliveryPipelinePage() {
             value={productionFilter}
             onChange={setProductionFilter}
             placeholder="Production"
-            
             options={[
-              { value: "", label: "All Production" },
-              { value: "unassigned", label: "Unassigned" },
-              ...productionOptions.map((owner) => ({ value: owner.uid, label: owner.name || owner.uid })),
+              { value: '', label: 'All Production' },
+              { value: 'unassigned', label: 'Unassigned' },
+              ...productionOptions.map((owner) => ({
+                value: owner.uid,
+                label: owner.name || owner.uid,
+              })),
             ]}
           />
         )}
@@ -491,9 +550,8 @@ export default function DeliveryPipelinePage() {
           value={priorityFilter}
           onChange={setPriorityFilter}
           placeholder="Priority"
-          
           options={[
-            { value: "", label: "All Priorities" },
+            { value: '', label: 'All Priorities' },
             ...PRIORITIES.map((priority) => ({ value: priority, label: priority })),
           ]}
         />
@@ -501,271 +559,333 @@ export default function DeliveryPipelinePage() {
           value={healthFilter}
           onChange={setHealthFilter}
           placeholder="Health"
-          
-          options={[{ value: "", label: "All Health" }, ...HEALTH_OPTIONS.map((h) => ({ value: h, label: h }))]}
+          options={[
+            { value: '', label: 'All Health' },
+            ...HEALTH_OPTIONS.map((h) => ({ value: h, label: h })),
+          ]}
         />
         <label
           style={{
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 8,
             fontSize: 13,
-            color: "var(--text-muted)",
+            color: 'var(--text-muted)',
           }}
         >
-          <input type="checkbox" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={onlyOverdue}
+            onChange={(e) => setOnlyOverdue(e.target.checked)}
+          />
           Only overdue
         </label>
       </div>
 
       <div className="table-shell">
         <div style={{ marginTop: 18, padding: 14 }}>
-        {loading ? (
-          <p style={{ fontSize: 14 }}>
-            Loading pipeline...
-          </p>
-        ) : error ? (
-          <div
-            className="card"
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--danger-soft)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
-            </div>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={fetchPipeline}
-              style={{ borderRadius: 999, padding: "8px 16px", fontWeight: 500 }}
+          {loading ? (
+            <p style={{ fontSize: 14 }}>Loading pipeline...</p>
+          ) : error ? (
+            <div
+              className="card"
+              style={{
+                padding: 16,
+                borderRadius: 16,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--danger-soft)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+              }}
             >
-              Retry
-            </button>
-          </div>
-        ) : normalizedProjects.length === 0 ? (
-          <div
-            className="card"
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              fontSize: 14,
-            }}
-          >
-            No projects in pipeline.
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 14 }}>
-            <div className="overflow-x-auto" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: columnTemplate,
-                  gap: 14,
-                  minWidth: 280 * pipelineStages.length,
-                  whiteSpace: "nowrap",
-                }}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{error.title}</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>{error.message}</div>
+              </div>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={fetchPipeline}
+                style={{ borderRadius: 999, padding: '8px 16px', fontWeight: 500 }}
               >
-              {pipelineStages.map((stage) => {
-                const items = grouped[stage] || [];
-                return (
-                  <div
-                    key={stage}
-                    className="card"
-                    style={{
-                      padding: 14,
-                      borderRadius: 16,
-                      border: "1px solid var(--border-subtle)",
-                      background: "var(--surface-card)",
-                      boxShadow: "var(--shadow-md)",
-                      display: "grid",
-                      gap: 12,
-                      minWidth: 280,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{stage}</div>
-                        <div style={{ fontSize: 12, opacity: 0.65 }}>{items.length} projects</div>
-                      </div>
-                      {stage !== "Delivered" && (
-                        <span
+                Retry
+              </button>
+            </div>
+          ) : normalizedProjects.length === 0 ? (
+            <div
+              className="card"
+              style={{
+                padding: 16,
+                borderRadius: 16,
+                fontSize: 14,
+              }}
+            >
+              No projects in pipeline.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div
+                className="overflow-x-auto"
+                style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+              >
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: columnTemplate,
+                    gap: 14,
+                    minWidth: 280 * pipelineStages.length,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {pipelineStages.map((stage) => {
+                    const items = grouped[stage] || [];
+                    return (
+                      <div
+                        key={stage}
+                        className="card"
+                        style={{
+                          padding: 14,
+                          borderRadius: 16,
+                          border: '1px solid var(--border-subtle)',
+                          background: 'var(--surface-card)',
+                          boxShadow: 'var(--shadow-md)',
+                          display: 'grid',
+                          gap: 12,
+                          minWidth: 280,
+                        }}
+                      >
+                        <div
                           style={{
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            fontSize: 11,
-                            background: "var(--surface-muted)",
-                            color: "var(--text-muted)",
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
                           }}
                         >
-                          WIP {items.length}
-                        </span>
-                      )}
-                    </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>{stage}</div>
+                            <div style={{ fontSize: 12, opacity: 0.65 }}>
+                              {items.length} projects
+                            </div>
+                          </div>
+                          {stage !== 'Delivered' && (
+                            <span
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: 999,
+                                fontSize: 11,
+                                background: 'var(--surface-muted)',
+                                color: 'var(--text-muted)',
+                              }}
+                            >
+                              WIP {items.length}
+                            </span>
+                          )}
+                        </div>
 
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {items.map((project) => {
-                        const allowedStages = getAllowedStages(project, currentUser).filter((s) => s !== project.stage);
-                        return (
-                          <div
-                            key={project.id}
-                            className="card"
-                            style={{
-                              padding: 12,
-                              borderRadius: 12,
-                              border: "1px solid var(--border-subtle)",
-                              background: "var(--surface-muted)",
-                              display: "grid",
-                              gap: 10,
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                              <div style={{ display: "grid", gap: 4 }}>
-                                <div style={{ fontWeight: 700, fontSize: 14 }}>{project.projectName}</div>
-                                <div style={{ fontSize: 12, opacity: 0.75 }}>{project.clientName || "-"}</div>
-                              </div>
-                              <button
-                                type="button"
-                                className="btn ghost"
-                                onClick={() => openDrawer(project)}
-                                style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          {items.map((project) => {
+                            const allowedStages = getAllowedStages(project, currentUser).filter(
+                              (s) => s !== project.stage,
+                            );
+                            return (
+                              <div
+                                key={project.id}
+                                className="card"
+                                style={{
+                                  padding: 12,
+                                  borderRadius: 12,
+                                  border: '1px solid var(--border-subtle)',
+                                  background: 'var(--surface-muted)',
+                                  display: 'grid',
+                                  gap: 10,
+                                }}
                               >
-                                View
-                              </button>
-                            </div>
-
-                            <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span style={{ opacity: 0.65 }}>Owner</span>
-                                <span>{project.ownerAmName || "Unassigned"}</span>
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span style={{ opacity: 0.65 }}>Due</span>
-                                <span>{fmtDate(project.dueDate)}</span>
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span style={{ opacity: 0.65 }}>Priority</span>
-                                <span className={getBadgeClass(project.priority || "Normal")}>{project.priority || "Normal"}</span>
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span style={{ opacity: 0.65 }}>Health</span>
-                                <span className={getBadgeClass(project.health || "On Track")}>
-                                  {project.health || "On Track"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {allowedStages.length > 0 ? (
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontSize: 11, opacity: 0.7 }}>Move stage</span>
-                                <select
-                                  className="input"
-                                  value=""
-                                  disabled={movingProjectId === project.id}
-                                  onChange={(e) => {
-                                    const value = e.target.value as ProjectStage;
-                                    if (!value) return;
-                                    handleMoveStage(project, value);
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    gap: 8,
                                   }}
                                 >
-                                  <option value="">Select stage</option>
-                                  {allowedStages.map((stageOption) => (
-                                    <option key={stageOption} value={stageOption}>
-                                      {stageOption}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ) : (
-                              <div style={{ fontSize: 11, opacity: 0.6 }}>No stage movement permissions.</div>
-                            )}
-                          </div>
-                        );
-                      })}
+                                  <div style={{ display: 'grid', gap: 4 }}>
+                                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                                      {project.projectName}
+                                    </div>
+                                    <div style={{ fontSize: 12, opacity: 0.75 }}>
+                                      {project.clientName || '-'}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="btn ghost"
+                                    onClick={() => openDrawer(project)}
+                                    style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
+                                  >
+                                    View
+                                  </button>
+                                </div>
 
-                      {items.length === 0 && (
-                        <div style={{ fontSize: 12, opacity: 0.6 }}>No projects here.</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                                <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <span style={{ opacity: 0.65 }}>Owner</span>
+                                    <span>{project.ownerAmName || 'Unassigned'}</span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <span style={{ opacity: 0.65 }}>Due</span>
+                                    <span>{fmtDate(project.dueDate)}</span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <span style={{ opacity: 0.65 }}>Priority</span>
+                                    <span className={getBadgeClass(project.priority || 'Normal')}>
+                                      {project.priority || 'Normal'}
+                                    </span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <span style={{ opacity: 0.65 }}>Health</span>
+                                    <span className={getBadgeClass(project.health || 'On Track')}>
+                                      {project.health || 'On Track'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {allowedStages.length > 0 ? (
+                                  <label style={{ display: 'grid', gap: 6 }}>
+                                    <span style={{ fontSize: 11, opacity: 0.7 }}>Move stage</span>
+                                    <select
+                                      className="input"
+                                      value=""
+                                      disabled={movingProjectId === project.id}
+                                      onChange={(e) => {
+                                        const value = e.target.value as ProjectStage;
+                                        if (!value) return;
+                                        handleMoveStage(project, value);
+                                      }}
+                                    >
+                                      <option value="">Select stage</option>
+                                      {allowedStages.map((stageOption) => (
+                                        <option key={stageOption} value={stageOption}>
+                                          {stageOption}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                ) : (
+                                  <div style={{ fontSize: 11, opacity: 0.6 }}>
+                                    No stage movement permissions.
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {items.length === 0 && (
+                            <div style={{ fontSize: 12, opacity: 0.6 }}>No projects here.</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                   {selected.projectName}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-muted)' }}>
                   {selected.clientName} · {selected.projectType}
                 </div>
               </div>
 
-              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999, fontWeight: 900 }}>
+              <button
+                className="btn ghost"
+                onClick={closeDrawer}
+                style={{ height: 34, borderRadius: 999, fontWeight: 900 }}
+              >
                 Close
               </button>
             </div>
 
             <div style={{ height: 16 }} />
 
-            <Section title="Project Details" >
-              <InfoRow label="Stage" value={selected.stage || "-"}  />
-              <InfoRow label="Owner (AM)" value={selected.ownerAmName || "Unassigned"}  />
-              <InfoRow label="Production" value={selected.productionName || "Unassigned"}  />
-              <InfoRow label="Priority" value={selected.priority || "Normal"}  />
-              <InfoRow label="Health" value={selected.health || "On Track"}  />
-              <InfoRow label="Due Date" value={fmtDate(selected.dueDate)}  />
+            <Section title="Project Details">
+              <InfoRow label="Stage" value={selected.stage || '-'} />
+              <InfoRow label="Owner (AM)" value={selected.ownerAmName || 'Unassigned'} />
+              <InfoRow label="Production" value={selected.productionName || 'Unassigned'} />
+              <InfoRow label="Priority" value={selected.priority || 'Normal'} />
+              <InfoRow label="Health" value={selected.health || 'On Track'} />
+              <InfoRow label="Due Date" value={fmtDate(selected.dueDate)} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Activity" >
-              <InfoRow label="Created" value={fmtDateTime(selected.createdAt)}  />
-              <InfoRow label="Updated" value={fmtDateTime(selected.updatedAt)}  />
-              <InfoRow label="Last Activity" value={fmtDateTime(selected.lastActivityAt)}  />
+            <Section title="Activity">
+              <InfoRow label="Created" value={fmtDateTime(selected.createdAt)} />
+              <InfoRow label="Updated" value={fmtDateTime(selected.updatedAt)} />
+              <InfoRow label="Last Activity" value={fmtDateTime(selected.lastActivityAt)} />
             </Section>
 
             <div style={{ height: 12 }} />
 
-            <Section title="Stage History" >
+            <Section title="Stage History">
               {selected.stageHistory && selected.stageHistory.length > 0 ? (
-                <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: 'grid', gap: 8 }}>
                   {[...selected.stageHistory]
-                    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+                    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
                     .map((entry, idx) => (
                       <div
                         key={`${entry.at}-${idx}`}
                         style={{
                           padding: 10,
                           borderRadius: 10,
-                          border: "1px solid var(--border-subtle)",
-                          display: "grid",
+                          border: '1px solid var(--border-subtle)',
+                          display: 'grid',
                           gap: 4,
                           fontSize: 12,
                         }}
                       >
                         <div style={{ fontWeight: 600 }}>
-                          {entry.from || "-"} → {entry.to || "-"}
+                          {entry.from || '-'} → {entry.to || '-'}
                         </div>
-                        <div style={{ opacity: 0.7 }}>Moved by {entry.byName || entry.byUid || "-"}</div>
+                        <div style={{ opacity: 0.7 }}>
+                          Moved by {entry.byName || entry.byUid || '-'}
+                        </div>
                         <div style={{ opacity: 0.6 }}>{fmtDateTime(entry.at)}</div>
                       </div>
                     ))}
@@ -777,8 +897,13 @@ export default function DeliveryPipelinePage() {
 
             <div style={{ height: 16 }} />
 
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" className="btn" onClick={closeDrawer} style={{ borderRadius: 12, fontWeight: 400 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={closeDrawer}
+                style={{ borderRadius: 12, fontWeight: 400 }}
+              >
                 Done
               </button>
             </div>
@@ -798,8 +923,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         borderRadius: 14,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.06em', opacity: 0.75 }}>
+        {title}
+      </div>
+      <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>{children}</div>
     </div>
   );
 }
@@ -810,14 +937,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       style={{
         padding: 12,
         borderRadius: 12,
-        border: "1px solid var(--border-subtle)",
-        display: "flex",
-        justifyContent: "space-between",
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        justifyContent: 'space-between',
         gap: 12,
       }}
     >
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontWeight: 800, textAlign: 'right' }}>{value}</div>
     </div>
   );
 }
@@ -844,8 +971,8 @@ function FilterSelect({
       }
     }
 
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   const selected = options.find((option) => option.value === value);
@@ -853,7 +980,7 @@ function FilterSelect({
   const isPlaceholder = !value;
 
   return (
-    <div ref={wrapperRef} style={{ position: "relative" }}>
+    <div ref={wrapperRef} style={{ position: 'relative' }}>
       <button
         type="button"
         className="input"
@@ -861,26 +988,26 @@ function FilterSelect({
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
+          if (event.key === 'Escape') {
             setOpen(false);
           }
-          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+          if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
             event.preventDefault();
             setOpen(true);
           }
         }}
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 12,
-          textAlign: "left",
-          cursor: "pointer",
+          textAlign: 'left',
+          cursor: 'pointer',
         }}
       >
         <span
           style={{
-            color: isPlaceholder ? "var(--text-muted)" : "inherit",
+            color: isPlaceholder ? 'var(--text-muted)' : 'inherit',
           }}
         >
           {label}
@@ -888,10 +1015,10 @@ function FilterSelect({
         <span
           aria-hidden
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-muted)",
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-muted)',
           }}
         >
           ▾
@@ -903,21 +1030,21 @@ function FilterSelect({
           role="listbox"
           tabIndex={-1}
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
             left: 0,
-            width: "100%",
+            width: '100%',
             zIndex: 20,
             padding: 8,
             borderRadius: 12,
-            border: "1px solid var(--border-subtle)",
-            background: "var(--surface-card)",
-            boxShadow: "var(--shadow-md)",
-            display: "grid",
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--surface-card)',
+            boxShadow: 'var(--shadow-md)',
+            display: 'grid',
             gap: 4,
           }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setOpen(false);
+            if (event.key === 'Escape') setOpen(false);
           }}
         >
           {options.map((option) => {
@@ -933,20 +1060,22 @@ function FilterSelect({
                   setOpen(false);
                 }}
                 style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 10px",
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 10px',
                   borderRadius: 10,
-                  border: "none",
-                  background: active ? "var(--surface-muted)" : "transparent",
-                  color: "var(--text-primary)",
-                  cursor: "pointer",
+                  border: 'none',
+                  background: active ? 'var(--surface-muted)' : 'transparent',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = "var(--surface-muted)";
+                  event.currentTarget.style.background = 'var(--surface-muted)';
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = active ? "var(--surface-muted)" : "transparent";
+                  event.currentTarget.style.background = active
+                    ? 'var(--surface-muted)'
+                    : 'transparent';
                 }}
               >
                 {option.label}

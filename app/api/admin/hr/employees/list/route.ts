@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { monitoringLogger } from "@/lib/monitoring/logger";
-import { requireHrAccess, toIso } from "../../_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { monitoringLogger } from '@/lib/monitoring/logger';
+import { requireHrAccess, toIso } from '../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,18 +12,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 500);
+    const cursor = req.nextUrl.searchParams.get('cursor');
 
     let query: FirebaseFirestore.Query = adminDb
-      .collection("users")
-      .where("tenantId", "==", access.user.tenantId)
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
+      .collection('users')
+      .where('tenantId', '==', access.user.tenantId)
+      .where('isDeleted', '==', false)
+      .orderBy('createdAt', 'desc')
       .limit(limit + 1);
 
     if (cursor) {
-      const cursorDoc = await adminDb.collection("users").doc(cursor).get();
+      const cursorDoc = await adminDb.collection('users').doc(cursor).get();
       if (cursorDoc.exists && cursorDoc.data()?.tenantId === access.user.tenantId) {
         query = query.startAfter(cursorDoc);
       }
@@ -58,7 +58,11 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    monitoringLogger.error("HR employees list error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    monitoringLogger
+      .error('HR employees list error', 'hr', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      .catch(() => undefined);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

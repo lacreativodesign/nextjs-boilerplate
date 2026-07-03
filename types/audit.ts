@@ -1,49 +1,49 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
 export type AuditAction =
-  | "create"
-  | "read"
-  | "update"
-  | "delete"
-  | "login"
-  | "logout"
-  | "login_failed"
-  | "mfa_enabled"
-  | "mfa_disabled"
-  | "password_changed"
-  | "export"
-  | "import"
-  | "bulk_update"
-  | "bulk_delete"
-  | "role_changed"
-  | "permission_changed"
-  | "settings_changed";
+  | 'create'
+  | 'read'
+  | 'update'
+  | 'delete'
+  | 'login'
+  | 'logout'
+  | 'login_failed'
+  | 'mfa_enabled'
+  | 'mfa_disabled'
+  | 'password_changed'
+  | 'export'
+  | 'import'
+  | 'bulk_update'
+  | 'bulk_delete'
+  | 'role_changed'
+  | 'permission_changed'
+  | 'settings_changed';
 
 export type AuditResource =
-  | "user"
-  | "tenant"
-  | "role"
-  | "permission"
-  | "invoice"
-  | "customer"
-  | "product"
-  | "order"
-  | "payment"
-  | "expense"
-  | "report"
-  | "settings"
-  | "integration"
-  | "project"
-  | "deal"
-  | "lead"
-  | "payroll"
-  | "change_request"
-  | "approval"
-  | "file"
-  | "event"
-  | "notification"
-  | "email"
-  | "attendance";
+  | 'user'
+  | 'tenant'
+  | 'role'
+  | 'permission'
+  | 'invoice'
+  | 'customer'
+  | 'product'
+  | 'order'
+  | 'payment'
+  | 'expense'
+  | 'report'
+  | 'settings'
+  | 'integration'
+  | 'project'
+  | 'deal'
+  | 'lead'
+  | 'payroll'
+  | 'change_request'
+  | 'approval'
+  | 'file'
+  | 'event'
+  | 'notification'
+  | 'email'
+  | 'attendance';
 
 export interface AuditLog {
   id: string;
@@ -65,7 +65,7 @@ export interface AuditLog {
     location?: string;
     sessionId?: string;
   };
-  status: "success" | "failure";
+  status: 'success' | 'failure';
   errorMessage?: string;
   timestamp: Timestamp;
   createdAt: Timestamp;

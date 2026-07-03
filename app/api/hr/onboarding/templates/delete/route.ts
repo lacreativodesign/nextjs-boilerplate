@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrEvent, requireHrAccess, serverTimestamp } from '../../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -12,43 +12,43 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const id = String(body?.id || "").trim();
+    const id = String(body?.id || '').trim();
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Missing template id" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing template id' }, { status: 400 });
     }
 
-    const snap = await adminDb.collection("onboardingTemplates").doc(id).get();
+    const snap = await adminDb.collection('onboardingTemplates').doc(id).get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Template not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Template not found' }, { status: 404 });
     }
 
     const existing = snap.data() || {};
-    if (access.user.role !== "super_admin" && existing?.tenantId !== access.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Template not found" }, { status: 404 });
+    if (access.user.role !== 'super_admin' && existing?.tenantId !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: 'Template not found' }, { status: 404 });
     }
 
-    await adminDb.collection("onboardingTemplates").doc(id).set(
+    await adminDb.collection('onboardingTemplates').doc(id).set(
       {
         isDeleted: true,
         updatedAt: serverTimestamp(),
         deletedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     await createHrEvent({
-      type: "hr.onboarding_template_deleted",
-      title: "Onboarding template deleted",
-      description: `${String(existing.name || "Onboarding template")} deleted.`,
-      entityType: "onboardingTemplate",
+      type: 'hr.onboarding_template_deleted',
+      title: 'Onboarding template deleted',
+      description: `${String(existing.name || 'Onboarding template')} deleted.`,
+      entityType: 'onboardingTemplate',
       entityId: id,
       createdByUid: access.user.uid,
-      createdByName: access.user.name || access.user.email || "Admin",
+      createdByName: access.user.name || access.user.email || 'Admin',
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("HR onboarding templates delete error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR onboarding templates delete error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

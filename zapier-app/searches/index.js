@@ -19,7 +19,13 @@ const makeSearch = (key, noun, inputFields) => ({
 });
 
 module.exports = {
-  find_client_by_email: makeSearch('find_client_by_email', 'Find Client by Email', [{ key: 'email', required: true }]),
-  find_invoice_by_number: makeSearch('find_invoice_by_number', 'Find Invoice by Number', [{ key: 'orderId', required: true }]),
-  find_project_by_name: makeSearch('find_project_by_name', 'Find Project by Name', [{ key: 'projectName', required: true }]),
+  find_client_by_email: makeSearch('find_client_by_email', 'Find Client by Email', [
+    { key: 'email', required: true },
+  ]),
+  find_invoice_by_number: makeSearch('find_invoice_by_number', 'Find Invoice by Number', [
+    { key: 'orderId', required: true },
+  ]),
+  find_project_by_name: makeSearch('find_project_by_name', 'Find Project by Name', [
+    { key: 'projectName', required: true },
+  ]),
 };

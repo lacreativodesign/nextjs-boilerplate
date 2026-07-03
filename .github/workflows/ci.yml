@@ -31,12 +31,12 @@ jobs:
         run: npm run build
         env:
           # Provide minimal env vars for build to succeed
-          NEXT_PUBLIC_FIREBASE_API_KEY: "fake-for-ci"
-          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "fake-for-ci"
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: "fake-for-ci"
-          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "fake-for-ci"
-          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "fake-for-ci"
-          NEXT_PUBLIC_FIREBASE_APP_ID: "fake-for-ci"
-          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
-          NEXT_PUBLIC_DEFAULT_TENANT_ID: "test"
-          NEXTAUTH_SECRET: "ci-test-secret"
+          NEXT_PUBLIC_FIREBASE_API_KEY: 'fake-for-ci'
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'fake-for-ci'
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'fake-for-ci'
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'fake-for-ci'
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: 'fake-for-ci'
+          NEXT_PUBLIC_FIREBASE_APP_ID: 'fake-for-ci'
+          NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
+          NEXT_PUBLIC_DEFAULT_TENANT_ID: 'test'
+          NEXTAUTH_SECRET: 'ci-test-secret'

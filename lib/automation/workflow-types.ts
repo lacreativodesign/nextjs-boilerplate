@@ -1,23 +1,23 @@
-export type WorkflowStatus = "active" | "disabled";
-export type WorkflowTriggerType = "manual" | "scheduled" | "event";
-export type WorkflowEventName = "record_created" | "record_updated" | "field_changed";
+export type WorkflowStatus = 'active' | 'disabled';
+export type WorkflowTriggerType = 'manual' | 'scheduled' | 'event';
+export type WorkflowEventName = 'record_created' | 'record_updated' | 'field_changed';
 
 export type WorkflowTrigger =
-  | { type: "manual" }
-  | { type: "scheduled"; cron: string; timezone?: string }
-  | { type: "event"; event: WorkflowEventName; entity: string; field?: string };
+  | { type: 'manual' }
+  | { type: 'scheduled'; cron: string; timezone?: string }
+  | { type: 'event'; event: WorkflowEventName; entity: string; field?: string };
 
 export type ConditionOperator =
-  | "eq"
-  | "neq"
-  | "gt"
-  | "gte"
-  | "lt"
-  | "lte"
-  | "contains"
-  | "in"
-  | "is_empty"
-  | "not_empty";
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'contains'
+  | 'in'
+  | 'is_empty'
+  | 'not_empty';
 
 export type WorkflowCondition = {
   id: string;
@@ -26,11 +26,11 @@ export type WorkflowCondition = {
   value?: unknown;
 };
 
-export type ApprovalMode = "sequential" | "parallel";
+export type ApprovalMode = 'sequential' | 'parallel';
 
 export type ApprovalStep = {
   id: string;
-  type: "user" | "role" | "manager" | "group";
+  type: 'user' | 'role' | 'manager' | 'group';
   userIds?: string[];
   roles?: string[];
   groupIds?: string[];
@@ -40,41 +40,41 @@ export type ApprovalStep = {
 export type WorkflowAction =
   | {
       id: string;
-      type: "create_record";
+      type: 'create_record';
       entity: string;
       payload: Record<string, unknown>;
     }
   | {
       id: string;
-      type: "update_field";
+      type: 'update_field';
       entity: string;
       field: string;
       value: unknown;
     }
   | {
       id: string;
-      type: "delete_record";
+      type: 'delete_record';
       entity: string;
       recordIdField: string;
     }
   | {
       id: string;
-      type: "send_email";
+      type: 'send_email';
       to: string[];
       subject: string;
       body: string;
     }
   | {
       id: string;
-      type: "webhook";
+      type: 'webhook';
       url: string;
-      method: "POST" | "PUT" | "PATCH";
+      method: 'POST' | 'PUT' | 'PATCH';
       body?: Record<string, unknown>;
       headers?: Record<string, string>;
     }
   | {
       id: string;
-      type: "approval";
+      type: 'approval';
       mode: ApprovalMode;
       steps: ApprovalStep[];
       expiresInHours?: number;
@@ -103,14 +103,14 @@ export type WorkflowExecutionContext = {
   actorUid?: string;
   record?: Record<string, unknown>;
   previousRecord?: Record<string, unknown>;
-  triggerSource: "manual" | "schedule" | "event" | "test";
+  triggerSource: 'manual' | 'schedule' | 'event' | 'test';
 };
 
-export type WorkflowRunStatus = "running" | "success" | "failed" | "awaiting_approval";
+export type WorkflowRunStatus = 'running' | 'success' | 'failed' | 'awaiting_approval';
 
 export type WorkflowRunLog = {
   ts: string;
-  level: "info" | "warn" | "error";
+  level: 'info' | 'warn' | 'error';
   message: string;
   data?: Record<string, unknown>;
 };

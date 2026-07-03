@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { requireFinance } from "../../_utils";
-import { assertPermission, Permission } from "../../../../lib/permissions";
-import { POST as updatePayment } from "../update/route";
+import { NextResponse } from 'next/server';
+import { requireFinance } from '../../_utils';
+import { assertPermission, Permission } from '../../../../lib/permissions';
+import { POST as updatePayment } from '../update/route';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const auth = await requireFinance();
@@ -14,13 +14,13 @@ export async function POST(req: Request) {
   try {
     assertPermission(auth.user.role, Permission.MarkPaymentPaid);
   } catch {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 
   const body = await req.json();
-  const nextBody = { ...body, action: "mark_paid" };
+  const nextBody = { ...body, action: 'mark_paid' };
   const nextReq = new Request(req.url, {
-    method: "POST",
+    method: 'POST',
     headers: req.headers,
     body: JSON.stringify(nextBody),
   });

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { CheckCircle, Circle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { CheckCircle, Circle } from 'lucide-react';
 
 type Stage = { id: string; title: string; count: number; pct: number };
 type TenantRow = {
@@ -21,15 +21,15 @@ export default function ActivationFunnelPage() {
 
   useEffect(() => {
     let active = true;
-    void apiFetch("/api/super_admin/activation-funnel", { cache: "no-store" })
+    void apiFetch('/api/super_admin/activation-funnel', { cache: 'no-store' })
       .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(`Request failed (${res.status})`))
+        res.ok ? res.json() : Promise.reject(new Error(`Request failed (${res.status})`)),
       )
       .then((payload) => {
         if (active) setData(payload);
       })
       .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load");
+        if (active) setError(e instanceof Error ? e.message : 'Failed to load');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -41,8 +41,7 @@ export default function ActivationFunnelPage() {
 
   if (loading)
     return <div className="p-6 text-[var(--text-muted)]">Loading activation funnel…</div>;
-  if (error)
-    return <div className="p-6 text-[var(--text-muted)]">Unable to load: {error}</div>;
+  if (error) return <div className="p-6 text-[var(--text-muted)]">Unable to load: {error}</div>;
   if (!data) return null;
 
   return (
@@ -50,7 +49,7 @@ export default function ActivationFunnelPage() {
       <div className="mb-2">
         <h1 className="page-title">Activation Funnel</h1>
         <p className="page-subtitle">
-          {data.totalTenants} tenant{data.totalTenants === 1 ? "" : "s"} — how far each has
+          {data.totalTenants} tenant{data.totalTenants === 1 ? '' : 's'} — how far each has
           progressed.
         </p>
       </div>

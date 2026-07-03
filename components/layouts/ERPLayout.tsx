@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api/client';
 
 export default function ERPLayout({
   children,
-  title = "Dashboard",
-  role = "admin",
+  title = 'Dashboard',
+  role = 'admin',
 }: {
   children: React.ReactNode;
   title?: string;
@@ -15,54 +15,53 @@ export default function ERPLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const menuItemsByRole: Record<string, Array<{ label: string; href: string }>> =
-    {
-      admin: [
-        { label: "Overview", href: "/admin" },
-        { label: "Create User", href: "/admin/users/create" },
-        { label: "View Users", href: "/admin/users" },
-        { label: "User Management", href: "/admin/user-management" },
-      ],
-      sales: [{ label: "Sales Dashboard", href: "/sales" }],
-      account_manager: [{ label: "Account Manager", href: "/am" }],
-      production: [{ label: "Production Dashboard", href: "/production" }],
-      hr: [{ label: "HR Dashboard", href: "/hr" }],
-      finance: [{ label: "Finance Dashboard", href: "/finance" }],
-      client: [
-        { label: "Client Dashboard", href: "/client" },
-        { label: "Profile Settings", href: "/client/settings" },
-      ],
-    };
+  const menuItemsByRole: Record<string, Array<{ label: string; href: string }>> = {
+    admin: [
+      { label: 'Overview', href: '/admin' },
+      { label: 'Create User', href: '/admin/users/create' },
+      { label: 'View Users', href: '/admin/users' },
+      { label: 'User Management', href: '/admin/user-management' },
+    ],
+    sales: [{ label: 'Sales Dashboard', href: '/sales' }],
+    account_manager: [{ label: 'Account Manager', href: '/am' }],
+    production: [{ label: 'Production Dashboard', href: '/production' }],
+    hr: [{ label: 'HR Dashboard', href: '/hr' }],
+    finance: [{ label: 'Finance Dashboard', href: '/finance' }],
+    client: [
+      { label: 'Client Dashboard', href: '/client' },
+      { label: 'Profile Settings', href: '/client/settings' },
+    ],
+  };
 
   const menuItems = menuItemsByRole[role] || [];
 
   async function handleLogout() {
     try {
-      await apiFetch("/api/logout", { method: "POST" });
-      window.location.href = "/login";
+      await apiFetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login';
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error('Logout failed:', err);
     }
   }
 
   return (
     <div
       style={{
-        display: "flex",
-        minHeight: "100vh",
-        background: "#f9fafb",
-        fontFamily: "Inter, sans-serif",
+        display: 'flex',
+        minHeight: '100vh',
+        background: '#f9fafb',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       {/* Sidebar */}
       <aside
         style={{
           width: sidebarOpen ? 240 : 70,
-          transition: "width 0.2s ease",
-          background: "#111827",
-          color: "#fff",
+          transition: 'width 0.2s ease',
+          background: '#111827',
+          color: '#fff',
           paddingTop: 20,
-          boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
+          boxShadow: '2px 0 5px rgba(0,0,0,0.1)',
         }}
       >
         <button
@@ -71,25 +70,25 @@ export default function ERPLayout({
             marginLeft: 20,
             marginBottom: 20,
             padding: 10,
-            background: "#1f2937",
-            color: "#fff",
+            background: '#1f2937',
+            color: '#fff',
             borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
+            border: 'none',
+            cursor: 'pointer',
             fontSize: 14,
-            width: sidebarOpen ? "80%" : "50px",
+            width: sidebarOpen ? '80%' : '50px',
           }}
         >
-          {sidebarOpen ? "⬅ Collapse" : "➡"}
+          {sidebarOpen ? '⬅ Collapse' : '➡'}
         </button>
 
         {menuItems.map((item) => (
           <Link key={item.href} href={item.href}>
             <div
               style={{
-                padding: "12px 20px",
-                cursor: "pointer",
-                color: "#d1d5db",
+                padding: '12px 20px',
+                cursor: 'pointer',
+                color: '#d1d5db',
                 fontWeight: 500,
               }}
             >
@@ -103,12 +102,12 @@ export default function ERPLayout({
       <main style={{ flex: 1 }}>
         <header
           style={{
-            background: "#fff",
-            padding: "20px 30px",
-            borderBottom: "1px solid #e5e7eb",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            background: '#fff',
+            padding: '20px 30px',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
           <h1 style={{ fontSize: 22, fontWeight: 600 }}>{title}</h1>
@@ -116,12 +115,12 @@ export default function ERPLayout({
           <button
             onClick={handleLogout}
             style={{
-              padding: "8px 16px",
-              background: "#ef4444",
-              color: "#fff",
+              padding: '8px 16px',
+              background: '#ef4444',
+              color: '#fff',
               borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
+              border: 'none',
+              cursor: 'pointer',
               fontWeight: 600,
             }}
           >

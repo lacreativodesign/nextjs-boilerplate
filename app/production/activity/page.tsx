@@ -103,7 +103,7 @@ export default function ProductionActivityPage() {
         item.fromStage,
         item.toStage,
       ]),
-    [rows, search]
+    [rows, search],
   );
 
   return (

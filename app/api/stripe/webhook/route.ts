@@ -1,92 +1,91 @@
-import crypto from "crypto";
-import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-import Stripe from "stripe";
-import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
-import { DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from "../../../../lib/tenant/constants";
-import { PLAN_MODULES } from "../../../../app/config/plans";
-import { createPasswordSetupToken, sendSetPasswordEmail } from "../../../../lib/passwordSetup";
-import { createRoleNotifications, type NotificationType } from "@/lib/notifications";
-import { writeAuditLog } from "@/lib/tenant/audit";
+import crypto from 'crypto';
+import { NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
+import Stripe from 'stripe';
+import { adminAuth, adminDb } from '../../../../lib/firebaseAdmin';
+import { DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from '../../../../lib/tenant/constants';
+import { PLAN_MODULES } from '../../../../app/config/plans';
+import { createPasswordSetupToken, sendSetPasswordEmail } from '../../../../lib/passwordSetup';
+import { createRoleNotifications, type NotificationType } from '@/lib/notifications';
+import { writeAuditLog } from '@/lib/tenant/audit';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const ALLOWED_EVENTS = new Set([
-  "checkout.session.completed",
-]);
+const ALLOWED_EVENTS = new Set(['checkout.session.completed']);
 
 // Checkout sessions Bizosto itself originated (app signup, platform, marketing site).
 // Only these provision/link a tenant; any other checkout.session.completed is ignored.
-const TRUSTED_CHECKOUT_SOURCES = new Set([
-  "bizosto_app",
-  "bizosto_platform",
-  "bizosto_website",
-]);
+const TRUSTED_CHECKOUT_SOURCES = new Set(['bizosto_app', 'bizosto_platform', 'bizosto_website']);
 
-type BillingCycle = "monthly" | "annual";
+type BillingCycle = 'monthly' | 'annual';
 
-type BillingStatus = "active" | "past_due" | "canceled";
+type BillingStatus = 'active' | 'past_due' | 'canceled';
 
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured.");
+    throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
-  return new Stripe(secretKey, { apiVersion: "2024-04-10" });
+  return new Stripe(secretKey, { apiVersion: '2024-04-10' });
 }
 
 function requireWebhookSecret() {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured.');
   }
   return secret;
 }
 
 function normalizeEmail(value: string | null | undefined) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function deriveTenantName(email: string) {
-  const domain = email.split("@")[1] || "";
-  const base = domain.split(".")[0] || "";
-  if (!base) return "Bizosto Tenant";
-  return base.replace(/[^a-z0-9]/gi, " ").trim() || "Bizosto Tenant";
+  const domain = email.split('@')[1] || '';
+  const base = domain.split('.')[0] || '';
+  if (!base) return 'Bizosto Tenant';
+  return base.replace(/[^a-z0-9]/gi, ' ').trim() || 'Bizosto Tenant';
 }
 
 function slugify(value: string) {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
     .slice(0, 48);
 }
 
 function parseBillingCycle(value: string | null | undefined): BillingCycle | null {
-  if (value === "monthly" || value === "annual") return value;
+  if (value === 'monthly' || value === 'annual') return value;
   return null;
 }
 
-function normalizeBillingStatus(status: Stripe.Subscription.Status, eventType: string): BillingStatus {
-  if (eventType === "customer.subscription.deleted") {
-    return "canceled";
+function normalizeBillingStatus(
+  status: Stripe.Subscription.Status,
+  eventType: string,
+): BillingStatus {
+  if (eventType === 'customer.subscription.deleted') {
+    return 'canceled';
   }
 
-  if (status === "active" || status === "trialing") {
-    return "active";
+  if (status === 'active' || status === 'trialing') {
+    return 'active';
   }
 
-  if (status === "canceled") {
-    return "canceled";
+  if (status === 'canceled') {
+    return 'canceled';
   }
 
-  return "past_due";
+  return 'past_due';
 }
 
 function formatBillingStatus(status: BillingStatus | null | undefined) {
-  if (!status) return "unknown";
-  return status.replace(/_/g, " ");
+  if (!status) return 'unknown';
+  return status.replace(/_/g, ' ');
 }
 
 function buildSubscriptionNotification({
@@ -101,17 +100,18 @@ function buildSubscriptionNotification({
   const previousLabel = formatBillingStatus(previousStatus);
   const nextLabel = formatBillingStatus(nextStatus);
   const title =
-    nextStatus === "active"
-      ? "Subscription active"
-      : nextStatus === "past_due"
-      ? "Subscription past due"
-      : "Subscription canceled";
+    nextStatus === 'active'
+      ? 'Subscription active'
+      : nextStatus === 'past_due'
+        ? 'Subscription past due'
+        : 'Subscription canceled';
   const body =
     previousStatus && previousStatus !== nextStatus
       ? `${tenantName} subscription changed from ${previousLabel} to ${nextLabel}.`
       : `${tenantName} subscription is now ${nextLabel}.`;
-  const type: NotificationType = nextStatus === "active" ? "success" : nextStatus === "past_due" ? "warning" : "warning";
-  const priority: "low" | "normal" | "high" = nextStatus === "active" ? "normal" : "high";
+  const type: NotificationType =
+    nextStatus === 'active' ? 'success' : nextStatus === 'past_due' ? 'warning' : 'warning';
+  const priority: 'low' | 'normal' | 'high' = nextStatus === 'active' ? 'normal' : 'high';
   return { title, body, type, priority };
 }
 
@@ -126,7 +126,7 @@ async function ensureAdminUser({
 }) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
-    throw new Error("Admin email is required.");
+    throw new Error('Admin email is required.');
   }
 
   let userRecord = await adminAuth.getUserByEmail(normalizedEmail).catch(() => null);
@@ -135,8 +135,8 @@ async function ensureAdminUser({
   if (!userRecord) {
     userRecord = await adminAuth.createUser({
       email: normalizedEmail,
-      password: crypto.randomBytes(16).toString("hex"),
-      displayName: normalizedEmail.split("@")[0],
+      password: crypto.randomBytes(16).toString('hex'),
+      displayName: normalizedEmail.split('@')[0],
     });
     isNewUser = true;
   }
@@ -144,33 +144,33 @@ async function ensureAdminUser({
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   await adminDb
-    .collection("users")
+    .collection('users')
     .doc(userRecord.uid)
     .set(
       {
         uid: userRecord.uid,
         email: normalizedEmail,
-        displayName: userRecord.displayName || normalizedEmail.split("@")[0],
-        role: "admin",
+        displayName: userRecord.displayName || normalizedEmail.split('@')[0],
+        role: 'admin',
         tenantId,
-        status: "active",
+        status: 'active',
         updatedAt: now,
         createdAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
 
   if (isNewUser) {
     const tokenData = await createPasswordSetupToken({
       uid: userRecord.uid,
       email: normalizedEmail,
-      createdBy: "stripe_checkout",
+      createdBy: 'stripe_checkout',
     });
     await sendSetPasswordEmail({ email: normalizedEmail, link: tokenData.link });
 
-    await adminDb.collection("events").add({
-      type: "stripe.admin_invited",
-      title: "Admin invited",
+    await adminDb.collection('events').add({
+      type: 'stripe.admin_invited',
+      title: 'Admin invited',
       description: `Stripe checkout admin invite sent for ${tenantName}`,
       createdAt: now,
       updatedAt: now,
@@ -196,26 +196,28 @@ async function linkExistingTenant({
   billingCycle: BillingCycle;
 }): Promise<boolean> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const ref = adminDb.collection("tenants").doc(tenantId);
+  const ref = adminDb.collection('tenants').doc(tenantId);
   const snap = await ref.get();
   if (!snap.exists) return false;
   await ref.set(
     {
       stripeCustomerId,
       stripeSubscriptionId,
-      billingStatus: "active",
+      billingStatus: 'active',
       billingCycle,
-      status: "active",
+      status: 'active',
       updatedAt: now,
     },
-    { merge: true }
+    { merge: true },
   );
   return true;
 }
 
 function resolveCheckoutPlan(value: unknown): keyof typeof PLAN_MODULES {
-  const plan = String(value || "").trim().toLowerCase();
-  if (plan === "starter" || plan === "pro" || plan === "enterprise") {
+  const plan = String(value || '')
+    .trim()
+    .toLowerCase();
+  if (plan === 'starter' || plan === 'pro' || plan === 'enterprise') {
     return plan;
   }
   // Fail closed: never silently grant a plan (previously hardcoded to "pro"). If checkout metadata
@@ -240,12 +242,12 @@ async function ensureTenantForCheckout({
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   return adminDb.runTransaction(async (tx) => {
-    const tenantsRef = adminDb.collection("tenants");
+    const tenantsRef = adminDb.collection('tenants');
     const byCustomerSnap = await tx.get(
-      tenantsRef.where("stripeCustomerId", "==", stripeCustomerId).limit(1)
+      tenantsRef.where('stripeCustomerId', '==', stripeCustomerId).limit(1),
     );
     const bySubscriptionSnap = await tx.get(
-      tenantsRef.where("stripeSubscriptionId", "==", stripeSubscriptionId).limit(1)
+      tenantsRef.where('stripeSubscriptionId', '==', stripeSubscriptionId).limit(1),
     );
 
     const existingDoc = byCustomerSnap.docs[0] || bySubscriptionSnap.docs[0];
@@ -257,31 +259,31 @@ async function ensureTenantForCheckout({
         {
           stripeCustomerId,
           stripeSubscriptionId,
-          billingStatus: "active",
+          billingStatus: 'active',
           billingCycle,
-          status: "active",
+          status: 'active',
           updatedAt: now,
         },
-        { merge: true }
+        { merge: true },
       );
 
       return {
         tenantId: existingDoc.id,
-        tenantName: String(existingData.name || "Bizosto Tenant"),
+        tenantName: String(existingData.name || 'Bizosto Tenant'),
         created: false,
       };
     }
 
     const name = deriveTenantName(email);
-    const slugBase = slugify(name) || "bizosto-tenant";
+    const slugBase = slugify(name) || 'bizosto-tenant';
     const tenantRef = tenantsRef.doc();
     const slug = `${slugBase}-${tenantRef.id.slice(0, 6)}`;
 
     tx.set(tenantRef, {
       name,
       slug,
-      status: "active",
-      source: "stripe_checkout",
+      status: 'active',
+      source: 'stripe_checkout',
       brand: {
         ...DEFAULT_TENANT_BRAND,
         name,
@@ -290,21 +292,21 @@ async function ensureTenantForCheckout({
       rolesEnabled: DEFAULT_ROLES,
       plan,
       settings: {
-        currency: "USD",
-        timezone: "UTC",
-        country: "",
-        state: "",
+        currency: 'USD',
+        timezone: 'UTC',
+        country: '',
+        state: '',
       },
       modules: { ...PLAN_MODULES[plan] },
-      planSetBy: { uid: "system", role: "super_admin" },
+      planSetBy: { uid: 'system', role: 'super_admin' },
       planUpdatedAt: now,
       stripeCustomerId,
       stripeSubscriptionId,
-      billingStatus: "active",
+      billingStatus: 'active',
       billingCycle,
       createdAt: now,
       updatedAt: now,
-      updatedBy: "system",
+      updatedBy: 'system',
     });
 
     return { tenantId: tenantRef.id, tenantName: name, created: true };
@@ -319,16 +321,19 @@ async function updateSubscriptionStatus({
   eventType: string;
 }) {
   const customerId =
-    typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
   const subscriptionId = subscription.id;
   const billingStatus = normalizeBillingStatus(subscription.status, eventType);
   const billingCycle = parseBillingCycle(subscription.metadata?.billingCycle);
 
-  const tenantsRef = adminDb.collection("tenants");
-  let tenantSnap = await tenantsRef.where("stripeSubscriptionId", "==", subscriptionId).limit(1).get();
+  const tenantsRef = adminDb.collection('tenants');
+  let tenantSnap = await tenantsRef
+    .where('stripeSubscriptionId', '==', subscriptionId)
+    .limit(1)
+    .get();
 
   if (tenantSnap.empty && customerId) {
-    tenantSnap = await tenantsRef.where("stripeCustomerId", "==", customerId).limit(1).get();
+    tenantSnap = await tenantsRef.where('stripeCustomerId', '==', customerId).limit(1).get();
   }
 
   const tenantDoc = tenantSnap.docs[0];
@@ -338,7 +343,7 @@ async function updateSubscriptionStatus({
 
   const tenantData = tenantDoc.data() || {};
   const previousStatus = (tenantData.billingStatus || null) as BillingStatus | null;
-  const tenantName = String(tenantData.name || "Bizosto Tenant");
+  const tenantName = String(tenantData.name || 'Bizosto Tenant');
 
   const updatePayload: Record<string, unknown> = {
     stripeCustomerId: customerId,
@@ -363,15 +368,15 @@ async function updateSubscriptionStatus({
     await Promise.all([
       createRoleNotifications({
         tenantId: tenantDoc.id,
-        roles: ["admin", "finance"],
+        roles: ['admin', 'finance'],
         title: notificationCopy.title,
         body: notificationCopy.body,
         type: notificationCopy.type,
         priority: notificationCopy.priority,
-        entityType: "subscription",
+        entityType: 'subscription',
         entityId: subscriptionId,
-        deepLink: "/billing",
-        createdBy: { uid: "system", name: "Stripe" },
+        deepLink: '/billing',
+        createdBy: { uid: 'system', name: 'Stripe' },
         metadata: {
           previousStatus,
           billingStatus,
@@ -382,16 +387,16 @@ async function updateSubscriptionStatus({
       }),
       createRoleNotifications({
         tenantId: tenantDoc.id,
-        roles: ["super_admin"],
+        roles: ['super_admin'],
         recipientTenantId: null,
         title: notificationCopy.title,
         body: notificationCopy.body,
         type: notificationCopy.type,
         priority: notificationCopy.priority,
-        entityType: "subscription",
+        entityType: 'subscription',
         entityId: subscriptionId,
-        deepLink: "/super_admin/tenants",
-        createdBy: { uid: "system", name: "Stripe" },
+        deepLink: '/super_admin/tenants',
+        createdBy: { uid: 'system', name: 'Stripe' },
         metadata: {
           previousStatus,
           billingStatus,
@@ -402,11 +407,11 @@ async function updateSubscriptionStatus({
       }),
       writeAuditLog({
         tenantId: tenantDoc.id,
-        actorUserId: "system",
-        actorName: "Stripe",
-        actorRole: "system",
-        actionType: "subscription_status_changed",
-        entityType: "subscription",
+        actorUserId: 'system',
+        actorName: 'Stripe',
+        actorRole: 'system',
+        actionType: 'subscription_status_changed',
+        entityType: 'subscription',
         entityId: subscriptionId,
         metadata: {
           previousStatus,
@@ -424,9 +429,9 @@ async function updateSubscriptionStatus({
 
 export async function POST(req: Request) {
   try {
-    const signature = req.headers.get("stripe-signature");
+    const signature = req.headers.get('stripe-signature');
     if (!signature) {
-      return NextResponse.json({ ok: false, error: "Missing signature." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing signature.' }, { status: 400 });
     }
 
     const body = await req.text();
@@ -434,7 +439,7 @@ export async function POST(req: Request) {
     const webhookSecret = requireWebhookSecret();
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
-    const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+    const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
     const processedSnap = await processedRef.get();
     if (processedSnap.exists) {
       return NextResponse.json({ ok: true, received: true });
@@ -446,23 +451,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, received: true });
     }
 
-    if (event.type === "checkout.session.completed") {
+    if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata || {};
 
-      if (!TRUSTED_CHECKOUT_SOURCES.has(metadata.source || "")) {
+      if (!TRUSTED_CHECKOUT_SOURCES.has(metadata.source || '')) {
         return NextResponse.json({ ok: true, received: true });
       }
 
       const email = normalizeEmail(session.customer_details?.email || session.customer_email);
-      const stripeCustomerId = typeof session.customer === "string" ? session.customer : session.customer?.id || "";
+      const stripeCustomerId =
+        typeof session.customer === 'string' ? session.customer : session.customer?.id || '';
       const stripeSubscriptionId =
-        typeof session.subscription === "string" ? session.subscription : session.subscription?.id || "";
-      const billingCycle = parseBillingCycle(metadata.billingCycle) || "monthly";
-      const metadataTenantId = typeof metadata.tenantId === "string" ? metadata.tenantId.trim() : "";
+        typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription?.id || '';
+      const billingCycle = parseBillingCycle(metadata.billingCycle) || 'monthly';
+      const metadataTenantId =
+        typeof metadata.tenantId === 'string' ? metadata.tenantId.trim() : '';
 
       if (!stripeCustomerId || !stripeSubscriptionId) {
-        return NextResponse.json({ ok: false, error: "Missing checkout details." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: 'Missing checkout details.' },
+          { status: 400 },
+        );
       }
 
       try {
@@ -477,7 +489,11 @@ export async function POST(req: Request) {
             billingCycle,
           });
           if (linked) {
-            await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+            await processedRef.set({
+              eventId: event.id,
+              type: event.type,
+              processedAt: new Date().toISOString(),
+            });
             return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
           }
           // Tenant id present but not found — fall through to legacy create-by-email.
@@ -485,7 +501,10 @@ export async function POST(req: Request) {
 
         // Legacy / marketing-site checkout with no pre-created tenant.
         if (!email) {
-          return NextResponse.json({ ok: false, error: "Missing checkout details." }, { status: 400 });
+          return NextResponse.json(
+            { ok: false, error: 'Missing checkout details.' },
+            { status: 400 },
+          );
         }
 
         const tenantResult = await ensureTenantForCheckout({
@@ -502,7 +521,11 @@ export async function POST(req: Request) {
           tenantName: tenantResult.tenantName,
         });
 
-        await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+        await processedRef.set({
+          eventId: event.id,
+          type: event.type,
+          processedAt: new Date().toISOString(),
+        });
         return NextResponse.json({ ok: true, received: true, tenantId: tenantResult.tenantId });
       } catch (handlerErr) {
         throw handlerErr;
@@ -512,13 +535,17 @@ export async function POST(req: Request) {
     try {
       const subscription = event.data.object as Stripe.Subscription;
       await updateSubscriptionStatus({ subscription, eventType: event.type });
-      await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+      await processedRef.set({
+        eventId: event.id,
+        type: event.type,
+        processedAt: new Date().toISOString(),
+      });
       return NextResponse.json({ ok: true, received: true });
     } catch (handlerErr) {
       throw handlerErr;
     }
   } catch (err) {
-    console.error("stripe webhook error:", err);
-    return NextResponse.json({ ok: false, error: "Webhook error." }, { status: 500 });
+    console.error('stripe webhook error:', err);
+    return NextResponse.json({ ok: false, error: 'Webhook error.' }, { status: 500 });
   }
 }

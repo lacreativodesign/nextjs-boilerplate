@@ -26,9 +26,11 @@ Stripe Connect must be enabled on your Stripe account. Go to Stripe Dashboard �
 ## Sentry Error Monitoring
 
 Required:
+
 - `NEXT_PUBLIC_SENTRY_DSN` — Your Sentry project DSN (from sentry.io → Project Settings → Client Keys)
 
 Optional but recommended:
+
 - `SENTRY_ORG` — Your Sentry organization slug (required for source map uploads)
 - `SENTRY_PROJECT` — Your Sentry project slug (required for source map uploads)
 - `SENTRY_AUTH_TOKEN` — Sentry auth token for CI/CD source map uploads
@@ -39,6 +41,7 @@ Optional but recommended:
 - `NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE` — Replay rate on errors (default 1.0)
 
 Setup steps:
+
 1. Create account at sentry.io
 2. Create new project → select Next.js
 3. Copy DSN and add to Vercel environment variables

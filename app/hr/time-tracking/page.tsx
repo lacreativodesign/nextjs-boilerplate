@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import TimeTrackingDashboard from "@/components/hr/TimeTrackingDashboard";
+import TimeTrackingDashboard from '@/components/hr/TimeTrackingDashboard';
 
 export default function HrTimeTrackingPage() {
   return (

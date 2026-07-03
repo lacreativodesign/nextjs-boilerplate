@@ -1,6 +1,6 @@
-import type { DocumentVisibility } from "@/types/documents";
+import type { DocumentVisibility } from '@/types/documents';
 
-export type FileSharePermission = "view" | "download" | "edit";
+export type FileSharePermission = 'view' | 'download' | 'edit';
 
 export interface FilePermissions {
   visibility: DocumentVisibility;

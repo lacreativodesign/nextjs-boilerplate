@@ -15,7 +15,7 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       { status: 'not_ready', timestamp: new Date().toISOString() },
-      { status: 503 }
+      { status: 503 },
     );
   }
 }

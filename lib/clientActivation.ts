@@ -1,9 +1,9 @@
-import crypto from "crypto";
-import * as admin from "firebase-admin";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { createPasswordSetupToken } from "@/lib/passwordSetup";
+import crypto from 'crypto';
+import * as admin from 'firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { createPasswordSetupToken } from '@/lib/passwordSetup';
 
-const DASHBOARD_LOGIN_URL = "https://app.bizosto.com/login";
+const DASHBOARD_LOGIN_URL = 'https://app.bizosto.com/login';
 
 type ClientActivationData = {
   primaryContactEmail?: string;
@@ -21,11 +21,13 @@ type ClientActivationResult = {
 };
 
 function normalizeEmail(value: string | undefined) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function cleanString(value: string | undefined) {
-  return String(value || "").trim();
+  return String(value || '').trim();
 }
 
 export async function ensureClientAccountActivation({
@@ -39,7 +41,7 @@ export async function ensureClientAccountActivation({
 }): Promise<ClientActivationResult> {
   const email = normalizeEmail(clientData.primaryContactEmail);
   if (!email) {
-    throw new Error("Primary contact email is required for account activation.");
+    throw new Error('Primary contact email is required for account activation.');
   }
 
   const existingPortalUserUid = cleanString(clientData.portalUserUid);
@@ -48,7 +50,7 @@ export async function ensureClientAccountActivation({
   if (portalUserUid) {
     const existingUser = await adminAuth.getUser(portalUserUid).catch(() => null);
     if (!existingUser) {
-      portalUserUid = "";
+      portalUserUid = '';
     }
   }
 
@@ -57,24 +59,24 @@ export async function ensureClientAccountActivation({
     if (!userRecord) {
       userRecord = await adminAuth.createUser({
         email,
-        password: crypto.randomBytes(16).toString("hex"),
+        password: crypto.randomBytes(16).toString('hex'),
         displayName: cleanString(clientData.primaryContactName || clientData.companyName || email),
       });
     }
     portalUserUid = userRecord.uid;
   }
 
-  await adminDb.collection("users").doc(portalUserUid).set(
+  await adminDb.collection('users').doc(portalUserUid).set(
     {
       uid: portalUserUid,
-      role: "client",
-      status: "active",
+      role: 'client',
+      status: 'active',
       clientId,
       email,
       updatedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   let setPasswordLink: string | undefined;
@@ -91,14 +93,14 @@ export async function ensureClientAccountActivation({
     activationPrepared = true;
   }
 
-  await adminDb.collection("clients").doc(clientId).set(
+  await adminDb.collection('clients').doc(clientId).set(
     {
       portalUserUid,
-      accountStatus: "ACTIVE",
+      accountStatus: 'ACTIVE',
       accountActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   return {
@@ -123,13 +125,13 @@ export async function queueClientActivationInvite({
 }) {
   const email = normalizeEmail(clientData.primaryContactEmail);
   if (!email) {
-    throw new Error("Primary contact email is required for account activation.");
+    throw new Error('Primary contact email is required for account activation.');
   }
 
   const existingUserSnap = await adminDb
-    .collection("users")
-    .where("clientId", "==", clientId)
-    .where("role", "==", "client")
+    .collection('users')
+    .where('clientId', '==', clientId)
+    .where('role', '==', 'client')
     .limit(1)
     .get();
 
@@ -144,10 +146,10 @@ export async function queueClientActivationInvite({
   });
 
   if (activation.activationPrepared) {
-    await adminDb.collection("emails").add({
+    await adminDb.collection('emails').add({
       to: email,
-      template: "clientActivation",
-      subject: "Activate your BIZOSTO client account",
+      template: 'clientActivation',
+      subject: 'Activate your BIZOSTO client account',
       data: {
         clientId,
         companyName: cleanString(clientData.companyName),
@@ -156,9 +158,9 @@ export async function queueClientActivationInvite({
         dashboardLoginUrl: activation.dashboardLoginUrl,
       },
       metadata: {
-        reason: reason || "client_activation",
+        reason: reason || 'client_activation',
       },
-      status: "pending",
+      status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });

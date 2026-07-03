@@ -1,21 +1,21 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireProductionManagerOrAdmin } from "../../admin/_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { requireProductionManagerOrAdmin } from '../../admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
@@ -37,8 +37,8 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const docs = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const now = new Date();
@@ -50,26 +50,26 @@ export async function GET() {
     const queue = docs
       .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
       .sort((a, b) => {
-        const aTime = toISO(a.data.updatedAt || a.data.createdAt) || "";
-        const bTime = toISO(b.data.updatedAt || b.data.createdAt) || "";
+        const aTime = toISO(a.data.updatedAt || a.data.createdAt) || '';
+        const bTime = toISO(b.data.updatedAt || b.data.createdAt) || '';
         return String(bTime).localeCompare(String(aTime));
       })
       .slice(0, 15)
       .map(({ id, data }) => ({
         id,
-        projectName: String(data.projectName || "Untitled"),
-        stage: String(data.stage || "Draft"),
-        assignedTo: String(data.productionName || data.productionOwnerName || ""),
+        projectName: String(data.projectName || 'Untitled'),
+        stage: String(data.stage || 'Draft'),
+        assignedTo: String(data.productionName || data.productionOwnerName || ''),
         updatedAt: toISO(data.updatedAt || data.createdAt),
       }));
 
     docs.forEach((doc) => {
       const data = doc.data() || {};
-      const stage = String(data.stage || "").toLowerCase();
-      const isClosed = stage.includes("delivered") || stage.includes("completed");
+      const stage = String(data.stage || '').toLowerCase();
+      const isClosed = stage.includes('delivered') || stage.includes('completed');
       if (!isClosed) openProjects += 1;
-      if (stage.includes("draft") || stage.includes("review")) draftsPendingReview += 1;
-      if (stage.includes("revision")) revisionsInProgress += 1;
+      if (stage.includes('draft') || stage.includes('review')) draftsPendingReview += 1;
+      if (stage.includes('revision')) revisionsInProgress += 1;
       const due = toISO(data.dueDate);
       if (due) {
         const dueDate = new Date(due);
@@ -90,13 +90,13 @@ export async function GET() {
       queue,
     });
   } catch (err: any) {
-    console.error("production-manager overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('production-manager overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

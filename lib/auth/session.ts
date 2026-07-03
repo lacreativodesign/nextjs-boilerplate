@@ -1,9 +1,15 @@
-import crypto from "crypto";
-import type { Firestore } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { AppError } from "@/lib/errors";
-import { SESSION_CONFIG } from "@/lib/auth/sessionConfig";
-import { CACHE_TTL_SECONDS, cacheKeys, deleteCached, getCached, setCached } from "@/lib/cache/redis-client";
+import crypto from 'crypto';
+import type { Firestore } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { AppError } from '@/lib/errors';
+import { SESSION_CONFIG } from '@/lib/auth/sessionConfig';
+import {
+  CACHE_TTL_SECONDS,
+  cacheKeys,
+  deleteCached,
+  getCached,
+  setCached,
+} from '@/lib/cache/redis-client';
 
 export { SESSION_CONFIG };
 
@@ -31,7 +37,7 @@ function getDb(db?: Firestore) {
 }
 
 function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export function hashSessionToken(token: string) {
@@ -51,20 +57,20 @@ function sessionCacheKeyFromToken(token: string) {
 function toDate(value: any): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value.toDate === 'function') return value.toDate();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export async function createSession(
   uid: string,
-  options: CreateSessionOptions = {}
+  options: CreateSessionOptions = {},
 ): Promise<{ token: string; expiresAt: Date }> {
   const token = options.sessionCookie;
   if (!token) {
     throw new AppError({
-      message: "Session token is required to create a session.",
-      code: "VALIDATION_ERROR",
+      message: 'Session token is required to create a session.',
+      code: 'VALIDATION_ERROR',
       status: 400,
     });
   }
@@ -75,7 +81,7 @@ export async function createSession(
 
   const sessionId = hashToken(token);
   const db = getDb(options.db);
-  const ref = db.collection("sessions").doc(sessionId);
+  const ref = db.collection('sessions').doc(sessionId);
 
   await ref.set(
     {
@@ -89,7 +95,7 @@ export async function createSession(
       tokenHash: sessionId,
       rememberMe: Boolean(options.rememberMe),
     },
-    { merge: true }
+    { merge: true },
   );
 
   // Session-limit enforcement is best-effort cleanup and must NEVER block login. The security-
@@ -97,28 +103,35 @@ export async function createSession(
   try {
     await enforceSessionLimit(uid, token, db);
   } catch (limitErr) {
-    console.error("createSession: session limit enforcement skipped", limitErr);
+    console.error('createSession: session limit enforcement skipped', limitErr);
   }
 
-  await setCached(sessionCacheKeyFromToken(token), { valid: true, uid, expired: false } satisfies CachedSessionValidation, CACHE_TTL_SECONDS.sessions, [`user:${uid}:sessions`]);
+  await setCached(
+    sessionCacheKeyFromToken(token),
+    { valid: true, uid, expired: false } satisfies CachedSessionValidation,
+    CACHE_TTL_SECONDS.sessions,
+    [`user:${uid}:sessions`],
+  );
 
   return { token, expiresAt };
 }
 
 export async function validateSession(
   token: string,
-  dbOverride?: Firestore
+  dbOverride?: Firestore,
 ): Promise<{ valid: boolean; uid?: string; expired?: boolean }> {
   if (!token) return { valid: false };
 
-  const cachedValidation = await getCached<CachedSessionValidation>(sessionCacheKeyFromToken(token));
+  const cachedValidation = await getCached<CachedSessionValidation>(
+    sessionCacheKeyFromToken(token),
+  );
   if (cachedValidation) {
     return cachedValidation;
   }
 
   const sessionId = hashToken(token);
   const db = getDb(dbOverride);
-  const ref = db.collection("sessions").doc(sessionId);
+  const ref = db.collection('sessions').doc(sessionId);
   const snap = await ref.get();
 
   if (!snap.exists) {
@@ -149,7 +162,9 @@ export async function validateSession(
   }
 
   const result = { valid: true, uid: data.uid };
-  await setCached(sessionCacheKeyFromToken(token), result, CACHE_TTL_SECONDS.sessions, [`user:${data.uid}:sessions`]);
+  await setCached(sessionCacheKeyFromToken(token), result, CACHE_TTL_SECONDS.sessions, [
+    `user:${data.uid}:sessions`,
+  ]);
   return result;
 }
 
@@ -157,7 +172,7 @@ export async function refreshSession(token: string, dbOverride?: Firestore): Pro
   if (!token) return;
   const sessionId = hashToken(token);
   const db = getDb(dbOverride);
-  const ref = db.collection("sessions").doc(sessionId);
+  const ref = db.collection('sessions').doc(sessionId);
   const snap = await ref.get();
 
   if (!snap.exists) return;
@@ -171,32 +186,40 @@ export async function refreshSession(token: string, dbOverride?: Firestore): Pro
   }
 
   await ref.set({ lastActivity: now }, { merge: true });
-  await setCached(sessionCacheKeyFromToken(token), { valid: true, uid: data.uid, expired: false } satisfies CachedSessionValidation, CACHE_TTL_SECONDS.sessions, [`user:${data.uid}:sessions`]);
+  await setCached(
+    sessionCacheKeyFromToken(token),
+    { valid: true, uid: data.uid, expired: false } satisfies CachedSessionValidation,
+    CACHE_TTL_SECONDS.sessions,
+    [`user:${data.uid}:sessions`],
+  );
 }
 
 export async function invalidateSession(token: string, dbOverride?: Firestore): Promise<void> {
   if (!token) return;
   const sessionId = hashToken(token);
   const db = getDb(dbOverride);
-  await db.collection("sessions").doc(sessionId).set(
+  await db.collection('sessions').doc(sessionId).set(
     {
       active: false,
       revokedAt: new Date(),
     },
-    { merge: true }
+    { merge: true },
   );
   await deleteCached(cacheKeys.session(sessionId));
 }
 
-export async function invalidateSessionById(sessionId: string, dbOverride?: Firestore): Promise<void> {
+export async function invalidateSessionById(
+  sessionId: string,
+  dbOverride?: Firestore,
+): Promise<void> {
   if (!sessionId) return;
   const db = getDb(dbOverride);
-  await db.collection("sessions").doc(sessionId).set(
+  await db.collection('sessions').doc(sessionId).set(
     {
       active: false,
       revokedAt: new Date(),
     },
-    { merge: true }
+    { merge: true },
   );
   await deleteCached(cacheKeys.session(sessionId));
 }
@@ -204,10 +227,14 @@ export async function invalidateSessionById(sessionId: string, dbOverride?: Fire
 export async function invalidateAllSessions(
   uid: string,
   exceptToken?: string,
-  dbOverride?: Firestore
+  dbOverride?: Firestore,
 ): Promise<void> {
   const db = getDb(dbOverride);
-  const query = await db.collection("sessions").where("uid", "==", uid).where("active", "==", true).get();
+  const query = await db
+    .collection('sessions')
+    .where('uid', '==', uid)
+    .where('active', '==', true)
+    .get();
   const batch = db.batch();
   const exceptId = exceptToken ? hashToken(exceptToken) : null;
 
@@ -220,14 +247,21 @@ export async function invalidateAllSessions(
   await Promise.all(
     query.docs
       .filter((doc) => !exceptId || doc.id !== exceptId)
-      .map((doc) => deleteCached(cacheKeys.session(doc.id)))
+      .map((doc) => deleteCached(cacheKeys.session(doc.id))),
   );
 }
 
-export async function getActiveSessions(uid: string, dbOverride?: Firestore): Promise<SessionRecord[]> {
+export async function getActiveSessions(
+  uid: string,
+  dbOverride?: Firestore,
+): Promise<SessionRecord[]> {
   const db = getDb(dbOverride);
   const now = new Date();
-  const snap = await db.collection("sessions").where("uid", "==", uid).where("active", "==", true).get();
+  const snap = await db
+    .collection('sessions')
+    .where('uid', '==', uid)
+    .where('active', '==', true)
+    .get();
 
   const sessions: SessionRecord[] = [];
   const batch = db.batch();
@@ -271,16 +305,16 @@ export async function getActiveSessions(uid: string, dbOverride?: Firestore): Pr
 export async function enforceSessionLimit(
   uid: string,
   exceptToken?: string,
-  dbOverride?: Firestore
+  dbOverride?: Firestore,
 ): Promise<void> {
   const db = getDb(dbOverride);
   // Two equality filters only (no orderBy) so this needs NO composite index — a missing
   // sessions(uid, active, createdAt) index made this throw, which S8 surfaced as a login-blocking
   // 500. Sort oldest-first in memory instead; a user has only a handful of sessions.
   const query = await db
-    .collection("sessions")
-    .where("uid", "==", uid)
-    .where("active", "==", true)
+    .collection('sessions')
+    .where('uid', '==', uid)
+    .where('active', '==', true)
     .get();
 
   const exceptId = exceptToken ? hashToken(exceptToken) : null;

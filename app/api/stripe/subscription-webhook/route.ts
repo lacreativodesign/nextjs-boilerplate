@@ -24,11 +24,11 @@ function mapStripeStatusToSubscriptionState(status: string) {
   }
 }
 
-function normalizeBillingStatus(status: string): "active" | "past_due" | "canceled" {
-  if (status === "active" || status === "trialing") return "active";
-  if (status === "canceled") return "canceled";
+function normalizeBillingStatus(status: string): 'active' | 'past_due' | 'canceled' {
+  if (status === 'active' || status === 'trialing') return 'active';
+  if (status === 'canceled') return 'canceled';
   // past_due, unpaid, incomplete, incomplete_expired, paused -> restrict
-  return "past_due";
+  return 'past_due';
 }
 
 async function resolveTenantIdFromInvoice(
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid signature' }, { status: 400 });
   }
 
-  const processedRef = adminDb.collection("processed_webhook_events").doc(event.id);
+  const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
   const processedSnap = await processedRef.get();
   if (processedSnap.exists) {
     return NextResponse.json({ ok: true, received: true });
@@ -189,7 +189,9 @@ export async function POST(req: Request) {
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · bizosto.com</p></td></tr>
 </table></td></tr></table></body></html>`,
-        }).catch((err) => console.error('[STRIPE] Failed to notify super admin of cancellation', err));
+        }).catch((err) =>
+          console.error('[STRIPE] Failed to notify super admin of cancellation', err),
+        );
         break;
       }
       case 'invoice.payment_succeeded': {
@@ -289,7 +291,9 @@ export async function POST(req: Request) {
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · bizosto.com</p></td></tr>
 </table></td></tr></table></body></html>`,
-        }).catch((err) => console.error('[STRIPE] Failed to notify super admin of payment failure', err));
+        }).catch((err) =>
+          console.error('[STRIPE] Failed to notify super admin of payment failure', err),
+        );
         break;
       }
       case 'invoice.finalized': {
@@ -297,16 +301,19 @@ export async function POST(req: Request) {
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
         if (!tenantId) break;
 
-        await adminDb.collection('tenants').doc(tenantId).set(
-          {
-            lastInvoiceTax: Number((invoice.tax || 0)) / 100,
-            lastInvoiceTotal: Number((invoice.total || 0)) / 100,
-            lastInvoiceSubtotal: Number((invoice.subtotal || 0)) / 100,
-            lastInvoiceTaxAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true },
-        );
+        await adminDb
+          .collection('tenants')
+          .doc(tenantId)
+          .set(
+            {
+              lastInvoiceTax: Number(invoice.tax || 0) / 100,
+              lastInvoiceTotal: Number(invoice.total || 0) / 100,
+              lastInvoiceSubtotal: Number(invoice.subtotal || 0) / 100,
+              lastInvoiceTaxAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true },
+          );
         break;
       }
       case 'customer.tax_id.created': {
@@ -325,6 +332,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Webhook handler failed' }, { status: 500 });
   }
 
-  await processedRef.set({ eventId: event.id, type: event.type, processedAt: new Date().toISOString() });
+  await processedRef.set({
+    eventId: event.id,
+    type: event.type,
+    processedAt: new Date().toISOString(),
+  });
   return NextResponse.json({ ok: true, received: true });
 }

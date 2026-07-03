@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { ImportRowError } from "@/types/import-export";
+import type { ImportRowError } from '@/types/import-export';
 
 type Props = {
   errors: ImportRowError[];
@@ -20,7 +20,10 @@ export default function ImportErrorList({ errors, downloadUrl }: Props) {
       </div>
       <ul className="max-h-60 space-y-1 overflow-auto text-xs">
         {errors.map((error, idx) => (
-          <li key={`${error.row}-${error.field}-${idx}`} className="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-800">
+          <li
+            key={`${error.row}-${error.field}-${idx}`}
+            className="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-800"
+          >
             Row {error.row} - {error.code}: {error.message}
           </li>
         ))}

@@ -1,19 +1,19 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import crypto from "crypto";
-import { generateInvoiceToken } from "@/lib/finance/invoiceToken";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import crypto from 'crypto';
+import { generateInvoiceToken } from '@/lib/finance/invoiceToken';
 
-const ZAPIER_HOOKS_COLLECTION = "zapier_hook_subscriptions";
-const ZAPIER_EVENTS_COLLECTION = "zapier_events";
+const ZAPIER_HOOKS_COLLECTION = 'zapier_hook_subscriptions';
+const ZAPIER_EVENTS_COLLECTION = 'zapier_events';
 
 export const ZAPIER_TRIGGER_TO_EVENT = {
-  new_invoice_created: "invoice.created",
-  invoice_paid: "invoice.paid",
-  new_client_added: "client.created",
-  task_completed: "task.completed",
-  project_status_changed: "project.status_changed",
-  payment_received: "payment.received",
-  leave_request_submitted: "leave.requested",
+  new_invoice_created: 'invoice.created',
+  invoice_paid: 'invoice.paid',
+  new_client_added: 'client.created',
+  task_completed: 'task.completed',
+  project_status_changed: 'project.status_changed',
+  payment_received: 'payment.received',
+  leave_request_submitted: 'leave.requested',
 } as const;
 
 export type ZapierTriggerKey = keyof typeof ZAPIER_TRIGGER_TO_EVENT;
@@ -29,24 +29,32 @@ function nowIso() {
 }
 
 function cleanString(value: unknown) {
-  return String(value || "").trim();
+  return String(value || '').trim();
 }
 
 export async function resolveZapierTenant(apiKeyRaw: unknown) {
   const apiKey = cleanString(apiKeyRaw);
   if (!apiKey) return null;
 
-  const apiKeyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
+  const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
   // Try hashed lookup first
-  const hashedSnap = await adminDb.collection("tenants").where("apiKeyHash", "==", apiKeyHash).limit(1).get();
+  const hashedSnap = await adminDb
+    .collection('tenants')
+    .where('apiKeyHash', '==', apiKeyHash)
+    .limit(1)
+    .get();
   if (!hashedSnap.empty) {
     const tenantDoc = hashedSnap.docs[0];
     return { tenantId: tenantDoc.id, tenant: tenantDoc.data() || {} };
   }
 
   // Fallback to plaintext for tenants not yet migrated
-  const plainSnap = await adminDb.collection("tenants").where("apiKey", "==", apiKey).limit(1).get();
+  const plainSnap = await adminDb
+    .collection('tenants')
+    .where('apiKey', '==', apiKey)
+    .limit(1)
+    .get();
   if (plainSnap.empty) return null;
 
   const tenantDoc = plainSnap.docs[0];
@@ -69,7 +77,7 @@ export async function createZapierHookSubscription(params: {
     triggerKey: params.triggerKey,
     eventName: ZAPIER_TRIGGER_TO_EVENT[params.triggerKey],
     targetUrl: params.targetUrl,
-    status: "active",
+    status: 'active',
     createdAt,
     updatedAt: createdAt,
     lastTriggeredAt: null as string | null,
@@ -85,7 +93,7 @@ export async function deleteZapierHookSubscription(params: { id: string; tenantI
   if (!snap.exists) return false;
 
   const data = snap.data() || {};
-  if (String(data.tenantId || "") !== params.tenantId) return false;
+  if (String(data.tenantId || '') !== params.tenantId) return false;
 
   await ref.delete();
   return true;
@@ -121,9 +129,9 @@ export async function dispatchZapierTriggerEvent(params: {
 
   const hooksSnap = await adminDb
     .collection(ZAPIER_HOOKS_COLLECTION)
-    .where("tenantId", "==", params.tenantId)
-    .where("eventName", "==", params.eventName)
-    .where("status", "==", "active")
+    .where('tenantId', '==', params.tenantId)
+    .where('eventName', '==', params.eventName)
+    .where('status', '==', 'active')
     .get();
 
   await Promise.all(
@@ -132,12 +140,12 @@ export async function dispatchZapierTriggerEvent(params: {
       const hookRef = adminDb.collection(ZAPIER_HOOKS_COLLECTION).doc(hookDoc.id);
 
       try {
-        await fetch(String(hook.targetUrl || ""), {
-          method: "POST",
+        await fetch(String(hook.targetUrl || ''), {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "X-Bizosto-Source": "zapier",
-            "X-Bizosto-Event": params.eventName,
+            'Content-Type': 'application/json',
+            'X-Bizosto-Source': 'zapier',
+            'X-Bizosto-Event': params.eventName,
           },
           body: JSON.stringify({
             id: eventRef.id,
@@ -155,18 +163,18 @@ export async function dispatchZapierTriggerEvent(params: {
             lastTriggeredAt: createdAt,
             updatedAt: createdAt,
           },
-          { merge: true }
+          { merge: true },
         );
       } catch (error: any) {
         await hookRef.set(
           {
-            lastError: String(error?.message || "Webhook push failed"),
+            lastError: String(error?.message || 'Webhook push failed'),
             updatedAt: createdAt,
           },
-          { merge: true }
+          { merge: true },
         );
       }
-    })
+    }),
   );
 
   return { eventId: eventRef.id, hooks: hooksSnap.size };
@@ -180,11 +188,11 @@ export async function executeZapierAction(params: {
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   switch (params.action) {
-    case "create_invoice": {
-      const ref = adminDb.collection("invoices").doc();
+    case 'create_invoice': {
+      const ref = adminDb.collection('invoices').doc();
       const orderId = cleanString(params.input.orderId) || `ZAP-${Date.now()}`;
       const amountTotal = Number(params.input.amountTotal || 0);
-      const status = cleanString(params.input.status || "draft").toLowerCase();
+      const status = cleanString(params.input.status || 'draft').toLowerCase();
       const record = {
         tenantId: params.tenantId,
         orderId,
@@ -193,7 +201,7 @@ export async function executeZapierAction(params: {
         clientName: cleanString(params.input.clientName),
         amountTotal,
         amountTotalUsd: amountTotal,
-        currency: cleanString(params.input.currency || "USD"),
+        currency: cleanString(params.input.currency || 'USD'),
         status,
         lineItems: Array.isArray(params.input.lineItems) ? params.input.lineItems : [],
         notes: cleanString(params.input.notes) || null,
@@ -204,8 +212,8 @@ export async function executeZapierAction(params: {
       await ref.set(record);
       return { id: ref.id, ...record };
     }
-    case "create_client": {
-      const ref = adminDb.collection("clients").doc();
+    case 'create_client': {
+      const ref = adminDb.collection('clients').doc();
       const email = cleanString(params.input.primaryContactEmail).toLowerCase();
       const record = {
         tenantId: params.tenantId,
@@ -215,23 +223,23 @@ export async function executeZapierAction(params: {
         primaryContactEmailLower: email,
         primaryContactPhone: cleanString(params.input.primaryContactPhone),
         salesOwner: cleanString(params.input.salesOwner),
-        paymentStatus: "Unpaid",
-        orderId: "",
+        paymentStatus: 'Unpaid',
+        orderId: '',
         createdAt: now,
         updatedAt: now,
       };
       await ref.set(record);
       return { id: ref.id, ...record };
     }
-    case "create_task": {
-      const ref = adminDb.collection("tasks").doc();
+    case 'create_task': {
+      const ref = adminDb.collection('tasks').doc();
       const record = {
         tenantId: params.tenantId,
         projectId: cleanString(params.input.projectId),
         title: cleanString(params.input.title),
         description: cleanString(params.input.description),
-        status: cleanString(params.input.status || "todo"),
-        priority: cleanString(params.input.priority || "medium"),
+        status: cleanString(params.input.status || 'todo'),
+        priority: cleanString(params.input.priority || 'medium'),
         assignedTo: cleanString(params.input.assignedTo) || null,
         createdAt: now,
         updatedAt: now,
@@ -239,15 +247,15 @@ export async function executeZapierAction(params: {
       await ref.set(record);
       return { id: ref.id, ...record };
     }
-    case "create_project": {
-      const ref = adminDb.collection("projects").doc();
+    case 'create_project': {
+      const ref = adminDb.collection('projects').doc();
       const record = {
         tenantId: params.tenantId,
         projectName: cleanString(params.input.projectName),
         clientId: cleanString(params.input.clientId),
         clientName: cleanString(params.input.clientName),
-        stage: cleanString(params.input.stage || "Kickoff"),
-        projectType: cleanString(params.input.projectType || "Other"),
+        stage: cleanString(params.input.stage || 'Kickoff'),
+        projectType: cleanString(params.input.projectType || 'Other'),
         isDeleted: false,
         createdAt: now,
         updatedAt: now,
@@ -255,21 +263,21 @@ export async function executeZapierAction(params: {
       await ref.set(record);
       return { id: ref.id, ...record };
     }
-    case "update_invoice_status": {
+    case 'update_invoice_status': {
       const invoiceId = cleanString(params.input.invoiceId);
-      if (!invoiceId) throw new Error("invoiceId is required.");
-      const ref = adminDb.collection("invoices").doc(invoiceId);
+      if (!invoiceId) throw new Error('invoiceId is required.');
+      const ref = adminDb.collection('invoices').doc(invoiceId);
       const snap = await ref.get();
-      if (!snap.exists) throw new Error("Invoice not found.");
+      if (!snap.exists) throw new Error('Invoice not found.');
       const row = snap.data() || {};
-      if (String(row.tenantId || "") !== params.tenantId) throw new Error("Forbidden");
+      if (String(row.tenantId || '') !== params.tenantId) throw new Error('Forbidden');
 
-      const status = cleanString(params.input.status || "draft").toLowerCase();
+      const status = cleanString(params.input.status || 'draft').toLowerCase();
       await ref.set({ status, updatedAt: now }, { merge: true });
       return { id: invoiceId, status };
     }
-    case "send_notification": {
-      const ref = adminDb.collection("notifications").doc();
+    case 'send_notification': {
+      const ref = adminDb.collection('notifications').doc();
       const record = {
         tenantId: params.tenantId,
         title: cleanString(params.input.title),
@@ -278,7 +286,7 @@ export async function executeZapierAction(params: {
         userId: cleanString(params.input.toUserId) || null,
         recipientUid: cleanString(params.input.toUserId) || null,
         toRole: cleanString(params.input.toRole) || null,
-        type: cleanString(params.input.type || "info"),
+        type: cleanString(params.input.type || 'info'),
         read: false,
         isRead: false,
         createdAt: now,
@@ -288,7 +296,7 @@ export async function executeZapierAction(params: {
       return { id: ref.id, ...record };
     }
     default:
-      throw new Error("Unsupported action.");
+      throw new Error('Unsupported action.');
   }
 }
 
@@ -298,38 +306,45 @@ export async function executeZapierSearch(params: {
   input: Record<string, unknown>;
 }) {
   switch (params.search) {
-    case "find_client_by_email": {
+    case 'find_client_by_email': {
       const email = cleanString(params.input.email).toLowerCase();
       const snap = await adminDb
-        .collection("clients")
-        .where("tenantId", "==", params.tenantId)
-        .where("primaryContactEmailLower", "==", email)
+        .collection('clients')
+        .where('tenantId', '==', params.tenantId)
+        .where('primaryContactEmailLower', '==', email)
         .limit(1)
         .get();
       if (snap.empty) return null;
       const row = snap.docs[0];
       return { id: row.id, ...row.data() };
     }
-    case "find_invoice_by_number": {
+    case 'find_invoice_by_number': {
       const orderId = cleanString(params.input.orderId || params.input.invoiceNumber);
       const snap = await adminDb
-        .collection("invoices")
-        .where("tenantId", "==", params.tenantId)
-        .where("orderId", "==", orderId)
+        .collection('invoices')
+        .where('tenantId', '==', params.tenantId)
+        .where('orderId', '==', orderId)
         .limit(1)
         .get();
       if (snap.empty) return null;
       const row = snap.docs[0];
       return { id: row.id, ...row.data() };
     }
-    case "find_project_by_name": {
+    case 'find_project_by_name': {
       const name = cleanString(params.input.projectName).toLowerCase();
-      const snap = await adminDb.collection("projects").where("tenantId", "==", params.tenantId).limit(50).get();
-      const match = snap.docs.find((doc: FirebaseFirestore.QueryDocumentSnapshot) => cleanString(doc.data()?.projectName || doc.data()?.name).toLowerCase() === name);
+      const snap = await adminDb
+        .collection('projects')
+        .where('tenantId', '==', params.tenantId)
+        .limit(50)
+        .get();
+      const match = snap.docs.find(
+        (doc: FirebaseFirestore.QueryDocumentSnapshot) =>
+          cleanString(doc.data()?.projectName || doc.data()?.name).toLowerCase() === name,
+      );
       if (!match) return null;
       return { id: match.id, ...match.data() };
     }
     default:
-      throw new Error("Unsupported search.");
+      throw new Error('Unsupported search.');
   }
 }

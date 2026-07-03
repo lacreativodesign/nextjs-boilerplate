@@ -1,31 +1,35 @@
-import admin from "firebase-admin";
-import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdminOrSuper } from "@/app/api/admin/_utils";
+import admin from 'firebase-admin';
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import {
   buildTemplatePayload,
   emailTemplateSchema,
   ensurePrebuiltTemplates,
   toIso,
   writeTemplateVersion,
-} from "@/lib/email/template-repository";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { normalizeTenantId } from "@/lib/tenant";
+} from '@/lib/email/template-repository';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { normalizeTenantId } from '@/lib/tenant';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
     const me = await getCurrentUser();
-    if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    if (!isAdminOrSuper(me.role)) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    if (!isAdminOrSuper(me.role))
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
 
     const parsed = emailTemplateSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Invalid payload', details: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
 
     const payload = buildTemplatePayload(parsed.data, me);
-    const ref = adminDb.collection("email_templates").doc();
+    const ref = adminDb.collection('email_templates').doc();
     await ref.set({
       ...payload,
       createdBy: me.uid,
@@ -49,25 +53,30 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, id: ref.id }, { status: 201 });
   } catch (error: any) {
-    console.error("POST /api/email/templates error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to create template" }, { status: 500 });
+    console.error('POST /api/email/templates error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Failed to create template' },
+      { status: 500 },
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const me = await getCurrentUser();
-    if (!me) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
     await ensurePrebuiltTemplates(me);
 
     const tenantId = normalizeTenantId(me.tenantId || null);
-    const category = request.nextUrl.searchParams.get("category");
+    const category = request.nextUrl.searchParams.get('category');
 
-    let query: FirebaseFirestore.Query = adminDb.collection("email_templates").where("tenantId", "==", tenantId);
-    if (category) query = query.where("category", "==", category);
+    let query: FirebaseFirestore.Query = adminDb
+      .collection('email_templates')
+      .where('tenantId', '==', tenantId);
+    if (category) query = query.where('category', '==', category);
 
-    const snap = await query.orderBy("updatedAt", "desc").get();
+    const snap = await query.orderBy('updatedAt', 'desc').get();
     const templates = snap.docs.map((doc) => {
       const data = doc.data() as Record<string, any>;
       return {
@@ -80,7 +89,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, templates });
   } catch (error: any) {
-    console.error("GET /api/email/templates error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to list templates" }, { status: 500 });
+    console.error('GET /api/email/templates error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Failed to list templates' },
+      { status: 500 },
+    );
   }
 }

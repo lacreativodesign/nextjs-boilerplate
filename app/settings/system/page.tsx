@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useState } from 'react';
+import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { apiFetch } from '@/lib/api/client';
 
 type SystemSettings = {
   maintenanceMode?: boolean;
@@ -19,15 +19,15 @@ export default function SettingsSystemPage() {
     maintenanceMode: false,
     allowSignups: true,
     maxTenantsPerPlan: 10,
-    defaultPlan: "starter",
-    supportEmail: "",
+    defaultPlan: 'starter',
+    supportEmail: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    apiFetch("/api/admin/settings/system")
+    apiFetch('/api/admin/settings/system')
       .then((r) => r.json())
       .then((res) => {
         if (res.ok && res.settings) setSettings(res.settings);
@@ -36,7 +36,7 @@ export default function SettingsSystemPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (role && role !== "super_admin") {
+  if (role && role !== 'super_admin') {
     return (
       <div className="card p-6">
         <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">Access Restricted</h2>
@@ -51,9 +51,9 @@ export default function SettingsSystemPage() {
     e.preventDefault();
     try {
       setSaving(true);
-      await apiFetch("/api/admin/settings/system", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/admin/settings/system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
       setSaved(true);
@@ -64,37 +64,32 @@ export default function SettingsSystemPage() {
     }
   };
 
-  const set = (key: string, val: unknown) =>
-    setSettings((p) => ({ ...p, [key]: val }));
+  const set = (key: string, val: unknown) => setSettings((p) => ({ ...p, [key]: val }));
 
   if (loading)
     return (
-      <div className="card p-6 text-sm text-[var(--text-muted)]">
-        Loading system settings...
-      </div>
+      <div className="card p-6 text-sm text-[var(--text-muted)]">Loading system settings...</div>
     );
 
   return (
     <div className="max-w-xl">
       <form onSubmit={handleSave} className="space-y-6">
         <div className="card space-y-4 p-6">
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">
-            Platform Controls
-          </h2>
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Platform Controls</h2>
           <p className="text-sm text-[var(--text-muted)]">
             Super admin only. These affect the entire platform.
           </p>
 
           {[
             {
-              label: "Maintenance Mode",
-              key: "maintenanceMode",
-              desc: "Disables access for all non-super-admin users.",
+              label: 'Maintenance Mode',
+              key: 'maintenanceMode',
+              desc: 'Disables access for all non-super-admin users.',
             },
             {
-              label: "Allow New Signups",
-              key: "allowSignups",
-              desc: "Enable or disable new tenant registrations.",
+              label: 'Allow New Signups',
+              key: 'allowSignups',
+              desc: 'Enable or disable new tenant registrations.',
             },
           ].map((f) => (
             <div
@@ -102,27 +97,21 @@ export default function SettingsSystemPage() {
               className="flex items-center justify-between border-b border-[var(--border-subtle)] py-2 last:border-0"
             >
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">
-                  {f.label}
-                </p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">{f.label}</p>
                 <p className="text-xs text-[var(--text-muted)]">{f.desc}</p>
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  set(f.key, !settings[f.key as keyof typeof settings])
-                }
+                onClick={() => set(f.key, !settings[f.key as keyof typeof settings])}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   settings[f.key as keyof SystemSettings]
-                    ? "bg-[var(--erp-blue)]"
-                    : "bg-[var(--surface-muted)]"
+                    ? 'bg-[var(--erp-blue)]'
+                    : 'bg-[var(--surface-muted)]'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings[f.key as keyof SystemSettings]
-                      ? "translate-x-6"
-                      : "translate-x-1"
+                    settings[f.key as keyof SystemSettings] ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -136,8 +125,8 @@ export default function SettingsSystemPage() {
             <input
               type="email"
               className="input w-full"
-              value={settings.supportEmail || ""}
-              onChange={(e) => set("supportEmail", e.target.value)}
+              value={settings.supportEmail || ''}
+              onChange={(e) => set('supportEmail', e.target.value)}
               placeholder="support@yourdomain.com"
             />
           </div>
@@ -148,10 +137,10 @@ export default function SettingsSystemPage() {
             </label>
             <select
               className="input w-full"
-              value={settings.defaultPlan || "starter"}
-              onChange={(e) => set("defaultPlan", e.target.value)}
+              value={settings.defaultPlan || 'starter'}
+              onChange={(e) => set('defaultPlan', e.target.value)}
             >
-              {["starter", "growth", "enterprise"].map((p) => (
+              {['starter', 'growth', 'enterprise'].map((p) => (
                 <option key={p} value={p}>
                   {p.charAt(0).toUpperCase() + p.slice(1)}
                 </option>
@@ -161,11 +150,7 @@ export default function SettingsSystemPage() {
         </div>
 
         <button type="submit" className="btn w-full" disabled={saving}>
-          {saving
-            ? "Saving..."
-            : saved
-              ? "✓ System Settings Saved!"
-              : "Save System Settings"}
+          {saving ? 'Saving...' : saved ? '✓ System Settings Saved!' : 'Save System Settings'}
         </button>
       </form>
     </div>

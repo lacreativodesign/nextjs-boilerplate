@@ -14,10 +14,7 @@ const customJestConfig = {
   },
   testMatch: ['<rootDir>/__tests__/**/*.test.ts?(x)'],
   collectCoverage: true,
-  collectCoverageFrom: [
-    'lib/**/*.{ts,tsx}',
-    '!lib/**/*.d.ts',
-  ],
+  collectCoverageFrom: ['lib/**/*.{ts,tsx}', '!lib/**/*.d.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   // Coverage ratchet: baseline set just below current actuals so `npm test` is a

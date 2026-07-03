@@ -1,20 +1,25 @@
-const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
+const baseUrl = process.env.QA_BASE_URL || 'http://localhost:3000';
 
 const checks = [
-  { path: "/login", name: "login page", expectStatus: 200 },
-  { path: "/", name: "root redirect", expectRedirect: "/login" },
-  { path: "/admin", name: "admin protected", expectRedirect: "/login" },
-  { path: "/am", name: "am protected", expectRedirect: "/login" },
-  { path: "/account_manager", name: "legacy account_manager", expectRedirect: "/am", expectStatus: 308 },
-  { path: "/customer", name: "legacy customer", expectRedirect: "/client", expectStatus: 308 },
-  { path: "/forbidden", name: "forbidden page", expectStatus: 200 },
-  { path: "/module-disabled", name: "module-disabled page", expectStatus: 200 },
-  { path: "/suspended", name: "suspended page", expectStatus: 200 },
+  { path: '/login', name: 'login page', expectStatus: 200 },
+  { path: '/', name: 'root redirect', expectRedirect: '/login' },
+  { path: '/admin', name: 'admin protected', expectRedirect: '/login' },
+  { path: '/am', name: 'am protected', expectRedirect: '/login' },
+  {
+    path: '/account_manager',
+    name: 'legacy account_manager',
+    expectRedirect: '/am',
+    expectStatus: 308,
+  },
+  { path: '/customer', name: 'legacy customer', expectRedirect: '/client', expectStatus: 308 },
+  { path: '/forbidden', name: 'forbidden page', expectStatus: 200 },
+  { path: '/module-disabled', name: 'module-disabled page', expectStatus: 200 },
+  { path: '/suspended', name: 'suspended page', expectStatus: 200 },
 ];
 
 async function fetchOnce(path) {
-  const res = await fetch(new URL(path, baseUrl), { redirect: "manual" });
-  const location = res.headers.get("location");
+  const res = await fetch(new URL(path, baseUrl), { redirect: 'manual' });
+  const location = res.headers.get('location');
   return { res, location };
 }
 
@@ -58,6 +63,6 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error("QA smoke failed:", err.message || err);
+  console.error('QA smoke failed:', err.message || err);
   process.exit(1);
 });

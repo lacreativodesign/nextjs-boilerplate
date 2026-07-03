@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useMemo, useRef, useState } from 'react';
 
 type FileUploaderProps = {
   onUploadComplete?: (documentId: string) => void;
   category?: string;
   folderId?: string;
-  visibility?: "private" | "team" | "public";
+  visibility?: 'private' | 'team' | 'public';
   relatedResourceType?: string;
   relatedResourceId?: string;
 };
@@ -33,22 +33,26 @@ export function FileUploader({
 
   const acceptedTypes = useMemo(
     () => [
-      "image/png",
-      "image/jpeg",
-      "image/gif",
-      "image/webp",
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "text/csv",
-      "text/plain",
+      'image/png',
+      'image/jpeg',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain',
     ],
-    []
+    [],
   );
 
-  const runWithConcurrency = async (files: File[], limit: number, worker: (file: File) => Promise<UploadResult>) => {
+  const runWithConcurrency = async (
+    files: File[],
+    limit: number,
+    worker: (file: File) => Promise<UploadResult>,
+  ) => {
     const results: UploadResult[] = [];
     let index = 0;
 
@@ -69,15 +73,15 @@ export function FileUploader({
     (file: File) =>
       new Promise<UploadResult>((resolve) => {
         const formData = new FormData();
-        formData.append("file", file);
-        if (category) formData.append("category", category);
-        if (folderId) formData.append("folderId", folderId);
-        if (visibility) formData.append("visibility", visibility);
-        if (relatedResourceType) formData.append("relatedResourceType", relatedResourceType);
-        if (relatedResourceId) formData.append("relatedResourceId", relatedResourceId);
+        formData.append('file', file);
+        if (category) formData.append('category', category);
+        if (folderId) formData.append('folderId', folderId);
+        if (visibility) formData.append('visibility', visibility);
+        if (relatedResourceType) formData.append('relatedResourceType', relatedResourceType);
+        if (relatedResourceId) formData.append('relatedResourceId', relatedResourceId);
 
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/documents/upload", true);
+        xhr.open('POST', '/api/documents/upload', true);
 
         xhr.upload.onprogress = (event) => {
           if (!event.lengthComputable) return;
@@ -91,18 +95,18 @@ export function FileUploader({
             onUploadComplete?.(data.documentId);
             resolve({ file, success: true, documentId: data.documentId });
           } else {
-            const data = JSON.parse(xhr.responseText || "{}");
-            resolve({ file, success: false, error: data.error || "Upload failed" });
+            const data = JSON.parse(xhr.responseText || '{}');
+            resolve({ file, success: false, error: data.error || 'Upload failed' });
           }
         };
 
         xhr.onerror = () => {
-          resolve({ file, success: false, error: "Upload failed" });
+          resolve({ file, success: false, error: 'Upload failed' });
         };
 
         xhr.send(formData);
       }),
-    [category, folderId, visibility, relatedResourceId, relatedResourceType, onUploadComplete]
+    [category, folderId, visibility, relatedResourceId, relatedResourceType, onUploadComplete],
   );
 
   const handleFiles = useCallback(
@@ -114,7 +118,7 @@ export function FileUploader({
 
       const validFiles = files.filter((file) => acceptedTypes.includes(file.type));
       if (validFiles.length !== files.length) {
-        setError("Some files were skipped because their types are not allowed.");
+        setError('Some files were skipped because their types are not allowed.');
       }
 
       const results = await runWithConcurrency(validFiles, 3, uploadFile);
@@ -126,14 +130,14 @@ export function FileUploader({
       setUploading(false);
       setProgress(0);
     },
-    [acceptedTypes, uploadFile]
+    [acceptedTypes, uploadFile],
   );
 
   const handleInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     await handleFiles(files);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
@@ -156,9 +160,7 @@ export function FileUploader({
         multiple
         onChange={handleInputChange}
         className="hidden"
-        accept={
-          ".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-        }
+        accept={'.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt'}
       />
 
       {uploading ? (
@@ -186,7 +188,9 @@ export function FileUploader({
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
             />
           </svg>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">Drag and drop files here, or click to select</p>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Drag and drop files here, or click to select
+          </p>
           <p className="mt-1 text-xs text-[var(--text-muted)]">Max file size: 50MB</p>
         </div>
       )}

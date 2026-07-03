@@ -1,22 +1,22 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
-import { logEvent } from "@/lib/audit";
-import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { generateNextOrderId } from "@/lib/orderIds";
-import { queueEmailEvent } from "./emailEvents";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
+import { logEvent } from '@/lib/audit';
+import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { generateNextOrderId } from '@/lib/orderIds';
+import { queueEmailEvent } from './emailEvents';
 
 const DEFAULT_KICKOFF_CHECKLIST = [
-  { key: "welcome_call", label: "Schedule welcome call", done: false },
-  { key: "contract", label: "Collect signed agreement", done: false },
-  { key: "assets", label: "Request brand assets", done: false },
-  { key: "timeline", label: "Align on timeline + milestones", done: false },
+  { key: 'welcome_call', label: 'Schedule welcome call', done: false },
+  { key: 'contract', label: 'Collect signed agreement', done: false },
+  { key: 'assets', label: 'Request brand assets', done: false },
+  { key: 'timeline', label: 'Align on timeline + milestones', done: false },
 ];
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   if (tenantId === DEFAULT_TENANT_ID) {
-    queries.push(query.where("tenantId", "==", null));
+    queries.push(query.where('tenantId', '==', null));
   }
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
@@ -31,17 +31,18 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 }
 
 function resolveProjectDeepLink(role: string) {
-  const normalized = String(role || "").toLowerCase();
-  if (normalized === "production_manager" || normalized === "production") return "/production/projects";
-  if (normalized === "am_manager" || normalized === "am") return "/am/projects";
-  if (normalized === "client") return "/client/projects";
-  return "/admin/projects";
+  const normalized = String(role || '').toLowerCase();
+  if (normalized === 'production_manager' || normalized === 'production')
+    return '/production/projects';
+  if (normalized === 'am_manager' || normalized === 'am') return '/am/projects';
+  if (normalized === 'client') return '/client/projects';
+  return '/admin/projects';
 }
 
 async function getUserRole(uid: string) {
-  const snap = await adminDb.collection("users").doc(uid).get();
-  if (!snap.exists) return "";
-  return String(snap.data()?.role || "");
+  const snap = await adminDb.collection('users').doc(uid).get();
+  if (!snap.exists) return '';
+  return String(snap.data()?.role || '');
 }
 
 export async function createProjectFromDeal({
@@ -58,11 +59,14 @@ export async function createProjectFromDeal({
   stageOverride?: string | null;
 }) {
   const scopedTenantId = normalizeTenantId(tenantId || deal?.tenantId || client?.tenantId);
-  const dealId = String(deal?.id || deal?.dealId || "");
-  const clientId = String(client?.id || client?.clientId || deal?.clientId || "");
+  const dealId = String(deal?.id || deal?.dealId || '');
+  const clientId = String(client?.id || client?.clientId || deal?.clientId || '');
 
   const existingByDeal = dealId
-    ? await queryWithTenant(adminDb.collection("projects").where("dealId", "==", dealId).limit(1), scopedTenantId)
+    ? await queryWithTenant(
+        adminDb.collection('projects').where('dealId', '==', dealId).limit(1),
+        scopedTenantId,
+      )
     : [];
 
   if (existingByDeal.length) {
@@ -70,22 +74,27 @@ export async function createProjectFromDeal({
   }
 
   const existingByOrder = deal?.orderId
-    ? await queryWithTenant(adminDb.collection("projects").where("orderId", "==", deal.orderId).limit(1), scopedTenantId)
+    ? await queryWithTenant(
+        adminDb.collection('projects').where('orderId', '==', deal.orderId).limit(1),
+        scopedTenantId,
+      )
     : [];
 
   if (existingByOrder.length) {
     return { id: existingByOrder[0].id, data: existingByOrder[0].data() };
   }
 
-  const orderId = String(deal?.orderId || client?.orderId || "") || (await generateNextOrderId(scopedTenantId));
-  const ownerAmUid = String(deal?.ownerId || client?.ownerAmUid || client?.accountManager || "") || null;
-  const ownerAmName = String(deal?.ownerName || client?.ownerAmName || "") || null;
-  const clientName = String(client?.companyName || deal?.clientName || deal?.leadName || "Client");
-  const projectName = String(deal?.dealName || deal?.leadName || clientName || "New Project");
+  const orderId =
+    String(deal?.orderId || client?.orderId || '') || (await generateNextOrderId(scopedTenantId));
+  const ownerAmUid =
+    String(deal?.ownerId || client?.ownerAmUid || client?.accountManager || '') || null;
+  const ownerAmName = String(deal?.ownerName || client?.ownerAmName || '') || null;
+  const clientName = String(client?.companyName || deal?.clientName || deal?.leadName || 'Client');
+  const projectName = String(deal?.dealName || deal?.leadName || clientName || 'New Project');
 
-  const projectRef = adminDb.collection("projects").doc();
+  const projectRef = adminDb.collection('projects').doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const stage = stageOverride || "Inquiry";
+  const stage = stageOverride || 'Inquiry';
 
   await projectRef.set({
     tenantId: scopedTenantId,
@@ -95,7 +104,7 @@ export async function createProjectFromDeal({
     projectName,
     title: projectName,
     clientName,
-    status: "active",
+    status: 'active',
     stage,
     ownerAmUid,
     ownerAmName,
@@ -109,48 +118,48 @@ export async function createProjectFromDeal({
 
   await logEvent({
     tenantId: scopedTenantId,
-    type: "project.created_from_deal",
-    title: "Project created",
-    description: `${projectName} created from deal ${dealId || ""}.`,
-    entityType: "project",
+    type: 'project.created_from_deal',
+    title: 'Project created',
+    description: `${projectName} created from deal ${dealId || ''}.`,
+    entityType: 'project',
     entityId: projectRef.id,
     actor: actor || null,
     metadata: { dealId, clientId, orderId },
   });
 
   const notifyIds = new Set<string>();
-  const roleIds = await getUserIdsByRoles(["production_manager", "am_manager"], scopedTenantId);
+  const roleIds = await getUserIdsByRoles(['production_manager', 'am_manager'], scopedTenantId);
   roleIds.forEach((id) => notifyIds.add(id));
   if (ownerAmUid) notifyIds.add(ownerAmUid);
-  const portalUserUid = String(client?.portalUserUid || "");
+  const portalUserUid = String(client?.portalUserUid || '');
   if (portalUserUid) notifyIds.add(portalUserUid);
 
   await Promise.all(
     Array.from(notifyIds).map(async (uid) => {
-      const role = uid === portalUserUid ? "client" : await getUserRole(uid);
+      const role = uid === portalUserUid ? 'client' : await getUserRole(uid);
       return createNotification({
         toUserId: uid,
         recipientRole: role || null,
-        title: "Project created",
+        title: 'Project created',
         body: `${projectName} is ready for kickoff.`,
-        type: "project_created",
-        entityType: "project",
+        type: 'project_created',
+        entityType: 'project',
         entityId: projectRef.id,
         deepLink: resolveProjectDeepLink(role),
         createdBy: actor || null,
         tenantId: scopedTenantId,
-        roleTarget: role || "user",
+        roleTarget: role || 'user',
       });
-    })
+    }),
   );
 
-  if (stage === "Kickoff") {
+  if (stage === 'Kickoff') {
     const kickoffEmail = String(
-      client?.primaryContactEmail || client?.primaryContactEmailLower || client?.email || ""
+      client?.primaryContactEmail || client?.primaryContactEmailLower || client?.email || '',
     ).trim();
     if (kickoffEmail) {
       queueEmailEvent({
-        templateId: "project_kickoff",
+        templateId: 'project_kickoff',
         to: kickoffEmail,
         data: {
           clientName,
@@ -164,7 +173,7 @@ export async function createProjectFromDeal({
           tenantId: scopedTenantId,
         },
       }).catch((error) => {
-        console.error("kickoff email queue error:", error);
+        console.error('kickoff email queue error:', error);
       });
     }
   }

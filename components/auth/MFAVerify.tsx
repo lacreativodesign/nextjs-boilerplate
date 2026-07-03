@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CODE_LENGTH = 6;
 
@@ -10,12 +10,15 @@ type Props = {
 };
 
 export default function MFAVerify({ onVerify, onCancel }: Props) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
-  const digits = useMemo(() => Array.from({ length: CODE_LENGTH }, (_, i) => code[i] || ""), [code]);
+  const digits = useMemo(
+    () => Array.from({ length: CODE_LENGTH }, (_, i) => code[i] || ''),
+    [code],
+  );
 
   const handleVerify = useCallback(async () => {
     if (code.length !== CODE_LENGTH || loading) return;
@@ -24,7 +27,7 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
       setError(null);
       await onVerify(code);
     } catch (err: any) {
-      setError(err?.message || "Invalid verification code.");
+      setError(err?.message || 'Invalid verification code.');
       setLoading(false);
     }
   }, [code, loading, onVerify]);
@@ -36,18 +39,18 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
   }, [code, handleVerify, loading]);
 
   const handleChange = (index: number, value: string) => {
-    const sanitized = value.replace(/\D/g, "");
-    const next = code.split("");
+    const sanitized = value.replace(/\D/g, '');
+    const next = code.split('');
 
     if (!sanitized) {
-      next[index] = "";
-      setCode(next.join(""));
+      next[index] = '';
+      setCode(next.join(''));
       return;
     }
 
     const char = sanitized[sanitized.length - 1];
     next[index] = char;
-    setCode(next.join("").slice(0, CODE_LENGTH));
+    setCode(next.join('').slice(0, CODE_LENGTH));
 
     if (index < CODE_LENGTH - 1) {
       inputsRef.current[index + 1]?.focus();
@@ -55,7 +58,7 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
     if (!pasted) return;
     event.preventDefault();
     setCode(pasted);
@@ -66,8 +69,12 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-[var(--text-primary)]">Two-factor verification</h3>
-        <p className="text-sm text-[var(--text-muted)]">Enter the 6-digit code from your authenticator app.</p>
+        <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+          Two-factor verification
+        </h3>
+        <p className="text-sm text-[var(--text-muted)]">
+          Enter the 6-digit code from your authenticator app.
+        </p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -90,8 +97,13 @@ export default function MFAVerify({ onVerify, onCancel }: Props) {
       {error ? <div className="text-sm text-red-500">{error}</div> : null}
 
       <div className="flex items-center gap-3">
-        <button type="button" className="btn" onClick={handleVerify} disabled={loading || code.length !== CODE_LENGTH}>
-          {loading ? "Verifying…" : "Verify"}
+        <button
+          type="button"
+          className="btn"
+          onClick={handleVerify}
+          disabled={loading || code.length !== CODE_LENGTH}
+        >
+          {loading ? 'Verifying…' : 'Verify'}
         </button>
         {onCancel ? (
           <button type="button" className="btn ghost" onClick={onCancel} disabled={loading}>

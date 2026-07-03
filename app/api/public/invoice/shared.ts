@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export type PublicInvoiceData = {
   id: string;
@@ -11,41 +11,51 @@ export type PublicInvoiceData = {
   currency: string;
   status: string;
   dueDate: string | null;
-  lineItems: Array<{ description?: string; name?: string; quantity?: number; qty?: number; unitPrice?: number; unitPriceUsd?: number; total?: number }>;
+  lineItems: Array<{
+    description?: string;
+    name?: string;
+    quantity?: number;
+    qty?: number;
+    unitPrice?: number;
+    unitPriceUsd?: number;
+    total?: number;
+  }>;
   notes: string | null;
   paidAt: string | null;
 };
 
 export function normalizeInvoiceAmount(invoice: Record<string, unknown>): number {
-  const amount = Number(invoice.amount ?? invoice.totalAmount ?? invoice.amountTotal ?? invoice.amountTotalUsd ?? 0);
+  const amount = Number(
+    invoice.amount ?? invoice.totalAmount ?? invoice.amountTotal ?? invoice.amountTotalUsd ?? 0,
+  );
   return Number.isFinite(amount) ? Math.max(0, amount) : 0;
 }
 
 export function isCancelledInvoice(status: string): boolean {
   const token = status.trim().toLowerCase();
-  return token === "cancelled" || token === "canceled" || token === "void";
+  return token === 'cancelled' || token === 'canceled' || token === 'void';
 }
 
 export async function getInvoiceWithValidation(invoiceId: string, token?: string | null) {
-  const invoiceSnap = await adminDb.collection("invoices").doc(invoiceId).get();
+  const invoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
   if (!invoiceSnap.exists) {
-    return { error: "Invoice not found", status: 404 as const };
+    return { error: 'Invoice not found', status: 404 as const };
   }
 
   const invoice = (invoiceSnap.data() || {}) as Record<string, unknown>;
   if (invoice.isDeleted === true) {
-    return { error: "Invoice not found", status: 404 as const };
+    return { error: 'Invoice not found', status: 404 as const };
   }
 
-  const providedToken = String(token || "").trim();
-  const storedToken = String(invoice.paymentToken || invoice.publicToken || "").trim();
+  const providedToken = String(token || '').trim();
+  const storedToken = String(invoice.paymentToken || invoice.publicToken || '').trim();
   if (!storedToken || !providedToken || storedToken !== providedToken) {
-    return { error: "Invoice not found", status: 404 as const };
+    return { error: 'Invoice not found', status: 404 as const };
   }
 
-  const status = String(invoice.status || "draft");
+  const status = String(invoice.status || 'draft');
   if (isCancelledInvoice(status)) {
-    return { error: "Invoice not found", status: 404 as const };
+    return { error: 'Invoice not found', status: 404 as const };
   }
 
   const amount = normalizeInvoiceAmount(invoice);
@@ -55,16 +65,18 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
 
   const payload: PublicInvoiceData = {
     id: invoiceId,
-    tenantId: String(invoice.tenantId || ""),
+    tenantId: String(invoice.tenantId || ''),
     clientId: invoice.clientId ? String(invoice.clientId) : undefined,
     orderId: String(invoice.orderId || invoiceId),
     amount,
     subtotal: Number.isFinite(subtotalNum) ? subtotalNum : null,
     taxAmount: Number.isFinite(taxNum) ? taxNum : 0,
-    currency: String(invoice.currency || "USD").toUpperCase(),
+    currency: String(invoice.currency || 'USD').toUpperCase(),
     status,
     dueDate: invoice.dueDate ? String(invoice.dueDate) : null,
-    lineItems: Array.isArray(invoice.lineItems) ? (invoice.lineItems as PublicInvoiceData["lineItems"]) : [],
+    lineItems: Array.isArray(invoice.lineItems)
+      ? (invoice.lineItems as PublicInvoiceData['lineItems'])
+      : [],
     notes: invoice.notes ? String(invoice.notes) : null,
     paidAt: invoice.paidAt ? String(invoice.paidAt) : null,
   };
@@ -73,7 +85,7 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
 }
 
 export async function getTenantRecord(tenantId: string) {
-  const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
   if (!tenantSnap.exists) {
     return null;
   }
@@ -82,7 +94,7 @@ export async function getTenantRecord(tenantId: string) {
 
 export async function getClientRecord(clientId?: string) {
   if (!clientId) return null;
-  const clientSnap = await adminDb.collection("clients").doc(clientId).get();
+  const clientSnap = await adminDb.collection('clients').doc(clientId).get();
   if (!clientSnap.exists) return null;
   return (clientSnap.data() || {}) as Record<string, unknown>;
 }

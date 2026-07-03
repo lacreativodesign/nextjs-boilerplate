@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { addWidgetAndPlace } from "@/lib/dashboard/dashboard-service";
-import type { DashboardWidgetType } from "@/lib/dashboard/types";
+import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { addWidgetAndPlace } from '@/lib/dashboard/dashboard-service';
+import type { DashboardWidgetType } from '@/lib/dashboard/types';
 
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = (await request.json()) as {
       type?: DashboardWidgetType;
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       y?: number;
     };
 
-    if (!body.type) return NextResponse.json({ error: "type is required" }, { status: 400 });
+    if (!body.type) return NextResponse.json({ error: 'type is required' }, { status: 400 });
 
     const created = await addWidgetAndPlace(user.tenantId, user.uid, {
       type: body.type,
@@ -28,6 +28,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, ...created }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to create widget" }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Failed to create widget' },
+      { status: 500 },
+    );
   }
 }

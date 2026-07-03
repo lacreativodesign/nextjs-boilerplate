@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { CurrencySelector } from "./CurrencySelector";
-import { CurrencyCode } from "@/lib/finance/currencies";
-import { CurrencyDisplay } from "./CurrencyDisplay";
-import { apiFetch } from "@/lib/api/client";
+import React, { useEffect, useState } from 'react';
+import { CurrencySelector } from './CurrencySelector';
+import { CurrencyCode } from '@/lib/finance/currencies';
+import { CurrencyDisplay } from './CurrencyDisplay';
+import { apiFetch } from '@/lib/api/client';
 
 export function CurrencyConverter() {
   const [amount, setAmount] = useState<number>(100);
-  const [fromCurrency, setFromCurrency] = useState<CurrencyCode>("USD");
-  const [toCurrency, setToCurrency] = useState<CurrencyCode>("EUR");
+  const [fromCurrency, setFromCurrency] = useState<CurrencyCode>('USD');
+  const [toCurrency, setToCurrency] = useState<CurrencyCode>('EUR');
   const [convertedAmount, setConvertedAmount] = useState<number | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,9 +20,9 @@ export function CurrencyConverter() {
 
       setLoading(true);
       try {
-        const response = await apiFetch("/api/finance/currency/convert", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const response = await apiFetch('/api/finance/currency/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount, from: fromCurrency, to: toCurrency }),
         });
 
@@ -33,7 +33,7 @@ export function CurrencyConverter() {
           setExchangeRate(data.rate);
         }
       } catch (error) {
-        console.error("Conversion error:", error);
+        console.error('Conversion error:', error);
       } finally {
         setLoading(false);
       }
@@ -48,7 +48,9 @@ export function CurrencyConverter() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Amount</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Amount
+          </label>
           <input
             type="number"
             value={amount}
@@ -76,7 +78,9 @@ export function CurrencyConverter() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">Converted Amount</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+            Converted Amount
+          </label>
           <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700">
             {loading ? (
               <span className="text-gray-400">Converting...</span>

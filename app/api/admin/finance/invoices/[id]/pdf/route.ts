@@ -1,10 +1,10 @@
-import React from "react";
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, toISO } from "../../../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { renderToStream, type DocumentProps } from "@react-pdf/renderer";
-import { InvoicePDF } from "@/lib/pdf/InvoiceTemplate";
+import React from 'react';
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, toISO } from '../../../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
+import { InvoicePDF } from '@/lib/pdf/InvoiceTemplate';
 
 type InvoiceDoc = {
   tenantId?: string | null;
@@ -53,8 +53,8 @@ type TenantDoc = {
   contactPhone?: string;
 };
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
@@ -64,27 +64,27 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const invoiceSnap = await adminDb.collection("invoices").doc(params.id).get();
+    const invoiceSnap = await adminDb.collection('invoices').doc(params.id).get();
     if (!invoiceSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invoice not found.' }, { status: 404 });
     }
 
     const invoice = (invoiceSnap.data() || {}) as InvoiceDoc;
-    const isSuperAdminReq = String(auth.user.role || "").toLowerCase() === "super_admin";
+    const isSuperAdminReq = String(auth.user.role || '').toLowerCase() === 'super_admin';
     if (!isSuperAdminReq && normalizeTenantId(invoice.tenantId) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invoice not found.' }, { status: 404 });
     }
 
-    const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenant = (tenantSnap.data() || {}) as TenantDoc;
 
-    const clientId = String(invoice.clientId || "").trim();
+    const clientId = String(invoice.clientId || '').trim();
     let client: ClientDoc = {
-      companyName: invoice.clientName || "Client",
+      companyName: invoice.clientName || 'Client',
     };
 
     if (clientId) {
-      const clientSnap = await adminDb.collection("clients").doc(clientId).get();
+      const clientSnap = await adminDb.collection('clients').doc(clientId).get();
       if (clientSnap.exists) {
         const clientDoc = (clientSnap.data() || {}) as ClientDoc;
         const clientTenantId = normalizeTenantId(clientDoc.tenantId);
@@ -99,7 +99,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           const quantity = Number(item?.qty || 0);
           const rate = Number(item?.unitPriceUsd || 0);
           return {
-            description: String(item?.name || "Line item").trim(),
+            description: String(item?.name || 'Line item').trim(),
             details: item?.details || null,
             quantity,
             rate,
@@ -120,34 +120,36 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           invoiceNumber: String(invoice.orderId || params.id),
           issueDate: toISO(invoice.issuedAt),
           dueDate: toISO(invoice.dueDate),
-          status: String(invoice.status || "Draft"),
+          status: String(invoice.status || 'Draft'),
           lineItems,
           subtotal,
           discount: 0,
           tax,
           taxRate,
-          taxLabel: invoice.taxRateName ? `${String(invoice.taxRateName)} (${taxRate}%)` : undefined,
+          taxLabel: invoice.taxRateName
+            ? `${String(invoice.taxRateName)} (${taxRate}%)`
+            : undefined,
           total,
           amountPaid,
           notes: invoice.notes || null,
           paymentTerms: 30,
         },
         tenant: {
-          name: String(tenant.name || tenant.companyName || "Bizosto"),
+          name: String(tenant.name || tenant.companyName || 'Bizosto'),
           logoUrl: tenant.whiteLabel?.logoUrl || tenant.brand?.logoUrl || tenant.logoUrl || null,
-          primaryColor: tenant.whiteLabel?.primaryColor || "#2563eb",
-          secondaryColor: tenant.whiteLabel?.secondaryColor || "#1d4ed8",
+          primaryColor: tenant.whiteLabel?.primaryColor || '#2563eb',
+          secondaryColor: tenant.whiteLabel?.secondaryColor || '#1d4ed8',
           address: tenant.address || null,
           email: tenant.email || tenant.supportEmail || null,
           phone: tenant.phone || tenant.contactPhone || null,
         },
         client: {
-          name: String(client.companyName || invoice.clientName || "Client"),
+          name: String(client.companyName || invoice.clientName || 'Client'),
           email: client.primaryContactEmail || null,
           phone: client.phone || null,
           address: client.address || null,
         },
-      }) as React.ReactElement<DocumentProps>
+      }) as React.ReactElement<DocumentProps>,
     );
 
     const chunks: Buffer[] = [];
@@ -155,16 +157,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
 
-    const filename = `${String(invoice.orderId || params.id).replace(/[^a-zA-Z0-9-_]/g, "-")}.pdf`;
+    const filename = `${String(invoice.orderId || params.id).replace(/[^a-zA-Z0-9-_]/g, '-')}.pdf`;
 
     return new NextResponse(Buffer.concat(chunks), {
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
   } catch (error: any) {
-    console.error("invoice pdf generation error:", error);
-    return NextResponse.json({ ok: false, error: "PDF generation failed." }, { status: 500 });
+    console.error('invoice pdf generation error:', error);
+    return NextResponse.json({ ok: false, error: 'PDF generation failed.' }, { status: 500 });
   }
 }

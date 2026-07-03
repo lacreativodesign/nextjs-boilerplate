@@ -1,5 +1,5 @@
-import DashboardSkeleton from "@/components/ui/skeleton/DashboardSkeleton";
-import TableSkeleton from "@/components/ui/skeleton/TableSkeleton";
+import DashboardSkeleton from '@/components/ui/skeleton/DashboardSkeleton';
+import TableSkeleton from '@/components/ui/skeleton/TableSkeleton';
 
 export default function CrmLoading() {
   return (

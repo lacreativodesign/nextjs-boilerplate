@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
+import { useRef, useState } from 'react';
 
 type Props = {
   onFileSelected: (file: File) => void;
   accepted?: string;
 };
 
-export default function FileUploadDropzone({ onFileSelected, accepted = ".csv,.xml,.xls" }: Props) {
+export default function FileUploadDropzone({ onFileSelected, accepted = '.csv,.xml,.xls' }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -26,7 +26,9 @@ export default function FileUploadDropzone({ onFileSelected, accepted = ".csv,.x
       }}
       onClick={() => inputRef.current?.click()}
       className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition ${
-        isDragging ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" : "border-neutral-300 dark:border-neutral-700"
+        isDragging
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+          : 'border-neutral-300 dark:border-neutral-700'
       }`}
     >
       <input

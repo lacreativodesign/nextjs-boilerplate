@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { FileManager } from "@/lib/files/file-manager";
-import { validateFile } from "@/lib/files/validation";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { FileManager } from '@/lib/files/file-manager';
+import { validateFile } from '@/lib/files/validation';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const chunkSchema = z.object({
   uploadId: z.string().min(8),
@@ -16,33 +16,33 @@ const chunkSchema = z.object({
   folderId: z.string().optional(),
   changes: z.string().max(500).optional(),
   fileId: z.string().optional(),
-  visibility: z.enum(["private", "team", "public"]).optional(),
+  visibility: z.enum(['private', 'team', 'public']).optional(),
 });
 
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const form = await request.formData();
     const payload = chunkSchema.parse({
-      uploadId: form.get("uploadId"),
-      chunkIndex: form.get("chunkIndex"),
-      totalChunks: form.get("totalChunks"),
-      fileName: form.get("fileName"),
-      mimeType: form.get("mimeType"),
-      size: form.get("size"),
-      folderId: form.get("folderId") || undefined,
-      changes: form.get("changes") || undefined,
-      fileId: form.get("fileId") || undefined,
-      visibility: form.get("visibility") || undefined,
+      uploadId: form.get('uploadId'),
+      chunkIndex: form.get('chunkIndex'),
+      totalChunks: form.get('totalChunks'),
+      fileName: form.get('fileName'),
+      mimeType: form.get('mimeType'),
+      size: form.get('size'),
+      folderId: form.get('folderId') || undefined,
+      changes: form.get('changes') || undefined,
+      fileId: form.get('fileId') || undefined,
+      visibility: form.get('visibility') || undefined,
     });
 
-    const chunk = form.get("chunk") as File | null;
+    const chunk = form.get('chunk') as File | null;
     if (!chunk) {
-      return NextResponse.json({ error: "Chunk is required" }, { status: 400 });
+      return NextResponse.json({ error: 'Chunk is required' }, { status: 400 });
     }
 
     const fileValidation = validateFile(payload.fileName, payload.size);
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       mimeType: payload.mimeType,
       size: payload.size,
       userId: session.uid,
-      userEmail: String(session.email || ""),
+      userEmail: String(session.email || ''),
       folderId: payload.folderId,
       changes: payload.changes,
       fileId: payload.fileId,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error("file upload failed", error);
-    return NextResponse.json({ error: error?.message || "Upload failed" }, { status: 500 });
+    console.error('file upload failed', error);
+    return NextResponse.json({ error: error?.message || 'Upload failed' }, { status: 500 });
   }
 }

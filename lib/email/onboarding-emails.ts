@@ -1,19 +1,19 @@
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { Resend } from 'resend';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   welcomeEmailHtml,
   welcomeEmailSubject,
   trialReminderEmailHtml,
   trialReminderEmailSubject,
-} from "@/lib/email/html-templates";
+} from '@/lib/email/html-templates';
 
-const onboardingFrom = process.env.ONBOARDING_FROM_EMAIL || "Bizosto <welcome@bizosto.com>";
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://bizosto.com";
+const onboardingFrom = process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <welcome@bizosto.com>';
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://bizosto.com';
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    throw new Error("RESEND_API_KEY missing");
+    throw new Error('RESEND_API_KEY missing');
   }
 
   return new Resend(apiKey);
@@ -22,10 +22,10 @@ function getResendClient() {
 function formatTrialDate(trialEndsAt: string) {
   const date = new Date(trialEndsAt);
   if (Number.isNaN(date.getTime())) return trialEndsAt;
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 }
 
@@ -83,7 +83,12 @@ export async function sendWelcomeEmail(to: string, name: string, tenantId: strin
   });
 }
 
-export async function sendTrialDaySevenEmail(to: string, name: string, tenantId: string, trialEndsAt: string) {
+export async function sendTrialDaySevenEmail(
+  to: string,
+  name: string,
+  tenantId: string,
+  trialEndsAt: string,
+) {
   try {
     const resend = getResendClient();
     const formattedDate = formatTrialDate(trialEndsAt);
@@ -100,12 +105,17 @@ export async function sendTrialDaySevenEmail(to: string, name: string, tenantId:
       }),
     });
   } catch (error) {
-    console.error("[EMAIL] Failed to send trial day 7 email", { to, tenantId, error });
+    console.error('[EMAIL] Failed to send trial day 7 email', { to, tenantId, error });
     throw error;
   }
 }
 
-export async function sendTrialDayThreeEmail(to: string, name: string, tenantId: string, trialEndsAt: string) {
+export async function sendTrialDayThreeEmail(
+  to: string,
+  name: string,
+  tenantId: string,
+  trialEndsAt: string,
+) {
   try {
     const resend = getResendClient();
     const formattedDate = formatTrialDate(trialEndsAt);
@@ -122,12 +132,17 @@ export async function sendTrialDayThreeEmail(to: string, name: string, tenantId:
       }),
     });
   } catch (error) {
-    console.error("[EMAIL] Failed to send trial day 3 email", { to, tenantId, error });
+    console.error('[EMAIL] Failed to send trial day 3 email', { to, tenantId, error });
     throw error;
   }
 }
 
-export async function sendTrialDayOneEmail(to: string, name: string, tenantId: string, trialEndsAt: string) {
+export async function sendTrialDayOneEmail(
+  to: string,
+  name: string,
+  tenantId: string,
+  trialEndsAt: string,
+) {
   try {
     const resend = getResendClient();
 
@@ -143,7 +158,7 @@ export async function sendTrialDayOneEmail(to: string, name: string, tenantId: s
       }),
     });
   } catch (error) {
-    console.error("[EMAIL] Failed to send trial day 1 email", { to, tenantId, error });
+    console.error('[EMAIL] Failed to send trial day 1 email', { to, tenantId, error });
     throw error;
   }
 }
@@ -155,17 +170,17 @@ export async function sendTrialExpiredEmail(to: string, name: string, tenantId: 
     await resend.emails.send({
       from: onboardingFrom,
       to,
-      subject: "Your Bizosto trial has ended",
+      subject: 'Your Bizosto trial has ended',
       html: getEmailShell(`
         <p>Hi ${name},</p>
         <p>Your 14-day free trial has ended. Your workspace is currently in grace period — you can still access your data but cannot make changes.</p>
-        <div style="margin: 24px 0;">${ctaButton("Upgrade Now", `${appUrl}/billing`)}</div>
+        <div style="margin: 24px 0;">${ctaButton('Upgrade Now', `${appUrl}/billing`)}</div>
         <p>Your workspace and all data will be preserved. Upgrade at any time to restore full access.</p>
-        ${emailFooter("The Bizosto Team")}
+        ${emailFooter('The Bizosto Team')}
       `),
     });
   } catch (error) {
-    console.error("[EMAIL] Failed to send trial expired email", { to, tenantId, error });
+    console.error('[EMAIL] Failed to send trial expired email', { to, tenantId, error });
     throw error;
   }
 }
@@ -177,27 +192,27 @@ export async function sendTrialGracePeriodEndingEmail(to: string, name: string, 
     await resend.emails.send({
       from: onboardingFrom,
       to,
-      subject: "Action required — Bizosto account access at risk",
+      subject: 'Action required — Bizosto account access at risk',
       html: getEmailShell(`
         <p>Hi ${name},</p>
         <p>Your Bizosto account will be locked in 48 hours unless a payment method is added.</p>
         <p>After this point, you will lose access to your workspace until payment is completed. Your data will be retained for 30 days.</p>
-        <div style="margin: 24px 0;">${ctaButton("Restore Access Now", `${appUrl}/billing`)}</div>
-        ${emailFooter("The Bizosto Team")}
+        <div style="margin: 24px 0;">${ctaButton('Restore Access Now', `${appUrl}/billing`)}</div>
+        ${emailFooter('The Bizosto Team')}
       `),
     });
   } catch (error) {
-    console.error("[EMAIL] Failed to send grace period ending email", { to, tenantId, error });
+    console.error('[EMAIL] Failed to send grace period ending email', { to, tenantId, error });
     throw error;
   }
 }
 
 export async function scheduleOnboardingEmails(email: string, tenantId: string) {
-  await adminDb.collection("scheduled_emails").doc(tenantId).set(
+  await adminDb.collection('scheduled_emails').doc(tenantId).set(
     {
       tenantId,
       email,
-      status: "pending",
+      status: 'pending',
       createdAt: new Date().toISOString(),
       day7Sent: false,
       day3Sent: false,
@@ -205,7 +220,7 @@ export async function scheduleOnboardingEmails(email: string, tenantId: string) 
       expiredSent: false,
       gracePeriodEndSent: false,
     },
-    { merge: true }
+    { merge: true },
   );
 }
 
@@ -236,13 +251,13 @@ export async function sendPaymentConfirmationEmail(
             <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600;color:#16a34a;text-align:right">Paid</td>
           </tr>
         </table>
-        ${invoiceUrl ? `<p style="margin:0 0 24px"><a href="${invoiceUrl}" style="display:inline-block;padding:12px 24px;background:#012167;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Download Invoice</a></p>` : ""}
+        ${invoiceUrl ? `<p style="margin:0 0 24px"><a href="${invoiceUrl}" style="display:inline-block;padding:12px 24px;background:#012167;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Download Invoice</a></p>` : ''}
         <p style="margin:0 0 8px">You can view your full billing history and manage your subscription at any time:</p>
         <p style="margin:0"><a href="${appUrl}/billing" style="color:#012167;font-weight:600">Manage Billing →</a></p>
       `),
     });
   } catch (err) {
     // Never let email failure break the webhook
-    console.error("[EMAIL] Failed to send payment confirmation email", err);
+    console.error('[EMAIL] Failed to send payment confirmation email', err);
   }
 }

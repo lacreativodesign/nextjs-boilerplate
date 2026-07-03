@@ -24,13 +24,19 @@ import {
 
 describe('validation schemas', () => {
   it('validates common schemas (pagination/search/id/date range)', () => {
-    expect(paginationSchema.parse({ page: '2', limit: '10' })).toMatchObject({ page: 2, limit: 10, sortOrder: 'desc' });
+    expect(paginationSchema.parse({ page: '2', limit: '10' })).toMatchObject({
+      page: 2,
+      limit: 10,
+      sortOrder: 'desc',
+    });
     expect(searchSchema.parse({ query: 'invoice 2025' }).query).toBe('invoice 2025');
     expect(idSchema.parse({ id: 'abc' })).toEqual({ id: 'abc' });
     expect(tenantIdSchema.parse({ tenantId: 'tenant-1' })).toEqual({ tenantId: 'tenant-1' });
     expect(dateRangeSchema.parse({ startDate: '2025-01-01', endDate: '2025-02-01' })).toBeTruthy();
 
-    expect(() => dateRangeSchema.parse({ startDate: '2025-02-01', endDate: '2025-01-01' })).toThrow();
+    expect(() =>
+      dateRangeSchema.parse({ startDate: '2025-02-01', endDate: '2025-01-01' }),
+    ).toThrow();
   });
 
   it('validates user/client/lead/project/employee schemas for valid and invalid data', () => {
@@ -42,7 +48,9 @@ describe('validation schemas', () => {
         tenantId: 'tenant-1',
       }),
     ).toBeTruthy();
-    expect(() => createUserSchema.parse({ email: 'invalid', displayName: 'x', role: 'admin', tenantId: '' })).toThrow();
+    expect(() =>
+      createUserSchema.parse({ email: 'invalid', displayName: 'x', role: 'admin', tenantId: '' }),
+    ).toThrow();
     expect(updateUserSchema.parse({ displayName: 'Updated' })).toBeTruthy();
 
     expect(
@@ -53,7 +61,9 @@ describe('validation schemas', () => {
         tenantId: 'tenant-1',
       }),
     ).toBeTruthy();
-    expect(() => createClientSchema.parse({ companyName: 'A', contactName: '', email: 'bad', tenantId: '' })).toThrow();
+    expect(() =>
+      createClientSchema.parse({ companyName: 'A', contactName: '', email: 'bad', tenantId: '' }),
+    ).toThrow();
     expect(updateClientSchema.parse({ industry: 'Manufacturing' })).toBeTruthy();
 
     expect(
@@ -66,7 +76,16 @@ describe('validation schemas', () => {
         tenantId: 'tenant-1',
       }),
     ).toBeTruthy();
-    expect(() => createLeadSchema.parse({ title: 'N', contactName: 'x', email: 'bad', source: 'website', status: 'new', tenantId: '' })).toThrow();
+    expect(() =>
+      createLeadSchema.parse({
+        title: 'N',
+        contactName: 'x',
+        email: 'bad',
+        source: 'website',
+        status: 'new',
+        tenantId: '',
+      }),
+    ).toThrow();
     expect(updateLeadSchema.parse({ status: 'qualified' })).toBeTruthy();
 
     expect(
@@ -78,7 +97,9 @@ describe('validation schemas', () => {
         tenantId: 'tenant-1',
       }),
     ).toBeTruthy();
-    expect(() => createProjectSchema.parse({ name: 'M', clientId: '', startDate: 'bad', tenantId: '' })).toThrow();
+    expect(() =>
+      createProjectSchema.parse({ name: 'M', clientId: '', startDate: 'bad', tenantId: '' }),
+    ).toThrow();
     expect(updateProjectSchema.parse({ priority: 'high' })).toBeTruthy();
 
     expect(
@@ -91,7 +112,16 @@ describe('validation schemas', () => {
         tenantId: 'tenant-1',
       }),
     ).toBeTruthy();
-    expect(() => createEmployeeSchema.parse({ userId: '', department: '', position: 'x', employmentType: 'full_time', startDate: 'bad', tenantId: '' })).toThrow();
+    expect(() =>
+      createEmployeeSchema.parse({
+        userId: '',
+        department: '',
+        position: 'x',
+        employmentType: 'full_time',
+        startDate: 'bad',
+        tenantId: '',
+      }),
+    ).toThrow();
     expect(updateEmployeeSchema.parse({ position: 'Director' })).toBeTruthy();
   });
 
@@ -141,11 +171,15 @@ describe('validation schemas', () => {
     });
     expect(parsed.companyName).toBe('Acme Inc');
 
-    expect(() => validateRequest(createClientSchema, { companyName: '' })).toThrow('Validation failed');
+    expect(() => validateRequest(createClientSchema, { companyName: '' })).toThrow(
+      'Validation failed',
+    );
 
     const query = new URLSearchParams({ page: '3', limit: '25' });
     expect(validateQuery(paginationSchema, query)).toMatchObject({ page: 3, limit: 25 });
 
-    expect(validatePartial(createClientSchema, { companyName: 'Updated Co' })).toEqual({ companyName: 'Updated Co' });
+    expect(validatePartial(createClientSchema, { companyName: 'Updated Co' })).toEqual({
+      companyName: 'Updated Co',
+    });
   });
 });

@@ -1,4 +1,4 @@
-import CustomizableDashboard from "@/components/dashboard/CustomizableDashboard";
+import CustomizableDashboard from '@/components/dashboard/CustomizableDashboard';
 
 type Props = {
   heading: string;

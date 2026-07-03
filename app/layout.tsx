@@ -1,51 +1,45 @@
-import "./globals.css";
-import { Inter } from "next/font/google";
-import { Suspense } from "react";
-import type { Metadata, Viewport } from "next";
-import ToastProvider from "@/components/providers/ToastProvider";
-import RouteProgress from "@/components/ui/RouteProgress";
-import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
-import { PageErrorFallback } from "@/components/errors/ErrorFallback";
-import PWAInitializer from "@/components/pwa/PWAInitializer";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
-import ClientMonitoring from "@/components/monitoring/ClientMonitoring";
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
+import type { Metadata, Viewport } from 'next';
+import ToastProvider from '@/components/providers/ToastProvider';
+import RouteProgress from '@/components/ui/RouteProgress';
+import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
+import { PageErrorFallback } from '@/components/errors/ErrorFallback';
+import PWAInitializer from '@/components/pwa/PWAInitializer';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import ClientMonitoring from '@/components/monitoring/ClientMonitoring';
 
 const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
-  title: "Bizosto",
-  description: "The Operating System for Service Businesses.",
-  manifest: "/manifest.json",
+  title: 'Bizosto',
+  description: 'The Operating System for Service Businesses.',
+  manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-512.png", sizes: "512x512", type: "image/png" },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-512.png', sizes: '512x512', type: 'image/png' },
     ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-    shortcut: "/favicon-32.png",
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: '/favicon-32.png',
   },
   appleWebApp: {
     capable: true,
-    title: "Bizosto",
-    statusBarStyle: "default",
+    title: 'Bizosto',
+    statusBarStyle: 'default',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#012167",
+  themeColor: '#012167',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-US" dir="ltr" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
@@ -56,13 +50,13 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <ErrorBoundary fallbackComponent={PageErrorFallback}>
-          <ToastProvider />
-          <PWAInitializer />
-          <Suspense fallback={null}>
-            <RouteProgress />
-          </Suspense>
-          <ClientMonitoring />
-          {children}
+            <ToastProvider />
+            <PWAInitializer />
+            <Suspense fallback={null}>
+              <RouteProgress />
+            </Suspense>
+            <ClientMonitoring />
+            {children}
           </ErrorBoundary>
         </ThemeProvider>
       </body>

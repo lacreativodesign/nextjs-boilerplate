@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencyConverter";
+import { SUPPORTED_CURRENCIES } from '@/lib/currency/currencyConverter';
 
 interface CurrencySelectorProps {
   value: string;
@@ -8,7 +8,7 @@ interface CurrencySelectorProps {
   className?: string;
 }
 
-export function CurrencySelector({ value, onChange, className = "" }: CurrencySelectorProps) {
+export function CurrencySelector({ value, onChange, className = '' }: CurrencySelectorProps) {
   return (
     <select
       value={value}

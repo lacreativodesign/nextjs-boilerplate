@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getResourcePlannerUser } from "../_utils";
-import type { ResourceType } from "@/lib/production/capacity";
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getResourcePlannerUser } from '../_utils';
+import type { ResourceType } from '@/lib/production/capacity';
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type AssignPayload = {
   resourceId: string;
@@ -23,18 +23,19 @@ type AssignPayload = {
 };
 
 function cleanString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizeDate(value: unknown) {
-  if (typeof value !== "string") return "";
+  if (typeof value !== 'string') return '';
   return value.slice(0, 10);
 }
 
 export async function POST(request: Request) {
   try {
     const auth = await getResourcePlannerUser();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const me = auth.user;
     const body = (await request.json()) as AssignPayload;
@@ -48,42 +49,52 @@ export async function POST(request: Request) {
     const allocationHoursPerDay = Number(body.allocationHoursPerDay || 0);
 
     if (!resourceId || !resourceName || !taskId || !projectId || !startDate || !endDate) {
-      return NextResponse.json({ ok: false, error: "Missing required fields." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing required fields.' }, { status: 400 });
     }
 
-    if (!["employee", "equipment", "material"].includes(body.resourceType)) {
-      return NextResponse.json({ ok: false, error: "Invalid resource type." }, { status: 400 });
+    if (!['employee', 'equipment', 'material'].includes(body.resourceType)) {
+      return NextResponse.json({ ok: false, error: 'Invalid resource type.' }, { status: 400 });
     }
 
     if (!Number.isFinite(allocationHoursPerDay) || allocationHoursPerDay <= 0) {
-      return NextResponse.json({ ok: false, error: "Allocation hours must be greater than zero." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Allocation hours must be greater than zero.' },
+        { status: 400 },
+      );
     }
 
     if (startDate > endDate) {
-      return NextResponse.json({ ok: false, error: "startDate must be before endDate." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'startDate must be before endDate.' },
+        { status: 400 },
+      );
     }
 
     const [taskDoc, projectDoc] = await Promise.all([
-      adminDb.collection("tasks").doc(taskId).get(),
-      adminDb.collection("projects").doc(projectId).get(),
+      adminDb.collection('tasks').doc(taskId).get(),
+      adminDb.collection('projects').doc(projectId).get(),
     ]);
 
-    if (!taskDoc.exists) return NextResponse.json({ ok: false, error: "Task not found." }, { status: 404 });
-    if (!projectDoc.exists) return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+    if (!taskDoc.exists)
+      return NextResponse.json({ ok: false, error: 'Task not found.' }, { status: 404 });
+    if (!projectDoc.exists)
+      return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
 
     const taskData = taskDoc.data() as any;
     const projectData = projectDoc.data() as any;
 
     if (taskData.tenantId !== me.tenantId || projectData.tenantId !== me.tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const hourlyRate = Number(body.hourlyRate ?? 0);
     const capacityHoursPerDay = Number(body.capacityHoursPerDay ?? 8);
     const availabilityPercent = Number(body.availabilityPercent ?? 100);
 
-    const resourceRef = adminDb.collection("productionResources").doc(`${me.tenantId}_${resourceId}`);
-    const assignmentRef = adminDb.collection("productionResourceAssignments").doc();
+    const resourceRef = adminDb
+      .collection('productionResources')
+      .doc(`${me.tenantId}_${resourceId}`);
+    const assignmentRef = adminDb.collection('productionResourceAssignments').doc();
 
     await adminDb.runTransaction(async (tx) => {
       tx.set(
@@ -100,15 +111,15 @@ export async function POST(request: Request) {
           updatedBy: me.uid,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       tx.set(assignmentRef, {
         tenantId: me.tenantId,
         projectId,
-        projectName: projectData.name || "",
+        projectName: projectData.name || '',
         taskId,
-        taskName: taskData.title || "",
+        taskName: taskData.title || '',
         resourceId,
         resourceType: body.resourceType,
         resourceName,
@@ -117,10 +128,17 @@ export async function POST(request: Request) {
         endDate,
         hourlyRate: Number.isFinite(hourlyRate) ? hourlyRate : 0,
         estimatedCost:
-          Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24) + 1)) *
+          Math.max(
+            1,
+            Math.ceil(
+              (new Date(endDate).getTime() - new Date(startDate).getTime()) /
+                (1000 * 60 * 60 * 24) +
+                1,
+            ),
+          ) *
           allocationHoursPerDay *
           (Number.isFinite(hourlyRate) ? hourlyRate : 0),
-        status: "active",
+        status: 'active',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         createdBy: me.uid,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -128,21 +146,24 @@ export async function POST(request: Request) {
       });
     });
 
-    const assignNotifyTargets = await getUsersByRoles(["admin", "super_admin", "production_manager"], me.tenantId);
+    const assignNotifyTargets = await getUsersByRoles(
+      ['admin', 'super_admin', 'production_manager'],
+      me.tenantId,
+    );
     await createNotifications({
       recipients: assignNotifyTargets,
       tenantId: me.tenantId,
-      type: "info",
-      title: "Resource assigned",
+      type: 'info',
+      title: 'Resource assigned',
       message: `${resourceName} was assigned to a task.`,
-      entityType: "task",
+      entityType: 'task',
       entityId: taskId,
-      deepLink: "/production/resources",
+      deepLink: '/production/resources',
     });
 
     return NextResponse.json({ ok: true, assignmentId: assignmentRef.id });
   } catch (error) {
-    console.error("POST /api/production/resources/assign", error);
-    return NextResponse.json({ ok: false, error: "Unable to assign resource." }, { status: 500 });
+    console.error('POST /api/production/resources/assign', error);
+    return NextResponse.json({ ok: false, error: 'Unable to assign resource.' }, { status: 500 });
   }
 }

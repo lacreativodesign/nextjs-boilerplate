@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminOrSuper } from "../../_utils";
-import { computeHealth, getWorkflowSettings } from "../../settings/_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, isAdminOrSuper } from '../../_utils';
+import { computeHealth, getWorkflowSettings } from '../../settings/_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const ACTIVE_STAGES = ["Draft", "Review", "Revisions", "Final"] as const;
+const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'] as const;
 
-const VALID_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
+const VALID_STAGES = ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'] as const;
 
 type ProjectDoc = {
   projectName?: string;
@@ -28,29 +28,38 @@ type ProjectDoc = {
   dueDate?: any;
   updatedAt?: any;
   createdAt?: any;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  stageHistory?: Array<{
+    from?: string;
+    to?: string;
+    byUid?: string;
+    byName?: string;
+    at?: any;
+    reason?: string;
+  }>;
   isDeleted?: boolean;
 };
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
 function normalizeStage(stage?: string) {
-  return VALID_STAGES.includes((stage || "") as (typeof VALID_STAGES)[number]) ? (stage as string) : "Kickoff";
+  return VALID_STAGES.includes((stage || '') as (typeof VALID_STAGES)[number])
+    ? (stage as string)
+    : 'Kickoff';
 }
 
-function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
+function normalizeStageHistory(history?: ProjectDoc['stageHistory']) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byName: entry?.byName || "",
+    from: entry?.from || '',
+    to: entry?.to || '',
+    byUid: entry?.byUid || '',
+    byName: entry?.byName || '',
     at: toISO(entry?.at),
     reason: entry?.reason || null,
   }));
@@ -71,16 +80,19 @@ export async function GET() {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!isAdminOrSuper(me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
     const [docs, workflowSettings] = await Promise.all([
-      queryWithTenant(adminDb.collection("projects").where("isDeleted", "==", false).limit(500), tenantId),
+      queryWithTenant(
+        adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+        tenantId,
+      ),
       getWorkflowSettings(),
     ]);
 
@@ -88,14 +100,18 @@ export async function GET() {
       const data = doc.data() as ProjectDoc;
       const stage = normalizeStage(data.stage);
       const dueDate = toISO(data.dueDate);
-      const health = computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays);
+      const health = computeHealth(
+        dueDate,
+        workflowSettings.atRiskAfterDays,
+        workflowSettings.overdueAfterDays,
+      );
       return {
         id: doc.id,
-        projectName: data.projectName || "",
-        clientName: data.clientName || "",
-        projectType: data.projectType || "",
+        projectName: data.projectName || '',
+        clientName: data.clientName || '',
+        projectType: data.projectType || '',
         stage,
-        priority: data.priority || "Normal",
+        priority: data.priority || 'Normal',
         health,
         ownerAmUid: data.ownerAmUid ?? null,
         ownerAmName: data.ownerAmName ?? null,
@@ -113,35 +129,47 @@ export async function GET() {
         if (ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number])) {
           acc.assigned += 1;
         }
-        if (project.stage === "Draft") acc.draft += 1;
-        if (project.stage === "Review") acc.review += 1;
-        if (project.stage === "Revisions") acc.revisions += 1;
-        if (project.stage === "Final") acc.final += 1;
-        if (project.health === "At Risk") acc.atRisk += 1;
-        if (project.health === "Overdue") acc.overdue += 1;
-        if (project.stage === "Delivered" && getDeliveredWithin(project)) acc.delivered7 += 1;
+        if (project.stage === 'Draft') acc.draft += 1;
+        if (project.stage === 'Review') acc.review += 1;
+        if (project.stage === 'Revisions') acc.revisions += 1;
+        if (project.stage === 'Final') acc.final += 1;
+        if (project.health === 'At Risk') acc.atRisk += 1;
+        if (project.health === 'Overdue') acc.overdue += 1;
+        if (project.stage === 'Delivered' && getDeliveredWithin(project)) acc.delivered7 += 1;
         return acc;
       },
-      { assigned: 0, draft: 0, review: 0, revisions: 0, final: 0, atRisk: 0, overdue: 0, delivered7: 0 }
+      {
+        assigned: 0,
+        draft: 0,
+        review: 0,
+        revisions: 0,
+        final: 0,
+        atRisk: 0,
+        overdue: 0,
+        delivered7: 0,
+      },
     );
 
     const myQueue = projects
       .filter(
         (project) =>
-          ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number]) && project.productionUid === me.uid
+          ACTIVE_STAGES.includes(project.stage as (typeof ACTIVE_STAGES)[number]) &&
+          project.productionUid === me.uid,
       )
-      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
+      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
       .slice(0, 10);
 
     return NextResponse.json({ ok: true, projects, kpis, myQueue });
   } catch (err: any) {
-    console.error("production/overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('production/overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load production overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load production overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

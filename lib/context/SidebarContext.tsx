@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
-const COLLAPSE_KEY = "bizosto_sidebar_collapsed";
+const COLLAPSE_KEY = 'bizosto_sidebar_collapsed';
 
 type SidebarContextValue = {
   isCollapsed: boolean;
@@ -21,15 +21,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(COLLAPSE_KEY);
-    if (stored === "true") {
+    if (stored === 'true') {
       setIsCollapsed(true);
     }
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     window.localStorage.setItem(COLLAPSE_KEY, String(isCollapsed));
   }, [isCollapsed]);
 
@@ -66,7 +66,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 export function useSidebar() {
   const context = useContext(SidebarContext);
   if (!context) {
-    throw new Error("useSidebar must be used within SidebarProvider");
+    throw new Error('useSidebar must be used within SidebarProvider');
   }
   return context;
 }

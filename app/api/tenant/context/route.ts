@@ -1,25 +1,25 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUserOrThrow, getTenantIdForRequestOrThrow } from "@/lib/tenant/server";
-import { getTenantPlanState } from "@/app/lib/plan-enforcement";
-import { deriveSubscriptionState } from "@/lib/subscription";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUserOrThrow, getTenantIdForRequestOrThrow } from '@/lib/tenant/server';
+import { getTenantPlanState } from '@/app/lib/plan-enforcement';
+import { deriveSubscriptionState } from '@/lib/subscription';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUserOrThrow(req);
 
     // super_admin is platform-level — no tenant required
-    if (user.role === "super_admin") {
+    if (user.role === 'super_admin') {
       return NextResponse.json({
         ok: true,
         user: {
           uid: user.uid,
           role: user.role,
-          tenantId: "bizosto",
-          status: "active",
+          tenantId: 'bizosto',
+          status: 'active',
           displayName: user.displayName || user.name || null,
           email: user.email || null,
           language: null,
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantId = await getTenantIdForRequestOrThrow(req);
-    const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenant = tenantSnap.exists ? tenantSnap.data() : null;
     const planState = tenant ? await getTenantPlanState(tenantId) : null;
     const subscriptionState = tenant
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
           subscriptionState: (tenant as any).subscriptionState,
           billingStatus: (tenant as any).billingStatus,
         })
-      : "grace";
+      : 'grace';
 
     return NextResponse.json({
       ok: true,
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         uid: user.uid,
         role: user.role,
         tenantId: tenantId,
-        status: user.status || "active",
+        status: user.status || 'active',
         displayName: user.displayName || user.name || null,
         email: user.email || null,
         language: user.language || null,
@@ -55,25 +55,25 @@ export async function GET(req: NextRequest) {
       tenant: tenant
         ? {
             id: tenantId,
-            name: tenant.name || "",
-            slug: tenant.slug || "",
-            status: tenant.status || "active",
+            name: tenant.name || '',
+            slug: tenant.slug || '',
+            status: tenant.status || 'active',
             brand: tenant.brand || null,
             whiteLabel: tenant.whiteLabel || null,
             modulesEnabled: tenant.modulesEnabled || {},
             rolesEnabled: tenant.rolesEnabled || {},
-            plan: planState?.plan || "pro",
+            plan: planState?.plan || 'pro',
             modules: planState?.modules || {},
             subscriptionState,
-            isTrial: String((tenant as any).subscriptionState || "").toLowerCase() === "trial",
+            isTrial: String((tenant as any).subscriptionState || '').toLowerCase() === 'trial',
             trialEndsAt: (tenant as any).trialEndsAt || null,
             stripeConnect: tenant.stripeConnect || null,
           }
         : null,
     });
   } catch (err: any) {
-    const message = err?.message || "Unauthorized";
-    const status = message === "Unauthorized" ? 401 : message === "Tenant suspended" ? 403 : 400;
+    const message = err?.message || 'Unauthorized';
+    const status = message === 'Unauthorized' ? 401 : message === 'Tenant suspended' ? 403 : 400;
     return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

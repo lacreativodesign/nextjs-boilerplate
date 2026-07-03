@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/tenant/server";
-import { cookies } from "next/headers";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { writeAuditLog } from "@/lib/tenant/audit";
-import { sendEmail } from "@/lib/email/email-service";
-import type { ProposedAction } from "@/lib/ai/finance-agent";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getCurrentUser } from '@/lib/tenant/server';
+import { cookies } from 'next/headers';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { writeAuditLog } from '@/lib/tenant/audit';
+import { sendEmail } from '@/lib/email/email-service';
+import type { ProposedAction } from '@/lib/ai/finance-agent';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const ALLOWED_ROLES = new Set(["admin", "super_admin", "finance"]);
+const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'finance']);
 
 type FirestoreTimestampLike = { toDate: () => Date };
 type FinanceWriteBody = {
@@ -36,16 +36,16 @@ type InvoiceData = {
 
 function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function toDate(value: InvoiceData["dueDate"]): Date | null {
+function toDate(value: InvoiceData['dueDate']): Date | null {
   if (!value) return null;
-  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+  if (typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
     return value.toDate();
   }
   const date = value instanceof Date ? value : new Date(value as string | number);
@@ -53,17 +53,23 @@ function toDate(value: InvoiceData["dueDate"]): Date | null {
 }
 
 function normalizeActions(actions: unknown): ProposedAction[] {
-  return Array.isArray(actions) ? actions.filter((action): action is ProposedAction => {
-    return Boolean(action && typeof action === "object" && "id" in action && "status" in action);
-  }) : [];
+  return Array.isArray(actions)
+    ? actions.filter((action): action is ProposedAction => {
+        return Boolean(
+          action && typeof action === 'object' && 'id' in action && 'status' in action,
+        );
+      })
+    : [];
 }
 
 async function loadTenantTask(taskId: string, tenantId: string) {
-  const taskSnap = await adminDb.collection("agent_tasks").doc(taskId).get();
-  if (!taskSnap.exists) return { error: NextResponse.json({ ok: false, error: "Task not found" }, { status: 404 }) };
+  const taskSnap = await adminDb.collection('agent_tasks').doc(taskId).get();
+  if (!taskSnap.exists)
+    return { error: NextResponse.json({ ok: false, error: 'Task not found' }, { status: 404 }) };
 
   const taskData = taskSnap.data() as TaskData;
-  if (taskData.tenantId !== tenantId) return { error: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }) };
+  if (taskData.tenantId !== tenantId)
+    return { error: NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 }) };
 
   return { taskData };
 }
@@ -72,14 +78,17 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({})) as FinanceWriteBody;
+    const body = (await req.json().catch(() => ({}))) as FinanceWriteBody;
     const { action, taskId, actionId, input } = body;
 
     if (!action || !taskId || !actionId) {
-      return NextResponse.json({ ok: false, error: "action, taskId, actionId required" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'action, taskId, actionId required' },
+        { status: 400 },
+      );
     }
 
     const taskResult = await loadTenantTask(taskId, user.tenantId!);
@@ -87,55 +96,70 @@ export async function POST(req: NextRequest) {
 
     const currentActions = normalizeActions(taskResult.taskData?.proposedActions);
     const proposedAction = currentActions.find((a) => a.id === actionId);
-    if (!proposedAction) return NextResponse.json({ ok: false, error: "Proposed action not found" }, { status: 404 });
-    if (proposedAction.status !== "pending") {
-      return NextResponse.json({ ok: false, error: `Action already ${proposedAction.status}` }, { status: 409 });
+    if (!proposedAction)
+      return NextResponse.json({ ok: false, error: 'Proposed action not found' }, { status: 404 });
+    if (proposedAction.status !== 'pending') {
+      return NextResponse.json(
+        { ok: false, error: `Action already ${proposedAction.status}` },
+        { status: 409 },
+      );
     }
 
-    if (action === "reject_proposed_action") {
+    if (action === 'reject_proposed_action') {
       const actions = currentActions.map((a) =>
-        a.id === actionId ? { ...a, status: "rejected" as const } : a
+        a.id === actionId ? { ...a, status: 'rejected' as const } : a,
       );
-      const allResolved = actions.every((a) => a.status !== "pending");
-      await adminDb.collection("agent_tasks").doc(taskId).set(
-        { proposedActions: actions, ...(allResolved ? { status: "completed" } : {}) },
-        { merge: true }
-      );
+      const allResolved = actions.every((a) => a.status !== 'pending');
+      await adminDb
+        .collection('agent_tasks')
+        .doc(taskId)
+        .set(
+          { proposedActions: actions, ...(allResolved ? { status: 'completed' } : {}) },
+          { merge: true },
+        );
       return NextResponse.json({ ok: true, rejected: true });
     }
 
-    if (action === "send_payment_reminder") {
-      if (proposedAction.toolName !== "send_payment_reminder") {
-        return NextResponse.json({ ok: false, error: "Action type mismatch" }, { status: 400 });
+    if (action === 'send_payment_reminder') {
+      if (proposedAction.toolName !== 'send_payment_reminder') {
+        return NextResponse.json({ ok: false, error: 'Action type mismatch' }, { status: 400 });
       }
 
-      const invoiceId = String(input?.invoiceId || proposedAction.input.invoiceId || "").trim();
-      if (!invoiceId) return NextResponse.json({ ok: false, error: "invoiceId required" }, { status: 400 });
+      const invoiceId = String(input?.invoiceId || proposedAction.input.invoiceId || '').trim();
+      if (!invoiceId)
+        return NextResponse.json({ ok: false, error: 'invoiceId required' }, { status: 400 });
 
-      const invoiceSnap = await adminDb.collection("invoices").doc(invoiceId).get();
-      if (!invoiceSnap.exists) return NextResponse.json({ ok: false, error: "Invoice not found" }, { status: 404 });
+      const invoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+      if (!invoiceSnap.exists)
+        return NextResponse.json({ ok: false, error: 'Invoice not found' }, { status: 404 });
 
       const invoice = (invoiceSnap.data() || {}) as InvoiceData;
-      if (invoice.tenantId !== user.tenantId) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-      if (invoice.isPaid) return NextResponse.json({ ok: false, error: "Invoice is already paid" }, { status: 409 });
+      if (invoice.tenantId !== user.tenantId)
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+      if (invoice.isPaid)
+        return NextResponse.json({ ok: false, error: 'Invoice is already paid' }, { status: 409 });
 
-      const clientEmail = typeof invoice.clientEmail === "string" ? invoice.clientEmail.trim() : "";
-      if (!clientEmail) return NextResponse.json({ ok: false, error: "Invoice client email is missing" }, { status: 400 });
+      const clientEmail = typeof invoice.clientEmail === 'string' ? invoice.clientEmail.trim() : '';
+      if (!clientEmail)
+        return NextResponse.json(
+          { ok: false, error: 'Invoice client email is missing' },
+          { status: 400 },
+        );
 
       const dueDateObj = toDate(invoice.dueDate);
       if (dueDateObj && dueDateObj >= new Date()) {
-        return NextResponse.json({ ok: false, error: "Invoice is not overdue" }, { status: 409 });
+        return NextResponse.json({ ok: false, error: 'Invoice is not overdue' }, { status: 409 });
       }
 
-      const clientName = escapeHtml(invoice.clientName || "Valued Client");
+      const clientName = escapeHtml(invoice.clientName || 'Valued Client');
       const amount = Number(invoice.amountTotalUsd || 0).toFixed(2);
       const orderId = escapeHtml(String(invoice.orderId || invoiceId));
       const dueDate = dueDateObj
-        ? dueDateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-        : "the due date";
+        ? dueDateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'the due date';
 
-      const rawCustomMessage = String(input?.message || proposedAction.input.message || "").trim();
-      const customMessage = rawCustomMessage ? escapeHtml(rawCustomMessage) : "";
+      const rawCustomMessage = String(input?.message || proposedAction.input.message || '').trim();
+      const customMessage = rawCustomMessage ? escapeHtml(rawCustomMessage) : '';
 
       await sendEmail({
         to: clientEmail,
@@ -151,7 +175,7 @@ export async function POST(req: NextRequest) {
               <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
                 This is a friendly reminder that invoice <strong>${orderId}</strong> for <strong>$${amount}</strong> was due on <strong>${dueDate}</strong> and remains outstanding.
               </p>
-              ${customMessage ? `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${customMessage}</p>` : ""}
+              ${customMessage ? `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${customMessage}</p>` : ''}
               <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
                 Please arrange payment at your earliest convenience. If you have any questions or believe this message was sent in error, please reply to this email.
               </p>
@@ -166,32 +190,40 @@ export async function POST(req: NextRequest) {
         actorUserId: user.uid,
         actorName: user.fullName || user.email,
         actorRole: user.role,
-        actionType: "ai.finance.send_payment_reminder",
-        entityType: "invoice",
+        actionType: 'ai.finance.send_payment_reminder',
+        entityType: 'invoice',
         entityId: invoiceId,
         metadata: { taskId, actionId, clientEmail, amount, orderId },
       });
 
-      await adminDb.collection("invoices").doc(invoiceId).set(
-        { lastReminderSentAt: new Date().toISOString() },
-        { merge: true }
-      );
+      await adminDb
+        .collection('invoices')
+        .doc(invoiceId)
+        .set({ lastReminderSentAt: new Date().toISOString() }, { merge: true });
 
       const actions = currentActions.map((a) =>
-        a.id === actionId ? { ...a, status: "executed" as const, executedAt: new Date().toISOString() } : a
+        a.id === actionId
+          ? { ...a, status: 'executed' as const, executedAt: new Date().toISOString() }
+          : a,
       );
-      const allResolved = actions.every((a) => a.status !== "pending");
-      await adminDb.collection("agent_tasks").doc(taskId).set(
-        { proposedActions: actions, ...(allResolved ? { status: "completed" } : {}) },
-        { merge: true }
-      );
+      const allResolved = actions.every((a) => a.status !== 'pending');
+      await adminDb
+        .collection('agent_tasks')
+        .doc(taskId)
+        .set(
+          { proposedActions: actions, ...(allResolved ? { status: 'completed' } : {}) },
+          { merge: true },
+        );
 
       return NextResponse.json({ ok: true, sent: true, to: clientEmail });
     }
 
     return NextResponse.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400 });
   } catch (err: unknown) {
-    console.error("[FINANCE_WRITE]", err);
-    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Server error" }, { status: 500 });
+    console.error('[FINANCE_WRITE]', err);
+    return NextResponse.json(
+      { ok: false, error: err instanceof Error ? err.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }

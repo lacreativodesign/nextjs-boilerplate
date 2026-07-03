@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { runQuickBooksSync, updateQuickBooksSettings } from "@/lib/integrations/quickbooks";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { runQuickBooksSync, updateQuickBooksSettings } from '@/lib/integrations/quickbooks';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       settings?: Record<string, unknown>;
     };
 
-    if (body.settings && typeof body.settings === "object") {
+    if (body.settings && typeof body.settings === 'object') {
       await updateQuickBooksSettings(auth.user.tenantId, auth.user.uid, body.settings as any);
     }
 
@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, result });
   } catch (error: any) {
-    console.error("quickbooks/sync error", error);
-    return NextResponse.json({ ok: false, error: error?.message || "QuickBooks sync failed." }, { status: 500 });
+    console.error('quickbooks/sync error', error);
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'QuickBooks sync failed.' },
+      { status: 500 },
+    );
   }
 }

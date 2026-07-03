@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import LoadingButton from "@/components/ui/LoadingButton";
-import { Download } from "lucide-react";
-import { toastError } from "@/lib/toast";
+import { useState } from 'react';
+import LoadingButton from '@/components/ui/LoadingButton';
+import { Download } from 'lucide-react';
+import { toastError } from '@/lib/toast';
 
 interface InvoiceDownloadButtonProps {
   invoiceId: string;
@@ -17,16 +17,16 @@ export function InvoiceDownloadButton({ invoiceId, invoiceNumber }: InvoiceDownl
     try {
       setDownloading(true);
       const response = await fetch(`/api/admin/finance/invoices/${invoiceId}/pdf`, {
-        method: "GET",
+        method: 'GET',
       });
 
       if (!response.ok) {
-        throw new Error("Download failed");
+        throw new Error('Download failed');
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
+      const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = `${invoiceNumber}.pdf`;
       document.body.appendChild(anchor);
@@ -34,8 +34,8 @@ export function InvoiceDownloadButton({ invoiceId, invoiceNumber }: InvoiceDownl
       document.body.removeChild(anchor);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Invoice PDF download error:", error);
-      toastError("Failed to download invoice PDF.");
+      console.error('Invoice PDF download error:', error);
+      toastError('Failed to download invoice PDF.');
     } finally {
       setDownloading(false);
     }

@@ -1,6 +1,6 @@
-export type DependencyType = "finish_to_start" | "start_to_start" | "finish_to_finish";
+export type DependencyType = 'finish_to_start' | 'start_to_start' | 'finish_to_finish';
 
-export type TaskConstraintType = "must_start_on" | "must_finish_on" | "asap" | "alap";
+export type TaskConstraintType = 'must_start_on' | 'must_finish_on' | 'asap' | 'alap';
 
 export type TaskDependency = {
   id: string;
@@ -48,7 +48,12 @@ export type CriticalPathResult = {
   tasks: CriticalPathTask[];
   projectDurationDays: number;
   criticalPathTaskIds: string[];
-  overAllocatedResources: Array<{ resourceId: string; resourceName: string; date: string; totalAllocationPercent: number }>;
+  overAllocatedResources: Array<{
+    resourceId: string;
+    resourceName: string;
+    date: string;
+    totalAllocationPercent: number;
+  }>;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -120,7 +125,7 @@ function topologicalOrder(tasks: GanttTask[], deps: TaskDependency[]) {
     }
   }
 
-  if (ordered.length !== tasks.length) throw new Error("Task dependencies contain a cycle.");
+  if (ordered.length !== tasks.length) throw new Error('Task dependencies contain a cycle.');
   return ordered;
 }
 
@@ -128,17 +133,17 @@ function dependencyConstraint(
   predecessor: CriticalPathTask,
   successor: CriticalPathTask,
   dep: TaskDependency,
-  mode: "forward" | "backward"
+  mode: 'forward' | 'backward',
 ) {
   const lag = dep.lagDays || 0;
-  if (mode === "forward") {
-    if (dep.type === "finish_to_start") return predecessor.earlyFinish + lag;
-    if (dep.type === "start_to_start") return predecessor.earlyStart + lag;
+  if (mode === 'forward') {
+    if (dep.type === 'finish_to_start') return predecessor.earlyFinish + lag;
+    if (dep.type === 'start_to_start') return predecessor.earlyStart + lag;
     return predecessor.earlyFinish + lag - successor.durationDays;
   }
 
-  if (dep.type === "finish_to_start") return successor.lateStart - lag;
-  if (dep.type === "start_to_start") return successor.lateStart - lag;
+  if (dep.type === 'finish_to_start') return successor.lateStart - lag;
+  if (dep.type === 'start_to_start') return successor.lateStart - lag;
   return successor.lateFinish - lag;
 }
 
@@ -147,21 +152,33 @@ function applyForwardConstraint(task: CriticalPathTask, projectStart: Date) {
   const constraintDate = parseIsoDate(task.constraintDate);
   const offset = Math.ceil((constraintDate.getTime() - projectStart.getTime()) / DAY_MS);
 
-  if (task.constraintType === "must_start_on") {
+  if (task.constraintType === 'must_start_on') {
     task.earlyStart = offset;
     task.earlyFinish = task.earlyStart + task.durationDays;
   }
 
-  if (task.constraintType === "must_finish_on") {
+  if (task.constraintType === 'must_finish_on') {
     task.earlyFinish = offset;
     task.earlyStart = task.earlyFinish - task.durationDays;
   }
 }
 
-export function calculateCriticalPath(tasks: GanttTask[], deps: TaskDependency[]): CriticalPathResult {
-  if (!tasks.length) return { tasks: [], projectDurationDays: 0, criticalPathTaskIds: [], overAllocatedResources: [] };
+export function calculateCriticalPath(
+  tasks: GanttTask[],
+  deps: TaskDependency[],
+): CriticalPathResult {
+  if (!tasks.length)
+    return {
+      tasks: [],
+      projectDurationDays: 0,
+      criticalPathTaskIds: [],
+      overAllocatedResources: [],
+    };
 
-  const normalized = tasks.map((task) => ({ ...task, durationDays: task.durationDays || dayDiff(task.startDate, task.endDate) }));
+  const normalized = tasks.map((task) => ({
+    ...task,
+    durationDays: task.durationDays || dayDiff(task.startDate, task.endDate),
+  }));
   const projectStart = normalized
     .map((task) => parseIsoDate(task.startDate).getTime())
     .reduce((min, val) => Math.min(min, val), Number.MAX_SAFE_INTEGER);
@@ -179,7 +196,7 @@ export function calculateCriticalPath(tasks: GanttTask[], deps: TaskDependency[]
         freeFloat: 0,
         critical: false,
       },
-    ])
+    ]),
   );
 
   const { incoming, outgoing } = buildGraph(normalized, deps);
@@ -191,7 +208,7 @@ export function calculateCriticalPath(tasks: GanttTask[], deps: TaskDependency[]
 
     for (const dep of incoming.get(taskId) || []) {
       const predecessor = taskMap.get(dep.predecessorTaskId)!;
-      earliest = Math.max(earliest, dependencyConstraint(predecessor, task, dep, "forward"));
+      earliest = Math.max(earliest, dependencyConstraint(predecessor, task, dep, 'forward'));
     }
 
     task.earlyStart = Math.max(task.earlyStart, earliest);
@@ -199,7 +216,10 @@ export function calculateCriticalPath(tasks: GanttTask[], deps: TaskDependency[]
     applyForwardConstraint(task, new Date(projectStart));
   }
 
-  const projectDurationDays = Math.max(...Array.from(taskMap.values()).map((task) => task.earlyFinish), 0);
+  const projectDurationDays = Math.max(
+    ...Array.from(taskMap.values()).map((task) => task.earlyFinish),
+    0,
+  );
 
   for (const taskId of [...order].reverse()) {
     const task = taskMap.get(taskId)!;
@@ -212,15 +232,18 @@ export function calculateCriticalPath(tasks: GanttTask[], deps: TaskDependency[]
       let latest = Number.POSITIVE_INFINITY;
       for (const dep of dependents) {
         const successor = taskMap.get(dep.successorTaskId)!;
-        latest = Math.min(latest, dependencyConstraint(task, successor, dep, "backward"));
+        latest = Math.min(latest, dependencyConstraint(task, successor, dep, 'backward'));
       }
       task.lateFinish = Number.isFinite(latest) ? latest : projectDurationDays;
       task.lateStart = task.lateFinish - task.durationDays;
     }
 
     task.totalFloat = task.lateStart - task.earlyStart;
-    const dependentStart = dependents.map((dep) => taskMap.get(dep.successorTaskId)!.earlyStart - (dep.lagDays || 0));
-    task.freeFloat = (dependentStart.length ? Math.min(...dependentStart) : task.earlyFinish) - task.earlyFinish;
+    const dependentStart = dependents.map(
+      (dep) => taskMap.get(dep.successorTaskId)!.earlyStart - (dep.lagDays || 0),
+    );
+    task.freeFloat =
+      (dependentStart.length ? Math.min(...dependentStart) : task.earlyFinish) - task.earlyFinish;
     task.critical = task.totalFloat <= 0;
   }
 
@@ -242,9 +265,13 @@ export function optimizeSchedule(tasks: GanttTask[], deps: TaskDependency[]): Ga
 
   return tasks.map((task) => {
     const cp = byId.get(task.id);
-    if (!cp || cp.critical || cp.constraintType === "alap") return task;
+    if (!cp || cp.critical || cp.constraintType === 'alap') return task;
     const shift = Math.max(0, Math.min(cp.totalFloat, 2));
-    return { ...task, startDate: addDays(task.startDate, shift), endDate: addDays(task.endDate, shift) };
+    return {
+      ...task,
+      startDate: addDays(task.startDate, shift),
+      endDate: addDays(task.endDate, shift),
+    };
   });
 }
 
@@ -256,8 +283,13 @@ export function levelResources(tasks: GanttTask[], deps: TaskDependency[]) {
   };
 }
 
-function detectOverAllocation(tasks: Array<Pick<GanttTask, "startDate" | "endDate" | "assignedResources">>) {
-  const map = new Map<string, { resourceId: string; resourceName: string; date: string; totalAllocationPercent: number }>();
+function detectOverAllocation(
+  tasks: Array<Pick<GanttTask, 'startDate' | 'endDate' | 'assignedResources'>>,
+) {
+  const map = new Map<
+    string,
+    { resourceId: string; resourceName: string; date: string; totalAllocationPercent: number }
+  >();
 
   for (const task of tasks) {
     const start = parseIsoDate(task.startDate);

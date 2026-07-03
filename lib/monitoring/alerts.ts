@@ -1,41 +1,41 @@
-import { monitoringLogger } from "@/lib/monitoring/logger";
-import type { MonitoringAlertRule, MonitoringAlertState } from "@/lib/monitoring/types";
+import { monitoringLogger } from '@/lib/monitoring/logger';
+import type { MonitoringAlertRule, MonitoringAlertState } from '@/lib/monitoring/types';
 
 const ALERT_COOLDOWN_MS = 5 * 60 * 1000;
 const alertTriggerCache = new Map<string, number>();
 
 export const defaultAlertRules: MonitoringAlertRule[] = [
   {
-    id: "error-rate-high",
-    label: "Error rate > 1%",
-    channel: "slack",
+    id: 'error-rate-high',
+    label: 'Error rate > 1%',
+    channel: 'slack',
     threshold: 1,
-    comparison: ">",
-    metricKey: "errorRate",
+    comparison: '>',
+    metricKey: 'errorRate',
   },
   {
-    id: "response-time-high",
-    label: "P95 response time > 1000ms",
-    channel: "email",
+    id: 'response-time-high',
+    label: 'P95 response time > 1000ms',
+    channel: 'email',
     threshold: 1000,
-    comparison: ">",
-    metricKey: "responseTimeP95",
+    comparison: '>',
+    metricKey: 'responseTimeP95',
   },
   {
-    id: "database-cpu-high",
-    label: "Database CPU > 80%",
-    channel: "pagerduty",
+    id: 'database-cpu-high',
+    label: 'Database CPU > 80%',
+    channel: 'pagerduty',
     threshold: 80,
-    comparison: ">",
-    metricKey: "databaseCpu",
+    comparison: '>',
+    metricKey: 'databaseCpu',
   },
   {
-    id: "disk-space-low",
-    label: "Disk space < 10%",
-    channel: "immediate",
+    id: 'disk-space-low',
+    label: 'Disk space < 10%',
+    channel: 'immediate',
     threshold: 10,
-    comparison: "<",
-    metricKey: "diskAvailable",
+    comparison: '<',
+    metricKey: 'diskAvailable',
   },
 ];
 
@@ -47,21 +47,21 @@ type AlertMetrics = {
 };
 
 function compare(rule: MonitoringAlertRule, value: number) {
-  return rule.comparison === ">" ? value > rule.threshold : value < rule.threshold;
+  return rule.comparison === '>' ? value > rule.threshold : value < rule.threshold;
 }
 
-async function sendNotification(channel: MonitoringAlertRule["channel"], message: string) {
+async function sendNotification(channel: MonitoringAlertRule['channel'], message: string) {
   const webhookUrl =
-    channel === "slack"
+    channel === 'slack'
       ? process.env.MONITORING_SLACK_WEBHOOK_URL
-      : channel === "pagerduty"
+      : channel === 'pagerduty'
         ? process.env.MONITORING_PAGERDUTY_WEBHOOK_URL
-        : channel === "email"
+        : channel === 'email'
           ? process.env.MONITORING_EMAIL_WEBHOOK_URL
           : process.env.MONITORING_IMMEDIATE_ALERT_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    await monitoringLogger.warn("monitoring_alert_channel_not_configured", "monitoring", {
+    await monitoringLogger.warn('monitoring_alert_channel_not_configured', 'monitoring', {
       channel,
       message,
     });
@@ -69,15 +69,15 @@ async function sendNotification(channel: MonitoringAlertRule["channel"], message
   }
 
   await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       text: message,
       channel,
-      source: "bizosto-monitoring",
+      source: 'bizosto-monitoring',
       sentAt: new Date().toISOString(),
     }),
-    cache: "no-store",
+    cache: 'no-store',
   });
 }
 
@@ -112,7 +112,7 @@ export async function evaluateAlertStates(metrics: AlertMetrics): Promise<Monito
 
       const message = `[${rule.channel.toUpperCase()}] ${rule.label}. Current value=${currentValue.toFixed(2)}, threshold=${rule.threshold}`;
       await sendNotification(rule.channel, message);
-      await monitoringLogger.warn("monitoring_alert_triggered", "monitoring", {
+      await monitoringLogger.warn('monitoring_alert_triggered', 'monitoring', {
         ruleId: rule.id,
         channel: rule.channel,
         currentValue,
@@ -120,7 +120,7 @@ export async function evaluateAlertStates(metrics: AlertMetrics): Promise<Monito
       });
 
       return state;
-    })
+    }),
   );
 
   return states;

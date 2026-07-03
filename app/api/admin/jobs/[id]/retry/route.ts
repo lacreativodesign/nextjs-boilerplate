@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
-import { processDueJobs, retryFailedJob } from "@/lib/jobs/job-queue";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { processDueJobs, retryFailedJob } from '@/lib/jobs/job-queue';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireAdminOrSuperAdmin();
@@ -15,6 +15,9 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     const run = await processDueJobs(10);
     return NextResponse.json({ ok: true, jobId: params.id, run });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Retry failed." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Retry failed.' },
+      { status: 400 },
+    );
   }
 }

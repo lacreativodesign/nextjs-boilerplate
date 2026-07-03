@@ -1,10 +1,12 @@
 # Sales User Guide
 
 ## Your Dashboard
+
 - See leads in pipeline, deals closed this month, and revenue generated
 - Use quick actions for **New Lead**, **Log Activity**, and **View Pipeline**
 
 ## Managing Leads
+
 - Create lead: **Sales → New Lead**
 - Pipeline stages:
   - New Lead
@@ -17,6 +19,7 @@
 - Add notes and activities to track interactions and follow-ups
 
 ## Your Performance
+
 - URL: `/sales/performance`
 - Track targets vs actuals for leads, deals, and revenue
 - Period options: monthly, quarterly, annual

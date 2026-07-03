@@ -1,6 +1,6 @@
-export type BudgetType = "revenue" | "expense" | "project" | "department" | "custom";
-export type BudgetPeriod = "monthly" | "quarterly" | "yearly";
-export type BudgetStatus = "draft" | "active" | "closed" | "revised";
+export type BudgetType = 'revenue' | 'expense' | 'project' | 'department' | 'custom';
+export type BudgetPeriod = 'monthly' | 'quarterly' | 'yearly';
+export type BudgetStatus = 'draft' | 'active' | 'closed' | 'revised';
 
 export interface Budget {
   id: string;
@@ -49,7 +49,7 @@ export interface BudgetVariance {
   actualAmount: number;
   variance: number;
   variancePercentage: number;
-  status: "under" | "over" | "on-track";
+  status: 'under' | 'over' | 'on-track';
 }
 
 export interface BudgetActual {
@@ -68,18 +68,18 @@ export interface BudgetActual {
 export function calculateVariance(
   allocated: number,
   actual: number,
-): { variance: number; variancePercentage: number; status: "under" | "over" | "on-track" } {
+): { variance: number; variancePercentage: number; status: 'under' | 'over' | 'on-track' } {
   const variance = allocated - actual;
   const variancePercentage = allocated > 0 ? (variance / allocated) * 100 : 0;
 
-  let status: "under" | "over" | "on-track";
+  let status: 'under' | 'over' | 'on-track';
 
   if (Math.abs(variancePercentage) <= 5) {
-    status = "on-track";
+    status = 'on-track';
   } else if (variance > 0) {
-    status = "under";
+    status = 'under';
   } else {
-    status = "over";
+    status = 'over';
   }
 
   return {
@@ -104,29 +104,29 @@ export function getBudgetPeriodDates(
   let endDate: Date;
 
   switch (period) {
-    case "yearly":
+    case 'yearly':
       startDate = new Date(year, 0, 1);
       endDate = new Date(year, 11, 31, 23, 59, 59);
       break;
 
-    case "quarterly":
+    case 'quarterly':
       if (!quarter || quarter < 1 || quarter > 4) {
-        throw new Error("Invalid quarter");
+        throw new Error('Invalid quarter');
       }
       startDate = new Date(year, (quarter - 1) * 3, 1);
       endDate = new Date(year, (quarter - 1) * 3 + 3, 0, 23, 59, 59);
       break;
 
-    case "monthly":
+    case 'monthly':
       if (!month || month < 1 || month > 12) {
-        throw new Error("Invalid month");
+        throw new Error('Invalid month');
       }
       startDate = new Date(year, month - 1, 1);
       endDate = new Date(year, month, 0, 23, 59, 59);
       break;
 
     default:
-      throw new Error("Invalid budget period");
+      throw new Error('Invalid budget period');
   }
 
   return { startDate, endDate };
@@ -134,5 +134,5 @@ export function getBudgetPeriodDates(
 
 export function isBudgetActive(budget: Budget): boolean {
   const now = new Date();
-  return budget.status === "active" && now >= budget.startDate && now <= budget.endDate;
+  return budget.status === 'active' && now >= budget.startDate && now <= budget.endDate;
 }

@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { monitoringLogger } from "@/lib/monitoring/logger";
-import { requireHrAccess, serverTimestamp } from "../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { monitoringLogger } from '@/lib/monitoring/logger';
+import { requireHrAccess, serverTimestamp } from '../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
@@ -12,19 +12,23 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    const snap = await adminDb.collection("hrSettings").doc(access.user.tenantId).get();
+    const snap = await adminDb.collection('hrSettings').doc(access.user.tenantId).get();
     const data = snap.exists ? snap.data() : {};
 
     return NextResponse.json({
       ok: true,
       settings: {
         defaultOnboardingTemplateId: data?.defaultOnboardingTemplateId || null,
-        retentionNote: data?.retentionNote || "Documents are retained for 7 years by default.",
+        retentionNote: data?.retentionNote || 'Documents are retained for 7 years by default.',
       },
     });
   } catch (err) {
-    monitoringLogger.error("HR settings get error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    monitoringLogger
+      .error('HR settings get error', 'hr', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      .catch(() => undefined);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -37,21 +41,25 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const defaultOnboardingTemplateId = body?.defaultOnboardingTemplateId || null;
-    const retentionNote = body?.retentionNote || "Documents are retained for 7 years by default.";
+    const retentionNote = body?.retentionNote || 'Documents are retained for 7 years by default.';
 
-    await adminDb.collection("hrSettings").doc(access.user.tenantId).set(
+    await adminDb.collection('hrSettings').doc(access.user.tenantId).set(
       {
         defaultOnboardingTemplateId,
         retentionNote,
         tenantId: access.user.tenantId,
         updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    monitoringLogger.error("HR settings update error", "hr", { error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    monitoringLogger
+      .error('HR settings update error', 'hr', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      .catch(() => undefined);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

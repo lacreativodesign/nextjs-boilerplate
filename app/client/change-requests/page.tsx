@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
-const CHANGE_REQUEST_TYPES = ["Scope Change", "Revision", "New Feature", "Bug Fix", "Other"];
-const CHANGE_REQUEST_PRIORITIES = ["Low", "Medium", "High"];
+const CHANGE_REQUEST_TYPES = ['Scope Change', 'Revision', 'New Feature', 'Bug Fix', 'Other'];
+const CHANGE_REQUEST_PRIORITIES = ['Low', 'Medium', 'High'];
 
 type ChangeRequestRecord = {
   id: string;
@@ -26,11 +26,10 @@ type ChangeRequestRecord = {
 
 type ProjectOption = { value: string; label: string };
 
-
 function fmtDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString();
 }
 
@@ -38,37 +37,37 @@ export default function ClientChangeRequestsPage() {
   const [changeRequests, setChangeRequests] = useState<ChangeRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<ChangeRequestRecord | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
   const [formState, setFormState] = useState({
-    projectId: "",
+    projectId: '',
     type: CHANGE_REQUEST_TYPES[0],
-    title: "",
-    description: "",
+    title: '',
+    description: '',
     priority: CHANGE_REQUEST_PRIORITIES[1],
   });
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionLoading, setDecisionLoading] = useState(false);
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
@@ -76,12 +75,13 @@ export default function ClientChangeRequestsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/client/change-requests/list", { cache: "no-store" });
+      const res = await apiFetch('/api/client/change-requests/list', { cache: 'no-store' });
       const payload = await res.json();
-      if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Unable to load change requests.");
+      if (!res.ok || !payload?.ok)
+        throw new Error(payload?.error || 'Unable to load change requests.');
       setChangeRequests(payload.changeRequests || []);
     } catch (err: any) {
-      setError(err?.message || "Unable to load change requests.");
+      setError(err?.message || 'Unable to load change requests.');
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function ClientChangeRequestsPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const res = await apiFetch("/api/client/projects/list", { cache: "no-store" });
+        const res = await apiFetch('/api/client/projects/list', { cache: 'no-store' });
         const payload = await res.json();
         if (!res.ok || !payload?.ok) return;
         const options = (payload.projects || []).map((project: any) => ({
@@ -116,7 +116,7 @@ export default function ClientChangeRequestsPage() {
         request.projectName,
         request.type,
       ]),
-    [changeRequests, search]
+    [changeRequests, search],
   );
 
   const openDrawer = (request: ChangeRequestRecord) => {
@@ -133,9 +133,9 @@ export default function ClientChangeRequestsPage() {
     if (!formState.projectId || !formState.title.trim() || !formState.description.trim()) return;
     setActionLoading(true);
     try {
-      const res = await apiFetch("/api/client/change-requests/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/client/change-requests/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: formState.projectId,
           type: formState.type,
@@ -145,13 +145,14 @@ export default function ClientChangeRequestsPage() {
         }),
       });
       const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload?.error || "Unable to submit change request.");
+      if (!res.ok || !payload.ok)
+        throw new Error(payload?.error || 'Unable to submit change request.');
       setCreateOpen(false);
       setFormState({
-        projectId: "",
+        projectId: '',
         type: CHANGE_REQUEST_TYPES[0],
-        title: "",
-        description: "",
+        title: '',
+        description: '',
         priority: CHANGE_REQUEST_PRIORITIES[1],
       });
       await loadChangeRequests();
@@ -162,16 +163,17 @@ export default function ClientChangeRequestsPage() {
     }
   };
 
-  const handleDecision = async (request: ChangeRequestRecord, decision: "approve" | "reject") => {
+  const handleDecision = async (request: ChangeRequestRecord, decision: 'approve' | 'reject') => {
     setDecisionLoading(true);
     try {
-      const res = await apiFetch("/api/client/change-requests/update-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/client/change-requests/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changeRequestId: request.id, decision }),
       });
       const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload?.error || "Unable to update change request.");
+      if (!res.ok || !payload.ok)
+        throw new Error(payload?.error || 'Unable to update change request.');
       await loadChangeRequests();
       closeDrawer();
     } catch (err) {
@@ -190,7 +192,12 @@ export default function ClientChangeRequestsPage() {
 
       <div className="card p-4">
         <div className="page-header">
-          <SmartSearchBar value={search} onChange={setSearch} placeholder="Search keyword" className="flex-1" />
+          <SmartSearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search keyword"
+            className="flex-1"
+          />
           <button className="btn" onClick={() => setCreateOpen(true)}>
             New Change Request
           </button>
@@ -205,29 +212,35 @@ export default function ClientChangeRequestsPage() {
         ) : filtered.length === 0 ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">No change requests found.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: 'auto' }}>
             <table style={{ minWidth: 860 }}>
               <thead>
                 <tr>
                   <th style={headerCellStyle}>Title</th>
                   <th style={headerCellStyle}>Project</th>
                   <th style={headerCellStyle}>Type</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Status</th>
-                  <th style={{ ...headerCellStyle, textAlign: "right" }}>Created</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Action</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Status</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'right' }}>Created</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((request) => {
                   return (
-                    <tr key={request.id} >
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{request.title}</td>
-                      <td style={cellStyle}>{request.projectName || "-"}</td>
+                    <tr key={request.id}>
+                      <td style={{ ...cellStyle, whiteSpace: 'normal' }}>{request.title}</td>
+                      <td style={cellStyle}>{request.projectName || '-'}</td>
                       <td style={cellStyle}>{request.type}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{request.status}</td>
-                      <td style={{ ...cellStyle, textAlign: "right" }}>{fmtDate(request.createdAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <button className="btn ghost" style={{ borderRadius: 999 }} onClick={() => openDrawer(request)}>
+                      <td style={{ ...cellStyle, textAlign: 'center' }}>{request.status}</td>
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>
+                        {fmtDate(request.createdAt)}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'center' }}>
+                        <button
+                          className="btn ghost"
+                          style={{ borderRadius: 999 }}
+                          onClick={() => openDrawer(request)}
+                        >
                           View
                         </button>
                       </td>
@@ -242,15 +255,22 @@ export default function ClientChangeRequestsPage() {
 
       {drawerOpen && selected && (
         <div className="drawer-overlay" onClick={closeDrawer}>
-          <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div
+            className="drawer-panel drawer-panel--md"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>{selected.title}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
                   {selected.projectName} · {selected.type}
                 </div>
               </div>
-              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                onClick={closeDrawer}
+                style={{ height: 34, borderRadius: 999 }}
+              >
                 Close
               </button>
             </div>
@@ -258,7 +278,9 @@ export default function ClientChangeRequestsPage() {
             <div style={{ height: 16 }} />
 
             <div className="card p-4">
-              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Details</div>
+              <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                Details
+              </div>
               <div className="mt-3 grid gap-3">
                 <Row label="Status" value={selected.status} />
                 <Row label="Priority" value={selected.priority} />
@@ -267,15 +289,16 @@ export default function ClientChangeRequestsPage() {
                   value={
                     selected.estimatedCost !== null && selected.estimatedCost !== undefined
                       ? `$${selected.estimatedCost.toLocaleString()}`
-                      : "Pending"
+                      : 'Pending'
                   }
                 />
                 <Row
                   label="Timeline Impact"
                   value={
-                    selected.estimatedTimelineDays !== null && selected.estimatedTimelineDays !== undefined
+                    selected.estimatedTimelineDays !== null &&
+                    selected.estimatedTimelineDays !== undefined
                       ? `${selected.estimatedTimelineDays} days`
-                      : "Pending"
+                      : 'Pending'
                   }
                 />
                 <Row label="Created" value={fmtDate(selected.createdAt)} />
@@ -283,21 +306,27 @@ export default function ClientChangeRequestsPage() {
               <div className="mt-3 text-sm">{selected.description}</div>
             </div>
 
-            {["Submitted", "In Review"].includes(selected.status) && (
+            {['Submitted', 'In Review'].includes(selected.status) && (
               <div className="card p-4 mt-3">
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Your decision</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Your decision
+                </div>
                 <p className="text-sm mt-2 text-[var(--text-muted)]">
                   Approve to move forward or reject if you need more changes.
                 </p>
                 <div className="mt-3 flex justify-end gap-2">
                   <button
                     className="btn ghost"
-                    onClick={() => handleDecision(selected, "reject")}
+                    onClick={() => handleDecision(selected, 'reject')}
                     disabled={decisionLoading}
                   >
                     Reject
                   </button>
-                  <button className="btn" onClick={() => handleDecision(selected, "approve")} disabled={decisionLoading}>
+                  <button
+                    className="btn"
+                    onClick={() => handleDecision(selected, 'approve')}
+                    disabled={decisionLoading}
+                  >
                     Approve
                   </button>
                 </div>
@@ -309,13 +338,22 @@ export default function ClientChangeRequestsPage() {
 
       {createOpen && (
         <div className="drawer-overlay" onClick={() => setCreateOpen(false)}>
-          <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div
+            className="drawer-panel drawer-panel--md"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>New Change Request</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>Submit an update for your delivery team.</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  Submit an update for your delivery team.
+                </div>
               </div>
-              <button className="btn ghost" onClick={() => setCreateOpen(false)} style={{ height: 34, borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                onClick={() => setCreateOpen(false)}
+                style={{ height: 34, borderRadius: 999 }}
+              >
                 Close
               </button>
             </div>
@@ -324,7 +362,9 @@ export default function ClientChangeRequestsPage() {
 
             <div className="card p-4 grid gap-3">
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Project</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Project
+                </div>
                 <select
                   className="input mt-2"
                   value={formState.projectId}
@@ -339,7 +379,9 @@ export default function ClientChangeRequestsPage() {
                 </select>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Type</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Type
+                </div>
                 <select
                   className="input mt-2"
                   value={formState.type}
@@ -353,7 +395,9 @@ export default function ClientChangeRequestsPage() {
                 </select>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Title</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Title
+                </div>
                 <input
                   className="input mt-2"
                   value={formState.title}
@@ -361,16 +405,22 @@ export default function ClientChangeRequestsPage() {
                 />
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Description</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Description
+                </div>
                 <textarea
                   className="input mt-2"
                   rows={4}
                   value={formState.description}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, description: e.target.value }))
+                  }
                 />
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Priority</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Priority
+                </div>
                 <select
                   className="input mt-2"
                   value={formState.priority}
@@ -388,10 +438,13 @@ export default function ClientChangeRequestsPage() {
                   className="btn"
                   onClick={submitChangeRequest}
                   disabled={
-                    actionLoading || !formState.projectId || !formState.title.trim() || !formState.description.trim()
+                    actionLoading ||
+                    !formState.projectId ||
+                    !formState.title.trim() ||
+                    !formState.description.trim()
                   }
                 >
-                  {actionLoading ? "Submitting..." : "Submit Request"}
+                  {actionLoading ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
             </div>

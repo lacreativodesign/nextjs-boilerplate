@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { SkeletonForm } from "@/components/ui/Skeleton";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useState } from 'react';
+import { SkeletonForm } from '@/components/ui/Skeleton';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api/client';
 
 export default function EditUserPage() {
   const params = useParams();
@@ -17,9 +17,9 @@ export default function EditUserPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    role: "",
+    name: '',
+    email: '',
+    role: '',
     disabled: false,
   });
 
@@ -28,19 +28,19 @@ export default function EditUserPage() {
       try {
         const res = await apiFetch(`/api/admin/users/get?uid=${uid}`);
         if (!res.ok) {
-          setError("Failed to load user");
+          setError('Failed to load user');
           setLoading(false);
           return;
         }
         const data = await res.json();
         setForm({
-          name: data.user.name || "",
-          email: data.user.email || "",
-          role: data.user.role || "sales",
+          name: data.user.name || '',
+          email: data.user.email || '',
+          role: data.user.role || 'sales',
           disabled: !!data.user.disabled,
         });
       } catch (e) {
-        setError("Error loading user");
+        setError('Error loading user');
       } finally {
         setLoading(false);
       }
@@ -53,8 +53,8 @@ export default function EditUserPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/admin/users/update", {
-        method: "POST",
+      const res = await apiFetch('/api/admin/users/update', {
+        method: 'POST',
         body: JSON.stringify({
           uid,
           name: form.name,
@@ -66,39 +66,39 @@ export default function EditUserPage() {
 
       if (!res.ok) {
         const msg = await res.text();
-        setError(msg || "Failed to update user");
+        setError(msg || 'Failed to update user');
         setSaving(false);
         return;
       }
 
-      router.push("/users");
+      router.push('/users');
     } catch (e) {
-      setError("Error updating user");
+      setError('Error updating user');
       setSaving(false);
     }
   };
 
   const onDelete = async () => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    if (!confirm('Are you sure you want to delete this user?')) return;
     setDeleting(true);
     setError(null);
 
     try {
-      const res = await apiFetch("/api/admin/users/delete", {
-        method: "POST",
+      const res = await apiFetch('/api/admin/users/delete', {
+        method: 'POST',
         body: JSON.stringify({ uid }),
       });
 
       if (!res.ok) {
         const msg = await res.text();
-        setError(msg || "Failed to delete user");
+        setError(msg || 'Failed to delete user');
         setDeleting(false);
         return;
       }
 
-      router.push("/users");
+      router.push('/users');
     } catch (e) {
-      setError("Error deleting user");
+      setError('Error deleting user');
       setDeleting(false);
     }
   };
@@ -113,12 +113,13 @@ export default function EditUserPage() {
 
   return (
     <div style={{ maxWidth: 500 }}>
-      <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block">
+      <Link
+        href="/admin/users"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block"
+      >
         ← Back to Users
       </Link>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16 }}>
-        Edit User
-      </h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16 }}>Edit User</h2>
 
       {error && (
         <div
@@ -126,8 +127,8 @@ export default function EditUserPage() {
             marginBottom: 16,
             padding: 10,
             borderRadius: 8,
-            background: "#fee2e2",
-            color: "#b91c1c",
+            background: '#fee2e2',
+            color: '#b91c1c',
             fontSize: 14,
           }}
         >
@@ -138,9 +139,9 @@ export default function EditUserPage() {
       <label>Name</label>
       <input
         style={{
-          width: "100%",
+          width: '100%',
           padding: 10,
-          border: "1px solid var(--border)",
+          border: '1px solid var(--border)',
           borderRadius: 8,
           marginBottom: 14,
         }}
@@ -151,9 +152,9 @@ export default function EditUserPage() {
       <label>Email</label>
       <input
         style={{
-          width: "100%",
+          width: '100%',
           padding: 10,
-          border: "1px solid var(--border)",
+          border: '1px solid var(--border)',
           borderRadius: 8,
           marginBottom: 14,
         }}
@@ -164,9 +165,9 @@ export default function EditUserPage() {
       <label>Role</label>
       <select
         style={{
-          width: "100%",
+          width: '100%',
           padding: 10,
-          border: "1px solid var(--border)",
+          border: '1px solid var(--border)',
           borderRadius: 8,
           marginBottom: 14,
         }}
@@ -185,7 +186,7 @@ export default function EditUserPage() {
         <option value="client">Client</option>
       </select>
 
-      <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input
           type="checkbox"
           checked={form.disabled}
@@ -194,32 +195,32 @@ export default function EditUserPage() {
         Disable login for this user
       </label>
 
-      <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
+      <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
         <button
           onClick={onSave}
           disabled={saving}
           style={{
-            background: "#2563eb",
-            padding: "10px 18px",
-            color: "white",
+            background: '#2563eb',
+            padding: '10px 18px',
+            color: 'white',
             borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
+            border: 'none',
+            cursor: 'pointer',
             fontWeight: 600,
           }}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
 
         <button
           onClick={() => history.back()}
           style={{
-            background: "#e5e7eb",
-            padding: "10px 18px",
-            color: "#111827",
+            background: '#e5e7eb',
+            padding: '10px 18px',
+            color: '#111827',
             borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
+            border: 'none',
+            cursor: 'pointer',
             fontWeight: 500,
           }}
         >
@@ -230,19 +231,19 @@ export default function EditUserPage() {
           onClick={onDelete}
           disabled={deleting}
           style={{
-            marginLeft: "auto",
-            background: "#ef4444",
-            padding: "10px 18px",
-            color: "white",
+            marginLeft: 'auto',
+            background: '#ef4444',
+            padding: '10px 18px',
+            color: 'white',
             borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
+            border: 'none',
+            cursor: 'pointer',
             fontWeight: 600,
           }}
         >
-          {deleting ? "Deleting..." : "Delete User"}
+          {deleting ? 'Deleting...' : 'Delete User'}
         </button>
       </div>
     </div>
   );
-          }
+}

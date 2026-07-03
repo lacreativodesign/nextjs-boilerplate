@@ -107,6 +107,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, imported: result.imported, total: result.total });
   } catch (error: any) {
     console.error('Import execute error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Import failed' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || 'Import failed' },
+      { status: 500 },
+    );
   }
 }

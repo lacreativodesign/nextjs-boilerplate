@@ -1,18 +1,20 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 export function useIsSystemDark() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
     const read = () => setIsDark(!!mql.matches);
     read();
-    mql.addEventListener ? mql.addEventListener("change", read) : (mql as any).addListener(read);
+    mql.addEventListener ? mql.addEventListener('change', read) : (mql as any).addListener(read);
     return () => {
-      mql.removeEventListener ? mql.removeEventListener("change", read) : (mql as any).removeListener(read);
+      mql.removeEventListener
+        ? mql.removeEventListener('change', read)
+        : (mql as any).removeListener(read);
     };
   }, []);
 
@@ -21,41 +23,51 @@ export function useIsSystemDark() {
 
 export function formatUsd(value?: number | null) {
   const num = Number(value || 0);
-  if (Number.isNaN(num)) return "$0";
-  return num.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  if (Number.isNaN(num)) return '$0';
+  return num.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  });
 }
 
 export function formatPkr(value?: number | null) {
   const num = Number(value || 0);
-  if (Number.isNaN(num)) return "Rs. 0";
-  return `Rs. ${num.toLocaleString("en-PK", { maximumFractionDigits: 0 })}`;
+  if (Number.isNaN(num)) return 'Rs. 0';
+  return `Rs. ${num.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`;
 }
 
 export function formatDate(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatDateTime(iso?: string | null) {
-  if (!iso) return "-";
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export function toInputDate(iso?: string | null) {
-  if (!iso) return "";
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 10);
 }
 
 export function toInputMonth(iso?: string | null) {
-  if (!iso) return "";
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 7);
 }
 

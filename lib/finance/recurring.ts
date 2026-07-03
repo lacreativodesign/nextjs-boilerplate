@@ -1,5 +1,11 @@
-export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
-export type TemplateStatus = "draft" | "active" | "paused" | "cancelled";
+export type RecurrenceFrequency =
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'quarterly'
+  | 'yearly'
+  | 'custom';
+export type TemplateStatus = 'draft' | 'active' | 'paused' | 'cancelled';
 
 export interface RecurringInvoiceTemplate {
   id: string;
@@ -47,7 +53,7 @@ export interface GeneratedInvoiceRecord {
   templateId: string;
   invoiceId: string;
   generatedDate: Date;
-  status: "generated" | "sent" | "paid" | "failed";
+  status: 'generated' | 'sent' | 'paid' | 'failed';
   tenantId: string;
 }
 
@@ -62,11 +68,11 @@ export function calculateNextGenerationDate(
   const next = new Date(lastDate);
 
   switch (frequency) {
-    case "daily":
+    case 'daily':
       next.setDate(next.getDate() + interval);
       break;
 
-    case "weekly":
+    case 'weekly':
       next.setDate(next.getDate() + 7 * interval);
       if (dayOfWeek !== undefined) {
         const currentDay = next.getDay();
@@ -75,28 +81,28 @@ export function calculateNextGenerationDate(
       }
       break;
 
-    case "monthly":
+    case 'monthly':
       next.setMonth(next.getMonth() + interval);
       if (dayOfMonth !== undefined) {
         next.setDate(Math.min(dayOfMonth, getDaysInMonth(next)));
       }
       break;
 
-    case "quarterly":
+    case 'quarterly':
       next.setMonth(next.getMonth() + 3 * interval);
       if (dayOfMonth !== undefined) {
         next.setDate(Math.min(dayOfMonth, getDaysInMonth(next)));
       }
       break;
 
-    case "yearly":
+    case 'yearly':
       next.setFullYear(next.getFullYear() + interval);
       if (dayOfMonth !== undefined) {
         next.setDate(Math.min(dayOfMonth, getDaysInMonth(next)));
       }
       break;
 
-    case "custom":
+    case 'custom':
       if (customDays !== undefined) {
         next.setDate(next.getDate() + customDays);
       }
@@ -111,7 +117,7 @@ function getDaysInMonth(date: Date): number {
 }
 
 export function shouldGenerateInvoice(template: RecurringInvoiceTemplate): boolean {
-  if (template.status !== "active") {
+  if (template.status !== 'active') {
     return false;
   }
 
@@ -141,35 +147,37 @@ export function getFrequencyDescription(
   dayOfWeek?: number,
 ): string {
   switch (frequency) {
-    case "daily":
-      return interval === 1 ? "Daily" : `Every ${interval} days`;
+    case 'daily':
+      return interval === 1 ? 'Daily' : `Every ${interval} days`;
 
-    case "weekly": {
+    case 'weekly': {
       const dayName =
         dayOfWeek !== undefined
-          ? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dayOfWeek]
-          : "";
+          ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
+              dayOfWeek
+            ]
+          : '';
 
       return interval === 1
-        ? `Weekly${dayName ? ` on ${dayName}` : ""}`
-        : `Every ${interval} weeks${dayName ? ` on ${dayName}` : ""}`;
+        ? `Weekly${dayName ? ` on ${dayName}` : ''}`
+        : `Every ${interval} weeks${dayName ? ` on ${dayName}` : ''}`;
     }
 
-    case "monthly": {
-      const dayText = dayOfMonth ? ` on day ${dayOfMonth}` : "";
+    case 'monthly': {
+      const dayText = dayOfMonth ? ` on day ${dayOfMonth}` : '';
       return interval === 1 ? `Monthly${dayText}` : `Every ${interval} months${dayText}`;
     }
 
-    case "quarterly":
-      return interval === 1 ? "Quarterly" : `Every ${interval} quarters`;
+    case 'quarterly':
+      return interval === 1 ? 'Quarterly' : `Every ${interval} quarters`;
 
-    case "yearly":
-      return interval === 1 ? "Yearly" : `Every ${interval} years`;
+    case 'yearly':
+      return interval === 1 ? 'Yearly' : `Every ${interval} years`;
 
-    case "custom":
-      return "Custom schedule";
+    case 'custom':
+      return 'Custom schedule';
 
     default:
-      return "Unknown";
+      return 'Unknown';
   }
 }

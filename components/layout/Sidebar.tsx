@@ -1,19 +1,37 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Users, Briefcase, TrendingUp, FolderKanban,
-  Factory, DollarSign, UserCircle, BarChart3, Settings, CreditCard,
-  Shield, X, SlidersHorizontal, FileText, CalendarDays, FolderOpen,
-  GitPullRequest, UserPlus, type LucideProps,
-} from "lucide-react";
-import type { ForwardRefExoticComponent, RefAttributes } from "react";
-import { useSidebar } from "@/lib/context/SidebarContext";
-import { useI18n } from "@/components/i18n/I18nProvider";
-import { getNavigationForRole } from "@/lib/navigation/sidebarConfig";
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  TrendingUp,
+  FolderKanban,
+  Factory,
+  DollarSign,
+  UserCircle,
+  BarChart3,
+  Settings,
+  CreditCard,
+  Shield,
+  X,
+  SlidersHorizontal,
+  FileText,
+  CalendarDays,
+  FolderOpen,
+  GitPullRequest,
+  UserPlus,
+  type LucideProps,
+} from 'lucide-react';
+import type { ForwardRefExoticComponent, RefAttributes } from 'react';
+import { useSidebar } from '@/lib/context/SidebarContext';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { getNavigationForRole } from '@/lib/navigation/sidebarConfig';
 
-type IconComponent = ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+type IconComponent = ForwardRefExoticComponent<
+  Omit<LucideProps, 'ref'> & RefAttributes<SVGSVGElement>
+>;
 
 const ICON_MAP: Record<string, IconComponent> = {
   LayoutDashboard,
@@ -60,33 +78,33 @@ export default function Sidebar({
   const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
   const { t } = useI18n();
 
-  const navItems = getNavigationForRole(currentRole).filter((item) => {
-    // Module gating — only applies to admin role (other roles have their own dedicated dashboards)
-    // super_admin bypasses all module checks
-    if (
-      item.module &&
-      currentRole === "admin" &&
-      Object.keys(tenantModules).length > 0
-    ) {
-      return tenantModules[item.module] !== false;
-    }
-    return true;
-  }).map((item) => ({
-    ...item,
-    label: item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label,
-  }));
+  const navItems = getNavigationForRole(currentRole)
+    .filter((item) => {
+      // Module gating — only applies to admin role (other roles have their own dedicated dashboards)
+      // super_admin bypasses all module checks
+      if (item.module && currentRole === 'admin' && Object.keys(tenantModules).length > 0) {
+        return tenantModules[item.module] !== false;
+      }
+      return true;
+    })
+    .map((item) => ({
+      ...item,
+      label: item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label,
+    }));
 
   const labelsClass = [
-    isMobileOpen ? "sidebar-mobile-open" : "",
-    !collapsed ? "sidebar-desktop-open" : "",
-  ].filter(Boolean).join(" ");
+    isMobileOpen ? 'sidebar-mobile-open' : '',
+    !collapsed ? 'sidebar-desktop-open' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const sidebarTagline = brandTagline?.trim() || "Powered by Bizosto®";
+  const sidebarTagline = brandTagline?.trim() || 'Powered by Bizosto®';
 
   const LogoIcon = () => (
     <img
-      src={tenantLogoUrl || "/icons/icon-192.svg"}
-      alt={tenantLogoUrl ? tenantName : "Bizosto B-mark"}
+      src={tenantLogoUrl || '/icons/icon-192.svg'}
+      alt={tenantLogoUrl ? tenantName : 'Bizosto B-mark'}
       className="h-10 w-10 flex-shrink-0 rounded-xl object-contain"
     />
   );
@@ -97,9 +115,9 @@ export default function Sidebar({
         <div
           className="fixed inset-0 z-[35] md:hidden"
           style={{
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
           }}
           onClick={closeMobile}
         />
@@ -108,28 +126,24 @@ export default function Sidebar({
       <aside
         id="main-sidebar"
         className={[
-          "sidebar-transition",
-          "fixed left-0 top-0 z-40 h-full",
-          "border-r border-[var(--border-subtle)] bg-[var(--surface-card)]",
-          isMobileOpen ? "w-[260px]" : "w-16",
-          collapsed
-            ? "md:w-[var(--sidebar-collapsed-width)]"
-            : "md:w-[var(--sidebar-width)]",
+          'sidebar-transition',
+          'fixed left-0 top-0 z-40 h-full',
+          'border-r border-[var(--border-subtle)] bg-[var(--surface-card)]',
+          isMobileOpen ? 'w-[260px]' : 'w-16',
+          collapsed ? 'md:w-[var(--sidebar-collapsed-width)]' : 'md:w-[var(--sidebar-width)]',
           labelsClass,
-        ].join(" ")}
+        ].join(' ')}
       >
         {/* No horizontal padding on outer — icons must center in 64px */}
         <div className="flex h-full flex-col py-3">
-
           {/* px-3 on header keeps B icon at 12px left → center = 12+20 = 32px = half of 64px */}
           <div className="mb-4 border-b border-[var(--border-subtle)] pb-3 px-3">
             <div className="flex h-14 items-center">
-
               {/* B icon is the ONLY toggle — desktop: collapse, mobile: open/close drawer */}
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined" && window.innerWidth >= 768) {
+                  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
                     toggleCollapse();
                   } else {
                     isMobileOpen ? closeMobile() : openMobile();
@@ -157,7 +171,6 @@ export default function Sidebar({
                   <X className="h-4 w-4 text-[var(--text-muted)]" />
                 </button>
               )}
-
             </div>
           </div>
 
@@ -166,29 +179,29 @@ export default function Sidebar({
             {navItems.map((item) => {
               const Icon: IconComponent = ICON_MAP[item.icon] ?? LayoutDashboard;
               const isIndexHref =
-                item.href === "/admin" ||
-                item.href === "/dashboard" ||
-                item.href === "/super_admin" ||
-                item.href.split("/").filter(Boolean).length === 1;
+                item.href === '/admin' ||
+                item.href === '/dashboard' ||
+                item.href === '/super_admin' ||
+                item.href.split('/').filter(Boolean).length === 1;
               const isActive = isIndexHref
                 ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + "/");
-              const opensInNewTab = item.href === "/help";
+                : pathname === item.href || pathname.startsWith(item.href + '/');
+              const opensInNewTab = item.href === '/help';
               return (
                 <Link
                   key={item.id}
-                  id={item.href === "/dashboard" ? "sidebar-dashboard" : undefined}
+                  id={item.href === '/dashboard' ? 'sidebar-dashboard' : undefined}
                   href={item.href}
                   title={item.label}
-                  target={opensInNewTab ? "_blank" : undefined}
-                  rel={opensInNewTab ? "noopener noreferrer" : undefined}
+                  target={opensInNewTab ? '_blank' : undefined}
+                  rel={opensInNewTab ? 'noopener noreferrer' : undefined}
                   onClick={isMobileOpen ? closeMobile : undefined}
                   className={[
-                    "flex w-full items-center rounded-xl transition-colors px-4 py-2.5",
+                    'flex w-full items-center rounded-xl transition-colors px-4 py-2.5',
                     isActive
-                      ? "bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20"
-                      : "text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100",
-                  ].join(" ")}
+                      ? 'bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20'
+                      : 'text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100',
+                  ].join(' ')}
                 >
                   <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
                     <Icon className="h-5 w-5" />
@@ -200,7 +213,6 @@ export default function Sidebar({
               );
             })}
           </nav>
-
         </div>
       </aside>
     </>

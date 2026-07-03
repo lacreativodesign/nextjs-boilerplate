@@ -1,9 +1,9 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
 
-export type DefectType = "bug" | "enhancement" | "task";
-export type DefectSeverity = "critical" | "high" | "medium" | "low";
-export type DefectStatus = "open" | "in_progress" | "resolved" | "closed" | "reopened";
+export type DefectType = 'bug' | 'enhancement' | 'task';
+export type DefectSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type DefectStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'reopened';
 
 export type DefectRecord = {
   id: string;
@@ -14,7 +14,7 @@ export type DefectRecord = {
   severity: DefectSeverity;
   status: DefectStatus;
   priorityScore: number;
-  priorityLabel: "P0" | "P1" | "P2" | "P3";
+  priorityLabel: 'P0' | 'P1' | 'P2' | 'P3';
   slaHours: number;
   slaDueAt: string | null;
   reportedByUid: string;
@@ -41,7 +41,7 @@ export type TestCaseRecord = {
   description: string;
   steps: string[];
   expectedResult: string;
-  status: "draft" | "active" | "deprecated";
+  status: 'draft' | 'active' | 'deprecated';
   createdByUid: string;
   createdByName: string;
   createdAt: string | null;
@@ -53,7 +53,7 @@ export type TestRunRecord = {
   tenantId: string;
   testCaseId: string;
   requirementId: string;
-  status: "passed" | "failed" | "blocked";
+  status: 'passed' | 'failed' | 'blocked';
   defectsLinked: string[];
   notes: string;
   executedByUid: string;
@@ -99,9 +99,9 @@ const severitySlaHours: Record<DefectSeverity, number> = {
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
+  if (typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof (value as any).toDate === "function") return (value as any).toDate().toISOString();
+  if (typeof (value as any).toDate === 'function') return (value as any).toDate().toISOString();
   return null;
 }
 
@@ -112,7 +112,10 @@ function parseIso(iso: string | null): Date | null {
   return date;
 }
 
-export function calculateDefectAgingDays(createdAtIso: string | null, terminalAtIso?: string | null) {
+export function calculateDefectAgingDays(
+  createdAtIso: string | null,
+  terminalAtIso?: string | null,
+) {
   const createdAt = parseIso(createdAtIso);
   if (!createdAt) return 0;
   const endDate = parseIso(terminalAtIso || null) || new Date();
@@ -131,8 +134,13 @@ export function calculatePriority({
   agingDays: number;
   reopenedCount: number;
 }) {
-  const score = severityWeight[severity] + typeWeight[type] + Math.min(40, agingDays * 2) + Math.min(20, reopenedCount * 5);
-  const priorityLabel: DefectRecord["priorityLabel"] = score >= 140 ? "P0" : score >= 110 ? "P1" : score >= 80 ? "P2" : "P3";
+  const score =
+    severityWeight[severity] +
+    typeWeight[type] +
+    Math.min(40, agingDays * 2) +
+    Math.min(20, reopenedCount * 5);
+  const priorityLabel: DefectRecord['priorityLabel'] =
+    score >= 140 ? 'P0' : score >= 110 ? 'P1' : score >= 80 ? 'P2' : 'P3';
   return {
     score,
     priorityLabel,
@@ -147,8 +155,11 @@ function hydrateDefect(id: string, data: FirebaseFirestore.DocumentData): Defect
   const createdAtIso = toIso(data.createdAt);
   const resolvedAtIso = toIso(data.resolvedAt);
   const closedAtIso = toIso(data.closedAt);
-  const status = (data.status || "open") as DefectStatus;
-  const agingDays = calculateDefectAgingDays(createdAtIso, status === "closed" ? closedAtIso : resolvedAtIso);
+  const status = (data.status || 'open') as DefectStatus;
+  const agingDays = calculateDefectAgingDays(
+    createdAtIso,
+    status === 'closed' ? closedAtIso : resolvedAtIso,
+  );
   const priority = calculatePriority({
     severity: data.severity,
     type: data.type,
@@ -158,9 +169,9 @@ function hydrateDefect(id: string, data: FirebaseFirestore.DocumentData): Defect
 
   return {
     id,
-    tenantId: String(data.tenantId || ""),
-    title: String(data.title || ""),
-    description: String(data.description || ""),
+    tenantId: String(data.tenantId || ''),
+    title: String(data.title || ''),
+    description: String(data.description || ''),
     type: data.type as DefectType,
     severity: data.severity as DefectSeverity,
     status,
@@ -168,15 +179,17 @@ function hydrateDefect(id: string, data: FirebaseFirestore.DocumentData): Defect
     priorityLabel: priority.priorityLabel,
     slaHours: Number(data.slaHours || severitySlaHours[data.severity as DefectSeverity] || 168),
     slaDueAt: toIso(data.slaDueAt),
-    reportedByUid: String(data.reportedByUid || ""),
-    reportedByName: String(data.reportedByName || ""),
+    reportedByUid: String(data.reportedByUid || ''),
+    reportedByName: String(data.reportedByName || ''),
     assignedToUid: data.assignedToUid ? String(data.assignedToUid) : null,
     requirementId: data.requirementId ? String(data.requirementId) : null,
     rootCauseCategory: data.rootCauseCategory ? String(data.rootCauseCategory) : null,
     rootCauseNotes: data.rootCauseNotes ? String(data.rootCauseNotes) : null,
     reopenedCount: Number(data.reopenedCount || 0),
     escapedToProduction: Boolean(data.escapedToProduction),
-    testCaseIds: Array.isArray(data.testCaseIds) ? data.testCaseIds.map((x: unknown) => String(x)) : [],
+    testCaseIds: Array.isArray(data.testCaseIds)
+      ? data.testCaseIds.map((x: unknown) => String(x))
+      : [],
     defectAgingDays: agingDays,
     createdAt: createdAtIso,
     updatedAt: toIso(data.updatedAt),
@@ -197,11 +210,16 @@ export async function createDefect(
     requirementId?: string | null;
     escapedToProduction?: boolean;
     testCaseIds?: string[];
-  }
+  },
 ) {
   const now = new Date();
-  const priority = calculatePriority({ severity: payload.severity, type: payload.type, agingDays: 0, reopenedCount: 0 });
-  const ref = adminDb.collection("productionDefects").doc();
+  const priority = calculatePriority({
+    severity: payload.severity,
+    type: payload.type,
+    agingDays: 0,
+    reopenedCount: 0,
+  });
+  const ref = adminDb.collection('productionDefects').doc();
 
   await ref.set({
     tenantId,
@@ -209,7 +227,7 @@ export async function createDefect(
     description: payload.description,
     type: payload.type,
     severity: payload.severity,
-    status: "open",
+    status: 'open',
     priorityScore: priority.score,
     priorityLabel: priority.priorityLabel,
     slaHours: severitySlaHours[payload.severity],
@@ -227,7 +245,7 @@ export async function createDefect(
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     lifecycleHistory: [
       {
-        status: "open",
+        status: 'open',
         changedAt: admin.firestore.FieldValue.serverTimestamp(),
         changedByUid: actor.uid,
         changedByName: actor.name,
@@ -240,11 +258,13 @@ export async function createDefect(
 }
 
 export async function listDefects(tenantId: string, filters: DefectListFilters = {}) {
-  let query: FirebaseFirestore.Query = adminDb.collection("productionDefects").where("tenantId", "==", tenantId);
-  if (filters.severity) query = query.where("severity", "==", filters.severity);
-  if (filters.status) query = query.where("status", "==", filters.status);
+  let query: FirebaseFirestore.Query = adminDb
+    .collection('productionDefects')
+    .where('tenantId', '==', tenantId);
+  if (filters.severity) query = query.where('severity', '==', filters.severity);
+  if (filters.status) query = query.where('status', '==', filters.status);
 
-  const snapshot = await query.orderBy("createdAt", "desc").limit(500).get();
+  const snapshot = await query.orderBy('createdAt', 'desc').limit(500).get();
   return snapshot.docs.map((doc) => hydrateDefect(doc.id, doc.data()));
 }
 
@@ -259,22 +279,25 @@ export async function updateDefect(
     rootCauseCategory?: string | null;
     rootCauseNotes?: string | null;
     escapedToProduction?: boolean;
-  }
+  },
 ) {
-  const ref = adminDb.collection("productionDefects").doc(defectId);
+  const ref = adminDb.collection('productionDefects').doc(defectId);
   const snap = await ref.get();
   if (!snap.exists) {
-    throw new Error("Defect not found");
+    throw new Error('Defect not found');
   }
 
   const current = snap.data() || {};
   if (current.tenantId !== tenantId) {
-    throw new Error("Forbidden");
+    throw new Error('Forbidden');
   }
 
   const nextStatus = (payload.status || current.status) as DefectStatus;
   const nextSeverity = (payload.severity || current.severity) as DefectSeverity;
-  const reopenedCount = nextStatus === "reopened" ? Number(current.reopenedCount || 0) + 1 : Number(current.reopenedCount || 0);
+  const reopenedCount =
+    nextStatus === 'reopened'
+      ? Number(current.reopenedCount || 0) + 1
+      : Number(current.reopenedCount || 0);
   const createdAt = toIso(current.createdAt);
   const agingDays = calculateDefectAgingDays(createdAt);
   const priority = calculatePriority({
@@ -287,11 +310,20 @@ export async function updateDefect(
   const updates: Record<string, unknown> = {
     status: nextStatus,
     severity: nextSeverity,
-    assignedToUid: payload.assignedToUid === undefined ? (current.assignedToUid || null) : payload.assignedToUid,
-    rootCauseCategory: payload.rootCauseCategory === undefined ? (current.rootCauseCategory || null) : payload.rootCauseCategory,
-    rootCauseNotes: payload.rootCauseNotes === undefined ? (current.rootCauseNotes || null) : payload.rootCauseNotes,
+    assignedToUid:
+      payload.assignedToUid === undefined ? current.assignedToUid || null : payload.assignedToUid,
+    rootCauseCategory:
+      payload.rootCauseCategory === undefined
+        ? current.rootCauseCategory || null
+        : payload.rootCauseCategory,
+    rootCauseNotes:
+      payload.rootCauseNotes === undefined
+        ? current.rootCauseNotes || null
+        : payload.rootCauseNotes,
     escapedToProduction:
-      payload.escapedToProduction === undefined ? Boolean(current.escapedToProduction) : Boolean(payload.escapedToProduction),
+      payload.escapedToProduction === undefined
+        ? Boolean(current.escapedToProduction)
+        : Boolean(payload.escapedToProduction),
     reopenedCount,
     priorityScore: priority.score,
     priorityLabel: priority.priorityLabel,
@@ -305,8 +337,8 @@ export async function updateDefect(
     }),
   };
 
-  if (nextStatus === "resolved") updates.resolvedAt = admin.firestore.FieldValue.serverTimestamp();
-  if (nextStatus === "closed") updates.closedAt = admin.firestore.FieldValue.serverTimestamp();
+  if (nextStatus === 'resolved') updates.resolvedAt = admin.firestore.FieldValue.serverTimestamp();
+  if (nextStatus === 'closed') updates.closedAt = admin.firestore.FieldValue.serverTimestamp();
 
   await ref.set(updates, { merge: true });
 
@@ -323,9 +355,9 @@ export async function createTestCase(
     description: string;
     steps: string[];
     expectedResult: string;
-  }
+  },
 ) {
-  const ref = adminDb.collection("productionTestCases").doc();
+  const ref = adminDb.collection('productionTestCases').doc();
   await ref.set({
     tenantId,
     title: payload.title,
@@ -333,7 +365,7 @@ export async function createTestCase(
     description: payload.description,
     steps: payload.steps,
     expectedResult: payload.expectedResult,
-    status: "active",
+    status: 'active',
     createdByUid: actor.uid,
     createdByName: actor.name,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -343,7 +375,7 @@ export async function createTestCase(
   const snap = await ref.get();
   return {
     id: snap.id,
-    ...(snap.data() as Omit<TestCaseRecord, "id" | "createdAt" | "updatedAt">),
+    ...(snap.data() as Omit<TestCaseRecord, 'id' | 'createdAt' | 'updatedAt'>),
     createdAt: toIso(snap.data()?.createdAt),
     updatedAt: toIso(snap.data()?.updatedAt),
   } satisfies TestCaseRecord;
@@ -351,15 +383,15 @@ export async function createTestCase(
 
 export async function listTestCases(tenantId: string) {
   const snap = await adminDb
-    .collection("productionTestCases")
-    .where("tenantId", "==", tenantId)
-    .orderBy("createdAt", "desc")
+    .collection('productionTestCases')
+    .where('tenantId', '==', tenantId)
+    .orderBy('createdAt', 'desc')
     .limit(500)
     .get();
 
   return snap.docs.map((doc) => ({
     id: doc.id,
-    ...(doc.data() as Omit<TestCaseRecord, "id" | "createdAt" | "updatedAt">),
+    ...(doc.data() as Omit<TestCaseRecord, 'id' | 'createdAt' | 'updatedAt'>),
     createdAt: toIso(doc.data().createdAt),
     updatedAt: toIso(doc.data().updatedAt),
   })) as TestCaseRecord[];
@@ -370,29 +402,29 @@ export async function executeTestRun(
   actor: { uid: string; name: string },
   payload: {
     testCaseId: string;
-    status: "passed" | "failed" | "blocked";
+    status: 'passed' | 'failed' | 'blocked';
     defectsLinked?: string[];
     notes?: string;
-  }
+  },
 ) {
-  const caseDoc = await adminDb.collection("productionTestCases").doc(payload.testCaseId).get();
+  const caseDoc = await adminDb.collection('productionTestCases').doc(payload.testCaseId).get();
   if (!caseDoc.exists) {
-    throw new Error("Test case not found");
+    throw new Error('Test case not found');
   }
 
   const testCase = caseDoc.data() || {};
   if (testCase.tenantId !== tenantId) {
-    throw new Error("Forbidden");
+    throw new Error('Forbidden');
   }
 
-  const ref = adminDb.collection("productionTestRuns").doc();
+  const ref = adminDb.collection('productionTestRuns').doc();
   await ref.set({
     tenantId,
     testCaseId: payload.testCaseId,
-    requirementId: String(testCase.requirementId || ""),
+    requirementId: String(testCase.requirementId || ''),
     status: payload.status,
     defectsLinked: payload.defectsLinked || [],
-    notes: payload.notes || "",
+    notes: payload.notes || '',
     executedByUid: actor.uid,
     executedByName: actor.name,
     executedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -401,15 +433,22 @@ export async function executeTestRun(
   const snap = await ref.get();
   return {
     id: snap.id,
-    ...(snap.data() as Omit<TestRunRecord, "id" | "executedAt">),
+    ...(snap.data() as Omit<TestRunRecord, 'id' | 'executedAt'>),
     executedAt: toIso(snap.data()?.executedAt),
   } satisfies TestRunRecord;
 }
 
-export function buildQualityMetrics(defects: DefectRecord[], testRunsCount: number): QualityMetrics {
+export function buildQualityMetrics(
+  defects: DefectRecord[],
+  testRunsCount: number,
+): QualityMetrics {
   const totalDefects = defects.length;
-  const openDefects = defects.filter((defect) => ["open", "in_progress", "reopened"].includes(defect.status)).length;
-  const resolvedDefects = defects.filter((defect) => ["resolved", "closed"].includes(defect.status)).length;
+  const openDefects = defects.filter((defect) =>
+    ['open', 'in_progress', 'reopened'].includes(defect.status),
+  ).length;
+  const resolvedDefects = defects.filter((defect) =>
+    ['resolved', 'closed'].includes(defect.status),
+  ).length;
   const escapedDefects = defects.filter((defect) => defect.escapedToProduction).length;
   const totalAgingDays = defects.reduce((sum, defect) => sum + defect.defectAgingDays, 0);
   const now = Date.now();
@@ -417,7 +456,7 @@ export function buildQualityMetrics(defects: DefectRecord[], testRunsCount: numb
     if (!defect.slaDueAt) return false;
     const due = new Date(defect.slaDueAt).getTime();
     if (Number.isNaN(due)) return false;
-    return ["resolved", "closed"].includes(defect.status) ? false : due < now;
+    return ['resolved', 'closed'].includes(defect.status) ? false : due < now;
   }).length;
 
   return {
@@ -425,8 +464,10 @@ export function buildQualityMetrics(defects: DefectRecord[], testRunsCount: numb
     openDefects,
     resolvedDefects,
     escapedDefects,
-    defectDensity: testRunsCount > 0 ? Number((totalDefects / testRunsCount).toFixed(3)) : totalDefects,
-    defectEscapeRate: totalDefects > 0 ? Number(((escapedDefects / totalDefects) * 100).toFixed(2)) : 0,
+    defectDensity:
+      testRunsCount > 0 ? Number((totalDefects / testRunsCount).toFixed(3)) : totalDefects,
+    defectEscapeRate:
+      totalDefects > 0 ? Number(((escapedDefects / totalDefects) * 100).toFixed(2)) : 0,
     meanAgingDays: totalDefects > 0 ? Number((totalAgingDays / totalDefects).toFixed(1)) : 0,
     slaBreachedCount,
   };
@@ -435,14 +476,14 @@ export function buildQualityMetrics(defects: DefectRecord[], testRunsCount: numb
 export async function getQaSnapshot(tenantId: string, filters: DefectListFilters = {}) {
   const [defects, testRunSnap] = await Promise.all([
     listDefects(tenantId, filters),
-    adminDb.collection("productionTestRuns").where("tenantId", "==", tenantId).count().get(),
+    adminDb.collection('productionTestRuns').where('tenantId', '==', tenantId).count().get(),
   ]);
 
   const metrics = buildQualityMetrics(defects, testRunSnap.data().count || 0);
 
   const trendByMonth: Record<string, number> = {};
   for (const defect of defects) {
-    const key = (defect.createdAt || "").slice(0, 7) || "unknown";
+    const key = (defect.createdAt || '').slice(0, 7) || 'unknown';
     trendByMonth[key] = (trendByMonth[key] || 0) + 1;
   }
 

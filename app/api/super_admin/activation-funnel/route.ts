@@ -1,28 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSuperAdmin } from "../_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSuperAdmin } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const STAGES = [
-  { id: "workspace", title: "Workspace" },
-  { id: "lead", title: "First lead" },
-  { id: "deal", title: "First deal" },
-  { id: "invoice", title: "First invoice" },
-  { id: "paid", title: "First payment" },
-  { id: "project", title: "First project" },
-  { id: "client", title: "First client" },
+  { id: 'workspace', title: 'Workspace' },
+  { id: 'lead', title: 'First lead' },
+  { id: 'deal', title: 'First deal' },
+  { id: 'invoice', title: 'First invoice' },
+  { id: 'paid', title: 'First payment' },
+  { id: 'project', title: 'First project' },
+  { id: 'client', title: 'First client' },
 ] as const;
 
 async function exists(
   collection: string,
   tenantId: string,
-  extra?: { field: string; value: unknown }
+  extra?: { field: string; value: unknown },
 ): Promise<boolean> {
   try {
-    let q = adminDb.collection(collection).where("tenantId", "==", tenantId);
-    if (extra) q = q.where(extra.field, "==", extra.value);
+    let q = adminDb.collection(collection).where('tenantId', '==', tenantId);
+    if (extra) q = q.where(extra.field, '==', extra.value);
     const snap = await q.limit(1).get();
     return !snap.empty;
   } catch {
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
 
-    const tenantsSnap = await adminDb.collection("tenants").limit(200).get();
+    const tenantsSnap = await adminDb.collection('tenants').limit(200).get();
 
     const tenants: Array<{
       id: string;
@@ -48,12 +48,12 @@ export async function GET(req: NextRequest) {
       const data = doc.data() as any;
       const tenantId = doc.id;
       const [lead, deal, invoice, paid, project, client] = await Promise.all([
-        exists("leads", tenantId),
-        exists("deals", tenantId),
-        exists("invoices", tenantId),
-        exists("invoices", tenantId, { field: "status", value: "paid" }),
-        exists("projects", tenantId),
-        exists("clients", tenantId),
+        exists('leads', tenantId),
+        exists('deals', tenantId),
+        exists('invoices', tenantId),
+        exists('invoices', tenantId, { field: 'status', value: 'paid' }),
+        exists('projects', tenantId),
+        exists('clients', tenantId),
       ]);
       const milestones: Record<string, boolean> = {
         workspace: true,
@@ -85,15 +85,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    tenants.sort((a, b) =>
-      String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
-    );
+    tenants.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 
     return NextResponse.json({ totalTenants, stages, tenants });
   } catch (error) {
-    const msg =
-      error instanceof Error ? error.message : "Failed to compute activation funnel.";
-    const status = msg === "Forbidden" ? 403 : 401;
+    const msg = error instanceof Error ? error.message : 'Failed to compute activation funnel.';
+    const status = msg === 'Forbidden' ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }
 }

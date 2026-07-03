@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "@/lib/i18n/config";
+import type { SupportedLocale } from '@/lib/i18n/config';
 
 export type TranslationLeaf = string | Record<string, string>;
 export type TranslationTree = {

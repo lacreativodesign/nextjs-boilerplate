@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
-import { createNotification } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from '../../_utils';
+import { createNotification } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -13,25 +13,28 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const relatedType = parseString(payload.relatedType, "Lead");
-    const relatedId = parseString(payload.relatedId, "") || null;
-    const relatedName = parseString(payload.relatedName, "");
-    const type = parseString(payload.type, "Call");
-    const dueDateRaw = parseString(payload.dueDate, "").trim();
-    const ownerId = parseString(payload.ownerId, "") || null;
-    const ownerName = parseString(payload.ownerName, "") || null;
-    const status = parseString(payload.status, "Open");
+    const relatedType = parseString(payload.relatedType, 'Lead');
+    const relatedId = parseString(payload.relatedId, '') || null;
+    const relatedName = parseString(payload.relatedName, '');
+    const type = parseString(payload.type, 'Call');
+    const dueDateRaw = parseString(payload.dueDate, '').trim();
+    const ownerId = parseString(payload.ownerId, '') || null;
+    const ownerName = parseString(payload.ownerName, '') || null;
+    const status = parseString(payload.status, 'Open');
 
-    if (!dueDateRaw || !dueDateRaw.includes("T")) {
-      return NextResponse.json({ ok: false, error: "Follow-up date and time are required." }, { status: 400 });
+    if (!dueDateRaw || !dueDateRaw.includes('T')) {
+      return NextResponse.json(
+        { ok: false, error: 'Follow-up date and time are required.' },
+        { status: 400 },
+      );
     }
     const dueDateObj = new Date(dueDateRaw);
     if (Number.isNaN(dueDateObj.getTime())) {
-      return NextResponse.json({ ok: false, error: "Invalid follow-up date." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid follow-up date.' }, { status: 400 });
     }
 
-    const docRef = await adminDb.collection("followUps").add({
-      tenantId: auth.user.tenantId || "",
+    const docRef = await adminDb.collection('followUps').add({
+      tenantId: auth.user.tenantId || '',
       relatedType,
       relatedId,
       relatedName,
@@ -46,33 +49,33 @@ export async function POST(req: Request) {
     });
 
     await createSalesEvent({
-      type: "follow_up_created",
-      title: "Follow-up created",
-      description: `${relatedName || "Follow-up"} scheduled`,
-      entityType: "follow_up",
+      type: 'follow_up_created',
+      title: 'Follow-up created',
+      description: `${relatedName || 'Follow-up'} scheduled`,
+      entityType: 'follow_up',
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: auth.user.name || auth.user.fullName || '',
       tenantId: auth.user.tenantId,
     });
 
     if (ownerId && ownerId !== auth.user.uid) {
       await createNotification({
         toUserId: ownerId,
-        recipientRole: "sales",
+        recipientRole: 'sales',
         tenantId: auth.user.tenantId,
-        type: "info",
-        title: "Follow-up assigned to you",
-        message: `${type} follow-up${relatedName ? ` for ${relatedName}` : ""} due ${dueDateObj.toLocaleDateString()}.`,
-        entityType: "task",
+        type: 'info',
+        title: 'Follow-up assigned to you',
+        message: `${type} follow-up${relatedName ? ` for ${relatedName}` : ''} due ${dueDateObj.toLocaleDateString()}.`,
+        entityType: 'task',
         entityId: docRef.id,
-        deepLink: "/sales/follow-ups",
+        deepLink: '/sales/follow-ups',
       });
     }
 
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (err: any) {
-    console.error("sales follow-ups create error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to create follow-up." }, { status: 500 });
+    console.error('sales follow-ups create error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to create follow-up.' }, { status: 500 });
   }
 }

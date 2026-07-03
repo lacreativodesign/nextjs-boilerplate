@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { getCurrentUser } from "../../_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { getCurrentUser } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type ClientDoc = {
   companyName?: string;
@@ -45,10 +45,10 @@ type ClientDoc = {
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
+  if (typeof value === 'string') return value;
 
   // Firestore Timestamp support (admin sdk)
-  if (typeof value?.toDate === "function") {
+  if (typeof value?.toDate === 'function') {
     return value.toDate().toISOString();
   }
 
@@ -59,33 +59,33 @@ function toISO(value: any): string | null {
 }
 
 function canViewClients(role: string) {
-  const r = (role || "").toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "sales_manager" || r === "am";
+  const r = (role || '').toLowerCase();
+  return r === 'admin' || r === 'super_admin' || r === 'sales_manager' || r === 'am';
 }
 
 export async function GET(req: NextRequest) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = (me.role || "").toLowerCase();
+    const role = (me.role || '').toLowerCase();
     if (!canViewClients(role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "50"), 500);
-    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 500);
+    const cursor = req.nextUrl.searchParams.get('cursor');
 
     let query: FirebaseFirestore.Query = db
-      .collection("clients")
-      .where("tenantId", "==", me.tenantId)
-      .orderBy("createdAt", "desc")
+      .collection('clients')
+      .where('tenantId', '==', me.tenantId)
+      .orderBy('createdAt', 'desc')
       .limit(limit + 1);
 
     if (cursor) {
-      const cursorDoc = await db.collection("clients").doc(cursor).get();
+      const cursorDoc = await db.collection('clients').doc(cursor).get();
       if (cursorDoc.exists && cursorDoc.data()?.tenantId === me.tenantId) {
         query = query.startAfter(cursorDoc);
       }
@@ -103,13 +103,13 @@ export async function GET(req: NextRequest) {
 
         return {
           id: doc.id,
-          companyName: d.companyName || "",
-          website: d.website || "",
-          industry: d.industry || "",
-          businessType: d.businessType || "",
-          country: d.country || "",
-          city: d.city || "",
-          timezone: d.timezone || "",
+          companyName: d.companyName || '',
+          website: d.website || '',
+          industry: d.industry || '',
+          businessType: d.businessType || '',
+          country: d.country || '',
+          city: d.city || '',
+          timezone: d.timezone || '',
           employeeCountRange: d.employeeCountRange || null,
           yearsInBusinessRange: d.yearsInBusinessRange || null,
 
@@ -118,21 +118,21 @@ export async function GET(req: NextRequest) {
           segmentIndustry: d.segmentIndustry || null,
           segmentGeo: d.segmentGeo || null,
 
-          primaryContactName: d.primaryContactName || "",
-          primaryContactTitle: d.primaryContactTitle || "",
-          primaryContactEmail: d.primaryContactEmail || "",
-          primaryContactPhone: d.primaryContactPhone || "",
+          primaryContactName: d.primaryContactName || '',
+          primaryContactTitle: d.primaryContactTitle || '',
+          primaryContactEmail: d.primaryContactEmail || '',
+          primaryContactPhone: d.primaryContactPhone || '',
 
-          salesStage: d.salesStage || "",
-          paymentStatus: d.paymentStatus || "",
-          retainerStatus: d.retainerStatus || "",
+          salesStage: d.salesStage || '',
+          paymentStatus: d.paymentStatus || '',
+          retainerStatus: d.retainerStatus || '',
 
-          salesOwner: d.salesOwner || "",
-          accountManager: d.accountManager || "",
-          productionOwner: d.productionOwner || "",
+          salesOwner: d.salesOwner || '',
+          accountManager: d.accountManager || '',
+          productionOwner: d.productionOwner || '',
 
           totalPaidUsd: Number(d.totalPaidUsd || 0),
-          orderId: d.orderId || "",
+          orderId: d.orderId || '',
           portalUserUid: d.portalUserUid || null,
 
           createdAt: toISO(d.createdAt),
@@ -151,10 +151,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("clients/list error:", err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || "Server error" },
-      { status: 500 }
-    );
+    console.error('clients/list error:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }

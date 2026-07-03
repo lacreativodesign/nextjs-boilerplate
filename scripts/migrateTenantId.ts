@@ -1,4 +1,4 @@
-import { migrateMissingTenantIds } from "@/lib/tenant/migration";
+import { migrateMissingTenantIds } from '@/lib/tenant/migration';
 
 async function run() {
   const argTenantId = process.argv[2];
@@ -6,16 +6,16 @@ async function run() {
   const tenantId = argTenantId || envTenantId;
 
   if (!tenantId) {
-    console.error("Missing DEFAULT_TENANT_ID. Usage: tsx scripts/migrateTenantId.ts <TENANT_ID>");
+    console.error('Missing DEFAULT_TENANT_ID. Usage: tsx scripts/migrateTenantId.ts <TENANT_ID>');
     process.exit(1);
   }
 
   console.log(`[tenant-migration] starting for tenant: ${tenantId}`);
   await migrateMissingTenantIds(tenantId);
-  console.log("[tenant-migration] completed");
+  console.log('[tenant-migration] completed');
 }
 
 run().catch((err) => {
-  console.error("Tenant migration failed:", err);
+  console.error('Tenant migration failed:', err);
   process.exit(1);
 });

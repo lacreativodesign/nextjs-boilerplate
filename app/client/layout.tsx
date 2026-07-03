@@ -1,21 +1,21 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
-import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import RequireAuth from '@/components/RequireAuth';
+import AppShell from '@/components/layout/AppShell';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 const TABS = [
-  { href: "/client", label: "Dashboard" },
-  { href: "/client/projects", label: "My Projects" },
-  { href: "/client/files", label: "Files" },
-  { href: "/client/change-requests", label: "Change Requests" },
-  { href: "/client/billing", label: "Billing" },
-  { href: "/client/profile", label: "Profile" },
+  { href: '/client', label: 'Dashboard' },
+  { href: '/client/projects', label: 'My Projects' },
+  { href: '/client/files', label: 'Files' },
+  { href: '/client/change-requests', label: 'Change Requests' },
+  { href: '/client/billing', label: 'Billing' },
+  { href: '/client/profile', label: 'Profile' },
 ];
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <RequireAuth allowed={["client"]}>
+    <RequireAuth allowed={['client']}>
       <ModuleErrorBoundary moduleName="Client Portal">
         <AppShell>
           <div>
@@ -25,8 +25,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/client" && pathname.startsWith(tab.href));
-                return <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>{tab.label}</Link>;
+                const isActive =
+                  pathname === tab.href ||
+                  (tab.href !== '/client' && pathname.startsWith(tab.href));
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`tab-pill ${isActive ? 'active' : ''}`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
               })}
             </div>
             <div className="mt-6">{children}</div>

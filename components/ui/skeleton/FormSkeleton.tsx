@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 type FormSkeletonProps = {
   fields?: number;
@@ -6,7 +6,11 @@ type FormSkeletonProps = {
   className?: string;
 };
 
-export default function FormSkeleton({ fields = 6, showActions = true, className = "" }: FormSkeletonProps) {
+export default function FormSkeleton({
+  fields = 6,
+  showActions = true,
+  className = '',
+}: FormSkeletonProps) {
   return (
     <div className={`space-y-5 ${className}`.trim()} aria-hidden="true">
       {Array.from({ length: fields }).map((_, index) => (

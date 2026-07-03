@@ -1,17 +1,20 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import { runRetentionCleanup, runRetentionCleanupAcrossTenants } from "@/lib/compliance/data-retention";
-import { runQuickBooksSync } from "@/lib/integrations/quickbooks";
-import { runXeroSync } from "@/lib/integrations/xero";
+import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  runRetentionCleanup,
+  runRetentionCleanupAcrossTenants,
+} from '@/lib/compliance/data-retention';
+import { runQuickBooksSync } from '@/lib/integrations/quickbooks';
+import { runXeroSync } from '@/lib/integrations/xero';
 
-const JOB_COLLECTION = "backgroundJobs";
-const READY_QUEUE_KEY = "jobs:ready";
-const SCHEDULED_QUEUE_KEY = "jobs:scheduled";
+const JOB_COLLECTION = 'backgroundJobs';
+const READY_QUEUE_KEY = 'jobs:ready';
+const SCHEDULED_QUEUE_KEY = 'jobs:scheduled';
 const MAX_RETRY_ATTEMPTS = 5;
 const BASE_RETRY_DELAY_SECONDS = 30;
 const MAX_RETRY_DELAY_SECONDS = 60 * 15;
 
-export type JobType = "email" | "report_generation" | "data_sync" | "file_processing" | "cleanup";
-export type JobStatus = "pending" | "processing" | "completed" | "failed";
+export type JobType = 'email' | 'report_generation' | 'data_sync' | 'file_processing' | 'cleanup';
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 type EmailJobPayload = {
   tenantId: string;
@@ -33,7 +36,7 @@ type ReportJobPayload = {
 
 type DataSyncPayload = {
   tenantId: string;
-  provider: "quickbooks" | "xero";
+  provider: 'quickbooks' | 'xero';
   triggeredBy?: string;
   forceInitial?: boolean;
 };
@@ -42,14 +45,14 @@ type FileProcessingPayload = {
   tenantId: string;
   triggeredBy?: string;
   filePath: string;
-  operation: "extract_text" | "generate_preview" | "virus_scan";
+  operation: 'extract_text' | 'generate_preview' | 'virus_scan';
   metadata?: Record<string, unknown>;
 };
 
 type CleanupPayload = {
   tenantId?: string;
   triggeredBy?: string;
-  scope: "tenant" | "global";
+  scope: 'tenant' | 'global';
 };
 
 export type JobPayloadByType = {
@@ -85,7 +88,10 @@ export type JobRecord = {
 type RedisLike = {
   lpush: (key: string, ...values: string[]) => Promise<number>;
   rpop: (key: string) => Promise<string | null>;
-  zadd: (key: string, value: { score: number; member: string } | Array<{ score: number; member: string }>) => Promise<number>;
+  zadd: (
+    key: string,
+    value: { score: number; member: string } | Array<{ score: number; member: string }>,
+  ) => Promise<number>;
   zrangebyscore: (key: string, min: number, max: number) => Promise<string[]>;
   zrem: (key: string, ...members: string[]) => Promise<number>;
 };
@@ -104,7 +110,7 @@ async function getRedisClient() {
     redisPromise = (async () => {
       const config = getUpstashConfig();
       if (!config) return null;
-      const mod = (await import("@upstash/redis")) as unknown as {
+      const mod = (await import('@upstash/redis')) as unknown as {
         Redis: new (args: { url: string; token: string }) => RedisLike;
       };
       return new mod.Redis(config);
@@ -118,13 +124,18 @@ function nowIso() {
 }
 
 function calculateRetryDelaySeconds(attempts: number) {
-  return Math.min(BASE_RETRY_DELAY_SECONDS * 2 ** Math.max(attempts - 1, 0), MAX_RETRY_DELAY_SECONDS);
+  return Math.min(
+    BASE_RETRY_DELAY_SECONDS * 2 ** Math.max(attempts - 1, 0),
+    MAX_RETRY_DELAY_SECONDS,
+  );
 }
 
 export async function enqueueJob<T extends JobType>(input: EnqueueJobInput<T>) {
   const redis = await getRedisClient();
   if (!redis) {
-    throw new Error("Upstash Redis is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.");
+    throw new Error(
+      'Upstash Redis is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.',
+    );
   }
 
   const createdAt = nowIso();
@@ -132,9 +143,9 @@ export async function enqueueJob<T extends JobType>(input: EnqueueJobInput<T>) {
   const maxAttempts = Math.max(1, Math.min(input.maxAttempts ?? MAX_RETRY_ATTEMPTS, 10));
 
   const jobRef = adminDb.collection(JOB_COLLECTION).doc();
-  const job: Omit<JobRecord, "id"> = {
+  const job: Omit<JobRecord, 'id'> = {
     type: input.type,
-    status: "pending",
+    status: 'pending',
     payload,
     attempts: 0,
     maxAttempts,
@@ -172,33 +183,33 @@ async function promoteScheduledJobs() {
 
 async function popNextJobId() {
   const redis = await getRedisClient();
-  if (!redis) throw new Error("Upstash Redis is not configured.");
+  if (!redis) throw new Error('Upstash Redis is not configured.');
   return redis.rpop(READY_QUEUE_KEY);
 }
 
 async function withJobStatus(jobId: string, updater: (job: JobRecord) => Promise<void>) {
   const ref = adminDb.collection(JOB_COLLECTION).doc(jobId);
   const snapshot = await ref.get();
-  if (!snapshot.exists) throw new Error("Job not found.");
-  const data = snapshot.data() as Omit<JobRecord, "id">;
+  if (!snapshot.exists) throw new Error('Job not found.');
+  const data = snapshot.data() as Omit<JobRecord, 'id'>;
   await updater({ id: snapshot.id, ...data });
 }
 
 async function processEmailJob(job: JobRecord) {
   const payload = job.payload as EmailJobPayload;
   if (!payload.tenantId || !payload.subject || !payload.body || !payload.recipients?.length) {
-    throw new Error("Invalid email job payload.");
+    throw new Error('Invalid email job payload.');
   }
 
   const writes = payload.recipients.map((recipient) =>
-    adminDb.collection("email_queue").add({
+    adminDb.collection('email_queue').add({
       tenantId: payload.tenantId,
       to: recipient,
       subject: payload.subject,
       body: payload.body,
-      status: "queued",
+      status: 'queued',
       createdAt: nowIso(),
-      triggeredBy: payload.triggeredBy || "system:jobs",
+      triggeredBy: payload.triggeredBy || 'system:jobs',
       metadata: payload.metadata || {},
     }),
   );
@@ -209,19 +220,19 @@ async function processEmailJob(job: JobRecord) {
 async function processReportJob(job: JobRecord) {
   const payload = job.payload as ReportJobPayload;
   if (!payload.tenantId || !payload.reportName) {
-    throw new Error("Invalid report generation payload.");
+    throw new Error('Invalid report generation payload.');
   }
 
-  await adminDb.collection("reportJobs").add({
+  await adminDb.collection('reportJobs').add({
     tenantId: payload.tenantId,
     reportName: payload.reportName,
-    status: "completed",
+    status: 'completed',
     generatedAt: nowIso(),
     range: {
       fromDate: payload.fromDate || null,
       toDate: payload.toDate || null,
     },
-    triggeredBy: payload.triggeredBy || "system:jobs",
+    triggeredBy: payload.triggeredBy || 'system:jobs',
     filters: payload.filters || {},
   });
 }
@@ -229,13 +240,13 @@ async function processReportJob(job: JobRecord) {
 async function processDataSyncJob(job: JobRecord) {
   const payload = job.payload as DataSyncPayload;
   if (!payload.tenantId || !payload.provider) {
-    throw new Error("Invalid data sync payload.");
+    throw new Error('Invalid data sync payload.');
   }
 
-  if (payload.provider === "quickbooks") {
+  if (payload.provider === 'quickbooks') {
     await runQuickBooksSync({
       tenantId: payload.tenantId,
-      userUid: payload.triggeredBy || "system:jobs",
+      userUid: payload.triggeredBy || 'system:jobs',
       forceInitial: payload.forceInitial,
     });
     return;
@@ -243,7 +254,7 @@ async function processDataSyncJob(job: JobRecord) {
 
   await runXeroSync({
     tenantId: payload.tenantId,
-    userUid: payload.triggeredBy || "system:jobs",
+    userUid: payload.triggeredBy || 'system:jobs',
     forceInitial: payload.forceInitial,
   });
 }
@@ -251,16 +262,16 @@ async function processDataSyncJob(job: JobRecord) {
 async function processFileJob(job: JobRecord) {
   const payload = job.payload as FileProcessingPayload;
   if (!payload.tenantId || !payload.filePath || !payload.operation) {
-    throw new Error("Invalid file processing payload.");
+    throw new Error('Invalid file processing payload.');
   }
 
-  await adminDb.collection("fileProcessingJobs").add({
+  await adminDb.collection('fileProcessingJobs').add({
     tenantId: payload.tenantId,
     filePath: payload.filePath,
     operation: payload.operation,
-    status: "processed",
+    status: 'processed',
     processedAt: nowIso(),
-    triggeredBy: payload.triggeredBy || "system:jobs",
+    triggeredBy: payload.triggeredBy || 'system:jobs',
     metadata: payload.metadata || {},
   });
 }
@@ -268,11 +279,11 @@ async function processFileJob(job: JobRecord) {
 async function processCleanupJob(job: JobRecord) {
   const payload = job.payload as CleanupPayload;
   if (!payload.scope) {
-    throw new Error("Invalid cleanup payload.");
+    throw new Error('Invalid cleanup payload.');
   }
 
-  if (payload.scope === "tenant") {
-    if (!payload.tenantId) throw new Error("Cleanup job requires tenantId for tenant scope.");
+  if (payload.scope === 'tenant') {
+    if (!payload.tenantId) throw new Error('Cleanup job requires tenantId for tenant scope.');
     await runRetentionCleanup(payload.tenantId);
     return;
   }
@@ -282,19 +293,19 @@ async function processCleanupJob(job: JobRecord) {
 
 async function processJob(job: JobRecord) {
   switch (job.type) {
-    case "email":
+    case 'email':
       await processEmailJob(job);
       return;
-    case "report_generation":
+    case 'report_generation':
       await processReportJob(job);
       return;
-    case "data_sync":
+    case 'data_sync':
       await processDataSyncJob(job);
       return;
-    case "file_processing":
+    case 'file_processing':
       await processFileJob(job);
       return;
-    case "cleanup":
+    case 'cleanup':
       await processCleanupJob(job);
       return;
     default:
@@ -304,14 +315,14 @@ async function processJob(job: JobRecord) {
 
 async function markJobForRetry(job: JobRecord, error: string) {
   const redis = await getRedisClient();
-  if (!redis) throw new Error("Upstash Redis is not configured.");
+  if (!redis) throw new Error('Upstash Redis is not configured.');
 
   const nextAttempts = job.attempts + 1;
   const exhausted = nextAttempts >= job.maxAttempts;
 
   if (exhausted) {
     await adminDb.collection(JOB_COLLECTION).doc(job.id).update({
-      status: "failed",
+      status: 'failed',
       attempts: nextAttempts,
       lastError: error,
       updatedAt: nowIso(),
@@ -323,13 +334,16 @@ async function markJobForRetry(job: JobRecord, error: string) {
   const delaySeconds = calculateRetryDelaySeconds(nextAttempts);
   const retryAt = Date.now() + delaySeconds * 1000;
 
-  await adminDb.collection(JOB_COLLECTION).doc(job.id).update({
-    status: "pending",
-    attempts: nextAttempts,
-    lastError: error,
-    updatedAt: nowIso(),
-    scheduledAt: new Date(retryAt).toISOString(),
-  });
+  await adminDb
+    .collection(JOB_COLLECTION)
+    .doc(job.id)
+    .update({
+      status: 'pending',
+      attempts: nextAttempts,
+      lastError: error,
+      updatedAt: nowIso(),
+      scheduledAt: new Date(retryAt).toISOString(),
+    });
 
   await redis.zadd(SCHEDULED_QUEUE_KEY, { score: retryAt, member: job.id });
 }
@@ -346,11 +360,11 @@ export async function processDueJobs(batchSize = 20) {
     const snapshot = await ref.get();
     if (!snapshot.exists) continue;
 
-    const job = { id: snapshot.id, ...(snapshot.data() as Omit<JobRecord, "id">) };
-    if (job.status === "completed") continue;
+    const job = { id: snapshot.id, ...(snapshot.data() as Omit<JobRecord, 'id'>) };
+    if (job.status === 'completed') continue;
 
     await ref.update({
-      status: "processing",
+      status: 'processing',
       startedAt: nowIso(),
       updatedAt: nowIso(),
     });
@@ -358,7 +372,7 @@ export async function processDueJobs(batchSize = 20) {
     try {
       await processJob(job);
       await ref.update({
-        status: "completed",
+        status: 'completed',
         attempts: job.attempts + 1,
         completedAt: nowIso(),
         updatedAt: nowIso(),
@@ -366,7 +380,7 @@ export async function processDueJobs(batchSize = 20) {
       });
       results.push({ jobId, ok: true });
     } catch (error: any) {
-      const message = error?.message || "Unknown job failure";
+      const message = error?.message || 'Unknown job failure';
       await markJobForRetry(job, message);
       results.push({ jobId, ok: false, error: message });
     }
@@ -383,15 +397,15 @@ export async function processDueJobs(batchSize = 20) {
 
 export async function retryFailedJob(jobId: string) {
   const redis = await getRedisClient();
-  if (!redis) throw new Error("Upstash Redis is not configured.");
+  if (!redis) throw new Error('Upstash Redis is not configured.');
 
   await withJobStatus(jobId, async (job) => {
-    if (job.status !== "failed") {
-      throw new Error("Only failed jobs can be retried.");
+    if (job.status !== 'failed') {
+      throw new Error('Only failed jobs can be retried.');
     }
 
     await adminDb.collection(JOB_COLLECTION).doc(jobId).update({
-      status: "pending",
+      status: 'pending',
       lastError: null,
       completedAt: null,
       updatedAt: nowIso(),
@@ -404,21 +418,21 @@ export async function retryFailedJob(jobId: string) {
 
 export async function listJobs(params: { status?: JobStatus; limit?: number } = {}) {
   const limit = Math.max(1, Math.min(params.limit ?? 100, 500));
-  let query = adminDb.collection(JOB_COLLECTION).orderBy("createdAt", "desc").limit(limit);
+  let query = adminDb.collection(JOB_COLLECTION).orderBy('createdAt', 'desc').limit(limit);
   if (params.status) {
-    query = query.where("status", "==", params.status).orderBy("createdAt", "desc").limit(limit);
+    query = query.where('status', '==', params.status).orderBy('createdAt', 'desc').limit(limit);
   }
 
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<JobRecord, "id">) }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<JobRecord, 'id'>) }));
 }
 
 export async function getJobMetrics() {
   const [pending, processing, completed, failed] = await Promise.all([
-    adminDb.collection(JOB_COLLECTION).where("status", "==", "pending").count().get(),
-    adminDb.collection(JOB_COLLECTION).where("status", "==", "processing").count().get(),
-    adminDb.collection(JOB_COLLECTION).where("status", "==", "completed").count().get(),
-    adminDb.collection(JOB_COLLECTION).where("status", "==", "failed").count().get(),
+    adminDb.collection(JOB_COLLECTION).where('status', '==', 'pending').count().get(),
+    adminDb.collection(JOB_COLLECTION).where('status', '==', 'processing').count().get(),
+    adminDb.collection(JOB_COLLECTION).where('status', '==', 'completed').count().get(),
+    adminDb.collection(JOB_COLLECTION).where('status', '==', 'failed').count().get(),
   ]);
 
   return {

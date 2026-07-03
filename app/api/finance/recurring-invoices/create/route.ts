@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireFinance, serverTimestamp } from "../../_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
-import { calculateNextGenerationDate } from "@/lib/finance/recurring";
-import { z } from "zod";
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireFinance, serverTimestamp } from '../../_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
+import { calculateNextGenerationDate } from '@/lib/finance/recurring';
+import { z } from 'zod';
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const recurringLineItemSchema = z.object({
   id: z.string(),
@@ -19,11 +19,11 @@ const recurringLineItemSchema = z.object({
 });
 
 const createRecurringTemplateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  clientId: z.string().min(1, "Client is required"),
-  status: z.enum(["draft", "active", "paused", "cancelled"]).default("draft"),
-  frequency: z.enum(["daily", "weekly", "monthly", "quarterly", "yearly", "custom"]),
+  clientId: z.string().min(1, 'Client is required'),
+  status: z.enum(['draft', 'active', 'paused', 'cancelled']).default('draft'),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'custom']),
   interval: z.number().int().min(1).default(1),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const body = await req.json();
     const validated = createRecurringTemplateSchema.parse(body);
@@ -54,8 +54,8 @@ export async function POST(req: Request) {
     const startDate = new Date(validated.startDate);
     if (Number.isNaN(startDate.getTime())) {
       throw new AppError({
-        message: "Invalid start date",
-        code: "VALIDATION_ERROR",
+        message: 'Invalid start date',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
@@ -63,25 +63,25 @@ export async function POST(req: Request) {
     const endDate = validated.endDate ? new Date(validated.endDate) : undefined;
     if (endDate && Number.isNaN(endDate.getTime())) {
       throw new AppError({
-        message: "Invalid end date",
-        code: "VALIDATION_ERROR",
+        message: 'Invalid end date',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
 
     if (endDate && endDate <= startDate) {
       throw new AppError({
-        message: "End date must be after start date",
-        code: "VALIDATION_ERROR",
+        message: 'End date must be after start date',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
 
-    const clientSnap = await adminDb.collection("clients").doc(validated.clientId).get();
+    const clientSnap = await adminDb.collection('clients').doc(validated.clientId).get();
     if (!clientSnap.exists) {
       throw new AppError({
-        message: "Client not found",
-        code: "NOT_FOUND",
+        message: 'Client not found',
+        code: 'NOT_FOUND',
         status: 404,
       });
     }
@@ -89,19 +89,19 @@ export async function POST(req: Request) {
     const client = clientSnap.data();
     if (!client || client.tenantId !== auth.user.tenantId) {
       throw new AppError({
-        message: "Forbidden",
-        code: "FORBIDDEN",
+        message: 'Forbidden',
+        code: 'FORBIDDEN',
         status: 403,
       });
     }
 
-    const clientName = client.companyName || client.name || "Unknown";
+    const clientName = client.companyName || client.name || 'Unknown';
 
     let taxRateName: string | undefined;
     let taxRate: number | undefined;
 
     if (validated.taxRateId) {
-      const taxRateSnap = await adminDb.collection("tax_rates").doc(validated.taxRateId).get();
+      const taxRateSnap = await adminDb.collection('tax_rates').doc(validated.taxRateId).get();
       const rateData = taxRateSnap.data();
       if (taxRateSnap.exists && rateData && rateData.tenantId === auth.user.tenantId) {
         taxRateName = rateData.name;
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       validated.customDays,
     );
 
-    const docRef = adminDb.collection("recurring_invoice_templates").doc();
+    const docRef = adminDb.collection('recurring_invoice_templates').doc();
     await docRef.set({
       name: validated.name,
       description: validated.description,
@@ -145,29 +145,32 @@ export async function POST(req: Request) {
       generateDaysBefore: validated.generateDaysBefore,
       dueDaysAfter: validated.dueDaysAfter,
       ownerId: auth.user.uid,
-      ownerName: auth.user.name || auth.user.email || "Unknown",
+      ownerName: auth.user.name || auth.user.email || 'Unknown',
       tenantId: auth.user.tenantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
-    const recurringNotifyTargets = await getUsersByRoles(["admin", "super_admin", "finance"], auth.user.tenantId);
+    const recurringNotifyTargets = await getUsersByRoles(
+      ['admin', 'super_admin', 'finance'],
+      auth.user.tenantId,
+    );
     await createNotifications({
       recipients: recurringNotifyTargets,
       tenantId: auth.user.tenantId,
-      type: "info",
-      title: "Recurring invoice created",
+      type: 'info',
+      title: 'Recurring invoice created',
       message: `Recurring invoice "${validated.name}" (${validated.frequency}) was set up.`,
-      entityType: "invoice",
+      entityType: 'invoice',
       entityId: docRef.id,
-      deepLink: "/finance/invoices",
+      deepLink: '/finance/invoices',
     });
 
     return NextResponse.json({ ok: true, templateId: docRef.id });
   } catch (err) {
-    logError(err, { route: "POST /api/finance/recurring-invoices/create" });
+    logError(err, { route: 'POST /api/finance/recurring-invoices/create' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to create recurring invoice template",
+      fallbackMessage: 'Failed to create recurring invoice template',
     });
     return NextResponse.json(body, { status });
   }

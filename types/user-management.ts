@@ -1,6 +1,6 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
-export type TeamType = "department" | "project" | "working_group" | "custom";
+export type TeamType = 'department' | 'project' | 'working_group' | 'custom';
 
 export interface Team {
   id: string;
@@ -22,7 +22,7 @@ export interface Team {
   archivedAt?: Timestamp | null;
 }
 
-export type InvitationStatus = "pending" | "accepted" | "expired" | "cancelled";
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'cancelled';
 
 export interface UserInvitation {
   id: string;
@@ -43,7 +43,7 @@ export interface UserInvitation {
   updatedAt: Timestamp;
 }
 
-export type UserThemePreference = "light" | "dark" | "auto";
+export type UserThemePreference = 'light' | 'dark' | 'auto';
 
 export interface UserProfile {
   id: string;
@@ -92,18 +92,18 @@ export interface UserProfile {
 }
 
 export type ActivityType =
-  | "login"
-  | "logout"
-  | "create"
-  | "update"
-  | "delete"
-  | "view"
-  | "download"
-  | "share"
-  | "settings_change"
-  | "profile_update"
-  | "team_join"
-  | "team_leave";
+  | 'login'
+  | 'logout'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'view'
+  | 'download'
+  | 'share'
+  | 'settings_change'
+  | 'profile_update'
+  | 'team_join'
+  | 'team_leave';
 
 export interface UserActivity {
   id: string;

@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   canAccessPlanModule,
   normalizePlan,
@@ -7,11 +7,11 @@ import {
   type PlanModuleKey,
   type PlanModules,
   type PlanTier,
-} from "@/lib/tenant/plan-access";
+} from '@/lib/tenant/plan-access';
 
 type PlanSetBy = {
   uid: string;
-  role: "super_admin";
+  role: 'super_admin';
 };
 
 export type TenantPlanState = {
@@ -22,9 +22,9 @@ export type TenantPlanState = {
 };
 
 export async function getTenantPlanState(tenantId: string): Promise<TenantPlanState> {
-  const snap = await adminDb.collection("tenants").doc(tenantId).get();
+  const snap = await adminDb.collection('tenants').doc(tenantId).get();
   if (!snap.exists) {
-    throw new Error("Tenant not found");
+    throw new Error('Tenant not found');
   }
 
   const data = snap.data() || {};
@@ -59,13 +59,16 @@ export function isPlanAccessError(error: unknown): error is PlanAccessError {
   return error instanceof PlanAccessError;
 }
 
-export async function requireModule(tenantId: string, moduleKey: PlanModuleKey, options?: { role?: string | null }) {
+export async function requireModule(
+  tenantId: string,
+  moduleKey: PlanModuleKey,
+  options?: { role?: string | null },
+) {
   const planState = await getTenantPlanState(tenantId);
   if (!canAccessPlanModule({ modules: planState.modules, moduleKey, role: options?.role })) {
     throw new PlanAccessError(moduleKey);
   }
   return planState;
 }
-
 
 export { normalizePlan, resolvePlanModules, resolveTenantModules };

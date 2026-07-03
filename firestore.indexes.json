@@ -2692,8 +2692,7 @@
           "order": "DESCENDING"
         }
       ]
-    }
-    ,
+    },
     {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",

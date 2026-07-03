@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import type { DragEvent } from "react";
-import { PIPELINE_STAGES, getInitials } from "@/lib/sales/utils";
+import type { DragEvent } from 'react';
+import { PIPELINE_STAGES, getInitials } from '@/lib/sales/utils';
 
 export type PipelineDeal = {
   id: string;
@@ -26,7 +26,7 @@ export default function PipelineKanban({ deals, onStageChange, onCardClick }: Pi
 
   const handleDrop = (event: DragEvent<HTMLDivElement>, stage: string) => {
     event.preventDefault();
-    const dealId = event.dataTransfer.getData("dealId");
+    const dealId = event.dataTransfer.getData('dealId');
     const deal = deals.find((item) => item.id === dealId);
     if (deal && deal.stage !== stage) {
       onStageChange(deal, stage);
@@ -34,7 +34,13 @@ export default function PipelineKanban({ deals, onStageChange, onCardClick }: Pi
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 14,
+      }}
+    >
       {stages.map((stage) => {
         const items = deals.filter((deal) => deal.stage === stage);
         return (
@@ -45,52 +51,68 @@ export default function PipelineKanban({ deals, onStageChange, onCardClick }: Pi
             className="card"
             style={{ padding: 14, borderRadius: 18, minHeight: 260 }}
           >
-            <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 13,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}
+            >
               {stage}
             </div>
             <div style={{ height: 10 }} />
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: 'grid', gap: 10 }}>
               {items.length === 0 && <div style={{ fontSize: 12, opacity: 0.6 }}>No deals</div>}
               {items.map((deal) => (
                 <div
                   key={deal.id}
                   draggable
-                  onDragStart={(event) => event.dataTransfer.setData("dealId", deal.id)}
+                  onDragStart={(event) => event.dataTransfer.setData('dealId', deal.id)}
                   onClick={() => onCardClick(deal)}
                   className="card"
                   style={{
                     padding: 12,
                     borderRadius: 14,
-                    cursor: "pointer",
-                    border: "1px solid var(--border-subtle)",
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-subtle)',
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>{deal.dealName}</div>
                   <div style={{ fontSize: 12, opacity: 0.7 }}>{deal.clientName}</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, opacity: 0.8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: 12,
+                      opacity: 0.8,
+                    }}
+                  >
                     <span>${deal.valueUsd.toLocaleString()}</span>
                     <span>{deal.probability}%</span>
                   </div>
                   <div style={{ height: 10 }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div
                       style={{
                         width: 26,
                         height: 26,
-                        borderRadius: "50%",
-                        background: "var(--erp-blue-soft)",
-                        color: "var(--erp-blue)",
+                        borderRadius: '50%',
+                        background: 'var(--erp-blue-soft)',
+                        color: 'var(--erp-blue)',
                         fontSize: 11,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         fontWeight: 700,
                       }}
                     >
-                      {getInitials(deal.ownerName || "")}
+                      {getInitials(deal.ownerName || '')}
                     </div>
-                    <span style={{ fontSize: 12, opacity: 0.75 }}>{deal.ownerName || "Unassigned"}</span>
+                    <span style={{ fontSize: 12, opacity: 0.75 }}>
+                      {deal.ownerName || 'Unassigned'}
+                    </span>
                   </div>
                 </div>
               ))}

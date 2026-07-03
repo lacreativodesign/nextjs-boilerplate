@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 export default function SalesManagerDealDetailPage({ params }: { params: { id: string } }) {
   const [deal, setDeal] = useState<any>(null);
@@ -9,8 +9,8 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
 
   async function load() {
     const [dealRes, reqRes] = await Promise.all([
-      apiFetch(`/api/crm/deals/${params.id}`, { cache: "no-store" }),
-      apiFetch(`/api/crm/discount-requests?dealId=${params.id}`, { cache: "no-store" }),
+      apiFetch(`/api/crm/deals/${params.id}`, { cache: 'no-store' }),
+      apiFetch(`/api/crm/discount-requests?dealId=${params.id}`, { cache: 'no-store' }),
     ]);
 
     const dealData = await dealRes.json();
@@ -23,15 +23,15 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
     load();
   }, [params.id]);
 
-  async function review(id: string, decision: "approved" | "rejected") {
+  async function review(id: string, decision: 'approved' | 'rejected') {
     const res = await apiFetch(`/api/crm/discount-requests/${id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision }),
     });
     const data = await res.json();
     if (!data.ok) {
-      alert(data.error || "Failed to review");
+      alert(data.error || 'Failed to review');
       return;
     }
     await load();
@@ -46,7 +46,7 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
         <div>Title: {deal.title}</div>
         <div>Stage: {deal.stage}</div>
         <div>Value: ${Number(deal.valueUSD || 0).toLocaleString()}</div>
-        <div>Discount Approved: {deal.discountApproved ? "Yes" : "No"}</div>
+        <div>Discount Approved: {deal.discountApproved ? 'Yes' : 'No'}</div>
       </div>
 
       <div className="card p-4">
@@ -54,12 +54,18 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
         {requests.length === 0 && <div>No discount requests.</div>}
         {requests.map((request) => (
           <div key={request.id} className="mb-2 rounded border p-2">
-            <div>{request.discountPercent}% - {request.reason}</div>
+            <div>
+              {request.discountPercent}% - {request.reason}
+            </div>
             <div>Status: {request.status}</div>
-            {request.status === "pending" && (
+            {request.status === 'pending' && (
               <div className="mt-2 flex gap-2">
-                <button className="btn" onClick={() => review(request.id, "approved")}>Approve</button>
-                <button className="btn" onClick={() => review(request.id, "rejected")}>Reject</button>
+                <button className="btn" onClick={() => review(request.id, 'approved')}>
+                  Approve
+                </button>
+                <button className="btn" onClick={() => review(request.id, 'rejected')}>
+                  Reject
+                </button>
               </div>
             )}
           </div>

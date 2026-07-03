@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { cancelStripeSubscription } from '@/lib/stripe/customer';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant/constants";
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,21 +31,23 @@ export async function POST() {
     );
 
     try {
-      const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
-      const tenantName = String(tenantSnap.data()?.name || tenantSnap.data()?.companyName || tenantId);
-      const platformAdmins = await getUsersByRoles(["super_admin"], DEFAULT_TENANT_ID);
+      const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+      const tenantName = String(
+        tenantSnap.data()?.name || tenantSnap.data()?.companyName || tenantId,
+      );
+      const platformAdmins = await getUsersByRoles(['super_admin'], DEFAULT_TENANT_ID);
       await createNotifications({
         recipients: platformAdmins,
         tenantId: DEFAULT_TENANT_ID,
-        type: "warning",
-        title: "Subscription cancellation scheduled",
+        type: 'warning',
+        title: 'Subscription cancellation scheduled',
         message: `${tenantName} scheduled cancellation of their subscription.`,
-        entityType: "subscription",
+        entityType: 'subscription',
         entityId: tenantId,
-        deepLink: "/super_admin/tenants",
+        deepLink: '/super_admin/tenants',
       });
     } catch (notifyError) {
-      console.error("billing.cancel platform notify error:", notifyError);
+      console.error('billing.cancel platform notify error:', notifyError);
     }
 
     return NextResponse.json({

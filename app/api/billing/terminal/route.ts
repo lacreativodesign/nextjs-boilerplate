@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getStripeClient } from "@/lib/payments/stripe";
-import { calculatePlatformFee } from "@/lib/stripe/connect";
-import { requireAdminOrSuperAdmin } from "@/app/api/admin/_utils";
+import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getStripeClient } from '@/lib/payments/stripe';
+import { calculatePlatformFee } from '@/lib/stripe/connect';
+import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type TerminalTransaction = {
   id: string;
@@ -32,17 +32,21 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const tenantId = String(auth.user.tenantId || "").trim();
+    const tenantId = String(auth.user.tenantId || '').trim();
     if (!tenantId) {
-      return NextResponse.json({ ok: false, error: "Tenant context missing" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Tenant context missing' }, { status: 400 });
     }
 
-    const tenantSnap = await adminDb.collection("tenants").doc(tenantId).get();
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantSnap.data() || {};
-    const stripeConnectAccountId = String(tenantData.stripeConnectAccountId || "").trim();
+    const stripeConnectAccountId = String(tenantData.stripeConnectAccountId || '').trim();
 
     if (!stripeConnectAccountId) {
-      return NextResponse.json({ ok: true, connected: false, message: "No Stripe account connected" });
+      return NextResponse.json({
+        ok: true,
+        connected: false,
+        message: 'No Stripe account connected',
+      });
     }
 
     const stripe = getStripeClient();
@@ -53,10 +57,14 @@ export async function GET() {
       stripe.disputes.list({ limit: 20 }, { stripeAccount: stripeConnectAccountId }),
     ]);
 
-    const charges: Stripe.Charge[] = chargesResult.status === "fulfilled" ? chargesResult.value.data : [];
-    const balance = balanceResult.status === "fulfilled" ? balanceResult.value : { available: [], pending: [] };
-    const payouts: Stripe.Payout[] = payoutsResult.status === "fulfilled" ? payoutsResult.value.data : [];
-    const disputes: Stripe.Dispute[] = disputesResult.status === "fulfilled" ? disputesResult.value.data : [];
+    const charges: Stripe.Charge[] =
+      chargesResult.status === 'fulfilled' ? chargesResult.value.data : [];
+    const balance =
+      balanceResult.status === 'fulfilled' ? balanceResult.value : { available: [], pending: [] };
+    const payouts: Stripe.Payout[] =
+      payoutsResult.status === 'fulfilled' ? payoutsResult.value.data : [];
+    const disputes: Stripe.Dispute[] =
+      disputesResult.status === 'fulfilled' ? disputesResult.value.data : [];
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -72,7 +80,7 @@ export async function GET() {
     for (const charge of charges) {
       totalRefundedCents += charge.amount_refunded || 0;
 
-      const isSucceeded = charge.status === "succeeded";
+      const isSucceeded = charge.status === 'succeeded';
       if (isSucceeded) {
         const feeCents = calculatePlatformFee(charge.amount);
         totalRevenueCents += charge.amount;
@@ -86,7 +94,7 @@ export async function GET() {
         }
       }
 
-      if (charge.status === "failed") {
+      if (charge.status === 'failed') {
         failedCount += 1;
       }
     }
@@ -129,7 +137,7 @@ export async function GET() {
       currency: dispute.currency,
       status: dispute.status,
       reason: dispute.reason,
-      chargeId: String(dispute.charge || ""),
+      chargeId: String(dispute.charge || ''),
       createdAt: new Date(dispute.created * 1000).toISOString(),
       dueBy: dispute.evidence_details?.due_by
         ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
@@ -150,8 +158,14 @@ export async function GET() {
         failedCount,
       },
       balance: {
-        available: (balance.available || []).map((item) => ({ amount: item.amount / 100, currency: item.currency })),
-        pending: (balance.pending || []).map((item) => ({ amount: item.amount / 100, currency: item.currency })),
+        available: (balance.available || []).map((item) => ({
+          amount: item.amount / 100,
+          currency: item.currency,
+        })),
+        pending: (balance.pending || []).map((item) => ({
+          amount: item.amount / 100,
+          currency: item.currency,
+        })),
       },
       transactions,
       payouts: payoutData,
@@ -171,7 +185,8 @@ export async function GET() {
       fetchedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unable to fetch payment terminal data";
+    const message =
+      error instanceof Error ? error.message : 'Unable to fetch payment terminal data';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

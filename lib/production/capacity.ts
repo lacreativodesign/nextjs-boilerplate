@@ -1,4 +1,4 @@
-export type ResourceType = "employee" | "equipment" | "material";
+export type ResourceType = 'employee' | 'equipment' | 'material';
 
 export type ProductionResource = {
   id: string;
@@ -25,7 +25,7 @@ export type ResourceAssignment = {
   startDate: string;
   endDate: string;
   hourlyRate: number;
-  status: "active" | "cancelled" | "completed";
+  status: 'active' | 'cancelled' | 'completed';
 };
 
 export type ResourceDayLoad = {
@@ -87,7 +87,7 @@ function overlapRange(
   startA: Date,
   endA: Date,
   startB: Date,
-  endB: Date
+  endB: Date,
 ): { start: Date; end: Date } | null {
   const start = startA.getTime() > startB.getTime() ? startA : startB;
   const end = endA.getTime() < endB.getTime() ? endA : endB;
@@ -109,14 +109,14 @@ export function calculateResourceWorkload(
   resource: ProductionResource,
   assignments: ResourceAssignment[],
   rangeStartDate: string,
-  rangeEndDate: string
+  rangeEndDate: string,
 ): ResourceWorkload {
   const rangeDays = getDateRangeDays(rangeStartDate, rangeEndDate);
   const start = parseIsoDate(rangeStartDate);
   const end = parseIsoDate(rangeEndDate);
 
   const resourceAssignments = assignments.filter(
-    (assignment) => assignment.resourceId === resource.id && assignment.status === "active"
+    (assignment) => assignment.resourceId === resource.id && assignment.status === 'active',
   );
 
   const dailyAllocated = new Map<string, number>();
@@ -134,7 +134,8 @@ export function calculateResourceWorkload(
     }
   }
 
-  const capacityPerDay = Math.max(0, resource.capacityHoursPerDay) * Math.max(0, resource.availabilityPercent) / 100;
+  const capacityPerDay =
+    (Math.max(0, resource.capacityHoursPerDay) * Math.max(0, resource.availabilityPercent)) / 100;
   const days = rangeDays.map((date) => {
     const allocatedHours = dailyAllocated.get(date) || 0;
     const availableHours = Math.max(0, capacityPerDay - allocatedHours);
@@ -159,7 +160,8 @@ export function calculateResourceWorkload(
     resourceType: resource.type,
     totalCapacityHours,
     totalAllocatedHours,
-    utilizationPercent: totalCapacityHours > 0 ? (totalAllocatedHours / totalCapacityHours) * 100 : 0,
+    utilizationPercent:
+      totalCapacityHours > 0 ? (totalAllocatedHours / totalCapacityHours) * 100 : 0,
     overAllocatedDays: days.filter((day) => day.overAllocated).length,
     days,
     assignments: resourceAssignments,
@@ -170,11 +172,13 @@ export function calculateAvailableCapacity(
   resources: ProductionResource[],
   assignments: ResourceAssignment[],
   rangeStartDate: string,
-  rangeEndDate: string
+  rangeEndDate: string,
 ) {
   return resources
     .filter((resource) => resource.active)
-    .map((resource) => calculateResourceWorkload(resource, assignments, rangeStartDate, rangeEndDate));
+    .map((resource) =>
+      calculateResourceWorkload(resource, assignments, rangeStartDate, rangeEndDate),
+    );
 }
 
 export function detectOverAllocation(workloads: ResourceWorkload[]): OverAllocationWarning[] {
@@ -218,7 +222,10 @@ export function suggestResourceLeveling(workloads: ResourceWorkload[]): Leveling
           workload: w,
           day: w.days.find((d) => d.date === date),
         }))
-        .filter((entry) => entry.day && entry.day.overAllocated) as Array<{ workload: ResourceWorkload; day: ResourceDayLoad }>;
+        .filter((entry) => entry.day && entry.day.overAllocated) as Array<{
+        workload: ResourceWorkload;
+        day: ResourceDayLoad;
+      }>;
 
       if (!overloaded.length) continue;
 
@@ -227,7 +234,10 @@ export function suggestResourceLeveling(workloads: ResourceWorkload[]): Leveling
           workload: w,
           day: w.days.find((d) => d.date === date),
         }))
-        .filter((entry) => entry.day && entry.day.availableHours > 0) as Array<{ workload: ResourceWorkload; day: ResourceDayLoad }>;
+        .filter((entry) => entry.day && entry.day.availableHours > 0) as Array<{
+        workload: ResourceWorkload;
+        day: ResourceDayLoad;
+      }>;
 
       for (const source of overloaded) {
         const bestTarget = candidates
@@ -238,7 +248,7 @@ export function suggestResourceLeveling(workloads: ResourceWorkload[]): Leveling
 
         const transferableHours = Math.min(
           source.day.allocatedHours - Math.min(source.day.capacityHours, 8),
-          bestTarget.day.availableHours
+          bestTarget.day.availableHours,
         );
 
         if (transferableHours <= 0) continue;

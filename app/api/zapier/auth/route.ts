@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireZapierApiKey } from "@/app/api/zapier/_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireZapierApiKey } from '@/app/api/zapier/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;

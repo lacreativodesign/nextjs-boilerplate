@@ -16,7 +16,7 @@ export async function publishActivity(activity: Omit<Activity, 'id' | 'timestamp
   const docRef = await db.collection('activities').add({
     ...activity,
     timestamp: Timestamp.now(),
-    createdAt: Timestamp.now()
+    createdAt: Timestamp.now(),
   });
   return docRef.id;
 }
@@ -29,9 +29,9 @@ export async function getActivities(tenantId: string, limit = 50) {
     .limit(limit)
     .get();
 
-  return snapshot.docs.map(doc => ({
+  return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-    timestamp: doc.data().timestamp.toDate()
+    timestamp: doc.data().timestamp.toDate(),
   })) as Activity[];
 }

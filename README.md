@@ -25,6 +25,7 @@ npm run dev
 ## CI quality gates
 
 GitHub Actions enforces:
+
 - lint
 - type checks
 - coverage thresholds

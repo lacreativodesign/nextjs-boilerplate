@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { currencyConverter } from "@/lib/currency/currencyConverter";
+import { NextRequest, NextResponse } from 'next/server';
+import { currencyConverter } from '@/lib/currency/currencyConverter';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
 
     if (from && to) {
       const rate = currencyConverter.getRate(from.toUpperCase(), to.toUpperCase());
@@ -19,17 +19,16 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: "Rates cached",
+      message: 'Rates cached',
       lastUpdated: new Date().toISOString(),
     });
   } catch (error: any) {
     return NextResponse.json(
       {
-        error: "Failed to fetch rates",
-        details: error?.message || "Unknown error",
+        error: 'Failed to fetch rates',
+        details: error?.message || 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

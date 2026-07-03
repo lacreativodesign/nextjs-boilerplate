@@ -1,9 +1,9 @@
 function getAppUrl() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not configured.");
+    throw new Error('NEXT_PUBLIC_APP_URL is not configured.');
   }
-  return appUrl.replace(/\/$/, "");
+  return appUrl.replace(/\/$/, '');
 }
 
 export function generatePaymentLink(invoiceId: string): string {

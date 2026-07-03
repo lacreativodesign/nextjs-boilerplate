@@ -36,7 +36,16 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const checklistRef = tenantRef.collection('onboarding_progress').doc('checklist');
 
-  const planKey = plan === 'professional' ? 'pro' : plan === 'enterprise' ? 'enterprise' : plan === 'trial' ? 'trial' : plan === 'starter' ? 'starter' : 'trial';
+  const planKey =
+    plan === 'professional'
+      ? 'pro'
+      : plan === 'enterprise'
+        ? 'enterprise'
+        : plan === 'trial'
+          ? 'trial'
+          : plan === 'starter'
+            ? 'starter'
+            : 'trial';
 
   await adminDb.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
     const nowIso = new Date().toISOString();

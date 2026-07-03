@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { getCurrentUser } from "@/app/api/admin/_utils";
-import { requireModule, isPlanAccessError } from "@/app/lib/plan-enforcement";
-import { TimeTrackingService } from "@/lib/hr/time-tracking";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireModule, isPlanAccessError } from '@/app/lib/plan-enforcement';
+import { TimeTrackingService } from '@/lib/hr/time-tracking';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const createEntrySchema = z.object({
-  source: z.enum(["clock", "manual", "timer"]),
+  source: z.enum(['clock', 'manual', 'timer']),
   startAt: z.string().datetime(),
   endAt: z.string().datetime().optional().nullable(),
   breakMinutes: z.number().int().min(0).max(480).optional(),
@@ -29,11 +29,14 @@ const listSchema = z.object({
 async function getAuthorizedUser() {
   const me = await getCurrentUser();
   if (!me?.tenantId) {
-    return { ok: false as const, response: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }) };
+    return {
+      ok: false as const,
+      response: NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
+    };
   }
 
   try {
-    await requireModule(me.tenantId, "hr", { role: me.role });
+    await requireModule(me.tenantId, 'hr', { role: me.role });
   } catch (err) {
     if (isPlanAccessError(err)) {
       return {
@@ -43,7 +46,10 @@ async function getAuthorizedUser() {
     }
     return {
       ok: false as const,
-      response: NextResponse.json({ ok: false, error: "Unable to validate module access" }, { status: 500 }),
+      response: NextResponse.json(
+        { ok: false, error: 'Unable to validate module access' },
+        { status: 500 },
+      ),
     };
   }
 
@@ -75,10 +81,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, entry });
   } catch (err) {
-    console.error("HR time entries create error", err);
+    console.error('HR time entries create error', err);
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : "Failed to create time entry" },
-      { status: 400 }
+      { ok: false, error: err instanceof Error ? err.message : 'Failed to create time entry' },
+      { status: 400 },
     );
   }
 }
@@ -103,7 +109,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, entries });
   } catch (err) {
-    console.error("HR time entries list error", err);
-    return NextResponse.json({ ok: false, error: "Failed to load time entries" }, { status: 400 });
+    console.error('HR time entries list error', err);
+    return NextResponse.json({ ok: false, error: 'Failed to load time entries' }, { status: 400 });
   }
 }

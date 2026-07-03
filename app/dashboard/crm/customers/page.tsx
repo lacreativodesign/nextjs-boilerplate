@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { CustomerCard } from "@/components/crm/CustomerCard";
-import { CreateCustomerDialog } from "@/components/crm/CreateCustomerDialog";
+import { useEffect, useState } from 'react';
+import { CustomerCard } from '@/components/crm/CustomerCard';
+import { CreateCustomerDialog } from '@/components/crm/CreateCustomerDialog';
 
 type Customer = {
   id: string;
@@ -19,7 +19,7 @@ type Customer = {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     void fetchCustomers();
@@ -27,9 +27,9 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     const params = new URLSearchParams();
-    if (filter !== "all") params.append("status", filter);
+    if (filter !== 'all') params.append('status', filter);
 
-    const response = await fetch(`/api/crm/customers?${params.toString()}`, { cache: "no-store" });
+    const response = await fetch(`/api/crm/customers?${params.toString()}`, { cache: 'no-store' });
     const data = await response.json();
     setCustomers(data.customers || []);
   };
@@ -42,11 +42,11 @@ export default function CustomersPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
-        {["all", "new", "contacted", "qualified", "won"].map((status) => (
+        {['all', 'new', 'contacted', 'qualified', 'won'].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === status ? "bg-[var(--erp-blue)] text-white" : "bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === status ? 'bg-[var(--erp-blue)] text-white' : 'bg-[var(--surface-muted)] text-[var(--text-primary)]'}`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </button>

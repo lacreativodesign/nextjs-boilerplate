@@ -1,10 +1,10 @@
-import admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { NotificationService } from "@/lib/notifications/notification-service";
-import { MilestoneService } from "@/lib/projects/milestone-service";
-import { TaskService } from "@/lib/projects/task-service";
-import type { Project, ProjectCategory, ProjectTemplate } from "@/types/project-management";
+import admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { NotificationService } from '@/lib/notifications/notification-service';
+import { MilestoneService } from '@/lib/projects/milestone-service';
+import { TaskService } from '@/lib/projects/task-service';
+import type { Project, ProjectCategory, ProjectTemplate } from '@/types/project-management';
 
 export class ProjectService {
   static async createProject(params: {
@@ -25,11 +25,11 @@ export class ProjectService {
   }): Promise<string> {
     const existingProject = await this.getProjectByCode(params.code, params.tenantId);
     if (existingProject) {
-      throw new Error("Project code already exists");
+      throw new Error('Project code already exists');
     }
 
     const now = Timestamp.now();
-    const project: Omit<Project, "id"> = {
+    const project: Omit<Project, 'id'> = {
       tenantId: params.tenantId,
       name: params.name,
       code: params.code,
@@ -39,17 +39,17 @@ export class ProjectService {
       category: params.category,
       tags: [],
       budget: params.budget,
-      budgetCurrency: "USD",
+      budgetCurrency: 'USD',
       billable: params.billable,
       startDate: Timestamp.fromDate(params.startDate),
       endDate: params.endDate ? Timestamp.fromDate(params.endDate) : undefined,
-      status: "planning",
-      priority: "medium",
+      status: 'planning',
+      priority: 'medium',
       progress: 0,
       managerId: params.managerId,
       managerName: params.managerName,
       teamMemberIds: Array.from(new Set([params.managerId, ...params.teamMemberIds])),
-      visibility: "team",
+      visibility: 'team',
       totalTasks: 0,
       completedTasks: 0,
       totalHoursLogged: 0,
@@ -65,21 +65,21 @@ export class ProjectService {
       updatedAt: now,
     };
 
-    const docRef = await adminDb.collection("projects").add(project);
+    const docRef = await adminDb.collection('projects').add(project);
 
     await Promise.all(
       project.teamMemberIds.map((memberId) =>
         NotificationService.send({
           tenantId: params.tenantId,
           userId: memberId,
-          userEmail: "",
-          type: "info",
-          title: "Added to project",
+          userEmail: '',
+          type: 'info',
+          title: 'Added to project',
           message: `You've been added to project: ${params.name}`,
-          category: "team",
+          category: 'team',
           actionUrl: `/dashboard/projects/${docRef.id}`,
-        })
-      )
+        }),
+      ),
     );
 
     return docRef.id;
@@ -87,13 +87,15 @@ export class ProjectService {
 
   static async updateProjectProgress(projectId: string): Promise<void> {
     const tasksSnapshot = await adminDb
-      .collection("tasks")
-      .where("projectId", "==", projectId)
-      .where("parentTaskId", "==", null)
+      .collection('tasks')
+      .where('projectId', '==', projectId)
+      .where('parentTaskId', '==', null)
       .get();
 
     const totalTasks = tasksSnapshot.size;
-    const completedTasks = tasksSnapshot.docs.filter((doc) => doc.data().status === "completed").length;
+    const completedTasks = tasksSnapshot.docs.filter(
+      (doc) => doc.data().status === 'completed',
+    ).length;
     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     const updates: Record<string, unknown> = {
@@ -104,18 +106,21 @@ export class ProjectService {
     };
 
     if (progress === 100) {
-      updates.status = "completed";
+      updates.status = 'completed';
       updates.completedAt = Timestamp.now();
     }
 
-    await adminDb.collection("projects").doc(projectId).update(updates);
+    await adminDb.collection('projects').doc(projectId).update(updates);
   }
 
-  static async getProjectByCode(code: string, tenantId: string): Promise<(Project & { id: string }) | null> {
+  static async getProjectByCode(
+    code: string,
+    tenantId: string,
+  ): Promise<(Project & { id: string }) | null> {
     const snapshot = await adminDb
-      .collection("projects")
-      .where("tenantId", "==", tenantId)
-      .where("code", "==", code)
+      .collection('projects')
+      .where('tenantId', '==', tenantId)
+      .where('code', '==', code)
       .limit(1)
       .get();
 
@@ -123,27 +128,27 @@ export class ProjectService {
       return null;
     }
 
-    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as Omit<Project, "id">) };
+    return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as Omit<Project, 'id'>) };
   }
 
   static async generateProjectCode(tenantId: string): Promise<string> {
     const snapshot = await adminDb
-      .collection("projects")
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc")
+      .collection('projects')
+      .where('tenantId', '==', tenantId)
+      .orderBy('createdAt', 'desc')
       .limit(1)
       .get();
 
     if (snapshot.empty) {
-      return "PRJ-001";
+      return 'PRJ-001';
     }
 
-    const lastCode = String(snapshot.docs[0].data().code || "PRJ-000");
-    const codeParts = lastCode.split("-");
-    const numericPart = Number.parseInt(codeParts[1] || "0", 10);
+    const lastCode = String(snapshot.docs[0].data().code || 'PRJ-000');
+    const codeParts = lastCode.split('-');
+    const numericPart = Number.parseInt(codeParts[1] || '0', 10);
     const nextNumber = Number.isFinite(numericPart) ? numericPart + 1 : 1;
 
-    return `PRJ-${String(nextNumber).padStart(3, "0")}`;
+    return `PRJ-${String(nextNumber).padStart(3, '0')}`;
   }
 
   static async createFromTemplate(params: {
@@ -154,9 +159,9 @@ export class ProjectService {
     managerName: string;
     startDate: Date;
   }): Promise<string> {
-    const templateDoc = await adminDb.collection("project_templates").doc(params.templateId).get();
+    const templateDoc = await adminDb.collection('project_templates').doc(params.templateId).get();
     if (!templateDoc.exists) {
-      throw new Error("Template not found");
+      throw new Error('Template not found');
     }
 
     const template = templateDoc.data() as ProjectTemplate;
@@ -186,7 +191,7 @@ export class ProjectService {
         projectName: params.name,
         title: taskTemplate.title,
         description: taskTemplate.description,
-        priority: (taskTemplate.priority as "low" | "medium" | "high" | "urgent") || "medium",
+        priority: (taskTemplate.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
         estimatedHours: taskTemplate.estimatedHours,
         dueDate,
         assignedBy: params.managerId,
@@ -217,8 +222,8 @@ export class ProjectService {
   }
 
   static async archiveProject(projectId: string): Promise<void> {
-    await adminDb.collection("projects").doc(projectId).update({
-      status: "archived",
+    await adminDb.collection('projects').doc(projectId).update({
+      status: 'archived',
       archivedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });

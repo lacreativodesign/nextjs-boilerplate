@@ -1,18 +1,18 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
-export type CustomerType = "lead" | "prospect" | "customer" | "partner";
+export type CustomerType = 'lead' | 'prospect' | 'customer' | 'partner';
 
 export type CustomerStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "negotiation"
-  | "won"
-  | "lost"
-  | "inactive"
-  | "archived";
+  | 'new'
+  | 'contacted'
+  | 'qualified'
+  | 'negotiation'
+  | 'won'
+  | 'lost'
+  | 'inactive'
+  | 'archived';
 
-export type CustomerPriority = "low" | "medium" | "high" | "hot";
+export type CustomerPriority = 'low' | 'medium' | 'high' | 'hot';
 
 export interface Customer {
   id: string;
@@ -35,7 +35,7 @@ export interface Customer {
     country?: string;
   };
   industry?: string;
-  companySize?: "1-10" | "11-50" | "51-200" | "201-500" | "500+";
+  companySize?: '1-10' | '11-50' | '51-200' | '201-500' | '500+';
   annualRevenue?: number;
   status: CustomerStatus;
   stage: string;
@@ -67,7 +67,7 @@ export interface Customer {
   archivedAt?: Timestamp;
 }
 
-export type DealStatus = "open" | "won" | "lost" | "abandoned";
+export type DealStatus = 'open' | 'won' | 'lost' | 'abandoned';
 
 export interface DealProduct {
   productId?: string;
@@ -94,7 +94,7 @@ export interface Deal {
   stageName: string;
   stageOrder: number;
   status: DealStatus;
-  priority: "low" | "medium" | "high" | "critical";
+  priority: 'low' | 'medium' | 'high' | 'critical';
   ownerId: string;
   ownerName: string;
   expectedCloseDate: Timestamp;
@@ -127,7 +127,7 @@ export interface Pipeline {
   tenantId: string;
   name: string;
   description?: string;
-  type: "sales" | "custom";
+  type: 'sales' | 'custom';
   stages: PipelineStage[];
   isDefault: boolean;
   isActive: boolean;
@@ -137,7 +137,15 @@ export interface Pipeline {
   updatedAt: Timestamp;
 }
 
-export type ActivityType = "call" | "email" | "meeting" | "task" | "demo" | "proposal" | "follow_up" | "note";
+export type ActivityType =
+  | 'call'
+  | 'email'
+  | 'meeting'
+  | 'task'
+  | 'demo'
+  | 'proposal'
+  | 'follow_up'
+  | 'note';
 
 export interface Activity {
   id: string;
@@ -152,7 +160,7 @@ export interface Activity {
   scheduledAt?: Timestamp;
   dueDate?: Timestamp;
   duration?: number;
-  status: "scheduled" | "completed" | "cancelled";
+  status: 'scheduled' | 'completed' | 'cancelled';
   completedAt?: Timestamp;
   ownerId: string;
   ownerName: string;
@@ -185,7 +193,7 @@ export interface EmailTemplate {
   tenantId: string;
   name: string;
   description?: string;
-  category: "follow_up" | "proposal" | "welcome" | "nurture" | "other";
+  category: 'follow_up' | 'proposal' | 'welcome' | 'nurture' | 'other';
   subject: string;
   body: string;
   placeholders: string[];

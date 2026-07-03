@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { CheckCircle, Circle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { CheckCircle, Circle } from 'lucide-react';
 
 type Milestone = { id: string; title: string; completed: boolean; href: string };
 type ActivationState = { milestones: Milestone[]; progress: number };
@@ -11,9 +11,9 @@ export function ActivationChecklist() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/onboarding/activation", {
-      cache: "no-store",
-      credentials: "include",
+    void fetch('/api/onboarding/activation', {
+      cache: 'no-store',
+      credentials: 'include',
       signal: controller.signal,
     })
       .then((res) => (res.ok ? res.json() : null))
@@ -65,8 +65,8 @@ export function ActivationChecklist() {
               <span
                 className={
                   m.completed
-                    ? "text-[var(--text-muted)] line-through"
-                    : "text-[var(--text-primary)]"
+                    ? 'text-[var(--text-muted)] line-through'
+                    : 'text-[var(--text-primary)]'
                 }
               >
                 {m.title}

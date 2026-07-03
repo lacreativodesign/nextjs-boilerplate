@@ -1,11 +1,11 @@
-import admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { NotificationService } from "@/lib/notifications/notification-service";
-import { MilestoneService } from "@/lib/projects/milestone-service";
-import { ProjectService } from "@/lib/projects/project-service";
-import { sendBizostoEventNotification } from "@/lib/integrations/slack";
-import type { Project, Task, TaskComment, TaskStatus, TimeEntry } from "@/types/project-management";
+import admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { NotificationService } from '@/lib/notifications/notification-service';
+import { MilestoneService } from '@/lib/projects/milestone-service';
+import { ProjectService } from '@/lib/projects/project-service';
+import { sendBizostoEventNotification } from '@/lib/integrations/slack';
+import type { Project, Task, TaskComment, TaskStatus, TimeEntry } from '@/types/project-management';
 
 export class TaskService {
   static async createTask(params: {
@@ -14,7 +14,7 @@ export class TaskService {
     projectName: string;
     title: string;
     description?: string;
-    priority: "low" | "medium" | "high" | "urgent";
+    priority: 'low' | 'medium' | 'high' | 'urgent';
     assignedTo?: string;
     assignedToName?: string;
     assignedBy: string;
@@ -25,13 +25,13 @@ export class TaskService {
     parentTaskId?: string;
   }): Promise<string> {
     const now = Timestamp.now();
-    const task: Omit<Task, "id"> = {
+    const task: Omit<Task, 'id'> = {
       tenantId: params.tenantId,
       projectId: params.projectId,
       projectName: params.projectName,
       title: params.title,
       description: params.description,
-      status: "todo",
+      status: 'todo',
       priority: params.priority,
       assignedTo: params.assignedTo,
       assignedToName: params.assignedToName,
@@ -53,18 +53,24 @@ export class TaskService {
       updatedAt: now,
     };
 
-    const docRef = await adminDb.collection("tasks").add(task);
+    const docRef = await adminDb.collection('tasks').add(task);
 
-    await adminDb.collection("projects").doc(params.projectId).update({
-      totalTasks: admin.firestore.FieldValue.increment(1),
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('projects')
+      .doc(params.projectId)
+      .update({
+        totalTasks: admin.firestore.FieldValue.increment(1),
+        updatedAt: Timestamp.now(),
+      });
 
     if (params.parentTaskId) {
-      await adminDb.collection("tasks").doc(params.parentTaskId).update({
-        hasSubtasks: true,
-        subtaskCount: admin.firestore.FieldValue.increment(1),
-      });
+      await adminDb
+        .collection('tasks')
+        .doc(params.parentTaskId)
+        .update({
+          hasSubtasks: true,
+          subtaskCount: admin.firestore.FieldValue.increment(1),
+        });
     }
 
     if (params.milestoneId) {
@@ -75,23 +81,23 @@ export class TaskService {
       await NotificationService.send({
         tenantId: params.tenantId,
         userId: params.assignedTo,
-        userEmail: "",
-        type: "action_required",
-        title: "New task assigned",
+        userEmail: '',
+        type: 'action_required',
+        title: 'New task assigned',
         message: `${params.assignedByName} assigned you: ${params.title}`,
-        category: "team",
-        priority: params.priority === "urgent" ? "high" : "medium",
+        category: 'team',
+        priority: params.priority === 'urgent' ? 'high' : 'medium',
         actionUrl: `/dashboard/projects/${params.projectId}`,
       });
 
       await sendBizostoEventNotification({
-        type: "task_assigned",
+        type: 'task_assigned',
         tenantId: params.tenantId,
         targetUserId: params.assignedTo,
         title: params.title,
         projectId: params.projectId,
       }).catch((error) => {
-        console.error("slack task assignment notification failed:", error);
+        console.error('slack task assignment notification failed:', error);
       });
     }
 
@@ -105,9 +111,9 @@ export class TaskService {
     userId: string;
     userName: string;
   }): Promise<void> {
-    const taskDoc = await adminDb.collection("tasks").doc(params.taskId).get();
+    const taskDoc = await adminDb.collection('tasks').doc(params.taskId).get();
     if (!taskDoc.exists) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     const task = taskDoc.data() as Task;
@@ -117,7 +123,7 @@ export class TaskService {
       lastActivityAt: Timestamp.now(),
     };
 
-    if (params.status === "completed") {
+    if (params.status === 'completed') {
       updates.completedAt = Timestamp.now();
       updates.progress = 100;
     } else if (task.progress === 100) {
@@ -134,7 +140,7 @@ export class TaskService {
       authorId: params.userId,
       authorName: params.userName,
       content: `Status changed to ${params.status}`,
-      type: "status_change",
+      type: 'status_change',
     });
 
     await ProjectService.updateProjectProgress(task.projectId);
@@ -143,18 +149,18 @@ export class TaskService {
       await MilestoneService.updateMilestoneProgress(task.milestoneId);
     }
 
-    const projectDoc = await adminDb.collection("projects").doc(task.projectId).get();
+    const projectDoc = await adminDb.collection('projects').doc(task.projectId).get();
     if (projectDoc.exists) {
       const project = projectDoc.data() as Project;
       if (project.managerId !== params.userId) {
         await NotificationService.send({
           tenantId: task.tenantId,
           userId: project.managerId,
-          userEmail: "",
-          type: "info",
-          title: "Task status updated",
+          userEmail: '',
+          type: 'info',
+          title: 'Task status updated',
           message: `${params.userName} marked \"${task.title}\" as ${params.status}`,
-          category: "team",
+          category: 'team',
           actionUrl: `/dashboard/projects/${task.projectId}`,
         });
       }
@@ -168,12 +174,12 @@ export class TaskService {
     authorId: string;
     authorName: string;
     content: string;
-    type?: "comment" | "status_change" | "assignment" | "mention";
+    type?: 'comment' | 'status_change' | 'assignment' | 'mention';
     attachments?: string[];
   }): Promise<string> {
     const mentions = this.extractMentions(params.content);
 
-    const comment: Omit<TaskComment, "id"> = {
+    const comment: Omit<TaskComment, 'id'> = {
       tenantId: params.tenantId,
       taskId: params.taskId,
       projectId: params.projectId,
@@ -181,31 +187,34 @@ export class TaskService {
       authorName: params.authorName,
       content: params.content,
       attachments: params.attachments,
-      type: params.type || "comment",
+      type: params.type || 'comment',
       mentions,
       createdAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("task_comments").add(comment);
+    const docRef = await adminDb.collection('task_comments').add(comment);
 
-    await adminDb.collection("tasks").doc(params.taskId).update({
-      commentCount: admin.firestore.FieldValue.increment(1),
-      lastActivityAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('tasks')
+      .doc(params.taskId)
+      .update({
+        commentCount: admin.firestore.FieldValue.increment(1),
+        lastActivityAt: Timestamp.now(),
+      });
 
     await Promise.all(
       mentions.map((userId) =>
         NotificationService.send({
           tenantId: params.tenantId,
           userId,
-          userEmail: "",
-          type: "info",
-          title: "You were mentioned",
+          userEmail: '',
+          type: 'info',
+          title: 'You were mentioned',
           message: `${params.authorName} mentioned you in a task comment`,
-          category: "team",
+          category: 'team',
           actionUrl: `/dashboard/projects/${params.projectId}`,
-        })
-      )
+        }),
+      ),
     );
 
     return docRef.id;
@@ -234,19 +243,19 @@ export class TaskService {
     billable: boolean;
   }): Promise<string> {
     const runningTimer = await adminDb
-      .collection("time_entries")
-      .where("tenantId", "==", params.tenantId)
-      .where("userId", "==", params.userId)
-      .where("isRunning", "==", true)
+      .collection('time_entries')
+      .where('tenantId', '==', params.tenantId)
+      .where('userId', '==', params.userId)
+      .where('isRunning', '==', true)
       .limit(1)
       .get();
 
     if (!runningTimer.empty) {
-      throw new Error("You already have a running timer");
+      throw new Error('You already have a running timer');
     }
 
     const now = Timestamp.now();
-    const entry: Omit<TimeEntry, "id"> = {
+    const entry: Omit<TimeEntry, 'id'> = {
       tenantId: params.tenantId,
       projectId: params.projectId,
       projectName: params.projectName,
@@ -265,19 +274,22 @@ export class TaskService {
       updatedAt: now,
     };
 
-    const docRef = await adminDb.collection("time_entries").add(entry);
+    const docRef = await adminDb.collection('time_entries').add(entry);
     return docRef.id;
   }
 
   static async stopTimer(entryId: string): Promise<void> {
-    const entryDoc = await adminDb.collection("time_entries").doc(entryId).get();
+    const entryDoc = await adminDb.collection('time_entries').doc(entryId).get();
     if (!entryDoc.exists) {
-      throw new Error("Time entry not found");
+      throw new Error('Time entry not found');
     }
 
     const entry = entryDoc.data() as TimeEntry;
     const endTime = Timestamp.now();
-    const duration = Math.max(1, Math.round((endTime.toMillis() - entry.startTime.toMillis()) / (1000 * 60)));
+    const duration = Math.max(
+      1,
+      Math.round((endTime.toMillis() - entry.startTime.toMillis()) / (1000 * 60)),
+    );
 
     const updates: Record<string, unknown> = {
       endTime,
@@ -293,15 +305,21 @@ export class TaskService {
     await entryDoc.ref.update(updates);
 
     if (entry.taskId) {
-      await adminDb.collection("tasks").doc(entry.taskId).update({
-        actualHours: admin.firestore.FieldValue.increment(duration / 60),
-      });
+      await adminDb
+        .collection('tasks')
+        .doc(entry.taskId)
+        .update({
+          actualHours: admin.firestore.FieldValue.increment(duration / 60),
+        });
     }
 
-    await adminDb.collection("projects").doc(entry.projectId).update({
-      totalHoursLogged: admin.firestore.FieldValue.increment(duration / 60),
-      totalCost: admin.firestore.FieldValue.increment(Number(updates.cost || 0)),
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('projects')
+      .doc(entry.projectId)
+      .update({
+        totalHoursLogged: admin.firestore.FieldValue.increment(duration / 60),
+        totalCost: admin.firestore.FieldValue.increment(Number(updates.cost || 0)),
+        updatedAt: Timestamp.now(),
+      });
   }
 }

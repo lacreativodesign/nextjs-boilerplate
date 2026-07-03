@@ -1,28 +1,24 @@
-import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/tenant/server";
-import { cookies } from "next/headers";
-import {
-  createAgentTask,
-  listAgentTasks,
-  type AgentType,
-} from "@/lib/ai/agent-task";
+import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/tenant/server';
+import { cookies } from 'next/headers';
+import { createAgentTask, listAgentTasks, type AgentType } from '@/lib/ai/agent-task';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const ALLOWED_ROLES = new Set(["admin", "super_admin", "finance"]);
-const ALLOWED_AGENT_TYPES = new Set<AgentType>(["coo", "finance", "sales"]);
+const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'finance']);
+const ALLOWED_AGENT_TYPES = new Set<AgentType>(['coo', 'finance', 'sales']);
 
 export async function GET() {
   try {
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const tasks = await listAgentTasks(user.tenantId!, 50);
     return NextResponse.json({ ok: true, tasks });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }
 
@@ -30,7 +26,7 @@ export async function POST(req: Request) {
   try {
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -38,16 +34,13 @@ export async function POST(req: Request) {
 
     if (!agentType || !ALLOWED_AGENT_TYPES.has(agentType)) {
       return NextResponse.json(
-        { ok: false, error: "Invalid agentType. Must be: coo, finance, or sales." },
-        { status: 400 }
+        { ok: false, error: 'Invalid agentType. Must be: coo, finance, or sales.' },
+        { status: 400 },
       );
     }
 
-    if (!prompt || typeof prompt !== "string" || prompt.trim().length < 3) {
-      return NextResponse.json(
-        { ok: false, error: "prompt is required." },
-        { status: 400 }
-      );
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 3) {
+      return NextResponse.json({ ok: false, error: 'prompt is required.' }, { status: 400 });
     }
 
     const task = await createAgentTask({
@@ -59,6 +52,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, task });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }

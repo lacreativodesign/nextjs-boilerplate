@@ -4,7 +4,14 @@
 module.exports = {
   setUser: () => {},
   setTag: () => {},
-  withScope: (fn) => fn({ setTag: () => {}, setUser: () => {}, setLevel: () => {}, setContext: () => {}, setExtra: () => {} }),
+  withScope: (fn) =>
+    fn({
+      setTag: () => {},
+      setUser: () => {},
+      setLevel: () => {},
+      setContext: () => {},
+      setExtra: () => {},
+    }),
   captureException: () => {},
   captureMessage: () => {},
   startSpan: (_opts, fn) => fn(),

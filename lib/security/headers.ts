@@ -1,16 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
 function buildCsp(nonce?: string) {
-  const isProd = process.env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === 'production';
 
   const scriptSrc = [
     "'self'",
     "'unsafe-inline'",
     ...(isProd ? [] : ["'unsafe-eval'"]),
-    "https://apis.google.com",
-    "https://*.firebaseio.com",
-    "https://*.googleapis.com",
-  ].filter(Boolean).join(" ");
+    'https://apis.google.com',
+    'https://*.firebaseio.com',
+    'https://*.googleapis.com',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return [
     "default-src 'self'",
@@ -24,21 +26,22 @@ function buildCsp(nonce?: string) {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    "upgrade-insecure-requests",
-  ].join("; ");
+    'upgrade-insecure-requests',
+  ].join('; ');
 }
 
 export function getSecurityHeaders(nonce?: string): Record<string, string> {
   return {
-    "X-Frame-Options": "DENY",
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-    "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-origin",
-    "X-DNS-Prefetch-Control": "off",
-    "Content-Security-Policy": buildCsp(nonce),
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy':
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'X-DNS-Prefetch-Control': 'off',
+    'Content-Security-Policy': buildCsp(nonce),
   };
 }
 

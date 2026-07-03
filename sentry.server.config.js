@@ -20,5 +20,5 @@ Sentry.init({
 });
 
 // Tag all server errors with environment
-Sentry.setTag("runtime", "server");
-Sentry.setTag("app_version", process.env.NEXT_PUBLIC_APP_VERSION || "unknown");
+Sentry.setTag('runtime', 'server');
+Sentry.setTag('app_version', process.env.NEXT_PUBLIC_APP_VERSION || 'unknown');

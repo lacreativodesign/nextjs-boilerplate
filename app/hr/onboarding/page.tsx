@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import MasterSelect from "@/components/ui/MasterSelect";
-import { formatDate } from "@/components/finance/financeUtils";
-import { INTERNAL_ROLE_OPTIONS } from "@/lib/userOptions";
-import { apiFetch } from "@/lib/api/client";
-import { showToast } from "@/lib/utils/toast";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import MasterSelect from '@/components/ui/MasterSelect';
+import { formatDate } from '@/components/finance/financeUtils';
+import { INTERNAL_ROLE_OPTIONS } from '@/lib/userOptions';
+import { apiFetch } from '@/lib/api/client';
+import { showToast } from '@/lib/utils/toast';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 const STATUS_OPTIONS = [
-  { label: "All Status", value: "all" },
-  { label: "Not Started", value: "Not Started" },
-  { label: "In Progress", value: "In Progress" },
-  { label: "Completed", value: "Completed" },
+  { label: 'All Status', value: 'all' },
+  { label: 'Not Started', value: 'Not Started' },
+  { label: 'In Progress', value: 'In Progress' },
+  { label: 'Completed', value: 'Completed' },
 ];
 
 const ROLE_OPTIONS = [
-  { label: "All Roles", value: "all" },
+  { label: 'All Roles', value: 'all' },
   ...INTERNAL_ROLE_OPTIONS.map((role) => ({ label: formatRole(role), value: role })),
 ];
 
@@ -41,34 +41,42 @@ type TaskRecord = {
   id: string;
   userId: string;
   templateId: string;
-  status: "Not Started" | "In Progress" | "Completed";
-  steps: { title: string; description: string; required: boolean; isDone: boolean; doneAt?: string | null }[];
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  steps: {
+    title: string;
+    description: string;
+    required: boolean;
+    isDone: boolean;
+    doneAt?: string | null;
+  }[];
   dueDate?: string | null;
 };
 
-type TabKey = "templates" | "assign" | "tasks";
+type TabKey = 'templates' | 'assign' | 'tasks';
 
-type TemplateSortKey = "name" | "role" | "steps" | "status" | "updated";
+type TemplateSortKey = 'name' | 'role' | 'steps' | 'status' | 'updated';
 
-type TaskSortKey = "employee" | "template" | "progress" | "status" | "due";
+type TaskSortKey = 'employee' | 'template' | 'progress' | 'status' | 'due';
 
-type SortDir = "asc" | "desc";
+type SortDir = 'asc' | 'desc';
 
 function formatRole(value: string) {
   return value
-    .replace(/_/g, " ")
+    .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
-    .replace("Am", "AM");
+    .replace('Am', 'AM');
 }
 
 const sortIndicator = (active: boolean, dir: SortDir) => (
-  <span style={{ width: 18, display: "inline-block", textAlign: "center", opacity: active ? 1 : 0.35 }}>
-    {active ? (dir === "asc" ? "↑" : "↓") : "•"}
+  <span
+    style={{ width: 18, display: 'inline-block', textAlign: 'center', opacity: active ? 1 : 0.35 }}
+  >
+    {active ? (dir === 'asc' ? '↑' : '↓') : '•'}
   </span>
 );
 
 export default function HrOnboardingPage() {
-    const [tab, setTab] = useState<TabKey>("templates");
+  const [tab, setTab] = useState<TabKey>('templates');
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [templates, setTemplates] = useState<TemplateRecord[]>([]);
@@ -77,29 +85,29 @@ export default function HrOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [templateSearch, setTemplateSearch] = useState("");
-  const [templateSortKey, setTemplateSortKey] = useState<TemplateSortKey>("name");
-  const [templateSortDir, setTemplateSortDir] = useState<SortDir>("asc");
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateSortKey, setTemplateSortKey] = useState<TemplateSortKey>('name');
+  const [templateSortDir, setTemplateSortDir] = useState<SortDir>('asc');
 
   const [templateForm, setTemplateForm] = useState({
-    id: "",
-    name: "",
-    role: "all",
+    id: '',
+    name: '',
+    role: 'all',
     isActive: true,
-    steps: [{ title: "", description: "", required: true }],
+    steps: [{ title: '', description: '', required: true }],
   });
 
-  const [assignUserId, setAssignUserId] = useState("");
-  const [assignTemplateId, setAssignTemplateId] = useState("");
-  const [assignDueDate, setAssignDueDate] = useState("");
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignTemplateId, setAssignTemplateId] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
   const [savingAssign, setSavingAssign] = useState(false);
 
-  const [taskFilterStatus, setTaskFilterStatus] = useState("all");
-  const [taskFilterUser, setTaskFilterUser] = useState("all");
-  const [taskFilterRole, setTaskFilterRole] = useState("all");
-  const [taskSearch, setTaskSearch] = useState("");
-  const [taskSortKey, setTaskSortKey] = useState<TaskSortKey>("employee");
-  const [taskSortDir, setTaskSortDir] = useState<SortDir>("asc");
+  const [taskFilterStatus, setTaskFilterStatus] = useState('all');
+  const [taskFilterUser, setTaskFilterUser] = useState('all');
+  const [taskFilterRole, setTaskFilterRole] = useState('all');
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskSortKey, setTaskSortKey] = useState<TaskSortKey>('employee');
+  const [taskSortDir, setTaskSortDir] = useState<SortDir>('asc');
 
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -111,23 +119,26 @@ export default function HrOnboardingPage() {
       try {
         setLoading(true);
         const [usersRes, templatesRes, tasksRes] = await Promise.all([
-          apiFetch("/api/hr/employees/list", { cache: "no-store" }),
-          apiFetch("/api/hr/onboarding/templates/list", { cache: "no-store" }),
-          apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" }),
+          apiFetch('/api/hr/employees/list', { cache: 'no-store' }),
+          apiFetch('/api/hr/onboarding/templates/list', { cache: 'no-store' }),
+          apiFetch('/api/hr/onboarding/tasks/list', { cache: 'no-store' }),
         ]);
         const usersJson = await usersRes.json();
         const templatesJson = await templatesRes.json();
         const tasksJson = await tasksRes.json();
-        if (!usersRes.ok || !usersJson.ok) throw new Error(usersJson?.error || "Unable to load users.");
-        if (!templatesRes.ok || !templatesJson.ok) throw new Error(templatesJson?.error || "Unable to load templates.");
-        if (!tasksRes.ok || !tasksJson.ok) throw new Error(tasksJson?.error || "Unable to load tasks.");
+        if (!usersRes.ok || !usersJson.ok)
+          throw new Error(usersJson?.error || 'Unable to load users.');
+        if (!templatesRes.ok || !templatesJson.ok)
+          throw new Error(templatesJson?.error || 'Unable to load templates.');
+        if (!tasksRes.ok || !tasksJson.ok)
+          throw new Error(tasksJson?.error || 'Unable to load tasks.');
         if (!alive) return;
         setUsers(usersJson.users || []);
         setTemplates(templatesJson.templates || []);
         setTasks(tasksJson.tasks || []);
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Unable to load onboarding data.");
+        setError(err?.message || 'Unable to load onboarding data.');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -139,17 +150,27 @@ export default function HrOnboardingPage() {
     };
   }, []);
 
-  const templateOptions = useMemo(() => templates.map((t) => ({ label: t.name, value: t.id })), [templates]);
+  const templateOptions = useMemo(
+    () => templates.map((t) => ({ label: t.name, value: t.id })),
+    [templates],
+  );
   const userOptions = useMemo(
-    () => users.map((u) => ({ label: `${u.name || "Employee"} (${formatRole(String(u.role || ""))})`, value: u.uid })),
-    [users]
+    () =>
+      users.map((u) => ({
+        label: `${u.name || 'Employee'} (${formatRole(String(u.role || ''))})`,
+        value: u.uid,
+      })),
+    [users],
   );
 
   const filteredTemplates = useMemo(() => {
-    const list = smartMatch(templates, templateSearch, (template) => [template.name, template.role]);
+    const list = smartMatch(templates, templateSearch, (template) => [
+      template.name,
+      template.role,
+    ]);
 
     const sorted = [...list].sort((a, b) => {
-      const dir = templateSortDir === "asc" ? 1 : -1;
+      const dir = templateSortDir === 'asc' ? 1 : -1;
       const aVal = getTemplateSortValue(a, templateSortKey);
       const bVal = getTemplateSortValue(b, templateSortKey);
       if (aVal < bVal) return -1 * dir;
@@ -162,11 +183,11 @@ export default function HrOnboardingPage() {
 
   const taskRows = useMemo(() => {
     const byFilters = tasks.filter((task) => {
-      const matchesStatus = taskFilterStatus === "all" ? true : task.status === taskFilterStatus;
-      const matchesUser = taskFilterUser === "all" ? true : task.userId === taskFilterUser;
+      const matchesStatus = taskFilterStatus === 'all' ? true : task.status === taskFilterStatus;
+      const matchesUser = taskFilterUser === 'all' ? true : task.userId === taskFilterUser;
       const user = users.find((u) => u.uid === task.userId);
-      const role = String(user?.role || "").toLowerCase();
-      const matchesRole = taskFilterRole === "all" ? true : role === taskFilterRole;
+      const role = String(user?.role || '').toLowerCase();
+      const matchesRole = taskFilterRole === 'all' ? true : role === taskFilterRole;
       return matchesStatus && matchesUser && matchesRole;
     });
     return smartMatch(byFilters, taskSearch, (task) => {
@@ -178,7 +199,7 @@ export default function HrOnboardingPage() {
 
   const sortedTasks = useMemo(() => {
     const list = [...taskRows].sort((a, b) => {
-      const dir = taskSortDir === "asc" ? 1 : -1;
+      const dir = taskSortDir === 'asc' ? 1 : -1;
       const aVal = getTaskSortValue(a, taskSortKey, users, templates);
       const bVal = getTaskSortValue(b, taskSortKey, users, templates);
       if (aVal < bVal) return -1 * dir;
@@ -188,37 +209,46 @@ export default function HrOnboardingPage() {
     return list;
   }, [taskRows, taskSortDir, taskSortKey, users, templates]);
 
-  const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) || null, [tasks, selectedTaskId]);
+  const selectedTask = useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId) || null,
+    [tasks, selectedTaskId],
+  );
 
   async function saveTemplate() {
     try {
       const endpoint = templateForm.id
-        ? "/api/hr/onboarding/templates/update"
-        : "/api/hr/onboarding/templates/create";
+        ? '/api/hr/onboarding/templates/update'
+        : '/api/hr/onboarding/templates/create';
       const res = await apiFetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(templateForm),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to save template.");
-      const refresh = await apiFetch("/api/hr/onboarding/templates/list", {
-        cache: "no-store",
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Unable to save template.');
+      const refresh = await apiFetch('/api/hr/onboarding/templates/list', {
+        cache: 'no-store',
       });
       const refreshData = await refresh.json();
       setTemplates(refreshData.templates || []);
-      setTemplateForm({ id: "", name: "", role: "all", isActive: true, steps: [{ title: "", description: "", required: true }] });
+      setTemplateForm({
+        id: '',
+        name: '',
+        role: 'all',
+        isActive: true,
+        steps: [{ title: '', description: '', required: true }],
+      });
     } catch (err: any) {
-      showToast.error(err?.message || "Unable to save template.");
+      showToast.error(err?.message || 'Unable to save template.');
     }
   }
 
   async function assignTemplate() {
     try {
       setSavingAssign(true);
-      const res = await apiFetch("/api/hr/onboarding/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/hr/onboarding/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: assignUserId,
           templateId: assignTemplateId,
@@ -226,16 +256,16 @@ export default function HrOnboardingPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to assign onboarding.");
-      const refresh = await apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" });
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Unable to assign onboarding.');
+      const refresh = await apiFetch('/api/hr/onboarding/tasks/list', { cache: 'no-store' });
       const refreshData = await refresh.json();
       setTasks(refreshData.tasks || []);
-      setAssignUserId("");
-      setAssignTemplateId("");
-      setAssignDueDate("");
-      setTab("tasks");
+      setAssignUserId('');
+      setAssignTemplateId('');
+      setAssignDueDate('');
+      setTab('tasks');
     } catch (err: any) {
-      showToast.error(err?.message || "Unable to assign onboarding.");
+      showToast.error(err?.message || 'Unable to assign onboarding.');
     } finally {
       setSavingAssign(false);
     }
@@ -244,20 +274,20 @@ export default function HrOnboardingPage() {
   async function updateTask(task: TaskRecord) {
     try {
       setTaskSaving(true);
-      const res = await apiFetch("/api/hr/onboarding/tasks/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/hr/onboarding/tasks/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskId: task.id, status: task.status, steps: task.steps }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error || "Unable to update task.");
-      const refresh = await apiFetch("/api/hr/onboarding/tasks/list", { cache: "no-store" });
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Unable to update task.');
+      const refresh = await apiFetch('/api/hr/onboarding/tasks/list', { cache: 'no-store' });
       const refreshData = await refresh.json();
       setTasks(refreshData.tasks || []);
       setTaskDrawerOpen(false);
       setSelectedTaskId(null);
     } catch (err: any) {
-      showToast.error(err?.message || "Unable to update task.");
+      showToast.error(err?.message || 'Unable to update task.');
     } finally {
       setTaskSaving(false);
     }
@@ -265,55 +295,60 @@ export default function HrOnboardingPage() {
 
   function toggleTemplateSort(key: TemplateSortKey) {
     if (templateSortKey === key) {
-      setTemplateSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      setTemplateSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
       return;
     }
     setTemplateSortKey(key);
-    setTemplateSortDir("asc");
+    setTemplateSortDir('asc');
   }
 
   function toggleTaskSort(key: TaskSortKey) {
     if (taskSortKey === key) {
-      setTaskSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      setTaskSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
       return;
     }
     setTaskSortKey(key);
-    setTaskSortDir("asc");
+    setTaskSortDir('asc');
   }
 
   return (
     <div className="page-frame space-y-6">
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>Onboarding</div>
-        <div style={{ color: "var(--sidebar-text)", fontSize: 14 }}>
+        <div style={{ color: 'var(--sidebar-text)', fontSize: 14 }}>
           Templates, assignments, and task tracking for new hires.
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {(["templates", "assign", "tasks"] as TabKey[]).map((key) => (
+          {(['templates', 'assign', 'tasks'] as TabKey[]).map((key) => (
             <button
               key={key}
-              className={tab === key ? "btn" : "btn ghost"}
+              className={tab === key ? 'btn' : 'btn ghost'}
               onClick={() => setTab(key)}
               style={{ borderRadius: 999 }}
             >
-              {key === "templates" ? "Templates" : key === "assign" ? "Assign" : "Tasks"}
+              {key === 'templates' ? 'Templates' : key === 'assign' ? 'Assign' : 'Tasks'}
             </button>
           ))}
         </div>
       </section>
 
       {error && (
-        <div className="card" style={{ padding: 16, borderRadius: 16, border: "1px solid rgba(248,113,113,0.35)" }}>
+        <div
+          className="card"
+          style={{ padding: 16, borderRadius: 16, border: '1px solid rgba(248,113,113,0.35)' }}
+        >
           {error}
         </div>
       )}
 
-      {tab === "templates" && (
+      {tab === 'templates' && (
         <section className="space-y-4">
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Template name</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">
+                  Template name
+                </label>
                 <input
                   className="input"
                   value={templateForm.name}
@@ -322,12 +357,19 @@ export default function HrOnboardingPage() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-[var(--text-muted)]">Role</label>
-                <MasterSelect value={templateForm.role} onChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value }))} options={ROLE_OPTIONS} />
+                <MasterSelect
+                  value={templateForm.role}
+                  onChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value }))}
+                  options={ROLE_OPTIONS}
+                />
               </div>
             </div>
             <div className="mt-4 space-y-3">
               {templateForm.steps.map((step, idx) => (
-                <div key={`${step.title}-${idx}`} className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <div
+                  key={`${step.title}-${idx}`}
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                >
                   <input
                     className="input"
                     placeholder="Step title"
@@ -335,7 +377,9 @@ export default function HrOnboardingPage() {
                     onChange={(e) =>
                       setTemplateForm((prev) => ({
                         ...prev,
-                        steps: prev.steps.map((s, i) => (i === idx ? { ...s, title: e.target.value } : s)),
+                        steps: prev.steps.map((s, i) =>
+                          i === idx ? { ...s, title: e.target.value } : s,
+                        ),
                       }))
                     }
                   />
@@ -346,7 +390,9 @@ export default function HrOnboardingPage() {
                     onChange={(e) =>
                       setTemplateForm((prev) => ({
                         ...prev,
-                        steps: prev.steps.map((s, i) => (i === idx ? { ...s, description: e.target.value } : s)),
+                        steps: prev.steps.map((s, i) =>
+                          i === idx ? { ...s, description: e.target.value } : s,
+                        ),
                       }))
                     }
                   />
@@ -357,7 +403,9 @@ export default function HrOnboardingPage() {
                       onChange={(e) =>
                         setTemplateForm((prev) => ({
                           ...prev,
-                          steps: prev.steps.map((s, i) => (i === idx ? { ...s, required: e.target.checked } : s)),
+                          steps: prev.steps.map((s, i) =>
+                            i === idx ? { ...s, required: e.target.checked } : s,
+                          ),
                         }))
                       }
                     />
@@ -372,82 +420,114 @@ export default function HrOnboardingPage() {
                 onClick={() =>
                   setTemplateForm((prev) => ({
                     ...prev,
-                    steps: [...prev.steps, { title: "", description: "", required: true }],
+                    steps: [...prev.steps, { title: '', description: '', required: true }],
                   }))
                 }
               >
                 Add Step
               </button>
               <button className="btn" onClick={saveTemplate}>
-                {templateForm.id ? "Update Template" : "Save Template"}
+                {templateForm.id ? 'Update Template' : 'Save Template'}
               </button>
             </div>
           </div>
 
-          <div className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
+          <div className="card" style={{ padding: 0, borderRadius: 18, overflow: 'hidden' }}>
             <div className="p-4">
               <SmartSearchBar value={templateSearch} onChange={setTemplateSearch} />
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
                 <thead>
-                  <tr style={{ background: "var(--table-header-bg)" }}>
-                    <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort" onClick={() => toggleTemplateSort("name")}>
+                  <tr style={{ background: 'var(--table-header-bg)' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleTemplateSort('name')}
+                      >
                         Template
-                        {sortIndicator(templateSortKey === "name", templateSortDir)}
+                        {sortIndicator(templateSortKey === 'name', templateSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort" onClick={() => toggleTemplateSort("role")}>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleTemplateSort('role')}
+                      >
                         Role
-                        {sortIndicator(templateSortKey === "role", templateSortDir)}
+                        {sortIndicator(templateSortKey === 'role', templateSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--right" onClick={() => toggleTemplateSort("steps")}>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--right"
+                        onClick={() => toggleTemplateSort('steps')}
+                      >
                         Steps
-                        {sortIndicator(templateSortKey === "steps", templateSortDir)}
+                        {sortIndicator(templateSortKey === 'steps', templateSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--center" onClick={() => toggleTemplateSort("status")}>
+                    <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--center"
+                        onClick={() => toggleTemplateSort('status')}
+                      >
                         Status
-                        {sortIndicator(templateSortKey === "status", templateSortDir)}
+                        {sortIndicator(templateSortKey === 'status', templateSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--right" onClick={() => toggleTemplateSort("updated")}>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--right"
+                        onClick={() => toggleTemplateSort('updated')}
+                      >
                         Updated
-                        {sortIndicator(templateSortKey === "updated", templateSortDir)}
+                        {sortIndicator(templateSortKey === 'updated', templateSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>Actions</th>
+                    <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                         Loading templates…
                       </td>
                     </tr>
                   ) : filteredTemplates.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                         No templates yet.
                       </td>
                     </tr>
                   ) : (
                     filteredTemplates.map((template) => {
-                                            return (
+                      return (
                         <tr key={template.id}>
-                          <td style={{ textAlign: "left", padding: "12px 16px" }}>{template.name}</td>
-                          <td style={{ textAlign: "left", padding: "12px 16px" }}>{formatRole(template.role || "all")}</td>
-                          <td style={{ textAlign: "right", padding: "12px 16px" }}>{template.steps?.length || 0}</td>
-                          <td style={{ textAlign: "center", padding: "12px 16px" }}>{template.isActive ? "Active" : "Paused"}</td>
-                          <td style={{ textAlign: "right", padding: "12px 16px" }}>{formatDate(template.updatedAt || "")}</td>
-                          <td style={{ textAlign: "center", padding: "12px 16px" }}>
+                          <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                            {template.name}
+                          </td>
+                          <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                            {formatRole(template.role || 'all')}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '12px 16px' }}>
+                            {template.steps?.length || 0}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '12px 16px' }}>
+                            {template.isActive ? 'Active' : 'Paused'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '12px 16px' }}>
+                            {formatDate(template.updatedAt || '')}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '12px 16px' }}>
                             <button
                               className="btn ghost"
                               onClick={() =>
@@ -456,7 +536,9 @@ export default function HrOnboardingPage() {
                                   name: template.name,
                                   role: template.role,
                                   isActive: template.isActive,
-                                  steps: template.steps || [{ title: "", description: "", required: true }],
+                                  steps: template.steps || [
+                                    { title: '', description: '', required: true },
+                                  ],
                                 })
                               }
                             >
@@ -474,7 +556,7 @@ export default function HrOnboardingPage() {
         </section>
       )}
 
-      {tab === "assign" && (
+      {tab === 'assign' && (
         <section className="card" style={{ padding: 18, borderRadius: 18 }}>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
@@ -483,80 +565,127 @@ export default function HrOnboardingPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-[var(--text-muted)]">Template</label>
-              <MasterSelect value={assignTemplateId} onChange={setAssignTemplateId} options={templateOptions} />
+              <MasterSelect
+                value={assignTemplateId}
+                onChange={setAssignTemplateId}
+                options={templateOptions}
+              />
             </div>
             <div>
               <label className="text-xs font-semibold text-[var(--text-muted)]">Due date</label>
-              <input className="input" type="date" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)} />
+              <input
+                className="input"
+                type="date"
+                value={assignDueDate}
+                onChange={(e) => setAssignDueDate(e.target.value)}
+              />
             </div>
           </div>
           <div className="mt-4 flex justify-end">
-            <button className="btn" onClick={assignTemplate} disabled={savingAssign || !assignUserId || !assignTemplateId}>
-              {savingAssign ? "Assigning..." : "Assign"}
+            <button
+              className="btn"
+              onClick={assignTemplate}
+              disabled={savingAssign || !assignUserId || !assignTemplateId}
+            >
+              {savingAssign ? 'Assigning...' : 'Assign'}
             </button>
           </div>
         </section>
       )}
 
-      {tab === "tasks" && (
+      {tab === 'tasks' && (
         <section className="space-y-4">
           <div className="card" style={{ padding: 18, borderRadius: 18 }}>
             <div className="filter-bar filter-bar--search">
               <SmartSearchBar value={taskSearch} onChange={setTaskSearch} />
-              <MasterSelect value={taskFilterUser} onChange={setTaskFilterUser} options={[{ label: "All Employees", value: "all" }, ...userOptions]} />
-              <MasterSelect value={taskFilterRole} onChange={setTaskFilterRole} options={ROLE_OPTIONS} />
-              <MasterSelect value={taskFilterStatus} onChange={setTaskFilterStatus} options={STATUS_OPTIONS} />
+              <MasterSelect
+                value={taskFilterUser}
+                onChange={setTaskFilterUser}
+                options={[{ label: 'All Employees', value: 'all' }, ...userOptions]}
+              />
+              <MasterSelect
+                value={taskFilterRole}
+                onChange={setTaskFilterRole}
+                options={ROLE_OPTIONS}
+              />
+              <MasterSelect
+                value={taskFilterStatus}
+                onChange={setTaskFilterStatus}
+                options={STATUS_OPTIONS}
+              />
             </div>
           </div>
 
-          <section className="card" style={{ padding: 0, borderRadius: 18, overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+          <section className="card" style={{ padding: 0, borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 960 }}>
                 <thead>
-                  <tr style={{ background: "var(--table-header-bg)" }}>
-                    <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort" onClick={() => toggleTaskSort("employee")}>
+                  <tr style={{ background: 'var(--table-header-bg)' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleTaskSort('employee')}
+                      >
                         Employee
-                        {sortIndicator(taskSortKey === "employee", taskSortDir)}
+                        {sortIndicator(taskSortKey === 'employee', taskSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort" onClick={() => toggleTaskSort("template")}>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort"
+                        onClick={() => toggleTaskSort('template')}
+                      >
                         Template
-                        {sortIndicator(taskSortKey === "template", taskSortDir)}
+                        {sortIndicator(taskSortKey === 'template', taskSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--center" onClick={() => toggleTaskSort("progress")}>
+                    <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--center"
+                        onClick={() => toggleTaskSort('progress')}
+                      >
                         Progress
-                        {sortIndicator(taskSortKey === "progress", taskSortDir)}
+                        {sortIndicator(taskSortKey === 'progress', taskSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--center" onClick={() => toggleTaskSort("status")}>
+                    <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--center"
+                        onClick={() => toggleTaskSort('status')}
+                      >
                         Status
-                        {sortIndicator(taskSortKey === "status", taskSortDir)}
+                        {sortIndicator(taskSortKey === 'status', taskSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700 }}>
-                      <button type="button" className="table-sort table-sort--right" onClick={() => toggleTaskSort("due")}>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        className="table-sort table-sort--right"
+                        onClick={() => toggleTaskSort('due')}
+                      >
                         Due
-                        {sortIndicator(taskSortKey === "due", taskSortDir)}
+                        {sortIndicator(taskSortKey === 'due', taskSortDir)}
                       </button>
                     </th>
-                    <th style={{ textAlign: "center", padding: "12px 16px", fontWeight: 700 }}>Actions</th>
+                    <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                         Loading tasks…
                       </td>
                     </tr>
                   ) : sortedTasks.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                         No onboarding tasks.
                       </td>
                     </tr>
@@ -567,22 +696,33 @@ export default function HrOnboardingPage() {
                       const totalSteps = task.steps.length || 1;
                       const doneSteps = task.steps.filter((s) => s.isDone).length;
                       const progress = Math.round((doneSteps / totalSteps) * 100);
-                                            return (
+                      return (
                         <tr
                           key={task.id}
-                          style={{ cursor: "pointer" }}
+                          style={{ cursor: 'pointer' }}
                           onClick={() => {
                             setSelectedTaskId(task.id);
                             setTaskDrawerOpen(true);
                           }}
                         >
-                          <td style={{ textAlign: "left", padding: "12px 16px" }}>{user?.name || "Employee"}</td>
-                          <td style={{ textAlign: "left", padding: "12px 16px" }}>{template?.name || "Template"}</td>
-                          <td style={{ textAlign: "center", padding: "12px 16px" }}>{progress}%</td>
-                          <td style={{ textAlign: "center", padding: "12px 16px" }}>{task.status}</td>
-                          <td style={{ textAlign: "right", padding: "12px 16px" }}>{formatDate(task.dueDate || "")}</td>
-                          <td style={{ textAlign: "center", padding: "12px 16px" }}>
-                            <button className="btn ghost" style={{ padding: "6px 12px", borderRadius: 999 }}>
+                          <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                            {user?.name || 'Employee'}
+                          </td>
+                          <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                            {template?.name || 'Template'}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '12px 16px' }}>{progress}%</td>
+                          <td style={{ textAlign: 'center', padding: '12px 16px' }}>
+                            {task.status}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '12px 16px' }}>
+                            {formatDate(task.dueDate || '')}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '12px 16px' }}>
+                            <button
+                              className="btn ghost"
+                              style={{ padding: '6px 12px', borderRadius: 999 }}
+                            >
                               View
                             </button>
                           </td>
@@ -606,11 +746,11 @@ export default function HrOnboardingPage() {
           }}
         >
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>Onboarding Checklist</div>
-                <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>
-                  {users.find((u) => u.uid === selectedTask.userId)?.name || "Employee"}
+                <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+                  {users.find((u) => u.uid === selectedTask.userId)?.name || 'Employee'}
                 </div>
               </div>
               <button
@@ -629,22 +769,30 @@ export default function HrOnboardingPage() {
                 <label
                   key={`${step.title}-${idx}`}
                   className="flex gap-3 rounded-xl border p-3"
-                  style={{ borderColor: "var(--border)" }}
+                  style={{ borderColor: 'var(--border)' }}
                 >
                   <input
                     type="checkbox"
                     checked={step.isDone}
                     onChange={(e) => {
                       const nextSteps = selectedTask.steps.map((s, i) =>
-                        i === idx ? { ...s, isDone: e.target.checked } : s
+                        i === idx ? { ...s, isDone: e.target.checked } : s,
                       );
-                      setTasks((prev) => prev.map((task) => (task.id === selectedTask.id ? { ...task, steps: nextSteps } : task)));
+                      setTasks((prev) =>
+                        prev.map((task) =>
+                          task.id === selectedTask.id ? { ...task, steps: nextSteps } : task,
+                        ),
+                      );
                     }}
                   />
                   <div>
-                    <div style={{ fontWeight: 600 }}>{step.title || "Untitled step"}</div>
-                    <div style={{ fontSize: 12, color: "var(--sidebar-text)" }}>{step.description || "-"}</div>
-                    {step.required && <div style={{ fontSize: 11, color: "var(--erp-blue)" }}>Required</div>}
+                    <div style={{ fontWeight: 600 }}>{step.title || 'Untitled step'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
+                      {step.description || '-'}
+                    </div>
+                    {step.required && (
+                      <div style={{ fontSize: 11, color: 'var(--erp-blue)' }}>Required</div>
+                    )}
                   </div>
                 </label>
               ))}
@@ -655,15 +803,25 @@ export default function HrOnboardingPage() {
               <MasterSelect
                 value={selectedTask.status}
                 onChange={(value) =>
-                  setTasks((prev) => prev.map((task) => (task.id === selectedTask.id ? { ...task, status: value as TaskRecord["status"] } : task)))
+                  setTasks((prev) =>
+                    prev.map((task) =>
+                      task.id === selectedTask.id
+                        ? { ...task, status: value as TaskRecord['status'] }
+                        : task,
+                    ),
+                  )
                 }
-                options={STATUS_OPTIONS.filter((opt) => opt.value !== "all")}
+                options={STATUS_OPTIONS.filter((opt) => opt.value !== 'all')}
               />
             </div>
             <div style={{ height: 16 }} />
             <div className="flex justify-end gap-2">
-              <button className="btn" onClick={() => updateTask({ ...selectedTask })} disabled={taskSaving}>
-                {taskSaving ? "Saving..." : "Save Updates"}
+              <button
+                className="btn"
+                onClick={() => updateTask({ ...selectedTask })}
+                disabled={taskSaving}
+              >
+                {taskSaving ? 'Saving...' : 'Save Updates'}
               </button>
             </div>
           </div>
@@ -675,22 +833,27 @@ export default function HrOnboardingPage() {
 
 function getTemplateSortValue(template: TemplateRecord, key: TemplateSortKey) {
   switch (key) {
-    case "name":
+    case 'name':
       return template.name.toLowerCase();
-    case "role":
-      return String(template.role || "").toLowerCase();
-    case "steps":
+    case 'role':
+      return String(template.role || '').toLowerCase();
+    case 'steps':
       return template.steps?.length || 0;
-    case "status":
+    case 'status':
       return template.isActive ? 1 : 0;
-    case "updated":
+    case 'updated':
       return template.updatedAt ? new Date(template.updatedAt).getTime() : 0;
     default:
-      return "";
+      return '';
   }
 }
 
-function getTaskSortValue(task: TaskRecord, key: TaskSortKey, users: UserRecord[], templates: TemplateRecord[]) {
+function getTaskSortValue(
+  task: TaskRecord,
+  key: TaskSortKey,
+  users: UserRecord[],
+  templates: TemplateRecord[],
+) {
   const user = users.find((u) => u.uid === task.userId);
   const template = templates.find((t) => t.id === task.templateId);
   const totalSteps = task.steps.length || 1;
@@ -698,17 +861,17 @@ function getTaskSortValue(task: TaskRecord, key: TaskSortKey, users: UserRecord[
   const progress = Math.round((doneSteps / totalSteps) * 100);
 
   switch (key) {
-    case "employee":
-      return String(user?.name || "").toLowerCase();
-    case "template":
-      return String(template?.name || "").toLowerCase();
-    case "progress":
+    case 'employee':
+      return String(user?.name || '').toLowerCase();
+    case 'template':
+      return String(template?.name || '').toLowerCase();
+    case 'progress':
       return progress;
-    case "status":
-      return String(task.status || "").toLowerCase();
-    case "due":
+    case 'status':
+      return String(task.status || '').toLowerCase();
+    case 'due':
       return task.dueDate ? new Date(task.dueDate).getTime() : 0;
     default:
-      return "";
+      return '';
   }
 }

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Skeleton } from "../ui/Skeleton";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Skeleton } from '../ui/Skeleton';
 
 type EventRecord = {
   id: string;
@@ -20,31 +20,31 @@ type ActivityPageProps = {
   apiPath: string;
 };
 
-type DateRangeOption = "7" | "30" | "90" | "all";
+type DateRangeOption = '7' | '30' | '90' | 'all';
 
 const DATE_RANGE_OPTIONS: Array<{ value: DateRangeOption; label: string }> = [
-  { value: "7", label: "Last 7 days" },
-  { value: "30", label: "Last 30 days" },
-  { value: "90", label: "Last 90 days" },
-  { value: "all", label: "All time" },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'all', label: 'All time' },
 ];
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return '—';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString();
 }
 
 function resolveEntityRoute(entityType?: string | null) {
   if (!entityType) return null;
   const normalized = entityType.toLowerCase();
-  if (normalized === "deal") return "/sales_manager/deals";
-  if (normalized === "change_request") return "/admin/projects/change-requests";
-  if (normalized === "invoice") return "/admin/finance/invoices";
-  if (normalized === "payment") return "/admin/finance/payments";
-  if (normalized === "project") return "/admin/projects";
-  if (normalized === "client") return "/admin/clients";
+  if (normalized === 'deal') return '/sales_manager/deals';
+  if (normalized === 'change_request') return '/admin/projects/change-requests';
+  if (normalized === 'invoice') return '/admin/finance/invoices';
+  if (normalized === 'payment') return '/admin/finance/payments';
+  if (normalized === 'project') return '/admin/projects';
+  if (normalized === 'client') return '/admin/clients';
   return null;
 }
 
@@ -52,14 +52,14 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [entityFilter, setEntityFilter] = useState("");
-  const [dateRange, setDateRange] = useState<DateRangeOption>("30");
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [entityFilter, setEntityFilter] = useState('');
+  const [dateRange, setDateRange] = useState<DateRangeOption>('30');
   const [selected, setSelected] = useState<EventRecord | null>(null);
 
   const buildDateFrom = (range: DateRangeOption) => {
-    if (range === "all") return null;
+    if (range === 'all') return null;
     const days = Number(range);
     if (!Number.isFinite(days)) return null;
     const date = new Date();
@@ -72,22 +72,22 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (search.trim()) params.set("q", search.trim());
-      if (typeFilter) params.set("type", typeFilter);
-      if (entityFilter) params.set("entityType", entityFilter);
+      if (search.trim()) params.set('q', search.trim());
+      if (typeFilter) params.set('type', typeFilter);
+      if (entityFilter) params.set('entityType', entityFilter);
       const dateFrom = buildDateFrom(dateRange);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      params.set("limit", "100");
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      params.set('limit', '100');
 
-      const res = await fetch(`${apiPath}?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`${apiPath}?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Unable to load activity.");
+        throw new Error(data?.error || 'Unable to load activity.');
       }
       setEvents(Array.isArray(data.events) ? data.events : []);
     } catch (err: any) {
-      console.error("Activity fetch error", err);
-      setError(err?.message || "Unable to load activity.");
+      console.error('Activity fetch error', err);
+      setError(err?.message || 'Unable to load activity.');
     } finally {
       setLoading(false);
     }
@@ -128,14 +128,21 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
       </div>
 
       <div className="card" style={{ padding: 16, borderRadius: 16 }}>
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+        >
           <input
             className="input"
             placeholder="Search activity..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-          <select className="input" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+          <select
+            className="input"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+          >
             <option value="">All types</option>
             {typeOptions.map((option) => (
               <option key={option} value={option}>
@@ -143,7 +150,11 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
               </option>
             ))}
           </select>
-          <select className="input" value={entityFilter} onChange={(event) => setEntityFilter(event.target.value)}>
+          <select
+            className="input"
+            value={entityFilter}
+            onChange={(event) => setEntityFilter(event.target.value)}
+          >
             <option value="">All entities</option>
             {entityOptions.map((option) => (
               <option key={option} value={option}>
@@ -151,7 +162,11 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
               </option>
             ))}
           </select>
-          <select className="input" value={dateRange} onChange={(event) => setDateRange(event.target.value as DateRangeOption)}>
+          <select
+            className="input"
+            value={dateRange}
+            onChange={(event) => setDateRange(event.target.value as DateRangeOption)}
+          >
             {DATE_RANGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -162,7 +177,7 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
       </div>
 
       <div className="table-shell" style={{ marginTop: 16 }}>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: 'auto' }}>
           <table className="table" style={{ minWidth: 760 }}>
             <thead>
               <tr>
@@ -181,7 +196,11 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
                     <td colSpan={6}>
                       <div className="grid grid-cols-6 gap-4 py-2">
                         {Array.from({ length: 6 }).map((__, col) => (
-                          <Skeleton key={`activity-skeleton-${index}-${col}`} variant="text" className="h-4 w-full" />
+                          <Skeleton
+                            key={`activity-skeleton-${index}-${col}`}
+                            variant="text"
+                            className="h-4 w-full"
+                          />
                         ))}
                       </div>
                     </td>
@@ -198,12 +217,12 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
                 events.map((event) => (
                   <tr key={event.id}>
                     <td>{formatDate(event.createdAt)}</td>
-                    <td>{event.type || "—"}</td>
-                    <td>{event.title || "—"}</td>
-                    <td>{event.actorName || event.actorUid || "—"}</td>
+                    <td>{event.type || '—'}</td>
+                    <td>{event.title || '—'}</td>
+                    <td>{event.actorName || event.actorUid || '—'}</td>
                     <td>
-                      {event.entityType || "—"}
-                      {event.entityId ? ` · ${event.entityId}` : ""}
+                      {event.entityType || '—'}
+                      {event.entityId ? ` · ${event.entityId}` : ''}
                     </td>
                     <td>
                       <button className="btn ghost" onClick={() => setSelected(event)}>
@@ -215,34 +234,41 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
             </tbody>
           </table>
         </div>
-        {error && <div className="text-sm text-red-500" style={{ marginTop: 12 }}>{error}</div>}
+        {error && (
+          <div className="text-sm text-red-500" style={{ marginTop: 12 }}>
+            {error}
+          </div>
+        )}
       </div>
 
       {selected && (
         <div className="drawer-overlay" onClick={() => setSelected(null)}>
-          <div className="drawer-panel drawer-panel--md" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="drawer-panel drawer-panel--md"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-title">Activity Details</div>
             <div className="drawer-subtitle" style={{ marginTop: 4 }}>
               {selected.type}
             </div>
-            <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+            <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Title</div>
-                <div>{selected.title || "—"}</div>
+                <div>{selected.title || '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Description</div>
-                <div>{selected.description || "—"}</div>
+                <div>{selected.description || '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Actor</div>
-                <div>{selected.actorName || selected.actorUid || "—"}</div>
+                <div>{selected.actorName || selected.actorUid || '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Entity</div>
                 <div>
-                  {selected.entityType || "—"}
-                  {selected.entityId ? ` · ${selected.entityId}` : ""}
+                  {selected.entityType || '—'}
+                  {selected.entityId ? ` · ${selected.entityId}` : ''}
                 </div>
               </div>
               <div>
@@ -252,7 +278,10 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
                 ) : (
                   <div className="space-y-2">
                     {Object.entries(selected.metadata).map(([key, value]) => (
-                      <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <div
+                        key={key}
+                        style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}
+                      >
                         <span className="text-xs text-[var(--text-muted)]">{key}</span>
                         <span className="text-sm">{String(value)}</span>
                       </div>
@@ -262,7 +291,7 @@ export default function ActivityPage({ apiPath }: ActivityPageProps) {
               </div>
               {resolveEntityRoute(selected.entityType) && (
                 <div>
-                  <a className="btn" href={resolveEntityRoute(selected.entityType) || "#"}>
+                  <a className="btn" href={resolveEntityRoute(selected.entityType) || '#'}>
                     Open related record
                   </a>
                 </div>

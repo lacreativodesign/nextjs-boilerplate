@@ -1,28 +1,31 @@
-import { NextResponse } from "next/server";
-import { getClientRecord, getInvoiceWithValidation, getTenantRecord } from "../shared";
+import { NextResponse } from 'next/server';
+import { getClientRecord, getInvoiceWithValidation, getTenantRecord } from '../shared';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function GET(req: Request, { params }: { params: { invoiceId: string } }) {
   try {
-    const invoiceId = String(params.invoiceId || "").trim();
+    const invoiceId = String(params.invoiceId || '').trim();
     if (!invoiceId) {
-      return NextResponse.json({ ok: false, error: "Invoice id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invoice id is required.' }, { status: 400 });
     }
 
-    const token = new URL(req.url).searchParams.get("token");
+    const token = new URL(req.url).searchParams.get('token');
     const validation = await getInvoiceWithValidation(invoiceId, token);
-    if ("error" in validation) {
-      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
+    if ('error' in validation) {
+      return NextResponse.json(
+        { ok: false, error: validation.error },
+        { status: validation.status },
+      );
     }
 
-    if (String(validation.payload.status).toLowerCase() === "paid") {
+    if (String(validation.payload.status).toLowerCase() === 'paid') {
       return NextResponse.json({ ok: true, alreadyPaid: true, paidAt: validation.payload.paidAt });
     }
 
     const tenant = await getTenantRecord(validation.payload.tenantId);
     if (!tenant) {
-      return NextResponse.json({ ok: false, error: "Invoice not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invoice not found' }, { status: 404 });
     }
 
     const client = await getClientRecord(validation.payload.clientId);
@@ -42,9 +45,11 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
         notes: validation.payload.notes,
       },
       tenant: {
-        name: String((tenant.brand as { name?: string } | undefined)?.name || tenant.name || ""),
-        logoUrl: String((tenant.brand as { logoUrl?: string } | undefined)?.logoUrl || "") || null,
-        acceptsPayments: Boolean(tenant.stripeConnectAccountId && tenant.stripeConnectChargesEnabled),
+        name: String((tenant.brand as { name?: string } | undefined)?.name || tenant.name || ''),
+        logoUrl: String((tenant.brand as { logoUrl?: string } | undefined)?.logoUrl || '') || null,
+        acceptsPayments: Boolean(
+          tenant.stripeConnectAccountId && tenant.stripeConnectChargesEnabled,
+        ),
       },
       client: {
         companyName: client?.companyName ? String(client.companyName) : null,
@@ -52,7 +57,7 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
       },
     });
   } catch (error) {
-    console.error("public invoice fetch error:", error);
-    return NextResponse.json({ ok: false, error: "Unable to load invoice." }, { status: 500 });
+    console.error('public invoice fetch error:', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load invoice.' }, { status: 500 });
   }
 }

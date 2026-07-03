@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createNotifications, getUsersByRoles } from "@/lib/notifications";
-import { sendEmail } from "@/lib/email/email-service";
-import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createNotifications, getUsersByRoles } from '@/lib/notifications';
+import { sendEmail } from '@/lib/email/email-service';
+import { createSalesEvent, parseString, requireAdmin, serverTimestamp } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -14,15 +14,15 @@ export async function POST(req: Request) {
     }
 
     const payload = await req.json();
-    const name = parseString(payload.name, "");
-    const email = parseString(payload.email, "");
-    const phone = parseString(payload.phone, "");
-    const source = parseString(payload.source, "");
-    const stage = parseString(payload.stage, "New");
-    const ownerId = parseString(payload.ownerId, "") || null;
-    const ownerName = parseString(payload.ownerName, "") || null;
+    const name = parseString(payload.name, '');
+    const email = parseString(payload.email, '');
+    const phone = parseString(payload.phone, '');
+    const source = parseString(payload.source, '');
+    const stage = parseString(payload.stage, 'New');
+    const ownerId = parseString(payload.ownerId, '') || null;
+    const ownerName = parseString(payload.ownerName, '') || null;
 
-    const docRef = await adminDb.collection("leads").add({
+    const docRef = await adminDb.collection('leads').add({
       name,
       email,
       phone,
@@ -37,34 +37,37 @@ export async function POST(req: Request) {
     });
 
     await createSalesEvent({
-      type: "lead_created",
-      title: "Lead created",
-      description: `${name || "Lead"} created`,
-      entityType: "lead",
+      type: 'lead_created',
+      title: 'Lead created',
+      description: `${name || 'Lead'} created`,
+      entityType: 'lead',
       entityId: docRef.id,
       createdByUid: auth.user.uid,
-      createdByName: auth.user.name || auth.user.fullName || "",
+      createdByName: auth.user.name || auth.user.fullName || '',
       tenantId: auth.user.tenantId,
     });
 
-    const tenantId = String(auth.user.tenantId || "");
-    const recipients = await getUsersByRoles(["sales_manager", "admin", "super_admin"], tenantId || null);
+    const tenantId = String(auth.user.tenantId || '');
+    const recipients = await getUsersByRoles(
+      ['sales_manager', 'admin', 'super_admin'],
+      tenantId || null,
+    );
     await createNotifications({
       recipients,
       tenantId: tenantId || null,
-      type: "new_lead",
-      title: "New lead created",
-      message: `${name || "Lead"} was created.`,
-      entityType: "lead",
+      type: 'new_lead',
+      title: 'New lead created',
+      message: `${name || 'Lead'} was created.`,
+      entityType: 'lead',
       entityId: docRef.id,
-      deepLink: "/admin/sales/leads",
-      createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || "" },
+      deepLink: '/admin/sales/leads',
+      createdBy: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
     });
 
     // Email sales reps + managers about new lead — non-blocking
     sendEmail({
-      to: "admin@bizosto.com",
-      subject: `🎯 New lead — ${name || "Unnamed"}`,
+      to: 'admin@bizosto.com',
+      subject: `🎯 New lead — ${name || 'Unnamed'}`,
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#F8FAFC;"><tr><td align="center">
@@ -78,21 +81,21 @@ export async function POST(req: Request) {
 <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#012167;">🎯 New Lead Created</h1>
 <p style="margin:0 0 24px;color:#64748B;font-size:14px;">A new lead has been added to the pipeline.</p>
 <table width="100%" cellpadding="10" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:8px;margin:16px 0;">
-<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Name</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${name || "—"}</td></tr>
-<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Email</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${email || "—"}</td></tr>
-<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Source</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${source || "—"}</td></tr>
-<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Assigned to</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${ownerName || "Unassigned"}</td></tr>
+<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Name</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${name || '—'}</td></tr>
+<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Email</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${email || '—'}</td></tr>
+<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Source</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${source || '—'}</td></tr>
+<tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Assigned to</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${ownerName || 'Unassigned'}</td></tr>
 <tr><td style="color:#64748B;font-size:13px;">Stage</td><td style="font-weight:600;color:#1E293B;text-align:right;">${stage}</td></tr>
 </table>
 <p style="margin:24px 0 0;"><a href="https://app.bizosto.com/admin/sales/leads" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View Lead →</a></p>
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
-    }).catch((err) => console.error("[LEAD_CREATE] Failed to notify admin", err));
+    }).catch((err) => console.error('[LEAD_CREATE] Failed to notify admin', err));
 
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (err: any) {
-    console.error("sales leads create error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to create lead." }, { status: 500 });
+    console.error('sales leads create error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to create lead.' }, { status: 500 });
   }
 }

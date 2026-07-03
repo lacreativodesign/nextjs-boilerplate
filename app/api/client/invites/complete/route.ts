@@ -1,21 +1,21 @@
-import admin from "firebase-admin";
-import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { hashInviteToken } from "@/lib/clientInvites";
-import { createNotification, getUserIdsByRoles } from "@/lib/notifications";
-import { logEvent } from "@/lib/audit";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
+import admin from 'firebase-admin';
+import { NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { hashInviteToken } from '@/lib/clientInvites';
+import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
+import { logEvent } from '@/lib/audit';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const token = String(body?.token || "").trim();
-    const idToken = String(body?.idToken || "").trim();
+    const token = String(body?.token || '').trim();
+    const idToken = String(body?.idToken || '').trim();
     if (!token || !idToken) {
-      return NextResponse.json({ ok: false, error: "Missing token or idToken." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing token or idToken.' }, { status: 400 });
     }
 
     // uid is derived from a VERIFIED Firebase ID token — never from the request body —
@@ -25,15 +25,21 @@ export async function POST(req: Request) {
     try {
       decoded = await adminAuth.verifyIdToken(idToken, true);
     } catch {
-      return NextResponse.json({ ok: false, error: "Invalid authentication." }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Invalid authentication.' }, { status: 401 });
     }
     const uid = decoded.uid;
-    const decodedEmail = String(decoded.email || "").trim().toLowerCase();
+    const decodedEmail = String(decoded.email || '')
+      .trim()
+      .toLowerCase();
 
     const tokenHash = hashInviteToken(token);
-    const snap = await adminDb.collection("inviteTokens").where("tokenHash", "==", tokenHash).limit(1).get();
+    const snap = await adminDb
+      .collection('inviteTokens')
+      .where('tokenHash', '==', tokenHash)
+      .limit(1)
+      .get();
     if (snap.empty) {
-      return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invalid token.' }, { status: 404 });
     }
 
     const doc = snap.docs[0];
@@ -41,97 +47,108 @@ export async function POST(req: Request) {
     const tenantId = normalizeTenantId(data.tenantId || null);
 
     if (docTenantId(data) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invalid token.' }, { status: 404 });
     }
 
     if (data.usedAt) {
-      return NextResponse.json({ ok: false, error: "Invite already used." }, { status: 410 });
+      return NextResponse.json({ ok: false, error: 'Invite already used.' }, { status: 410 });
     }
 
-    const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt || 0);
+    const expiresAt = data.expiresAt?.toDate
+      ? data.expiresAt.toDate()
+      : new Date(data.expiresAt || 0);
     if (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
-      return NextResponse.json({ ok: false, error: "Invite expired." }, { status: 410 });
+      return NextResponse.json({ ok: false, error: 'Invite expired.' }, { status: 410 });
     }
 
-    const email = String(data.email || "").trim().toLowerCase();
+    const email = String(data.email || '')
+      .trim()
+      .toLowerCase();
     if (!decodedEmail || decodedEmail !== email) {
-      return NextResponse.json({ ok: false, error: "This invite was issued to a different email address." }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'This invite was issued to a different email address.' },
+        { status: 403 },
+      );
     }
-    const clientId = String(data.clientId || "");
+    const clientId = String(data.clientId || '');
 
-    const clientSnap = await adminDb.collection("clients").doc(clientId).get();
+    const clientSnap = await adminDb.collection('clients').doc(clientId).get();
     if (!clientSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Client not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
     }
     if (docTenantId(clientSnap.data()) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden.' }, { status: 403 });
     }
 
-    const existingUserSnap = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+    const existingUserSnap = await adminDb
+      .collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
     if (!existingUserSnap.empty && existingUserSnap.docs[0].id !== uid) {
-      return NextResponse.json({ ok: false, error: "Email already in use." }, { status: 409 });
+      return NextResponse.json({ ok: false, error: 'Email already in use.' }, { status: 409 });
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
 
-    await adminDb.collection("users").doc(uid).set(
+    await adminDb.collection('users').doc(uid).set(
       {
         uid,
         email,
-        role: "client",
-        status: "active",
+        role: 'client',
+        status: 'active',
         clientId,
         tenantId,
         createdAt: now,
         updatedAt: now,
       },
-      { merge: true }
+      { merge: true },
     );
 
     // Set custom claims (role + tenantId) so the client user passes middleware and
     // the Firestore security-rules layer (belongsToTenant reads claims.tenantId).
-    await adminAuth.setCustomUserClaims(uid, { role: "client", tenantId });
+    await adminAuth.setCustomUserClaims(uid, { role: 'client', tenantId });
 
-    await adminDb.collection("clients").doc(clientId).set(
+    await adminDb.collection('clients').doc(clientId).set(
       {
         portalUserUid: uid,
         portalInviteAcceptedAt: now,
         updatedAt: now,
         tenantId,
       },
-      { merge: true }
+      { merge: true },
     );
 
     await doc.ref.set({ usedAt: now, usedByUid: uid }, { merge: true });
 
-    const notifyIds = await getUserIdsByRoles(["admin", "super_admin", "am_manager"], tenantId);
+    const notifyIds = await getUserIdsByRoles(['admin', 'super_admin', 'am_manager'], tenantId);
     await Promise.all(
       notifyIds.map((adminUid) =>
         createNotification({
           toUserId: adminUid,
-          title: "Client portal activated",
+          title: 'Client portal activated',
           body: `${email} activated their portal access.`,
-          entityType: "client",
+          entityType: 'client',
           entityId: clientId,
-          deepLink: "/admin/clients",
+          deepLink: '/admin/clients',
           tenantId,
-        })
-      )
+        }),
+      ),
     );
 
     await logEvent({
       tenantId,
-      type: "client.portal_activated",
-      title: "Client portal activated",
+      type: 'client.portal_activated',
+      title: 'Client portal activated',
       description: `${email} activated portal access.`,
-      entityType: "client",
+      entityType: 'client',
       entityId: clientId,
       actor: { uid, name: email },
     });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("invite complete error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to complete invite." }, { status: 500 });
+    console.error('invite complete error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to complete invite.' }, { status: 500 });
   }
 }

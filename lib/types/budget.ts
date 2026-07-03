@@ -6,7 +6,7 @@ export interface Budget {
   fiscalYear: number;
   currency: string;
   categories: BudgetCategory[];
-  status: "draft" | "active" | "completed";
+  status: 'draft' | 'active' | 'completed';
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -15,7 +15,7 @@ export interface Budget {
 export interface BudgetCategory {
   id: string;
   name: string;
-  type: "revenue" | "expense";
+  type: 'revenue' | 'expense';
   monthlyBudgets: MonthlyBudget[];
   totalBudget: number;
   totalActual: number;

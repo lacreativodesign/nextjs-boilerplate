@@ -1,13 +1,13 @@
-import crypto from "crypto";
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { queueEmail } from "@/lib/email";
-import { normalizeTenantId } from "@/lib/tenant";
+import crypto from 'crypto';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { queueEmail } from '@/lib/email';
+import { normalizeTenantId } from '@/lib/tenant';
 
 const INVITE_EXPIRY_DAYS = 7;
 
 function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 function buildInviteEmail({
@@ -19,9 +19,9 @@ function buildInviteEmail({
   email: string;
   token: string;
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
   const inviteUrl = `${baseUrl}/client/accept-invite?token=${token}`;
-  const subject = "You are invited to the Bizosto client portal";
+  const subject = 'You are invited to the Bizosto client portal';
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#0f172a;">
       <h2>Welcome to Bizosto</h2>
@@ -46,13 +46,13 @@ export async function createClientInvite({
   createdByUid?: string | null;
 }) {
   const normalizedTenantId = normalizeTenantId(tenantId);
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = hashToken(token);
   const expiresAt = admin.firestore.Timestamp.fromDate(
-    new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+    new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
   );
 
-  const inviteRef = adminDb.collection("inviteTokens").doc();
+  const inviteRef = adminDb.collection('inviteTokens').doc();
   await inviteRef.set({
     tenantId: normalizedTenantId,
     tokenHash,
@@ -64,7 +64,11 @@ export async function createClientInvite({
     createdByUid: createdByUid || null,
   });
 
-  const { subject, html, inviteUrl } = buildInviteEmail({ tenantId: normalizedTenantId, email, token });
+  const { subject, html, inviteUrl } = buildInviteEmail({
+    tenantId: normalizedTenantId,
+    email,
+    token,
+  });
   await queueEmail({
     tenantId: normalizedTenantId,
     to: email,

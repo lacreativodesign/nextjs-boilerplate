@@ -1,17 +1,21 @@
-import { NextResponse } from "next/server";
-import { requireAdmin } from "@/app/api/admin/settings/_utils";
-import { sendEmailViaGmail } from "@/lib/integrations/gmail";
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/settings/_utils';
+import { sendEmailViaGmail } from '@/lib/integrations/gmail';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const auth = await requireAdmin();
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (!auth.ok)
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const body = await request.json().catch(() => ({}));
     if (!Array.isArray(body?.to) || !body?.subject || !body?.html || !body?.from) {
-      return NextResponse.json({ ok: false, error: "from, to[], subject and html are required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'from, to[], subject and html are required.' },
+        { status: 400 },
+      );
     }
 
     const sent = await sendEmailViaGmail({
@@ -35,6 +39,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, message: sent });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Failed to send Gmail message." }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Failed to send Gmail message.' },
+      { status: 500 },
+    );
   }
 }

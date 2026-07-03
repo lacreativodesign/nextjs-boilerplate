@@ -1,16 +1,16 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import type { ActivityActionType, ActivityRecord, PresenceRecord } from "@/types/activity-feed";
+import { adminDb } from '@/lib/firebaseAdmin';
+import type { ActivityActionType, ActivityRecord, PresenceRecord } from '@/types/activity-feed';
 
-const ACTIVITIES_COLLECTION = "activities";
-const READ_STATES_COLLECTION = "activity_read_states";
-const PRESENCE_COLLECTION = "activity_presence";
+const ACTIVITIES_COLLECTION = 'activities';
+const READ_STATES_COLLECTION = 'activity_read_states';
+const PRESENCE_COLLECTION = 'activity_presence';
 
 type CreateActivityInput = {
   tenantId: string;
-  actor: ActivityRecord["actor"];
+  actor: ActivityRecord['actor'];
   action: ActivityActionType;
-  entity: ActivityRecord["entity"];
-  metadata: ActivityRecord["metadata"];
+  entity: ActivityRecord['entity'];
+  metadata: ActivityRecord['metadata'];
 };
 
 export type ActivityFeedQuery = {
@@ -24,14 +24,14 @@ export type ActivityFeedQuery = {
 };
 
 function encodeCursor(createdAt: string, id: string) {
-  return Buffer.from(`${createdAt}__${id}`, "utf8").toString("base64url");
+  return Buffer.from(`${createdAt}__${id}`, 'utf8').toString('base64url');
 }
 
 function decodeCursor(cursor?: string): { createdAt: string; id: string } | null {
   if (!cursor) return null;
   try {
-    const raw = Buffer.from(cursor, "base64url").toString("utf8");
-    const [createdAt, id] = raw.split("__");
+    const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+    const [createdAt, id] = raw.split('__');
     if (!createdAt || !id) return null;
     return { createdAt, id };
   } catch {
@@ -57,25 +57,27 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
   return payload;
 }
 
-export async function getActivityFeed(query: ActivityFeedQuery): Promise<{ items: ActivityRecord[]; nextCursor: string | null }> {
+export async function getActivityFeed(
+  query: ActivityFeedQuery,
+): Promise<{ items: ActivityRecord[]; nextCursor: string | null }> {
   let fsQuery: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb
     .collection(ACTIVITIES_COLLECTION)
-    .where("tenantId", "==", query.tenantId)
-    .orderBy("createdAt", "desc")
-    .orderBy("id", "desc")
+    .where('tenantId', '==', query.tenantId)
+    .orderBy('createdAt', 'desc')
+    .orderBy('id', 'desc')
     .limit(query.limit);
 
   if (query.module) {
-    fsQuery = fsQuery.where("metadata.module", "==", query.module);
+    fsQuery = fsQuery.where('metadata.module', '==', query.module);
   }
   if (query.userId) {
-    fsQuery = fsQuery.where("actor.uid", "==", query.userId);
+    fsQuery = fsQuery.where('actor.uid', '==', query.userId);
   }
   if (query.from) {
-    fsQuery = fsQuery.where("createdAt", ">=", query.from);
+    fsQuery = fsQuery.where('createdAt', '>=', query.from);
   }
   if (query.to) {
-    fsQuery = fsQuery.where("createdAt", "<=", query.to);
+    fsQuery = fsQuery.where('createdAt', '<=', query.to);
   }
 
   const decoded = decodeCursor(query.cursor);
@@ -93,22 +95,27 @@ export async function getActivityFeed(query: ActivityFeedQuery): Promise<{ items
   };
 }
 
-export async function markActivityReadForUser(params: { tenantId: string; uid: string; activityId: string }) {
+export async function markActivityReadForUser(params: {
+  tenantId: string;
+  uid: string;
+  activityId: string;
+}) {
   const activityDoc = await adminDb.collection(ACTIVITIES_COLLECTION).doc(params.activityId).get();
   if (!activityDoc.exists) {
-    return { ok: false as const, status: 404, error: "Activity not found." };
+    return { ok: false as const, status: 404, error: 'Activity not found.' };
   }
 
   const activity = activityDoc.data() as ActivityRecord;
   if (activity.tenantId !== params.tenantId) {
-    return { ok: false as const, status: 404, error: "Activity not found." };
+    return { ok: false as const, status: 404, error: 'Activity not found.' };
   }
 
   const stateDocId = `${params.tenantId}_${params.uid}`;
   const stateRef = adminDb.collection(READ_STATES_COLLECTION).doc(stateDocId);
   const state = await stateRef.get();
-  const currentLastReadAt = String(state.data()?.lastReadAt || "");
-  const nextLastReadAt = currentLastReadAt > activity.createdAt ? currentLastReadAt : activity.createdAt;
+  const currentLastReadAt = String(state.data()?.lastReadAt || '');
+  const nextLastReadAt =
+    currentLastReadAt > activity.createdAt ? currentLastReadAt : activity.createdAt;
 
   await stateRef.set(
     {
@@ -117,7 +124,7 @@ export async function markActivityReadForUser(params: { tenantId: string; uid: s
       lastReadAt: nextLastReadAt,
       updatedAt: new Date().toISOString(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   return { ok: true as const };
@@ -126,14 +133,14 @@ export async function markActivityReadForUser(params: { tenantId: string; uid: s
 export async function getUnreadCount(tenantId: string, uid: string): Promise<number> {
   const stateDocId = `${tenantId}_${uid}`;
   const stateSnap = await adminDb.collection(READ_STATES_COLLECTION).doc(stateDocId).get();
-  const lastReadAt = String(stateSnap.data()?.lastReadAt || "");
+  const lastReadAt = String(stateSnap.data()?.lastReadAt || '');
 
   let q: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb
     .collection(ACTIVITIES_COLLECTION)
-    .where("tenantId", "==", tenantId);
+    .where('tenantId', '==', tenantId);
 
   if (lastReadAt) {
-    q = q.where("createdAt", ">", lastReadAt);
+    q = q.where('createdAt', '>', lastReadAt);
   }
 
   const countSnap = await q.count().get();
@@ -149,29 +156,32 @@ export async function upsertPresence(input: {
   online: boolean;
 }): Promise<void> {
   const docId = `${input.tenantId}_${input.uid}`;
-  await adminDb.collection(PRESENCE_COLLECTION).doc(docId).set(
-    {
-      tenantId: input.tenantId,
-      uid: input.uid,
-      name: input.name,
-      email: input.email || null,
-      role: input.role || null,
-      online: input.online,
-      lastSeenAt: Date.now(),
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true }
-  );
+  await adminDb
+    .collection(PRESENCE_COLLECTION)
+    .doc(docId)
+    .set(
+      {
+        tenantId: input.tenantId,
+        uid: input.uid,
+        name: input.name,
+        email: input.email || null,
+        role: input.role || null,
+        online: input.online,
+        lastSeenAt: Date.now(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true },
+    );
 }
 
 export async function listOnlineUsers(tenantId: string): Promise<PresenceRecord[]> {
   const threshold = Date.now() - 2 * 60 * 1000;
   const snapshot = await adminDb
     .collection(PRESENCE_COLLECTION)
-    .where("tenantId", "==", tenantId)
-    .where("online", "==", true)
-    .where("lastSeenAt", ">=", threshold)
-    .orderBy("lastSeenAt", "desc")
+    .where('tenantId', '==', tenantId)
+    .where('online', '==', true)
+    .where('lastSeenAt', '>=', threshold)
+    .orderBy('lastSeenAt', 'desc')
     .limit(100)
     .get();
 

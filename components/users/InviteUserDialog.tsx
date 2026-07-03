@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type InviteUserDialogProps = {
   onSuccess: () => void;
@@ -12,8 +12,8 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    email: "",
-    role: "staff",
+    email: '',
+    role: 'staff',
   });
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -22,22 +22,22 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
     setError(null);
 
     try {
-      const response = await apiFetch("/api/users/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await apiFetch('/api/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data?.error || "Failed to send invitation");
+        throw new Error(data?.error || 'Failed to send invitation');
       }
 
       setIsOpen(false);
-      setFormData({ email: "", role: "staff" });
+      setFormData({ email: '', role: 'staff' });
       onSuccess();
     } catch (err: any) {
-      setError(err?.message || "Unable to send invitation");
+      setError(err?.message || 'Unable to send invitation');
     } finally {
       setIsSubmitting(false);
     }
@@ -45,10 +45,7 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="btn"
-      >
+      <button onClick={() => setIsOpen(true)} className="btn">
         + Invite User
       </button>
 
@@ -67,15 +64,11 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="field-label block text-sm mb-2">
-                  Email Address
-                </label>
+                <label className="field-label block text-sm mb-2">Email Address</label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(event) =>
-                    setFormData({ ...formData, email: event.target.value })
-                  }
+                  onChange={(event) => setFormData({ ...formData, email: event.target.value })}
                   className="input"
                   required
                 />
@@ -85,9 +78,7 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
                 <label className="field-label block text-sm mb-2">Role</label>
                 <select
                   value={formData.role}
-                  onChange={(event) =>
-                    setFormData({ ...formData, role: event.target.value })
-                  }
+                  onChange={(event) => setFormData({ ...formData, role: event.target.value })}
                   className="input"
                 >
                   <option value="admin">Admin</option>
@@ -106,12 +97,8 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="btn flex-1"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Sending..." : "Send Invitation"}
+                <button type="submit" className="btn flex-1" disabled={isSubmitting}>
+                  {isSubmitting ? 'Sending...' : 'Send Invitation'}
                 </button>
               </div>
             </form>

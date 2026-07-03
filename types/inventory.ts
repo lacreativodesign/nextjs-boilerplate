@@ -1,6 +1,6 @@
-import type { Timestamp } from "firebase-admin/firestore";
+import type { Timestamp } from 'firebase-admin/firestore';
 
-export type ProductType = "physical" | "digital" | "service" | "bundle";
+export type ProductType = 'physical' | 'digital' | 'service' | 'bundle';
 
 export interface Product {
   id: string;
@@ -15,7 +15,7 @@ export interface Product {
   manufacturer?: string;
   tags: string[];
   type: ProductType;
-  status: "active" | "discontinued" | "draft";
+  status: 'active' | 'discontinued' | 'draft';
   costPrice: number;
   sellingPrice: number;
   wholesalePrice?: number;
@@ -30,12 +30,12 @@ export interface Product {
   reorderPoint: number;
   reorderQuantity: number;
   weight?: number;
-  weightUnit?: "kg" | "lb" | "oz";
+  weightUnit?: 'kg' | 'lb' | 'oz';
   dimensions?: {
     length: number;
     width: number;
     height: number;
-    unit: "cm" | "in";
+    unit: 'cm' | 'in';
   };
   supplierId?: string;
   supplierName?: string;
@@ -83,7 +83,7 @@ export interface Warehouse {
   tenantId: string;
   name: string;
   code: string;
-  type: "main" | "regional" | "retail" | "dropship";
+  type: 'main' | 'regional' | 'retail' | 'dropship';
   address: {
     street: string;
     city: string;
@@ -149,7 +149,7 @@ export interface Supplier {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate?: Timestamp;
-  status: "active" | "inactive" | "blacklisted";
+  status: 'active' | 'inactive' | 'blacklisted';
   notes?: string;
   tags: string[];
   createdAt: Timestamp;
@@ -157,13 +157,13 @@ export interface Supplier {
 }
 
 export type POStatus =
-  | "draft"
-  | "pending_approval"
-  | "approved"
-  | "ordered"
-  | "partial_received"
-  | "received"
-  | "cancelled";
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'ordered'
+  | 'partial_received'
+  | 'received'
+  | 'cancelled';
 
 export interface PurchaseOrderItem {
   productId: string;
@@ -196,9 +196,9 @@ export interface PurchaseOrder {
   currency: string;
   status: POStatus;
   paymentTerms?: string;
-  paymentStatus: "unpaid" | "partial" | "paid";
+  paymentStatus: 'unpaid' | 'partial' | 'paid';
   paidAmount: number;
-  receivingStatus: "pending" | "partial" | "received";
+  receivingStatus: 'pending' | 'partial' | 'received';
   receivedItems: number;
   totalItems: number;
   createdBy: string;
@@ -212,7 +212,7 @@ export interface PurchaseOrder {
   updatedAt: Timestamp;
 }
 
-export type AdjustmentType = "increase" | "decrease" | "recount" | "transfer";
+export type AdjustmentType = 'increase' | 'decrease' | 'recount' | 'transfer';
 
 export interface StockAdjustment {
   id: string;
@@ -259,7 +259,7 @@ export interface StockTransfer {
   toWarehouseId: string;
   toWarehouseName: string;
   items: TransferItem[];
-  status: "pending" | "in_transit" | "received" | "cancelled";
+  status: 'pending' | 'in_transit' | 'received' | 'cancelled';
   trackingNumber?: string;
   shippingCarrier?: string;
   estimatedArrival?: Timestamp;

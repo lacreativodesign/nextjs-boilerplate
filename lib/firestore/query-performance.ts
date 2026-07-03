@@ -1,5 +1,5 @@
-import { logInfo } from "@/lib/logging";
-import { ingestMetric } from "@/lib/monitoring/dashboard-service";
+import { logInfo } from '@/lib/logging';
+import { ingestMetric } from '@/lib/monitoring/dashboard-service';
 
 type SlowQueryContext = {
   route: string;
@@ -10,13 +10,16 @@ type SlowQueryContext = {
 
 const SLOW_QUERY_MS = 1000;
 
-export async function executeMonitoredQuery<T>(run: () => Promise<T>, context: SlowQueryContext): Promise<T> {
+export async function executeMonitoredQuery<T>(
+  run: () => Promise<T>,
+  context: SlowQueryContext,
+): Promise<T> {
   const startedAt = Date.now();
   const result = await run();
   const durationMs = Date.now() - startedAt;
 
   if (durationMs > SLOW_QUERY_MS) {
-    logInfo("slow_firestore_query", {
+    logInfo('slow_firestore_query', {
       route: context.route,
       tenantId: context.tenantId ?? null,
       metadata: {
@@ -28,9 +31,9 @@ export async function executeMonitoredQuery<T>(run: () => Promise<T>, context: S
   }
 
   await ingestMetric({
-    type: "database_query_duration",
+    type: 'database_query_duration',
     endpoint: context.route,
-    module: "database",
+    module: 'database',
     durationMs,
     metadata: {
       queryName: context.queryName,

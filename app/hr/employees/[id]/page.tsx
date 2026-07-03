@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 
 export default function EmployeeProfilePage() {
   const { id } = useParams();
@@ -15,7 +15,7 @@ export default function EmployeeProfilePage() {
         const data = await res.json();
         if (data.success) setEmployee(data.employee);
       } catch (e) {
-        console.error("Error loading employee:", e);
+        console.error('Error loading employee:', e);
       } finally {
         setLoading(false);
       }
@@ -43,34 +43,29 @@ export default function EmployeeProfilePage() {
     <div className="space-y-6">
       <div
         style={{
-          background: "var(--surface-card)",
+          background: 'var(--surface-card)',
           padding: 30,
           borderRadius: 12,
-          border: "1px solid var(--border-subtle)",
+          border: '1px solid var(--border-subtle)',
         }}
       >
         {/* HEADER */}
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-          {employee.name}
-        </h2>
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>{employee.name}</h2>
 
-        <p style={{ color: "var(--text-muted)", marginBottom: 25 }}>{employee.email}</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 25 }}>{employee.email}</p>
 
         {/* GRID */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: 20,
           }}
         >
           <ProfileCard label="Role" value={employee.role} />
           <ProfileCard label="Department" value={employee.department} />
           <ProfileCard label="Status" value={employee.status} />
-          <ProfileCard
-            label="Joined"
-            value={new Date(employee.createdAt).toLocaleDateString()}
-          />
+          <ProfileCard label="Joined" value={new Date(employee.createdAt).toLocaleDateString()} />
         </div>
 
         {/* SPACER */}
@@ -82,13 +77,13 @@ export default function EmployeeProfilePage() {
         </h3>
         <div
           style={{
-            background: "var(--surface-muted)",
+            background: 'var(--surface-muted)',
             padding: 20,
             borderRadius: 10,
-            border: "1px solid var(--border-subtle)",
+            border: '1px solid var(--border-subtle)',
           }}
         >
-          <p style={{ color: "var(--text-muted)" }}>
+          <p style={{ color: 'var(--text-muted)' }}>
             Attendance charts and logs will show here once we complete Step 5.
           </p>
         </div>
@@ -100,13 +95,13 @@ export default function EmployeeProfilePage() {
         </h3>
         <div
           style={{
-            background: "var(--surface-muted)",
+            background: 'var(--surface-muted)',
             padding: 20,
             borderRadius: 10,
-            border: "1px solid var(--border-subtle)",
+            border: '1px solid var(--border-subtle)',
           }}
         >
-          <p style={{ color: "var(--text-muted)" }}>
+          <p style={{ color: 'var(--text-muted)' }}>
             Recent activity will appear here after backend integration.
           </p>
         </div>
@@ -120,12 +115,12 @@ function ProfileCard({ label, value }: { label: string; value: string }) {
     <div
       style={{
         padding: 20,
-        background: "var(--surface-card)",
+        background: 'var(--surface-card)',
         borderRadius: 10,
-        border: "1px solid var(--border-subtle)",
+        border: '1px solid var(--border-subtle)',
       }}
     >
-      <p style={{ fontSize: 14, color: "var(--text-muted)" }}>{label}</p>
+      <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{label}</p>
       <p style={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>{value}</p>
     </div>
   );

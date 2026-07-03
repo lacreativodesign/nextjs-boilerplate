@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { toastError } from "@/lib/toast";
-import type { SubscriptionState } from "@/lib/subscription";
+import { useEffect, useState } from 'react';
+import { toastError } from '@/lib/toast';
+import type { SubscriptionState } from '@/lib/subscription';
 
 export type TenantContext = {
   id: string;
   name: string;
   slug: string;
-  status: "active" | "suspended";
+  status: 'active' | 'suspended';
   brand: { name: string; logoUrl: string | null; locked: boolean } | null;
   whiteLabel?: {
     logoUrl: string | null;
@@ -17,26 +17,26 @@ export type TenantContext = {
     secondaryColor: string;
     accentColor: string;
     fontFamily: string;
-    themeMode: "light" | "dark" | "system";
+    themeMode: 'light' | 'dark' | 'system';
     emailBranding: {
       fromName: string;
       fromEmail: string;
       emailFooter: string;
-      status: "pending" | "verified";
+      status: 'pending' | 'verified';
       spfValid: boolean;
       dkimValid: boolean;
       verifiedAt: string | null;
     };
     customDomains: Array<{
       domain: string;
-      status: "pending" | "verified";
+      status: 'pending' | 'verified';
       verificationToken: string;
       verifiedAt: string | null;
     }>;
   } | null;
   modulesEnabled: Record<string, boolean>;
   rolesEnabled?: Record<string, boolean>;
-  plan?: "starter" | "pro" | "enterprise";
+  plan?: 'starter' | 'pro' | 'enterprise';
   modules?: Record<string, boolean>;
   subscriptionState?: SubscriptionState;
   isTrial?: boolean;
@@ -105,13 +105,15 @@ export function useTenantContext() {
       setError(null);
 
       try {
-        const res = await fetch("/api/tenant/context", {
-          cache: "no-store",
-          credentials: "include",
+        const res = await fetch('/api/tenant/context', {
+          cache: 'no-store',
+          credentials: 'include',
         });
         const json = (await res.json().catch(() => null)) as TenantContextResponse | null;
         if (!res.ok || !json?.ok) {
-          const requestError = new Error((json as any)?.error || res.statusText || "Failed to load tenant") as Error & {
+          const requestError = new Error(
+            (json as any)?.error || res.statusText || 'Failed to load tenant',
+          ) as Error & {
             status?: number;
           };
           requestError.status = res.status;
@@ -121,14 +123,14 @@ export function useTenantContext() {
         if (active) setData(json);
       } catch (err: any) {
         if (active) {
-          const message = err?.message || "Failed to load tenant";
+          const message = err?.message || 'Failed to load tenant';
           setError(message);
 
           // Only show toast for non-auth errors to avoid noise for super_admin
           if (
-            !message.includes("Unauthorized") &&
-            !message.includes("Session expired") &&
-            !message.includes("expired")
+            !message.includes('Unauthorized') &&
+            !message.includes('Session expired') &&
+            !message.includes('expired')
           ) {
             toastError(`Unable to load tenant context. ${message}`);
           }

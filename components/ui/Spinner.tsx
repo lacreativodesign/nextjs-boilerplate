@@ -1,6 +1,6 @@
-import React from "react";
+import React from 'react';
 
-type SpinnerSize = "sm" | "md" | "lg";
+type SpinnerSize = 'sm' | 'md' | 'lg';
 
 type SpinnerProps = {
   size?: SpinnerSize;
@@ -14,7 +14,11 @@ const sizeMap: Record<SpinnerSize, number> = {
   lg: 32,
 };
 
-export default function Spinner({ size = "md", color = "currentColor", className = "" }: SpinnerProps) {
+export default function Spinner({
+  size = 'md',
+  color = 'currentColor',
+  className = '',
+}: SpinnerProps) {
   const dimension = sizeMap[size];
   return (
     <span
@@ -24,11 +28,11 @@ export default function Spinner({ size = "md", color = "currentColor", className
       style={{
         width: dimension,
         height: dimension,
-        borderRadius: "9999px",
+        borderRadius: '9999px',
         borderWidth: 2,
-        borderStyle: "solid",
+        borderStyle: 'solid',
         borderColor: color,
-        borderTopColor: "transparent",
+        borderTopColor: 'transparent',
       }}
     />
   );

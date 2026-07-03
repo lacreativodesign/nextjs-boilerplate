@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api/client';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 type Tenant = {
   id: string;
@@ -12,7 +12,7 @@ type Tenant = {
   slug: string;
   status: string;
   modulesEnabled: Record<string, boolean>;
-  plan?: "starter" | "pro" | "enterprise";
+  plan?: 'starter' | 'pro' | 'enterprise';
   lastActiveAt?: string | null;
   trialEndsAt?: string | null;
   subscriptionState?: string;
@@ -26,28 +26,30 @@ function getHealthIndicator(tenant: Tenant): { dot: string; label: string; title
     const trialMs = new Date(tenant.trialEndsAt).getTime() - now;
     const trialDays = Math.floor(trialMs / (1000 * 60 * 60 * 24));
     if (trialDays <= 3 && trialDays >= 0) {
-      return { dot: "🔴", label: `Trial ends in ${trialDays}d`, title: "Trial ending soon" };
+      return { dot: '🔴', label: `Trial ends in ${trialDays}d`, title: 'Trial ending soon' };
     }
   }
 
   // Locked or past due = at risk
-  if (
-    tenant.subscriptionState === "hard_locked" ||
-    tenant.subscriptionState === "soft_locked"
-  ) {
-    return { dot: "🔴", label: "Locked", title: "Account locked — billing issue" };
+  if (tenant.subscriptionState === 'hard_locked' || tenant.subscriptionState === 'soft_locked') {
+    return { dot: '🔴', label: 'Locked', title: 'Account locked — billing issue' };
   }
 
   if (!tenant.lastActiveAt) {
-    return { dot: "⚪", label: "Never", title: "No login recorded yet" };
+    return { dot: '⚪', label: 'Never', title: 'No login recorded yet' };
   }
 
   const lastMs = now - new Date(tenant.lastActiveAt).getTime();
   const days = Math.floor(lastMs / (1000 * 60 * 60 * 24));
 
-  if (days <= 2) return { dot: "🟢", label: `${days === 0 ? "Today" : days + "d ago"}`, title: "Active recently" };
-  if (days <= 7) return { dot: "🟡", label: `${days}d ago`, title: "Quiet — check in" };
-  return { dot: "🔴", label: `${days}d ago`, title: "At risk — not logging in" };
+  if (days <= 2)
+    return {
+      dot: '🟢',
+      label: `${days === 0 ? 'Today' : days + 'd ago'}`,
+      title: 'Active recently',
+    };
+  if (days <= 7) return { dot: '🟡', label: `${days}d ago`, title: 'Quiet — check in' };
+  return { dot: '🔴', label: `${days}d ago`, title: 'At risk — not logging in' };
 }
 
 const defaultModules = {
@@ -69,21 +71,21 @@ const defaultModules = {
 function slugify(value: string) {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
     .slice(0, 64);
 }
 
 export default function SuperAdminTenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [createAdminEmail, setCreateAdminEmail] = useState("");
+  const [query, setQuery] = useState('');
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [createAdminEmail, setCreateAdminEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
   const loadTenants = async () => {
-    const res = await apiFetch("/api/super_admin/tenants", { cache: "no-store" });
+    const res = await apiFetch('/api/super_admin/tenants', { cache: 'no-store' });
     const json = await res.json().catch(() => null);
     if (json?.ok) {
       setTenants(json.tenants || []);
@@ -96,16 +98,16 @@ export default function SuperAdminTenantsPage() {
 
   const filtered = useMemo(
     () => smartMatch(tenants, query, (tenant) => [tenant.name, tenant.slug, tenant.id]),
-    [tenants, query]
+    [tenants, query],
   );
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await apiFetch("/api/super_admin/tenants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/super_admin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           slug: slugify(slug.trim() || name.trim()),
@@ -113,9 +115,9 @@ export default function SuperAdminTenantsPage() {
           modulesEnabled: defaultModules,
         }),
       });
-      setName("");
-      setSlug("");
-      setCreateAdminEmail("");
+      setName('');
+      setSlug('');
+      setCreateAdminEmail('');
       await loadTenants();
     } finally {
       setSaving(false);
@@ -131,7 +133,9 @@ export default function SuperAdminTenantsPage() {
 
       <div className="card p-5">
         <div className="section-title">Create Tenant</div>
-        <p className="section-subtitle">Add a new company, configure modules, and optionally seed an admin user.</p>
+        <p className="section-subtitle">
+          Add a new company, configure modules, and optionally seed an admin user.
+        </p>
         <div className="filter-bar mt-4">
           <input
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-2 text-sm"
@@ -159,7 +163,7 @@ export default function SuperAdminTenantsPage() {
             disabled={saving}
             onClick={handleCreate}
           >
-            {saving ? "Creating..." : "Create Tenant"}
+            {saving ? 'Creating...' : 'Create Tenant'}
           </button>
         </div>
       </div>
@@ -168,7 +172,9 @@ export default function SuperAdminTenantsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="section-title">All Tenants</div>
-            <p className="section-subtitle">Switch into each tenant to manage branding and modules.</p>
+            <p className="section-subtitle">
+              Switch into each tenant to manage branding and modules.
+            </p>
           </div>
           <SmartSearchBar
             value={query}
@@ -211,9 +217,9 @@ export default function SuperAdminTenantsPage() {
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                        tenant.status === "active"
-                          ? "bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]"
-                          : "bg-red-500/10 text-red-400"
+                        tenant.status === 'active'
+                          ? 'bg-[var(--erp-blue-soft)] text-[var(--erp-blue)]'
+                          : 'bg-red-500/10 text-red-400'
                       }`}
                     >
                       {tenant.status}
@@ -221,7 +227,7 @@ export default function SuperAdminTenantsPage() {
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span className="inline-flex items-center rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-wide">
-                      {tenant.plan || "pro"}
+                      {tenant.plan || 'pro'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
@@ -229,7 +235,7 @@ export default function SuperAdminTenantsPage() {
                       .filter(([, enabled]) => enabled)
                       .slice(0, 5)
                       .map(([key]) => key)
-                      .join(", ")}
+                      .join(', ')}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

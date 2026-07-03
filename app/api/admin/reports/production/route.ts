@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getReportSettings, normalizeStage, requireReportsAccess, toISO } from "../_utils";
-import { normalizeTenantId } from "@/lib/tenant";
-import { queryWithTenant } from "@/lib/tenant/query";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getReportSettings, normalizeStage, requireReportsAccess, toISO } from '../_utils';
+import { normalizeTenantId } from '@/lib/tenant';
+import { queryWithTenant } from '@/lib/tenant/query';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const ACTIVE_STAGES = ["Draft", "Review", "Revisions", "Final"];
+const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'];
 
 type StageHistoryEntry = {
   from?: string;
@@ -18,8 +18,8 @@ type StageHistoryEntry = {
 function normalizeStageHistory(history?: StageHistoryEntry[]) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
+    from: entry?.from || '',
+    to: entry?.to || '',
     at: toISO(entry?.at),
   }));
 }
@@ -46,29 +46,29 @@ export async function GET(req: Request) {
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const settings = await getReportSettings();
     const { searchParams } = new URL(req.url);
-    const dateFrom = parseDate(searchParams.get("dateFrom"));
-    const dateTo = parseDate(searchParams.get("dateTo"), true);
-    const productionOwnerId = String(searchParams.get("productionOwnerId") || "");
-    const stageFilter = String(searchParams.get("stage") || "");
+    const dateFrom = parseDate(searchParams.get('dateFrom'));
+    const dateTo = parseDate(searchParams.get('dateTo'), true);
+    const productionOwnerId = String(searchParams.get('productionOwnerId') || '');
+    const stageFilter = String(searchParams.get('stage') || '');
 
     const docs = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const projects = docs.map((doc) => {
       const data = doc.data() || {};
       const stage = normalizeStage(data.stage);
       const updatedAt = toISO(data.updatedAt || data.createdAt);
-      const ownerId = data.productionUid || data.productionOwnerId || "";
-      const ownerName = data.productionName || data.productionOwnerName || "";
+      const ownerId = data.productionUid || data.productionOwnerId || '';
+      const ownerName = data.productionName || data.productionOwnerName || '';
       const stageHistory = normalizeStageHistory(data.stageHistory);
       return {
         id: doc.id,
-        projectName: data.projectName || "",
-        clientName: data.clientName || "",
+        projectName: data.projectName || '',
+        clientName: data.clientName || '',
         stage,
-        priority: data.priority || "Normal",
+        priority: data.priority || 'Normal',
         dueDate: toISO(data.dueDate),
         updatedAt,
         createdAt: toISO(data.createdAt),
@@ -89,10 +89,11 @@ export async function GET(req: Request) {
 
     const workloadByProductionOwner = Array.from(
       filtered.reduce((acc, project) => {
-        const key = project.productionOwnerId || "unassigned";
+        const key = project.productionOwnerId || 'unassigned';
         const entry = acc.get(key) || {
           productionOwnerId: key,
-          productionOwnerName: project.productionOwnerName || (key === "unassigned" ? "Unassigned" : key),
+          productionOwnerName:
+            project.productionOwnerName || (key === 'unassigned' ? 'Unassigned' : key),
           total: 0,
           overdue: 0,
         };
@@ -101,7 +102,7 @@ export async function GET(req: Request) {
         if (dueMs && dueMs < Date.now()) entry.overdue += 1;
         acc.set(key, entry);
         return acc;
-      }, new Map<string, { productionOwnerId: string; productionOwnerName: string; total: number; overdue: number }>())
+      }, new Map<string, { productionOwnerId: string; productionOwnerName: string; total: number; overdue: number }>()),
     ).map(([, value]) => value);
 
     const queueAging = ACTIVE_STAGES.map((stage) => {
@@ -109,7 +110,9 @@ export async function GET(req: Request) {
       const avgDays =
         stageItems.reduce((sum, project) => {
           let anchor = project.updatedAt || project.createdAt;
-          const historyEntry = [...project.stageHistory].reverse().find((entry) => entry.to === stage);
+          const historyEntry = [...project.stageHistory]
+            .reverse()
+            .find((entry) => entry.to === stage);
           if (historyEntry?.at) anchor = historyEntry.at;
           const anchorMs = anchor ? new Date(anchor).getTime() : null;
           if (!anchorMs) return sum;
@@ -134,11 +137,15 @@ export async function GET(req: Request) {
       .filter((project) => ACTIVE_STAGES.includes(project.stage))
       .map((project) => {
         let anchor = project.updatedAt || project.createdAt;
-        const historyEntry = [...project.stageHistory].reverse().find((entry) => entry.to === project.stage);
+        const historyEntry = [...project.stageHistory]
+          .reverse()
+          .find((entry) => entry.to === project.stage);
         if (historyEntry?.at) anchor = historyEntry.at;
         const anchorMs = anchor ? new Date(anchor).getTime() : null;
         const diffDays = anchorMs ? (Date.now() - anchorMs) / (1000 * 60 * 60 * 24) : 0;
-        const slaDays = Number((settings.stageSlaDays as Record<string, number>)?.[project.stage] || 0);
+        const slaDays = Number(
+          (settings.stageSlaDays as Record<string, number>)?.[project.stage] || 0,
+        );
         return { ...project, ageDays: Number(diffDays.toFixed(1)), slaDays };
       })
       .filter((project) => project.slaDays > 0 && project.ageDays > project.slaDays)
@@ -153,13 +160,15 @@ export async function GET(req: Request) {
       stuckProjects,
     });
   } catch (err: any) {
-    console.error("reports/production error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('reports/production error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load production reports.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError
+      ? 'Missing Firestore index.'
+      : 'Unable to load production reports.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { SettingsAlert } from "../../_components/SettingsAlert";
-import { apiFetch } from "@/lib/api/client";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SettingsAlert } from '../../_components/SettingsAlert';
+import { apiFetch } from '@/lib/api/client';
 
 type SyncSettings = {
   syncInvoicesToXero: boolean;
@@ -11,13 +11,13 @@ type SyncSettings = {
   syncAccounts: boolean;
   syncTaxRates: boolean;
   scheduleDaily: boolean;
-  conflictMode: "last_write_wins" | "manual";
+  conflictMode: 'last_write_wins' | 'manual';
 };
 
 type SyncStats = {
   lastSyncStartedAt: string | null;
   lastSyncFinishedAt: string | null;
-  lastSyncStatus: "idle" | "running" | "success" | "error";
+  lastSyncStatus: 'idle' | 'running' | 'success' | 'error';
   lastSyncError: string | null;
 };
 
@@ -54,17 +54,19 @@ export default function XeroIntegrationPage() {
     setError(null);
     try {
       const [statusRes, logsRes] = await Promise.all([
-        apiFetch("/api/integrations/xero/status", { cache: "no-store" }),
-        apiFetch("/api/integrations/xero/logs?limit=30", { cache: "no-store" }),
+        apiFetch('/api/integrations/xero/status', { cache: 'no-store' }),
+        apiFetch('/api/integrations/xero/logs?limit=30', { cache: 'no-store' }),
       ]);
       const statusData = await statusRes.json();
       const logsData = await logsRes.json();
-      if (!statusRes.ok || !statusData?.ok) throw new Error(statusData?.error || "Unable to load Xero status.");
-      if (!logsRes.ok || !logsData?.ok) throw new Error(logsData?.error || "Unable to load Xero logs.");
+      if (!statusRes.ok || !statusData?.ok)
+        throw new Error(statusData?.error || 'Unable to load Xero status.');
+      if (!logsRes.ok || !logsData?.ok)
+        throw new Error(logsData?.error || 'Unable to load Xero logs.');
       setStatus(statusData.status || null);
       setLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
     } catch (err: any) {
-      setError(err.message || "Unable to load Xero integration state.");
+      setError(err.message || 'Unable to load Xero integration state.');
     } finally {
       setLoading(false);
     }
@@ -75,24 +77,25 @@ export default function XeroIntegrationPage() {
   }, [load]);
 
   const connect = () => {
-    window.location.href = "/api/integrations/xero/authorize?returnTo=/admin/settings/integrations/xero";
+    window.location.href =
+      '/api/integrations/xero/authorize?returnTo=/admin/settings/integrations/xero';
   };
 
   const updateSettings = async (patch: Partial<SyncSettings>) => {
     try {
       setSaving(true);
       setError(null);
-      const res = await apiFetch("/api/integrations/xero/status", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/integrations/xero/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to update Xero settings.");
-      setSuccess("Settings saved.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to update Xero settings.');
+      setSuccess('Settings saved.');
       await load();
     } catch (err: any) {
-      setError(err.message || "Unable to save settings.");
+      setError(err.message || 'Unable to save settings.');
     } finally {
       setSaving(false);
     }
@@ -103,17 +106,17 @@ export default function XeroIntegrationPage() {
       setSyncing(true);
       setError(null);
       setSuccess(null);
-      const res = await apiFetch("/api/integrations/xero/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/integrations/xero/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ forceInitial }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Xero sync failed.");
-      setSuccess(forceInitial ? "Initial sync completed." : "Incremental sync completed.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Xero sync failed.');
+      setSuccess(forceInitial ? 'Initial sync completed.' : 'Incremental sync completed.');
       await load();
     } catch (err: any) {
-      setError(err.message || "Unable to run sync.");
+      setError(err.message || 'Unable to run sync.');
     } finally {
       setSyncing(false);
     }
@@ -123,11 +126,11 @@ export default function XeroIntegrationPage() {
   const stats = status?.stats;
 
   const statusTone = useMemo(() => {
-    if (!status?.connected) return "Disconnected";
-    if (stats?.lastSyncStatus === "error") return "Sync error";
-    if (stats?.lastSyncStatus === "running") return "Sync running";
-    if (stats?.lastSyncStatus === "success") return "Healthy";
-    return "Connected";
+    if (!status?.connected) return 'Disconnected';
+    if (stats?.lastSyncStatus === 'error') return 'Sync error';
+    if (stats?.lastSyncStatus === 'running') return 'Sync running';
+    if (stats?.lastSyncStatus === 'success') return 'Healthy';
+    return 'Connected';
   }, [status, stats]);
 
   return (
@@ -139,10 +142,17 @@ export default function XeroIntegrationPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Xero</div>
-            <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>Two-way accounting sync for invoices, payments, contacts, accounts, and tax rates.</p>
+            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+              Two-way accounting sync for invoices, payments, contacts, accounts, and tax rates.
+            </p>
           </div>
-          <button className="btn subtle" type="button" onClick={connect} disabled={loading || saving || syncing}>
-            {status?.connected ? "Reconnect Xero" : "Connect Xero"}
+          <button
+            className="btn subtle"
+            type="button"
+            onClick={connect}
+            disabled={loading || saving || syncing}
+          >
+            {status?.connected ? 'Reconnect Xero' : 'Connect Xero'}
           </button>
         </div>
 
@@ -151,21 +161,31 @@ export default function XeroIntegrationPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <div className="card" style={{ padding: 14, borderRadius: 14 }}>
             <div style={{ fontWeight: 700 }}>Connection</div>
-            <div style={{ fontSize: 13, marginTop: 8 }}>{status?.connected ? "Connected" : "Not connected"}</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>{status?.organizationName || status?.organizationId || "No organization linked"}</div>
+            <div style={{ fontSize: 13, marginTop: 8 }}>
+              {status?.connected ? 'Connected' : 'Not connected'}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              {status?.organizationName || status?.organizationId || 'No organization linked'}
+            </div>
           </div>
           <div className="card" style={{ padding: 14, borderRadius: 14 }}>
             <div style={{ fontWeight: 700 }}>Sync Status</div>
             <div style={{ fontSize: 13, marginTop: 8 }}>{statusTone}</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Last run: {stats?.lastSyncFinishedAt || "Never"}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              Last run: {stats?.lastSyncFinishedAt || 'Never'}
+            </div>
           </div>
           <div className="card" style={{ padding: 14, borderRadius: 14 }}>
             <div style={{ fontWeight: 700 }}>Conflict Resolution</div>
             <select
               className="input"
-              value={settings?.conflictMode || "last_write_wins"}
+              value={settings?.conflictMode || 'last_write_wins'}
               disabled={!status?.connected || saving}
-              onChange={(e) => void updateSettings({ conflictMode: e.target.value as SyncSettings["conflictMode"] })}
+              onChange={(e) =>
+                void updateSettings({
+                  conflictMode: e.target.value as SyncSettings['conflictMode'],
+                })
+              }
             >
               <option value="last_write_wins">Last write wins</option>
               <option value="manual">Manual review (skip local newer records)</option>
@@ -178,25 +198,46 @@ export default function XeroIntegrationPage() {
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Sync Settings</div>
         <div className="grid gap-3 md:grid-cols-2">
           {[
-            ["syncInvoicesToXero", "Sync invoices (Bizosto → Xero)"],
-            ["syncPaymentsFromXero", "Sync payments (Xero → Bizosto)"],
-            ["syncContactsTwoWay", "Sync contacts two-way"],
-            ["syncAccounts", "Sync chart of accounts"],
-            ["syncTaxRates", "Sync tax rates"],
-            ["scheduleDaily", "Run daily scheduled sync"],
+            ['syncInvoicesToXero', 'Sync invoices (Bizosto → Xero)'],
+            ['syncPaymentsFromXero', 'Sync payments (Xero → Bizosto)'],
+            ['syncContactsTwoWay', 'Sync contacts two-way'],
+            ['syncAccounts', 'Sync chart of accounts'],
+            ['syncTaxRates', 'Sync tax rates'],
+            ['scheduleDaily', 'Run daily scheduled sync'],
           ].map(([key, label]) => (
-            <label key={key} className="flex items-center gap-2 card" style={{ padding: 10, borderRadius: 12 }}>
-              <input type="checkbox" checked={Boolean((settings as any)?.[key])} disabled={!status?.connected || saving} onChange={(e) => void updateSettings({ [key]: e.target.checked } as Partial<SyncSettings>)} />
+            <label
+              key={key}
+              className="flex items-center gap-2 card"
+              style={{ padding: 10, borderRadius: 12 }}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean((settings as any)?.[key])}
+                disabled={!status?.connected || saving}
+                onChange={(e) =>
+                  void updateSettings({ [key]: e.target.checked } as Partial<SyncSettings>)
+                }
+              />
               <span style={{ fontSize: 14 }}>{label}</span>
             </label>
           ))}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button className="btn" type="button" disabled={!status?.connected || syncing} onClick={() => void runSync(false)}>
+          <button
+            className="btn"
+            type="button"
+            disabled={!status?.connected || syncing}
+            onClick={() => void runSync(false)}
+          >
             Run Incremental Sync
           </button>
-          <button className="btn subtle" type="button" disabled={!status?.connected || syncing} onClick={() => void runSync(true)}>
+          <button
+            className="btn subtle"
+            type="button"
+            disabled={!status?.connected || syncing}
+            onClick={() => void runSync(true)}
+          >
             Run Initial Sync
           </button>
         </div>
@@ -213,13 +254,20 @@ export default function XeroIntegrationPage() {
             {logs.map((log) => (
               <div key={log.id} className="card" style={{ padding: 12, borderRadius: 12 }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong>{String(log.status || "unknown").toUpperCase()}</strong>
-                  <span style={{ fontSize: 12 }}>{log.startedAt || ""}</span>
+                  <strong>{String(log.status || 'unknown').toUpperCase()}</strong>
+                  <span style={{ fontSize: 12 }}>{log.startedAt || ''}</span>
                 </div>
                 <div style={{ fontSize: 12, marginTop: 6 }}>
-                  Mode: {log.mode || "n/a"} · Conflicts: {Number(log.conflicts || 0)} · Invoices: {Number(log.invoices?.updated || 0) + Number(log.invoices?.inserted || 0)} · Payments: {Number(log.payments?.updated || 0) + Number(log.payments?.inserted || 0)}
+                  Mode: {log.mode || 'n/a'} · Conflicts: {Number(log.conflicts || 0)} · Invoices:{' '}
+                  {Number(log.invoices?.updated || 0) + Number(log.invoices?.inserted || 0)} ·
+                  Payments:{' '}
+                  {Number(log.payments?.updated || 0) + Number(log.payments?.inserted || 0)}
                 </div>
-                {log.error ? <div style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{String(log.error)}</div> : null}
+                {log.error ? (
+                  <div style={{ fontSize: 12, color: '#ef4444', marginTop: 6 }}>
+                    {String(log.error)}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

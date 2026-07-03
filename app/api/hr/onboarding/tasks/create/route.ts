@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrEvent, requireHrAccess, serverTimestamp } from "../../../_utils";
-import { createNotification } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrEvent, requireHrAccess, serverTimestamp } from '../../../_utils';
+import { createNotification } from '@/lib/notifications';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -13,26 +13,26 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const userId = String(body?.userId || "").trim();
-    const templateId = String(body?.templateId || "").trim();
+    const userId = String(body?.userId || '').trim();
+    const templateId = String(body?.templateId || '').trim();
     const steps = Array.isArray(body?.steps) ? body.steps : [];
     const dueDate = body?.dueDate ? new Date(String(body.dueDate)) : null;
 
     if (!userId) {
-      return NextResponse.json({ ok: false, error: "Missing userId" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing userId' }, { status: 400 });
     }
 
     const payload = {
       userId,
       templateId: templateId || null,
       steps: steps.map((step: any) => ({
-        title: String(step?.title || "").trim(),
-        description: String(step?.description || "").trim(),
+        title: String(step?.title || '').trim(),
+        description: String(step?.description || '').trim(),
         required: Boolean(step?.required),
         isDone: false,
         doneAt: null,
       })),
-      status: "Not Started",
+      status: 'Not Started',
       dueDate: dueDate || null,
       tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
@@ -40,16 +40,16 @@ export async function POST(req: Request) {
       createdBy: access.user.uid,
     };
 
-    const ref = await adminDb.collection("onboardingTasks").add(payload);
+    const ref = await adminDb.collection('onboardingTasks').add(payload);
 
     await createHrEvent({
-      type: "hr.onboarding_task_created",
-      title: "Onboarding task created",
+      type: 'hr.onboarding_task_created',
+      title: 'Onboarding task created',
       description: `Onboarding task created for user ${userId}.`,
-      entityType: "onboardingTask",
+      entityType: 'onboardingTask',
       entityId: ref.id,
       createdByUid: access.user.uid,
-      createdByName: access.user.name || access.user.email || "Admin",
+      createdByName: access.user.name || access.user.email || 'Admin',
       metadata: { userId },
     });
 
@@ -57,18 +57,18 @@ export async function POST(req: Request) {
       await createNotification({
         toUserId: userId,
         tenantId: access.user.tenantId,
-        type: "info",
-        title: "Onboarding tasks assigned",
-        message: "Onboarding tasks were assigned to you.",
-        entityType: "hr",
+        type: 'info',
+        title: 'Onboarding tasks assigned',
+        message: 'Onboarding tasks were assigned to you.',
+        entityType: 'hr',
         entityId: ref.id,
-        deepLink: "/hr/onboarding",
+        deepLink: '/hr/onboarding',
       });
     }
 
     return NextResponse.json({ ok: true, id: ref.id });
   } catch (err) {
-    console.error("HR onboarding tasks create error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR onboarding tasks create error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

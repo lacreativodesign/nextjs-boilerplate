@@ -1,26 +1,26 @@
-import crypto from "crypto";
-import admin from "firebase-admin";
-import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { logEvent } from "@/lib/audit";
-import { createNotifications, getUserIdsByRoles } from "@/lib/notifications";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { Permission, hasPermission } from "../../../lib/permissions";
-import { getCurrentUser } from "../../admin/_utils";
+import crypto from 'crypto';
+import admin from 'firebase-admin';
+import { NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { logEvent } from '@/lib/audit';
+import { createNotifications, getUserIdsByRoles } from '@/lib/notifications';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { Permission, hasPermission } from '../../../lib/permissions';
+import { getCurrentUser } from '../../admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function cleanString(value: any) {
-  return String(value ?? "").trim();
+  return String(value ?? '').trim();
 }
 
 function isPaidStatus(value: any) {
-  return cleanString(value).toLowerCase() === "paid";
+  return cleanString(value).toLowerCase() === 'paid';
 }
 
 function formatOrderId(seq: number) {
-  return `LC-${String(seq).padStart(4, "0")}`;
+  return `LC-${String(seq).padStart(4, '0')}`;
 }
 
 export async function POST(req: Request) {
@@ -28,64 +28,74 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!hasPermission(me.role, Permission.MarkPaymentPaid)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
     const dealId = cleanString(body?.dealId || body?.id);
     if (!dealId) {
-      return NextResponse.json({ ok: false, error: "Missing deal id." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Missing deal id.' }, { status: 400 });
     }
 
     const tenantId = normalizeTenantId(me.tenantId);
-    const dealRef = adminDb.collection("deals").doc(dealId);
+    const dealRef = adminDb.collection('deals').doc(dealId);
     const dealSnap = await dealRef.get();
     if (!dealSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Deal not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Deal not found.' }, { status: 404 });
     }
 
     const dealData = dealSnap.data() || {};
     if (docTenantId(dealData) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const initialProjectId = cleanString(dealData.projectId || "");
+    const initialProjectId = cleanString(dealData.projectId || '');
     if (isPaidStatus(dealData.paymentStatus) && (dealData.projectCreated || initialProjectId)) {
-      return NextResponse.json({ ok: true, status: "already_paid", projectId: initialProjectId || null });
+      return NextResponse.json({
+        ok: true,
+        status: 'already_paid',
+        projectId: initialProjectId || null,
+      });
     }
 
-    const clientId = cleanString(dealData.clientId || "");
+    const clientId = cleanString(dealData.clientId || '');
     if (!clientId) {
-      return NextResponse.json({ ok: false, error: "Deal is missing client id." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Deal is missing client id.' }, { status: 400 });
     }
 
-    const clientRef = adminDb.collection("clients").doc(clientId);
+    const clientRef = adminDb.collection('clients').doc(clientId);
     const clientSnap = await clientRef.get();
     if (!clientSnap.exists) {
-      return NextResponse.json({ ok: false, error: "Client not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
     }
 
     const clientData = clientSnap.data() || {};
     if (docTenantId(clientData) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const email = cleanString(
-      clientData.primaryContactEmail || clientData.primaryContactEmailLower || clientData.email || ""
+      clientData.primaryContactEmail ||
+        clientData.primaryContactEmailLower ||
+        clientData.email ||
+        '',
     ).toLowerCase();
     if (!email) {
-      return NextResponse.json({ ok: false, error: "Client primary contact email is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Client primary contact email is required.' },
+        { status: 400 },
+      );
     }
 
-    let portalUserUid = cleanString(clientData.portalUserUid || "");
+    let portalUserUid = cleanString(clientData.portalUserUid || '');
     if (portalUserUid) {
       const existingUser = await adminAuth.getUser(portalUserUid).catch(() => null);
       if (!existingUser) {
-        portalUserUid = "";
+        portalUserUid = '';
       }
     }
 
@@ -96,8 +106,10 @@ export async function POST(req: Request) {
       } else {
         const created = await adminAuth.createUser({
           email,
-          password: crypto.randomBytes(16).toString("hex"),
-          displayName: cleanString(clientData.primaryContactName || clientData.companyName || email),
+          password: crypto.randomBytes(16).toString('hex'),
+          displayName: cleanString(
+            clientData.primaryContactName || clientData.companyName || email,
+          ),
         });
         portalUserUid = created.uid;
         createdAuthUid = created.uid;
@@ -107,23 +119,23 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let projectCreated = false;
     let didUpdate = false;
-    let usedOrderId = "";
-    let projectName = cleanString(dealData.dealName || dealData.leadName || "New Project");
+    let usedOrderId = '';
+    let projectName = cleanString(dealData.dealName || dealData.leadName || 'New Project');
     let alreadyPaid = false;
 
     await adminDb.runTransaction(async (tx) => {
       const dealTxSnap = await tx.get(dealRef);
       if (!dealTxSnap.exists) {
-        throw new Error("Deal not found");
+        throw new Error('Deal not found');
       }
 
       const data = dealTxSnap.data() || {};
       if (docTenantId(data) !== tenantId) {
-        throw new Error("Forbidden");
+        throw new Error('Forbidden');
       }
 
       const paymentAlreadyPaid = isPaidStatus(data.paymentStatus);
-      const existingProjectId = cleanString(data.projectId || "");
+      const existingProjectId = cleanString(data.projectId || '');
       const existingProjectCreated = Boolean(data.projectCreated);
 
       if (paymentAlreadyPaid && (existingProjectCreated || existingProjectId)) {
@@ -131,7 +143,10 @@ export async function POST(req: Request) {
         projectId = existingProjectId || null;
         projectCreated = existingProjectCreated || Boolean(existingProjectId);
         if (!projectId) {
-          const projectQuery = adminDb.collection("projects").where("dealId", "==", dealId).limit(1);
+          const projectQuery = adminDb
+            .collection('projects')
+            .where('dealId', '==', dealId)
+            .limit(1);
           const projectSnap = await tx.get(projectQuery);
           if (!projectSnap.empty) {
             projectId = projectSnap.docs[0].id;
@@ -142,21 +157,25 @@ export async function POST(req: Request) {
 
       const clientTxSnap = await tx.get(clientRef);
       if (!clientTxSnap.exists) {
-        throw new Error("Client not found");
+        throw new Error('Client not found');
       }
       const clientTxData = clientTxSnap.data() || {};
       if (docTenantId(clientTxData) !== tenantId) {
-        throw new Error("Forbidden");
+        throw new Error('Forbidden');
       }
 
-      projectName = cleanString(data.dealName || data.leadName || projectName || "New Project");
-      const clientName = cleanString(clientTxData.companyName || data.clientName || data.leadName || "Client");
-      const assignedAmUid = cleanString(data.assignedAMId || data.assignedAmId || data.ownerId || "") || null;
-      const assignedAmName = cleanString(data.assignedAMName || data.assignedAmName || data.ownerName || "") || null;
+      projectName = cleanString(data.dealName || data.leadName || projectName || 'New Project');
+      const clientName = cleanString(
+        clientTxData.companyName || data.clientName || data.leadName || 'Client',
+      );
+      const assignedAmUid =
+        cleanString(data.assignedAMId || data.assignedAmId || data.ownerId || '') || null;
+      const assignedAmName =
+        cleanString(data.assignedAMName || data.assignedAmName || data.ownerName || '') || null;
 
       let resolvedProjectId = existingProjectId;
       if (!resolvedProjectId) {
-        const projectQuery = adminDb.collection("projects").where("dealId", "==", dealId).limit(1);
+        const projectQuery = adminDb.collection('projects').where('dealId', '==', dealId).limit(1);
         const projectSnap = await tx.get(projectQuery);
         if (!projectSnap.empty) {
           resolvedProjectId = projectSnap.docs[0].id;
@@ -167,18 +186,18 @@ export async function POST(req: Request) {
         projectId = resolvedProjectId;
         projectCreated = true;
       } else {
-        const projectRef = adminDb.collection("projects").doc();
+        const projectRef = adminDb.collection('projects').doc();
         projectId = projectRef.id;
         projectCreated = true;
-        const existingOrderId = cleanString(data.orderId || clientTxData.orderId || "");
+        const existingOrderId = cleanString(data.orderId || clientTxData.orderId || '');
         if (existingOrderId) {
           usedOrderId = existingOrderId;
         } else {
           const counterRef = adminDb
-            .collection("tenants")
+            .collection('tenants')
             .doc(tenantId)
-            .collection("counters")
-            .doc("orders");
+            .collection('counters')
+            .doc('orders');
           const counterSnap = await tx.get(counterRef);
           const current = Number((counterSnap.data() || {}).seq ?? 0);
           const next = current + 1;
@@ -194,8 +213,8 @@ export async function POST(req: Request) {
           projectName,
           title: projectName,
           clientName,
-          status: "active",
-          stage: "Kickoff",
+          status: 'active',
+          stage: 'Kickoff',
           ownerAmUid: assignedAmUid,
           ownerAmName: assignedAmName,
           assignedAmUid: assignedAmUid,
@@ -208,14 +227,14 @@ export async function POST(req: Request) {
 
       const now = admin.firestore.FieldValue.serverTimestamp();
       const dealUpdates: Record<string, any> = {
-        paymentStatus: "Paid",
+        paymentStatus: 'Paid',
         paidAt: now,
         projectCreated: true,
         projectId: projectId || null,
         isLocked: true,
         lockedAt: now,
         lockedByUid: me.uid,
-        lockedByName: cleanString(me.name || me.fullName || ""),
+        lockedByName: cleanString(me.name || me.fullName || ''),
         updatedAt: now,
         tenantId,
       };
@@ -228,7 +247,7 @@ export async function POST(req: Request) {
 
       const clientUpdates: Record<string, any> = {
         portalUserUid: portalUserUid || null,
-        accountStatus: "ACTIVE",
+        accountStatus: 'ACTIVE',
         accountActivatedAt: now,
         updatedAt: now,
         tenantId,
@@ -242,18 +261,18 @@ export async function POST(req: Request) {
 
       if (portalUserUid) {
         tx.set(
-          adminDb.collection("users").doc(portalUserUid),
+          adminDb.collection('users').doc(portalUserUid),
           {
             uid: portalUserUid,
-            role: "client",
-            status: "active",
+            role: 'client',
+            status: 'active',
             clientId,
             email,
             tenantId,
             updatedAt: now,
             createdAt: now,
           },
-          { merge: true }
+          { merge: true },
         );
       }
 
@@ -266,17 +285,17 @@ export async function POST(req: Request) {
     }
 
     if (!didUpdate) {
-      return NextResponse.json({ ok: true, status: "already_paid", projectId: projectId || null });
+      return NextResponse.json({ ok: true, status: 'already_paid', projectId: projectId || null });
     }
 
-    const actorName = cleanString(me.name || me.fullName || "");
+    const actorName = cleanString(me.name || me.fullName || '');
 
     await logEvent({
       tenantId,
-      type: "deal_paid",
-      title: "Deal marked paid",
-      description: `${projectName || "Deal"} marked paid and project created.`,
-      entityType: "deal",
+      type: 'deal_paid',
+      title: 'Deal marked paid',
+      description: `${projectName || 'Deal'} marked paid and project created.`,
+      entityType: 'deal',
       entityId: dealId,
       actor: { uid: me.uid, name: actorName },
       metadata: {
@@ -286,8 +305,13 @@ export async function POST(req: Request) {
       },
     });
 
-    const roleIds = await getUserIdsByRoles(["admin", "super_admin", "production_manager", "finance"], tenantId);
-    const assignedAmId = cleanString(dealData.assignedAMId || dealData.assignedAmId || dealData.ownerId || "");
+    const roleIds = await getUserIdsByRoles(
+      ['admin', 'super_admin', 'production_manager', 'finance'],
+      tenantId,
+    );
+    const assignedAmId = cleanString(
+      dealData.assignedAMId || dealData.assignedAmId || dealData.ownerId || '',
+    );
     const recipients = [
       ...roleIds.map((uid) => ({ uid, tenantId })),
       ...(assignedAmId ? [{ uid: assignedAmId, tenantId }] : []),
@@ -296,37 +320,40 @@ export async function POST(req: Request) {
     await createNotifications({
       recipients,
       tenantId,
-      type: "deal_paid",
-      title: "Deal marked paid",
-      message: `${projectName || "Deal"} marked paid.`,
-      entityType: "deal",
+      type: 'deal_paid',
+      title: 'Deal marked paid',
+      message: `${projectName || 'Deal'} marked paid.`,
+      entityType: 'deal',
       entityId: dealId,
-      deepLink: "/admin/sales/deals",
+      deepLink: '/admin/sales/deals',
       createdBy: { uid: me.uid, name: actorName },
     });
 
     await createNotifications({
       recipients,
       tenantId,
-      type: "project_created",
-      title: "Project created",
-      message: `${projectName || "Project"} created from paid deal.`,
-      entityType: "project",
+      type: 'project_created',
+      title: 'Project created',
+      message: `${projectName || 'Project'} created from paid deal.`,
+      entityType: 'project',
       entityId: projectId || null,
-      deepLink: "/admin/projects",
+      deepLink: '/admin/projects',
       createdBy: { uid: me.uid, name: actorName },
     });
 
     return NextResponse.json({
       ok: true,
-      status: alreadyPaid ? "already_paid" : "marked_paid",
+      status: alreadyPaid ? 'already_paid' : 'marked_paid',
       projectId: projectId || null,
     });
   } catch (err: any) {
     if (createdAuthUid) {
       await adminAuth.deleteUser(createdAuthUid).catch(() => null);
     }
-    console.error("mark-paid error:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Unable to mark deal paid." }, { status: 500 });
+    console.error('mark-paid error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Unable to mark deal paid.' },
+      { status: 500 },
+    );
   }
 }

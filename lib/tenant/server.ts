@@ -1,5 +1,10 @@
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND, DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
+import {
+  DEFAULT_MODULES,
+  DEFAULT_ROLES,
+  DEFAULT_TENANT_BRAND,
+  DEFAULT_TENANT_ID,
+} from '@/lib/tenant/constants';
 import { PLAN_MODULES } from '@/app/config/plans';
 import { refreshSession, validateSession } from '@/lib/auth/session';
 import { captureApiError, setSentryContext, trackDbQuery } from '@/lib/monitoring/sentry';

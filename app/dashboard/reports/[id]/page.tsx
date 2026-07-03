@@ -1,16 +1,18 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { ReportFilters } from "@/components/reports/ReportFilters";
-import type { Report, ReportFilter } from "@/types/reports";
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { ReportFilters } from '@/components/reports/ReportFilters';
+import type { Report, ReportFilter } from '@/types/reports';
 
 const ReportViewer = dynamic(
-  () => import("@/components/reports/ReportViewer").then((module) => module.ReportViewer),
+  () => import('@/components/reports/ReportViewer').then((module) => module.ReportViewer),
   {
     ssr: false,
-    loading: () => <div className="mt-6 text-sm text-[var(--text-muted)]">Loading chart module...</div>,
+    loading: () => (
+      <div className="mt-6 text-sm text-[var(--text-muted)]">Loading chart module...</div>
+    ),
   },
 );
 
@@ -34,11 +36,14 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     executeReport(data.filters || []);
   };
 
-  const executeReport = async (customFilters?: ReportFilter[], options?: { append?: boolean; pageToken?: string | null }) => {
+  const executeReport = async (
+    customFilters?: ReportFilter[],
+    options?: { append?: boolean; pageToken?: string | null },
+  ) => {
     setLoading(true);
     const response = await apiFetch(`/api/reports/${params.id}/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         filters: customFilters || filters,
         pageToken: options?.pageToken ?? null,
@@ -53,10 +58,10 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     setLoading(false);
   };
 
-  const exportReport = async (format: "csv" | "json") => {
+  const exportReport = async (format: 'csv' | 'json') => {
     const response = await apiFetch(`/api/reports/${params.id}/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         filters,
         export: format,
@@ -65,7 +70,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
     a.download = `report-${params.id}.${format}`;
     a.click();
@@ -82,9 +87,13 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{report.name}</h1>
-          {report.description ? <p className="text-sm text-[var(--text-muted)]">{report.description}</p> : null}
+          {report.description ? (
+            <p className="text-sm text-[var(--text-muted)]">{report.description}</p>
+          ) : null}
           {executedAt ? (
-            <p className="mt-1 text-xs text-[var(--text-muted)]">Last run: {new Date(executedAt).toLocaleString()}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Last run: {new Date(executedAt).toLocaleString()}
+            </p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -97,14 +106,14 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
           </button>
           <button
             type="button"
-            onClick={() => exportReport("csv")}
+            onClick={() => exportReport('csv')}
             className="rounded bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             Export CSV
           </button>
           <button
             type="button"
-            onClick={() => exportReport("json")}
+            onClick={() => exportReport('json')}
             className="rounded bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             Export JSON
@@ -120,7 +129,11 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
       </div>
 
       <div className="mt-6">
-        <ReportFilters filters={filters} onChange={setFilters} onApply={() => executeReport(filters)} />
+        <ReportFilters
+          filters={filters}
+          onChange={setFilters}
+          onApply={() => executeReport(filters)}
+        />
       </div>
 
       {loading ? (

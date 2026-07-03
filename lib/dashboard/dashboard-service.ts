@@ -1,20 +1,26 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { DASHBOARD_TEMPLATES, getWidgetDefinition } from "@/lib/dashboard/widget-registry";
-import type { DashboardLayout, DashboardWidget, DashboardWidgetLayoutItem, DashboardWidgetTemplateId, DashboardWidgetType } from "@/lib/dashboard/types";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { DASHBOARD_TEMPLATES, getWidgetDefinition } from '@/lib/dashboard/widget-registry';
+import type {
+  DashboardLayout,
+  DashboardWidget,
+  DashboardWidgetLayoutItem,
+  DashboardWidgetTemplateId,
+  DashboardWidgetType,
+} from '@/lib/dashboard/types';
 
-const LAYOUT_COLLECTION = "dashboard_layouts";
-const WIDGET_COLLECTION = "dashboard_widgets";
+const LAYOUT_COLLECTION = 'dashboard_layouts';
+const WIDGET_COLLECTION = 'dashboard_widgets';
 
 const defaultItems: DashboardWidgetLayoutItem[] = [
-  { widgetId: "seed-revenue", x: 0, y: 0, w: 6, h: 4 },
-  { widgetId: "seed-invoice", x: 6, y: 0, w: 3, h: 4 },
-  { widgetId: "seed-activity", x: 9, y: 0, w: 3, h: 4 },
+  { widgetId: 'seed-revenue', x: 0, y: 0, w: 6, h: 4 },
+  { widgetId: 'seed-invoice', x: 6, y: 0, w: 3, h: 4 },
+  { widgetId: 'seed-activity', x: 9, y: 0, w: 3, h: 4 },
 ];
 
 function toIso(value: any): string | undefined {
   if (!value) return undefined;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return new Date(value).toISOString();
 }
@@ -26,7 +32,11 @@ function layoutDocId(tenantId: string, userId: string) {
 export async function getDashboardState(tenantId: string, userId: string) {
   const [layoutSnap, widgetsSnap] = await Promise.all([
     adminDb.collection(LAYOUT_COLLECTION).doc(layoutDocId(tenantId, userId)).get(),
-    adminDb.collection(WIDGET_COLLECTION).where("tenantId", "==", tenantId).where("userId", "==", userId).get(),
+    adminDb
+      .collection(WIDGET_COLLECTION)
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', userId)
+      .get(),
   ]);
 
   const widgets: DashboardWidget[] = widgetsSnap.docs.map((doc) => {
@@ -38,7 +48,7 @@ export async function getDashboardState(tenantId: string, userId: string) {
       type: raw.type,
       title: raw.title,
       config: raw.config || {},
-      dataSource: raw.dataSource || "unknown",
+      dataSource: raw.dataSource || 'unknown',
       createdAt: toIso(raw.createdAt),
       updatedAt: toIso(raw.updatedAt),
     };
@@ -47,9 +57,9 @@ export async function getDashboardState(tenantId: string, userId: string) {
   if (!layoutSnap.exists) {
     if (!widgets.length) {
       const seeded = await Promise.all([
-        createWidget(tenantId, userId, { type: "revenue_chart" }),
-        createWidget(tenantId, userId, { type: "invoice_status" }),
-        createWidget(tenantId, userId, { type: "recent_activity" }),
+        createWidget(tenantId, userId, { type: 'revenue_chart' }),
+        createWidget(tenantId, userId, { type: 'invoice_status' }),
+        createWidget(tenantId, userId, { type: 'recent_activity' }),
       ]);
       const seedItems = defaultItems.map((item, idx) => ({ ...item, widgetId: seeded[idx].id }));
       await saveLayout(tenantId, userId, seedItems);
@@ -94,7 +104,11 @@ export async function getDashboardState(tenantId: string, userId: string) {
   };
 }
 
-export async function saveLayout(tenantId: string, userId: string, items: DashboardWidgetLayoutItem[]) {
+export async function saveLayout(
+  tenantId: string,
+  userId: string,
+  items: DashboardWidgetLayoutItem[],
+) {
   const cleanItems = items.map((item) => ({
     widgetId: String(item.widgetId),
     x: Math.max(0, Number(item.x || 0)),
@@ -112,7 +126,7 @@ export async function saveLayout(tenantId: string, userId: string, items: Dashbo
       updatedAt: now,
       createdAt: now,
     },
-    { merge: true }
+    { merge: true },
   );
 
   return cleanItems;
@@ -121,10 +135,10 @@ export async function saveLayout(tenantId: string, userId: string, items: Dashbo
 export async function createWidget(
   tenantId: string,
   userId: string,
-  input: { type: DashboardWidgetType; title?: string; config?: Record<string, unknown> }
+  input: { type: DashboardWidgetType; title?: string; config?: Record<string, unknown> },
 ): Promise<DashboardWidget> {
   const def = getWidgetDefinition(input.type);
-  if (!def) throw new Error("Unsupported widget type");
+  if (!def) throw new Error('Unsupported widget type');
 
   const now = admin.firestore.FieldValue.serverTimestamp();
   const widgetRef = adminDb.collection(WIDGET_COLLECTION).doc();
@@ -155,7 +169,13 @@ export async function createWidget(
 export async function addWidgetAndPlace(
   tenantId: string,
   userId: string,
-  input: { type: DashboardWidgetType; title?: string; config?: Record<string, unknown>; x?: number; y?: number }
+  input: {
+    type: DashboardWidgetType;
+    title?: string;
+    config?: Record<string, unknown>;
+    x?: number;
+    y?: number;
+  },
 ) {
   const widget = await createWidget(tenantId, userId, input);
   const def = getWidgetDefinition(input.type);
@@ -185,12 +205,16 @@ export async function removeWidget(tenantId: string, userId: string, widgetId: s
   await saveLayout(
     tenantId,
     userId,
-    state.layout.items.filter((item) => item.widgetId !== widgetId)
+    state.layout.items.filter((item) => item.widgetId !== widgetId),
   );
   return true;
 }
 
-export async function getWidgetById(tenantId: string, userId: string, widgetId: string): Promise<DashboardWidget | null> {
+export async function getWidgetById(
+  tenantId: string,
+  userId: string,
+  widgetId: string,
+): Promise<DashboardWidget | null> {
   const snap = await adminDb.collection(WIDGET_COLLECTION).doc(widgetId).get();
   if (!snap.exists) return null;
   const row = snap.data() || {};
@@ -203,15 +227,19 @@ export async function getWidgetById(tenantId: string, userId: string, widgetId: 
     type: row.type,
     title: row.title,
     config: row.config || {},
-    dataSource: row.dataSource || "unknown",
+    dataSource: row.dataSource || 'unknown',
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
 }
 
-export async function applyTemplate(tenantId: string, userId: string, templateId: DashboardWidgetTemplateId) {
+export async function applyTemplate(
+  tenantId: string,
+  userId: string,
+  templateId: DashboardWidgetTemplateId,
+) {
   const template = DASHBOARD_TEMPLATES.find((t) => t.id === templateId);
-  if (!template) throw new Error("Template not found");
+  if (!template) throw new Error('Template not found');
 
   const current = await getDashboardState(tenantId, userId);
   const batch = adminDb.batch();
@@ -220,7 +248,11 @@ export async function applyTemplate(tenantId: string, userId: string, templateId
   });
   await batch.commit();
 
-  const created = await Promise.all(template.widgets.map((w) => createWidget(tenantId, userId, { type: w.type, title: w.title, config: w.config })));
+  const created = await Promise.all(
+    template.widgets.map((w) =>
+      createWidget(tenantId, userId, { type: w.type, title: w.title, config: w.config }),
+    ),
+  );
   const items = template.widgets.map((w, index) => ({
     widgetId: created[index].id,
     x: w.x,

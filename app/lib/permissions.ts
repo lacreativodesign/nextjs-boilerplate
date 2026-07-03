@@ -1,29 +1,29 @@
 export type Role =
-  | "super_admin"
-  | "admin"
-  | "sales_manager"
-  | "sales"
-  | "am_manager"
-  | "am"
-  | "production_manager"
-  | "production"
-  | "finance"
-  | "hr"
-  | "client";
+  | 'super_admin'
+  | 'admin'
+  | 'sales_manager'
+  | 'sales'
+  | 'am_manager'
+  | 'am'
+  | 'production_manager'
+  | 'production'
+  | 'finance'
+  | 'hr'
+  | 'client';
 
 export enum Permission {
-  ViewClients = "view_clients",
-  EditClients = "edit_clients",
-  CreateProjects = "create_projects",
-  MoveProjectStage = "move_project_stage",
-  AssignProject = "assign_project",
-  MarkPaymentPaid = "mark_payment_paid",
-  ViewFinance = "view_finance",
-  EditFinance = "edit_finance",
-  ManageUsers = "manage_users",
-  ManageRoles = "manage_roles",
-  ViewReports = "view_reports",
-  ManageTenant = "manage_tenant",
+  ViewClients = 'view_clients',
+  EditClients = 'edit_clients',
+  CreateProjects = 'create_projects',
+  MoveProjectStage = 'move_project_stage',
+  AssignProject = 'assign_project',
+  MarkPaymentPaid = 'mark_payment_paid',
+  ViewFinance = 'view_finance',
+  EditFinance = 'edit_finance',
+  ManageUsers = 'manage_users',
+  ManageRoles = 'manage_roles',
+  ViewReports = 'view_reports',
+  ManageTenant = 'manage_tenant',
 }
 
 const ALL_PERMISSIONS = Object.values(Permission) as Permission[];
@@ -43,7 +43,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 };
 
 export function hasPermission(role: string, permission: Permission): boolean {
-  const normalized = String(role || "").toLowerCase() as Role;
+  const normalized = String(role || '').toLowerCase() as Role;
   const allowed = ROLE_PERMISSIONS[normalized];
   if (!allowed) return false;
   return allowed.includes(permission);
@@ -51,6 +51,6 @@ export function hasPermission(role: string, permission: Permission): boolean {
 
 export function assertPermission(role: string, permission: Permission): void {
   if (!hasPermission(role, permission)) {
-    throw new Error("Permission denied");
+    throw new Error('Permission denied');
   }
 }

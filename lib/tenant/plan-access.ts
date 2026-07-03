@@ -1,4 +1,4 @@
-import { PLAN_MODULES } from "@/app/config/plans";
+import { PLAN_MODULES } from '@/app/config/plans';
 
 // Centralized, shared plan/module helpers for both client and server.
 // Keep this file free of server-only dependencies so UI gating can import it safely.
@@ -10,12 +10,12 @@ export type PlanModules = Record<PlanModuleKey, boolean>;
 const PLAN_KEYS = Object.keys(PLAN_MODULES) as PlanTier[];
 
 export function normalizePlan(plan: unknown): PlanTier {
-  const normalized = String(plan || "").toLowerCase();
-  return PLAN_KEYS.includes(normalized as PlanTier) ? (normalized as PlanTier) : "pro";
+  const normalized = String(plan || '').toLowerCase();
+  return PLAN_KEYS.includes(normalized as PlanTier) ? (normalized as PlanTier) : 'pro';
 }
 
 function normalizeModules(input: unknown): Partial<PlanModules> {
-  if (!input || typeof input !== "object") return {};
+  if (!input || typeof input !== 'object') return {};
   const entries = Object.entries(input as Record<string, unknown>);
   return entries.reduce<Partial<PlanModules>>((acc, [key, value]) => {
     if (key in PLAN_MODULES.starter) {
@@ -25,7 +25,10 @@ function normalizeModules(input: unknown): Partial<PlanModules> {
   }, {});
 }
 
-export function resolvePlanModules(plan: PlanTier, overrides?: Record<string, unknown>): PlanModules {
+export function resolvePlanModules(
+  plan: PlanTier,
+  overrides?: Record<string, unknown>,
+): PlanModules {
   return {
     ...PLAN_MODULES[plan],
     ...normalizeModules(overrides),
@@ -43,14 +46,15 @@ export function resolveTenantModules({
   modules?: Record<string, unknown>;
   legacyModulesEnabled?: Record<string, unknown>;
 }): PlanModules {
-  const hasExplicitModules = Boolean(modules && typeof modules === "object");
+  const hasExplicitModules = Boolean(modules && typeof modules === 'object');
   const baseModules = resolvePlanModules(plan, hasExplicitModules ? modules : {});
 
-  if (!hasExplicitModules && legacyModulesEnabled && typeof legacyModulesEnabled === "object") {
+  if (!hasExplicitModules && legacyModulesEnabled && typeof legacyModulesEnabled === 'object') {
     const legacy = legacyModulesEnabled as Record<string, unknown>;
     const legacyOverrides: Partial<PlanModules> = {};
     if (legacy.finance !== undefined) legacyOverrides.finance = Boolean(legacy.finance);
-    if (legacy.notifications !== undefined) legacyOverrides.notifications = Boolean(legacy.notifications);
+    if (legacy.notifications !== undefined)
+      legacyOverrides.notifications = Boolean(legacy.notifications);
     if (legacy.humanResource !== undefined) legacyOverrides.hr = Boolean(legacy.humanResource);
     return {
       ...baseModules,
@@ -62,7 +66,7 @@ export function resolveTenantModules({
 }
 
 export function isSuperAdminRole(role?: string | null) {
-  return String(role || "").toLowerCase() === "super_admin";
+  return String(role || '').toLowerCase() === 'super_admin';
 }
 
 // Used by UI + server checks. Defaults to allowing access when module maps are missing

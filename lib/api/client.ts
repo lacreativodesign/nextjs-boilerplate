@@ -1,4 +1,4 @@
-const CSRF_HEADERS = { "X-Requested-With": "XMLHttpRequest" } as const;
+const CSRF_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' } as const;
 
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = RequestInit & { headers?: Record<string, string> };
@@ -9,7 +9,7 @@ type FetchInit = RequestInit & { headers?: Record<string, string> };
  */
 export function apiFetch(input: FetchInput, init: FetchInit = {}): Promise<Response> {
   return fetch(input, {
-    credentials: "include",
+    credentials: 'include',
     ...init,
     headers: {
       ...CSRF_HEADERS,

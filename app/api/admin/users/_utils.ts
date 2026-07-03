@@ -3,7 +3,7 @@ import {
   isAdminRole as baseIsAdminRole,
   isSuperAdmin as baseIsSuperAdmin,
   CurrentUser as BaseCurrentUser,
-} from "../_utils";
+} from '../_utils';
 
 export type CurrentUser = BaseCurrentUser;
 

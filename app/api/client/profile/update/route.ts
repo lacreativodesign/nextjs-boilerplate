@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { adminDb as db } from "@/lib/firebaseAdmin";
-import { requireClient } from "../../_utils";
+import { NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb as db } from '@/lib/firebaseAdmin';
+import { requireClient } from '../../_utils';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 function cleanString(value: any) {
-  return String(value ?? "").trim();
+  return String(value ?? '').trim();
 }
 
 export async function POST(req: Request) {
@@ -22,17 +22,19 @@ export async function POST(req: Request) {
   }
 
   try {
-    const ref = db.collection("clients").doc(auth.clientId);
+    const ref = db.collection('clients').doc(auth.clientId);
     const snap = await ref.get();
-    if (!snap.exists) return NextResponse.json({ ok: false, error: "Client profile not found" }, { status: 404 });
-    if (String((snap.data() || {}).tenantId || "") !== auth.user.tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!snap.exists)
+      return NextResponse.json({ ok: false, error: 'Client profile not found' }, { status: 404 });
+    if (String((snap.data() || {}).tenantId || '') !== auth.user.tenantId) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const updateData: Record<string, any> = {};
 
     if (body?.companyName !== undefined) updateData.companyName = cleanString(body.companyName);
-    if (body?.contactName !== undefined) updateData.primaryContactName = cleanString(body.contactName);
+    if (body?.contactName !== undefined)
+      updateData.primaryContactName = cleanString(body.contactName);
     if (body?.phone !== undefined) updateData.primaryContactPhone = cleanString(body.phone);
     if (body?.timezone !== undefined) updateData.timezone = cleanString(body.timezone);
     if (body?.address !== undefined) updateData.address = cleanString(body.address);
@@ -46,6 +48,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: auth.clientId });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Failed to update profile" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'Failed to update profile' },
+      { status: 500 },
+    );
   }
 }

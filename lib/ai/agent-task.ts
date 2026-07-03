@@ -10,18 +10,18 @@
  *                      ↘ awaiting_approval
  */
 
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AgentType = "coo" | "finance" | "sales";
+export type AgentType = 'coo' | 'finance' | 'sales';
 
 export type AgentTaskStatus =
-  | "queued"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "awaiting_approval";
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'awaiting_approval';
 
 export type AgentToolCall = {
   toolName: string;
@@ -46,7 +46,7 @@ export type AgentTask = {
   /** Token usage for cost tracking */
   tokenUsage: { inputTokens: number; outputTokens: number } | null;
   /** LLM provider used for this task */
-  provider: "openai" | "anthropic" | null;
+  provider: 'openai' | 'anthropic' | null;
   /** UID of user who triggered the task */
   createdBy: string;
   createdAt: string;
@@ -63,17 +63,15 @@ export type CreateAgentTaskInput = {
 
 // ─── Firestore Helpers ────────────────────────────────────────────────────────
 
-export async function createAgentTask(
-  input: CreateAgentTaskInput
-): Promise<AgentTask> {
-  const ref = adminDb.collection("agent_tasks").doc();
+export async function createAgentTask(input: CreateAgentTaskInput): Promise<AgentTask> {
+  const ref = adminDb.collection('agent_tasks').doc();
   const now = new Date().toISOString();
 
   const task: AgentTask = {
     id: ref.id,
     tenantId: input.tenantId,
     agentType: input.agentType,
-    status: "queued",
+    status: 'queued',
     prompt: input.prompt,
     toolCalls: [],
     result: null,
@@ -91,29 +89,20 @@ export async function createAgentTask(
 }
 
 export async function getAgentTask(taskId: string): Promise<AgentTask | null> {
-  const snap = await adminDb.collection("agent_tasks").doc(taskId).get();
+  const snap = await adminDb.collection('agent_tasks').doc(taskId).get();
   if (!snap.exists) return null;
   return snap.data() as AgentTask;
 }
 
-export async function updateAgentTask(
-  taskId: string,
-  updates: Partial<AgentTask>
-): Promise<void> {
-  await adminDb
-    .collection("agent_tasks")
-    .doc(taskId)
-    .set(updates, { merge: true });
+export async function updateAgentTask(taskId: string, updates: Partial<AgentTask>): Promise<void> {
+  await adminDb.collection('agent_tasks').doc(taskId).set(updates, { merge: true });
 }
 
-export async function listAgentTasks(
-  tenantId: string,
-  limit = 20
-): Promise<AgentTask[]> {
+export async function listAgentTasks(tenantId: string, limit = 20): Promise<AgentTask[]> {
   const snap = await adminDb
-    .collection("agent_tasks")
-    .where("tenantId", "==", tenantId)
-    .orderBy("createdAt", "desc")
+    .collection('agent_tasks')
+    .where('tenantId', '==', tenantId)
+    .orderBy('createdAt', 'desc')
     .limit(limit)
     .get();
 
@@ -122,7 +111,7 @@ export async function listAgentTasks(
 
 export async function markTaskProcessing(taskId: string): Promise<void> {
   await updateAgentTask(taskId, {
-    status: "processing",
+    status: 'processing',
     startedAt: new Date().toISOString(),
   });
 }
@@ -131,11 +120,11 @@ export async function markTaskCompleted(
   taskId: string,
   result: string,
   toolCalls: AgentToolCall[],
-  tokenUsage: AgentTask["tokenUsage"],
-  provider: AgentTask["provider"]
+  tokenUsage: AgentTask['tokenUsage'],
+  provider: AgentTask['provider'],
 ): Promise<void> {
   await updateAgentTask(taskId, {
-    status: "completed",
+    status: 'completed',
     result,
     toolCalls,
     tokenUsage,
@@ -144,25 +133,22 @@ export async function markTaskCompleted(
   });
 }
 
-export async function markTaskFailed(
-  taskId: string,
-  error: string
-): Promise<void> {
+export async function markTaskFailed(taskId: string, error: string): Promise<void> {
   await updateAgentTask(taskId, {
-    status: "failed",
+    status: 'failed',
     error,
     completedAt: new Date().toISOString(),
   });
 }
 
 export async function getTenantAIKey(
-  tenantId: string
-): Promise<{ provider: "openai" | "anthropic"; apiKey: string } | null> {
+  tenantId: string,
+): Promise<{ provider: 'openai' | 'anthropic'; apiKey: string } | null> {
   const snap = await adminDb
-    .collection("tenants")
+    .collection('tenants')
     .doc(tenantId)
-    .collection("settings")
-    .doc("ai_workforce")
+    .collection('settings')
+    .doc('ai_workforce')
     .get();
 
   if (!snap.exists) return null;
@@ -170,7 +156,7 @@ export async function getTenantAIKey(
   if (!data.apiKey || !data.provider) return null;
 
   return {
-    provider: data.provider as "openai" | "anthropic",
+    provider: data.provider as 'openai' | 'anthropic',
     apiKey: String(data.apiKey),
   };
 }

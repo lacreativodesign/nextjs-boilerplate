@@ -1,9 +1,9 @@
-import admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { CustomerService } from "@/lib/crm/customer-service";
-import { NotificationService } from "@/lib/notifications/notification-service";
-import { Deal } from "@/types/crm";
+import admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { CustomerService } from '@/lib/crm/customer-service';
+import { NotificationService } from '@/lib/notifications/notification-service';
+import { Deal } from '@/types/crm';
 
 export class DealService {
   static async createDeal(params: {
@@ -25,7 +25,7 @@ export class DealService {
     expectedCloseDate: Date;
     source?: string;
   }): Promise<string> {
-    const deal: Omit<Deal, "id"> = {
+    const deal: Omit<Deal, 'id'> = {
       tenantId: params.tenantId,
       name: params.name,
       description: params.description,
@@ -40,8 +40,8 @@ export class DealService {
       stage: params.stage,
       stageName: params.stageName,
       stageOrder: params.stageOrder,
-      status: "open",
-      priority: "medium",
+      status: 'open',
+      priority: 'medium',
       ownerId: params.ownerId,
       ownerName: params.ownerName,
       expectedCloseDate: Timestamp.fromDate(params.expectedCloseDate),
@@ -52,19 +52,25 @@ export class DealService {
       updatedAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("deals").add(deal);
+    const docRef = await adminDb.collection('deals').add(deal);
 
-    await adminDb.collection("customers").doc(params.customerId).update({
-      totalDeals: admin.firestore.FieldValue.increment(1),
-      openDeals: admin.firestore.FieldValue.increment(1),
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('customers')
+      .doc(params.customerId)
+      .update({
+        totalDeals: admin.firestore.FieldValue.increment(1),
+        openDeals: admin.firestore.FieldValue.increment(1),
+        updatedAt: Timestamp.now(),
+      });
 
-    await adminDb.collection("pipelines").doc(params.pipelineId).update({
-      dealsCount: admin.firestore.FieldValue.increment(1),
-      totalValue: admin.firestore.FieldValue.increment(params.value),
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('pipelines')
+      .doc(params.pipelineId)
+      .update({
+        dealsCount: admin.firestore.FieldValue.increment(1),
+        totalValue: admin.firestore.FieldValue.increment(params.value),
+        updatedAt: Timestamp.now(),
+      });
 
     await CustomerService.logActivity({
       tenantId: params.tenantId,
@@ -72,12 +78,12 @@ export class DealService {
       customerName: params.customerName,
       dealId: docRef.id,
       dealName: params.name,
-      type: "note",
-      subject: "Deal created",
+      type: 'note',
+      subject: 'Deal created',
       description: `New deal created: ${params.name}`,
       ownerId: params.ownerId,
       ownerName: params.ownerName,
-      status: "completed",
+      status: 'completed',
     });
 
     return docRef.id;
@@ -92,10 +98,10 @@ export class DealService {
     userId: string;
     userName: string;
   }): Promise<void> {
-    const dealDoc = await adminDb.collection("deals").doc(params.dealId).get();
+    const dealDoc = await adminDb.collection('deals').doc(params.dealId).get();
 
     if (!dealDoc.exists) {
-      throw new Error("Deal not found");
+      throw new Error('Deal not found');
     }
 
     const deal = dealDoc.data() as Deal;
@@ -115,12 +121,12 @@ export class DealService {
       customerName: deal.customerName,
       dealId: params.dealId,
       dealName: deal.name,
-      type: "note",
-      subject: "Deal stage changed",
+      type: 'note',
+      subject: 'Deal stage changed',
       description: `Moved from ${deal.stageName} to ${params.newStageName}`,
       ownerId: params.userId,
       ownerName: params.userName,
-      status: "completed",
+      status: 'completed',
     });
   }
 
@@ -130,28 +136,33 @@ export class DealService {
     userId: string;
     userName: string;
   }): Promise<void> {
-    const dealDoc = await adminDb.collection("deals").doc(params.dealId).get();
+    const dealDoc = await adminDb.collection('deals').doc(params.dealId).get();
 
     if (!dealDoc.exists) {
-      throw new Error("Deal not found");
+      throw new Error('Deal not found');
     }
 
     const deal = dealDoc.data() as Deal;
-    const closeDate = params.actualCloseDate ? Timestamp.fromDate(params.actualCloseDate) : Timestamp.now();
+    const closeDate = params.actualCloseDate
+      ? Timestamp.fromDate(params.actualCloseDate)
+      : Timestamp.now();
 
     await dealDoc.ref.update({
-      status: "won",
+      status: 'won',
       actualCloseDate: closeDate,
       wonAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
 
-    await adminDb.collection("customers").doc(deal.customerId).update({
-      totalRevenue: admin.firestore.FieldValue.increment(deal.value),
-      openDeals: admin.firestore.FieldValue.increment(-1),
-      status: "won",
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('customers')
+      .doc(deal.customerId)
+      .update({
+        totalRevenue: admin.firestore.FieldValue.increment(deal.value),
+        openDeals: admin.firestore.FieldValue.increment(-1),
+        status: 'won',
+        updatedAt: Timestamp.now(),
+      });
 
     await CustomerService.logActivity({
       tenantId: deal.tenantId,
@@ -159,24 +170,24 @@ export class DealService {
       customerName: deal.customerName,
       dealId: params.dealId,
       dealName: deal.name,
-      type: "note",
-      subject: "Deal won! 🎉",
+      type: 'note',
+      subject: 'Deal won! 🎉',
       description: `Deal closed successfully: ${deal.currency} ${deal.value}`,
       ownerId: params.userId,
       ownerName: params.userName,
-      status: "completed",
+      status: 'completed',
     });
 
     if (deal.ownerId !== params.userId) {
       await NotificationService.send({
         tenantId: deal.tenantId,
         userId: deal.ownerId,
-        userEmail: "",
-        type: "success",
-        title: "Deal won!",
+        userEmail: '',
+        type: 'success',
+        title: 'Deal won!',
         message: `${params.userName} marked "${deal.name}" as won`,
-        category: "sales",
-        priority: "high",
+        category: 'sales',
+        priority: 'high',
         actionUrl: `/dashboard/crm/deals/${params.dealId}`,
       });
     }
@@ -189,26 +200,29 @@ export class DealService {
     userId: string;
     userName: string;
   }): Promise<void> {
-    const dealDoc = await adminDb.collection("deals").doc(params.dealId).get();
+    const dealDoc = await adminDb.collection('deals').doc(params.dealId).get();
 
     if (!dealDoc.exists) {
-      throw new Error("Deal not found");
+      throw new Error('Deal not found');
     }
 
     const deal = dealDoc.data() as Deal;
 
     await dealDoc.ref.update({
-      status: "lost",
+      status: 'lost',
       lostReason: params.lostReason,
       lostNotes: params.lostNotes,
       lostAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
 
-    await adminDb.collection("customers").doc(deal.customerId).update({
-      openDeals: admin.firestore.FieldValue.increment(-1),
-      updatedAt: Timestamp.now(),
-    });
+    await adminDb
+      .collection('customers')
+      .doc(deal.customerId)
+      .update({
+        openDeals: admin.firestore.FieldValue.increment(-1),
+        updatedAt: Timestamp.now(),
+      });
 
     await CustomerService.logActivity({
       tenantId: deal.tenantId,
@@ -216,12 +230,12 @@ export class DealService {
       customerName: deal.customerName,
       dealId: params.dealId,
       dealName: deal.name,
-      type: "note",
-      subject: "Deal lost",
+      type: 'note',
+      subject: 'Deal lost',
       description: `Deal lost. Reason: ${params.lostReason}`,
       ownerId: params.userId,
       ownerName: params.userName,
-      status: "completed",
+      status: 'completed',
     });
   }
 }

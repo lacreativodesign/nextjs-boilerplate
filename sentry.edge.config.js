@@ -18,4 +18,4 @@ Sentry.init({
   },
 });
 
-Sentry.setTag("runtime", "edge");
+Sentry.setTag('runtime', 'edge');

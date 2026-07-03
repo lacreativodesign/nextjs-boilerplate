@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart,
   Line,
@@ -11,9 +11,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { toastError } from "@/lib/toast";
-import type { Budget, YearComparison } from "@/lib/types/budget";
+} from 'recharts';
+import { toastError } from '@/lib/toast';
+import type { Budget, YearComparison } from '@/lib/types/budget';
 
 type BudgetDetailPageProps = { params: { id: string } };
 
@@ -22,37 +22,44 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
   const [comparison, setComparison] = useState<YearComparison | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const months = useMemo(() => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], []);
+  const months = useMemo(
+    () => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    [],
+  );
 
   useEffect(() => {
     const fetchBudget = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/admin/finance/budgets?budgetId=${params.id}`, { cache: "no-store" });
+        const response = await fetch(`/api/admin/finance/budgets?budgetId=${params.id}`, {
+          cache: 'no-store',
+        });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok) {
-          throw new Error(data?.error || "Unable to load budget.");
+          throw new Error(data?.error || 'Unable to load budget.');
         }
 
         const selectedBudget = (data.budgets || [])[0] as Budget | undefined;
         if (!selectedBudget) {
-          throw new Error("Budget not found.");
+          throw new Error('Budget not found.');
         }
 
         setBudget(selectedBudget);
 
-        const comparisonRes = await fetch(`/api/admin/finance/budgets?year=${selectedBudget.fiscalYear}`, { cache: "no-store" });
+        const comparisonRes = await fetch(
+          `/api/admin/finance/budgets?year=${selectedBudget.fiscalYear}`,
+          { cache: 'no-store' },
+        );
         const comparisonData = await comparisonRes.json().catch(() => ({}));
         if (comparisonRes.ok && comparisonData.ok) {
           const found = (comparisonData.yearComparisons || []).find(
-            (entry: YearComparison) =>
-              entry.currentYear === selectedBudget.fiscalYear
+            (entry: YearComparison) => entry.currentYear === selectedBudget.fiscalYear,
           );
           setComparison(found || null);
         }
       } catch (error: any) {
-        console.error("Budget load error", error);
-        toastError(error?.message || "Unable to load budget details.");
+        console.error('Budget load error', error);
+        toastError(error?.message || 'Unable to load budget details.');
       } finally {
         setLoading(false);
       }
@@ -83,26 +90,34 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-4">
             <div>
-              <p className="text-xs text-[var(--text-muted)]">Current Year ({comparison.currentYear})</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Current Year ({comparison.currentYear})
+              </p>
               <p className="text-xl font-semibold">
                 {budget.currency} {comparison.currentTotalBudget.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[var(--text-muted)]">Previous Year ({comparison.previousYear})</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Previous Year ({comparison.previousYear})
+              </p>
               <p className="text-xl font-semibold">
                 {budget.currency} {comparison.previousTotalBudget.toLocaleString()}
               </p>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Change Amount</p>
-              <p className={`text-xl font-semibold ${comparison.changeAmount < 0 ? "text-red-500" : "text-green-500"}`}>
+              <p
+                className={`text-xl font-semibold ${comparison.changeAmount < 0 ? 'text-red-500' : 'text-green-500'}`}
+              >
                 {budget.currency} {Math.abs(comparison.changeAmount).toLocaleString()}
               </p>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Change %</p>
-              <p className={`text-xl font-semibold ${comparison.changeAmount < 0 ? "text-red-500" : "text-green-500"}`}>
+              <p
+                className={`text-xl font-semibold ${comparison.changeAmount < 0 ? 'text-red-500' : 'text-green-500'}`}
+              >
                 {comparison.changePercentage.toFixed(1)}%
               </p>
             </div>
@@ -131,13 +146,17 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
               </div>
               <div className="text-center">
                 <p className="text-sm text-[var(--text-muted)]">Variance</p>
-                <p className={`text-2xl font-bold ${category.variance < 0 ? "text-red-500" : "text-green-500"}`}>
+                <p
+                  className={`text-2xl font-bold ${category.variance < 0 ? 'text-red-500' : 'text-green-500'}`}
+                >
                   {budget.currency} {Math.abs(category.variance).toLocaleString()}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-[var(--text-muted)]">Variance %</p>
-                <p className={`text-2xl font-bold ${category.variance < 0 ? "text-red-500" : "text-green-500"}`}>
+                <p
+                  className={`text-2xl font-bold ${category.variance < 0 ? 'text-red-500' : 'text-green-500'}`}
+                >
                   {category.variancePercentage.toFixed(1)}%
                 </p>
               </div>

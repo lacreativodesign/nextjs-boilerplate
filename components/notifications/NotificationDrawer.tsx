@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import clsx from "clsx";
-import { Skeleton } from "../ui/Skeleton";
-import EmptyState from "../ui/EmptyState";
+import { useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { Skeleton } from '../ui/Skeleton';
+import EmptyState from '../ui/EmptyState';
 
 export type NotificationItem = {
   id: string;
@@ -30,8 +30,8 @@ type NotificationDrawerProps = {
   onOpen: (item: NotificationItem) => void;
   onMarkRead: (item: NotificationItem) => void;
   formatTimestamp: (value?: string | null) => string;
-  activeFilter: "all" | "unread" | "approvals" | "mentions";
-  onFilterChange: (filter: "all" | "unread" | "approvals" | "mentions") => void;
+  activeFilter: 'all' | 'unread' | 'approvals' | 'mentions';
+  onFilterChange: (filter: 'all' | 'unread' | 'approvals' | 'mentions') => void;
 };
 
 export default function NotificationDrawer({
@@ -51,14 +51,14 @@ export default function NotificationDrawer({
 
   const selected = useMemo(
     () => notifications.find((item) => item.id === selectedId) || null,
-    [notifications, selectedId]
+    [notifications, selectedId],
   );
 
   const isApproval = (item: NotificationItem) => {
-    const entityType = String(item.entityType || "").toLowerCase();
-    if (["approval", "change_request"].includes(entityType)) return true;
+    const entityType = String(item.entityType || '').toLowerCase();
+    if (['approval', 'change_request'].includes(entityType)) return true;
     const hay = `${item.title} ${item.body}`.toLowerCase();
-    return hay.includes("approval");
+    return hay.includes('approval');
   };
 
   const metadataEntries = selected?.metadata ? Object.entries(selected.metadata) : [];
@@ -67,25 +67,34 @@ export default function NotificationDrawer({
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
-      <div className="drawer-panel drawer-panel--md notification-drawer" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="drawer-panel drawer-panel--md notification-drawer"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="notification-drawer__header">
           <div>
             <div className="drawer-title">Notifications</div>
-            <div className="drawer-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
+            <div className="drawer-subtitle">
+              {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+            </div>
           </div>
-          <button className="btn ghost" onClick={onMarkAllRead} style={{ height: 34, borderRadius: 999 }}>
+          <button
+            className="btn ghost"
+            onClick={onMarkAllRead}
+            style={{ height: 34, borderRadius: 999 }}
+          >
             Mark all as read
           </button>
         </div>
 
         <div className="flex gap-2 px-5 pb-3">
-          {(["all", "unread", "mentions", "approvals"] as const).map((tab) => (
+          {(['all', 'unread', 'mentions', 'approvals'] as const).map((tab) => (
             <button
               key={tab}
               type="button"
-              className={clsx("btn ghost", activeFilter === tab && "active")}
+              className={clsx('btn ghost', activeFilter === tab && 'active')}
               onClick={() => onFilterChange(tab)}
-              style={{ height: 32, borderRadius: 999, textTransform: "capitalize" }}
+              style={{ height: 32, borderRadius: 999, textTransform: 'capitalize' }}
             >
               {tab}
             </button>
@@ -96,7 +105,7 @@ export default function NotificationDrawer({
           {notifications.map((item) => (
             <div
               key={item.id}
-              className={clsx("notification-row", !item.isRead && "notification-row--unread")}
+              className={clsx('notification-row', !item.isRead && 'notification-row--unread')}
               onClick={() => {
                 setSelectedId(item.id);
                 if (!item.isRead) {
@@ -105,10 +114,10 @@ export default function NotificationDrawer({
               }}
             >
               <div style={{ flex: 1 }}>
-                <div className="notification-row__title">{item.title || "Update"}</div>
-                <div className="notification-row__body">{item.body || "New update available."}</div>
+                <div className="notification-row__title">{item.title || 'Update'}</div>
+                <div className="notification-row__body">{item.body || 'New update available.'}</div>
               </div>
-              <div className="notification-row__time" style={{ alignItems: "flex-end" }}>
+              <div className="notification-row__time" style={{ alignItems: 'flex-end' }}>
                 <div>{formatTimestamp(item.createdAt)}</div>
                 <div className="flex gap-2 mt-2">
                   {item.deepLink && (
@@ -170,11 +179,13 @@ export default function NotificationDrawer({
           <div className="card" style={{ marginTop: 16, padding: 16 }}>
             <div className="text-sm font-semibold">Context</div>
             <div className="text-xs text-[var(--text-muted)]" style={{ marginTop: 4 }}>
-              Entity: {selected.entityType || "Unknown"} {selected.entityId ? `• ${selected.entityId}` : ""}
+              Entity: {selected.entityType || 'Unknown'}{' '}
+              {selected.entityId ? `• ${selected.entityId}` : ''}
             </div>
             {selected.createdBy && (
               <div className="text-xs text-[var(--text-muted)]" style={{ marginTop: 4 }}>
-                Created by: {String(selected.createdBy?.name || selected.createdBy?.email || "System")}
+                Created by:{' '}
+                {String(selected.createdBy?.name || selected.createdBy?.email || 'System')}
               </div>
             )}
             {metadataEntries.length > 0 && (

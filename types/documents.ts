@@ -1,21 +1,21 @@
 export type DocumentCategory =
-  | "invoice"
-  | "receipt"
-  | "contract"
-  | "proposal"
-  | "report"
-  | "statement"
-  | "tax_document"
-  | "legal"
-  | "hr"
-  | "marketing"
-  | "other";
+  | 'invoice'
+  | 'receipt'
+  | 'contract'
+  | 'proposal'
+  | 'report'
+  | 'statement'
+  | 'tax_document'
+  | 'legal'
+  | 'hr'
+  | 'marketing'
+  | 'other';
 
-export type DocumentVisibility = "private" | "team" | "public";
+export type DocumentVisibility = 'private' | 'team' | 'public';
 
-export type DocumentStatus = "uploading" | "processing" | "ready" | "failed" | "deleted";
+export type DocumentStatus = 'uploading' | 'processing' | 'ready' | 'failed' | 'deleted';
 
-export type VirusScanStatus = "pending" | "clean" | "infected" | "failed";
+export type VirusScanStatus = 'pending' | 'clean' | 'infected' | 'failed';
 
 export interface Document {
   id: string;
@@ -29,7 +29,7 @@ export interface Document {
   fileExtension: string;
 
   // Storage
-  storageProvider: "firebase" | "aws_s3" | "gcp";
+  storageProvider: 'firebase' | 'aws_s3' | 'gcp';
   storagePath: string;
   storageUrl: string;
   publicUrl?: string;
@@ -118,7 +118,7 @@ export interface DocumentShare {
   documentId: string;
 
   // Share details
-  shareType: "user" | "public_link";
+  shareType: 'user' | 'public_link';
   sharedWith?: string;
   publicToken?: string;
 

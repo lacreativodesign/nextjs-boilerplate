@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { OptimizedImage } from "@/components/OptimizedImage";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { enrollMFA, verifyMFAEnrollment } from "@/lib/auth/mfa";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebaseClient";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { OptimizedImage } from '@/components/OptimizedImage';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { enrollMFA, verifyMFAEnrollment } from '@/lib/auth/mfa';
+import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebaseClient';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 const CODE_LENGTH = 6;
 
@@ -14,17 +14,20 @@ type Props = {
 };
 
 export default function MFASetup({ onComplete, onCancel }: Props) {
-  const [step, setStep] = useState<"idle" | "setup" | "success">("idle");
+  const [step, setStep] = useState<'idle' | 'setup' | 'success'>('idle');
   const [secret, setSecret] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [manualVisible, setManualVisible] = useState(false);
-  const [code, setCode] = useState<string>("");
+  const [code, setCode] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
-  const digits = useMemo(() => Array.from({ length: CODE_LENGTH }, (_, i) => code[i] || ""), [code]);
+  const digits = useMemo(
+    () => Array.from({ length: CODE_LENGTH }, (_, i) => code[i] || ''),
+    [code],
+  );
 
   const handleEnroll = useCallback(async () => {
     try {
@@ -33,14 +36,14 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
       const auth = await getFirebaseAuth();
       const user = auth.currentUser;
       if (!user) {
-        throw new Error("You must be signed in to enable MFA.");
+        throw new Error('You must be signed in to enable MFA.');
       }
       const enrollment = await enrollMFA(user);
       setSecret(enrollment.secret);
       setQrCodeUrl(enrollment.qrCodeUrl);
-      setStep("setup");
+      setStep('setup');
     } catch (err: any) {
-      setError(err?.message || "Unable to start MFA enrollment.");
+      setError(err?.message || 'Unable to start MFA enrollment.');
     } finally {
       setLoading(false);
     }
@@ -54,23 +57,23 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
       const auth = await getFirebaseAuth();
       const user = auth.currentUser;
       if (!user) {
-        throw new Error("You must be signed in to enable MFA.");
+        throw new Error('You must be signed in to enable MFA.');
       }
       const ok = await verifyMFAEnrollment(user, code);
       if (!ok) {
-        throw new Error("Invalid verification code. Please try again.");
+        throw new Error('Invalid verification code. Please try again.');
       }
 
       const db = await getFirebaseDb();
-      await updateDoc(doc(db, "users", user.uid), {
+      await updateDoc(doc(db, 'users', user.uid), {
         mfaEnabled: true,
         mfaUpdatedAt: serverTimestamp(),
       });
 
-      setStep("success");
+      setStep('success');
       onComplete();
     } catch (err: any) {
-      setError(err?.message || "Failed to verify MFA code.");
+      setError(err?.message || 'Failed to verify MFA code.');
     } finally {
       setLoading(false);
     }
@@ -83,18 +86,18 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
   }, [code, handleVerify, loading]);
 
   const handleCodeChange = (index: number, value: string) => {
-    const sanitized = value.replace(/\D/g, "");
-    const next = code.split("");
+    const sanitized = value.replace(/\D/g, '');
+    const next = code.split('');
 
     if (sanitized.length === 0) {
-      next[index] = "";
-      setCode(next.join(""));
+      next[index] = '';
+      setCode(next.join(''));
       return;
     }
 
     const char = sanitized[sanitized.length - 1];
     next[index] = char;
-    setCode(next.join("").slice(0, CODE_LENGTH));
+    setCode(next.join('').slice(0, CODE_LENGTH));
 
     if (index < CODE_LENGTH - 1) {
       inputsRef.current[index + 1]?.focus();
@@ -102,7 +105,7 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
     if (!pasted) return;
     event.preventDefault();
     setCode(pasted);
@@ -131,13 +134,13 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
 
   return (
     <div className="space-y-4">
-      {step === "idle" && (
+      {step === 'idle' && (
         <button type="button" className="btn" onClick={handleEnroll} disabled={loading}>
-          {loading ? "Preparing…" : "Enable Two-Factor Authentication"}
+          {loading ? 'Preparing…' : 'Enable Two-Factor Authentication'}
         </button>
       )}
 
-      {step === "setup" && (
+      {step === 'setup' && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]/40 p-4">
             <p className="text-sm font-medium text-[var(--text-primary)]">Scan the QR code</p>
@@ -178,17 +181,18 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
               onClick={handleVerify}
               disabled={loading || code.length !== CODE_LENGTH}
             >
-              {loading ? "Verifying…" : "Verify & Enable"}
+              {loading ? 'Verifying…' : 'Verify & Enable'}
             </button>
           </div>
         </div>
       )}
 
-      {step === "success" && (
+      {step === 'success' && (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
           <p>Two-factor authentication is now enabled for your account.</p>
           <p className="mt-2 text-xs text-emerald-100/80">
-            Backup codes can be issued by your administrator if you lose access to your authenticator app.
+            Backup codes can be issued by your administrator if you lose access to your
+            authenticator app.
           </p>
         </div>
       )}

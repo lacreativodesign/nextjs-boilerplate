@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getAmUser, isOwnedByAm, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getAmUser, isOwnedByAm, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const FILE_CATEGORIES = ["Draft", "Revision", "Final", "Asset", "Other"] as const;
+const FILE_CATEGORIES = ['Draft', 'Revision', 'Final', 'Asset', 'Other'] as const;
 
 type FileDoc = {
   projectId?: string;
@@ -51,23 +51,30 @@ export async function GET(req: Request) {
   try {
     const me = await getAmUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const projectId = String(searchParams.get("projectId") || "").trim();
-    const category = String(searchParams.get("category") || "").trim();
-    const q = String(searchParams.get("q") || "").trim().toLowerCase();
-    const uploadedBy = String(searchParams.get("uploadedBy") || "").trim();
-    const startDate = String(searchParams.get("start") || "").trim();
-    const endDate = String(searchParams.get("end") || "").trim();
+    const projectId = String(searchParams.get('projectId') || '').trim();
+    const category = String(searchParams.get('category') || '').trim();
+    const q = String(searchParams.get('q') || '')
+      .trim()
+      .toLowerCase();
+    const uploadedBy = String(searchParams.get('uploadedBy') || '').trim();
+    const startDate = String(searchParams.get('start') || '').trim();
+    const endDate = String(searchParams.get('end') || '').trim();
 
-    const projectSnap = await adminDb.collection("projects").where("tenantId", "==", me.tenantId).where("isDeleted", "==", false).limit(500).get();
+    const projectSnap = await adminDb
+      .collection('projects')
+      .where('tenantId', '==', me.tenantId)
+      .where('isDeleted', '==', false)
+      .limit(500)
+      .get();
     const projectIds = new Set(
       projectSnap.docs
         .map((doc) => ({ id: doc.id, data: doc.data() as ProjectDoc }))
         .filter(({ data }) => isOwnedByAm(data, me.uid))
-        .map(({ id }) => id)
+        .map(({ id }) => id),
     );
 
     if (projectId && !projectIds.has(projectId)) {
@@ -79,13 +86,13 @@ export async function GET(req: Request) {
     }
 
     let query: FirebaseFirestore.Query = adminDb
-      .collection("files")
-      .where("tenantId", "==", me.tenantId)
-      .where("isDeleted", "==", false)
-      .orderBy("uploadedAt", "desc");
+      .collection('files')
+      .where('tenantId', '==', me.tenantId)
+      .where('isDeleted', '==', false)
+      .orderBy('uploadedAt', 'desc');
 
     if (projectId) {
-      query = query.where("projectId", "==", projectId);
+      query = query.where('projectId', '==', projectId);
     }
 
     const snap = await query.limit(500).get();
@@ -94,19 +101,19 @@ export async function GET(req: Request) {
       const data = doc.data() as FileDoc;
       return {
         id: doc.id,
-        projectId: data.projectId || "",
-        projectName: data.projectName || "",
-        clientId: data.clientId || "",
-        clientName: data.clientName || "",
-        category: data.category || "Other",
-        fileName: data.fileName || "",
-        storagePath: data.storagePath || "",
-        downloadUrl: data.downloadUrl || "",
+        projectId: data.projectId || '',
+        projectName: data.projectName || '',
+        clientId: data.clientId || '',
+        clientName: data.clientName || '',
+        category: data.category || 'Other',
+        fileName: data.fileName || '',
+        storagePath: data.storagePath || '',
+        downloadUrl: data.downloadUrl || '',
         size: Number(data.size || 0),
-        mimeType: data.mimeType || "",
-        uploadedByUid: data.uploadedByUid || "",
-        uploadedByName: data.uploadedByName || "",
-        uploadedByRole: data.uploadedByRole || "",
+        mimeType: data.mimeType || '',
+        uploadedByUid: data.uploadedByUid || '',
+        uploadedByName: data.uploadedByName || '',
+        uploadedByRole: data.uploadedByRole || '',
         version: data.version ?? null,
         notes: data.notes ?? null,
         isLatest: data.isLatest ?? true,
@@ -130,7 +137,9 @@ export async function GET(req: Request) {
     }
 
     if (startDate || endDate) {
-      files = files.filter((file) => matchesDateRange(file.uploadedAt, startDate || undefined, endDate || undefined));
+      files = files.filter((file) =>
+        matchesDateRange(file.uploadedAt, startDate || undefined, endDate || undefined),
+      );
     }
 
     const totals = files.reduce(
@@ -142,18 +151,18 @@ export async function GET(req: Request) {
         }
         return acc;
       },
-      { total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 }
+      { total: 0, Draft: 0, Revision: 0, Final: 0, Asset: 0, Other: 0, storage: 0 },
     );
 
     return NextResponse.json({ ok: true, files, totals });
   } catch (err: any) {
-    console.error("am/files list error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('am/files list error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load files.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load files.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

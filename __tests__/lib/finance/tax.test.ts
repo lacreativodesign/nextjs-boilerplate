@@ -1,4 +1,11 @@
-import { calculateTax, calculateCompoundTax, DEFAULT_TAX_RATES, isClientTaxExempt, TaxExemption, TaxType } from '@/lib/finance/tax';
+import {
+  calculateTax,
+  calculateCompoundTax,
+  DEFAULT_TAX_RATES,
+  isClientTaxExempt,
+  TaxExemption,
+  TaxType,
+} from '@/lib/finance/tax';
 
 describe('finance/tax', () => {
   it('calculates single tax correctly', () => {

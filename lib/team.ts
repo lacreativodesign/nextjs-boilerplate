@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export type DirectReport = {
   uid: string;
@@ -15,12 +15,12 @@ export async function getDirectReports(params: {
   const { tenantId, managerUid, reportRole } = params;
 
   let query: FirebaseFirestore.Query = adminDb
-    .collection("users")
-    .where("tenantId", "==", tenantId)
-    .where("managerId", "==", managerUid);
+    .collection('users')
+    .where('tenantId', '==', tenantId)
+    .where('managerId', '==', managerUid);
 
   if (reportRole) {
-    query = query.where("role", "==", reportRole);
+    query = query.where('role', '==', reportRole);
   }
 
   const snap = await query.get();
@@ -29,9 +29,9 @@ export async function getDirectReports(params: {
     const data = doc.data() || {};
     return {
       uid: doc.id,
-      name: String(data.name || data.fullName || data.email || "User"),
-      email: String(data.email || ""),
-      role: String(data.role || ""),
+      name: String(data.name || data.fullName || data.email || 'User'),
+      email: String(data.email || ''),
+      role: String(data.role || ''),
     };
   });
 }

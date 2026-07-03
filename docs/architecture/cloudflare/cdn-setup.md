@@ -5,11 +5,13 @@ This runbook defines production Cloudflare configuration for static asset delive
 ## 1) Cloudflare Setup
 
 ### Account and zone
+
 1. Add the production domain to Cloudflare.
 2. Switch nameservers at the registrar to Cloudflare nameservers.
 3. Verify zone status is **Active**.
 
 ### DNS configuration
+
 Create these records in Cloudflare DNS:
 
 - `A @` -> Vercel edge IP (proxied = ON)
@@ -18,6 +20,7 @@ Create these records in Cloudflare DNS:
 - Keep API/internal-only origins as DNS-only unless edge protection is explicitly required.
 
 ### SSL/TLS settings
+
 - Encryption mode: **Full (strict)**
 - Always Use HTTPS: **ON**
 - Minimum TLS Version: **TLS 1.2** (or TLS 1.3 only if compatible)
@@ -27,6 +30,7 @@ Create these records in Cloudflare DNS:
 ## 2) Static Asset Optimization
 
 ### Cache behavior
+
 Configure Cloudflare Cache Rules:
 
 1. **Static immutable assets**
@@ -48,23 +52,28 @@ Configure Cloudflare Cache Rules:
    - Cache key: include query string
 
 ### Compression and minification
+
 In Speed -> Optimization:
+
 - Auto Minify: **HTML + CSS + JS = ON**
 - Brotli: **ON**
 
 ## 3) Image Optimization
 
 ### Cloudflare Images delivery
+
 - Store/serve transformed images via Cloudflare Images (`imagedelivery.net`).
 - Use variant-based transformations for thumbnails, cards, and detail views.
 - Enable format negotiation to deliver **AVIF/WebP** to supported browsers.
 
 ### Next.js integration
+
 - `next.config.js` now includes `imagedelivery.net` in allowed image domains and AVIF/WebP output formats.
 - For all `<Image />` usage, continue providing explicit `sizes` to keep responsive `srcset` generation optimal.
 - Next.js Image uses lazy loading by default when `priority` is not set.
 
 ### Image CDN URL pattern
+
 Use Cloudflare Images URL format:
 
 `https://imagedelivery.net/<account_hash>/<image_id>/<variant>`
@@ -72,6 +81,7 @@ Use Cloudflare Images URL format:
 ## 4) Performance Rules
 
 Use Cloudflare Rules to enforce:
+
 - Cache static paths and immutable file extensions.
 - Cache only public APIs.
 - Bypass cache on auth/session endpoints.
@@ -80,18 +90,22 @@ Use Cloudflare Rules to enforce:
 ## 5) Security Features
 
 ### Platform protections
+
 - DDoS protection: automatic (Cloudflare default)
 - Bot protection: **Bot Fight Mode ON** (or Super Bot Fight Mode on eligible plan)
 - WAF managed rules: **ON** with Cloudflare Managed Ruleset
 
 ### Rate limiting rules
+
 Configure rate limits at minimum for:
+
 - `/api/auth/*`
 - `/api/login`
 - `/api/session*`
 - `/api/*` write endpoints (`POST`, `PUT`, `PATCH`, `DELETE`)
 
 Recommended baseline:
+
 - Auth endpoints: 10 requests/min/IP, block 10 min
 - Generic API writes: 120 requests/min/IP, challenge or block based on risk profile
 
@@ -102,4 +116,3 @@ Recommended baseline:
 - TTFB < 200ms for cached static routes.
 - Lighthouse Performance >= 95 on production pages.
 - Auth/session APIs return `cf-cache-status: BYPASS`.
-

@@ -1,7 +1,7 @@
-export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || "bizosto";
+export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'bizosto';
 
 export const DEFAULT_TENANT_BRAND = {
-  name: "BIZOSTO",
+  name: 'BIZOSTO',
   logoUrl: null as string | null,
   locked: true,
 };

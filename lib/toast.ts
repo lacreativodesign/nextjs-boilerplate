@@ -1,19 +1,19 @@
-import toast from "react-hot-toast";
+import toast from 'react-hot-toast';
 
 const baseStyle = {
-  borderRadius: "12px",
-  background: "var(--toast-bg)",
-  color: "var(--toast-text)",
-  border: "1px solid var(--toast-border)",
-  boxShadow: "var(--toast-shadow)",
-  fontFamily: "Inter, system-ui",
+  borderRadius: '12px',
+  background: 'var(--toast-bg)',
+  color: 'var(--toast-text)',
+  border: '1px solid var(--toast-border)',
+  boxShadow: 'var(--toast-shadow)',
+  fontFamily: 'Inter, system-ui',
 };
 
 const variantBorder = {
-  success: "var(--toast-success)",
-  error: "var(--toast-error)",
-  warning: "var(--toast-warning)",
-  info: "var(--toast-info)",
+  success: 'var(--toast-success)',
+  error: 'var(--toast-error)',
+  warning: 'var(--toast-warning)',
+  info: 'var(--toast-info)',
 } as const;
 
 function resolveStyle(variant: keyof typeof variantBorder) {
@@ -25,39 +25,39 @@ function resolveStyle(variant: keyof typeof variantBorder) {
 
 export function toastSuccess(message: string): void {
   toast(message, {
-    icon: "✓",
+    icon: '✓',
     duration: 3000,
-    style: resolveStyle("success"),
+    style: resolveStyle('success'),
   });
 }
 
 export function toastError(message: string): void {
   toast(message, {
-    icon: "✕",
+    icon: '✕',
     duration: 5000,
-    style: resolveStyle("error"),
+    style: resolveStyle('error'),
   });
 }
 
 export function toastWarning(message: string): void {
   toast(message, {
-    icon: "⚠",
+    icon: '⚠',
     duration: 4000,
-    style: resolveStyle("warning"),
+    style: resolveStyle('warning'),
   });
 }
 
 export function toastInfo(message: string): void {
   toast(message, {
-    icon: "ℹ",
+    icon: 'ℹ',
     duration: 3000,
-    style: resolveStyle("info"),
+    style: resolveStyle('info'),
   });
 }
 
 export function toastLoading(message: string): string {
   return toast.loading(message, {
-    style: resolveStyle("info"),
+    style: resolveStyle('info'),
   });
 }
 
@@ -67,7 +67,7 @@ export function toastDismiss(id: string): void {
 
 export async function toastPromise<T>(
   promise: Promise<T>,
-  messages: { loading: string; success: string; error: string | ((err: any) => string) }
+  messages: { loading: string; success: string; error: string | ((err: any) => string) },
 ): Promise<T> {
   const id = toastLoading(messages.loading);
   try {
@@ -75,7 +75,7 @@ export async function toastPromise<T>(
     toastSuccess(messages.success);
     return result;
   } catch (err: any) {
-    const message = typeof messages.error === "function" ? messages.error(err) : messages.error;
+    const message = typeof messages.error === 'function' ? messages.error(err) : messages.error;
     toastError(message);
     throw err;
   } finally {

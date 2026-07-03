@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { z } from "zod";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { ReportBuilderService } from "@/lib/reports/report-builder";
-import type { ReportSnapshot, ReportFilter } from "@/types/reports";
-import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from "../../_utils";
+import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { z } from 'zod';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { ReportBuilderService } from '@/lib/reports/report-builder';
+import type { ReportSnapshot, ReportFilter } from '@/types/reports';
+import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from '../../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const runSchema = z.object({
   filters: z
@@ -14,24 +14,24 @@ const runSchema = z.object({
       z.object({
         field: z.string(),
         operator: z.enum([
-          "equals",
-          "notEquals",
-          "greaterThan",
-          "greaterThanOrEqual",
-          "lessThan",
-          "lessThanOrEqual",
-          "between",
-          "in",
-          "notIn",
-          "contains",
-          "notContains",
-          "startsWith",
-          "endsWith",
-          "isNull",
-          "isNotNull",
+          'equals',
+          'notEquals',
+          'greaterThan',
+          'greaterThanOrEqual',
+          'lessThan',
+          'lessThanOrEqual',
+          'between',
+          'in',
+          'notIn',
+          'contains',
+          'notContains',
+          'startsWith',
+          'endsWith',
+          'isNull',
+          'isNotNull',
         ]),
         value: z.any(),
-      })
+      }),
     )
     .optional(),
   page: z.number().int().min(1).optional(),
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const { user, tenantId } = await requireReportsUser(request);
     const report = await getCustomReportOrThrow(tenantId, params.id);
     if (!canAccessReport(report, user.uid)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const payload = runSchema.parse(await request.json().catch(() => ({})));
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     };
 
     if (payload.saveSnapshot) {
-      const snapshot: Omit<ReportSnapshot, "id"> = {
+      const snapshot: Omit<ReportSnapshot, 'id'> = {
         tenantId,
         reportId: report.id,
         createdBy: user.uid,
@@ -75,18 +75,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         metadata,
         createdAt: now,
       };
-      await adminDb.collection("report_snapshots").add(snapshot);
+      await adminDb.collection('report_snapshots').add(snapshot);
     }
 
-    await adminDb.collection("reports").doc(report.id).set(
-      {
-        lastRunAt: now,
-        lastRunDuration: 0,
-        runCount: admin.firestore.FieldValue.increment(1),
-        updatedAt: now,
-      },
-      { merge: true }
-    );
+    await adminDb
+      .collection('reports')
+      .doc(report.id)
+      .set(
+        {
+          lastRunAt: now,
+          lastRunDuration: 0,
+          runCount: admin.firestore.FieldValue.increment(1),
+          updatedAt: now,
+        },
+        { merge: true },
+      );
 
     return NextResponse.json({
       reportId: report.id,
@@ -99,8 +102,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       },
     });
   } catch (error: any) {
-    const message = error?.message || "Failed to run report";
-    const status = message === "Report not found" ? 404 : message === "Unauthorized" ? 401 : 500;
+    const message = error?.message || 'Failed to run report';
+    const status = message === 'Report not found' ? 404 : message === 'Unauthorized' ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

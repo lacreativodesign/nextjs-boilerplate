@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireHrAccess, toIso } from "../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireHrAccess, toIso } from '../_utils';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function parseDate(value: any): Date | null {
   if (!value) return null;
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? null : d;
   }
-  if (typeof value?.toDate === "function") {
+  if (typeof value?.toDate === 'function') {
     const d = value.toDate();
     return Number.isNaN(d.getTime()) ? null : d;
   }
@@ -26,23 +26,35 @@ export async function GET() {
     }
 
     const [usersSnap, tasksSnap, docsSnap, attendanceSnap, eventsSnap] = await Promise.all([
-      adminDb.collection("users").where("tenantId", "==", access.user.tenantId).limit(500).get(),
-      adminDb.collection("onboardingTasks").where("tenantId", "==", access.user.tenantId).limit(500).get(),
-      adminDb.collection("employeeDocuments").where("tenantId", "==", access.user.tenantId).limit(500).get(),
-      adminDb.collection("attendance_logs").where("tenantId", "==", access.user.tenantId).limit(500).get(),
-      adminDb.collection("events").where("tenantId", "==", access.user.tenantId).limit(500).get(),
+      adminDb.collection('users').where('tenantId', '==', access.user.tenantId).limit(500).get(),
+      adminDb
+        .collection('onboardingTasks')
+        .where('tenantId', '==', access.user.tenantId)
+        .limit(500)
+        .get(),
+      adminDb
+        .collection('employeeDocuments')
+        .where('tenantId', '==', access.user.tenantId)
+        .limit(500)
+        .get(),
+      adminDb
+        .collection('attendance_logs')
+        .where('tenantId', '==', access.user.tenantId)
+        .limit(500)
+        .get(),
+      adminDb.collection('events').where('tenantId', '==', access.user.tenantId).limit(500).get(),
     ]);
 
     const users = usersSnap.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
     const employees = users.filter((user: any) => {
-      const role = String(user?.role || "").toLowerCase();
-      return role && role !== "client";
+      const role = String(user?.role || '').toLowerCase();
+      return role && role !== 'client';
     });
 
     const totalEmployees = employees.length;
     const activeEmployees = employees.filter((user: any) => {
-      const status = String(user?.status || "active").toLowerCase();
-      return status !== "disabled" && status !== "inactive";
+      const status = String(user?.status || 'active').toLowerCase();
+      return status !== 'disabled' && status !== 'inactive';
     }).length;
 
     const thirtyDaysAgo = new Date();
@@ -53,15 +65,17 @@ export async function GET() {
     }).length;
 
     const tasks = tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const openOnboarding = tasks.filter((task: any) => String(task?.status || "").toLowerCase() !== "completed").length;
+    const openOnboarding = tasks.filter(
+      (task: any) => String(task?.status || '').toLowerCase() !== 'completed',
+    ).length;
 
     const statusCounts = tasks.reduce(
       (acc: Record<string, number>, task: any) => {
-        const status = String(task?.status || "Not Started");
+        const status = String(task?.status || 'Not Started');
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       },
-      { "Not Started": 0, "In Progress": 0, Completed: 0 }
+      { 'Not Started': 0, 'In Progress': 0, Completed: 0 },
     );
 
     const docs = docsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -75,11 +89,13 @@ export async function GET() {
       const created = parseDate(log?.createdAt || log?.timestamp || log?.date);
       return created ? created >= sevenDaysAgo : false;
     });
-    const attendanceUsers = new Set(recentAttendance.map((log: any) => String(log?.userId || log?.uid || "")));
+    const attendanceUsers = new Set(
+      recentAttendance.map((log: any) => String(log?.userId || log?.uid || '')),
+    );
 
     const events = eventsSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((event: any) => String(event?.type || "").startsWith("hr."))
+      .filter((event: any) => String(event?.type || '').startsWith('hr.'))
       .sort((a: any, b: any) => {
         const aDate = parseDate(a?.createdAt);
         const bDate = parseDate(b?.createdAt);
@@ -91,8 +107,8 @@ export async function GET() {
       .map((event: any) => ({
         id: event.id,
         type: event.type,
-        title: event.title || "",
-        description: event.description || "",
+        title: event.title || '',
+        description: event.description || '',
         createdAt: toIso(event.createdAt),
         createdByName: event.createdByName || null,
         entityType: event.entityType || null,
@@ -115,7 +131,7 @@ export async function GET() {
       },
     });
   } catch (err) {
-    console.error("HR overview error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('HR overview error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import ERPLayout from "@/components/layouts/ERPLayout";
-import TimeTrackingDashboard from "@/components/hr/TimeTrackingDashboard";
+import ERPLayout from '@/components/layouts/ERPLayout';
+import TimeTrackingDashboard from '@/components/hr/TimeTrackingDashboard';
 
 export default function AdminHrTimeTrackingPage() {
   return (

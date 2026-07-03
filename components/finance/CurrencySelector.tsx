@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import { CurrencyCode, getAllCurrencies } from "@/lib/finance/currencies";
+import React from 'react';
+import { CurrencyCode, getAllCurrencies } from '@/lib/finance/currencies';
 
 interface CurrencySelectorProps {
   value: CurrencyCode;
@@ -15,7 +15,10 @@ export function CurrencySelector({ value, onChange, disabled, className }: Curre
 
   return (
     <div className={className}>
-      <label htmlFor="currency" className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+      <label
+        htmlFor="currency"
+        className="mb-1 block text-sm font-medium text-[var(--text-primary)]"
+      >
         Currency
       </label>
       <select

@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import EmptyState from "@/components/ui/EmptyState";
-import LoadingButton from "@/components/ui/LoadingButton";
-import { SkeletonTable } from "@/components/ui/Skeleton";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
-import { toastError, toastPromise } from "@/lib/toast";
-import { apiFetch } from "@/lib/api/client";
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import EmptyState from '@/components/ui/EmptyState';
+import LoadingButton from '@/components/ui/LoadingButton';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
+import { toastError, toastPromise } from '@/lib/toast';
+import { apiFetch } from '@/lib/api/client';
 
 type UserRecord = {
   uid?: string;
@@ -36,23 +36,21 @@ type UserRecord = {
   [key: string]: any;
 };
 
-type SortKey = "name" | "email" | "phone" | "department" | "status";
-type SortDir = "asc" | "desc";
+type SortKey = 'name' | 'email' | 'phone' | 'department' | 'status';
+type SortDir = 'asc' | 'desc';
 
 /** Always get a usable ID no matter what your API returns */
 const getRowId = (u: any) =>
-  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || "") as string;
-
+  (u?.uid || u?.id || u?.docId || u?.userId || u?.firebaseUid || u?.email || '') as string;
 
 export default function UsersPage() {
-
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
 
-  const [search, setSearch] = useState<string>("");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [search, setSearch] = useState<string>('');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
@@ -68,32 +66,36 @@ export default function UsersPage() {
     async function loadUsers() {
       try {
         setLoading(true);
-        setError("");
+        setError('');
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const res = await apiFetch("/api/admin/users/list", {
-          method: "GET",
-          cache: "no-store",
+        const res = await apiFetch('/api/admin/users/list', {
+          method: 'GET',
+          cache: 'no-store',
           signal: controller.signal,
         }).finally(() => clearTimeout(timeoutId));
 
         const json = await res.json().catch(() => null);
 
         if (!res.ok) {
-          throw new Error((json as any)?.error || "Failed to load users");
+          throw new Error((json as any)?.error || 'Failed to load users');
         }
 
         // Supports BOTH:
         // 1) API returns array: [...]
         // 2) API returns object: { ok: true, users: [...] }
-        const list: any[] = Array.isArray(json) ? json : Array.isArray((json as any)?.users) ? (json as any).users : [];
+        const list: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray((json as any)?.users)
+            ? (json as any).users
+            : [];
 
         if (!alive) return;
         setUsers(list as UserRecord[]);
       } catch (err: any) {
         if (!alive) return;
-        const message = err?.message || "Unexpected error occurred.";
+        const message = err?.message || 'Unexpected error occurred.';
         setError(message);
         toastError(message);
         setUsers([]);
@@ -111,29 +113,29 @@ export default function UsersPage() {
 
   const handleDelete = async (uid: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to permanently delete this user? This action cannot be undone."
+      'Are you sure you want to permanently delete this user? This action cannot be undone.',
     );
     if (!confirmDelete) return;
 
     try {
       setDeletingUid(uid);
       await toastPromise(
-        apiFetch("/api/admin/users/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        apiFetch('/api/admin/users/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid }),
         }).then(async (res) => {
-          const msg = await res.text().catch(() => "");
+          const msg = await res.text().catch(() => '');
           if (!res.ok) {
-            throw new Error(msg || "Failed to delete user");
+            throw new Error(msg || 'Failed to delete user');
           }
           return true;
         }),
         {
-          loading: "Deleting user...",
-          success: "User deleted successfully.",
-          error: (err) => err?.message || "Failed to delete user.",
-        }
+          loading: 'Deleting user...',
+          success: 'User deleted successfully.',
+          error: (err) => err?.message || 'Failed to delete user.',
+        },
       );
 
       setUsers((prev) => prev.filter((u) => getRowId(u) !== uid));
@@ -142,42 +144,42 @@ export default function UsersPage() {
         setDrawerOpen(false);
       }
     } catch (e) {
-      console.error("Error deleting user:", e);
+      console.error('Error deleting user:', e);
     } finally {
       setDeletingUid((prev) => (prev === uid ? null : prev));
     }
   };
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    if (sortKey === key) setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     else {
       setSortKey(key);
-      setSortDir("asc");
+      setSortDir('asc');
     }
   };
 
   const normalizeStatus = (value?: string) => {
-    const raw = (value || "").trim().toLowerCase();
-    if (!raw) return "Active";
-    if (raw === "inactive" || raw === "disabled") return "Inactive";
-    return "Active";
+    const raw = (value || '').trim().toLowerCase();
+    if (!raw) return 'Active';
+    if (raw === 'inactive' || raw === 'disabled') return 'Inactive';
+    return 'Active';
   };
 
   const getSortValue = (u: UserRecord, key: SortKey) => {
     const field =
-      key === "name"
+      key === 'name'
         ? u.name
-        : key === "email"
-        ? u.email
-        : key === "phone"
-        ? u.phone
-        : key === "department"
-        ? u.department
-        : key === "status"
-        ? normalizeStatus(u.status)
-        : "";
+        : key === 'email'
+          ? u.email
+          : key === 'phone'
+            ? u.phone
+            : key === 'department'
+              ? u.department
+              : key === 'status'
+                ? normalizeStatus(u.status)
+                : '';
 
-    return (field || "").toString().toLowerCase();
+    return (field || '').toString().toLowerCase();
   };
 
   const filtered = useMemo(
@@ -189,7 +191,7 @@ export default function UsersPage() {
         u.department,
         normalizeStatus(u.status),
       ]),
-    [users, search]
+    [users, search],
   );
 
   const sorted = useMemo(() => {
@@ -198,8 +200,8 @@ export default function UsersPage() {
       const aVal: any = getSortValue(a, sortKey);
       const bVal: any = getSortValue(b, sortKey);
 
-      if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
     return arr;
@@ -221,82 +223,89 @@ export default function UsersPage() {
 
   const handleResetMfa = async (uid: string) => {
     const confirmReset = window.confirm(
-      "Reset MFA for this user? They will need to re-enroll with an authenticator app."
+      'Reset MFA for this user? They will need to re-enroll with an authenticator app.',
     );
     if (!confirmReset) return;
 
     try {
       setResettingMfaUid(uid);
       await toastPromise(
-        apiFetch(`/api/admin/users/${uid}/mfa`, { method: "DELETE" }).then(async (res) => {
+        apiFetch(`/api/admin/users/${uid}/mfa`, { method: 'DELETE' }).then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            throw new Error(data?.error || "Failed to reset MFA.");
+            throw new Error(data?.error || 'Failed to reset MFA.');
           }
           return data;
         }),
         {
-          loading: "Resetting MFA...",
-          success: "MFA reset successfully.",
-          error: (err) => err?.message || "Failed to reset MFA.",
-        }
+          loading: 'Resetting MFA...',
+          success: 'MFA reset successfully.',
+          error: (err) => err?.message || 'Failed to reset MFA.',
+        },
       );
 
       setUsers((prev) =>
-        prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user))
+        prev.map((user) => (getRowId(user) === uid ? { ...user, mfaEnabled: false } : user)),
       );
     } catch (err: any) {
-      console.error("Reset MFA error", err);
+      console.error('Reset MFA error', err);
     } finally {
       setResettingMfaUid((prev) => (prev === uid ? null : prev));
     }
   };
 
-
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    cursor: "pointer",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   // Regular body text (not bold)
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
   // Stable header label: reserve slot for sort arrow so layout never shifts
   const headerLabel = (label: string, active?: boolean, dir?: SortDir) => (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <span>{label}</span>
-      <span style={{ width: 14, display: "inline-block", textAlign: "center", opacity: active ? 1 : 0.35 }}>
-        {active ? (dir === "asc" ? "▲" : "▼") : "•"}
+      <span
+        style={{
+          width: 14,
+          display: 'inline-block',
+          textAlign: 'center',
+          opacity: active ? 1 : 0.35,
+        }}
+      >
+        {active ? (dir === 'asc' ? '▲' : '▼') : '•'}
       </span>
     </span>
   );
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">All Users</h1>
 
           <div className="page-subtitle" style={{ marginBottom: 18 }}>
-            Manage all internal users. Search, sort, and open full HR details in the right-side drawer.
+            Manage all internal users. Search, sort, and open full HR details in the right-side
+            drawer.
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <LoadingButton
             type="button"
             className="btn"
@@ -304,9 +313,9 @@ export default function UsersPage() {
             loadingText="Opening..."
             onClick={() => {
               setAddingUser(true);
-              router.push("/users/add");
+              router.push('/users/add');
             }}
-            style={{ borderRadius: 999, padding: "10px 20px", fontWeight: 600 }}
+            style={{ borderRadius: 999, padding: '10px 20px', fontWeight: 600 }}
           >
             + Add User
           </LoadingButton>
@@ -319,104 +328,134 @@ export default function UsersPage() {
 
       <div className="table-shell">
         <div>
-        {/* Loading state: keep table structure stable with skeletons. */}
-        {loading ? (
-          <SkeletonTable rows={6} columns={7} />
-        ) : error ? (
-          <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">{error}</div>
-        ) : sorted.length === 0 ? (
-          <EmptyState
-            title="No users found"
-            description="Create your first user to start managing access."
-            action={{ label: "Create User", onClick: () => router.push("/users/add") }}
-          />
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 980 }}>
-              <thead>
-                <tr>
-                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("name")}>{headerLabel("Name", sortKey === "name", sortDir)}</button></th>
-                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("email")}>{headerLabel("Email", sortKey === "email", sortDir)}</button></th>
-                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("phone")}>{headerLabel("Phone", sortKey === "phone", sortDir)}</button></th>
-                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("department")}>{headerLabel("Department", sortKey === "department", sortDir)}</button></th>
-                  <th style={headerCellStyle}><button className="table-sort" onClick={() => handleSort("status")}>{headerLabel("Status", sortKey === "status", sortDir)}</button></th>
-                  <th style={{ ...headerCellStyle, cursor: "default" }}>MFA</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center", cursor: "default" }}>
-                    {headerLabel("Action")}
-                  </th>
-                </tr>
-              </thead>
+          {/* Loading state: keep table structure stable with skeletons. */}
+          {loading ? (
+            <SkeletonTable rows={6} columns={7} />
+          ) : error ? (
+            <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
+              {error}
+            </div>
+          ) : sorted.length === 0 ? (
+            <EmptyState
+              title="No users found"
+              description="Create your first user to start managing access."
+              action={{ label: 'Create User', onClick: () => router.push('/users/add') }}
+            />
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 980 }}
+              >
+                <thead>
+                  <tr>
+                    <th style={headerCellStyle}>
+                      <button className="table-sort" onClick={() => handleSort('name')}>
+                        {headerLabel('Name', sortKey === 'name', sortDir)}
+                      </button>
+                    </th>
+                    <th style={headerCellStyle}>
+                      <button className="table-sort" onClick={() => handleSort('email')}>
+                        {headerLabel('Email', sortKey === 'email', sortDir)}
+                      </button>
+                    </th>
+                    <th style={headerCellStyle}>
+                      <button className="table-sort" onClick={() => handleSort('phone')}>
+                        {headerLabel('Phone', sortKey === 'phone', sortDir)}
+                      </button>
+                    </th>
+                    <th style={headerCellStyle}>
+                      <button className="table-sort" onClick={() => handleSort('department')}>
+                        {headerLabel('Department', sortKey === 'department', sortDir)}
+                      </button>
+                    </th>
+                    <th style={headerCellStyle}>
+                      <button className="table-sort" onClick={() => handleSort('status')}>
+                        {headerLabel('Status', sortKey === 'status', sortDir)}
+                      </button>
+                    </th>
+                    <th style={{ ...headerCellStyle, cursor: 'default' }}>MFA</th>
+                    <th style={{ ...headerCellStyle, textAlign: 'center', cursor: 'default' }}>
+                      {headerLabel('Action')}
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {sorted.map((u, idx) => {
-                  const rowId = getRowId(u);
+                <tbody>
+                  {sorted.map((u, idx) => {
+                    const rowId = getRowId(u);
 
-                  return (
-                    <tr
-                      key={rowId || `${idx}`}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => openDrawer(rowId)}
-                      title="View details"
-                    >
-                      <td style={cellStyle}>{u.name || "-"}</td>
-                      <td style={cellStyle}>{u.email || "-"}</td>
-                      <td style={cellStyle}>{u.phone || "-"}</td>
-                      <td style={cellStyle}>{u.department || "-"}</td>
-                      <td style={cellStyle}>{normalizeStatus(u.status)}</td>
-                      <td style={cellStyle}>
-                        <span
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            textTransform: "uppercase",
-                            background: u.mfaEnabled ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.2)",
-                            color: u.mfaEnabled ? "#10b981" : "var(--text-muted)",
-                          }}
-                        >
-                          {u.mfaEnabled ? "Enabled" : "Disabled"}
-                        </span>
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <div style={{ display: "flex", justifyContent: "center" }}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDrawer(rowId);
+                    return (
+                      <tr
+                        key={rowId || `${idx}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => openDrawer(rowId)}
+                        title="View details"
+                      >
+                        <td style={cellStyle}>{u.name || '-'}</td>
+                        <td style={cellStyle}>{u.email || '-'}</td>
+                        <td style={cellStyle}>{u.phone || '-'}</td>
+                        <td style={cellStyle}>{u.department || '-'}</td>
+                        <td style={cellStyle}>{normalizeStatus(u.status)}</td>
+                        <td style={cellStyle}>
+                          <span
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              background: u.mfaEnabled
+                                ? 'rgba(16,185,129,0.15)'
+                                : 'rgba(148,163,184,0.2)',
+                              color: u.mfaEnabled ? '#10b981' : 'var(--text-muted)',
                             }}
-                            className="btn ghost"
-                            style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 500 }}
                           >
-                            View
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            {u.mfaEnabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDrawer(rowId);
+                              }}
+                              className="btn ghost"
+                              style={{ padding: '8px 14px', borderRadius: 999, fontWeight: 500 }}
+                            >
+                              View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
       {drawerOpen && selectedUser && (
         <div className="drawer-overlay" onClick={closeDrawer}>
           <div className="drawer-panel drawer-panel--sm" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)" }}>
-                  {selectedUser.name || "Untitled User"}
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
+                  {selectedUser.name || 'Untitled User'}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: "var(--text-muted)" }}>
-                  {selectedUser.email || "No email"} · {(selectedUser.role || "No role").toString()}
+                <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-muted)' }}>
+                  {selectedUser.email || 'No email'} · {(selectedUser.role || 'No role').toString()}
                 </div>
               </div>
 
-              <button className="btn ghost" onClick={closeDrawer} style={{ height: 34, borderRadius: 999 }}>
+              <button
+                className="btn ghost"
+                onClick={closeDrawer}
+                style={{ height: 34, borderRadius: 999 }}
+              >
                 Close
               </button>
             </div>
@@ -453,22 +492,22 @@ function UserDrawerContent({
   onResetMfa: (uid: string) => void;
   resettingMfa: boolean;
 }) {
-  const safe = (v: any) => (v === null || v === undefined || v === "" ? "-" : String(v));
+  const safe = (v: any) => (v === null || v === undefined || v === '' ? '-' : String(v));
 
   const formatPKR = (v: any) => {
     const num = Number(v);
-    return isNaN(num) ? "-" : `Rs. ${num.toLocaleString("en-PK")}`;
+    return isNaN(num) ? '-' : `Rs. ${num.toLocaleString('en-PK')}`;
   };
 
   const formatUSD = (v: any) => {
     const num = Number(v);
-    return isNaN(num) ? "-" : `$ ${num.toLocaleString("en-US")}`;
+    return isNaN(num) ? '-' : `$ ${num.toLocaleString('en-US')}`;
   };
 
   const formatDate = (v: any) => {
-    if (!v) return "-";
+    if (!v) return '-';
     const d = new Date(v);
-    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-US");
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-US');
   };
 
   const uid = getRowId(user);
@@ -490,8 +529,11 @@ function UserDrawerContent({
         <Row label="Monthly Target (USD)" value={formatUSD(user.monthlyTarget)} />
         <Row
           label="Commission (%)"
-          value={user.commission !== undefined && user.commission !== null && user.commission !== "" ? `${user.commission}%` : "-"}
-         
+          value={
+            user.commission !== undefined && user.commission !== null && user.commission !== ''
+              ? `${user.commission}%`
+              : '-'
+          }
         />
       </Section>
 
@@ -507,18 +549,18 @@ function UserDrawerContent({
       <Section title="System">
         <Row label="Created At" value={formatDate(user.createdAt)} />
         <Row label="Updated At" value={formatDate(user.updatedAt)} />
-        <Row label="User ID" value={uid || "-"} />
+        <Row label="User ID" value={uid || '-'} />
       </Section>
 
       <div style={{ height: 12 }} />
 
       <Section title="Security">
-        <Row label="MFA Status" value={user.mfaEnabled ? "Enabled" : "Disabled"} />
+        <Row label="MFA Status" value={user.mfaEnabled ? 'Enabled' : 'Disabled'} />
       </Section>
 
       <div style={{ height: 12 }} />
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <LoadingButton
           type="button"
           className="btn"
@@ -528,8 +570,8 @@ function UserDrawerContent({
           style={{
             borderRadius: 12,
             fontWeight: 500,
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid rgba(59,130,246,0.35)",
+            background: 'rgba(59,130,246,0.1)',
+            border: '1px solid rgba(59,130,246,0.35)',
             opacity: resettingMfa ? 0.7 : 1,
           }}
         >
@@ -553,11 +595,11 @@ function UserDrawerContent({
           style={{
             borderRadius: 12,
             fontWeight: 500,
-            background: "rgba(239,68,68,0.12)",
-            border: "1px solid rgba(239,68,68,0.35)",
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
             opacity: deleting ? 0.7 : 1,
-            cursor: deleting ? "not-allowed" : "pointer",
-            color: "var(--text-primary)",
+            cursor: deleting ? 'not-allowed' : 'pointer',
+            color: 'var(--text-primary)',
           }}
         >
           Delete User
@@ -567,24 +609,20 @@ function UserDrawerContent({
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
       className="card"
       style={{
         padding: 14,
         borderRadius: 14,
-        background: "var(--surface-muted)",
+        background: 'var(--surface-muted)',
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", opacity: 0.75 }}>{title}</div>
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>{children}</div>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.06em', opacity: 0.75 }}>
+        {title}
+      </div>
+      <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>{children}</div>
     </div>
   );
 }
@@ -595,14 +633,14 @@ function Row({ label, value }: { label: string; value: string }) {
       style={{
         padding: 12,
         borderRadius: 12,
-        border: "1px solid var(--border-subtle)",
-        display: "flex",
-        justifyContent: "space-between",
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        justifyContent: 'space-between',
         gap: 12,
       }}
     >
       <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 900 }}>{label}</div>
-      <div style={{ fontWeight: 800, textAlign: "right" }}>{value}</div>
+      <div style={{ fontWeight: 800, textAlign: 'right' }}>{value}</div>
     </div>
   );
 }

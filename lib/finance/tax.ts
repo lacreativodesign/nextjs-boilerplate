@@ -1,4 +1,4 @@
-export type TaxType = "sales_tax" | "vat" | "gst" | "hst" | "pst" | "qst" | "custom";
+export type TaxType = 'sales_tax' | 'vat' | 'gst' | 'hst' | 'pst' | 'qst' | 'custom';
 
 export interface TaxRate {
   id: string;
@@ -20,7 +20,7 @@ export interface TaxRate {
 export interface TaxExemption {
   id: string;
   clientId: string;
-  exemptionType: "full" | "partial";
+  exemptionType: 'full' | 'partial';
   exemptionReason: string;
   exemptionCertificate?: string;
   taxTypes: TaxType[];
@@ -44,31 +44,31 @@ export interface TaxCalculation {
 }
 
 export const DEFAULT_TAX_RATES = {
-  US_CA: { name: "California Sales Tax", rate: 7.25, type: "sales_tax" as const },
-  US_NY: { name: "New York Sales Tax", rate: 4.0, type: "sales_tax" as const },
-  US_TX: { name: "Texas Sales Tax", rate: 6.25, type: "sales_tax" as const },
-  US_FL: { name: "Florida Sales Tax", rate: 6.0, type: "sales_tax" as const },
-  US_WA: { name: "Washington Sales Tax", rate: 6.5, type: "sales_tax" as const },
+  US_CA: { name: 'California Sales Tax', rate: 7.25, type: 'sales_tax' as const },
+  US_NY: { name: 'New York Sales Tax', rate: 4.0, type: 'sales_tax' as const },
+  US_TX: { name: 'Texas Sales Tax', rate: 6.25, type: 'sales_tax' as const },
+  US_FL: { name: 'Florida Sales Tax', rate: 6.0, type: 'sales_tax' as const },
+  US_WA: { name: 'Washington Sales Tax', rate: 6.5, type: 'sales_tax' as const },
 
-  CA_ON: { name: "Ontario HST", rate: 13.0, type: "hst" as const },
-  CA_BC: { name: "BC GST + PST", rate: 12.0, type: "gst" as const },
-  CA_AB: { name: "Alberta GST", rate: 5.0, type: "gst" as const },
-  CA_QC: { name: "Quebec GST + QST", rate: 14.975, type: "qst" as const },
+  CA_ON: { name: 'Ontario HST', rate: 13.0, type: 'hst' as const },
+  CA_BC: { name: 'BC GST + PST', rate: 12.0, type: 'gst' as const },
+  CA_AB: { name: 'Alberta GST', rate: 5.0, type: 'gst' as const },
+  CA_QC: { name: 'Quebec GST + QST', rate: 14.975, type: 'qst' as const },
 
-  GB: { name: "UK VAT", rate: 20.0, type: "vat" as const },
-  DE: { name: "Germany VAT", rate: 19.0, type: "vat" as const },
-  FR: { name: "France VAT", rate: 20.0, type: "vat" as const },
-  ES: { name: "Spain VAT", rate: 21.0, type: "vat" as const },
-  IT: { name: "Italy VAT", rate: 22.0, type: "vat" as const },
-  NL: { name: "Netherlands VAT", rate: 21.0, type: "vat" as const },
+  GB: { name: 'UK VAT', rate: 20.0, type: 'vat' as const },
+  DE: { name: 'Germany VAT', rate: 19.0, type: 'vat' as const },
+  FR: { name: 'France VAT', rate: 20.0, type: 'vat' as const },
+  ES: { name: 'Spain VAT', rate: 21.0, type: 'vat' as const },
+  IT: { name: 'Italy VAT', rate: 22.0, type: 'vat' as const },
+  NL: { name: 'Netherlands VAT', rate: 21.0, type: 'vat' as const },
 
-  AU: { name: "Australia GST", rate: 10.0, type: "gst" as const },
-  NZ: { name: "New Zealand GST", rate: 15.0, type: "gst" as const },
-  SG: { name: "Singapore GST", rate: 9.0, type: "gst" as const },
-  IN: { name: "India GST", rate: 18.0, type: "gst" as const },
+  AU: { name: 'Australia GST', rate: 10.0, type: 'gst' as const },
+  NZ: { name: 'New Zealand GST', rate: 15.0, type: 'gst' as const },
+  SG: { name: 'Singapore GST', rate: 9.0, type: 'gst' as const },
+  IN: { name: 'India GST', rate: 18.0, type: 'gst' as const },
 
-  AE: { name: "UAE VAT", rate: 5.0, type: "vat" as const },
-  SA: { name: "Saudi Arabia VAT", rate: 15.0, type: "vat" as const },
+  AE: { name: 'UAE VAT', rate: 5.0, type: 'vat' as const },
+  SA: { name: 'Saudi Arabia VAT', rate: 15.0, type: 'vat' as const },
 };
 
 export function calculateTax(subtotal: number, taxRate: number): TaxCalculation {
@@ -82,7 +82,7 @@ export function calculateTax(subtotal: number, taxRate: number): TaxCalculation 
     total,
     taxBreakdown: [
       {
-        name: "Tax",
+        name: 'Tax',
         rate: taxRate,
         amount: taxAmount,
       },

@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { requireFinance } from "@/app/api/finance/_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { calculateVariance } from "@/lib/finance/budget";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
+import { NextResponse } from 'next/server';
+import { requireFinance } from '@/app/api/finance/_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { calculateVariance } from '@/lib/finance/budget';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type BudgetCategoryRecord = {
   id: string;
@@ -23,24 +23,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const { searchParams } = new URL(req.url);
-    const budgetId = searchParams.get("budgetId");
+    const budgetId = searchParams.get('budgetId');
 
     if (!budgetId) {
       throw new AppError({
-        message: "Budget ID is required",
-        code: "VALIDATION_ERROR",
+        message: 'Budget ID is required',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
 
-    const budgetSnap = await adminDb.collection("budgets").doc(budgetId).get();
+    const budgetSnap = await adminDb.collection('budgets').doc(budgetId).get();
     if (!budgetSnap.exists) {
       throw new AppError({
-        message: "Budget not found",
-        code: "NOT_FOUND",
+        message: 'Budget not found',
+        code: 'NOT_FOUND',
         status: 404,
       });
     }
@@ -48,17 +48,20 @@ export async function GET(req: Request) {
     const budget = budgetSnap.data();
     if (!budget || budget.tenantId !== auth.user.tenantId) {
       throw new AppError({
-        message: "Forbidden",
-        code: "FORBIDDEN",
+        message: 'Forbidden',
+        code: 'FORBIDDEN',
         status: 403,
       });
     }
 
-    const categories: BudgetCategoryRecord[] = (budget.categories as BudgetCategoryRecord[] | undefined) || [];
+    const categories: BudgetCategoryRecord[] =
+      (budget.categories as BudgetCategoryRecord[] | undefined) || [];
     const categoryVariances = categories.map((category) => {
       const spentAmount = category.spentAmount || 0;
       const remainingAmount =
-        category.remainingAmount !== undefined ? category.remainingAmount : category.allocatedAmount - spentAmount;
+        category.remainingAmount !== undefined
+          ? category.remainingAmount
+          : category.allocatedAmount - spentAmount;
       return {
         categoryId: category.id,
         categoryName: category.name,
@@ -90,9 +93,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (err) {
-    logError(err, { route: "GET /api/finance/budgets/variance" });
+    logError(err, { route: 'GET /api/finance/budgets/variance' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to generate variance report",
+      fallbackMessage: 'Failed to generate variance report',
     });
     return NextResponse.json(body, { status });
   }

@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireAdmin, serverTimestamp } from "../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireAdmin, serverTimestamp } from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const STARTER_LOCKED_PLANS = new Set(["starter", "trial"]);
+const STARTER_LOCKED_PLANS = new Set(['starter', 'trial']);
 
 function maskKey(key: string): string {
-  if (!key || key.length < 8) return "•".repeat(key.length || 8);
-  return key.slice(0, 7) + "..." + key.slice(-4);
+  if (!key || key.length < 8) return '•'.repeat(key.length || 8);
+  return key.slice(0, 7) + '...' + key.slice(-4);
 }
 
 export async function GET() {
@@ -20,8 +20,8 @@ export async function GET() {
     }
 
     // Check plan
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
-    const plan = String(tenantSnap.data()?.plan || "starter");
+    const tenantSnap = await adminDb.collection('tenants').doc(auth.user.tenantId).get();
+    const plan = String(tenantSnap.data()?.plan || 'starter');
     const planLocked = STARTER_LOCKED_PLANS.has(plan);
 
     if (planLocked) {
@@ -29,10 +29,10 @@ export async function GET() {
     }
 
     const snap = await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(auth.user.tenantId)
-      .collection("settings")
-      .doc("ai_workforce")
+      .collection('settings')
+      .doc('ai_workforce')
       .get();
 
     const data = snap.data() || {};
@@ -50,7 +50,7 @@ export async function GET() {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }
 
@@ -62,12 +62,12 @@ export async function POST(req: Request) {
     }
 
     // Check plan
-    const tenantSnap = await adminDb.collection("tenants").doc(auth.user.tenantId).get();
-    const plan = String(tenantSnap.data()?.plan || "starter");
+    const tenantSnap = await adminDb.collection('tenants').doc(auth.user.tenantId).get();
+    const plan = String(tenantSnap.data()?.plan || 'starter');
     if (STARTER_LOCKED_PLANS.has(plan)) {
       return NextResponse.json(
-        { ok: false, error: "AI Workforce requires Pro or Enterprise plan." },
-        { status: 403 }
+        { ok: false, error: 'AI Workforce requires Pro or Enterprise plan.' },
+        { status: 403 },
       );
     }
 
@@ -76,10 +76,10 @@ export async function POST(req: Request) {
 
     if (removeKey) {
       await adminDb
-        .collection("tenants")
+        .collection('tenants')
         .doc(auth.user.tenantId)
-        .collection("settings")
-        .doc("ai_workforce")
+        .collection('settings')
+        .doc('ai_workforce')
         .set(
           {
             provider: null,
@@ -87,33 +87,42 @@ export async function POST(req: Request) {
             updatedAt: serverTimestamp(),
             updatedBy: auth.user.uid,
           },
-          { merge: true }
+          { merge: true },
         );
       return NextResponse.json({ ok: true, removed: true });
     }
 
-    if (!provider || !["openai", "anthropic"].includes(provider)) {
-      return NextResponse.json({ ok: false, error: "Invalid provider. Must be openai or anthropic." }, { status: 400 });
+    if (!provider || !['openai', 'anthropic'].includes(provider)) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid provider. Must be openai or anthropic.' },
+        { status: 400 },
+      );
     }
 
-    if (!apiKey || typeof apiKey !== "string" || apiKey.trim().length < 20) {
-      return NextResponse.json({ ok: false, error: "Invalid API key." }, { status: 400 });
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 20) {
+      return NextResponse.json({ ok: false, error: 'Invalid API key.' }, { status: 400 });
     }
 
     // Basic format validation
     const key = apiKey.trim();
-    if (provider === "openai" && !key.startsWith("sk-")) {
-      return NextResponse.json({ ok: false, error: "OpenAI API keys must start with sk-" }, { status: 400 });
+    if (provider === 'openai' && !key.startsWith('sk-')) {
+      return NextResponse.json(
+        { ok: false, error: 'OpenAI API keys must start with sk-' },
+        { status: 400 },
+      );
     }
-    if (provider === "anthropic" && !key.startsWith("sk-ant-")) {
-      return NextResponse.json({ ok: false, error: "Anthropic API keys must start with sk-ant-" }, { status: 400 });
+    if (provider === 'anthropic' && !key.startsWith('sk-ant-')) {
+      return NextResponse.json(
+        { ok: false, error: 'Anthropic API keys must start with sk-ant-' },
+        { status: 400 },
+      );
     }
 
     await adminDb
-      .collection("tenants")
+      .collection('tenants')
       .doc(auth.user.tenantId)
-      .collection("settings")
-      .doc("ai_workforce")
+      .collection('settings')
+      .doc('ai_workforce')
       .set(
         {
           provider,
@@ -121,11 +130,11 @@ export async function POST(req: Request) {
           updatedAt: serverTimestamp(),
           updatedBy: auth.user.uid,
         },
-        { merge: true }
+        { merge: true },
       );
 
     return NextResponse.json({ ok: true, provider, apiKeyMasked: maskKey(key) });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message || 'Server error' }, { status: 500 });
   }
 }

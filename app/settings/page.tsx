@@ -1,7 +1,7 @@
-"use client";
-import { useEffect, useRef, useState } from "react";
-import { useTenantContext } from "@/lib/tenant/useTenantContext";
-import { apiFetch } from "@/lib/api/client";
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { apiFetch } from '@/lib/api/client';
 
 type Profile = {
   name: string;
@@ -17,7 +17,7 @@ type Profile = {
 function RoleBadge({ role }: { role: string }) {
   return (
     <span className="inline-flex items-center rounded-full bg-[var(--erp-blue-soft)] px-3 py-1 text-xs font-semibold capitalize text-[var(--erp-blue)]">
-      {role.replace(/_/g, " ")}
+      {role.replace(/_/g, ' ')}
     </span>
   );
 }
@@ -27,8 +27,14 @@ export default function SettingsProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<Profile>({
-    name: "", email: "", role: "",
-    phone: "", jobTitle: "", department: "", bio: "", avatarUrl: "",
+    name: '',
+    email: '',
+    role: '',
+    phone: '',
+    jobTitle: '',
+    department: '',
+    bio: '',
+    avatarUrl: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,14 +47,14 @@ export default function SettingsProfilePage() {
     if (tenantLoading) return;
     if (tenantData?.user) {
       setProfile({
-        name: tenantData.user.displayName || "",
-        email: tenantData.user.email || "",
-        role: tenantData.user.role || "",
-        phone: (tenantData.user as any).phone || "",
-        jobTitle: (tenantData.user as any).jobTitle || "",
-        department: (tenantData.user as any).department || "",
-        bio: (tenantData.user as any).bio || "",
-        avatarUrl: (tenantData.user as any).avatarUrl || "",
+        name: tenantData.user.displayName || '',
+        email: tenantData.user.email || '',
+        role: tenantData.user.role || '',
+        phone: (tenantData.user as any).phone || '',
+        jobTitle: (tenantData.user as any).jobTitle || '',
+        department: (tenantData.user as any).department || '',
+        bio: (tenantData.user as any).bio || '',
+        avatarUrl: (tenantData.user as any).avatarUrl || '',
       });
     }
     setLoading(false);
@@ -59,7 +65,7 @@ export default function SettingsProfilePage() {
     let active = true;
     (async () => {
       try {
-        const res = await apiFetch("/api/me/manager");
+        const res = await apiFetch('/api/me/manager');
         const json = await res.json();
         if (active) setManager(json?.manager ?? null);
       } catch {
@@ -85,9 +91,9 @@ export default function SettingsProfilePage() {
     e.preventDefault();
     try {
       setSaving(true);
-      await apiFetch("/api/users/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           displayName: profile.name,
           phone: profile.phone,
@@ -106,8 +112,13 @@ export default function SettingsProfilePage() {
 
   const avatarSrc = avatarPreview || profile.avatarUrl || null;
   const initials = profile.name
-    ? profile.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "?";
+    ? profile.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : '?';
 
   if (loading) {
     return <div className="card p-6 text-sm text-[var(--text-muted)]">Loading profile...</div>;
@@ -115,7 +126,6 @@ export default function SettingsProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-
       {/* Avatar + identity */}
       <div className="card p-6">
         <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Your Profile</h2>
@@ -128,8 +138,10 @@ export default function SettingsProfilePage() {
                 className="h-20 w-20 rounded-full object-cover border-2 border-[var(--border-subtle)]"
               />
             ) : (
-              <div className="h-20 w-20 rounded-full flex items-center justify-center text-xl font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #012167 0%, #6692f9 100%)" }}>
+              <div
+                className="h-20 w-20 rounded-full flex items-center justify-center text-xl font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #012167 0%, #6692f9 100%)' }}
+              >
                 {initials}
               </div>
             )}
@@ -150,7 +162,7 @@ export default function SettingsProfilePage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-lg font-bold text-[var(--text-primary)]">{profile.name || "—"}</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">{profile.name || '—'}</p>
             <p className="text-sm text-[var(--text-muted)]">{profile.email}</p>
             <RoleBadge role={profile.role} />
           </div>
@@ -209,9 +221,7 @@ export default function SettingsProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
-              Bio
-            </label>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Bio</label>
             <textarea
               className="input w-full"
               rows={3}
@@ -242,7 +252,7 @@ export default function SettingsProfilePage() {
               </label>
               <input
                 className="input w-full capitalize"
-                value={profile.role.replace(/_/g, " ")}
+                value={profile.role.replace(/_/g, ' ')}
                 readOnly
                 style={{ opacity: 0.55 }}
               />
@@ -261,9 +271,9 @@ export default function SettingsProfilePage() {
               value={
                 managerLoaded
                   ? manager
-                    ? `${manager.name} · ${manager.role.replace(/_/g, " ")}`
-                    : "CEO / Admin"
-                  : ""
+                    ? `${manager.name} · ${manager.role.replace(/_/g, ' ')}`
+                    : 'CEO / Admin'
+                  : ''
               }
               readOnly
               style={{ opacity: 0.55 }}
@@ -274,7 +284,7 @@ export default function SettingsProfilePage() {
           </div>
 
           <button type="submit" className="btn w-full" disabled={saving}>
-            {saving ? "Saving..." : saved ? "✓ Profile Saved!" : "Save Profile"}
+            {saving ? 'Saving...' : saved ? '✓ Profile Saved!' : 'Save Profile'}
           </button>
         </form>
       </div>
@@ -289,7 +299,6 @@ export default function SettingsProfilePage() {
           System theme sync: Active
         </div>
       </div>
-
     </div>
   );
 }

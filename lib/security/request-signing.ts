@@ -20,13 +20,16 @@ function getRotationKeys(): Array<{ id: string; value: string }> {
   const previous = process.env.INTERNAL_API_KEY_PREVIOUS?.trim();
   const keys: Array<{ id: string; value: string }> = [];
 
-  if (current) keys.push({ id: "current", value: current });
-  if (previous) keys.push({ id: "previous", value: previous });
+  if (current) keys.push({ id: 'current', value: current });
+  if (previous) keys.push({ id: 'previous', value: previous });
 
   return keys;
 }
 
-export function verifyRotatingApiKey(candidate: string | null | undefined): { valid: boolean; keyId?: string } {
+export function verifyRotatingApiKey(candidate: string | null | undefined): {
+  valid: boolean;
+  keyId?: string;
+} {
   if (!candidate) return { valid: false };
 
   for (const key of getRotationKeys()) {
@@ -41,19 +44,23 @@ export function verifyRotatingApiKey(candidate: string | null | undefined): { va
 async function hmacSha256Hex(secret: string, data: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
-    "raw",
+    'raw',
     encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
+    { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ["sign"],
+    ['sign'],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
   return Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-export async function buildRequestSignature(payload: string, timestamp: string, secret: string): Promise<string> {
+export async function buildRequestSignature(
+  payload: string,
+  timestamp: string,
+  secret: string,
+): Promise<string> {
   return hmacSha256Hex(secret, `${timestamp}.${payload}`);
 }
 
@@ -64,13 +71,7 @@ export async function verifyRequestSignature(params: {
   secret: string | null;
   toleranceSeconds?: number;
 }): Promise<boolean> {
-  const {
-    payload,
-    signature,
-    timestamp,
-    secret,
-    toleranceSeconds = 300,
-  } = params;
+  const { payload, signature, timestamp, secret, toleranceSeconds = 300 } = params;
 
   if (!signature || !timestamp || !secret) return false;
 
@@ -90,9 +91,12 @@ export async function signCacheValue(value: string, secret: string): Promise<str
   return `${value}.${sig}`;
 }
 
-export async function verifyCacheValue(signed: string | undefined, secret: string): Promise<string | null> {
+export async function verifyCacheValue(
+  signed: string | undefined,
+  secret: string,
+): Promise<string | null> {
   if (!signed || !secret) return null;
-  const idx = signed.lastIndexOf(".");
+  const idx = signed.lastIndexOf('.');
   if (idx <= 0) return null;
   const value = signed.slice(0, idx);
   const sig = signed.slice(idx + 1);

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
-type LeaveTypeCode = "vacation" | "sick" | "personal" | "unpaid" | "bereavement";
-type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+type LeaveTypeCode = 'vacation' | 'sick' | 'personal' | 'unpaid' | 'bereavement';
+type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 type LeaveBalance = {
   id: string;
@@ -32,21 +32,21 @@ type LeaveRequest = {
 };
 
 const leaveTypeLabels: Record<LeaveTypeCode, string> = {
-  vacation: "Vacation",
-  sick: "Sick",
-  personal: "Personal",
-  unpaid: "Unpaid",
-  bereavement: "Bereavement",
+  vacation: 'Vacation',
+  sick: 'Sick',
+  personal: 'Personal',
+  unpaid: 'Unpaid',
+  bereavement: 'Bereavement',
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border-subtle)",
+  width: '100%',
+  border: '1px solid var(--border-subtle)',
   borderRadius: 8,
-  padding: "8px 10px",
+  padding: '8px 10px',
   marginTop: 6,
-  background: "var(--input-bg)",
-  color: "var(--text-primary)",
+  background: 'var(--input-bg)',
+  color: 'var(--text-primary)',
 };
 
 function dateOnly(input: string) {
@@ -72,10 +72,10 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [leaveType, setLeaveType] = useState<LeaveTypeCode>("vacation");
+  const [leaveType, setLeaveType] = useState<LeaveTypeCode>('vacation');
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState('');
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
@@ -83,17 +83,20 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     setLoading(true);
     setError(null);
     try {
-      const [balanceRes, requestRes] = await Promise.all([apiFetch("/api/hr/leave/balance"), apiFetch("/api/hr/leave/requests")]);
+      const [balanceRes, requestRes] = await Promise.all([
+        apiFetch('/api/hr/leave/balance'),
+        apiFetch('/api/hr/leave/requests'),
+      ]);
       const balanceData = await balanceRes.json();
       const requestData = await requestRes.json();
 
-      if (!balanceData.ok) throw new Error(balanceData.error || "Failed to load balances");
-      if (!requestData.ok) throw new Error(requestData.error || "Failed to load requests");
+      if (!balanceData.ok) throw new Error(balanceData.error || 'Failed to load balances');
+      if (!requestData.ok) throw new Error(requestData.error || 'Failed to load requests');
 
       setBalances(balanceData.balances || []);
       setRequests(requestData.requests || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load leave data");
+      setError(err instanceof Error ? err.message : 'Failed to load leave data');
     }
     setLoading(false);
   }, []);
@@ -102,8 +105,14 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     void loadData();
   }, [loadData]);
 
-  const approvedRequests = useMemo(() => requests.filter((req) => req.status === "approved"), [requests]);
-  const pendingQueue = useMemo(() => requests.filter((req) => req.status === "pending"), [requests]);
+  const approvedRequests = useMemo(
+    () => requests.filter((req) => req.status === 'approved'),
+    [requests],
+  );
+  const pendingQueue = useMemo(
+    () => requests.filter((req) => req.status === 'pending'),
+    [requests],
+  );
 
   const monthCells = useMemo(() => buildMonthCells(calendarMonth), [calendarMonth]);
 
@@ -111,9 +120,9 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
     event.preventDefault();
     setError(null);
 
-    const response = await apiFetch("/api/hr/leave/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await apiFetch('/api/hr/leave/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         leaveType,
         startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
@@ -124,38 +133,38 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
 
     const data = await response.json();
     if (!data.ok) {
-      setError(data.error || "Unable to submit leave request");
+      setError(data.error || 'Unable to submit leave request');
       return;
     }
 
-    setReason("");
+    setReason('');
     await loadData();
   }
 
   async function handleApprove(id: string) {
     setError(null);
-    const response = await apiFetch(`/api/hr/leave/requests/${id}/approve`, { method: "PUT" });
+    const response = await apiFetch(`/api/hr/leave/requests/${id}/approve`, { method: 'PUT' });
     const data = await response.json();
     if (!data.ok) {
-      setError(data.error || "Unable to approve leave request");
+      setError(data.error || 'Unable to approve leave request');
       return;
     }
     await loadData();
   }
 
   async function handleReject(id: string) {
-    const rejectionReason = window.prompt("Rejection reason", "Insufficient staffing coverage");
+    const rejectionReason = window.prompt('Rejection reason', 'Insufficient staffing coverage');
     if (!rejectionReason) return;
 
     setError(null);
     const response = await apiFetch(`/api/hr/leave/requests/${id}/reject`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: rejectionReason }),
     });
     const data = await response.json();
     if (!data.ok) {
-      setError(data.error || "Unable to reject leave request");
+      setError(data.error || 'Unable to reject leave request');
       return;
     }
     await loadData();
@@ -163,14 +172,36 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
 
   return (
     <div className="grid gap-4 text-[var(--text-primary)]">
-      {error ? <div style={{ background: "var(--surface-muted)", color: "var(--danger)", padding: 12, borderRadius: 8 }}>{error}</div> : null}
+      {error ? (
+        <div
+          style={{
+            background: 'var(--surface-muted)',
+            color: 'var(--danger)',
+            padding: 12,
+            borderRadius: 8,
+          }}
+        >
+          {error}
+        </div>
+      ) : null}
 
       <div className="form-section">
         <h2 style={{ margin: 0, marginBottom: 12 }}>Leave Request Form</h2>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: 'grid',
+            gap: 12,
+            gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))',
+          }}
+        >
           <label>
             Leave Type
-            <select value={leaveType} onChange={(e) => setLeaveType(e.target.value as LeaveTypeCode)} style={inputStyle}>
+            <select
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value as LeaveTypeCode)}
+              style={inputStyle}
+            >
               {Object.entries(leaveTypeLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -180,17 +211,42 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
           </label>
           <label>
             Start Date
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} required />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={inputStyle}
+              required
+            />
           </label>
           <label>
             End Date
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} required />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={inputStyle}
+              required
+            />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label style={{ gridColumn: '1 / -1' }}>
             Reason
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, minHeight: 80 }} />
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              style={{ ...inputStyle, minHeight: 80 }}
+            />
           </label>
-          <button type="submit" style={{ ...inputStyle, cursor: "pointer", background: "var(--erp-blue)", color: "var(--sidebar-active-text)", maxWidth: 220 }}>
+          <button
+            type="submit"
+            style={{
+              ...inputStyle,
+              cursor: 'pointer',
+              background: 'var(--erp-blue)',
+              color: 'var(--sidebar-active-text)',
+              maxWidth: 220,
+            }}
+          >
             Submit Request
           </button>
         </form>
@@ -201,7 +257,13 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
         {loading ? (
           <p>Loading balances...</p>
         ) : (
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))',
+            }}
+          >
             {balances.map((balance) => (
               <div key={balance.id} className="stat-card">
                 <strong>{leaveTypeLabels[balance.leaveType]}</strong>
@@ -218,28 +280,70 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Team Leave Calendar</h2>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <button onClick={() => setCalendarMonth(new Date(Date.UTC(calendarMonth.getUTCFullYear(), calendarMonth.getUTCMonth() - 1, 1)))} style={{ cursor: "pointer" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <button
+            onClick={() =>
+              setCalendarMonth(
+                new Date(
+                  Date.UTC(calendarMonth.getUTCFullYear(), calendarMonth.getUTCMonth() - 1, 1),
+                ),
+              )
+            }
+            style={{ cursor: 'pointer' }}
+          >
             Previous
           </button>
           <strong>
-            {calendarMonth.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}
+            {calendarMonth.toLocaleString('en-US', {
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'UTC',
+            })}
           </strong>
-          <button onClick={() => setCalendarMonth(new Date(Date.UTC(calendarMonth.getUTCFullYear(), calendarMonth.getUTCMonth() + 1, 1)))} style={{ cursor: "pointer" }}>
+          <button
+            onClick={() =>
+              setCalendarMonth(
+                new Date(
+                  Date.UTC(calendarMonth.getUTCFullYear(), calendarMonth.getUTCMonth() + 1, 1),
+                ),
+              )
+            }
+            style={{ cursor: 'pointer' }}
+          >
             Next
           </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: 6 }}>
           {monthCells.map((day) => {
             const iso = day.toISOString().slice(0, 10);
-            const entries = approvedRequests.filter((req) => iso >= dateOnly(req.startDate) && iso <= dateOnly(req.endDate));
+            const entries = approvedRequests.filter(
+              (req) => iso >= dateOnly(req.startDate) && iso <= dateOnly(req.endDate),
+            );
             const isCurrentMonth = day.getUTCMonth() === calendarMonth.getUTCMonth();
 
             return (
-              <div key={iso} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, minHeight: 90, padding: 6, background: isCurrentMonth ? "var(--surface-card)" : "var(--surface-muted)" }}>
+              <div
+                key={iso}
+                style={{
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 8,
+                  minHeight: 90,
+                  padding: 6,
+                  background: isCurrentMonth ? 'var(--surface-card)' : 'var(--surface-muted)',
+                }}
+              >
                 <div style={{ fontSize: 12, marginBottom: 4 }}>{day.getUTCDate()}</div>
                 {entries.slice(0, 2).map((entry) => (
-                  <div key={entry.id} style={{ fontSize: 11, borderRadius: 6, padding: "2px 6px", background: "var(--erp-blue-soft)", marginBottom: 3 }}>
+                  <div
+                    key={entry.id}
+                    style={{
+                      fontSize: 11,
+                      borderRadius: 6,
+                      padding: '2px 6px',
+                      background: 'var(--erp-blue-soft)',
+                      marginBottom: 3,
+                    }}
+                  >
                     {entry.employeeName} · {leaveTypeLabels[entry.leaveType]}
                   </div>
                 ))}
@@ -254,21 +358,25 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
         {pendingQueue.length === 0 ? (
           <p>No pending requests.</p>
         ) : (
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: 'grid', gap: 8 }}>
             {pendingQueue.map((req) => (
-              <div key={req.id} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 10 }}>
+              <div
+                key={req.id}
+                style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 10 }}
+              >
                 <div>
-                  <strong>{req.employeeName}</strong> requested {req.totalDays} day(s) ({leaveTypeLabels[req.leaveType]})
+                  <strong>{req.employeeName}</strong> requested {req.totalDays} day(s) (
+                  {leaveTypeLabels[req.leaveType]})
                 </div>
                 <div>
                   {dateOnly(req.startDate)} → {dateOnly(req.endDate)}
                 </div>
                 {canApprove ? (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button onClick={() => handleApprove(req.id)} style={{ cursor: "pointer" }}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={() => handleApprove(req.id)} style={{ cursor: 'pointer' }}>
                       Approve
                     </button>
-                    <button onClick={() => handleReject(req.id)} style={{ cursor: "pointer" }}>
+                    <button onClick={() => handleReject(req.id)} style={{ cursor: 'pointer' }}>
                       Reject
                     </button>
                   </div>
@@ -281,16 +389,22 @@ export default function LeaveManagementDashboard({ canApprove }: { canApprove: b
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Leave History</h2>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: 'grid', gap: 8 }}>
           {requests.map((req) => (
-            <div key={req.id} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 10 }}>
+            <div
+              key={req.id}
+              style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 10 }}
+            >
               <div>
-                <strong>{req.employeeName}</strong> · {leaveTypeLabels[req.leaveType]} · {req.status}
+                <strong>{req.employeeName}</strong> · {leaveTypeLabels[req.leaveType]} ·{' '}
+                {req.status}
               </div>
               <div>
                 {dateOnly(req.startDate)} → {dateOnly(req.endDate)} ({req.totalHours}h)
               </div>
-              {req.rejectionReason ? <div style={{ color: "var(--danger)" }}>Reason: {req.rejectionReason}</div> : null}
+              {req.rejectionReason ? (
+                <div style={{ color: 'var(--danger)' }}>Reason: {req.rejectionReason}</div>
+              ) : null}
             </div>
           ))}
         </div>

@@ -1,4 +1,4 @@
-export type SegmentType = "service" | "value" | "business_type" | "industry" | "geo";
+export type SegmentType = 'service' | 'value' | 'business_type' | 'industry' | 'geo';
 
 export type SegmentDefinition = {
   id: string;
@@ -10,51 +10,51 @@ export type SegmentDefinition = {
   updatedAt?: string;
 };
 
-export const segmentDefaults: Record<Exclude<SegmentType, "value">, string[]> = {
+export const segmentDefaults: Record<Exclude<SegmentType, 'value'>, string[]> = {
   service: [
-    "Website Design",
-    "Branding",
-    "SEO",
-    "Social Media",
-    "Meta Ads",
-    "Maintenance",
-    "E-commerce",
+    'Website Design',
+    'Branding',
+    'SEO',
+    'Social Media',
+    'Meta Ads',
+    'Maintenance',
+    'E-commerce',
   ],
   business_type: [
-    "Local Service",
-    "E-commerce",
-    "SaaS/Tech",
-    "Real Estate",
-    "Restaurant",
-    "Medical",
-    "Education",
-    "Consulting",
+    'Local Service',
+    'E-commerce',
+    'SaaS/Tech',
+    'Real Estate',
+    'Restaurant',
+    'Medical',
+    'Education',
+    'Consulting',
   ],
   industry: [
-    "Retail",
-    "Healthcare",
-    "Real Estate",
-    "Hospitality",
-    "Education",
-    "Professional Services",
-    "Tech",
+    'Retail',
+    'Healthcare',
+    'Real Estate',
+    'Hospitality',
+    'Education',
+    'Professional Services',
+    'Tech',
   ],
-  geo: ["USA", "UK", "UAE", "Canada", "Australia", "Pakistan"],
+  geo: ['USA', 'UK', 'UAE', 'Canada', 'Australia', 'Pakistan'],
 };
 
 export const valueBands = [
-  { name: "Lead", slug: "lead", min: 0, max: 0 },
-  { name: "Starter", slug: "starter", min: 1, max: 999 },
-  { name: "Key Account", slug: "key-account", min: 1000, max: 4999 },
-  { name: "Whale", slug: "whale", min: 5000, max: Infinity },
+  { name: 'Lead', slug: 'lead', min: 0, max: 0 },
+  { name: 'Starter', slug: 'starter', min: 1, max: 999 },
+  { name: 'Key Account', slug: 'key-account', min: 1000, max: 4999 },
+  { name: 'Whale', slug: 'whale', min: 5000, max: Infinity },
 ];
 
 export function slugify(value: string) {
-  return String(value || "")
+  return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export function getValueBand(totalPaidUsd: number) {
@@ -69,9 +69,9 @@ export function normalizeSlugArray(input: unknown) {
   if (Array.isArray(input)) {
     return input.map((item) => slugify(String(item))).filter(Boolean);
   }
-  if (typeof input === "string") {
+  if (typeof input === 'string') {
     return input
-      .split(",")
+      .split(',')
       .map((item) => slugify(item))
       .filter(Boolean);
   }
@@ -79,6 +79,6 @@ export function normalizeSlugArray(input: unknown) {
 }
 
 export function normalizeOptionalSlug(input: unknown) {
-  const slug = slugify(String(input || ""));
+  const slug = slugify(String(input || ''));
   return slug || null;
 }

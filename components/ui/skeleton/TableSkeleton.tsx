@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 type TableSkeletonProps = {
   rows?: number;
@@ -12,13 +12,16 @@ export default function TableSkeleton({
   rows = 6,
   columns = 6,
   showHeader = true,
-  rowHeightClassName = "h-10",
-  className = "",
+  rowHeightClassName = 'h-10',
+  className = '',
 }: TableSkeletonProps) {
   return (
     <div className={`w-full space-y-3 ${className}`.trim()} aria-hidden="true">
       {showHeader ? (
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: columns }).map((_, index) => (
             <Skeleton key={`table-head-${index}`} className="h-4 w-full" />
           ))}
@@ -33,7 +36,10 @@ export default function TableSkeleton({
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >
             {Array.from({ length: columns }).map((_, colIndex) => (
-              <Skeleton key={`table-cell-${rowIndex}-${colIndex}`} className={`${rowHeightClassName} w-full`} />
+              <Skeleton
+                key={`table-cell-${rowIndex}-${colIndex}`}
+                className={`${rowHeightClassName} w-full`}
+              />
             ))}
           </div>
         ))}

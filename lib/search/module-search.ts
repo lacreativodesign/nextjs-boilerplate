@@ -1,7 +1,7 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import crypto from "crypto";
-import { SearchService } from "@/lib/search/search-service";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { SearchService } from '@/lib/search/search-service';
 import {
   csvResponse,
   searchSchema,
@@ -9,9 +9,9 @@ import {
   validateFilters,
   validateSortField,
   type SearchModuleConfig,
-} from "@/lib/search/search-api";
-import type { SearchFilter } from "@/types/search";
-import { CACHE_TTL_SECONDS, cacheKeys, rememberCached } from "@/lib/cache/redis-client";
+} from '@/lib/search/search-api';
+import type { SearchFilter } from '@/types/search';
+import { CACHE_TTL_SECONDS, cacheKeys, rememberCached } from '@/lib/cache/redis-client';
 
 export type SearchSession = {
   uid: string;
@@ -22,7 +22,7 @@ export type SearchSession = {
 export async function handleModuleSearch(
   request: NextRequest,
   session: SearchSession,
-  config: SearchModuleConfig
+  config: SearchModuleConfig,
 ) {
   const body = await request.json();
   const params = searchSchema.parse(body);
@@ -42,15 +42,19 @@ export async function handleModuleSearch(
   const cachePayload = {
     module: config.module,
     tenantId: session.tenantId,
-    searchText: params.searchText || "",
+    searchText: params.searchText || '',
     filters: params.filters || [],
-    sortBy: params.sortBy || config.defaultSortBy || "",
-    sortOrder: params.sortOrder || "",
+    sortBy: params.sortBy || config.defaultSortBy || '',
+    sortOrder: params.sortOrder || '',
     page: params.page,
     limit: params.limit,
-    format: params.format || "json",
+    format: params.format || 'json',
   };
-  const searchHash = crypto.createHash("sha256").update(JSON.stringify(cachePayload)).digest("hex").slice(0, 20);
+  const searchHash = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(cachePayload))
+    .digest('hex')
+    .slice(0, 20);
 
   let results: Array<Record<string, unknown>> = [];
   let total = 0;
@@ -88,8 +92,8 @@ export async function handleModuleSearch(
       config.collection,
       session.tenantId,
       [],
-      params.sortBy || config.defaultSortBy || "createdAt",
-      params.sortOrder || "desc"
+      params.sortBy || config.defaultSortBy || 'createdAt',
+      params.sortOrder || 'desc',
     )
       .limit(params.limit)
       .offset(offset)
@@ -99,7 +103,7 @@ export async function handleModuleSearch(
     total = results.length;
   }
 
-  if (params.format === "csv") {
+  if (params.format === 'csv') {
     const csvPayload = toCsv(results, config.csvFields);
     return csvResponse(csvPayload, `${config.module}-search.csv`);
   }
@@ -114,12 +118,14 @@ export async function handleModuleSearch(
     },
   };
 
-  if (params.format === "json" || !params.format) {
+  if (params.format === 'json' || !params.format) {
     const key = cacheKeys.searchResults(session.tenantId, config.module, searchHash);
-    const cachedPayload = await rememberCached(key, CACHE_TTL_SECONDS.searchResults, async () => responsePayload, [
-      `tenant:${session.tenantId}:search`,
-      `tenant:${session.tenantId}:search:${config.module}`,
-    ]);
+    const cachedPayload = await rememberCached(
+      key,
+      CACHE_TTL_SECONDS.searchResults,
+      async () => responsePayload,
+      [`tenant:${session.tenantId}:search`, `tenant:${session.tenantId}:search:${config.module}`],
+    );
     return NextResponse.json(cachedPayload);
   }
 

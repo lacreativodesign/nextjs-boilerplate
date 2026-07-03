@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { requireSalesReportsAccess, toISO } from "../../_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { requireSalesReportsAccess, toISO } from '../../_utils';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -12,35 +12,45 @@ export async function GET() {
     }
 
     const [leadsSnap, dealsSnap] = await Promise.all([
-      adminDb.collection("leads").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
-      adminDb.collection("deals").where("tenantId", "==", auth.user.tenantId).where("isDeleted", "==", false).limit(500).get(),
+      adminDb
+        .collection('leads')
+        .where('tenantId', '==', auth.user.tenantId)
+        .where('isDeleted', '==', false)
+        .limit(500)
+        .get(),
+      adminDb
+        .collection('deals')
+        .where('tenantId', '==', auth.user.tenantId)
+        .where('isDeleted', '==', false)
+        .limit(500)
+        .get(),
     ]);
 
     const leadSourceMap = new Map<string, number>();
     leadsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
-      const source = String(data.source || "Unknown");
+      const source = String(data.source || 'Unknown');
       leadSourceMap.set(source, (leadSourceMap.get(source) || 0) + 1);
     });
 
     let won = 0;
     let lost = 0;
     const agingBuckets = [
-      { label: "0-7 days", value: 0 },
-      { label: "8-14 days", value: 0 },
-      { label: "15-30 days", value: 0 },
-      { label: "31+ days", value: 0 },
+      { label: '0-7 days', value: 0 },
+      { label: '8-14 days', value: 0 },
+      { label: '15-30 days', value: 0 },
+      { label: '31+ days', value: 0 },
     ];
 
     const now = new Date();
 
     dealsSnap.docs.forEach((doc) => {
       const data = doc.data() || {};
-      const stage = String(data.stage || "");
-      if (stage === "Closed Won") won += 1;
-      if (stage === "Closed Lost") lost += 1;
+      const stage = String(data.stage || '');
+      if (stage === 'Closed Won') won += 1;
+      if (stage === 'Closed Lost') lost += 1;
 
-      if (stage !== "Closed Won" && stage !== "Closed Lost") {
+      if (stage !== 'Closed Won' && stage !== 'Closed Lost') {
         const createdAt = toISO(data.createdAt || data.updatedAt);
         if (!createdAt) return;
         const createdDate = new Date(createdAt);
@@ -67,7 +77,7 @@ export async function GET() {
       agingBuckets,
     });
   } catch (err: any) {
-    console.error("sales manager reports summary error:", err);
-    return NextResponse.json({ ok: false, error: "Unable to load reports." }, { status: 500 });
+    console.error('sales manager reports summary error:', err);
+    return NextResponse.json({ ok: false, error: 'Unable to load reports.' }, { status: 500 });
   }
 }

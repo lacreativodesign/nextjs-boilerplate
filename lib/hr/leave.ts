@@ -1,11 +1,11 @@
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { createHrNotification } from "@/app/api/admin/hr/_utils";
-import { sendBizostoEventNotification } from "@/lib/integrations/slack";
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { createHrNotification } from '@/app/api/admin/hr/_utils';
+import { sendBizostoEventNotification } from '@/lib/integrations/slack';
 
-export type LeaveTypeCode = "vacation" | "sick" | "personal" | "unpaid" | "bereavement";
-export type LeaveRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
-export type AccrualSchedule = "monthly" | "yearly";
+export type LeaveTypeCode = 'vacation' | 'sick' | 'personal' | 'unpaid' | 'bereavement';
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type AccrualSchedule = 'monthly' | 'yearly';
 
 export type LeavePolicy = {
   id: string;
@@ -57,13 +57,19 @@ export type LeaveRequest = {
   updatedAt: string | null;
 };
 
-export const DEFAULT_LEAVE_TYPES: LeaveTypeCode[] = ["vacation", "sick", "personal", "unpaid", "bereavement"];
+export const DEFAULT_LEAVE_TYPES: LeaveTypeCode[] = [
+  'vacation',
+  'sick',
+  'personal',
+  'unpaid',
+  'bereavement',
+];
 
 function toIso(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
+  if (typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   return null;
 }
 
@@ -75,7 +81,7 @@ export function calculateBusinessDaysInclusive(startDate: Date, endDate: Date) {
   const start = normalizeDateOnly(startDate);
   const end = normalizeDateOnly(endDate);
   if (end < start) {
-    throw new Error("End date must be on or after start date.");
+    throw new Error('End date must be on or after start date.');
   }
 
   let days = 0;
@@ -101,7 +107,7 @@ export function calculateAccruedHours(params: {
   const to = normalizeDateOnly(params.to);
   if (to < from) return 0;
 
-  if (params.accrualSchedule === "monthly") {
+  if (params.accrualSchedule === 'monthly') {
     const months =
       (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
       (to.getUTCMonth() - from.getUTCMonth()) +
@@ -115,7 +121,10 @@ export function calculateAccruedHours(params: {
   return Math.max(0, years) * Math.max(0, params.annualAllocationHours || params.accrualRateHours);
 }
 
-export function hasDateOverlap(rangeA: { startDate: Date; endDate: Date }, rangeB: { startDate: Date; endDate: Date }) {
+export function hasDateOverlap(
+  rangeA: { startDate: Date; endDate: Date },
+  rangeB: { startDate: Date; endDate: Date },
+) {
   return rangeA.startDate <= rangeB.endDate && rangeA.endDate >= rangeB.startDate;
 }
 
@@ -124,20 +133,25 @@ function serverTimestamp() {
 }
 
 function normalizeRole(role?: string | null) {
-  return (role || "").toLowerCase().replace(/-/g, "_");
+  return (role || '').toLowerCase().replace(/-/g, '_');
 }
 
 function canApproveLeave(role?: string | null) {
   const normalized = normalizeRole(role);
-  return normalized === "hr" || normalized === "admin" || normalized === "super_admin" || normalized === "am_manager";
+  return (
+    normalized === 'hr' ||
+    normalized === 'admin' ||
+    normalized === 'super_admin' ||
+    normalized === 'am_manager'
+  );
 }
 
 async function getActivePolicy(tenantId: string, leaveType: LeaveTypeCode) {
   const snap = await adminDb
-    .collection("hr_leave_policies")
-    .where("tenantId", "==", tenantId)
-    .where("leaveType", "==", leaveType)
-    .where("isActive", "==", true)
+    .collection('hr_leave_policies')
+    .where('tenantId', '==', tenantId)
+    .where('leaveType', '==', leaveType)
+    .where('isActive', '==', true)
     .limit(1)
     .get();
 
@@ -150,16 +164,17 @@ async function getActivePolicy(tenantId: string, leaveType: LeaveTypeCode) {
 }
 
 async function resolveApprover(tenantId: string, employeeId: string) {
-  const employeeDoc = await adminDb.collection("users").doc(employeeId).get();
+  const employeeDoc = await adminDb.collection('users').doc(employeeId).get();
   if (!employeeDoc.exists) {
-    throw new Error("Employee profile not found.");
+    throw new Error('Employee profile not found.');
   }
 
   const employee = employeeDoc.data() || {};
-  const managerId = typeof employee.managerId === "string" && employee.managerId ? employee.managerId : null;
+  const managerId =
+    typeof employee.managerId === 'string' && employee.managerId ? employee.managerId : null;
 
   if (managerId) {
-    const managerDoc = await adminDb.collection("users").doc(managerId).get();
+    const managerDoc = await adminDb.collection('users').doc(managerId).get();
     if (managerDoc.exists) {
       const manager = managerDoc.data() || {};
       return {
@@ -170,9 +185,9 @@ async function resolveApprover(tenantId: string, employeeId: string) {
   }
 
   const hrUserSnap = await adminDb
-    .collection("users")
-    .where("tenantId", "==", tenantId)
-    .where("role", "in", ["hr", "admin", "super_admin"])
+    .collection('users')
+    .where('tenantId', '==', tenantId)
+    .where('role', 'in', ['hr', 'admin', 'super_admin'])
     .limit(1)
     .get();
 
@@ -188,9 +203,14 @@ async function resolveApprover(tenantId: string, employeeId: string) {
   };
 }
 
-async function getOrCreateBalance(params: { tenantId: string; employeeId: string; leaveType: LeaveTypeCode; year: number }) {
+async function getOrCreateBalance(params: {
+  tenantId: string;
+  employeeId: string;
+  leaveType: LeaveTypeCode;
+  year: number;
+}) {
   const key = `${params.tenantId}_${params.employeeId}_${params.leaveType}_${params.year}`;
-  const ref = adminDb.collection("hr_leave_balances").doc(key);
+  const ref = adminDb.collection('hr_leave_balances').doc(key);
   const snap = await ref.get();
 
   if (!snap.exists) {
@@ -214,12 +234,17 @@ async function getOrCreateBalance(params: { tenantId: string; employeeId: string
   return { id: snap.id, ...(snap.data() as any) };
 }
 
-async function ensureNoOverlap(params: { tenantId: string; employeeId: string; startDate: Date; endDate: Date }) {
+async function ensureNoOverlap(params: {
+  tenantId: string;
+  employeeId: string;
+  startDate: Date;
+  endDate: Date;
+}) {
   const snap = await adminDb
-    .collection("hr_leave_requests")
-    .where("tenantId", "==", params.tenantId)
-    .where("employeeId", "==", params.employeeId)
-    .where("status", "in", ["pending", "approved"])
+    .collection('hr_leave_requests')
+    .where('tenantId', '==', params.tenantId)
+    .where('employeeId', '==', params.employeeId)
+    .where('status', 'in', ['pending', 'approved'])
     .limit(500)
     .get();
 
@@ -227,8 +252,13 @@ async function ensureNoOverlap(params: { tenantId: string; employeeId: string; s
     const req = doc.data() || {};
     const existingStart = normalizeDateOnly(new Date(toIso(req.startDate) || req.startDate));
     const existingEnd = normalizeDateOnly(new Date(toIso(req.endDate) || req.endDate));
-    if (hasDateOverlap({ startDate: params.startDate, endDate: params.endDate }, { startDate: existingStart, endDate: existingEnd })) {
-      throw new Error("Leave request overlaps an existing pending or approved request.");
+    if (
+      hasDateOverlap(
+        { startDate: params.startDate, endDate: params.endDate },
+        { startDate: existingStart, endDate: existingEnd },
+      )
+    ) {
+      throw new Error('Leave request overlaps an existing pending or approved request.');
     }
   }
 }
@@ -258,9 +288,9 @@ export class LeaveService {
     blackoutDates: string[];
   }) {
     const snap = await adminDb
-      .collection("hr_leave_policies")
-      .where("tenantId", "==", input.tenantId)
-      .where("leaveType", "==", input.leaveType)
+      .collection('hr_leave_policies')
+      .where('tenantId', '==', input.tenantId)
+      .where('leaveType', '==', input.leaveType)
       .limit(1)
       .get();
 
@@ -278,7 +308,7 @@ export class LeaveService {
     };
 
     if (snap.empty) {
-      const ref = adminDb.collection("hr_leave_policies").doc();
+      const ref = adminDb.collection('hr_leave_policies').doc();
       await ref.set({ ...payload, createdAt: serverTimestamp() });
       return { id: ref.id, ...payload };
     }
@@ -301,11 +331,15 @@ export class LeaveService {
     const endDate = normalizeDateOnly(input.endDate);
 
     if (endDate < startDate) {
-      throw new Error("End date must be on or after start date.");
+      throw new Error('End date must be on or after start date.');
     }
 
     const policy = await getActivePolicy(input.tenantId, input.leaveType);
-    assertNotBlackout(startDate, endDate, Array.isArray(policy.blackoutDates) ? policy.blackoutDates : []);
+    assertNotBlackout(
+      startDate,
+      endDate,
+      Array.isArray(policy.blackoutDates) ? policy.blackoutDates : [],
+    );
     await ensureNoOverlap({
       tenantId: input.tenantId,
       employeeId: input.employeeId,
@@ -323,22 +357,22 @@ export class LeaveService {
       year: requestYear,
     });
 
-    if (input.leaveType !== "unpaid" && Number(balance.availableHours || 0) < totalHours) {
-      throw new Error("Insufficient leave balance for requested dates.");
+    if (input.leaveType !== 'unpaid' && Number(balance.availableHours || 0) < totalHours) {
+      throw new Error('Insufficient leave balance for requested dates.');
     }
 
     const approver = await resolveApprover(input.tenantId, input.employeeId);
-    const reqRef = adminDb.collection("hr_leave_requests").doc();
+    const reqRef = adminDb.collection('hr_leave_requests').doc();
 
     await adminDb.runTransaction(async (tx) => {
-      const balanceRef = adminDb.collection("hr_leave_balances").doc(balance.id);
+      const balanceRef = adminDb.collection('hr_leave_balances').doc(balance.id);
       const currentBalanceSnap = await tx.get(balanceRef);
       const currentBalance = currentBalanceSnap.data() || balance;
       const availableHours = Number(currentBalance.availableHours || 0);
       const pendingHours = Number(currentBalance.pendingHours || 0);
 
-      if (input.leaveType !== "unpaid" && availableHours < totalHours) {
-        throw new Error("Insufficient leave balance for requested dates.");
+      if (input.leaveType !== 'unpaid' && availableHours < totalHours) {
+        throw new Error('Insufficient leave balance for requested dates.');
       }
 
       tx.set(
@@ -354,7 +388,7 @@ export class LeaveService {
           totalDays,
           totalHours,
           reason: input.reason || null,
-          status: "pending",
+          status: 'pending',
           reviewerId: approver.reviewerId,
           reviewerName: approver.reviewerName,
           reviewedAt: null,
@@ -362,10 +396,10 @@ export class LeaveService {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         },
-        { merge: false }
+        { merge: false },
       );
 
-      if (input.leaveType !== "unpaid") {
+      if (input.leaveType !== 'unpaid') {
         tx.update(balanceRef, {
           pendingHours: pendingHours + totalHours,
           availableHours: Math.max(0, availableHours - totalHours),
@@ -377,11 +411,11 @@ export class LeaveService {
     if (approver.reviewerId) {
       await createHrNotification({
         userId: approver.reviewerId,
-        title: "New leave request pending approval",
+        title: 'New leave request pending approval',
         message: `${input.employeeName} requested ${totalDays} day(s) of ${input.leaveType} leave.`,
-        type: "info",
+        type: 'info',
         entityId: reqRef.id,
-        deepLink: "/hr/leave",
+        deepLink: '/hr/leave',
       });
     }
 
@@ -390,18 +424,18 @@ export class LeaveService {
 
   static async getBalances(tenantId: string, employeeId: string, year: number) {
     const snap = await adminDb
-      .collection("hr_leave_balances")
-      .where("tenantId", "==", tenantId)
-      .where("employeeId", "==", employeeId)
-      .where("year", "==", year)
+      .collection('hr_leave_balances')
+      .where('tenantId', '==', tenantId)
+      .where('employeeId', '==', employeeId)
+      .where('year', '==', year)
       .get();
 
     const balances = snap.docs.map((doc) => {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        tenantId: String(data.tenantId || ""),
-        employeeId: String(data.employeeId || ""),
+        tenantId: String(data.tenantId || ''),
+        employeeId: String(data.employeeId || ''),
         leaveType: data.leaveType as LeaveTypeCode,
         accruedHours: Number(data.accruedHours || 0),
         usedHours: Number(data.usedHours || 0),
@@ -443,15 +477,15 @@ export class LeaveService {
     employeeId?: string;
     status?: LeaveRequestStatus;
   }) {
-    let query = adminDb.collection("hr_leave_requests").where("tenantId", "==", params.tenantId);
+    let query = adminDb.collection('hr_leave_requests').where('tenantId', '==', params.tenantId);
     if (params.status) {
-      query = query.where("status", "==", params.status);
+      query = query.where('status', '==', params.status);
     }
 
     if (params.employeeId) {
-      query = query.where("employeeId", "==", params.employeeId);
+      query = query.where('employeeId', '==', params.employeeId);
     } else if (!canApproveLeave(params.requesterRole)) {
-      query = query.where("employeeId", "==", params.requesterUserId);
+      query = query.where('employeeId', '==', params.requesterUserId);
     }
 
     const snap = await query.limit(500).get();
@@ -459,17 +493,17 @@ export class LeaveService {
       const data = doc.data() || {};
       return {
         id: doc.id,
-        tenantId: String(data.tenantId || ""),
-        employeeId: String(data.employeeId || ""),
-        employeeName: String(data.employeeName || ""),
+        tenantId: String(data.tenantId || ''),
+        employeeId: String(data.employeeId || ''),
+        employeeName: String(data.employeeName || ''),
         leaveType: data.leaveType as LeaveTypeCode,
-        policyId: String(data.policyId || ""),
-        startDate: toIso(data.startDate) || "",
-        endDate: toIso(data.endDate) || "",
+        policyId: String(data.policyId || ''),
+        startDate: toIso(data.startDate) || '',
+        endDate: toIso(data.endDate) || '',
         totalDays: Number(data.totalDays || 0),
         totalHours: Number(data.totalHours || 0),
         reason: data.reason || null,
-        status: (data.status || "pending") as LeaveRequestStatus,
+        status: (data.status || 'pending') as LeaveRequestStatus,
         reviewerId: data.reviewerId || null,
         reviewerName: data.reviewerName || null,
         reviewedAt: toIso(data.reviewedAt),
@@ -480,23 +514,29 @@ export class LeaveService {
     });
   }
 
-  static async approveRequest(params: { tenantId: string; requestId: string; actorUserId: string; actorName: string; actorRole: string }) {
+  static async approveRequest(params: {
+    tenantId: string;
+    requestId: string;
+    actorUserId: string;
+    actorName: string;
+    actorRole: string;
+  }) {
     if (!canApproveLeave(params.actorRole)) {
-      throw new Error("You are not allowed to approve leave requests.");
+      throw new Error('You are not allowed to approve leave requests.');
     }
 
-    const reqRef = adminDb.collection("hr_leave_requests").doc(params.requestId);
+    const reqRef = adminDb.collection('hr_leave_requests').doc(params.requestId);
     await adminDb.runTransaction(async (tx) => {
       const reqSnap = await tx.get(reqRef);
-      if (!reqSnap.exists) throw new Error("Leave request not found.");
+      if (!reqSnap.exists) throw new Error('Leave request not found.');
       const req = reqSnap.data() || {};
 
-      if (req.tenantId !== params.tenantId) throw new Error("Forbidden.");
-      if (req.status !== "pending") throw new Error("Only pending requests can be approved.");
+      if (req.tenantId !== params.tenantId) throw new Error('Forbidden.');
+      if (req.status !== 'pending') throw new Error('Only pending requests can be approved.');
 
       const year = new Date(toIso(req.startDate) || req.startDate).getUTCFullYear();
       const balanceId = `${params.tenantId}_${req.employeeId}_${req.leaveType}_${year}`;
-      const balanceRef = adminDb.collection("hr_leave_balances").doc(balanceId);
+      const balanceRef = adminDb.collection('hr_leave_balances').doc(balanceId);
       const balanceSnap = await tx.get(balanceRef);
       const balance = balanceSnap.data() || {};
 
@@ -505,7 +545,7 @@ export class LeaveService {
       const totalHours = Number(req.totalHours || 0);
 
       tx.update(reqRef, {
-        status: "approved",
+        status: 'approved',
         reviewerId: params.actorUserId,
         reviewerName: params.actorName,
         reviewedAt: serverTimestamp(),
@@ -513,7 +553,7 @@ export class LeaveService {
         updatedAt: serverTimestamp(),
       });
 
-      if (req.leaveType !== "unpaid") {
+      if (req.leaveType !== 'unpaid') {
         tx.set(
           balanceRef,
           {
@@ -529,7 +569,7 @@ export class LeaveService {
             updatedAt: serverTimestamp(),
             createdAt: balance.createdAt || serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
         );
       }
     });
@@ -537,21 +577,21 @@ export class LeaveService {
     const requestSnap = await reqRef.get();
     const request = requestSnap.data() || {};
     await createHrNotification({
-      userId: String(request.employeeId || ""),
-      title: "Leave request approved",
-      message: `Your ${request.leaveType || "leave"} request has been approved.`,
-      type: "success",
+      userId: String(request.employeeId || ''),
+      title: 'Leave request approved',
+      message: `Your ${request.leaveType || 'leave'} request has been approved.`,
+      type: 'success',
       entityId: params.requestId,
-      deepLink: "/hr/leave",
+      deepLink: '/hr/leave',
     });
 
     await sendBizostoEventNotification({
-      type: "leave_approved",
+      type: 'leave_approved',
       tenantId: params.tenantId,
-      targetUserId: String(request.employeeId || ""),
-      leaveType: String(request.leaveType || "leave"),
+      targetUserId: String(request.employeeId || ''),
+      leaveType: String(request.leaveType || 'leave'),
     }).catch((error) => {
-      console.error("slack leave approval notification failed:", error);
+      console.error('slack leave approval notification failed:', error);
     });
   }
 
@@ -564,26 +604,26 @@ export class LeaveService {
     reason: string;
   }) {
     if (!canApproveLeave(params.actorRole)) {
-      throw new Error("You are not allowed to reject leave requests.");
+      throw new Error('You are not allowed to reject leave requests.');
     }
 
-    const reqRef = adminDb.collection("hr_leave_requests").doc(params.requestId);
+    const reqRef = adminDb.collection('hr_leave_requests').doc(params.requestId);
     await adminDb.runTransaction(async (tx) => {
       const reqSnap = await tx.get(reqRef);
-      if (!reqSnap.exists) throw new Error("Leave request not found.");
+      if (!reqSnap.exists) throw new Error('Leave request not found.');
       const req = reqSnap.data() || {};
-      if (req.tenantId !== params.tenantId) throw new Error("Forbidden.");
-      if (req.status !== "pending") throw new Error("Only pending requests can be rejected.");
+      if (req.tenantId !== params.tenantId) throw new Error('Forbidden.');
+      if (req.status !== 'pending') throw new Error('Only pending requests can be rejected.');
 
       const year = new Date(toIso(req.startDate) || req.startDate).getUTCFullYear();
       const balanceId = `${params.tenantId}_${req.employeeId}_${req.leaveType}_${year}`;
-      const balanceRef = adminDb.collection("hr_leave_balances").doc(balanceId);
+      const balanceRef = adminDb.collection('hr_leave_balances').doc(balanceId);
       const balanceSnap = await tx.get(balanceRef);
       const balance = balanceSnap.data() || {};
       const totalHours = Number(req.totalHours || 0);
 
       tx.update(reqRef, {
-        status: "rejected",
+        status: 'rejected',
         reviewerId: params.actorUserId,
         reviewerName: params.actorName,
         reviewedAt: serverTimestamp(),
@@ -591,7 +631,7 @@ export class LeaveService {
         updatedAt: serverTimestamp(),
       });
 
-      if (req.leaveType !== "unpaid" && balanceSnap.exists) {
+      if (req.leaveType !== 'unpaid' && balanceSnap.exists) {
         tx.update(balanceRef, {
           pendingHours: Math.max(0, Number(balance.pendingHours || 0) - totalHours),
           availableHours: Number(balance.availableHours || 0) + totalHours,
@@ -603,26 +643,26 @@ export class LeaveService {
     const requestSnap = await reqRef.get();
     const request = requestSnap.data() || {};
     await createHrNotification({
-      userId: String(request.employeeId || ""),
-      title: "Leave request rejected",
-      message: `Your ${request.leaveType || "leave"} request was rejected: ${params.reason}`,
-      type: "warning",
+      userId: String(request.employeeId || ''),
+      title: 'Leave request rejected',
+      message: `Your ${request.leaveType || 'leave'} request was rejected: ${params.reason}`,
+      type: 'warning',
       entityId: params.requestId,
-      deepLink: "/hr/leave",
+      deepLink: '/hr/leave',
     });
   }
 
   static async accrueLeaveForMonth(params: { tenantId: string; year: number; month: number }) {
     const policiesSnap = await adminDb
-      .collection("hr_leave_policies")
-      .where("tenantId", "==", params.tenantId)
-      .where("isActive", "==", true)
+      .collection('hr_leave_policies')
+      .where('tenantId', '==', params.tenantId)
+      .where('isActive', '==', true)
       .get();
 
     const usersSnap = await adminDb
-      .collection("users")
-      .where("tenantId", "==", params.tenantId)
-      .where("status", "in", ["active", "Active"])
+      .collection('users')
+      .where('tenantId', '==', params.tenantId)
+      .where('status', 'in', ['active', 'Active'])
       .get();
 
     const processed: Array<{ employeeId: string; leaveType: string; hours: number }> = [];
@@ -631,11 +671,11 @@ export class LeaveService {
       const policy = policyDoc.data() || {};
       const leaveType = policy.leaveType as LeaveTypeCode;
       const hours =
-        policy.accrualSchedule === "yearly" && params.month !== 1
+        policy.accrualSchedule === 'yearly' && params.month !== 1
           ? 0
-          : policy.accrualSchedule === "yearly"
-          ? Number(policy.annualAllocationHours || 0)
-          : Number(policy.accrualRateHours || 0);
+          : policy.accrualSchedule === 'yearly'
+            ? Number(policy.annualAllocationHours || 0)
+            : Number(policy.accrualRateHours || 0);
 
       if (hours <= 0) continue;
 
@@ -650,16 +690,16 @@ export class LeaveService {
 
         const newAccrued = Number(balance.accruedHours || 0) + hours;
         const newAvailable = Number(balance.availableHours || 0) + hours;
-        await adminDb.collection("hr_leave_balances").doc(balance.id).set(
+        await adminDb.collection('hr_leave_balances').doc(balance.id).set(
           {
             accruedHours: newAccrued,
             availableHours: newAvailable,
             updatedAt: serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
         );
 
-        await adminDb.collection("hr_leave_accrual_history").add({
+        await adminDb.collection('hr_leave_accrual_history').add({
           tenantId: params.tenantId,
           employeeId: userDoc.id,
           employeeName: String(user.name || user.fullName || user.email || userDoc.id),
@@ -679,33 +719,43 @@ export class LeaveService {
     return processed;
   }
 
-  static async enforceCarryOverForYear(params: { tenantId: string; fromYear: number; toYear: number }) {
+  static async enforceCarryOverForYear(params: {
+    tenantId: string;
+    fromYear: number;
+    toYear: number;
+  }) {
     const balances = await adminDb
-      .collection("hr_leave_balances")
-      .where("tenantId", "==", params.tenantId)
-      .where("year", "==", params.fromYear)
+      .collection('hr_leave_balances')
+      .where('tenantId', '==', params.tenantId)
+      .where('year', '==', params.fromYear)
       .get();
 
     for (const balanceDoc of balances.docs) {
       const balance = balanceDoc.data() || {};
       const policy = await getActivePolicy(params.tenantId, balance.leaveType as LeaveTypeCode);
-      const carryOver = Math.max(0, Math.min(Number(balance.availableHours || 0), Number(policy.maxCarryOverHours || 0)));
+      const carryOver = Math.max(
+        0,
+        Math.min(Number(balance.availableHours || 0), Number(policy.maxCarryOverHours || 0)),
+      );
       const nextBalance = await getOrCreateBalance({
         tenantId: params.tenantId,
-        employeeId: String(balance.employeeId || ""),
+        employeeId: String(balance.employeeId || ''),
         leaveType: balance.leaveType as LeaveTypeCode,
         year: params.toYear,
       });
 
-      await adminDb.collection("hr_leave_balances").doc(nextBalance.id).set(
-        {
-          carryOverHours: carryOver,
-          accruedHours: Number(nextBalance.accruedHours || 0) + carryOver,
-          availableHours: Number(nextBalance.availableHours || 0) + carryOver,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await adminDb
+        .collection('hr_leave_balances')
+        .doc(nextBalance.id)
+        .set(
+          {
+            carryOverHours: carryOver,
+            accruedHours: Number(nextBalance.accruedHours || 0) + carryOver,
+            availableHours: Number(nextBalance.availableHours || 0) + carryOver,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
     }
   }
 }

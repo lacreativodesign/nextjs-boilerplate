@@ -1,10 +1,10 @@
-import { CurrencyCode } from "./currencies";
+import { CurrencyCode } from './currencies';
 
-export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Overdue" | "Void";
-export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
-export type PaymentMethod = "Card" | "Bank" | "Cash" | "PayPal" | "Wise" | "Other";
-export type PayrollStatus = "Draft" | "Approved" | "Paid";
-export type ExpenseStatus = "Recorded" | "Paid";
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Void';
+export type PaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+export type PaymentMethod = 'Card' | 'Bank' | 'Cash' | 'PayPal' | 'Wise' | 'Other';
+export type PayrollStatus = 'Draft' | 'Approved' | 'Paid';
+export type ExpenseStatus = 'Recorded' | 'Paid';
 
 export type InvoiceLineItem = {
   name: string;
@@ -49,7 +49,7 @@ export type PaymentRecord = {
   clientName: string;
   invoiceId: string | null;
   orderId?: string | null;
-  currency: "USD";
+  currency: 'USD';
   amountUsd: number;
   method: PaymentMethod;
   status: PaymentStatus;
@@ -65,7 +65,7 @@ export type PayrollRecord = {
   userId: string;
   userName: string;
   role: string;
-  currency: "PKR";
+  currency: 'PKR';
   baseSalaryPkr: number;
   commissionPkr?: number | null;
   commissionUsd?: number | null;
@@ -81,7 +81,7 @@ export type ExpenseRecord = {
   id: string;
   category: string;
   vendor: string;
-  currency: "PKR";
+  currency: 'PKR';
   amountPkr: number;
   expenseDate: string | null;
   status: ExpenseStatus;

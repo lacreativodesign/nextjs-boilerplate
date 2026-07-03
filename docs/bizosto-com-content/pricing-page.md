@@ -1,15 +1,19 @@
 # Pricing Page Content for bizosto.com
 
 ## Headline
+
 "Simple, transparent pricing for every business"
 
 ## Subheadline
+
 "Start with a 14-day free trial. No credit card required."
 
 ## Plans
 
 ### Starter — $99/month
+
 Best for: Small teams getting started
+
 - Up to 10 users
 - 5GB storage
 - Core modules: Dashboard, Clients, Sales, Finance, Admin
@@ -17,7 +21,9 @@ Best for: Small teams getting started
 - 14-day free trial
 
 ### Pro — $299/month ⭐ Most Popular
+
 Best for: Growing businesses
+
 - Up to 50 users
 - 50GB storage
 - All 15 modules included
@@ -27,7 +33,9 @@ Best for: Growing businesses
 - 14-day free trial
 
 ### Enterprise — $799/month
+
 Best for: Large organizations
+
 - Unlimited users
 - Unlimited storage
 - All modules + custom integrations

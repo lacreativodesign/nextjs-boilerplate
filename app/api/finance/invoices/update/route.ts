@@ -1,30 +1,30 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   createFinanceEvent,
   parseString,
   queueFinanceEmail,
   requireFinance,
   serverTimestamp,
-} from "../../_utils";
-import { createNotification, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
-import { sendEmail } from "@/lib/email/email-service";
-import { logEvent } from "@/lib/audit";
-import { getClientIp } from "@/lib/security";
-import { assertPermission, Permission } from "../../../../lib/permissions";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
+} from '../../_utils';
+import { createNotification, getUserIdsByRoles, getUsersByRoles } from '@/lib/notifications';
+import { sendEmail } from '@/lib/email/email-service';
+import { logEvent } from '@/lib/audit';
+import { getClientIp } from '@/lib/security';
+import { assertPermission, Permission } from '../../../../lib/permissions';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
 import {
   computeBalanceDue,
   computeInvoiceStatus,
   normalizeInvoiceStatus,
   parseInvoiceStatus,
-} from "@/lib/finance/status";
-import { maybeAutoCreateProjectFromInvoice } from "@/lib/finance/invoiceActions";
-import { normalizeRole } from "../../../admin/_utils";
-import { sendBizostoEventNotification } from "@/lib/integrations/slack";
-import { writeAuditLog } from "@/lib/tenant/audit";
+} from '@/lib/finance/status';
+import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
+import { normalizeRole } from '../../../admin/_utils';
+import { sendBizostoEventNotification } from '@/lib/integrations/slack';
+import { writeAuditLog } from '@/lib/tenant/audit';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -38,36 +38,39 @@ export async function POST(req: Request) {
     const action = parseString(body?.action).trim();
 
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Invoice id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invoice id is required.' }, { status: 400 });
     }
 
-    const ref = adminDb.collection("invoices").doc(id);
+    const ref = adminDb.collection('invoices').doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Invoice not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Invoice not found.' }, { status: 404 });
     }
 
     const invoice = snap.data() || {};
-    const clientId = String(invoice.clientId || "");
-    const clientName = String(invoice.clientName || "");
-    const orderId = String(invoice.orderId || "");
-    const isSuperAdmin = normalizeRole(auth.user.role || "") === "super_admin";
+    const clientId = String(invoice.clientId || '');
+    const clientName = String(invoice.clientName || '');
+    const orderId = String(invoice.orderId || '');
+    const isSuperAdmin = normalizeRole(auth.user.role || '') === 'super_admin';
     const tenantId = normalizeTenantId(auth.user.tenantId);
 
     if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    if (action === "mark_paid") {
+    if (action === 'mark_paid') {
       try {
         assertPermission(auth.user.role, Permission.MarkPaymentPaid);
       } catch {
-        return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
 
       const currentStatus = normalizeInvoiceStatus(invoice.status);
-      if (currentStatus === "void") {
-        return NextResponse.json({ ok: false, error: "Void invoices cannot be marked paid." }, { status: 400 });
+      if (currentStatus === 'void') {
+        return NextResponse.json(
+          { ok: false, error: 'Void invoices cannot be marked paid.' },
+          { status: 400 },
+        );
       }
 
       const amountTotal = Number(invoice.amountTotalUsd || 0);
@@ -83,16 +86,16 @@ export async function POST(req: Request) {
         status: nextStatus,
         totalPaid: nextPaid,
         balanceDue,
-        paidAt: nextStatus === "paid" ? serverTimestamp() : invoice.paidAt || null,
+        paidAt: nextStatus === 'paid' ? serverTimestamp() : invoice.paidAt || null,
         updatedAt: serverTimestamp(),
       });
       await writeAuditLog({
         tenantId: auth.user.tenantId || null,
         actorUserId: auth.user.uid,
-        actorName: auth.user.name || auth.user.fullName || "",
+        actorName: auth.user.name || auth.user.fullName || '',
         actorRole: auth.user.role,
-        actionType: "invoice.mark_paid",
-        entityType: "invoice",
+        actionType: 'invoice.mark_paid',
+        entityType: 'invoice',
         entityId: id,
         metadata: {
           orderId: invoice.orderId || id,
@@ -103,54 +106,55 @@ export async function POST(req: Request) {
         },
       }).catch(() => undefined);
 
-
       const paymentId = parseString(body?.paymentId).trim();
       if (paymentId) {
-        const paymentRef = adminDb.collection("payments").doc(paymentId);
+        const paymentRef = adminDb.collection('payments').doc(paymentId);
         const paymentSnap = await paymentRef.get();
         if (!paymentSnap.exists) {
-          return NextResponse.json({ ok: false, error: "Payment not found." }, { status: 404 });
+          return NextResponse.json({ ok: false, error: 'Payment not found.' }, { status: 404 });
         }
         const paymentData = paymentSnap.data() || {};
         if (!isSuperAdmin && docTenantId(paymentData) !== tenantId) {
-          return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+          return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
         }
         await paymentRef.set(
           {
-            status: "succeeded",
+            status: 'succeeded',
             paidAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
         );
       }
 
-      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
-      const financeIds = await getUserIdsByRoles(["finance", "admin", "super_admin"]);
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
+      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin']);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
             toUserId: uid,
-            title: "Invoice paid",
+            title: 'Invoice paid',
             body: `Invoice ${orderId || id} marked paid.`,
-            type: "success",
-            entityType: "invoice",
+            type: 'success',
+            entityType: 'invoice',
             entityId: id,
-            deepLink: "/finance/invoices",
+            deepLink: '/finance/invoices',
             createdBy: { uid: auth.user.uid, name: actorName },
-            roleTarget: "finance",
+            roleTarget: 'finance',
             tenantId: auth.user.tenantId || null,
-          })
-        )
+          }),
+        ),
       );
 
       // Email finance + admin on invoice paid — non-blocking
-      getUsersByRoles(['finance', 'admin'], auth.user.tenantId || '').then((recipients) => {
-        return Promise.all(recipients.map((recipient) =>
-          sendEmail({
-            to: recipient.email || '',
-            subject: `✅ Invoice paid — ${orderId || id}`,
-            html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+      getUsersByRoles(['finance', 'admin'], auth.user.tenantId || '')
+        .then((recipients) => {
+          return Promise.all(
+            recipients.map((recipient) =>
+              sendEmail({
+                to: recipient.email || '',
+                subject: `✅ Invoice paid — ${orderId || id}`,
+                html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#F8FAFC;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -171,15 +175,17 @@ export async function POST(req: Request) {
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
-          }).catch(() => {})
-        ));
-      }).catch((err) => console.error('[INVOICE_PAID] Failed to notify finance', err));
+              }).catch(() => {}),
+            ),
+          );
+        })
+        .catch((err) => console.error('[INVOICE_PAID] Failed to notify finance', err));
 
       await createFinanceEvent({
-        type: "finance.invoice_paid",
-        title: "Invoice marked paid",
+        type: 'finance.invoice_paid',
+        title: 'Invoice marked paid',
         description: `Invoice ${orderId || id} marked paid.`,
-        entityType: "invoice",
+        entityType: 'invoice',
         entityId: id,
         createdByUid: auth.user.uid,
         createdByName: actorName,
@@ -188,121 +194,131 @@ export async function POST(req: Request) {
 
       try {
         await logEvent({
-          type: "finance.invoice_paid",
-          title: "Invoice marked paid",
+          type: 'finance.invoice_paid',
+          title: 'Invoice marked paid',
           description: `Invoice ${orderId || id} marked paid.`,
-          entityType: "invoice",
+          entityType: 'invoice',
           entityId: id,
           actor: { uid: auth.user.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
-            userAgent: req.headers.get("user-agent") || "",
+            userAgent: req.headers.get('user-agent') || '',
           },
           audit: {
-            action: "update",
-            resource: "invoice",
+            action: 'update',
+            resource: 'invoice',
             resourceId: id,
             changes: [
-              { field: "status", oldValue: invoice.status || null, newValue: nextStatus },
-              { field: "totalPaid", oldValue: invoice.totalPaid || 0, newValue: nextPaid },
-              { field: "balanceDue", oldValue: invoice.balanceDue || 0, newValue: balanceDue },
-              { field: "paidAt", oldValue: invoice.paidAt || null, newValue: nextStatus === "paid" ? "serverTimestamp" : null },
+              { field: 'status', oldValue: invoice.status || null, newValue: nextStatus },
+              { field: 'totalPaid', oldValue: invoice.totalPaid || 0, newValue: nextPaid },
+              { field: 'balanceDue', oldValue: invoice.balanceDue || 0, newValue: balanceDue },
+              {
+                field: 'paidAt',
+                oldValue: invoice.paidAt || null,
+                newValue: nextStatus === 'paid' ? 'serverTimestamp' : null,
+              },
             ],
           },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
 
-      if (nextStatus === "paid") {
+      if (nextStatus === 'paid') {
         try {
           await maybeAutoCreateProjectFromInvoice({
             invoiceId: id,
             invoiceData: { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus },
-            tenantId: String(invoice.tenantId || tenantId || ""),
+            tenantId: String(invoice.tenantId || tenantId || ''),
             actor: { uid: auth.user.uid, name: actorName },
           });
         } catch (autoCreateError) {
-          console.error("project auto-create error:", autoCreateError);
+          console.error('project auto-create error:', autoCreateError);
         }
 
         await sendBizostoEventNotification({
-          type: "invoice_paid",
-          tenantId: String(invoice.tenantId || tenantId || ""),
+          type: 'invoice_paid',
+          tenantId: String(invoice.tenantId || tenantId || ''),
           invoiceNumber: orderId || id,
-          amountLabel: `${invoice.currency || "USD"} ${amountTotal.toFixed(2)}`,
+          amountLabel: `${invoice.currency || 'USD'} ${amountTotal.toFixed(2)}`,
         }).catch((error) => {
-          console.error("slack invoice notification failed:", error);
+          console.error('slack invoice notification failed:', error);
         });
       }
 
-      const clientSnap = clientId ? await adminDb.collection("clients").doc(clientId).get() : null;
-      const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || "") : "";
+      const clientSnap = clientId ? await adminDb.collection('clients').doc(clientId).get() : null;
+      const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || '') : '';
       if (email) {
         queueFinanceEmail({
           to: email,
-          template: "payment_received",
-          subject: "Payment received",
+          template: 'payment_received',
+          subject: 'Payment received',
           data: { invoiceId: id, orderId, clientName },
           tenantId: auth.user.tenantId,
         }).catch((error) => {
-          console.error("payment email queue error:", error);
+          console.error('payment email queue error:', error);
         });
       }
 
       return NextResponse.json({ ok: true });
     }
 
-    if (action === "update_status") {
+    if (action === 'update_status') {
       const requested = parseInvoiceStatus(body?.status);
       if (!requested) {
-        return NextResponse.json({ ok: false, error: "Invalid status." }, { status: 400 });
+        return NextResponse.json({ ok: false, error: 'Invalid status.' }, { status: 400 });
       }
-      if (requested === "paid") {
-        return NextResponse.json({ ok: false, error: "Use mark_paid to record payments." }, { status: 400 });
+      if (requested === 'paid') {
+        return NextResponse.json(
+          { ok: false, error: 'Use mark_paid to record payments.' },
+          { status: 400 },
+        );
       }
-      if (requested === "void" && normalizeInvoiceStatus(invoice.status) === "paid") {
-        return NextResponse.json({ ok: false, error: "Paid invoices cannot be voided." }, { status: 400 });
+      if (requested === 'void' && normalizeInvoiceStatus(invoice.status) === 'paid') {
+        return NextResponse.json(
+          { ok: false, error: 'Paid invoices cannot be voided.' },
+          { status: 400 },
+        );
       }
       await ref.update({
         status: requested,
         updatedAt: serverTimestamp(),
       });
       try {
-        const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || "";
+        const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
         await logEvent({
-          type: "finance.invoice_status_updated",
-          title: "Invoice status updated",
+          type: 'finance.invoice_status_updated',
+          title: 'Invoice status updated',
           description: `Invoice ${orderId || id} status updated to ${requested}.`,
-          entityType: "invoice",
+          entityType: 'invoice',
           entityId: id,
           actor: { uid: auth.user.uid, name: actorName },
           metadata: {
             ip: getClientIp(req),
-            userAgent: req.headers.get("user-agent") || "",
+            userAgent: req.headers.get('user-agent') || '',
           },
           audit: {
-            action: "update",
-            resource: "invoice",
+            action: 'update',
+            resource: 'invoice',
             resourceId: id,
-            changes: [{ field: "status", oldValue: invoice.status || null, newValue: requested }],
+            changes: [{ field: 'status', oldValue: invoice.status || null, newValue: requested }],
           },
         });
       } catch (auditError) {
-        console.error("audit log error:", auditError);
+        console.error('audit log error:', auditError);
       }
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'Invalid action.' }, { status: 400 });
   } catch (err: any) {
-    console.error("finance/invoices update error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('finance/invoices update error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to update invoice.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to update invoice.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

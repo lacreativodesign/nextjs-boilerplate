@@ -56,9 +56,15 @@ export default function InvoicesPage() {
   return (
     <main className="page-frame text-[var(--text-primary)]">
       <div className="tabs-bar">
-        <Link href="/billing" className="tab-pill">Subscription</Link>
-        <Link href="/billing/invoices" className="tab-pill active">Invoice History</Link>
-        <Link href="/billing/terminal" className="tab-pill">Payment Terminal</Link>
+        <Link href="/billing" className="tab-pill">
+          Subscription
+        </Link>
+        <Link href="/billing/invoices" className="tab-pill active">
+          Invoice History
+        </Link>
+        <Link href="/billing/terminal" className="tab-pill">
+          Payment Terminal
+        </Link>
       </div>
 
       <div className="mb-6">
@@ -69,9 +75,7 @@ export default function InvoicesPage() {
       </div>
 
       {loading && (
-        <div className="card p-6 text-sm text-[var(--text-muted)]">
-          Loading invoices…
-        </div>
+        <div className="card p-6 text-sm text-[var(--text-muted)]">Loading invoices…</div>
       )}
 
       {error && (
@@ -82,9 +86,7 @@ export default function InvoicesPage() {
 
       {!loading && !error && invoices.length === 0 && (
         <div className="card p-10 text-center">
-          <p className="text-sm font-medium text-[var(--text-muted)]">
-            No invoices yet
-          </p>
+          <p className="text-sm font-medium text-[var(--text-muted)]">No invoices yet</p>
           <p className="mt-1 text-xs text-[var(--text-soft)]">
             Your Bizosto invoices will appear here after your first billing cycle.
           </p>
@@ -96,11 +98,21 @@ export default function InvoicesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Date</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Period</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
-                <th className="p-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Download</th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Date
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Period
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Amount
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Status
+                </th>
+                <th className="p-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Download
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -118,7 +130,8 @@ export default function InvoicesPage() {
                   <td className="p-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
-                        STATUS_CLASS[inv.status] ?? 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
+                        STATUS_CLASS[inv.status] ??
+                        'bg-[var(--surface-muted)] text-[var(--text-muted)]'
                       }`}
                     >
                       {inv.status}

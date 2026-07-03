@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { requireFinance } from "@/app/api/finance/_utils";
-import { resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
+import { NextResponse } from 'next/server';
+import { requireFinance } from '@/app/api/finance/_utils';
+import { resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
@@ -14,17 +14,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const { searchParams } = new URL(req.url);
-    const clientId = searchParams.get("clientId");
+    const clientId = searchParams.get('clientId');
 
     let query: FirebaseFirestore.Query = adminDb
-      .collection("tax_exemptions")
-      .where("tenantId", "==", auth.user.tenantId);
+      .collection('tax_exemptions')
+      .where('tenantId', '==', auth.user.tenantId);
 
     if (clientId) {
-      query = query.where("clientId", "==", clientId);
+      query = query.where('clientId', '==', clientId);
     }
 
     const snapshot = await query.get();
@@ -32,9 +32,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, exemptions });
   } catch (err) {
-    logError(err, { route: "GET /api/finance/tax-exemptions/list" });
+    logError(err, { route: 'GET /api/finance/tax-exemptions/list' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to fetch tax exemptions",
+      fallbackMessage: 'Failed to fetch tax exemptions',
     });
     return NextResponse.json(body, { status });
   }

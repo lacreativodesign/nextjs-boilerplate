@@ -1,22 +1,23 @@
-"use client";
+'use client';
 
-
-const PAYMENT_METHODS = ["Card", "Bank", "Cash", "PayPal", "Wise", "Other"];
+const PAYMENT_METHODS = ['Card', 'Bank', 'Cash', 'PayPal', 'Wise', 'Other'];
 
 export default function FinanceSettingsPage() {
-
   return (
     <div className="space-y-4">
       <div className="settings-section">
         <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">Finance role settings (read-only). Contact Admin for workflow-level changes.</p>
+        <p className="page-subtitle">
+          Finance role settings (read-only). Contact Admin for workflow-level changes.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 settings-section">
         <div className="card" style={{ padding: 18, borderRadius: 16 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Currency Display Rules</div>
           <p style={{ fontSize: 13, opacity: 0.75 }}>
-            Client revenue is tracked in USD. Salaries, payroll, and operating expenses are tracked in PKR.
+            Client revenue is tracked in USD. Salaries, payroll, and operating expenses are tracked
+            in PKR.
           </p>
         </div>
 
@@ -36,11 +37,11 @@ export default function FinanceSettingsPage() {
               <div
                 key={method}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 12px",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
                   borderRadius: 12,
-                  background: "var(--surface-muted)",
+                  background: 'var(--surface-muted)',
                 }}
               >
                 <span>{method}</span>
@@ -69,7 +70,7 @@ export default function FinanceSettingsPage() {
 
 function SettingRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
       <span style={{ opacity: 0.7 }}>{label}</span>
       <input className="input" value={value} readOnly style={{ maxWidth: 120 }} />
     </div>

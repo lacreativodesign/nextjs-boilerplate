@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireFinance, serverTimestamp } from "@/app/api/finance/_utils";
-import { AppError, resolveErrorResponse } from "@/lib/errors";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { logError } from "@/lib/logging";
-import { checkRateLimit } from "@/lib/security";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireFinance, serverTimestamp } from '@/app/api/finance/_utils';
+import { AppError, resolveErrorResponse } from '@/lib/errors';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { logError } from '@/lib/logging';
+import { checkRateLimit } from '@/lib/security';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 const recordActualSchema = z.object({
   budgetId: z.string().min(1),
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    await checkRateLimit(req, "standard", auth.user.uid);
+    await checkRateLimit(req, 'standard', auth.user.uid);
 
     const body = await req.json();
     const validated = recordActualSchema.parse(body);
@@ -42,21 +42,21 @@ export async function POST(req: Request) {
 
     if (Number.isNaN(actualDate.getTime())) {
       throw new AppError({
-        message: "Invalid actual date",
-        code: "VALIDATION_ERROR",
+        message: 'Invalid actual date',
+        code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
 
-    const budgetRef = adminDb.collection("budgets").doc(validated.budgetId);
-    const actualRef = adminDb.collection("budget_actuals").doc();
+    const budgetRef = adminDb.collection('budgets').doc(validated.budgetId);
+    const actualRef = adminDb.collection('budget_actuals').doc();
 
     await adminDb.runTransaction(async (tx) => {
       const budgetSnap = await tx.get(budgetRef);
       if (!budgetSnap.exists) {
         throw new AppError({
-          message: "Budget not found",
-          code: "NOT_FOUND",
+          message: 'Budget not found',
+          code: 'NOT_FOUND',
           status: 404,
         });
       }
@@ -64,21 +64,25 @@ export async function POST(req: Request) {
       const budgetData = budgetSnap.data();
       if (!budgetData || budgetData.tenantId !== auth.user.tenantId) {
         throw new AppError({
-          message: "Forbidden",
-          code: "FORBIDDEN",
+          message: 'Forbidden',
+          code: 'FORBIDDEN',
           status: 403,
         });
       }
 
-      const categories = ((budgetData.categories as BudgetCategoryRecord[] | undefined) || []).map((category) => ({
-        ...category,
-      }));
-      const categoryIndex = categories.findIndex((category) => category.id === validated.categoryId);
+      const categories = ((budgetData.categories as BudgetCategoryRecord[] | undefined) || []).map(
+        (category) => ({
+          ...category,
+        }),
+      );
+      const categoryIndex = categories.findIndex(
+        (category) => category.id === validated.categoryId,
+      );
 
       if (categoryIndex === -1) {
         throw new AppError({
-          message: "Budget category not found",
-          code: "NOT_FOUND",
+          message: 'Budget category not found',
+          code: 'NOT_FOUND',
           status: 404,
         });
       }
@@ -113,9 +117,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, actualId: actualRef.id });
   } catch (err) {
-    logError(err, { route: "POST /api/finance/budgets/record-actual" });
+    logError(err, { route: 'POST /api/finance/budgets/record-actual' });
     const { status, body } = resolveErrorResponse(err, {
-      fallbackMessage: "Failed to record actual spending",
+      fallbackMessage: 'Failed to record actual spending',
     });
     return NextResponse.json(body, { status });
   }

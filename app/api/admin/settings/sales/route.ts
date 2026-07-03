@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
 import {
   SALES_PIPELINE_STAGES,
   canEditSection,
@@ -9,10 +9,10 @@ import {
   serverTimestamp,
   toISO,
   logSettingsChange,
-} from "../_utils";
+} from '../_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -21,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const snap = await adminDb.collection("settings").doc(`${auth.user.tenantId}_sales`).get();
+    const snap = await adminDb.collection('settings').doc(`${auth.user.tenantId}_sales`).get();
     const data = snap.exists ? snap.data() : {};
 
     const settings = {
@@ -44,12 +44,12 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       settings,
-      canEdit: canEditSection(auth.user.role, "sales"),
+      canEdit: canEditSection(auth.user.role, 'sales'),
       role: auth.user.role,
     });
   } catch (err) {
-    console.error("settings/sales get error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/sales get error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -60,8 +60,8 @@ export async function PUT(req: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    if (!canEditSection(auth.user.role, "sales")) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    if (!canEditSection(auth.user.role, 'sales')) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -82,17 +82,20 @@ export async function PUT(req: Request) {
       updatedBy: auth.user.uid,
     };
 
-    await adminDb.collection("settings").doc(`${auth.user.tenantId}_sales`).set(payload, { merge: true });
+    await adminDb
+      .collection('settings')
+      .doc(`${auth.user.tenantId}_sales`)
+      .set(payload, { merge: true });
 
     await logSettingsChange({
       user: auth.user,
-      section: "sales",
-      summary: "Sales settings updated.",
+      section: 'sales',
+      summary: 'Sales settings updated.',
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("settings/sales update error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    console.error('settings/sales update error', err);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

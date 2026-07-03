@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 type SystemHealth = {
   notifications: { total: number; unread: number; lastCreatedAt: string | null };
@@ -19,7 +19,10 @@ export default function SuperAdminSystemHealthPage() {
     let active = true;
 
     async function load() {
-      const res = await fetch("/api/super_admin/system-health", { cache: "no-store", credentials: "include" });
+      const res = await fetch('/api/super_admin/system-health', {
+        cache: 'no-store',
+        credentials: 'include',
+      });
       const json = await res.json().catch(() => null);
       if (active && json?.ok) {
         setHealth(json);
@@ -53,15 +56,21 @@ export default function SuperAdminSystemHealthPage() {
           <p className="section-subtitle">Unread by role + tenant is tracked per queue.</p>
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-[var(--border-subtle)] p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Total</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Total
+              </div>
               <div className="text-3xl font-semibold mt-2">{health?.notifications?.total ?? 0}</div>
             </div>
             <div className="rounded-xl border border-[var(--border-subtle)] p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Unread</div>
-              <div className="text-3xl font-semibold mt-2">{health?.notifications?.unread ?? 0}</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Unread
+              </div>
+              <div className="text-3xl font-semibold mt-2">
+                {health?.notifications?.unread ?? 0}
+              </div>
             </div>
             <div className="text-xs text-[var(--text-muted)]">
-              Last event: {health?.notifications?.lastCreatedAt || "—"}
+              Last event: {health?.notifications?.lastCreatedAt || '—'}
             </div>
           </div>
         </div>
@@ -71,11 +80,15 @@ export default function SuperAdminSystemHealthPage() {
           <p className="section-subtitle">Queued, sent, and failed counts.</p>
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-[var(--border-subtle)] p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Total</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Total
+              </div>
               <div className="text-3xl font-semibold mt-2">{health?.emails?.total ?? 0}</div>
             </div>
             <div className="rounded-xl border border-[var(--border-subtle)] p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Status</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Status
+              </div>
               <div className="text-sm text-[var(--text-muted)] mt-2">
                 {Object.entries(health?.emails?.statusCounts || {}).map(([status, count]) => (
                   <div key={status}>
@@ -85,7 +98,7 @@ export default function SuperAdminSystemHealthPage() {
               </div>
             </div>
             <div className="text-xs text-[var(--text-muted)]">
-              Last event: {health?.emails?.lastCreatedAt || "—"}
+              Last event: {health?.emails?.lastCreatedAt || '—'}
             </div>
           </div>
         </div>

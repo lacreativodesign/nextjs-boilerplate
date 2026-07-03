@@ -1,21 +1,21 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { docTenantId, normalizeTenantId } from "@/lib/tenant";
-import { requireAmManagerOrAdmin } from "../../admin/_utils";
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { docTenantId, normalizeTenantId } from '@/lib/tenant';
+import { requireAmManagerOrAdmin } from '../../admin/_utils';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
 async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string) {
-  const queries = [query.where("tenantId", "==", tenantId)];
+  const queries = [query.where('tenantId', '==', tenantId)];
   const snapshots = await Promise.all(queries.map((q) => q.get()));
   const map = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   snapshots.forEach((snap) => {
@@ -37,25 +37,25 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const projects = await queryWithTenant(
-      adminDb.collection("projects").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const ownedProjects = projects.filter(
-      (doc) => String(doc.data()?.ownerAmUid || "") === auth.user.uid
+      (doc) => String(doc.data()?.ownerAmUid || '') === auth.user.uid,
     );
     const scopedProjects = ownedProjects.length ? ownedProjects : projects;
     const projectIds = new Set(scopedProjects.map((doc) => doc.id));
 
     const clientsSnap = await queryWithTenant(
-      adminDb.collection("clients").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('clients').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
     const activeClients = clientsSnap.length;
 
     const changeRequests = await queryWithTenant(
-      adminDb.collection("changeRequests").where("isDeleted", "==", false).limit(500),
-      tenantId
+      adminDb.collection('changeRequests').where('isDeleted', '==', false).limit(500),
+      tenantId,
     );
 
     const now = new Date();
@@ -66,7 +66,7 @@ export async function GET() {
 
     changeRequests.forEach((doc) => {
       const data = doc.data() || {};
-      const projectId = String(data.projectId || "");
+      const projectId = String(data.projectId || '');
       if (projectIds.size && projectId && !projectIds.has(projectId)) return;
       const createdAt = toISO(data.createdAt || data.updatedAt);
       if (createdAt) {
@@ -74,7 +74,11 @@ export async function GET() {
         if (createdDate >= startOfMonth) {
           changeRequestsMtd += 1;
         }
-        if (data.internalApproved === true && createdDate < sevenDaysAgo && !["Approved", "Rejected", "Completed"].includes(String(data.status || ""))) {
+        if (
+          data.internalApproved === true &&
+          createdDate < sevenDaysAgo &&
+          !['Approved', 'Rejected', 'Completed'].includes(String(data.status || ''))
+        ) {
           if (projectId) atRiskProjects.add(projectId);
         }
       }
@@ -82,25 +86,29 @@ export async function GET() {
 
     scopedProjects.forEach((doc) => {
       const data = doc.data() || {};
-      const status = String(data.status || "").toLowerCase();
-      const health = String(data.health || "").toLowerCase();
-      if (status.includes("stalled") || health.includes("at risk") || health.includes("overdue")) {
+      const status = String(data.status || '').toLowerCase();
+      const health = String(data.health || '').toLowerCase();
+      if (status.includes('stalled') || health.includes('at risk') || health.includes('overdue')) {
         atRiskProjects.add(doc.id);
       }
     });
 
     const events = await queryWithTenant(
-      adminDb.collection("events").orderBy("createdAt", "desc").limit(200),
-      tenantId
+      adminDb.collection('events').orderBy('createdAt', 'desc').limit(200),
+      tenantId,
     );
     const escalations = events
       .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
-      .filter(({ data }) => String(data.type || "").toLowerCase().includes("escalation"))
+      .filter(({ data }) =>
+        String(data.type || '')
+          .toLowerCase()
+          .includes('escalation'),
+      )
       .slice(0, 10)
       .map(({ id, data }) => ({
         id,
-        title: String(data.title || "Escalation"),
-        description: String(data.description || ""),
+        title: String(data.title || 'Escalation'),
+        description: String(data.description || ''),
         createdAt: toISO(data.createdAt),
       }));
 
@@ -114,13 +122,13 @@ export async function GET() {
       escalations,
     });
   } catch (err: any) {
-    console.error("am-manager overview error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('am-manager overview error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to load overview.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to load overview.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

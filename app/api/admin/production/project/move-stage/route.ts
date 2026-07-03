@@ -1,30 +1,43 @@
-import { NextResponse } from "next/server";
-import admin from "firebase-admin";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { getCurrentUser, isAdminOrSuper } from "../../../_utils";
-import { computeHealth, getWorkflowSettings } from "../../../settings/_utils";
-import { createNotification, createNotificationEvent, createNotifications, getUserIdsByRoles, getUsersByRoles } from "@/lib/notifications";
+import { NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { getCurrentUser, isAdminOrSuper } from '../../../_utils';
+import { computeHealth, getWorkflowSettings } from '../../../settings/_utils';
+import {
+  createNotification,
+  createNotificationEvent,
+  createNotifications,
+  getUserIdsByRoles,
+  getUsersByRoles,
+} from '@/lib/notifications';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-const VALID_STAGES = ["Kickoff", "Draft", "Review", "Revisions", "Final", "Delivered"] as const;
+const VALID_STAGES = ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'] as const;
 
 const ALLOWED_MOVES: Record<string, string[]> = {
-  Kickoff: ["Draft"],
-  Draft: ["Review"],
-  Review: ["Revisions", "Draft"],
-  Revisions: ["Review", "Final"],
-  Final: ["Delivered", "Revisions"],
+  Kickoff: ['Draft'],
+  Draft: ['Review'],
+  Review: ['Revisions', 'Draft'],
+  Revisions: ['Review', 'Final'],
+  Final: ['Delivered', 'Revisions'],
   Delivered: [],
 };
 
-const QA_EVENT_TYPES = ["project.qa_approved", "project.qa_rejected"] as const;
+const QA_EVENT_TYPES = ['project.qa_approved', 'project.qa_rejected'] as const;
 
 type QAEventType = (typeof QA_EVENT_TYPES)[number];
 
 type ProjectDoc = {
   stage?: string;
-  stageHistory?: Array<{ from?: string; to?: string; byUid?: string; byName?: string; at?: any; reason?: string }>;
+  stageHistory?: Array<{
+    from?: string;
+    to?: string;
+    byUid?: string;
+    byName?: string;
+    at?: any;
+    reason?: string;
+  }>;
   stageTimestamps?: Record<string, any>;
   projectName?: string;
   clientId?: string;
@@ -47,26 +60,26 @@ type ProjectDoc = {
 
 function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-function normalizeStageHistory(history?: ProjectDoc["stageHistory"]) {
+function normalizeStageHistory(history?: ProjectDoc['stageHistory']) {
   if (!Array.isArray(history)) return [];
   return history.map((entry) => ({
-    from: entry?.from || "",
-    to: entry?.to || "",
-    byUid: entry?.byUid || "",
-    byName: entry?.byName || "",
+    from: entry?.from || '',
+    to: entry?.to || '',
+    byUid: entry?.byUid || '',
+    byName: entry?.byName || '',
     at: toISO(entry?.at),
     reason: entry?.reason || null,
   }));
 }
 
 function isValidStage(stage?: string) {
-  return VALID_STAGES.includes((stage || "") as (typeof VALID_STAGES)[number]);
+  return VALID_STAGES.includes((stage || '') as (typeof VALID_STAGES)[number]);
 }
 
 function canMoveStage(fromStage: string, toStage: string) {
@@ -86,7 +99,7 @@ async function emitAutomationEvent({
   actorName: string;
   payload: Record<string, any>;
 }) {
-  await adminDb.collection("automationEvents").add({
+  await adminDb.collection('automationEvents').add({
     type,
     projectId,
     actorId,
@@ -100,49 +113,52 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser();
     if (!me) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!isAdminOrSuper(me.role)) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();
-    const projectId = String(body?.projectId || "").trim();
-    const toStage = String(body?.toStage || "").trim();
-    const reason = body?.reason ? String(body.reason).trim() : "";
-    const eventType = body?.eventType ? String(body.eventType).trim() : "";
+    const projectId = String(body?.projectId || '').trim();
+    const toStage = String(body?.toStage || '').trim();
+    const reason = body?.reason ? String(body.reason).trim() : '';
+    const eventType = body?.eventType ? String(body.eventType).trim() : '';
 
     if (!projectId) {
-      return NextResponse.json({ ok: false, error: "Project id is required." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Project id is required.' }, { status: 400 });
     }
 
     if (!isValidStage(toStage)) {
-      return NextResponse.json({ ok: false, error: "Invalid target stage." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid target stage.' }, { status: 400 });
     }
 
     if (eventType && !QA_EVENT_TYPES.includes(eventType as QAEventType)) {
-      return NextResponse.json({ ok: false, error: "Invalid event type." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid event type.' }, { status: 400 });
     }
 
-    if (eventType === "project.qa_rejected" && !reason) {
-      return NextResponse.json({ ok: false, error: "Reason is required for QA rejection." }, { status: 400 });
+    if (eventType === 'project.qa_rejected' && !reason) {
+      return NextResponse.json(
+        { ok: false, error: 'Reason is required for QA rejection.' },
+        { status: 400 },
+      );
     }
 
-    const ref = adminDb.collection("projects").doc(projectId);
+    const ref = adminDb.collection('projects').doc(projectId);
     const snap = await ref.get();
     if (!snap.exists) {
-      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 
     const data = snap.data() as ProjectDoc;
     if (data?.isDeleted) {
-      return NextResponse.json({ ok: false, error: "Project not found." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 
-    const fromStage = isValidStage(data.stage) ? (data.stage as string) : "Kickoff";
+    const fromStage = isValidStage(data.stage) ? (data.stage as string) : 'Kickoff';
     if (!canMoveStage(fromStage, toStage)) {
-      return NextResponse.json({ ok: false, error: "Stage move not allowed." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Stage move not allowed.' }, { status: 400 });
     }
 
     const now = admin.firestore.Timestamp.now();
@@ -153,7 +169,7 @@ export async function POST(req: Request) {
       from: fromStage,
       to: toStage,
       byUid: me.uid,
-      byName: me.name || me.fullName || me.displayName || "",
+      byName: me.name || me.fullName || me.displayName || '',
       at: now,
       reason: reason ?? undefined,
     });
@@ -168,16 +184,16 @@ export async function POST(req: Request) {
         stageTimestamps,
         updatedAt: serverNow,
         lastActivityAt: serverNow,
-        deliveredAt: toStage === "Delivered" ? serverNow : data.deliveredAt || null,
+        deliveredAt: toStage === 'Delivered' ? serverNow : data.deliveredAt || null,
       },
-      { merge: true }
+      { merge: true },
     );
 
     await emitAutomationEvent({
-      type: "project.stage_moved",
+      type: 'project.stage_moved',
       projectId,
       actorId: me.uid,
-      actorName: me.name || me.fullName || me.displayName || "",
+      actorName: me.name || me.fullName || me.displayName || '',
       payload: {
         from: fromStage,
         to: toStage,
@@ -190,7 +206,7 @@ export async function POST(req: Request) {
         type: eventType,
         projectId,
         actorId: me.uid,
-        actorName: me.name || me.fullName || me.displayName || "",
+        actorName: me.name || me.fullName || me.displayName || '',
         payload: {
           from: fromStage,
           to: toStage,
@@ -203,23 +219,23 @@ export async function POST(req: Request) {
     const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
-    const actorName = me.name || me.fullName || me.displayName || "";
+    const actorName = me.name || me.fullName || me.displayName || '';
 
     const stageNotifications: Promise<void>[] = [];
     if (updated.ownerAmUid) {
       stageNotifications.push(
         createNotification({
           toUserId: String(updated.ownerAmUid),
-          title: "Project stage updated",
-          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
-          type: "info",
-          entityType: "project",
+          title: 'Project stage updated',
+          body: `${updated.projectName || 'Project'} moved from ${fromStage} to ${toStage}.`,
+          type: 'info',
+          entityType: 'project',
           entityId: projectId,
-          deepLink: "/am/projects",
+          deepLink: '/am/projects',
           createdBy: { uid: me.uid, name: actorName },
-          roleTarget: "am",
+          roleTarget: 'am',
           tenantId: updated.tenantId || null,
-        })
+        }),
       );
     }
 
@@ -228,64 +244,67 @@ export async function POST(req: Request) {
       stageNotifications.push(
         createNotification({
           toUserId: String(productionRecipient),
-          title: "Project stage updated",
-          body: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
-          type: "info",
-          entityType: "project",
+          title: 'Project stage updated',
+          body: `${updated.projectName || 'Project'} moved from ${fromStage} to ${toStage}.`,
+          type: 'info',
+          entityType: 'project',
           entityId: projectId,
-          deepLink: "/admin/projects",
+          deepLink: '/admin/projects',
           createdBy: { uid: me.uid, name: actorName },
-          roleTarget: "production",
+          roleTarget: 'production',
           tenantId: updated.tenantId || null,
-        })
+        }),
       );
     }
 
     await Promise.all(stageNotifications);
 
-    if (toStage === "Delivered" && updated.clientId) {
+    if (toStage === 'Delivered' && updated.clientId) {
       try {
-        const clientSnap = await adminDb.collection("clients").doc(String(updated.clientId)).get();
+        const clientSnap = await adminDb.collection('clients').doc(String(updated.clientId)).get();
         const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
-        const portalUid = String(clientData.portalUserUid || "");
+        const portalUid = String(clientData.portalUserUid || '');
         if (portalUid) {
           await createNotification({
             recipientUid: portalUid,
-            recipientRole: "client",
+            recipientRole: 'client',
             tenantId: updated.tenantId || null,
-            title: "Project delivered",
-            message: `${updated.projectName || "Project"} has been delivered.`,
-            type: "delivery_completed",
-            entityType: "project",
+            title: 'Project delivered',
+            message: `${updated.projectName || 'Project'} has been delivered.`,
+            type: 'delivery_completed',
+            entityType: 'project',
             entityId: projectId,
-            deepLink: "/client/projects",
+            deepLink: '/client/projects',
             createdBy: { uid: me.uid, name: actorName },
           });
         }
       } catch (notifyError) {
-        console.error("client delivery notification error:", notifyError);
+        console.error('client delivery notification error:', notifyError);
       }
     }
 
-    if (toStage === "Delivered") {
-      const adminRecipients = await getUsersByRoles(["admin", "super_admin"], updated.tenantId || null);
+    if (toStage === 'Delivered') {
+      const adminRecipients = await getUsersByRoles(
+        ['admin', 'super_admin'],
+        updated.tenantId || null,
+      );
       await createNotifications({
         recipients: adminRecipients,
         tenantId: updated.tenantId || null,
-        type: "delivery_completed",
-        title: "Project delivered",
-        message: `${updated.projectName || "Project"} has been delivered.`,
-        entityType: "project",
+        type: 'delivery_completed',
+        title: 'Project delivered',
+        message: `${updated.projectName || 'Project'} has been delivered.`,
+        entityType: 'project',
         entityId: projectId,
         createdBy: { uid: me.uid, name: actorName },
       });
     }
 
     await createNotificationEvent({
-      type: "project.stage_moved",
-      title: "Project stage updated",
-      description: `${updated.projectName || "Project"} moved from ${fromStage} to ${toStage}.`,
-      entityType: "project",
+      type: 'project.stage_moved',
+      title: 'Project stage updated',
+      description: `${updated.projectName || 'Project'} moved from ${fromStage} to ${toStage}.`,
+      entityType: 'project',
       entityId: projectId,
       createdByUid: me.uid,
       createdByName: actorName,
@@ -295,25 +314,25 @@ export async function POST(req: Request) {
       },
     });
 
-    if (eventType === "project.qa_approved" || eventType === "project.qa_rejected") {
-      const adminIds = await getUserIdsByRoles(["admin", "super_admin"]);
+    if (eventType === 'project.qa_approved' || eventType === 'project.qa_rejected') {
+      const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
       const qaNotifications: Promise<void>[] = [];
 
       if (updated.ownerAmUid) {
         qaNotifications.push(
           createNotification({
             toUserId: String(updated.ownerAmUid),
-            title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+            title: eventType === 'project.qa_approved' ? 'QA approved' : 'QA rejected',
             body:
-              eventType === "project.qa_approved"
-                ? `${updated.projectName || "Project"} passed QA approval.`
-                : `${updated.projectName || "Project"} was rejected in QA.`,
-            type: eventType === "project.qa_approved" ? "success" : "warning",
-            entityType: "project",
+              eventType === 'project.qa_approved'
+                ? `${updated.projectName || 'Project'} passed QA approval.`
+                : `${updated.projectName || 'Project'} was rejected in QA.`,
+            type: eventType === 'project.qa_approved' ? 'success' : 'warning',
+            entityType: 'project',
             entityId: projectId,
-            deepLink: "/am/projects",
+            deepLink: '/am/projects',
             createdBy: { uid: me.uid, name: actorName },
-          })
+          }),
         );
       }
 
@@ -322,17 +341,17 @@ export async function POST(req: Request) {
         qaNotifications.push(
           createNotification({
             toUserId: uid,
-            title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+            title: eventType === 'project.qa_approved' ? 'QA approved' : 'QA rejected',
             body:
-              eventType === "project.qa_approved"
-                ? `${updated.projectName || "Project"} passed QA approval.`
-                : `${updated.projectName || "Project"} was rejected in QA.`,
-            type: eventType === "project.qa_approved" ? "success" : "warning",
-            entityType: "project",
+              eventType === 'project.qa_approved'
+                ? `${updated.projectName || 'Project'} passed QA approval.`
+                : `${updated.projectName || 'Project'} was rejected in QA.`,
+            type: eventType === 'project.qa_approved' ? 'success' : 'warning',
+            entityType: 'project',
             entityId: projectId,
-            deepLink: "/admin/production/qa",
+            deepLink: '/admin/production/qa',
             createdBy: { uid: me.uid, name: actorName },
-          })
+          }),
         );
       });
 
@@ -340,12 +359,12 @@ export async function POST(req: Request) {
 
       await createNotificationEvent({
         type: eventType,
-        title: eventType === "project.qa_approved" ? "QA approved" : "QA rejected",
+        title: eventType === 'project.qa_approved' ? 'QA approved' : 'QA rejected',
         description:
-          eventType === "project.qa_approved"
-            ? `${updated.projectName || "Project"} passed QA approval.`
-            : `${updated.projectName || "Project"} was rejected in QA.`,
-        entityType: "project",
+          eventType === 'project.qa_approved'
+            ? `${updated.projectName || 'Project'} passed QA approval.`
+            : `${updated.projectName || 'Project'} was rejected in QA.`,
+        entityType: 'project',
         entityId: projectId,
         createdByUid: me.uid,
         createdByName: actorName,
@@ -357,12 +376,16 @@ export async function POST(req: Request) {
       ok: true,
       project: {
         id: projectId,
-        projectName: updated.projectName || "",
-        clientName: updated.clientName || "",
-        projectType: updated.projectType || "",
-        stage: updated.stage || "Kickoff",
-        priority: updated.priority || "Normal",
-        health: computeHealth(dueDate, workflowSettings.atRiskAfterDays, workflowSettings.overdueAfterDays),
+        projectName: updated.projectName || '',
+        clientName: updated.clientName || '',
+        projectType: updated.projectType || '',
+        stage: updated.stage || 'Kickoff',
+        priority: updated.priority || 'Normal',
+        health: computeHealth(
+          dueDate,
+          workflowSettings.atRiskAfterDays,
+          workflowSettings.overdueAfterDays,
+        ),
         ownerAmUid: updated.ownerAmUid ?? null,
         ownerAmName: updated.ownerAmName ?? null,
         productionUid: updated.productionUid ?? updated.productionOwnerId ?? null,
@@ -374,13 +397,13 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    console.error("production/move-stage error:", err);
-    const rawMessage = String(err?.message || "");
+    console.error('production/move-stage error:', err);
+    const rawMessage = String(err?.message || '');
     const isIndexError =
-      rawMessage.includes("FAILED_PRECONDITION") ||
-      rawMessage.toLowerCase().includes("index") ||
-      rawMessage.toLowerCase().includes("indexes");
-    const safeMessage = isIndexError ? "Missing Firestore index." : "Unable to move stage.";
+      rawMessage.includes('FAILED_PRECONDITION') ||
+      rawMessage.toLowerCase().includes('index') ||
+      rawMessage.toLowerCase().includes('indexes');
+    const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to move stage.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   }
 }

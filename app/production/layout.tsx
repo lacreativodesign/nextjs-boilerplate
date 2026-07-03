@@ -1,20 +1,20 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import RequireAuth from "@/components/RequireAuth";
-import AppShell from "@/components/layout/AppShell";
-import { ModuleErrorBoundary } from "@/components/errors/ModuleErrorBoundary";
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import RequireAuth from '@/components/RequireAuth';
+import AppShell from '@/components/layout/AppShell';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 const TABS = [
-  { href: "/production", label: "Overview" },
-  { href: "/production/jobs", label: "Jobs" },
-  { href: "/production/workload", label: "Workload" },
-  { href: "/production/qa", label: "QA" },
-  { href: "/production/files", label: "Files" },
+  { href: '/production', label: 'Overview' },
+  { href: '/production/jobs', label: 'Jobs' },
+  { href: '/production/workload', label: 'Workload' },
+  { href: '/production/qa', label: 'QA' },
+  { href: '/production/files', label: 'Files' },
 ];
 export default function ProductionLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <RequireAuth allowed={["production", "production_manager", "admin", "super_admin"]}>
+    <RequireAuth allowed={['production', 'production_manager', 'admin', 'super_admin']}>
       <ModuleErrorBoundary moduleName="Production">
         <AppShell>
           <div>
@@ -24,8 +24,18 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
             </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
-                const isActive = pathname === tab.href || (tab.href !== "/production" && pathname.startsWith(tab.href));
-                return <Link key={tab.href} href={tab.href} className={`tab-pill ${isActive ? "active" : ""}`}>{tab.label}</Link>;
+                const isActive =
+                  pathname === tab.href ||
+                  (tab.href !== '/production' && pathname.startsWith(tab.href));
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`tab-pill ${isActive ? 'active' : ''}`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
               })}
             </div>
             <div className="mt-6">{children}</div>

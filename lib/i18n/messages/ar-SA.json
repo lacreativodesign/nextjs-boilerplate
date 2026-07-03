@@ -51,8 +51,21 @@
     "notFound": "المورد المطلوب غير موجود.",
     "network": "خطأ في الشبكة. حاول مرة أخرى."
   },
-  "dashboard": { "widgets": { "revenue": "الإيرادات", "openInvoices": "الفواتير المفتوحة", "pipeline": "خط الأنابيب", "activeProjects": "المشاريع النشطة" } },
-  "reports": { "titles": { "paymentsByMonth": "المدفوعات حسب الشهر", "payrollByMonth": "الرواتب حسب الشهر", "salesPipeline": "خط مبيعات" } },
+  "dashboard": {
+    "widgets": {
+      "revenue": "الإيرادات",
+      "openInvoices": "الفواتير المفتوحة",
+      "pipeline": "خط الأنابيب",
+      "activeProjects": "المشاريع النشطة"
+    }
+  },
+  "reports": {
+    "titles": {
+      "paymentsByMonth": "المدفوعات حسب الشهر",
+      "payrollByMonth": "الرواتب حسب الشهر",
+      "salesPipeline": "خط مبيعات"
+    }
+  },
   "email": {
     "subjects": { "welcome": "مرحبًا بك في بيزوستو", "invoiceReminder": "تذكير بالفاتورة" },
     "body": { "greeting": "مرحبًا {{name}}،", "footer": "شكرًا،\nفريق بيزوستو" }
@@ -61,6 +74,10 @@
     "progress": "تغطية الترجمة",
     "missing": "ترجمة مفقودة",
     "complete": "مكتمل",
-    "itemsRemaining": { "zero": "لا توجد مفاتيح مفقودة", "one": "مفتاح واحد مفقود", "other": "{{count}} مفاتيح مفقودة" }
+    "itemsRemaining": {
+      "zero": "لا توجد مفاتيح مفقودة",
+      "one": "مفتاح واحد مفقود",
+      "other": "{{count}} مفاتيح مفقودة"
+    }
   }
 }

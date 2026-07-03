@@ -1,12 +1,18 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bell, Clock3, MessageSquare, Pencil,
-  PlusCircle, Trash2, UserRoundPlus, X,
-} from "lucide-react";
-import type { ActivityRecord, PresenceRecord } from "@/types/activity-feed";
-import { apiFetch } from "@/lib/api/client";
+  Bell,
+  Clock3,
+  MessageSquare,
+  Pencil,
+  PlusCircle,
+  Trash2,
+  UserRoundPlus,
+  X,
+} from 'lucide-react';
+import type { ActivityRecord, PresenceRecord } from '@/types/activity-feed';
+import { apiFetch } from '@/lib/api/client';
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -19,19 +25,19 @@ const ICON_BY_ACTION: Record<string, React.ElementType> = {
 };
 
 const ACTION_LABEL: Record<string, string> = {
-  created: "created",
-  updated: "updated",
-  deleted: "deleted",
-  commented: "commented on",
-  assigned: "assigned",
+  created: 'created',
+  updated: 'updated',
+  deleted: 'deleted',
+  commented: 'commented on',
+  assigned: 'assigned',
 };
 
 function timeAgo(iso: string) {
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
+  if (isNaN(d.getTime())) return '—';
   const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "Just now";
+  if (m < 1) return 'Just now';
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
@@ -45,10 +51,10 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [moduleFilter, setModuleFilter] = useState("");
-  const [userFilter, setUserFilter] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [moduleFilter, setModuleFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [presence, setPresence] = useState<PresenceRecord[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [markingAll, setMarkingAll] = useState(false);
@@ -58,7 +64,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const r = await apiFetch("/api/activities/unread-count", { cache: "no-store" });
+      const r = await apiFetch('/api/activities/unread-count', { cache: 'no-store' });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.ok) setUnreadCount(Number(d.count || 0));
     } catch {}
@@ -66,7 +72,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const fetchPresence = useCallback(async () => {
     try {
-      const r = await apiFetch("/api/activities/presence", { cache: "no-store" });
+      const r = await apiFetch('/api/activities/presence', { cache: 'no-store' });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.ok && Array.isArray(d.users)) setPresence(d.users);
     } catch {}
@@ -74,9 +80,9 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const sendPresence = useCallback(async (online: boolean) => {
     try {
-      await apiFetch("/api/activities/presence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch('/api/activities/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ online }),
       });
     } catch {}
@@ -84,16 +90,16 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   const load = useCallback(
     async (cursor?: string, append?: boolean) => {
-      const p = new URLSearchParams({ limit: "20" });
-      if (cursor) p.set("cursor", cursor);
-      if (moduleFilter.trim()) p.set("module", moduleFilter.trim());
-      if (userFilter.trim()) p.set("userId", userFilter.trim());
-      if (fromDate) p.set("from", new Date(fromDate).toISOString());
-      if (toDate) p.set("to", new Date(`${toDate}T23:59:59.999Z`).toISOString());
+      const p = new URLSearchParams({ limit: '20' });
+      if (cursor) p.set('cursor', cursor);
+      if (moduleFilter.trim()) p.set('module', moduleFilter.trim());
+      if (userFilter.trim()) p.set('userId', userFilter.trim());
+      if (fromDate) p.set('from', new Date(fromDate).toISOString());
+      if (toDate) p.set('to', new Date(`${toDate}T23:59:59.999Z`).toISOString());
       if (append) setLoadingMore(true);
       else setLoading(true);
       try {
-        const r = await apiFetch(`/api/activities/feed?${p}`, { cache: "no-store" });
+        const r = await apiFetch(`/api/activities/feed?${p}`, { cache: 'no-store' });
         const d = await r.json().catch(() => null);
         if (!r.ok || !d?.ok) return;
         const fetched: ActivityRecord[] = Array.isArray(d.items) ? d.items : [];
@@ -109,7 +115,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
         setLoadingMore(false);
       }
     },
-    [moduleFilter, userFilter, fromDate, toDate]
+    [moduleFilter, userFilter, fromDate, toDate],
   );
 
   useEffect(() => {
@@ -127,13 +133,13 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       void fetchPresence();
     }, 30000);
     const bye = () =>
-      navigator.sendBeacon("/api/activities/presence", JSON.stringify({ online: false }));
-    window.addEventListener("beforeunload", bye);
+      navigator.sendBeacon('/api/activities/presence', JSON.stringify({ online: false }));
+    window.addEventListener('beforeunload', bye);
     return () => {
       clearInterval(t1);
       clearInterval(t2);
       clearInterval(t3);
-      window.removeEventListener("beforeunload", bye);
+      window.removeEventListener('beforeunload', bye);
       void sendPresence(false);
     };
   }, [fetchPresence, fetchUnread, load, sendPresence]);
@@ -146,8 +152,8 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
         onClose();
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [open, onClose]);
 
   useEffect(() => {
@@ -156,7 +162,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       (entries) => {
         if (entries[0]?.isIntersecting && !loadingMore) void load(nextCursor, true);
       },
-      { threshold: 0.2 }
+      { threshold: 0.2 },
     );
     obs.observe(endRef.current);
     return () => obs.disconnect();
@@ -169,14 +175,14 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   }, [items]);
 
   const markRead = useCallback(async (id: string) => {
-    const r = await apiFetch(`/api/activities/${id}/read`, { method: "PUT" });
+    const r = await apiFetch(`/api/activities/${id}/read`, { method: 'PUT' });
     if (r.ok) setUnreadCount((p) => Math.max(0, p - 1));
   }, []);
 
   const markAllRead = useCallback(async () => {
     setMarkingAll(true);
     try {
-      await apiFetch("/api/activities/mark-all-read", { method: "POST" });
+      await apiFetch('/api/activities/mark-all-read', { method: 'POST' });
       setUnreadCount(0);
     } finally {
       setMarkingAll(false);
@@ -186,7 +192,6 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   return (
     // position:relative here anchors the dropdown directly below the bell button
     <div className="relative" ref={wrapRef}>
-
       {/* Bell button */}
       <button
         type="button"
@@ -197,9 +202,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="notification-badge">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+          <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
       </button>
 
@@ -207,34 +210,34 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       {open && (
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
             right: 0,
-            width: "min(380px, 96vw)",
-            maxHeight: "calc(100dvh - 80px)",
-            background: "var(--surface-card)",
-            border: "1px solid var(--border-subtle)",
+            width: 'min(380px, 96vw)',
+            maxHeight: 'calc(100dvh - 80px)',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border-subtle)',
             borderRadius: 16,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
             zIndex: 9999,
           }}
         >
           {/* Arrow pointer */}
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               top: -7,
               right: 16,
               width: 14,
               height: 14,
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-subtle)",
-              borderRight: "none",
-              borderBottom: "none",
-              transform: "rotate(45deg)",
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRight: 'none',
+              borderBottom: 'none',
+              transform: 'rotate(45deg)',
               zIndex: 1,
             }}
           />
@@ -242,14 +245,14 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
           {/* Header */}
           <div
             className="flex flex-shrink-0 items-center justify-between px-4 py-3"
-            style={{ borderBottom: "1px solid var(--border-subtle)" }}
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}
           >
             <div className="flex items-center gap-2">
               <span
                 style={{
                   fontWeight: 700,
                   fontSize: 15,
-                  color: "var(--text-primary)",
+                  color: 'var(--text-primary)',
                 }}
               >
                 Notifications
@@ -257,13 +260,13 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
               {unreadCount > 0 && (
                 <span
                   style={{
-                    background: "var(--danger)",
-                    color: "#fff",
+                    background: 'var(--danger)',
+                    color: '#fff',
                     borderRadius: 999,
                     fontSize: 11,
                     fontWeight: 700,
-                    padding: "1px 7px",
-                    lineHeight: "18px",
+                    padding: '1px 7px',
+                    lineHeight: '18px',
                   }}
                 >
                   {unreadCount}
@@ -304,8 +307,8 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
             <div
               className="grid grid-cols-2 gap-2 px-4 py-3 flex-shrink-0"
               style={{
-                borderBottom: "1px solid var(--border-subtle)",
-                background: "var(--surface-muted)",
+                borderBottom: '1px solid var(--border-subtle)',
+                background: 'var(--surface-muted)',
               }}
             >
               <select
@@ -350,8 +353,8 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
             <div
               className="flex flex-shrink-0 flex-wrap items-center gap-1.5 px-4 py-2 text-xs text-[var(--text-muted)]"
               style={{
-                borderBottom: "1px solid var(--border-subtle)",
-                background: "var(--surface-muted)",
+                borderBottom: '1px solid var(--border-subtle)',
+                background: 'var(--surface-muted)',
               }}
             >
               <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -382,18 +385,14 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
                 <div
                   className="flex h-12 w-12 items-center justify-center rounded-2xl"
                   style={{
-                    background: "var(--surface-muted)",
-                    border: "1.5px dashed var(--border-strong)",
+                    background: 'var(--surface-muted)',
+                    border: '1.5px dashed var(--border-strong)',
                   }}
                 >
                   <Bell className="h-5 w-5 text-[var(--text-muted)]" />
                 </div>
-                <p className="text-sm font-medium text-[var(--text-muted)]">
-                  No notifications yet
-                </p>
-                <p className="text-xs text-[var(--text-soft)]">
-                  Team activity will appear here.
-                </p>
+                <p className="text-sm font-medium text-[var(--text-muted)]">No notifications yet</p>
+                <p className="text-xs text-[var(--text-soft)]">Team activity will appear here.</p>
               </div>
             )}
 
@@ -403,24 +402,20 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
                 <button
                   key={item.id}
                   className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--surface-muted)]"
-                  style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                  style={{ borderBottom: '1px solid var(--border-subtle)' }}
                   onClick={() => void markRead(item.id)}
                 >
                   <div
                     className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
-                    style={{ background: "var(--erp-blue-soft, rgba(102,146,249,0.12))" }}
+                    style={{ background: 'var(--erp-blue-soft, rgba(102,146,249,0.12))' }}
                   >
                     <Icon className="h-4 w-4 text-[var(--erp-blue)]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p
-                      className="text-sm leading-snug text-[var(--text-primary)]"
-                    >
-                      <span className="font-semibold">{item.actor.name}</span>{" "}
-                      {ACTION_LABEL[item.action] || item.action}{" "}
-                      <span className="text-[var(--erp-blue)]">
-                        {item.entity.type}
-                      </span>
+                    <p className="text-sm leading-snug text-[var(--text-primary)]">
+                      <span className="font-semibold">{item.actor.name}</span>{' '}
+                      {ACTION_LABEL[item.action] || item.action}{' '}
+                      <span className="text-[var(--erp-blue)]">{item.entity.type}</span>
                     </p>
                     {item.metadata.description && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-[var(--text-muted)]">
@@ -436,18 +431,15 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
               );
             })}
 
-            <div
-              ref={endRef}
-              className="py-2 text-center text-xs text-[var(--text-muted)]"
-            >
-              {loadingMore ? "Loading…" : nextCursor ? "Scroll for more ↓" : ""}
+            <div ref={endRef} className="py-2 text-center text-xs text-[var(--text-muted)]">
+              {loadingMore ? 'Loading…' : nextCursor ? 'Scroll for more ↓' : ''}
             </div>
           </div>
 
           {/* Footer */}
           <div
             className="flex-shrink-0 px-4 py-3"
-            style={{ borderTop: "1px solid var(--border-subtle)" }}
+            style={{ borderTop: '1px solid var(--border-subtle)' }}
           >
             <button
               className="btn ghost w-full"
@@ -456,10 +448,10 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
               disabled={markingAll || unreadCount === 0}
             >
               {markingAll
-                ? "Marking…"
+                ? 'Marking…'
                 : unreadCount > 0
-                ? `Mark all as read (${unreadCount})`
-                : "All caught up ✓"}
+                  ? `Mark all as read (${unreadCount})`
+                  : 'All caught up ✓'}
             </button>
           </div>
         </div>

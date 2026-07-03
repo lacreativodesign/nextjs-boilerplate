@@ -128,7 +128,8 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: 'This account already has an active subscription. Change your plan instead of starting a new checkout.',
+          error:
+            'This account already has an active subscription. Change your plan instead of starting a new checkout.',
           code: 'subscription_exists',
         },
         { status: 409 },

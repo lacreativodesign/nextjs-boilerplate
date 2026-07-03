@@ -1,8 +1,15 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import { Timestamp } from "firebase-admin/firestore";
-import { NotificationService } from "@/lib/notifications/notification-service";
-import { Activity, ActivityType, Customer, CustomerNote, CustomerStatus, CustomerType } from "@/types/crm";
-import { autoSyncCustomerIfEnabled } from "@/lib/integrations/mailchimp";
+import { adminDb } from '@/lib/firebaseAdmin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { NotificationService } from '@/lib/notifications/notification-service';
+import {
+  Activity,
+  ActivityType,
+  Customer,
+  CustomerNote,
+  CustomerStatus,
+  CustomerType,
+} from '@/types/crm';
+import { autoSyncCustomerIfEnabled } from '@/lib/integrations/mailchimp';
 
 export class CustomerService {
   static async createCustomer(params: {
@@ -23,10 +30,10 @@ export class CustomerService {
   }): Promise<string> {
     const existingCustomer = await this.getCustomerByEmail(params.email, params.tenantId);
     if (existingCustomer) {
-      throw new Error("Customer with this email already exists");
+      throw new Error('Customer with this email already exists');
     }
 
-    const customer: Omit<Customer, "id"> = {
+    const customer: Omit<Customer, 'id'> = {
       tenantId: params.tenantId,
       type: params.type,
       firstName: params.firstName,
@@ -38,13 +45,13 @@ export class CustomerService {
       jobTitle: params.jobTitle,
       industry: params.industry,
       leadSource: params.leadSource,
-      status: "new",
-      stage: params.stage || "new",
-      stageName: params.stageName || "New",
+      status: 'new',
+      stage: params.stage || 'new',
+      stageName: params.stageName || 'New',
       ownerId: params.ownerId,
       ownerName: params.ownerName,
       leadScore: 0,
-      priority: "medium",
+      priority: 'medium',
       tags: [],
       totalDeals: 0,
       totalRevenue: 0,
@@ -55,7 +62,7 @@ export class CustomerService {
       updatedAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("customers").add(customer);
+    const docRef = await adminDb.collection('customers').add(customer);
 
     await autoSyncCustomerIfEnabled({
       tenantId: params.tenantId,
@@ -67,12 +74,12 @@ export class CustomerService {
       tenantId: params.tenantId,
       customerId: docRef.id,
       customerName: customer.fullName,
-      type: "note",
-      subject: "Customer created",
+      type: 'note',
+      subject: 'Customer created',
       description: `New ${params.type} added to CRM`,
       ownerId: params.ownerId,
       ownerName: params.ownerName,
-      status: "completed",
+      status: 'completed',
     });
 
     return docRef.id;
@@ -84,10 +91,10 @@ export class CustomerService {
     userId: string;
     userName: string;
   }): Promise<void> {
-    const customerDoc = await adminDb.collection("customers").doc(params.customerId).get();
+    const customerDoc = await adminDb.collection('customers').doc(params.customerId).get();
 
     if (!customerDoc.exists) {
-      throw new Error("Customer not found");
+      throw new Error('Customer not found');
     }
 
     const customer = customerDoc.data() as Customer;
@@ -95,10 +102,10 @@ export class CustomerService {
     await customerDoc.ref.update({
       status: params.status,
       updatedAt: Timestamp.now(),
-      ...(params.status === "won" && !customer.convertedAt
+      ...(params.status === 'won' && !customer.convertedAt
         ? {
             convertedAt: Timestamp.now(),
-            type: "customer",
+            type: 'customer',
           }
         : {}),
     });
@@ -107,17 +114,17 @@ export class CustomerService {
       tenantId: customer.tenantId,
       customerId: params.customerId,
       customerName: customer.fullName,
-      type: "note",
-      subject: "Status changed",
+      type: 'note',
+      subject: 'Status changed',
       description: `Status changed from ${customer.status} to ${params.status}`,
       ownerId: params.userId,
       ownerName: params.userName,
-      status: "completed",
+      status: 'completed',
     });
   }
 
   static async updateLeadScore(customerId: string): Promise<void> {
-    const customerDoc = await adminDb.collection("customers").doc(customerId).get();
+    const customerDoc = await adminDb.collection('customers').doc(customerId).get();
 
     if (!customerDoc.exists) {
       return;
@@ -126,12 +133,14 @@ export class CustomerService {
     const customer = customerDoc.data() as Customer;
     let score = 0;
 
-    if (customer.companySize === "500+") score += 20;
-    else if (customer.companySize === "201-500") score += 15;
-    else if (customer.companySize === "51-200") score += 10;
+    if (customer.companySize === '500+') score += 20;
+    else if (customer.companySize === '201-500') score += 15;
+    else if (customer.companySize === '51-200') score += 10;
 
     if (customer.lastActivityAt) {
-      const daysSinceActivity = Math.floor((Date.now() - customer.lastActivityAt.toMillis()) / (1000 * 60 * 60 * 24));
+      const daysSinceActivity = Math.floor(
+        (Date.now() - customer.lastActivityAt.toMillis()) / (1000 * 60 * 60 * 24),
+      );
       if (daysSinceActivity < 7) score += 20;
       else if (daysSinceActivity < 30) score += 10;
     }
@@ -142,10 +151,10 @@ export class CustomerService {
 
     score = Math.min(score, 100);
 
-    let priority: Customer["priority"] = "medium";
-    if (score >= 80) priority = "hot";
-    else if (score >= 60) priority = "high";
-    else if (score < 30) priority = "low";
+    let priority: Customer['priority'] = 'medium';
+    if (score >= 80) priority = 'hot';
+    else if (score >= 60) priority = 'high';
+    else if (score < 30) priority = 'low';
 
     await customerDoc.ref.update({
       leadScore: score,
@@ -154,11 +163,14 @@ export class CustomerService {
     });
   }
 
-  static async getCustomerByEmail(email: string, tenantId: string): Promise<(Customer & { id: string }) | null> {
+  static async getCustomerByEmail(
+    email: string,
+    tenantId: string,
+  ): Promise<(Customer & { id: string }) | null> {
     const snapshot = await adminDb
-      .collection("customers")
-      .where("tenantId", "==", tenantId)
-      .where("email", "==", email.toLowerCase())
+      .collection('customers')
+      .where('tenantId', '==', tenantId)
+      .where('email', '==', email.toLowerCase())
       .limit(1)
       .get();
 
@@ -183,13 +195,13 @@ export class CustomerService {
     description?: string;
     ownerId: string;
     ownerName: string;
-    status: "scheduled" | "completed" | "cancelled";
+    status: 'scheduled' | 'completed' | 'cancelled';
     scheduledAt?: Date;
     dueDate?: Date;
     duration?: number;
     outcome?: string;
   }): Promise<string> {
-    const activity: Omit<Activity, "id"> = {
+    const activity: Omit<Activity, 'id'> = {
       tenantId: params.tenantId,
       customerId: params.customerId,
       customerName: params.customerName,
@@ -208,13 +220,13 @@ export class CustomerService {
       hasFollowUp: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
-      ...(params.status === "completed" ? { completedAt: Timestamp.now() } : {}),
+      ...(params.status === 'completed' ? { completedAt: Timestamp.now() } : {}),
     };
 
-    const docRef = await adminDb.collection("activities").add(activity);
+    const docRef = await adminDb.collection('activities').add(activity);
 
     if (params.customerId) {
-      await adminDb.collection("customers").doc(params.customerId).update({
+      await adminDb.collection('customers').doc(params.customerId).update({
         lastActivityAt: Timestamp.now(),
       });
     }
@@ -231,7 +243,7 @@ export class CustomerService {
     authorName: string;
     isPinned?: boolean;
   }): Promise<string> {
-    const note: Omit<CustomerNote, "id"> = {
+    const note: Omit<CustomerNote, 'id'> = {
       tenantId: params.tenantId,
       customerId: params.customerId,
       dealId: params.dealId,
@@ -242,9 +254,9 @@ export class CustomerService {
       createdAt: Timestamp.now(),
     };
 
-    const docRef = await adminDb.collection("customer_notes").add(note);
+    const docRef = await adminDb.collection('customer_notes').add(note);
 
-    await adminDb.collection("customers").doc(params.customerId).update({
+    await adminDb.collection('customers').doc(params.customerId).update({
       lastActivityAt: Timestamp.now(),
     });
 
@@ -258,10 +270,10 @@ export class CustomerService {
     assignedBy: string;
     assignedByName: string;
   }): Promise<void> {
-    const customerDoc = await adminDb.collection("customers").doc(params.customerId).get();
+    const customerDoc = await adminDb.collection('customers').doc(params.customerId).get();
 
     if (!customerDoc.exists) {
-      throw new Error("Customer not found");
+      throw new Error('Customer not found');
     }
 
     const customer = customerDoc.data() as Customer;
@@ -275,11 +287,11 @@ export class CustomerService {
     await NotificationService.send({
       tenantId: customer.tenantId,
       userId: params.newOwnerId,
-      userEmail: "",
-      type: "action_required",
-      title: "New customer assigned",
+      userEmail: '',
+      type: 'action_required',
+      title: 'New customer assigned',
       message: `${params.assignedByName} assigned ${customer.fullName} to you`,
-      category: "sales",
+      category: 'sales',
       actionUrl: `/dashboard/crm/customers/${params.customerId}`,
     });
 
@@ -287,12 +299,12 @@ export class CustomerService {
       tenantId: customer.tenantId,
       customerId: params.customerId,
       customerName: customer.fullName,
-      type: "note",
-      subject: "Customer reassigned",
+      type: 'note',
+      subject: 'Customer reassigned',
       description: `Assigned from ${customer.ownerName} to ${params.newOwnerName}`,
       ownerId: params.assignedBy,
       ownerName: params.assignedByName,
-      status: "completed",
+      status: 'completed',
     });
   }
 }

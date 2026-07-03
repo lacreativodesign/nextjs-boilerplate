@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import React, { Suspense, useEffect, useState } from "react";
-import { SkeletonForm } from "@/components/ui/Skeleton";
-import { useSearchParams, useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api/client";
-import { getFirebaseAuth } from "@/lib/firebaseClient";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import React, { Suspense, useEffect, useState } from 'react';
+import { SkeletonForm } from '@/components/ui/Skeleton';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
+import { getFirebaseAuth } from '@/lib/firebaseClient';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 function AcceptInviteClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const token = searchParams.get("token");
+  const token = searchParams.get('token');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -24,24 +24,27 @@ function AcceptInviteClient() {
 
     async function validateInvite() {
       if (!token) {
-        setError("Missing invite token.");
+        setError('Missing invite token.');
         setLoading(false);
         return;
       }
 
       try {
-        const res = await apiFetch(`/api/client/invites/validate?token=${encodeURIComponent(token)}`, {
-          cache: "no-store",
-        });
+        const res = await apiFetch(
+          `/api/client/invites/validate?token=${encodeURIComponent(token)}`,
+          {
+            cache: 'no-store',
+          },
+        );
         const data = await res.json();
 
-        if (!res.ok || !data?.ok) throw new Error(data?.error || "Invite is invalid or expired.");
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Invite is invalid or expired.');
 
         if (!alive) return;
-        setEmail(data.email || "");
+        setEmail(data.email || '');
       } catch (err: any) {
         if (!alive) return;
-        setError(err?.message || "Unable to validate invite.");
+        setError(err?.message || 'Unable to validate invite.');
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -58,15 +61,15 @@ function AcceptInviteClient() {
     setError(null);
 
     if (!token) {
-      setError("Missing invite token.");
+      setError('Missing invite token.');
       return;
     }
     if (!password || password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError('Password must be at least 8 characters.');
       return;
     }
     if (!email) {
-      setError("Invite email missing. Please reopen the invite link.");
+      setError('Invite email missing. Please reopen the invite link.');
       return;
     }
 
@@ -80,7 +83,7 @@ function AcceptInviteClient() {
       try {
         userCred = await createUserWithEmailAndPassword(auth, email, password);
       } catch (createErr: any) {
-        if (createErr?.code === "auth/email-already-in-use") {
+        if (createErr?.code === 'auth/email-already-in-use') {
           userCred = await signInWithEmailAndPassword(auth, email, password);
         } else {
           throw createErr;
@@ -89,30 +92,32 @@ function AcceptInviteClient() {
 
       // Bind the invite to the VERIFIED account — the server takes the uid from this token.
       const activationToken = await userCred.user.getIdToken(true);
-      const res = await apiFetch("/api/client/invites/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/client/invites/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, idToken: activationToken }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Unable to complete invite.");
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to complete invite.');
 
       // Establish a session with a fresh token that now carries the client role/tenant claims.
       const sessionToken = await userCred.user.getIdToken(true);
-      const sessionRes = await apiFetch("/api/session-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const sessionRes = await apiFetch('/api/session-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken: sessionToken }),
       });
-      if (!sessionRes.ok) throw new Error("Account activated, but sign-in failed. Please log in.");
+      if (!sessionRes.ok) throw new Error('Account activated, but sign-in failed. Please log in.');
 
-      router.replace("/client");
+      router.replace('/client');
     } catch (err: any) {
-      const code = err?.code || "";
-      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
-        setError("An account already exists for this email. Enter the correct password or contact support.");
+      const code = err?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError(
+          'An account already exists for this email. Enter the correct password or contact support.',
+        );
       } else {
-        setError(err?.message || "Something went wrong.");
+        setError(err?.message || 'Something went wrong.');
       }
     } finally {
       setSubmitting(false);
@@ -140,17 +145,23 @@ function AcceptInviteClient() {
     <div className="p-6 max-w-md space-y-4">
       <div>
         <h1 className="text-xl font-bold">Activate Your Account</h1>
-        <p className="text-sm text-[var(--text-muted)]">Create a password to access your client portal.</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          Create a password to access your client portal.
+        </p>
       </div>
 
       <div className="card p-4 space-y-3">
         <div>
-          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">Email</label>
+          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">
+            Email
+          </label>
           <input className="input mt-1" value={email} disabled />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">Password</label>
+          <label className="block text-xs uppercase tracking-wide text-[var(--text-muted)]">
+            Password
+          </label>
           <input
             className="input mt-1"
             type="password"
@@ -163,7 +174,7 @@ function AcceptInviteClient() {
         {error && <div className="text-sm text-red-400">{error}</div>}
 
         <button className="btn primary w-full" disabled={submitting} onClick={submit}>
-          {submitting ? "Activating…" : "Activate Account"}
+          {submitting ? 'Activating…' : 'Activate Account'}
         </button>
       </div>
     </div>

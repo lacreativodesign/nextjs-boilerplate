@@ -51,8 +51,21 @@
     "notFound": "No se encontró el recurso solicitado.",
     "network": "Error de red. Inténtalo de nuevo."
   },
-  "dashboard": { "widgets": { "revenue": "Ingresos", "openInvoices": "Facturas abiertas", "pipeline": "Canal", "activeProjects": "Proyectos activos" } },
-  "reports": { "titles": { "paymentsByMonth": "Pagos por mes", "payrollByMonth": "Nómina por mes", "salesPipeline": "Canal de ventas" } },
+  "dashboard": {
+    "widgets": {
+      "revenue": "Ingresos",
+      "openInvoices": "Facturas abiertas",
+      "pipeline": "Canal",
+      "activeProjects": "Proyectos activos"
+    }
+  },
+  "reports": {
+    "titles": {
+      "paymentsByMonth": "Pagos por mes",
+      "payrollByMonth": "Nómina por mes",
+      "salesPipeline": "Canal de ventas"
+    }
+  },
   "email": {
     "subjects": { "welcome": "Bienvenido a Bizosto", "invoiceReminder": "Recordatorio de factura" },
     "body": { "greeting": "Hola {{name}},", "footer": "Gracias,\nEquipo de Bizosto" }
@@ -61,6 +74,10 @@
     "progress": "Cobertura de traducción",
     "missing": "Traducción faltante",
     "complete": "Completo",
-    "itemsRemaining": { "zero": "No faltan claves", "one": "Falta {{count}} clave", "other": "Faltan {{count}} claves" }
+    "itemsRemaining": {
+      "zero": "No faltan claves",
+      "one": "Falta {{count}} clave",
+      "other": "Faltan {{count}} claves"
+    }
   }
 }

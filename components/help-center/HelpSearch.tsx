@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import type { HelpCategory, SearchResult } from "@/lib/help-center/data";
-import { helpCategories, searchArticles } from "@/lib/help-center/data";
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import type { HelpCategory, SearchResult } from '@/lib/help-center/data';
+import { helpCategories, searchArticles } from '@/lib/help-center/data';
 
 type HelpSearchProps = {
   initialQuery?: string;
   initialCategory?: string;
-  mode?: "compact" | "full";
+  mode?: 'compact' | 'full';
   categories?: HelpCategory[];
 };
 
@@ -17,8 +17,8 @@ function highlightMatch(text: string, query: string) {
   const normalized = query.trim();
   if (!normalized) return text;
 
-  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escaped})`, "ig");
+  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'ig');
   const parts = text.split(regex);
 
   return parts.map((part, idx) =>
@@ -28,7 +28,7 @@ function highlightMatch(text: string, query: string) {
       </mark>
     ) : (
       <span key={`${part}-${idx}`}>{part}</span>
-    )
+    ),
   );
 }
 
@@ -44,34 +44,40 @@ function flattenCategories(categories: HelpCategory[]): SearchResult[] {
       searchableText: [
         article.title,
         article.excerpt,
-        article.keywords.join(" "),
-        article.sections.map((section) => section.heading).join(" "),
+        article.keywords.join(' '),
+        article.sections.map((section) => section.heading).join(' '),
         article.sections
           .flatMap((section) =>
             section.blocks.flatMap((block) => {
-              if (block.type === "paragraph" || block.type === "callout") return [block.content];
-              if (block.type === "list" || block.type === "steps") return block.items;
-              if (block.type === "code") return [block.content];
-              if (block.type === "video") return [block.title];
-              if (block.type === "image") return [block.caption, block.alt];
+              if (block.type === 'paragraph' || block.type === 'callout') return [block.content];
+              if (block.type === 'list' || block.type === 'steps') return block.items;
+              if (block.type === 'code') return [block.content];
+              if (block.type === 'video') return [block.title];
+              if (block.type === 'image') return [block.caption, block.alt];
               return [];
-            })
+            }),
           )
-          .join(" "),
+          .join(' '),
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase(),
-    }))
+    })),
   );
 }
 
-function searchCategoryArticles(categories: HelpCategory[], query: string, categoryFilter?: string) {
+function searchCategoryArticles(
+  categories: HelpCategory[],
+  query: string,
+  categoryFilter?: string,
+) {
   if (categories === helpCategories) return searchArticles(query, categoryFilter);
 
   const articles = flattenCategories(categories);
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
-    const base = categoryFilter ? articles.filter((item) => item.categoryId === categoryFilter) : articles;
+    const base = categoryFilter
+      ? articles.filter((item) => item.categoryId === categoryFilter)
+      : articles;
     return base.slice(0, 12);
   }
 
@@ -89,17 +95,31 @@ function searchCategoryArticles(categories: HelpCategory[], query: string, categ
       return { article, score };
     })
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || Date.parse(b.article.lastUpdated) - Date.parse(a.article.lastUpdated))
+    .sort(
+      (a, b) =>
+        b.score - a.score || Date.parse(b.article.lastUpdated) - Date.parse(a.article.lastUpdated),
+    )
     .map((row) => row.article)
     .slice(0, 20);
 }
 
-export function HelpSearch({ initialQuery = "", initialCategory = "", mode = "compact", categories = helpCategories }: HelpSearchProps) {
+export function HelpSearch({
+  initialQuery = '',
+  initialCategory = '',
+  mode = 'compact',
+  categories = helpCategories,
+}: HelpSearchProps) {
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
 
-  const results = useMemo(() => searchCategoryArticles(categories, query, category || undefined), [categories, category, query]);
-  const suggestions = useMemo(() => searchCategoryArticles(categories, query, category || undefined).slice(0, 5), [categories, category, query]);
+  const results = useMemo(
+    () => searchCategoryArticles(categories, query, category || undefined),
+    [categories, category, query],
+  );
+  const suggestions = useMemo(
+    () => searchCategoryArticles(categories, query, category || undefined).slice(0, 5),
+    [categories, category, query],
+  );
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
@@ -116,7 +136,9 @@ export function HelpSearch({ initialQuery = "", initialCategory = "", mode = "co
           />
           {query && suggestions.length > 0 && (
             <div className="absolute z-10 mt-2 w-full rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
-              <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-gray-500">Suggestions</p>
+              <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Suggestions
+              </p>
               <ul className="space-y-1">
                 {suggestions.map((item) => (
                   <li key={`${item.categoryId}-${item.slug}`}>
@@ -148,19 +170,23 @@ export function HelpSearch({ initialQuery = "", initialCategory = "", mode = "co
         </select>
 
         <Link
-          href={`/help/search?q=${encodeURIComponent(query)}${category ? `&category=${encodeURIComponent(category)}` : ""}`}
+          href={`/help/search?q=${encodeURIComponent(query)}${category ? `&category=${encodeURIComponent(category)}` : ''}`}
           className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           Search
         </Link>
       </div>
 
-      {mode === "full" && (
+      {mode === 'full' && (
         <div className="mt-6 space-y-3">
           <p className="text-sm text-gray-500">{results.length} results</p>
           <ul className="space-y-3">
             {results.map((result) => (
-              <SearchResultCard key={`${result.categoryId}-${result.slug}`} query={query} result={result} />
+              <SearchResultCard
+                key={`${result.categoryId}-${result.slug}`}
+                query={query}
+                result={result}
+              />
             ))}
           </ul>
         </div>
@@ -172,8 +198,13 @@ export function HelpSearch({ initialQuery = "", initialCategory = "", mode = "co
 function SearchResultCard({ result, query }: { result: SearchResult; query: string }) {
   return (
     <li className="rounded-xl border border-gray-200 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-blue-700">{result.categoryName}</p>
-      <Link href={`/help/${result.categoryId}/${result.slug}`} className="mt-1 block text-lg font-semibold text-gray-900 hover:text-blue-700">
+      <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
+        {result.categoryName}
+      </p>
+      <Link
+        href={`/help/${result.categoryId}/${result.slug}`}
+        className="mt-1 block text-lg font-semibold text-gray-900 hover:text-blue-700"
+      >
         {highlightMatch(result.title, query)}
       </Link>
       <p className="mt-1 text-sm text-gray-600">{highlightMatch(result.excerpt, query)}</p>

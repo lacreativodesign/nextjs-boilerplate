@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useMemo } from "react";
-import { getBreadcrumbs } from "@/lib/navigation/sidebarConfig";
+import Link from 'next/link';
+import { useMemo } from 'react';
+import { getBreadcrumbs } from '@/lib/navigation/sidebarConfig';
 
 type BreadcrumbsProps = {
   pathname: string;
   className?: string;
 };
 
-export default function Breadcrumbs({ pathname, className = "" }: BreadcrumbsProps) {
+export default function Breadcrumbs({ pathname, className = '' }: BreadcrumbsProps) {
   const trail = useMemo(() => getBreadcrumbs(pathname), [pathname]);
   const mobileTrail = trail.length > 2 ? trail.slice(-2) : trail;
 

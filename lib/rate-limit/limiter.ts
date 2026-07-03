@@ -5,7 +5,7 @@ export type RateLimitRule = {
   endpointPattern: string;
   limit: number;
   windowSeconds: number;
-  scope: "tenant" | "user" | "both";
+  scope: 'tenant' | 'user' | 'both';
   enabled: boolean;
   priority: number;
 };
@@ -18,7 +18,7 @@ export type TenantQuota = {
 };
 
 export type ThrottleException = {
-  type: "ip" | "user";
+  type: 'ip' | 'user';
   value: string;
 };
 
@@ -35,7 +35,7 @@ export type RateLimitContext = {
 export type RateLimitDecision = {
   allowed: boolean;
   status: number;
-  reason?: "RATE_LIMIT" | "QUOTA_EXCEEDED";
+  reason?: 'RATE_LIMIT' | 'QUOTA_EXCEEDED';
   limit: number;
   remaining: number;
   resetSeconds: number;
@@ -70,7 +70,7 @@ function getUpstashConfig(): UpstashConfig | null {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (!url || !token) return null;
-  return { url: url.replace(/\/$/, ""), token };
+  return { url: url.replace(/\/$/, ''), token };
 }
 
 async function upstashPipeline(commands: unknown[][]): Promise<UpstashPipelineResult | null> {
@@ -79,13 +79,13 @@ async function upstashPipeline(commands: unknown[][]): Promise<UpstashPipelineRe
 
   try {
     const response = await fetch(`${upstash.url}/pipeline`, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${upstash.token}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(commands),
-      cache: "no-store",
+      cache: 'no-store',
     });
 
     if (!response.ok) return null;
@@ -102,7 +102,7 @@ async function upstashGetJson<T>(key: string): Promise<T | null> {
 
   const response = await fetch(`${upstash.url}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${upstash.token}` },
-    cache: "no-store",
+    cache: 'no-store',
   });
   if (!response.ok) return null;
   const json = (await response.json()) as { result?: string | null };
@@ -124,10 +124,10 @@ export async function persistRateLimitConfig(config: {
   if (!upstash) return;
 
   await fetch(`${upstash.url}/set/rl:config`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${upstash.token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       value: JSON.stringify(config),
@@ -137,9 +137,7 @@ export async function persistRateLimitConfig(config: {
 }
 
 function matchPattern(pathname: string, pattern: string) {
-  const escaped = pattern
-    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*");
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(`^${escaped}$`).test(pathname);
 }
 
@@ -148,21 +146,29 @@ function hash(value: string): string {
   for (let i = 0; i < value.length; i++) {
     h = ((h << 5) - h + value.charCodeAt(i)) | 0;
   }
-  return Math.abs(h).toString(36).padStart(8, "0").slice(0, 24);
+  return Math.abs(h).toString(36).padStart(8, '0').slice(0, 24);
 }
 
-function defaultRuleForEndpoint(pathname: string, method: string, authenticated = false): RateLimitRule {
+function defaultRuleForEndpoint(
+  pathname: string,
+  method: string,
+  authenticated = false,
+): RateLimitRule {
   const normalizedMethod = method.toUpperCase();
-  const isAuthEndpoint = pathname.startsWith("/api/auth") || pathname.startsWith("/api/session-login") || pathname.startsWith("/api/logout");
-  const isRead = normalizedMethod === "GET" || normalizedMethod === "HEAD" || normalizedMethod === "OPTIONS";
+  const isAuthEndpoint =
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/session-login') ||
+    pathname.startsWith('/api/logout');
+  const isRead =
+    normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS';
 
   if (isAuthEndpoint) {
     return {
-      id: "default-auth",
-      endpointPattern: "/api/auth*",
+      id: 'default-auth',
+      endpointPattern: '/api/auth*',
       limit: 20,
       windowSeconds: 60,
-      scope: "both",
+      scope: 'both',
       enabled: true,
       priority: 100,
     };
@@ -170,11 +176,11 @@ function defaultRuleForEndpoint(pathname: string, method: string, authenticated 
 
   if (authenticated) {
     return {
-      id: "default-authenticated-user",
+      id: 'default-authenticated-user',
       endpointPattern: pathname,
       limit: AUTHENTICATED_USER_LIMIT,
       windowSeconds: AUTHENTICATED_USER_WINDOW_SECONDS,
-      scope: "user",
+      scope: 'user',
       enabled: true,
       priority: 50,
     };
@@ -182,22 +188,22 @@ function defaultRuleForEndpoint(pathname: string, method: string, authenticated 
 
   if (isRead) {
     return {
-      id: "default-read",
-      endpointPattern: "/api/*",
+      id: 'default-read',
+      endpointPattern: '/api/*',
       limit: 300,
       windowSeconds: 60,
-      scope: "both",
+      scope: 'both',
       enabled: true,
       priority: 10,
     };
   }
 
   return {
-    id: "default-write",
-    endpointPattern: "/api/*",
+    id: 'default-write',
+    endpointPattern: '/api/*',
     limit: 120,
     windowSeconds: 60,
-    scope: "both",
+    scope: 'both',
     enabled: true,
     priority: 20,
   };
@@ -212,7 +218,7 @@ async function getConfig() {
     rules: RateLimitRule[];
     quotas: Record<string, TenantQuota>;
     exceptions: ThrottleException[];
-  }>("rl:config");
+  }>('rl:config');
 
   configCache = {
     loadedAt: Date.now(),
@@ -226,12 +232,17 @@ async function getConfig() {
 
 function isException(exceptions: ThrottleException[], ip: string, userId: string) {
   return exceptions.some((entry) => {
-    if (entry.type === "ip") return entry.value === ip;
+    if (entry.type === 'ip') return entry.value === ip;
     return entry.value === userId;
   });
 }
 
-function resolveRule(pathname: string, method: string, rules: RateLimitRule[], authenticated = false) {
+function resolveRule(
+  pathname: string,
+  method: string,
+  rules: RateLimitRule[],
+  authenticated = false,
+) {
   const matched = rules
     .filter((rule) => rule.enabled && matchPattern(pathname, rule.endpointPattern))
     .sort((a, b) => b.priority - a.priority);
@@ -241,14 +252,18 @@ function resolveRule(pathname: string, method: string, rules: RateLimitRule[], a
 
 // Returns null when the rate-limit backend (Upstash) is unavailable, so callers
 // can decide whether to fail open or closed rather than silently allowing.
-async function slidingWindowCount(key: string, windowSeconds: number, nowMs: number): Promise<number | null> {
+async function slidingWindowCount(
+  key: string,
+  windowSeconds: number,
+  nowMs: number,
+): Promise<number | null> {
   const member = `${nowMs}-${crypto.randomUUID()}`;
   const min = nowMs - windowSeconds * 1000;
   const pipeline = await upstashPipeline([
-    ["ZADD", key, String(nowMs), member],
-    ["ZREMRANGEBYSCORE", key, "-inf", String(min)],
-    ["ZCARD", key],
-    ["PEXPIRE", key, String(windowSeconds * 1000)],
+    ['ZADD', key, String(nowMs), member],
+    ['ZREMRANGEBYSCORE', key, '-inf', String(min)],
+    ['ZCARD', key],
+    ['PEXPIRE', key, String(windowSeconds * 1000)],
   ]);
 
   if (!pipeline) return null;
@@ -258,9 +273,9 @@ async function slidingWindowCount(key: string, windowSeconds: number, nowMs: num
 
 async function incrementCounterFallback(key: string, windowSeconds: number) {
   const pipeline = await upstashPipeline([
-    ["INCR", key],
-    ["EXPIRE", key, String(windowSeconds), "NX"],
-    ["TTL", key],
+    ['INCR', key],
+    ['EXPIRE', key, String(windowSeconds), 'NX'],
+    ['TTL', key],
   ]);
 
   if (!pipeline) return null;
@@ -271,11 +286,11 @@ async function incrementCounterFallback(key: string, windowSeconds: number) {
 }
 
 async function enforceLimit(
-  scope: "tenant" | "user",
+  scope: 'tenant' | 'user',
   id: string,
   rule: RateLimitRule,
   nowMs: number,
-  failClosed: boolean
+  failClosed: boolean,
 ) {
   const key = `rl:sw:${scope}:${hash(id)}:${hash(rule.endpointPattern)}:${rule.windowSeconds}`;
 
@@ -330,11 +345,11 @@ async function enforceLimit(
 
 function isSensitiveAuthEndpoint(pathname: string): boolean {
   return (
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/session-login") ||
-    pathname.startsWith("/api/logout") ||
-    pathname.startsWith("/api/signup") ||
-    pathname.startsWith("/api/create-user")
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/session-login') ||
+    pathname.startsWith('/api/logout') ||
+    pathname.startsWith('/api/signup') ||
+    pathname.startsWith('/api/create-user')
   );
 }
 
@@ -343,8 +358,14 @@ async function enforceQuota(tenantId: string, quota: TenantQuota) {
   const dayKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
   const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 
-  const dayCounter = await incrementCounterFallback(`rl:quota:day:${hash(tenantId)}:${dayKey}`, 172800);
-  const monthCounter = await incrementCounterFallback(`rl:quota:month:${hash(tenantId)}:${monthKey}`, 2678400);
+  const dayCounter = await incrementCounterFallback(
+    `rl:quota:day:${hash(tenantId)}:${dayKey}`,
+    172800,
+  );
+  const monthCounter = await incrementCounterFallback(
+    `rl:quota:month:${hash(tenantId)}:${monthKey}`,
+    2678400,
+  );
 
   // Backend unavailable: do not block on quota (rate-limit fail-closed already
   // covers sensitive auth endpoints; tenant quotas fail open to avoid outages).
@@ -372,11 +393,16 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
       remaining: Number.MAX_SAFE_INTEGER,
       resetSeconds: DEFAULT_WINDOW_SECONDS,
       retryAfterSeconds: 0,
-      ruleId: "exception",
+      ruleId: 'exception',
     };
   }
 
-  const rule = resolveRule(context.endpoint, context.method, config.rules, Boolean(context.authenticated));
+  const rule = resolveRule(
+    context.endpoint,
+    context.method,
+    config.rules,
+    Boolean(context.authenticated),
+  );
   const nowMs = context.timestamp;
   // Auth/credential endpoints must fail CLOSED if the limiter backend is down,
   // so a Redis outage can't open a brute-force window. Everything else fails open.
@@ -385,11 +411,11 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
   let tenantResult = { allowed: true, remaining: rule.limit, resetSeconds: rule.windowSeconds };
   let userResult = { allowed: true, remaining: rule.limit, resetSeconds: rule.windowSeconds };
 
-  if (rule.scope === "tenant" || rule.scope === "both") {
-    tenantResult = await enforceLimit("tenant", context.tenantId, rule, nowMs, failClosed);
+  if (rule.scope === 'tenant' || rule.scope === 'both') {
+    tenantResult = await enforceLimit('tenant', context.tenantId, rule, nowMs, failClosed);
   }
-  if (rule.scope === "user" || rule.scope === "both") {
-    userResult = await enforceLimit("user", context.userId, rule, nowMs, failClosed);
+  if (rule.scope === 'user' || rule.scope === 'both') {
+    userResult = await enforceLimit('user', context.userId, rule, nowMs, failClosed);
   }
 
   if (!tenantResult.allowed || !userResult.allowed) {
@@ -397,7 +423,7 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
     return {
       allowed: false,
       status: 429,
-      reason: "RATE_LIMIT",
+      reason: 'RATE_LIMIT',
       limit: rule.limit,
       remaining: Math.min(tenantResult.remaining, userResult.remaining),
       resetSeconds,
@@ -413,7 +439,7 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
       return {
         allowed: false,
         status: 429,
-        reason: "QUOTA_EXCEEDED",
+        reason: 'QUOTA_EXCEEDED',
         limit: rule.limit,
         remaining: 0,
         resetSeconds: DEFAULT_WINDOW_SECONDS,
@@ -458,9 +484,9 @@ export async function checkRateLimit(context: RateLimitContext): Promise<RateLim
 
 export function buildRateLimitHeaders(decision: RateLimitDecision) {
   return {
-    "X-RateLimit-Limit": String(decision.limit),
-    "X-RateLimit-Remaining": String(Math.max(0, decision.remaining)),
-    "X-RateLimit-Reset": String(decision.resetSeconds),
-    "X-RateLimit-Rule": decision.ruleId,
+    'X-RateLimit-Limit': String(decision.limit),
+    'X-RateLimit-Remaining': String(Math.max(0, decision.remaining)),
+    'X-RateLimit-Reset': String(decision.resetSeconds),
+    'X-RateLimit-Rule': decision.ruleId,
   };
 }

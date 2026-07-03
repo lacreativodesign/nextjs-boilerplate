@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { PermissionAction, PermissionSet } from "@/lib/permissions/types";
+import type { PermissionAction, PermissionSet } from '@/lib/permissions/types';
 
-const ACTIONS: PermissionAction[] = ["create", "read", "update", "delete", "export"];
+const ACTIONS: PermissionAction[] = ['create', 'read', 'update', 'delete', 'export'];
 
 type Props = {
   permissions: PermissionSet[];
@@ -30,19 +30,22 @@ export function ModulePermissionSelector({ permissions, onChange }: Props) {
       <h3 className="mb-3 text-sm font-semibold">Module Permission Selector</h3>
       <div className="space-y-3">
         {permissions.map((permission, index) => (
-          <div key={`${permission.module}-${permission.entity}-${index}`} className="rounded border p-3">
+          <div
+            key={`${permission.module}-${permission.entity}-${index}`}
+            className="rounded border p-3"
+          >
             <div className="mb-2 grid grid-cols-2 gap-2">
               <input
                 className="input"
                 placeholder="module"
                 value={permission.module}
-                onChange={(event) => updatePermission(index, "module", event.target.value)}
+                onChange={(event) => updatePermission(index, 'module', event.target.value)}
               />
               <input
                 className="input"
                 placeholder="entity"
                 value={permission.entity}
-                onChange={(event) => updatePermission(index, "entity", event.target.value)}
+                onChange={(event) => updatePermission(index, 'entity', event.target.value)}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -51,7 +54,12 @@ export function ModulePermissionSelector({ permissions, onChange }: Props) {
                   type="button"
                   key={action}
                   className="rounded border px-2 py-1 text-xs"
-                  style={{ background: permission.actions.includes(action) ? "var(--primary)" : "transparent", color: permission.actions.includes(action) ? "white" : "inherit" }}
+                  style={{
+                    background: permission.actions.includes(action)
+                      ? 'var(--primary)'
+                      : 'transparent',
+                    color: permission.actions.includes(action) ? 'white' : 'inherit',
+                  }}
                   onClick={() => toggleAction(index, action)}
                 >
                   {action.toUpperCase()}

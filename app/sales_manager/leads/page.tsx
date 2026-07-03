@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
-import { formatDate } from "@/components/finance/financeUtils";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
+import { formatDate } from '@/components/finance/financeUtils';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
 
 const STATUS_OPTIONS = [
-  { value: "All", label: "All statuses" },
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "qualified", label: "Qualified" },
-  { value: "proposal_sent", label: "Proposal Sent" },
-  { value: "negotiation", label: "Negotiation" },
-  { value: "closed_won", label: "Closed Won" },
-  { value: "closed_lost", label: "Closed Lost" },
+  { value: 'All', label: 'All statuses' },
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'proposal_sent', label: 'Proposal Sent' },
+  { value: 'negotiation', label: 'Negotiation' },
+  { value: 'closed_won', label: 'Closed Won' },
+  { value: 'closed_lost', label: 'Closed Lost' },
 ];
 
 type LeadRecord = {
@@ -42,22 +42,22 @@ export default function SalesManagerLeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LeadRecord[]>([]);
   const [owners, setOwners] = useState<OwnerOption[]>([]);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [sourceFilter, setSourceFilter] = useState("All");
-  const [ownerFilter, setOwnerFilter] = useState("All");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
+  const [ownerFilter, setOwnerFilter] = useState('All');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState({
-    name: "",
-    company: "",
-    email: "",
-    phone: "",
-    source: "website",
-    status: "new",
-    ownerUid: "",
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    source: 'website',
+    status: 'new',
+    ownerUid: '',
   });
 
   useEffect(() => {
@@ -69,19 +69,19 @@ export default function SalesManagerLeadsPage() {
 
       try {
         const [leadsRes, ownersRes] = await Promise.all([
-          apiFetch("/api/sales_manager/leads/list", { cache: "no-store" }),
-          apiFetch("/api/sales_manager/leads/owners", { cache: "no-store" }),
+          apiFetch('/api/sales_manager/leads/list', { cache: 'no-store' }),
+          apiFetch('/api/sales_manager/leads/owners', { cache: 'no-store' }),
         ]);
 
         const leadsJson = (await leadsRes.json()) as LeadListResponse;
         const ownersJson = (await ownersRes.json()) as OwnerListResponse;
 
         if (!leadsRes.ok || !leadsJson.ok) {
-          throw new Error(leadsJson ? "" : "Failed to load leads");
+          throw new Error(leadsJson ? '' : 'Failed to load leads');
         }
 
         if (!ownersRes.ok || !ownersJson.ok) {
-          throw new Error(ownersJson ? "" : "Failed to load sales reps");
+          throw new Error(ownersJson ? '' : 'Failed to load sales reps');
         }
 
         if (!alive) return;
@@ -89,7 +89,7 @@ export default function SalesManagerLeadsPage() {
         setOwners(Array.isArray(ownersJson.owners) ? ownersJson.owners : []);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Forbidden");
+        setError(e?.message || 'Forbidden');
         setRows([]);
       } finally {
         if (!alive) return;
@@ -108,22 +108,24 @@ export default function SalesManagerLeadsPage() {
     rows.forEach((row) => {
       if (row.source) set.add(row.source);
     });
-    return ["All", ...Array.from(set.values())];
+    return ['All', ...Array.from(set.values())];
   }, [rows]);
 
   const filtered = useMemo(() => {
     let list = [...rows];
 
-    if (statusFilter !== "All") {
+    if (statusFilter !== 'All') {
       list = list.filter((row) => row.status === statusFilter);
     }
 
-    if (sourceFilter !== "All") {
+    if (sourceFilter !== 'All') {
       list = list.filter((row) => row.source === sourceFilter);
     }
 
-    if (ownerFilter !== "All") {
-      list = list.filter((row) => (ownerFilter === "unassigned" ? !row.ownerUid : row.ownerUid === ownerFilter));
+    if (ownerFilter !== 'All') {
+      list = list.filter((row) =>
+        ownerFilter === 'unassigned' ? !row.ownerUid : row.ownerUid === ownerFilter,
+      );
     }
 
     if (dateFrom) {
@@ -161,22 +163,22 @@ export default function SalesManagerLeadsPage() {
   }, [rows, statusFilter, sourceFilter, ownerFilter, dateFrom, dateTo, query]);
 
   const headerCellStyle: React.CSSProperties = {
-    padding: "12px 14px",
+    padding: '12px 14px',
     fontSize: 11,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-    borderBottom: "1px solid var(--border-subtle)",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textAlign: "left",
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border-subtle)',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
   };
 
   const cellStyle: React.CSSProperties = {
-    padding: "12px 14px",
-    borderBottom: "1px dashed var(--border-subtle)",
-    color: "var(--text-primary)",
-    whiteSpace: "nowrap",
+    padding: '12px 14px',
+    borderBottom: '1px dashed var(--border-subtle)',
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
     fontWeight: 400,
   };
 
@@ -189,61 +191,61 @@ export default function SalesManagerLeadsPage() {
         row.id === lead.id
           ? {
               ...row,
-              ownerUid: ownerId === "unassigned" ? null : ownerId,
-              ownerName: ownerId === "unassigned" ? null : owner?.name || "",
+              ownerUid: ownerId === 'unassigned' ? null : ownerId,
+              ownerName: ownerId === 'unassigned' ? null : owner?.name || '',
             }
-          : row
-      )
+          : row,
+      ),
     );
 
     try {
-      const res = await apiFetch("/api/sales/leads/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/sales/leads/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: lead.id,
-          ownerUid: ownerId === "unassigned" ? "" : ownerId,
+          ownerUid: ownerId === 'unassigned' ? '' : ownerId,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json?.error || "Unable to update lead.");
+        throw new Error(json?.error || 'Unable to update lead.');
       }
     } catch (err) {
-      console.error("Lead assignment failed", err);
+      console.error('Lead assignment failed', err);
     } finally {
       setUpdatingId(null);
     }
   };
 
   const handleConvert = async (lead: LeadRecord) => {
-    const confirmed = window.confirm(`Convert ${lead.name || "this lead"} into a deal?`);
+    const confirmed = window.confirm(`Convert ${lead.name || 'this lead'} into a deal?`);
     if (!confirmed) return;
     setUpdatingId(lead.id);
     try {
-      const res = await apiFetch("/api/leads/convert-to-deal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/leads/convert-to-deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId: lead.id }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json?.error || "Unable to convert lead.");
+        throw new Error(json?.error || 'Unable to convert lead.');
       }
       setRows((prev) => prev.filter((row) => row.id !== lead.id));
     } catch (err) {
-      console.error("Lead conversion failed", err);
+      console.error('Lead conversion failed', err);
     } finally {
       setUpdatingId(null);
     }
   };
 
   const handleCreate = async () => {
-    setUpdatingId("create");
+    setUpdatingId('create');
     try {
-      const res = await apiFetch("/api/sales/leads/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/sales/leads/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
           company: form.company,
@@ -256,24 +258,32 @@ export default function SalesManagerLeadsPage() {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json?.error || "Unable to create lead.");
+        throw new Error(json?.error || 'Unable to create lead.');
       }
       setDrawerOpen(false);
-      setForm({ name: "", company: "", email: "", phone: "", source: "website", status: "new", ownerUid: "" });
-      const refresh = await apiFetch("/api/sales_manager/leads/list", { cache: "no-store" });
+      setForm({
+        name: '',
+        company: '',
+        email: '',
+        phone: '',
+        source: 'website',
+        status: 'new',
+        ownerUid: '',
+      });
+      const refresh = await apiFetch('/api/sales_manager/leads/list', { cache: 'no-store' });
       const data = (await refresh.json()) as LeadListResponse;
       if (refresh.ok && data.ok) {
         setRows(Array.isArray(data.leads) ? data.leads : []);
       }
     } catch (err) {
-      console.error("Lead create failed", err);
+      console.error('Lead create failed', err);
     } finally {
       setUpdatingId(null);
     }
   };
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div>
           <h1 className="page-title">Leads</h1>
@@ -292,31 +302,43 @@ export default function SalesManagerLeadsPage() {
           marginBottom: 16,
           padding: 14,
           borderRadius: 16,
-          background: "var(--surface-card)",
-          border: "1px solid var(--border-subtle)",
-          boxShadow: "var(--shadow-md)",
-          display: "grid",
-          gridTemplateColumns: "minmax(200px, 1.2fr) repeat(auto-fit, minmax(160px, 1fr))",
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: 'var(--shadow-md)',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(200px, 1.2fr) repeat(auto-fit, minmax(160px, 1fr))',
           gap: 12,
-          alignItems: "center",
+          alignItems: 'center',
         }}
       >
         <SmartSearchBar value={query} onChange={setQuery} placeholder="Search leads" />
-        <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select
+          className="input"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
           {STATUS_OPTIONS.map((status) => (
             <option key={status.value} value={status.value}>
               {status.label}
             </option>
           ))}
         </select>
-        <select className="input" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+        <select
+          className="input"
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+        >
           {sources.map((source) => (
             <option key={source} value={source}>
               {source}
             </option>
           ))}
         </select>
-        <select className="input" value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+        <select
+          className="input"
+          value={ownerFilter}
+          onChange={(e) => setOwnerFilter(e.target.value)}
+        >
           <option value="All">All owners</option>
           <option value="unassigned">Unassigned</option>
           {owners.map((owner) => (
@@ -325,72 +347,82 @@ export default function SalesManagerLeadsPage() {
             </option>
           ))}
         </select>
-        <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-        <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        <div style={{ fontSize: 12, color: "rgba(15,23,42,0.65)" }}>
-          {loading ? "Loading..." : `${filtered.length} lead(s)`}
+        <input
+          className="input"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+        />
+        <input
+          className="input"
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+        />
+        <div style={{ fontSize: 12, color: 'rgba(15,23,42,0.65)' }}>
+          {loading ? 'Loading...' : `${filtered.length} lead(s)`}
         </div>
       </div>
 
       <div className="table-shell">
         {loading ? (
-          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
-            Loading leads...
-          </p>
+          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>Loading leads...</p>
         ) : error ? (
-          <p style={{ fontSize: 14, color: "#FCA5A5" }}>{error}</p>
+          <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: 14, color: "rgba(15,23,42,0.70)" }}>
-            No leads found.
-          </p>
+          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>No leads found.</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 1100 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table
+              style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 1100 }}
+            >
               <thead>
                 <tr>
                   <th style={headerCellStyle}>Name</th>
                   <th style={headerCellStyle}>Company</th>
                   <th style={headerCellStyle}>Status</th>
                   <th style={headerCellStyle}>Source</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Owner</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Created</th>
-                  <th style={{ ...headerCellStyle, textAlign: "center" }}>Action</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Owner</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Created</th>
+                  <th style={{ ...headerCellStyle, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((lead) => (
                   <tr key={lead.id}>
-                      <td style={{ ...cellStyle, whiteSpace: "normal" }}>{lead.name || "-"}</td>
-                      <td style={cellStyle}>{lead.company || "-"}</td>
-                      <td style={cellStyle}>{lead.status || "-"}</td>
-                      <td style={cellStyle}>{lead.source || "-"}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <select
-                          className="input"
-                          value={lead.ownerUid || "unassigned"}
-                          onChange={(e) => handleAssign(lead, e.target.value)}
-                          disabled={updatingId === lead.id}
-                          style={{ minWidth: 140 }}
-                        >
-                          <option value="unassigned">Unassigned</option>
-                          {owners.map((owner) => (
-                            <option key={owner.uid} value={owner.uid}>
-                              {owner.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>{formatDate(lead.createdAt)}</td>
-                      <td style={{ ...cellStyle, textAlign: "center" }}>
-                        <button
-                          className="btn ghost"
-                          style={{ padding: "8px 14px", borderRadius: 999 }}
-                          onClick={() => handleConvert(lead)}
-                          disabled={updatingId === lead.id}
-                        >
-                          Convert
-                        </button>
-                      </td>
+                    <td style={{ ...cellStyle, whiteSpace: 'normal' }}>{lead.name || '-'}</td>
+                    <td style={cellStyle}>{lead.company || '-'}</td>
+                    <td style={cellStyle}>{lead.status || '-'}</td>
+                    <td style={cellStyle}>{lead.source || '-'}</td>
+                    <td style={{ ...cellStyle, textAlign: 'center' }}>
+                      <select
+                        className="input"
+                        value={lead.ownerUid || 'unassigned'}
+                        onChange={(e) => handleAssign(lead, e.target.value)}
+                        disabled={updatingId === lead.id}
+                        style={{ minWidth: 140 }}
+                      >
+                        <option value="unassigned">Unassigned</option>
+                        {owners.map((owner) => (
+                          <option key={owner.uid} value={owner.uid}>
+                            {owner.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ ...cellStyle, textAlign: 'center' }}>
+                      {formatDate(lead.createdAt)}
+                    </td>
+                    <td style={{ ...cellStyle, textAlign: 'center' }}>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: '8px 14px', borderRadius: 999 }}
+                        onClick={() => handleConvert(lead)}
+                        disabled={updatingId === lead.id}
+                      >
+                        Convert
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -404,7 +436,7 @@ export default function SalesManagerLeadsPage() {
           <div className="drawer-panel drawer-panel--md" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-title">New Lead</div>
             <div className="drawer-subtitle">Capture a new lead for the pipeline.</div>
-            <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+            <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
               <input
                 className="input"
                 placeholder="Lead name"
@@ -435,8 +467,8 @@ export default function SalesManagerLeadsPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, source: e.target.value }))}
               >
                 {sources.map((source) => (
-                  <option key={source} value={source === "All" ? "website" : source}>
-                    {source === "All" ? "Website" : source}
+                  <option key={source} value={source === 'All' ? 'website' : source}>
+                    {source === 'All' ? 'Website' : source}
                   </option>
                 ))}
               </select>
@@ -445,7 +477,7 @@ export default function SalesManagerLeadsPage() {
                 value={form.status}
                 onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
               >
-                {STATUS_OPTIONS.filter((status) => status.value !== "All").map((status) => (
+                {STATUS_OPTIONS.filter((status) => status.value !== 'All').map((status) => (
                   <option key={status.value} value={status.value}>
                     {status.label}
                   </option>
@@ -464,11 +496,15 @@ export default function SalesManagerLeadsPage() {
                 ))}
               </select>
               <div className="flex justify-end gap-2">
-                <button className="btn ghost" onClick={() => setDrawerOpen(false)} style={{ borderRadius: 999 }}>
+                <button
+                  className="btn ghost"
+                  onClick={() => setDrawerOpen(false)}
+                  style={{ borderRadius: 999 }}
+                >
                   Cancel
                 </button>
-                <button className="btn" onClick={handleCreate} disabled={updatingId === "create"}>
-                  {updatingId === "create" ? "Saving..." : "Create lead"}
+                <button className="btn" onClick={handleCreate} disabled={updatingId === 'create'}>
+                  {updatingId === 'create' ? 'Saving...' : 'Create lead'}
                 </button>
               </div>
             </div>

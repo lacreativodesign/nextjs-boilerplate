@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { requireAdminOrSuperAdmin } from "../../../admin/_utils";
-import { requireFinance } from "../../_utils";
-import { assertPermission, Permission } from "../../../../lib/permissions";
+import { NextResponse } from 'next/server';
+import { requireAdminOrSuperAdmin } from '../../../admin/_utils';
+import { requireFinance } from '../../_utils';
+import { assertPermission, Permission } from '../../../../lib/permissions';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const admin = await requireAdminOrSuperAdmin();
@@ -14,7 +14,7 @@ export async function GET() {
   try {
     assertPermission(admin.user.role, Permission.ViewReports);
   } catch {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 
   const finance = await requireFinance();

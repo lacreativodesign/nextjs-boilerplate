@@ -1,20 +1,26 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import MasterSelect from "@/components/ui/MasterSelect";
-import SalesDrawer from "@/components/sales/SalesDrawer";
-import { formatDateTime } from "@/components/finance/financeUtils";
-import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from "@/lib/sales/utils";
-import { SmartSearchBar } from "@/components/search/SmartSearchBar";
-import { smartMatch } from "@/lib/search/smartMatch";
-import { apiFetch } from "@/lib/api/client";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import MasterSelect from '@/components/ui/MasterSelect';
+import SalesDrawer from '@/components/sales/SalesDrawer';
+import { formatDateTime } from '@/components/finance/financeUtils';
+import { FOLLOW_UP_TYPES, FOLLOW_UP_STATUS, isOverdue, toInputDateTime } from '@/lib/sales/utils';
+import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { smartMatch } from '@/lib/search/smartMatch';
+import { apiFetch } from '@/lib/api/client';
 
-const TYPE_OPTIONS = [{ label: "All Types", value: "" }, ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))];
-const STATUS_OPTIONS = [{ label: "All Status", value: "" }, ...FOLLOW_UP_STATUS.map((status) => ({ label: status, value: status }))];
+const TYPE_OPTIONS = [
+  { label: 'All Types', value: '' },
+  ...FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type })),
+];
+const STATUS_OPTIONS = [
+  { label: 'All Status', value: '' },
+  ...FOLLOW_UP_STATUS.map((status) => ({ label: status, value: status })),
+];
 
 type FollowUpRecord = {
   id: string;
-  relatedType: "Lead" | "Deal" | string;
+  relatedType: 'Lead' | 'Deal' | string;
   relatedId?: string | null;
   relatedName: string;
   type: string;
@@ -42,26 +48,26 @@ type FollowUpFormState = {
 };
 
 const defaultForm: FollowUpFormState = {
-  relatedType: "Lead",
-  relatedName: "",
+  relatedType: 'Lead',
+  relatedName: '',
   type: FOLLOW_UP_TYPES[0],
-  dueDate: "",
-  ownerId: "",
-  ownerName: "",
-  status: "Open",
+  dueDate: '',
+  ownerId: '',
+  ownerName: '',
+  status: 'Open',
 };
 
 export default function SalesFollowUpsPage() {
   const [followUps, setFollowUps] = useState<FollowUpRecord[]>([]);
   const [owners, setOwners] = useState<UserOption[]>([]);
-  const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("");
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
+  const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
   const [form, setForm] = useState<FollowUpFormState>(defaultForm);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -69,15 +75,15 @@ export default function SalesFollowUpsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await apiFetch("/api/admin/sales/follow-ups/list", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/sales/follow-ups/list', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to load follow-ups.");
+        throw new Error(data?.error || 'Unable to load follow-ups.');
       }
       setFollowUps(data.followUps || []);
     } catch (err) {
-      console.error("Follow-ups load error", err);
-      setError({ title: "Unable to load follow-ups", message: "Please try again in a moment." });
+      console.error('Follow-ups load error', err);
+      setError({ title: 'Unable to load follow-ups', message: 'Please try again in a moment.' });
     } finally {
       setLoading(false);
     }
@@ -85,12 +91,12 @@ export default function SalesFollowUpsPage() {
 
   const loadOwners = useCallback(async () => {
     try {
-      const res = await apiFetch("/api/admin/users/list", { cache: "no-store" });
+      const res = await apiFetch('/api/admin/users/list', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       setOwners(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Owners load error", err);
+      console.error('Owners load error', err);
     }
   }, []);
 
@@ -101,10 +107,13 @@ export default function SalesFollowUpsPage() {
 
   const ownerOptions = useMemo(
     () => [
-      { label: "All Owners", value: "" },
-      ...owners.map((owner) => ({ label: owner.name || owner.fullName || owner.uid, value: owner.uid })),
+      { label: 'All Owners', value: '' },
+      ...owners.map((owner) => ({
+        label: owner.name || owner.fullName || owner.uid,
+        value: owner.uid,
+      })),
     ],
-    [owners]
+    [owners],
   );
 
   const filteredFollowUps = useMemo(() => {
@@ -118,21 +127,21 @@ export default function SalesFollowUpsPage() {
   }, [followUps, query, typeFilter, statusFilter, ownerFilter]);
 
   const openCreate = () => {
-    setDrawerMode("create");
+    setDrawerMode('create');
     setForm(defaultForm);
     setDrawerOpen(true);
   };
 
   const openEdit = (item: FollowUpRecord) => {
-    setDrawerMode("edit");
+    setDrawerMode('edit');
     setForm({
       id: item.id,
       relatedType: item.relatedType,
       relatedName: item.relatedName,
       type: item.type,
       dueDate: toInputDateTime(item.dueDate),
-      ownerId: item.ownerId || "",
-      ownerName: item.ownerName || "",
+      ownerId: item.ownerId || '',
+      ownerName: item.ownerName || '',
       status: item.status,
     });
     setDrawerOpen(true);
@@ -143,21 +152,24 @@ export default function SalesFollowUpsPage() {
     setForm((prev) => ({
       ...prev,
       ownerId,
-      ownerName: owner?.name || owner?.fullName || "",
+      ownerName: owner?.name || owner?.fullName || '',
     }));
   };
 
   const handleSave = async () => {
     if (!form.dueDate) {
-      setError({ title: "Due date required", message: "Follow-ups require both date and time." });
+      setError({ title: 'Due date required', message: 'Follow-ups require both date and time.' });
       return;
     }
     try {
-      setActionLoading("save");
-      const endpoint = drawerMode === "create" ? "/api/admin/sales/follow-ups/create" : "/api/admin/sales/follow-ups/update";
+      setActionLoading('save');
+      const endpoint =
+        drawerMode === 'create'
+          ? '/api/admin/sales/follow-ups/create'
+          : '/api/admin/sales/follow-ups/update';
       const res = await apiFetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           dueDate: form.dueDate || null,
@@ -165,14 +177,14 @@ export default function SalesFollowUpsPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to save follow-up.");
+        throw new Error(data?.error || 'Unable to save follow-up.');
       }
       setDrawerOpen(false);
       setError(null);
       await loadFollowUps();
     } catch (err) {
-      console.error("Follow-up save error", err);
-      setError({ title: "Unable to save follow-up", message: "Please try again." });
+      console.error('Follow-up save error', err);
+      setError({ title: 'Unable to save follow-up', message: 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -181,19 +193,19 @@ export default function SalesFollowUpsPage() {
   const handleDelete = async (item: FollowUpRecord) => {
     try {
       setActionLoading(item.id);
-      const res = await apiFetch("/api/admin/sales/follow-ups/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/admin/sales/follow-ups/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: item.id }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to delete follow-up.");
+        throw new Error(data?.error || 'Unable to delete follow-up.');
       }
       await loadFollowUps();
     } catch (err) {
-      console.error("Follow-up delete error", err);
-      setError({ title: "Unable to delete follow-up", message: "Please try again." });
+      console.error('Follow-up delete error', err);
+      setError({ title: 'Unable to delete follow-up', message: 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -202,19 +214,19 @@ export default function SalesFollowUpsPage() {
   const markDone = async (item: FollowUpRecord) => {
     try {
       setActionLoading(`${item.id}-done`);
-      const res = await apiFetch("/api/admin/sales/follow-ups/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, status: "Done" }),
+      const res = await apiFetch('/api/admin/sales/follow-ups/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, status: 'Done' }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Unable to update follow-up.");
+        throw new Error(data?.error || 'Unable to update follow-up.');
       }
       await loadFollowUps();
     } catch (err) {
-      console.error("Follow-up done error", err);
-      setError({ title: "Unable to update follow-up", message: "Please try again." });
+      console.error('Follow-up done error', err);
+      setError({ title: 'Unable to update follow-up', message: 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -228,9 +240,9 @@ export default function SalesFollowUpsPage() {
           style={{
             borderRadius: 14,
             padding: 16,
-            border: "1px solid rgba(239,68,68,0.35)",
-            background: "var(--danger-soft)",
-            color: "var(--danger)",
+            border: '1px solid rgba(239,68,68,0.35)',
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -243,7 +255,7 @@ export default function SalesFollowUpsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 style={{ fontSize: 20, fontWeight: 700 }}>Follow-Ups</h3>
-          <p style={{ fontSize: 13, color: "var(--sidebar-text)" }}>
+          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
             Track calls, emails, meetings, and overdue reminders.
           </p>
         </div>
@@ -253,72 +265,103 @@ export default function SalesFollowUpsPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+        <div style={{ flex: '1 1 240px', minWidth: 220 }}>
           <SmartSearchBar value={query} onChange={setQuery} />
         </div>
-        <MasterSelect value={typeFilter} onChange={(value) => setTypeFilter(value)} options={TYPE_OPTIONS} />
-        <MasterSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={STATUS_OPTIONS} />
-        <MasterSelect value={ownerFilter} onChange={(value) => setOwnerFilter(value)} options={ownerOptions} />
+        <MasterSelect
+          value={typeFilter}
+          onChange={(value) => setTypeFilter(value)}
+          options={TYPE_OPTIONS}
+        />
+        <MasterSelect
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value)}
+          options={STATUS_OPTIONS}
+        />
+        <MasterSelect
+          value={ownerFilter}
+          onChange={(value) => setOwnerFilter(value)}
+          options={ownerOptions}
+        />
         <button
           type="button"
           className="btn"
           onClick={() => {
-            setQuery("");
-            setTypeFilter("");
-            setStatusFilter("");
-            setOwnerFilter("");
+            setQuery('');
+            setTypeFilter('');
+            setStatusFilter('');
+            setOwnerFilter('');
           }}
-          style={{ borderRadius: 999, padding: "10px 16px", fontWeight: 500 }}
+          style={{ borderRadius: 999, padding: '10px 16px', fontWeight: 500 }}
         >
           Reset Filters
         </button>
       </div>
 
       <div className="table-shell">
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 960 }}>
             <thead>
-              <tr style={{ background: "var(--surface-muted)" }}>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Related Lead/Deal</th>
-                <th style={{ textAlign: "left", padding: "14px 16px", fontWeight: 700 }}>Type</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Due Date</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Owner</th>
-                <th style={{ textAlign: "right", padding: "14px 16px", fontWeight: 700 }}>Status</th>
-                <th style={{ textAlign: "center", padding: "14px 16px", fontWeight: 700 }}>Actions</th>
+              <tr style={{ background: 'var(--surface-muted)' }}>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
+                  Related Lead/Deal
+                </th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>Type</th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Due Date
+                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Owner</th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
+                  Status
+                </th>
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
+                  <td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>
                     Loading follow-ups...
                   </td>
                 </tr>
               ) : filteredFollowUps.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: "center" }}>
+                  <td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>
                     No follow-ups found.
                   </td>
                 </tr>
               ) : (
                 filteredFollowUps.map((item) => {
-                  const overdue = item.status !== "Done" && isOverdue(item.dueDate);
+                  const overdue = item.status !== 'Done' && isOverdue(item.dueDate);
                   return (
-                    <tr key={item.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "14px 16px", fontWeight: 600 }}>{item.relatedName}</td>
-                      <td style={{ padding: "14px 16px" }}>{item.type}</td>
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>{formatDateTime(item.dueDate)}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}>{item.ownerName || "Unassigned"}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                        {overdue ? "Overdue" : item.status}
+                    <tr key={item.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>{item.relatedName}</td>
+                      <td style={{ padding: '14px 16px' }}>{item.type}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        {formatDateTime(item.dueDate)}
                       </td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        {item.ownerName || 'Unassigned'}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        {overdue ? 'Overdue' : item.status}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            justifyContent: 'center',
+                            flexWrap: 'wrap',
+                          }}
+                        >
                           <button
                             type="button"
                             className="btn ghost"
                             onClick={() => openEdit(item)}
-                            style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
                           >
                             View
                           </button>
@@ -327,18 +370,18 @@ export default function SalesFollowUpsPage() {
                             className="btn"
                             onClick={() => markDone(item)}
                             disabled={actionLoading === `${item.id}-done`}
-                            style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
                           >
-                            {actionLoading === `${item.id}-done` ? "Updating" : "Mark Done"}
+                            {actionLoading === `${item.id}-done` ? 'Updating' : 'Mark Done'}
                           </button>
                           <button
                             type="button"
                             className="btn ghost"
                             onClick={() => handleDelete(item)}
                             disabled={actionLoading === item.id}
-                            style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12 }}
+                            style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
                           >
-                            {actionLoading === item.id ? "Deleting" : "Delete"}
+                            {actionLoading === item.id ? 'Deleting' : 'Delete'}
                           </button>
                         </div>
                       </td>
@@ -353,28 +396,39 @@ export default function SalesFollowUpsPage() {
 
       {drawerOpen && (
         <SalesDrawer
-          title={drawerMode === "create" ? "Create Follow-Up" : "Follow-Up Details"}
-          subtitle={drawerMode === "create" ? "Schedule a follow-up" : formatDateTime(form.id ? followUps.find((f) => f.id === form.id)?.updatedAt : null)}
+          title={drawerMode === 'create' ? 'Create Follow-Up' : 'Follow-Up Details'}
+          subtitle={
+            drawerMode === 'create'
+              ? 'Schedule a follow-up'
+              : formatDateTime(form.id ? followUps.find((f) => f.id === form.id)?.updatedAt : null)
+          }
           onClose={() => setDrawerOpen(false)}
-         
           actions={
-            <button className="btn" onClick={handleSave} disabled={actionLoading === "save"} style={{ borderRadius: 999 }}>
-              {actionLoading === "save" ? "Saving" : "Save Follow-Up"}
+            <button
+              className="btn"
+              onClick={handleSave}
+              disabled={actionLoading === 'save'}
+              style={{ borderRadius: 999 }}
+            >
+              {actionLoading === 'save' ? 'Saving' : 'Save Follow-Up'}
             </button>
           }
         >
           <div className="card" style={{ padding: 16, borderRadius: 14 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>Follow-Up Details</div>
-            <div style={{ display: "grid", gap: 12 }}>
-              <label style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Related Type</span>
                 <MasterSelect
                   value={form.relatedType}
                   onChange={(value) => setForm((prev) => ({ ...prev, relatedType: value }))}
-                  options={[{ label: "Lead", value: "Lead" }, { label: "Deal", value: "Deal" }]}
+                  options={[
+                    { label: 'Lead', value: 'Lead' },
+                    { label: 'Deal', value: 'Deal' },
+                  ]}
                 />
               </label>
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Related Lead/Deal</span>
                 <input
                   className="input"
@@ -383,7 +437,7 @@ export default function SalesFollowUpsPage() {
                   onChange={(e) => setForm((prev) => ({ ...prev, relatedName: e.target.value }))}
                 />
               </label>
-              <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Type</span>
                 <MasterSelect
                   value={form.type}
@@ -391,7 +445,7 @@ export default function SalesFollowUpsPage() {
                   options={FOLLOW_UP_TYPES.map((type) => ({ label: type, value: type }))}
                 />
               </div>
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Due Date & Time</span>
                 <input
                   className="input"
@@ -400,11 +454,15 @@ export default function SalesFollowUpsPage() {
                   onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
                 />
               </label>
-              <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Owner</span>
-                <MasterSelect value={form.ownerId} onChange={handleOwnerChange} options={ownerOptions} />
+                <MasterSelect
+                  value={form.ownerId}
+                  onChange={handleOwnerChange}
+                  options={ownerOptions}
+                />
               </div>
-              <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Status</span>
                 <MasterSelect
                   value={form.status}

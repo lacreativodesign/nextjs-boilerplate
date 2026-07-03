@@ -1,4 +1,4 @@
-import { getCurrentUser, isAccountManager } from "../admin/_utils";
+import { getCurrentUser, isAccountManager } from '../admin/_utils';
 
 export type AMUser = {
   uid: string;
@@ -18,18 +18,21 @@ export async function getAmUser(): Promise<AMUser | null> {
 
 export function toISO(value: any): string | null {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   return null;
 }
 
-export function isOwnedByAm(project: {
-  ownerAmUid?: string | null;
-  ownerId?: string | null;
-  amId?: string | null;
-  createdByUid?: string | null;
-}, uid: string) {
+export function isOwnedByAm(
+  project: {
+    ownerAmUid?: string | null;
+    ownerId?: string | null;
+    amId?: string | null;
+    createdByUid?: string | null;
+  },
+  uid: string,
+) {
   if (!project) return false;
   if (project.ownerAmUid && project.ownerAmUid === uid) return true;
   if (project.ownerId && project.ownerId === uid) return true;

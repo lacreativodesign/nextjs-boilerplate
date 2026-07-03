@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n/config";
-import { useI18n } from "@/components/i18n/I18nProvider";
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@/lib/i18n/config';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export default function LanguageSwitcher() {
   const { locale, setLocale } = useI18n();
